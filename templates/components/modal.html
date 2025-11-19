@@ -4,14 +4,15 @@
 </div>
 
 <!-- Janela -->
-<div id="modal" class="hidden fixed inset-0 flex items-center justify-center z-50" aria-modal="true" role="dialog">
+<div id="modal" class="hidden fixed inset-0 flex items-center justify-center z-50" aria-modal="true" role="dialog"
+    onclick="closeModal()">
 
-    <div id="modal-content"
-        class="bg-white rounded-lg shadow-lg w-full max-w-2xl p-6 transform transition-all scale-95 opacity-0"
-        style="max-height: 80vh; overflow-y: auto;" onclick="event.stopPropagation();">
+    <div id="modal-content" class="bg-white rounded-lg shadow-lg w-full max-w-2xl p-6 transform"
+        style="max-height: 80vh; overflow-y: auto;" onclick="event.stopPropagation()">
 
-        <!-- Conteúdo que o HTMX injeta -->
-        <div id="modal-body"></div>
+        <!-- CONTEÚDO QUE O HTMX INJETA -->
+        <div id="modal-body" hx-target="this" hx-swap="innerHTML">
+        </div>
 
         <div class="text-right mt-4">
             <button onclick="closeModal()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded">
@@ -20,6 +21,7 @@
         </div>
     </div>
 </div>
+
 
 <script>
     function openModal() {

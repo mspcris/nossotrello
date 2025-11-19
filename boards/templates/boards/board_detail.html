@@ -9,49 +9,52 @@
 
 <h3 class="text-lg font-semibold mb-2">Colunas:</h3>
 
-<!-- ========================= -->
-<!-- CONTAINER DAS COLUNAS     -->
-<!-- ========================= -->
-<div id="columns-container" class="flex gap-6 items-start overflow-x-auto pb-4"
-    style="scrollbar-width: thin; scrollbar-color: #ccc transparent;">
+<!-- WRAPPER PRINCIPAL -->
+<div id="columns-wrapper" class="flex gap-6 overflow-x-auto pb-4">
 
-    {% for column in board.columns.all %}
-    {% include "boards/partials/column_item.html" %}
-    {% empty %}
-    <p class="text-gray-400">Nenhuma coluna ainda.</p>
-    {% endfor %}
+    <!-- LISTA DE COLUNAS -->
+    <div id="columns-list" class="flex gap-6">
+
+        {% for column in board.columns.all %}
+        {% include "boards/partials/column_item.html" %}
+        {% endfor %}
+
+    </div>
+
+    <!-- FORMULÁRIO FIXO NA DIREITA -->
+    <div id="add-column-box" class="w-64 bg-gray-100 p-4 rounded border h-fit shrink-0">
+
+        <h3 class="font-semibold mb-2">Adicionar nova coluna</h3>
+
+        <form method="post" hx-post="{% url 'boards:add_column' board.id %}" hx-target="#columns-list"
+            hx-swap="beforeend">
+
+            {% csrf_token %}
+
+            <label class="block text-sm font-medium">Nome:</label>
+            <input type="text" name="name" class="w-full border rounded px-3 py-2 mb-3" placeholder="Nome da coluna">
+
+            <button class="px-3 py-2 bg-blue-600 text-white rounded">
+                Adicionar Coluna
+            </button>
+
+        </form>
+
+    </div>
+
 </div>
 
-<!-- ========================= -->
-<!-- FORM PARA NOVA COLUNA (via HTMX) -->
-<!-- ========================= -->
-<hr class="my-8">
 
-<h3 class="text-lg font-semibold mb-3">Adicionar nova coluna</h3>
-
-<div hx-get="{% url 'add_column' board.id %}" hx-target="#add-column-area" hx-trigger="load">
-</div>
-
-<div id="add-column-area"></div>
-
-<!-- ========================= -->
-<!-- SCRIPT DO SORTABLE — CORRIGIDO -->
-<!-- ========================= -->
+<!-- SORTABLE JS -->
 <script>
-    console.log("🔥 SCRIPT DO SORTABLE CARREGOU");
-
     function initSortable() {
-        console.log("🚀 initSortable executado");
-
         document.querySelectorAll("[id^='cards-col-']").forEach(function (listEl) {
 
             if (listEl.dataset.sortableApplied === "1") {
-                return; // evita re-execução
+                return;
             }
 
             listEl.dataset.sortableApplied = "1";
-
-            console.log("🔧 Ativando Sortable em:", listEl.id);
 
             new Sortable(listEl, {
                 group: "cards",
@@ -59,32 +62,19 @@
                 ghostClass: "drag-ghost",
 
                 onEnd: function (evt) {
-                    console.log("📌 onEnd disparou");
 
-                    const cardEl = evt.item;
-                    const oldColumnEl = evt.from;
-                    const newColumnEl = evt.to;
+                    const csrftoken =
+                        document.querySelector("[name=csrfmiddlewaretoken]")?.value;
 
-                    // Mensagem de "Nenhum card ainda."
-                    const newEmptyMsg = newColumnEl.querySelector(".no-cards-msg");
-                    if (newEmptyMsg) newEmptyMsg.style.display = "none";
-
-                    const oldEmptyMsg = oldColumnEl.querySelector(".no-cards-msg");
-                    if (oldEmptyMsg) {
-                        const qtd = oldColumnEl.querySelectorAll("li[data-card-id]").length;
-                        oldEmptyMsg.style.display = qtd === 0 ? "block" : "none";
-                    }
-
-                    // Envia para o backend
-                    fetch("{% url 'move_card' %}", {
+                    fetch("{% url 'boards:move_card' %}", {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json",
-                            "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value,
+                            "X-CSRFToken": csrftoken
                         },
                         body: JSON.stringify({
-                            card_id: Number(cardEl.dataset.cardId),
-                            new_column_id: Number(newColumnEl.id.replace("cards-col-", "")),
+                            card_id: Number(evt.item.dataset.cardId),
+                            new_column_id: Number(evt.to.id.replace("cards-col-", "")),
                             new_position: Number(evt.newIndex)
                         })
                     });
@@ -93,12 +83,11 @@
         });
     }
 
-    // Inicializa quando DOM carregar
     document.addEventListener("DOMContentLoaded", initSortable);
 
-    // Recarrega quando HTMX alterar algo
-    document.body.addEventListener("htmx:afterSwap", initSortable);
-
+    document.body.addEventListener("htmx:afterSwap", () => {
+        initSortable();
+    });
 </script>
 
 <style>

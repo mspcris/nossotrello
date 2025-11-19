@@ -1,4 +1,12 @@
-<div class="p-2 bg-white rounded shadow-sm mb-2 cursor-pointer" hx-get="{% url 'card_modal' card.id %}"
-    hx-target="#modal-body" hx-swap="innerHTML">
-    {{ card.title }}
-</div>
+<li data-card-id="{{ card.id }}" class="p-2 bg-white rounded shadow-sm mb-2 cursor-pointer relative"
+    hx-get="{% url 'boards:card_modal' card.id %}" hx-target="#modal-body" hx-swap="innerHTML">
+
+    <span class="pr-6">{{ card.title }}</span>
+
+    <!-- BOTÃO DELETE DO CARD -->
+    <button type="button" class="absolute top-1 right-1 text-red-600 text-sm" onclick="event.stopPropagation()"
+        hx-post="{% url 'boards:delete_card' card.id %}" hx-target="closest li" hx-swap="outerHTML">
+        ✕
+    </button>
+
+</li>

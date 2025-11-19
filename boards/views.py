@@ -4,6 +4,8 @@ from django.views.decorators.http import require_POST
 from django.db import transaction
 from .models import Board, Column, Card
 from .forms import ColumnForm, CardForm, BoardForm
+from .models import CardLog
+
 import json
 
 
@@ -75,15 +77,65 @@ def add_board(request):
 
     return render(request, "boards/partials/add_board_form.html", {"form": BoardForm()})
 
+
+
+
+from django.shortcuts import get_object_or_404, render, redirect
+from .models import Card
+from .forms import CardForm
+
 def edit_card(request, card_id):
     card = get_object_or_404(Card, id=card_id)
 
     if request.method == "POST":
-        card.title = request.POST.get("title", card.title)
-        card.save()
-        return redirect("board_detail", board_id=card.column.board.id)
+        old_description = card.description
+        old_attachment = card.attachment
 
-    return HttpResponse("Método inválido", status=405)
+        form = CardForm(request.POST, request.FILES, instance=card)
+        if form.is_valid():
+            form.save()
+
+            # cria log
+            CardLog.objects.create(
+                card=card,
+                content=card.description,
+                attachment=card.attachment
+            )
+
+            return render(
+                request,
+                "boards/partials/card_modal_body.html",
+                {"card": card}
+            )
+
+    else:
+        form = CardForm(instance=card)
+
+    return render(
+        request,
+        "boards/partials/card_edit_form.html",
+        {"card": card, "form": form},
+    )
+
+from django.http import HttpResponse
+
+@require_POST
+def delete_column(request, column_id):
+    column = get_object_or_404(Column, id=column_id)
+    board_id = column.board.id
+    column.delete()
+    return HttpResponse(status=204)  # HTMX remove o elemento sem recarregar
+
+
+@require_POST
+def delete_card(request, card_id):
+    card = get_object_or_404(Card, id=card_id)
+    card.delete()
+    return HttpResponse(status=204)
+
+
+
+
 
 @require_POST
 def update_card(request, card_id):
@@ -106,27 +158,74 @@ def card_modal(request, card_id):
     card = get_object_or_404(Card, id=card_id)
     return render(request, "boards/partials/card_modal_body.html", {"card": card})
 
+
+# @require_POST
+# def update_card(request, card_id):
+#     card = get_object_or_404(Card, id=card_id)
+
+#     # REGISTRAR LOG ANTES DE ALTERAR O CARD
+#     antigo_texto = card.description
+#     antigo_arquivo = card.attachment
+
+#     CardLog.objects.create(
+#         card=card,
+#         content=antigo_texto or "",
+#         attachment=antigo_arquivo if antigo_arquivo else None,
+#     )
+
+#     # ATUALIZAÇÕES
+#     card.title = request.POST.get("title", card.title)
+#     card.description = request.POST.get("description", card.description)
+#     card.tags = request.POST.get("tags", card.tags)
+
+#     if "attachment" in request.FILES:
+#         card.attachment = request.FILES["attachment"]
+
+#     card.save()
+
+#     return render(
+#         request,
+#         "boards/partials/card_modal_body.html",
+#         {"card": card}
+#     )
+
+
+
+from django.views.decorators.http import require_POST
+from django.shortcuts import get_object_or_404, render
+from .models import Card, CardLog
+
+@require_POST
 def update_card(request, card_id):
     card = get_object_or_404(Card, id=card_id)
 
-    if request.method == "POST":
-        card.title = request.POST.get("title", card.title)
-        card.description = request.POST.get("description", card.description)
-        card.tags = request.POST.get("tags", card.tags)
+    # 1) Atualiza os campos com o que veio do formulário
+    card.title = request.POST.get("title", card.title)
+    card.description = request.POST.get("description", card.description)
+    card.tags = request.POST.get("tags", card.tags)
 
-        # TRATAMENTO DO ARQUIVO
-        if "attachment" in request.FILES:
-            card.attachment = request.FILES["attachment"]
+    # 2) Se foi enviado arquivo novo, substitui
+    if "attachment" in request.FILES and request.FILES["attachment"]:
+        card.attachment = request.FILES["attachment"]
 
-        card.save()
+    card.save()
 
-        return render(
-            request,
-            "boards/partials/card_modal_body.html",
-            {"card": card}
-        )
+    # 3) REGISTRA O LOG COM O ESTADO ATUAL (após o save)
+    CardLog.objects.create(
+        card=card,
+        content=card.description or "",
+        attachment=card.attachment if card.attachment else None,
+    )
 
-    return HttpResponse("Método inválido", status=405)
+    # 4) Re-renderiza o corpo do modal com o card atualizado + logs
+    return render(
+        request,
+        "boards/partials/card_modal_body.html",
+        {"card": card},
+    )
+
+
+
 
 
 @require_POST

@@ -1,6 +1,8 @@
 from django.urls import path
 from . import views
 
+app_name = "boards"
+
 urlpatterns = [
     path("", views.index, name="boards_index"),
     path("board/<int:board_id>/", views.board_detail, name="board_detail"),
@@ -11,4 +13,7 @@ urlpatterns = [
     path("card/<int:card_id>/edit/", views.edit_card, name="edit_card"),
     path("card/<int:card_id>/modal/", views.card_modal, name="card_modal"),
     path("card/<int:card_id>/update/", views.update_card, name="update_card"),
+    path("column/<int:column_id>/delete/", views.delete_column, name="delete_column"),
+    path("card/<int:card_id>/delete/", views.delete_card, name="delete_card"),
+
 ]

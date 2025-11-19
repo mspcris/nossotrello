@@ -1,4 +1,5 @@
-<form hx-post="{% url 'add_card' column.id %}" hx-target="#cards-col-{{ column.id }}" hx-swap="beforeend" class="mt-4">
+<form hx-post="{% url 'boards:add_card' column.id %}
+" hx-target="#cards-col-{{ column.id }}" hx-swap="beforeend" class="mt-4">
 
     {% csrf_token %}
 
