@@ -1,32 +1,31 @@
-<!-- Modal Base Component (Tailwind + HTMX optional) -->
-
+<!-- Overlay -->
 <div id="modal-overlay" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
     onclick="closeModal()">
 </div>
 
+<!-- Janela -->
 <div id="modal" class="hidden fixed inset-0 flex items-center justify-center z-50" aria-modal="true" role="dialog">
+
     <div id="modal-content"
-        class="bg-white rounded-lg shadow-lg w-full max-w-lg p-6 transform transition-all scale-95 opacity-0"
+        class="bg-white rounded-lg shadow-lg w-full max-w-xl p-6 transform transition-all scale-95 opacity-0"
         onclick="event.stopPropagation();">
-        <!-- Conteúdo é injetado aqui -->
+
         <div id="modal-body"></div>
 
         <div class="text-right mt-4">
-            <button onclick="closeModal()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded">
+            <button onclick="closeModal()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded">
                 Fechar
             </button>
         </div>
     </div>
 </div>
 
+
 <script>
-    function openModal(contentHtml) {
+    function openModal() {
         const overlay = document.getElementById("modal-overlay");
         const modal = document.getElementById("modal");
         const content = document.getElementById("modal-content");
-        const body = document.getElementById("modal-body");
-
-        body.innerHTML = contentHtml;
 
         overlay.classList.remove("hidden");
         modal.classList.remove("hidden");
@@ -51,10 +50,42 @@
         }, 150);
     }
 
-    // Suporte para HTMX (quando usado com hx-target="#modal-body")
+    /* ATIVA O MODAL APÓS O HTMX CARREGAR O HTML */
     document.body.addEventListener("htmx:afterSwap", (e) => {
         if (e.detail.target.id === "modal-body") {
-            openModal(document.getElementById("modal-body").innerHTML);
+            openModal();
+        }
+    });
+</script>
+
+<script>
+    let quill = null;
+
+    function initQuill() {
+        const container = document.getElementById("quill-editor");
+        if (!container) return;
+
+        quill = new Quill("#quill-editor", {
+            theme: "snow",
+            placeholder: "Digite aqui… você pode colar imagens, prints, etc."
+        });
+
+        // Carregar HTML existente do card
+        const current = document.getElementById("description-input").value;
+        if (current) {
+            quill.root.innerHTML = current;
+        }
+
+        // Atualiza campo hidden antes de enviar o form
+        quill.on("text-change", () => {
+            document.getElementById("description-input").value = quill.root.innerHTML;
+        });
+    }
+
+    // Sempre que o HTMX trocar o conteúdo do modal
+    document.body.addEventListener("htmx:afterSwap", function (e) {
+        if (e.detail.target.id === "modal-body") {
+            initQuill();
         }
     });
 </script>

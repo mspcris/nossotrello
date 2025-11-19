@@ -21,10 +21,14 @@ class Meta:
 
 
 class Card(models.Model):
-    column = models.ForeignKey(Column, related_name="cards", on_delete=models.CASCADE)
     title = models.CharField(max_length=255)
-    description = models.TextField(blank=True)
+    description = models.TextField(blank=True, null=True)
+    tags = models.CharField(max_length=255, blank=True, null=True)
+    attachment = models.FileField(upload_to="attachments/", blank=True, null=True)
+
+    column = models.ForeignKey(Column, related_name="cards", on_delete=models.CASCADE)
     position = models.PositiveIntegerField(default=0)
+
 
     class Meta:
         ordering = ["position"]

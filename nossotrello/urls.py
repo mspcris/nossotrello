@@ -14,11 +14,19 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+"""URL configuration for nossotrello project."""
 from django.contrib import admin
-from django.urls import path, include   # <-- ESTA LINHA É ESSENCIAL
+from django.urls import path, include
 
+# IMPORTS NOVOS PARA MEDIA
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
-    path("", include("boards.urls")),  # 💥 agora "/" chama boards_index
+    path("", include("boards.urls")),  # home -> boards
     path("admin/", admin.site.urls),
 ]
+
+# SERVIR ARQUIVOS DE MÍDIA EM DESENVOLVIMENTO
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

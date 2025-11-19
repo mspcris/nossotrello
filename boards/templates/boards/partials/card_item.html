@@ -1,4 +1,4 @@
-<li data-card-id="{{ card.id }}" class="p-2 bg-white rounded shadow-sm mb-2 cursor-pointer"
-    onclick="openEditCardModal({{ card.id }}, '{{ card.title|escapejs }}')">
+<div class="p-2 bg-white rounded shadow-sm mb-2 cursor-pointer" hx-get="{% url 'card_modal' card.id %}"
+    hx-target="#modal-body" hx-swap="innerHTML">
     {{ card.title }}
-</li>
+</div>

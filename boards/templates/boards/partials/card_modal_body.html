@@ -1,0 +1,65 @@
+<h2 class="text-xl font-semibold mb-4">Editar Card</h2>
+
+
+
+
+<form enctype="multipart/form-data" hx-encoding="multipart/form-data" hx-post="{% url 'update_card' card.id %}"
+    hx-target="#modal-body" hx-swap="innerHTML">
+
+
+
+
+
+    <!-- TÍTULO -->
+    <label class="block text-sm font-medium mb-1">Título</label>
+    <input type="text" name="title" value="{{ card.title }}" class="w-full p-2 border rounded mb-4">
+
+    <!-- DESCRIÇÃO – EDITOR QUILL -->
+    <label class="block text-sm font-medium mb-1">Descrição</label>
+
+    <!-- Área visual do editor -->
+    <div id="quill-editor" class="bg-white border rounded h-40 mb-4">
+    </div>
+
+    <!-- Campo que realmente envia o HTML -->
+    <input type="hidden" name="description" id="description-input">
+
+    <!-- TAGS -->
+    <label class="block text-sm font-medium mt-4 mb-1">Tags</label>
+    <input type="text" name="tags" value="{{ card.tags }}" class="w-full p-2 border rounded"
+        placeholder="Ex: urgente, cliente, bug">
+
+    <!-- UPLOAD DE ANEXO -->
+    <div class="mt-4">
+        <label class="block text-sm font-medium mb-1">Anexos</label>
+        <input type="file" name="attachment" class="w-full">
+    </div>
+
+    <!-- EXIBE ANEXO ATUAL (se existir) -->
+    {% if card.attachment %}
+    <div class="mt-3">
+        <p class="text-sm mb-1 font-medium">Arquivo atual:</p>
+        <a href="{{ card.attachment.url }}" target="_blank" class="text-blue-600 hover:underline text-sm">
+            {{ card.attachment.name }}
+        </a>
+
+        {% with ext=card.attachment.url|lower %}
+        {% if ext|slice:"-4:" == ".png" or ext|slice:"-4:" == ".jpg" or ext|slice:"-5:" == ".jpeg" %}
+        <img src="{{ card.attachment.url }}" class="mt-2 max-h-40 rounded">
+        {% endif %}
+        {% endwith %}
+    </div>
+    {% endif %}
+
+    <!-- BOTÕES -->
+    <div class="mt-6 flex gap-3">
+        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+            Salvar
+        </button>
+
+        <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">
+            Cancelar
+        </button>
+    </div>
+
+</form>
