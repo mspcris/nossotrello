@@ -1,0 +1,58 @@
+{% load static %}
+{% include "components/modal.html" with content="" %}
+
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>{% block title %}NossoTrello{% endblock %}</title>
+
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+
+    <!-- SortableJS -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- CSS Global do Projeto -->
+    <link rel="stylesheet" href="{% static 'boards/base.css' %}">
+
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <!-- CSRF -->
+    <script>
+        document.body.addEventListener("htmx:configRequest", (event) => {
+            let csrfToken = document.querySelector("meta[name='csrf-token']").content;
+            event.detail.headers['X-CSRFToken'] = csrfToken;
+        });
+    </script>
+    <script src="{% static 'boards/modal.js' %}"></script>
+
+</head>
+
+<body class="bg-gray-100 p-6">
+
+    {% block content %}
+    {% endblock %}
+
+    <script>
+        document.body.addEventListener('htmx:afterSwap', (event) => {
+            if (event.target.id === "modal-body") {
+                document.getElementById("modal").classList.remove("hidden");
+            }
+        });
+
+        document.body.addEventListener('htmx:afterRequest', (event) => {
+            if (event.detail.xhr.status === 204) {
+                location.reload();
+            }
+        });
+    </script>
+
+</body>
+
+</html>

@@ -1,0 +1,81 @@
+/* ================================
+   Estilos Globais
+================================ */
+
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+}
+
+/* Container das colunas — estilo Trello */
+.board-container {
+    display: flex;
+    gap: 30px;
+    overflow-x: auto;      /* scroll horizontal */
+    padding-bottom: 12px;
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: #ccc transparent;
+}
+
+/* Cada coluna */
+.column-box {
+    min-width: 18rem;   /* semelhante ao w-72 */
+    border: 1px solid #ccc;
+    padding: 12px;
+    background: #fafafa;
+    border-radius: 6px;
+    flex-shrink: 0;     /* impede de encolher */
+    box-shadow:
+        0 1px 2px rgba(0,0,0,0.05),
+        0 1px 4px rgba(0,0,0,0.05);
+}
+
+.column-box h4 {
+    margin-top: 0;
+    font-weight: bold;
+}
+
+/* Lista de cards */
+.column-box ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+/* Cada card */
+.column-box li {
+    cursor: grab;
+    list-style: none;
+    padding: 6px;
+    margin: 4px 0;
+    background: #f7f7f7;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.column-box li:active {
+    cursor: grabbing;
+}
+
+/* Ghost quando arrasta card */
+.drag-ghost {
+    opacity: 0.35;
+    background: #ddd;
+}
+
+/* Scrollbar custom (Chrome, Edge, Safari) */
+::-webkit-scrollbar {
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c7c7c7;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a0a0a0;
+}

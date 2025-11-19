@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}NossoTrello - Boards{% endblock %}
+
+{% block content %}
+
+<h1 class="text-2xl font-bold mb-6">Quadros</h1>
+
+<div class="flex flex-wrap gap-6">
+
+    {% for board in boards %}
+    <a href="{% url 'board_detail' board.id %}"
+        class="block bg-white shadow-md hover:shadow-lg transition p-6 rounded-lg w-64 border border-gray-200">
+
+        <h2 class="text-xl font-semibold mb-2">{{ board.name }}</h2>
+        <p class="text-gray-500 text-sm">Clique para abrir</p>
+    </a>
+    {% empty %}
+    <p class="text-gray-400">Nenhum quadro criado ainda.</p>
+    {% endfor %}
+
+    <!-- Card de criar novo board -->
+    <div hx-get="{% url 'add_board' %}" hx-target="#modal-area" class="cursor-pointer bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-300 
+                shadow-sm p-6 rounded-lg w-64 flex items-center justify-center font-semibold">
+        + Criar novo quadro
+    </div>
+
+</div>
+
+<!-- Área do modal htmx -->
+<div id="modal-bg" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center">
+
+    <div hx-get="{% url 'add_board' %}" hx-target="#modal-bg" hx-trigger="load"></div>
+
+</div>
+
+
+
+{% endblock %}

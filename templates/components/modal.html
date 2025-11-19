@@ -1,0 +1,60 @@
+<!-- Modal Base Component (Tailwind + HTMX optional) -->
+
+<div id="modal-overlay" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
+    onclick="closeModal()">
+</div>
+
+<div id="modal" class="hidden fixed inset-0 flex items-center justify-center z-50" aria-modal="true" role="dialog">
+    <div id="modal-content"
+        class="bg-white rounded-lg shadow-lg w-full max-w-lg p-6 transform transition-all scale-95 opacity-0"
+        onclick="event.stopPropagation();">
+        <!-- Conteúdo é injetado aqui -->
+        <div id="modal-body"></div>
+
+        <div class="text-right mt-4">
+            <button onclick="closeModal()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded">
+                Fechar
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openModal(contentHtml) {
+        const overlay = document.getElementById("modal-overlay");
+        const modal = document.getElementById("modal");
+        const content = document.getElementById("modal-content");
+        const body = document.getElementById("modal-body");
+
+        body.innerHTML = contentHtml;
+
+        overlay.classList.remove("hidden");
+        modal.classList.remove("hidden");
+
+        setTimeout(() => {
+            content.classList.remove("scale-95", "opacity-0");
+            content.classList.add("scale-100", "opacity-100");
+        }, 20);
+    }
+
+    function closeModal() {
+        const overlay = document.getElementById("modal-overlay");
+        const modal = document.getElementById("modal");
+        const content = document.getElementById("modal-content");
+
+        content.classList.add("scale-95", "opacity-0");
+        content.classList.remove("scale-100", "opacity-100");
+
+        setTimeout(() => {
+            overlay.classList.add("hidden");
+            modal.classList.add("hidden");
+        }, 150);
+    }
+
+    // Suporte para HTMX (quando usado com hx-target="#modal-body")
+    document.body.addEventListener("htmx:afterSwap", (e) => {
+        if (e.detail.target.id === "modal-body") {
+            openModal(document.getElementById("modal-body").innerHTML);
+        }
+    });
+</script>

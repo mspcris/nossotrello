@@ -1,0 +1,24 @@
+<div class="bg-white p-6 rounded-lg shadow-lg w-96">
+
+    <h2 class="text-xl font-semibold mb-4">Criar novo quadro</h2>
+
+    <form method="POST" hx-post="{% url 'add_board' %}" hx-target="body" hx-swap="beforeend">
+
+        {% csrf_token %}
+
+        <label class="block text-sm font-medium mb-1">Name:</label>
+        {{ form.name }}
+
+        <div class="flex gap-2 mt-4">
+            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">
+                Criar
+            </button>
+
+            <button type="button" class="bg-gray-300 px-4 py-2 rounded"
+                onclick="document.getElementById('modal-bg').remove();">
+                Cancelar
+            </button>
+        </div>
+    </form>
+
+</div>

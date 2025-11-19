@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ board.name }}{% endblock %}
+
+{% block content %}
+
+<h1 class="text-2xl font-bold mb-4">{{ board.name }}</h1>
+
+<h3 class="text-lg font-semibold mb-2">Colunas:</h3>
+
+<!-- ========================= -->
+<!-- CONTAINER DAS COLUNAS     -->
+<!-- ========================= -->
+<div id="columns-container" class="flex gap-6 items-start overflow-x-auto pb-4"
+    style="scrollbar-width: thin; scrollbar-color: #ccc transparent;">
+
+    {% for column in board.columns.all %}
+    {% include "boards/partials/column_item.html" %}
+    {% empty %}
+    <p class="text-gray-400">Nenhuma coluna ainda.</p>
+    {% endfor %}
+</div>
+
+
+<!-- ========================= -->
+<!-- FORM PARA NOVA COLUNA (via HTMX) -->
+<!-- ========================= -->
+<hr class="my-8">
+
+<h3 class="text-lg font-semibold mb-3">Adicionar nova coluna</h3>
+
+<div hx-get="{% url 'add_column' board.id %}" hx-target="#add-column-area" hx-trigger="load">
+</div>
+
+<div id="add-column-area"></div>
+
+
+<!-- ========================= -->
+<!-- SCRIPT DO SORTABLE        -->
+<!-- ========================= -->
+<script>
+
+    function initSortable() {
+        document.querySelectorAll("[id^='cards-col-']").forEach(function (listEl) {
+
+            if (listEl.dataset.sortableApplied === "1") {
+                return; // evita recriar
+            }
+
+            listEl.dataset.sortableApplied = "1";
+
+            new Sortable(listEl, {
+                group: "cards",
+                animation: 150,
+                ghostClass: "drag-ghost",
+
+                onEnd: function (evt) {
+                    const cardEl = evt.item;
+                    const oldColumnEl = evt.from;
+                    const newColumnEl = evt.to;
+
+                    // Oculta o "Nenhum card ainda." da nova coluna
+                    const newEmptyMsg = newColumnEl.querySelector(".no-cards-msg");
+                    if (newEmptyMsg) newEmptyMsg.style.display = "none";
+
+                    // Se a coluna antiga ficou vazia, mostra a mensagem
+                    const oldEmptyMsg = oldColumnEl.querySelector(".no-cards-msg");
+                    if (oldEmptyMsg) {
+                        const qty = oldColumnEl.querySelectorAll("li[data-card-id]").length;
+                        oldEmptyMsg.style.display = qty === 0 ? "block" : "none";
+                    }
+
+                    // Envia dados para o backend
+                    fetch("{% url 'move_card' %}", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRFToken": "{{ csrf_token }}",
+                        },
+                        body: JSON.stringify({
+                            card_id: Number(cardEl.dataset.cardId),
+                            new_column_id: Number(newColumnEl.id.replace("cards-col-", "")),
+                            new_position: Number(evt.newIndex)
+                        })
+                    });
+                }
+
+            });
+        });
+    }
+
+    // Quando a página carrega
+    document.addEventListener("DOMContentLoaded", initSortable);
+
+    // Quando HTMX atualizar parte da página (ex: nova coluna)
+    document.body.addEventListener("htmx:afterSwap", initSortable);
+</script>
+
+<style>
+    .drag-ghost {
+        opacity: 0.3;
+        background: #d0d0d0;
+    }
+</style>
+
+{% endblock %}

@@ -1,0 +1,13 @@
+<form hx-post="{% url 'add_card' column.id %}" hx-target="#cards-col-{{ column.id }}" hx-swap="beforeend" class="mt-4">
+
+    {% csrf_token %}
+
+    <label class="text-sm font-semibold block mb-1">Título:</label>
+
+    <input type="text" name="title" placeholder="Título do card" class="w-full border rounded-md p-2 mb-3">
+
+    <button type="submit" class="bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700">
+        Adicionar Card
+    </button>
+
+</form>

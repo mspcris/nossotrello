@@ -1,0 +1,23 @@
+<div class="bg-white shadow-md rounded-lg p-4 w-72 flex-shrink-0">
+
+    <h4 class="text-md font-semibold mb-3">{{ column.name }}</h4>
+
+    <ul id="cards-col-{{ column.id }}" class="space-y-2 mb-4">
+
+        <!-- INDICADOR DE VAZIO -->
+        <li class="no-cards-msg text-gray-400 text-sm" {% if column.cards.all %}style="display:none;" {% endif %}>
+            Nenhum card ainda.
+        </li>
+
+        <!-- LISTA DE CARDS -->
+        {% for card in column.cards.all %}
+        {% include "boards/partials/card_item.html" %}
+        {% endfor %}
+    </ul>
+
+
+    <div hx-get="{% url 'add_card' column.id %}" hx-target="#form-col-{{ column.id }}" hx-trigger="load"></div>
+
+    <div id="form-col-{{ column.id }}"></div>
+
+</div>
