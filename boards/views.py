@@ -1,4 +1,4 @@
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.http import require_POST
 from django.db import transaction
@@ -75,6 +75,15 @@ def add_board(request):
 
     return render(request, "boards/partials/add_board_form.html", {"form": BoardForm()})
 
+def edit_card(request, card_id):
+    card = get_object_or_404(Card, id=card_id)
+
+    if request.method == "POST":
+        card.title = request.POST.get("title", card.title)
+        card.save()
+        return redirect("board_detail", board_id=card.column.board.id)
+
+    return HttpResponse("Método inválido", status=405)
 
 
 @require_POST

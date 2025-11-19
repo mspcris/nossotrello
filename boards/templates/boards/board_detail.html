@@ -22,7 +22,6 @@
     {% endfor %}
 </div>
 
-
 <!-- ========================= -->
 <!-- FORM PARA NOVA COLUNA (via HTMX) -->
 <!-- ========================= -->
@@ -35,20 +34,24 @@
 
 <div id="add-column-area"></div>
 
-
 <!-- ========================= -->
-<!-- SCRIPT DO SORTABLE        -->
+<!-- SCRIPT DO SORTABLE — CORRIGIDO -->
 <!-- ========================= -->
 <script>
+    console.log("🔥 SCRIPT DO SORTABLE CARREGOU");
 
     function initSortable() {
+        console.log("🚀 initSortable executado");
+
         document.querySelectorAll("[id^='cards-col-']").forEach(function (listEl) {
 
             if (listEl.dataset.sortableApplied === "1") {
-                return; // evita recriar
+                return; // evita re-execução
             }
 
             listEl.dataset.sortableApplied = "1";
+
+            console.log("🔧 Ativando Sortable em:", listEl.id);
 
             new Sortable(listEl, {
                 group: "cards",
@@ -56,27 +59,28 @@
                 ghostClass: "drag-ghost",
 
                 onEnd: function (evt) {
+                    console.log("📌 onEnd disparou");
+
                     const cardEl = evt.item;
                     const oldColumnEl = evt.from;
                     const newColumnEl = evt.to;
 
-                    // Oculta o "Nenhum card ainda." da nova coluna
+                    // Mensagem de "Nenhum card ainda."
                     const newEmptyMsg = newColumnEl.querySelector(".no-cards-msg");
                     if (newEmptyMsg) newEmptyMsg.style.display = "none";
 
-                    // Se a coluna antiga ficou vazia, mostra a mensagem
                     const oldEmptyMsg = oldColumnEl.querySelector(".no-cards-msg");
                     if (oldEmptyMsg) {
-                        const qty = oldColumnEl.querySelectorAll("li[data-card-id]").length;
-                        oldEmptyMsg.style.display = qty === 0 ? "block" : "none";
+                        const qtd = oldColumnEl.querySelectorAll("li[data-card-id]").length;
+                        oldEmptyMsg.style.display = qtd === 0 ? "block" : "none";
                     }
 
-                    // Envia dados para o backend
+                    // Envia para o backend
                     fetch("{% url 'move_card' %}", {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json",
-                            "X-CSRFToken": "{{ csrf_token }}",
+                            "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value,
                         },
                         body: JSON.stringify({
                             card_id: Number(cardEl.dataset.cardId),
@@ -85,16 +89,16 @@
                         })
                     });
                 }
-
             });
         });
     }
 
-    // Quando a página carrega
+    // Inicializa quando DOM carregar
     document.addEventListener("DOMContentLoaded", initSortable);
 
-    // Quando HTMX atualizar parte da página (ex: nova coluna)
+    // Recarrega quando HTMX alterar algo
     document.body.addEventListener("htmx:afterSwap", initSortable);
+
 </script>
 
 <style>

@@ -1,0 +1,39 @@
+<div id="editCardModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-lg p-6 w-96" onclick="event.stopPropagation()">
+
+        <h2 class="text-xl font-semibold mb-4">Editar Card</h2>
+
+        <form id="editCardForm" method="POST">
+            {% csrf_token %}
+            <input type="text" id="editCardTitle" name="title" class="w-full border rounded px-3 py-2 mb-4" />
+
+            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                Salvar
+            </button>
+
+            <button type="button" class="px-4 py-2 bg-gray-300 rounded ml-2" onclick="closeEditCardModal()">
+                Cancelar
+            </button>
+        </form>
+
+    </div>
+</div>
+
+<script>
+    function openEditCardModal(cardId, title) {
+        const modal = document.getElementById("editCardModal");
+        const input = document.getElementById("editCardTitle");
+        const form = document.getElementById("editCardForm");
+
+        input.value = title;
+        form.action = `/card/${cardId}/edit/`;
+
+        modal.classList.remove("hidden");
+    }
+
+    function closeEditCardModal() {
+        document.getElementById("editCardModal").classList.add("hidden");
+    }
+
+    document.getElementById("editCardModal").addEventListener("click", closeEditCardModal);
+</script>
