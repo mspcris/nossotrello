@@ -89,16 +89,18 @@ def edit_card(request, card_id):
 def update_card(request, card_id):
     card = get_object_or_404(Card, id=card_id)
 
-    card.title = request.POST.get("title", card.title)
-    card.description = request.POST.get("description", card.description)
-    card.tags = request.POST.get("tags", card.tags)
+    if request.method == "POST":
+        card.title = request.POST.get("title", "")
+        card.description = request.POST.get("description", "")
+        card.tags = request.POST.get("tags", "")
 
-    if request.FILES.get("attachment"):
-        card.attachment = request.FILES["attachment"]
+        if "attachment" in request.FILES:
+            card.attachment = request.FILES["attachment"]
 
-    card.save()
+        card.save()
 
-    return HttpResponse("<p class='text-green-600'>Salvo com sucesso!</p>")
+        return render(request, "boards/partials/card_modal_body.html", {"card": card})
+
 
 def card_modal(request, card_id):
     card = get_object_or_404(Card, id=card_id)

@@ -22,7 +22,9 @@
     </div>
 
     <!-- Campo que realmente envia o HTML -->
-    <input type="hidden" name="description" id="description-input">
+    <!-- <input type="hidden" name="description" id="description-input"> -->
+    <input type="hidden" name="description" id="description-input" value="{{ card.description|safe }}">
+
 
     <!-- TAGS -->
     <label class="block text-sm font-medium mt-4 mb-1">Tags</label>

@@ -7,9 +7,10 @@
 <div id="modal" class="hidden fixed inset-0 flex items-center justify-center z-50" aria-modal="true" role="dialog">
 
     <div id="modal-content"
-        class="bg-white rounded-lg shadow-lg w-full max-w-xl p-6 transform transition-all scale-95 opacity-0"
-        onclick="event.stopPropagation();">
+        class="bg-white rounded-lg shadow-lg w-full max-w-2xl p-6 transform transition-all scale-95 opacity-0"
+        style="max-height: 80vh; overflow-y: auto;" onclick="event.stopPropagation();">
 
+        <!-- Conteúdo que o HTMX injeta -->
         <div id="modal-body"></div>
 
         <div class="text-right mt-4">
@@ -19,7 +20,6 @@
         </div>
     </div>
 </div>
-
 
 <script>
     function openModal() {
@@ -50,42 +50,36 @@
         }, 150);
     }
 
-    /* ATIVA O MODAL APÓS O HTMX CARREGAR O HTML */
+    /* Abre o modal automaticamente quando o HTMX preencher o corpo */
     document.body.addEventListener("htmx:afterSwap", (e) => {
         if (e.detail.target.id === "modal-body") {
             openModal();
+            initQuillEditor();  /* Inicializa Quill corretamente */
         }
     });
-</script>
 
-<script>
-    let quill = null;
+    /* --- INICIALIZAÇÃO DO QUILL --- */
+    function initQuillEditor() {
+        const editorDiv = document.getElementById("quill-editor");
+        if (!editorDiv) return;  // Não há editor neste modal
 
-    function initQuill() {
-        const container = document.getElementById("quill-editor");
-        if (!container) return;
-
-        quill = new Quill("#quill-editor", {
-            theme: "snow",
-            placeholder: "Digite aqui… você pode colar imagens, prints, etc."
-        });
-
-        // Carregar HTML existente do card
-        const current = document.getElementById("description-input").value;
-        if (current) {
-            quill.root.innerHTML = current;
+        // Evita criar dois editores
+        if (window.quillInstance) {
+            window.quillInstance = null;
         }
 
-        // Atualiza campo hidden antes de enviar o form
-        quill.on("text-change", () => {
-            document.getElementById("description-input").value = quill.root.innerHTML;
+        window.quillInstance = new Quill("#quill-editor", {
+            theme: "snow",
+            placeholder: "Digite aqui, cole prints ou arraste imagens…"
+        });
+
+        // Carregar texto atual (vem do template do card!)
+        const descInput = document.getElementById("description-input");
+        window.quillInstance.root.innerHTML = descInput.value;
+
+        // Atualizar campo hidden quando digitar
+        window.quillInstance.on("text-change", () => {
+            descInput.value = window.quillInstance.root.innerHTML;
         });
     }
-
-    // Sempre que o HTMX trocar o conteúdo do modal
-    document.body.addEventListener("htmx:afterSwap", function (e) {
-        if (e.detail.target.id === "modal-body") {
-            initQuill();
-        }
-    });
 </script>
