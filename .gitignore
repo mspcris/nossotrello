@@ -1,0 +1,108 @@
+# ============================================
+# Django Core
+# ============================================
+
+__pycache__/
+*.py[cod]
+*$py.class
+
+# SQLite (NÃO subir em produção)
+db.sqlite3
+db.sqlite3-journal
+
+# Arquivos de migração compilados
+*/migrations/*.pyc
+*/migrations/**/__pycache__/
+
+# Evitar migrações mal subidas (opcional corporativo)
+# Você pode descomentar se quiser:
+# */migrations/*.py
+
+
+# ============================================
+# Ambiente virtual
+# ============================================
+
+venv/
+env/
+ENV/
+.venv/
+
+
+# ============================================
+# IDEs e editores
+# ============================================
+
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+
+# ============================================
+# Sistema operacional
+# ============================================
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+.*.swp
+
+
+# ============================================
+# Logging e debug
+# ============================================
+
+*.log
+logs/
+*.pot
+
+
+# ============================================
+# Front-end / Build / Temp Files
+# ============================================
+
+node_modules/
+dist/
+build/
+*.map
+
+
+# ============================================
+# Arquivos sensíveis
+# ============================================
+
+.env
+.env.local
+.env.production
+.env.development
+*.secret
+*.key
+*.pem
+
+
+# ============================================
+# Cache e temporários
+# ============================================
+
+.cache/
+.tmp/
+*.tmp
+*.bak
+*.old
+
+
+# ============================================
+# Uploads
+# ============================================
+
+media/
+uploads/
