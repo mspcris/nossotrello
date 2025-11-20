@@ -5,14 +5,57 @@
 
 {% block content %}
 
-<h1 class="text-2xl font-bold mb-4">{{ board.name }}</h1>
+<a href="{% url 'boards:boards_index' %}" class="text-blue-600 hover:underline mb-6 block">
+    ← Voltar aos Quadros
+</a>
 
-<h3 class="text-lg font-semibold mb-2">Colunas:</h3>
 
-<!-- WRAPPER PRINCIPAL -->
-<div id="columns-wrapper" class="flex gap-6 overflow-x-auto pb-4">
 
-    <!-- LISTA DE COLUNAS -->
+
+
+<!-- Cabeçalho do Board com imagem igual ao estilo da index -->
+<!-- Cabeçalho do Board com imagem adaptativa -->
+<div class="flex items-center gap-4 mb-6">
+
+    {% if board.image %}
+    <div class="relative group inline-block">
+
+        <!-- Container que se adapta ao tamanho da imagem -->
+        <div class="border border-gray-300 rounded-lg overflow-hidden inline-block bg-gray-100">
+            <img src="{{ board.image.url }}" class="max-h-28 w-auto object-contain">
+        </div>
+
+        <!-- Botão excluir (só aparece no hover) -->
+        <button class="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded 
+                   opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+            hx-post="{% url 'boards:update_board_image' board.id %}?delete=1" hx-target="body" hx-swap="beforeend">
+            X
+        </button>
+
+    </div>
+
+    {% else %}
+    <div class="w-40 h-24 flex items-center justify-center rounded-lg border border-gray-300 
+               bg-gray-100 text-gray-400 text-3xl cursor-pointer hover:bg-gray-200"
+        hx-get="{% url 'boards:update_board_image' board.id %}" hx-target="body" hx-swap="beforeend">
+        +
+    </div>
+    {% endif %}
+
+    <h1 class="text-2xl font-bold">{{ board.name }}</h1>
+</div>
+
+
+
+
+
+
+
+<h3 class="text-lg font-semibold mb-3">Colunas:</h3>
+
+<!-- WRAPPER -->
+<div id="columns-wrapper" class="flex gap-6 overflow-x-auto pb-6 pr-4">
+
     <div id="columns-list" class="flex gap-6">
 
         {% for column in board.columns.all %}
@@ -21,8 +64,9 @@
 
     </div>
 
-    <!-- FORMULÁRIO FIXO NA DIREITA -->
-    <div id="add-column-box" class="w-64 bg-gray-100 p-4 rounded border h-fit shrink-0">
+    <!-- Box para criar coluna -->
+    <div id="add-column-box"
+        class="w-64 bg-white/60 backdrop-blur-md border border-gray-300 rounded-xl p-4 h-fit shrink-0 shadow-md">
 
         <h3 class="font-semibold mb-2">Adicionar nova coluna</h3>
 
@@ -31,28 +75,23 @@
 
             {% csrf_token %}
 
-            <label class="block text-sm font-medium">Nome:</label>
+            <label class="block text-sm font-medium mb-1">Nome:</label>
             <input type="text" name="name" class="w-full border rounded px-3 py-2 mb-3" placeholder="Nome da coluna">
 
-            <button class="px-3 py-2 bg-blue-600 text-white rounded">
+            <button class="px-3 py-2 bg-blue-600 text-white rounded w-full">
                 Adicionar Coluna
             </button>
-
         </form>
 
     </div>
 
 </div>
 
-
-<!-- SORTABLE JS -->
+<!-- SORTABLE -->
 <script>
     function initSortable() {
-        document.querySelectorAll("[id^='cards-col-']").forEach(function (listEl) {
-
-            if (listEl.dataset.sortableApplied === "1") {
-                return;
-            }
+        document.querySelectorAll("[id^='cards-col-']").forEach(listEl => {
+            if (listEl.dataset.sortableApplied === "1") return;
 
             listEl.dataset.sortableApplied = "1";
 
@@ -61,11 +100,8 @@
                 animation: 150,
                 ghostClass: "drag-ghost",
 
-                onEnd: function (evt) {
-
-                    const csrftoken =
-                        document.querySelector("[name=csrfmiddlewaretoken]")?.value;
-
+                onEnd: evt => {
+                    const csrftoken = document.querySelector("[name=csrfmiddlewaretoken]")?.value;
                     fetch("{% url 'boards:move_card' %}", {
                         method: "POST",
                         headers: {
@@ -84,16 +120,13 @@
     }
 
     document.addEventListener("DOMContentLoaded", initSortable);
-
-    document.body.addEventListener("htmx:afterSwap", () => {
-        initSortable();
-    });
+    document.body.addEventListener("htmx:afterSwap", () => initSortable());
 </script>
 
 <style>
     .drag-ghost {
-        opacity: 0.3;
-        background: #d0d0d0;
+        opacity: 0.35;
+        background: #cfcfcf;
     }
 </style>
 

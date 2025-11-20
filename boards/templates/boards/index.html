@@ -9,31 +9,54 @@
 <div class="flex flex-wrap gap-6">
 
     {% for board in boards %}
-    <a href="{% url 'boards:board_detail' board.id %}
-" class="block bg-white shadow-md hover:shadow-lg transition p-6 rounded-lg w-64 border border-gray-200">
 
-        <h2 class="text-xl font-semibold mb-2">{{ board.name }}</h2>
-        <p class="text-gray-500 text-sm">Clique para abrir</p>
-    </a>
+    <!-- CARD DO BOARD -->
+    <div class="relative w-64 cursor-pointer border-2 border-gray-400 shadow-lg bg-gray-100 
+                hover:shadow-2xl transition p-6 rounded-xl flex flex-col gap-3">
+
+        <!-- SE TIVER IMAGEM -->
+        {% if board.image %}
+        <a href="{% url 'boards:board_detail' board.id %}">
+            <img src="{{ board.image.url }}" class="h-20 w-full rounded-lg object-cover border border-gray-300" onerror="this.style.display='none';
+                              this.parentElement.innerHTML=
+                              `<div class='text-red-700 text-center p-4 font-semibold'>
+                                  Imagem corrompida<br>⚠️
+                               </div>`;">
+        </a>
+
+        <!-- SEM IMAGEM → BOTÃO DE ADICIONAR -->
+        {% else %}
+        <div hx-get="{% url 'boards:update_board_image' board.id %}" hx-target="body" hx-swap="beforeend" class="h-20 w-full bg-gray-300 rounded-lg border-2 border-dashed border-gray-600 
+                        flex items-center justify-center text-3xl font-bold text-gray-600 hover:bg-gray-200">
+            +
+        </div>
+        {% endif %}
+
+        <a href="{% url 'boards:board_detail' board.id %}">
+            <h2 class="text-xl font-bold">{{ board.name }}</h2>
+            <p class="text-gray-600 text-sm">Clique para abrir</p>
+        </a>
+    </div>
+
     {% empty %}
     <p class="text-gray-400">Nenhum quadro criado ainda.</p>
     {% endfor %}
 
-    <!-- Card de criar novo board -->
-    <div hx-get="{% url 'add_board' %}" hx-target="#modal-area" class="cursor-pointer bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-300 
+    <!-- Botão de criar novo board -->
+    <div hx-get="{% url 'boards:add_board' %}" hx-target="body" hx-swap="beforeend" class="cursor-pointer bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-300 
                 shadow-sm p-6 rounded-lg w-64 flex items-center justify-center font-semibold">
         + Criar novo quadro
     </div>
 
 </div>
 
-<!-- Área do modal htmx -->
-<div id="modal-bg" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center">
-
-    <div hx-get="{% url 'add_board' %}" hx-target="#modal-bg" hx-trigger="load"></div>
-
-</div>
-
-
+<script>
+    // Recarga ao voltar da página de detalhes
+    window.addEventListener("pageshow", function (event) {
+        if (event.persisted) {
+            window.location.reload();
+        }
+    });
+</script>
 
 {% endblock %}

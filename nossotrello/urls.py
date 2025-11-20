@@ -25,6 +25,7 @@ from django.conf.urls.static import static
 urlpatterns = [
     path("", include("boards.urls")),   # rota principal do sistema
     path("admin/", admin.site.urls),
+
 ]
 
 # servir arquivos em /media/... quando DEBUG=True

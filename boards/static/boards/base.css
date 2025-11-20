@@ -79,3 +79,16 @@ body {
 ::-webkit-scrollbar-thumb:hover {
     background: #a0a0a0;
 }
+/* Cards não podem expandir além da coluna */
+.card-content {
+    word-break: break-word;
+    overflow-wrap: break-word;
+    max-width: 100%;
+}
+
+/* Temas de coluna baseados no campo column.theme */
+.gray-column-bg  { background: rgba(240, 240, 240, 0.6); backdrop-filter: blur(8px); }
+.blue-column-bg  { background: rgba(190, 220, 255, 0.4); backdrop-filter: blur(8px); }
+.green-column-bg { background: rgba(200, 255, 210, 0.4); backdrop-filter: blur(8px); }
+.purple-column-bg{ background: rgba(230, 210, 255, 0.4); backdrop-filter: blur(8px); }
+.amber-column-bg { background: rgba(255, 240, 200, 0.4); backdrop-filter: blur(8px); }

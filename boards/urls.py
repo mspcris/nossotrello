@@ -10,10 +10,13 @@ urlpatterns = [
     path("column/<int:column_id>/add_card/", views.add_card, name="add_card"),
     path("move-card/", views.move_card, name="move_card"),
     path("board/add/", views.add_board, name="add_board"),
+
     path("card/<int:card_id>/edit/", views.edit_card, name="edit_card"),
     path("card/<int:card_id>/modal/", views.card_modal, name="card_modal"),
     path("card/<int:card_id>/update/", views.update_card, name="update_card"),
     path("column/<int:column_id>/delete/", views.delete_column, name="delete_column"),
     path("card/<int:card_id>/delete/", views.delete_card, name="delete_card"),
 
+    path("board/<int:board_id>/image/", views.update_board_image, name="update_board_image"),
+    path("board/<int:board_id>/image/remove/", views.remove_board_image, name="remove_board_image"),
 ]

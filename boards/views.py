@@ -2,22 +2,68 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.http import require_POST
 from django.db import transaction
-from .models import Board, Column, Card
+from django.utils import timezone
+
+from .models import Board, Column, Card, CardLog
 from .forms import ColumnForm, CardForm, BoardForm
-from .models import CardLog
 
 import json
+import base64
+import re
+from django.core.files.base import ContentFile
 
+
+# ============================================================
+# UTILITÁRIO: remover base64 de descrição e criar arquivo real
+# ============================================================
+
+def extract_base64_and_convert(html_content):
+    if not html_content:
+        return html_content, None
+
+    pattern = r'<img[^>]+src="data:image\/([a-zA-Z]+);base64,([^"]+)"'
+    match = re.search(pattern, html_content)
+
+    if not match:
+        return html_content, None
+
+    image_format = match.group(1)
+    base64_str = match.group(2)
+
+    try:
+        image_data = base64.b64decode(base64_str)
+    except:
+        return html_content, None
+
+    filename = f"upload.{image_format}"
+    file_obj = ContentFile(image_data, name=filename)
+
+    cleaned_html = re.sub(pattern, '', html_content)
+
+    return cleaned_html, file_obj
+
+
+# ============================================================
+# HOME: lista boards
+# ============================================================
 
 def index(request):
     boards = Board.objects.all()
     return render(request, "boards/index.html", {"boards": boards})
 
 
+# ============================================================
+# DETALHE DO BOARD
+# ============================================================
+
 def board_detail(request, board_id):
     board = get_object_or_404(Board, id=board_id)
     return render(request, "boards/board_detail.html", {"board": board})
 
+
+# ============================================================
+# ADICIONAR COLUNA
+# ============================================================
 
 def add_column(request, board_id):
     board = get_object_or_404(Board, id=board_id)
@@ -29,11 +75,13 @@ def add_column(request, board_id):
             column.board = board
             column.position = board.columns.count()
             column.save()
+
             return render(
                 request,
                 "boards/partials/column_item.html",
                 {"column": column},
             )
+
         return HttpResponse("Erro ao criar coluna.", status=400)
 
     return render(
@@ -43,6 +91,10 @@ def add_column(request, board_id):
     )
 
 
+# ============================================================
+# ADICIONAR CARD
+# ============================================================
+
 def add_card(request, column_id):
     column = get_object_or_404(Column, id=column_id)
 
@@ -50,14 +102,22 @@ def add_card(request, column_id):
         form = CardForm(request.POST)
         if form.is_valid():
             card = form.save(commit=False)
+
+            clean_desc, extracted_file = extract_base64_and_convert(card.description or "")
+            card.description = clean_desc
+            if extracted_file:
+                card.attachment = extracted_file
+
             card.column = column
             card.position = column.cards.count()
             card.save()
+
             return render(
                 request,
                 "boards/partials/card_item.html",
                 {"card": card},
             )
+
         return HttpResponse("Erro ao criar card.", status=400)
 
     return render(
@@ -65,6 +125,12 @@ def add_card(request, column_id):
         "boards/partials/add_card_form.html",
         {"column": column, "form": CardForm()},
     )
+
+
+# ============================================================
+# ADICIONAR BOARD
+# ============================================================
+
 def add_board(request):
     if request.method == "POST":
         form = BoardForm(request.POST)
@@ -73,29 +139,25 @@ def add_board(request):
             return HttpResponse(
                 f'<script>window.location.href="/board/{board.id}/"</script>'
             )
+
         return HttpResponse("Erro ao criar board", status=400)
 
     return render(request, "boards/partials/add_board_form.html", {"form": BoardForm()})
 
 
-
-
-from django.shortcuts import get_object_or_404, render, redirect
-from .models import Card
-from .forms import CardForm
+# ============================================================
+# EDITAR CARD (modal)
+# ============================================================
 
 def edit_card(request, card_id):
     card = get_object_or_404(Card, id=card_id)
 
     if request.method == "POST":
-        old_description = card.description
-        old_attachment = card.attachment
-
         form = CardForm(request.POST, request.FILES, instance=card)
+
         if form.is_valid():
             form.save()
 
-            # cria log
             CardLog.objects.create(
                 card=card,
                 content=card.description,
@@ -105,7 +167,7 @@ def edit_card(request, card_id):
             return render(
                 request,
                 "boards/partials/card_modal_body.html",
-                {"card": card}
+                {"card": card},
             )
 
     else:
@@ -117,107 +179,37 @@ def edit_card(request, card_id):
         {"card": card, "form": form},
     )
 
-from django.http import HttpResponse
 
-@require_POST
-def delete_column(request, column_id):
-    column = get_object_or_404(Column, id=column_id)
-    board_id = column.board.id
-    column.delete()
-    return HttpResponse(status=204)  # HTMX remove o elemento sem recarregar
-
-
-@require_POST
-def delete_card(request, card_id):
-    card = get_object_or_404(Card, id=card_id)
-    card.delete()
-    return HttpResponse(status=204)
-
-
-
-
+# ============================================================
+# UPDATE CARD
+# ============================================================
 
 @require_POST
 def update_card(request, card_id):
     card = get_object_or_404(Card, id=card_id)
 
-    if request.method == "POST":
-        card.title = request.POST.get("title", "")
-        card.description = request.POST.get("description", "")
-        card.tags = request.POST.get("tags", "")
-
-        if "attachment" in request.FILES:
-            card.attachment = request.FILES["attachment"]
-
-        card.save()
-
-        return render(request, "boards/partials/card_modal_body.html", {"card": card})
-
-
-def card_modal(request, card_id):
-    card = get_object_or_404(Card, id=card_id)
-    return render(request, "boards/partials/card_modal_body.html", {"card": card})
-
-
-# @require_POST
-# def update_card(request, card_id):
-#     card = get_object_or_404(Card, id=card_id)
-
-#     # REGISTRAR LOG ANTES DE ALTERAR O CARD
-#     antigo_texto = card.description
-#     antigo_arquivo = card.attachment
-
-#     CardLog.objects.create(
-#         card=card,
-#         content=antigo_texto or "",
-#         attachment=antigo_arquivo if antigo_arquivo else None,
-#     )
-
-#     # ATUALIZAÇÕES
-#     card.title = request.POST.get("title", card.title)
-#     card.description = request.POST.get("description", card.description)
-#     card.tags = request.POST.get("tags", card.tags)
-
-#     if "attachment" in request.FILES:
-#         card.attachment = request.FILES["attachment"]
-
-#     card.save()
-
-#     return render(
-#         request,
-#         "boards/partials/card_modal_body.html",
-#         {"card": card}
-#     )
-
-
-
-from django.views.decorators.http import require_POST
-from django.shortcuts import get_object_or_404, render
-from .models import Card, CardLog
-
-@require_POST
-def update_card(request, card_id):
-    card = get_object_or_404(Card, id=card_id)
-
-    # 1) Atualiza os campos com o que veio do formulário
     card.title = request.POST.get("title", card.title)
-    card.description = request.POST.get("description", card.description)
+
+    raw_desc = request.POST.get("description", card.description)
+    clean_desc, extracted_file = extract_base64_and_convert(raw_desc)
+    card.description = clean_desc
+
     card.tags = request.POST.get("tags", card.tags)
 
-    # 2) Se foi enviado arquivo novo, substitui
     if "attachment" in request.FILES and request.FILES["attachment"]:
         card.attachment = request.FILES["attachment"]
 
+    if extracted_file:
+        card.attachment = extracted_file
+
     card.save()
 
-    # 3) REGISTRA O LOG COM O ESTADO ATUAL (após o save)
     CardLog.objects.create(
         card=card,
         content=card.description or "",
         attachment=card.attachment if card.attachment else None,
     )
 
-    # 4) Re-renderiza o corpo do modal com o card atualizado + logs
     return render(
         request,
         "boards/partials/card_modal_body.html",
@@ -225,8 +217,43 @@ def update_card(request, card_id):
     )
 
 
+# ============================================================
+# DELETE CARD — SOFT DELETE + SUMIR NA HORA
+# ============================================================
+
+@require_POST
+def delete_card(request, card_id):
+    card = get_object_or_404(Card.all_objects, id=card_id)
+
+    if not card.is_deleted:
+        card.is_deleted = True
+        card.deleted_at = timezone.now()
+        card.save(update_fields=["is_deleted", "deleted_at"])
+
+    return HttpResponse(status=204)
 
 
+# ============================================================
+# DELETE COLUMN
+# ============================================================
+
+@require_POST
+def delete_column(request, column_id):
+    column = get_object_or_404(Column, id=column_id)
+
+    if column.cards.exists():
+        return JsonResponse(
+            {"error": "A coluna possui cards e não pode ser excluída."},
+            status=400
+        )
+
+    column.delete()
+    return HttpResponse(status=204)
+
+
+# ============================================================
+# MOVER CARD
+# ============================================================
 
 @require_POST
 @transaction.atomic
@@ -237,16 +264,11 @@ def move_card(request):
     new_column_id = int(data.get("new_column_id"))
     new_position = int(data.get("new_position"))
 
-    print("=== MOVE CARD ===")
-    print("card_id:", card_id, "new_column_id:", new_column_id, "new_position:", new_position)
-
     card = get_object_or_404(Card, id=card_id)
     old_column = card.column
     new_column = get_object_or_404(Column, id=new_column_id)
 
-    # 1) Move DENTRO da mesma coluna
     if old_column.id == new_column.id:
-        print("-> mesmo coluna")
         cards = list(old_column.cards.order_by("position"))
         cards.remove(card)
         cards.insert(new_position, card)
@@ -255,22 +277,18 @@ def move_card(request):
             if c.position != index:
                 c.position = index
                 c.save(update_fields=["position"])
+
         return JsonResponse({"status": "ok"})
 
-    # 2) Move ENTRE colunas
-    print("-> coluna diferente")
-    # Reordena antiga coluna (sem o card)
     old_cards = list(old_column.cards.exclude(id=card.id).order_by("position"))
     for index, c in enumerate(old_cards):
         if c.position != index:
             c.position = index
             c.save(update_fields=["position"])
 
-    # Atualiza a coluna do card
     card.column = new_column
     card.save(update_fields=["column"])
 
-    # Insere na nova coluna na posição correta
     new_cards = list(new_column.cards.order_by("position"))
     new_cards.insert(new_position, card)
 
@@ -282,3 +300,65 @@ def move_card(request):
     return JsonResponse({"status": "ok"})
 
 
+# ============================================================
+# MODAL DO CARD
+# ============================================================
+
+def card_modal(request, card_id):
+    card = get_object_or_404(Card, id=card_id)
+    return render(request, "boards/partials/card_modal_body.html", {"card": card})
+
+
+import requests
+from django.core.files.base import ContentFile
+
+def update_board_image(request, board_id):
+    board = get_object_or_404(Board, id=board_id)
+
+    # GET → abre modal
+    if request.method == "GET":
+        return render(request, "boards/partials/board_image_form.html", {"board": board})
+
+    # POST → salvar imagem
+    if request.method == "POST":
+
+        # Upload direto
+        if "image" in request.FILES and request.FILES["image"]:
+            board.image = request.FILES["image"]
+            board.save()
+            return HttpResponse('<script>location.reload()</script>')
+
+        # URL da imagem
+        url = request.POST.get("image_url")
+        if url:
+            try:
+                r = requests.get(url, timeout=5)
+                if r.status_code == 200:
+                    filename = url.split("/")[-1]
+                    board.image.save(filename, ContentFile(r.content))
+                    return HttpResponse('<script>location.reload()</script>')
+            except:
+                pass
+
+        # RETORNO DE ERRO PARA O MODAL (via HTMX)
+        return HttpResponse(
+            """
+            <div class='bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-3'>
+                Não foi possível carregar esta imagem. Verifique o arquivo ou URL.
+            </div>
+            """,
+            status=400
+        )
+
+
+
+@require_POST
+def remove_board_image(request, board_id):
+    board = get_object_or_404(Board, id=board_id)
+
+    if board.image:
+        board.image.delete(save=False)
+        board.image = None
+        board.save(update_fields=["image"])
+
+    return HttpResponse('<script>location.reload()</script>')
