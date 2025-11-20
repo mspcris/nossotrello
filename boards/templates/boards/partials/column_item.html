@@ -6,10 +6,17 @@
             px-4 py-2 h-12 min-h-[48px]
             border-b border-white/40 sticky top-0 z-10 gap-3">
 
-        <!-- Nome -->
-        <span class="text-gray-800 font-semibold truncate max-w-[130px]">
-            {{ column.name }}
-        </span>
+        <!-- Nome + Contador -->
+        <div class="flex flex-col leading-tight max-w-[130px] truncate">
+            <span class="text-gray-800 font-semibold truncate">
+                {{ column.name }}
+            </span>
+
+            <!-- CONTADOR DE CARDS -->
+            <span class="text-xs text-gray-600 mt-0.5">
+                {{ column.cards.count }} card{% if column.cards.count != 1 %}s{% endif %}
+            </span>
+        </div>
 
         <!-- Botões -->
         <div class="flex items-center gap-2 shrink-0">
@@ -37,15 +44,13 @@
                     <p class="text-xs text-gray-600 mb-2">Cor da coluna:</p>
 
                     <div class="grid grid-cols-5 gap-2">
-
                         {% for value, label in column.THEME_CHOICES %}
-                        <div class="w-7 h-7 rounded-full cursor-pointer border border-gray-300 hover:scale-110 transition"
-                            style="background-color: var(--{{ value }}-color);"
+                        <div class="w-7 h-7 rounded-full cursor-pointer border border-gray-300 
+                                    hover:scale-110 transition" style="background-color: var(--{{ value }}-color);"
                             hx-post="{% url 'boards:set_column_theme' column.id %}" hx-vals='{"theme": "{{ value }}"}'
                             hx-target="closest .column-glass" hx-swap="outerHTML">
                         </div>
                         {% endfor %}
-
                     </div>
                 </div>
             </div>
@@ -65,7 +70,6 @@
         {% for card in column.cards.all %}
         {% include "boards/partials/card_item.html" %}
         {% endfor %}
-
     </ul>
 
     <!-- Form add card -->
