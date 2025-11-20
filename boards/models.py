@@ -116,3 +116,17 @@ class CardLog(models.Model):
 
     def __str__(self):
         return f"Log do card {self.card.id} em {self.created_at}"
+
+
+
+background_image = models.ImageField(
+    upload_to="board_wallpapers/",
+    blank=True,
+    null=True
+)
+
+background_url = models.URLField(
+    max_length=500,
+    blank=True,
+    null=True
+)

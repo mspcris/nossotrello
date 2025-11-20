@@ -1,3 +1,7 @@
+# ======================================================================
+# IMPORTAÇÕES — São as ferramentas que o Python usa para trabalhar aqui
+# ======================================================================
+
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.http import require_POST
@@ -11,13 +15,23 @@ import json
 import base64
 import re
 from django.core.files.base import ContentFile
+import requests
 
 
-# ============================================================
-# UTILITÁRIO: remover base64 de descrição e criar arquivo real
-# ============================================================
+# ======================================================================
+# FUNÇÃO AUXILIAR — Tirar imagens base64 da descrição do card
+# Quem chama? → update_card()
+# ======================================================================
 
 def extract_base64_and_convert(html_content):
+    """
+    Explicação para criança:
+    Quando alguém cola uma imagem dentro do card,
+    ela vem escondida dentro do texto como base64.
+    Essa função pega essa imagem escondida e transforma
+    em um arquivo de verdade.
+    """
+
     if not html_content:
         return html_content, None
 
@@ -43,27 +57,33 @@ def extract_base64_and_convert(html_content):
     return cleaned_html, file_obj
 
 
-# ============================================================
-# HOME: lista boards
-# ============================================================
+
+# ======================================================================
+# TELA INICIAL COM TODOS OS BOARDS
+# Quem chama? → navegador quando acessa "/"
+# ======================================================================
 
 def index(request):
     boards = Board.objects.all()
     return render(request, "boards/index.html", {"boards": boards})
 
 
-# ============================================================
-# DETALHE DO BOARD
-# ============================================================
+
+# ======================================================================
+# DETALHE DE UM BOARD
+# Quem chama? → "/board/1/"
+# ======================================================================
 
 def board_detail(request, board_id):
     board = get_object_or_404(Board, id=board_id)
     return render(request, "boards/board_detail.html", {"board": board})
 
 
-# ============================================================
+
+# ======================================================================
 # ADICIONAR COLUNA
-# ============================================================
+# Quem chama? → botão + coluna (HTMX)
+# ======================================================================
 
 def add_column(request, board_id):
     board = get_object_or_404(Board, id=board_id)
@@ -76,11 +96,7 @@ def add_column(request, board_id):
             column.position = board.columns.count()
             column.save()
 
-            return render(
-                request,
-                "boards/partials/column_item.html",
-                {"column": column},
-            )
+            return render(request, "boards/partials/column_item.html", {"column": column})
 
         return HttpResponse("Erro ao criar coluna.", status=400)
 
@@ -91,35 +107,32 @@ def add_column(request, board_id):
     )
 
 
-# ============================================================
-# SET COLUMN THEME (NOVO)
-# ============================================================
+
+# ======================================================================
+# DEFINIR TEMA DA COLUNA
+# Quem chama? → botão de temas dentro da coluna (HTMX)
+# ======================================================================
 
 @require_POST
 def set_column_theme(request, column_id):
     column = get_object_or_404(Column, id=column_id)
     theme = request.POST.get("theme")
 
-    # valida
     valid_themes = [t[0] for t in Column.THEME_CHOICES]
     if theme not in valid_themes:
         return HttpResponse("Tema inválido", status=400)
 
-    # salva
     column.theme = theme
     column.save(update_fields=["theme"])
 
-    # retorna a coluna inteira refeita (card_item inclui hx-swap="outerHTML")
-    return render(
-        request,
-        "boards/partials/column_item.html",
-        {"column": column},
-    )
+    return render(request, "boards/partials/column_item.html", {"column": column})
 
 
-# ============================================================
+
+# ======================================================================
 # ADICIONAR CARD
-# ============================================================
+# Quem chama? → botão "+ Card" (HTMX)
+# ======================================================================
 
 def add_card(request, column_id):
     column = get_object_or_404(Column, id=column_id)
@@ -138,11 +151,7 @@ def add_card(request, column_id):
             card.position = column.cards.count()
             card.save()
 
-            return render(
-                request,
-                "boards/partials/card_item.html",
-                {"card": card},
-            )
+            return render(request, "boards/partials/card_item.html", {"card": card})
 
         return HttpResponse("Erro ao criar card.", status=400)
 
@@ -153,27 +162,29 @@ def add_card(request, column_id):
     )
 
 
-# ============================================================
+
+# ======================================================================
 # ADICIONAR BOARD
-# ============================================================
+# Quem chama? → botão para criar quadro novo
+# ======================================================================
 
 def add_board(request):
     if request.method == "POST":
         form = BoardForm(request.POST)
         if form.is_valid():
             board = form.save()
-            return HttpResponse(
-                f'<script>window.location.href="/board/{board.id}/"</script>'
-            )
+            return HttpResponse(f'<script>window.location.href="/board/{board.id}/"</script>')
 
         return HttpResponse("Erro ao criar board", status=400)
 
     return render(request, "boards/partials/add_board_form.html", {"form": BoardForm()})
 
 
-# ============================================================
-# EDITAR CARD (modal)
-# ============================================================
+
+# ======================================================================
+# EDITAR CARD (abre modal)
+# Quem chama? → clique no card (HTMX GET)
+# ======================================================================
 
 def edit_card(request, card_id):
     card = get_object_or_404(Card, id=card_id)
@@ -190,11 +201,7 @@ def edit_card(request, card_id):
                 attachment=card.attachment
             )
 
-            return render(
-                request,
-                "boards/partials/card_modal_body.html",
-                {"card": card},
-            )
+            return render(request, "boards/partials/card_modal_body.html", {"card": card})
 
     else:
         form = CardForm(instance=card)
@@ -206,48 +213,41 @@ def edit_card(request, card_id):
     )
 
 
-# ============================================================
-# UPDATE CARD
-# ============================================================
+
+# ======================================================================
+# ATUALIZAR CARD
+# Quem chama? → salvar modal do card (HTMX POST)
+# ======================================================================
 
 @require_POST
 def update_card(request, card_id):
     card = get_object_or_404(Card, id=card_id)
 
-    # TÍTULO
     card.title = request.POST.get("title", card.title)
 
-    # DESCRIÇÃO (fixa, não vai pro log em HTML)
     raw_desc = request.POST.get("description", card.description or "")
     clean_desc, extracted_file = extract_base64_and_convert(raw_desc)
     card.description = clean_desc
 
-    # TAGS
     old_tags_raw = card.tags or ""
     new_tags_raw = request.POST.get("tags", old_tags_raw) or ""
 
     old_tags = [t.strip() for t in old_tags_raw.split(",") if t.strip()]
     new_tags = [t.strip() for t in new_tags_raw.split(",") if t.strip()]
 
-    card.tags = new_tags_raw  # mantém formato original enviado
+    card.tags = new_tags_raw
 
-    # Detectar mudanças
     removed = [t for t in old_tags if t not in new_tags]
     added = [t for t in new_tags if t not in old_tags]
 
-
-    # ANEXO (upload normal)
     if "attachment" in request.FILES and request.FILES["attachment"]:
         card.attachment = request.FILES["attachment"]
 
-    # ANEXO via imagem colada (base64)
     if extracted_file:
         card.attachment = extracted_file
 
     card.save()
 
-    # LOG: mensagem curta, sem despejar a descrição inteira
-    # LOGS especificados
     if removed:
         for t in removed:
             CardLog.objects.create(card=card, content=f"Etiqueta removida: {t}")
@@ -256,26 +256,21 @@ def update_card(request, card_id):
         for t in added:
             CardLog.objects.create(card=card, content=f"Etiqueta adicionada: {t}")
 
-    # Se nada mudou nas tags → log padrão
     if not added and not removed:
         CardLog.objects.create(
             card=card,
-            content="Card atualizado (título/descrição/etiquetas/anexos).",
+            content="Card atualizado.",
             attachment=card.attachment if card.attachment else None,
         )
 
-
-    # Re-renderiza o corpo do modal (agora com abas)
-    return render(
-        request,
-        "boards/partials/card_modal_body.html",
-        {"card": card},
-    )
+    return render(request, "boards/partials/card_modal_body.html", {"card": card})
 
 
-# ============================================================
-# DELETE CARD — SOFT DELETE + SUMIR NA HORA
-# ============================================================
+
+# ======================================================================
+# DELETAR CARD
+# Quem chama? → botão remover card (HTMX POST)
+# ======================================================================
 
 @require_POST
 def delete_card(request, card_id):
@@ -286,13 +281,14 @@ def delete_card(request, card_id):
         card.deleted_at = timezone.now()
         card.save(update_fields=["is_deleted", "deleted_at"])
 
-    # IMPORTANTE: retornar 200 com string vazia para o HTMX
     return HttpResponse("", status=200)
 
 
-# ============================================================
-# DELETE COLUMN
-# ============================================================
+
+# ======================================================================
+# DELETAR COLUNA
+# Quem chama? → botão excluir coluna (HTMX POST)
+# ======================================================================
 
 @require_POST
 def delete_column(request, column_id):
@@ -308,9 +304,11 @@ def delete_column(request, column_id):
     return HttpResponse(status=204)
 
 
-# ============================================================
-# MOVER CARD
-# ============================================================
+
+# ======================================================================
+# MOVER CARD ENTRE COLUNAS
+# Quem chama? → arrastar card com SortableJS (AJAX POST)
+# ======================================================================
 
 @require_POST
 @transaction.atomic
@@ -357,21 +355,22 @@ def move_card(request):
     return JsonResponse({"status": "ok"})
 
 
-# ============================================================
+
+# ======================================================================
 # MODAL DO CARD
-# ============================================================
+# Quem chama? → clique no card (HTMX GET)
+# ======================================================================
 
 def card_modal(request, card_id):
     card = get_object_or_404(Card, id=card_id)
     return render(request, "boards/partials/card_modal_body.html", {"card": card})
 
 
-# ============================================================
-# UPDATE BOARD IMAGE
-# ============================================================
 
-import requests
-from django.core.files.base import ContentFile
+# ======================================================================
+# ATUALIZAR IMAGEM PRINCIPAL DO BOARD
+# Quem chama? → clique no logo do board (HTMX)
+# ======================================================================
 
 def update_board_image(request, board_id):
     board = get_object_or_404(Board, id=board_id)
@@ -398,18 +397,16 @@ def update_board_image(request, board_id):
                 pass
 
         return HttpResponse(
-            """
-            <div class='bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-3'>
-                Não foi possível carregar esta imagem. Verifique o arquivo ou URL.
-            </div>
-            """,
+            "<div class='text-red-600'>Erro ao carregar imagem.</div>",
             status=400
         )
 
 
-# ============================================================
-# REMOVE BOARD IMAGE
-# ============================================================
+
+# ======================================================================
+# REMOVER IMAGEM PRINCIPAL DO BOARD
+# Quem chama? → botão X na imagem do board (HTMX)
+# ======================================================================
 
 @require_POST
 def remove_board_image(request, board_id):
@@ -424,37 +421,47 @@ def remove_board_image(request, board_id):
 
 
 
-from django.utils import timezone
+# ======================================================================
+# REMOVER ANEXO DO CARD
+# Quem chama? → botão excluir anexo no modal
+# ======================================================================
 
 @require_POST
 def delete_attachment(request, card_id):
     card = get_object_or_404(Card, id=card_id)
 
-    # Se não existe anexo, nada a fazer
     if not card.attachment:
         return HttpResponse("No attachment", status=204)
 
-    # REGISTRO NO LOG
     CardLog.objects.create(
         card=card,
         content="Anexo removido",
         attachment=None
     )
 
-    # Apaga o arquivo físico
     card.attachment.delete(save=False)
-
-    # Apaga referência no banco
     card.attachment = None
     card.save(update_fields=["attachment"])
 
-    # Retorna o template do modal atualizado
     return render(request, "boards/partials/card_modal_body.html", {"card": card})
 
+
+
+# ======================================================================
+# ATUALIZAR SOMENTE O CARD (SNIPPET)
+# Quem chama? → atualização de card após salvar modal
+# ======================================================================
 
 def card_snippet(request, card_id):
     card = get_object_or_404(Card, id=card_id)
     return render(request, "boards/partials/card_item.html", {"card": card})
+
+
+
+# ======================================================================
+# REMOVER TAG
+# Quem chama? → botão X das tags dentro do modal do card
+# ======================================================================
 
 @require_POST
 def remove_tag(request, card_id):
@@ -467,28 +474,23 @@ def remove_tag(request, card_id):
     old_tags = [t.strip() for t in (card.tags or "").split(",") if t.strip()]
     new_tags = [t for t in old_tags if t != tag]
 
-    # Nada para remover
     if len(old_tags) == len(new_tags):
         return HttpResponse("Tag não encontrada", status=404)
 
-    # Atualiza no banco
     card.tags = ", ".join(new_tags)
     card.save(update_fields=["tags"])
 
-    # Log imediato
     CardLog.objects.create(
         card=card,
         content=f"Etiqueta removida: {tag}"
     )
 
-    # Retorna modal atualizado
     modal_html = render(
         request,
         "boards/partials/card_modal_body.html",
         {"card": card}
     ).content.decode("utf-8")
 
-    # Retorna snippet atualizado
     snippet_html = render(
         request,
         "boards/partials/card_item.html",
@@ -501,6 +503,12 @@ def remove_tag(request, card_id):
         "card_id": card.id
     })
 
+
+
+# ======================================================================
+# RENOMEAR BOARD
+# Quem chama? → editar nome do board (contenteditable)
+# ======================================================================
 
 @require_POST
 def rename_board(request, board_id):
@@ -515,9 +523,16 @@ def rename_board(request, board_id):
 
     return HttpResponse("OK", status=200)
 
+
+
+# ======================================================================
+# RENOMEAR COLUNA
+# Quem chama? → editar título da coluna (contenteditable)
+# ======================================================================
+
 @require_POST
 def rename_column(request, column_id):
-    column = get_object_or_404(Column, id=column_id)
+    column = get_object_or_404(Column, id=       column_id)
     name = request.POST.get("name", "").strip()
 
     if not name:
@@ -526,9 +541,54 @@ def rename_column(request, column_id):
     column.name = name
     column.save(update_fields=["name"])
 
-    # retorna HTML atualizado da coluna
-    return render(
-        request,
-        "boards/partials/column_item.html",
-        {"column": column},
-    )
+    return render(request, "boards/partials/column_item.html", {"column": column})
+
+
+
+# ======================================================================
+# UPDATE WALLPAPER — ESTA É A FUNÇÃO QUE O MENU HAMBURGUER USA
+# Quem chama? → botão "Trocar Wallpaper" do menu (HTMX GET)
+#                submit do modal (HTMX POST)
+# ======================================================================
+
+def update_board_wallpaper(request, board_id):
+    board = get_object_or_404(Board, id=board_id)
+
+    # Quando a pessoa clica em "Trocar Wallpaper"
+    if request.method == "GET":
+        return render(request, "boards/partials/wallpaper_form.html", {"board": board})
+
+    # Quando clica em "Salvar" no modal
+    if request.method == "POST":
+
+        # Upload de arquivo
+        if "image" in request.FILES:
+            board.background_image = request.FILES["image"]
+            board.background_url = ""
+            board.save()
+            return HttpResponse('<script>location.reload()</script>')
+
+        # URL da imagem
+        url = request.POST.get("image_url", "").strip()
+        if url:
+            board.background_url = url
+            board.background_image = None
+            board.save()
+            return HttpResponse('<script>location.reload()</script>')
+
+        return HttpResponse("Erro", status=400)
+
+
+
+# ======================================================================
+# REMOVER WALLPAPER
+# Quem chama? → botão vermelho "Remover papel de parede"
+# ======================================================================
+
+@require_POST
+def remove_board_wallpaper(request, board_id):
+    board = get_object_or_404(Board, id=board_id)
+    board.background_image = None
+    board.background_url = ""
+    board.save()
+    return HttpResponse('<script>location.reload()</script>')

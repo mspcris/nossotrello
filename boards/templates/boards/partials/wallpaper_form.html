@@ -1,0 +1,41 @@
+<div id="modal-bg" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+
+    <div class="bg-white rounded-xl p-6 shadow-xl w-96 relative">
+
+        <h2 class="text-xl font-semibold mb-4">Plano de Fundo do Quadro</h2>
+
+        <div id="image-error" class="text-red-600 text-sm font-semibold mb-3" style="display:none;"></div>
+
+        <form method="POST" enctype="multipart/form-data" hx-post="{% url 'boards:update_board_wallpaper' board.id %}"
+            hx-target="#modal-bg" hx-swap="outerHTML">
+
+            {% csrf_token %}
+
+            <label class="font-medium text-sm">Enviar arquivo:</label>
+            <input type="file" name="image" class="w-full border rounded px-3 py-2 mb-4">
+
+            <label class="font-medium text-sm">Ou usar URL:</label>
+            <input type="text" name="image_url" placeholder="https://..." class="w-full border rounded px-3 py-2 mb-4">
+
+            <div class="flex gap-3 justify-end">
+                <button type="submit" class="bg-blue-600 text-white rounded px-4 py-2">
+                    Salvar
+                </button>
+                <button type="button" class="bg-gray-300 rounded px-4 py-2"
+                    onclick="document.getElementById('modal-bg').remove();">
+                    Cancelar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.body.addEventListener("htmx:responseError", function () {
+        const target = document.querySelector("#image-error");
+        if (target) {
+            target.style.display = "block";
+            target.innerText = "Erro ao importar. Verifique o arquivo ou URL.";
+        }
+    });
+</script>

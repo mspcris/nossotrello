@@ -6,108 +6,202 @@
 
 {% block content %}
 
-<a href="{% url 'boards:boards_index' %}" class="text-blue-600 hover:underline mb-6 block">
-    ← Voltar aos Quadros
-</a>
+<style>
+    body {
+            {
+            % if board.background_image %
+        }
 
-<div class="flex items-center gap-4 mb-6">
+        background-image: url("{{ board.background_image.url }}");
+
+            {
+            % elif board.background_url %
+        }
+
+        background-image: url("{{ board.background_url }}");
+
+            {
+            % else %
+        }
+
+        background: #f0f0f0;
+
+            {
+            % endif %
+        }
+
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+    }
+</style>
+
+<!-- ======================== MENU HAMBÚRGUER ======================== -->
+
+<div class="relative mt-4 ml-4">
+    <button id="menu-btn" class="text-2xl p-2 rounded cursor-pointer">
+        ☰
+    </button>
+
+    <div id="menu-box" class="hidden absolute left-0 mt-2 bg-white border shadow-lg rounded-md w-48 p-2 z-50">
+
+        <a href="{% url 'boards:boards_index' %}" class="block px-4 py-2 hover:bg-gray-100 rounded">
+            ← Voltar aos Quadros
+        </a>
+
+        <button class="block w-full text-left px-4 py-2 hover:bg-gray-100"
+            hx-get="{% url 'boards:update_board_wallpaper' board.id %}" hx-target="body" hx-swap="beforeend">
+            Trocar Wallpaper
+        </button>
+
+        <button class="block w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100"
+            hx-post="{% url 'boards:remove_board_wallpaper' board.id %}" hx-target="body" hx-swap="beforeend">
+            Remover papel de parede
+        </button>
+
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+
+        const btn = document.getElementById("menu-btn");
+        const box = document.getElementById("menu-box");
+
+        btn.addEventListener("click", function (e) {
+            e.stopPropagation();
+            box.classList.toggle("hidden");
+        });
+
+        document.addEventListener("click", function (e) {
+            if (!box.contains(e.target) && !btn.contains(e.target)) {
+                box.classList.add("hidden");
+            }
+        });
+
+    });
+</script>
+
+<!-- ======================== TOPO: LOGO + TÍTULO ======================== -->
+
+<div class="flex items-center gap-4 mb-6 ml-4 mt-6">
 
     {% if board.image %}
-    <div class="relative group inline-block">
-        <div
-            class="h-28 w-48 border border-gray-300 rounded-lg overflow-hidden bg-white flex items-center justify-center">
+    <div class="relative group">
+        <div class="h-28 w-48 border rounded-lg overflow-hidden bg-white flex items-center justify-center">
             <img src="{{ board.image.url }}" class="h-full w-auto object-contain">
         </div>
 
-        <button class="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded
-                       opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+        <button class="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded 
+                       opacity-0 group-hover:opacity-100 transition"
             hx-post="{% url 'boards:update_board_image' board.id %}?delete=1" hx-target="body" hx-swap="beforeend">
             X
         </button>
+
     </div>
+
     {% else %}
-    <div class="h-28 w-48 flex items-center justify-center rounded-lg border border-gray-300 
-               bg-gray-100 text-gray-400 text-3xl cursor-pointer hover:bg-gray-200"
+
+    <div class="h-28 w-48 flex items-center justify-center rounded-lg border bg-gray-100 text-gray-400 text-3xl cursor-pointer hover:bg-gray-200"
         hx-get="{% url 'boards:update_board_image' board.id %}" hx-target="body" hx-swap="beforeend">
         +
     </div>
+
     {% endif %}
 
-    <!-- <h1 class="text-2xl font-bold">{{ board.name }}</h1> -->
-
-    <h1 id="board-title" contenteditable="true" class="text-2xl font-semibold inline-block"
-        onblur="updateBoardTitle({{ board.id }})"
-        onkeypress="if(event.key==='Enter'){ event.preventDefault(); this.blur(); }">
+    <h1 id="board-title" contenteditable="true" onblur="updateBoardTitle({{ board.id }})"
+        onkeypress="if(event.key==='Enter'){ event.preventDefault(); this.blur(); }"
+        class="text-3xl font-semibold bg-white/70 px-2 py-1 rounded inline-block">
         {{ board.name }}
     </h1>
 
-
 </div>
 
-<!-- 🔍 FILTRO POR ETIQUETA -->
-<div class="mb-6 flex flex-wrap items-center gap-2">
-    <span class="text-sm font-semibold text-gray-600">Filtrar por etiquetas:</span>
+<script>
+    function updateBoardTitle(boardId) {
+        const el = document.getElementById("board-title");
+        const newName = el.innerText.trim();
 
-    <input type="text" id="tag-filter" placeholder="Ex: urgente" class="border rounded px-3 py-2 text-sm w-60"
+        const data = new FormData();
+        data.append("name", newName);
+
+        fetch(`/board/${boardId}/rename/`, {
+            method: "POST",
+            headers: { "X-CSRFToken": document.querySelector("meta[name='csrf-token']").content },
+            body: data
+        });
+    }
+</script>
+
+<!-- ======================== FILTRO DE TAGS ======================== -->
+
+<div class="mb-6 ml-4 flex gap-2 items-center">
+    <span class="text-sm font-semibold">Filtrar etiquetas:</span>
+
+    <input id="tag-filter" class="border rounded px-3 py-2 w-60 text-sm" placeholder="Ex: urgente"
         oninput="filterByTag(this.value)">
 </div>
 
-<h3 class="text-lg font-semibold mb-3">Colunas:</h3>
+<script>
+    function filterByTag(text) {
+        text = text.toLowerCase();
 
-<div id="columns-wrapper" class="flex gap-6 overflow-x-auto pb-6 pr-4">
+        document.querySelectorAll('[id^="cards-col-"] li[data-card-id]').forEach(el => {
+
+            const tags = el.querySelectorAll("span.text-xs");
+            let match = false;
+
+            tags.forEach(t => {
+                if (t.innerText.toLowerCase().includes(text))
+                    match = true;
+            });
+
+            el.style.display = (!text || match) ? "" : "none";
+        });
+    }
+</script>
+
+<!-- ======================== COLUNAS ======================== -->
+
+<h3 class="text-lg font-semibold ml-4 mb-3">Colunas:</h3>
+
+<div id="columns-wrapper" class="flex gap-6 ml-4 overflow-x-auto pb-6 pr-4">
+
     <div id="columns-list" class="flex gap-6">
         {% for column in board.columns.all %}
         {% include "boards/partials/column_item.html" %}
         {% endfor %}
     </div>
 
-    <div id="add-column-box"
-        class="w-64 bg-white/60 backdrop-blur-md border border-gray-300 rounded-xl p-4 h-fit shrink-0 shadow-md">
-
+    <div class="w-64 bg-white/70 border rounded-xl p-4 shadow-md h-fit">
         <h3 class="font-semibold mb-2">Adicionar nova coluna</h3>
 
         <form method="post" hx-post="{% url 'boards:add_column' board.id %}" hx-target="#columns-list"
             hx-swap="beforeend">
 
             {% csrf_token %}
-            <label class="block text-sm font-medium mb-1">Nome:</label>
-            <input type="text" name="name" class="w-full border rounded px-3 py-2 mb-3" placeholder="Nome da coluna">
+            <label class="block text-sm mb-1">Nome:</label>
+
+            <input type="text" name="name" class="w-full border rounded px-3 py-2 mb-3">
 
             <button class="px-3 py-2 bg-blue-600 text-white rounded w-full">
                 Adicionar Coluna
             </button>
+
         </form>
     </div>
+
 </div>
 
 <script>
-
-    function filterByTag(text) {
-        text = text.trim().toLowerCase();
-
-        document.querySelectorAll('[id^="cards-col-"] li[data-card-id]')
-            .forEach(card => {
-
-                const tags = card.querySelectorAll('span.text-xs');
-                let match = false;
-
-                tags.forEach(t => {
-                    if (t.innerText.toLowerCase().includes(text)) {
-                        match = true;
-                    }
-                });
-
-                card.style.display = (text === "" || match) ? "" : "none";
-            });
-    }
-
     function initSortable() {
-        document.querySelectorAll("[id^='cards-col-']").forEach(listEl => {
 
-            if (listEl.dataset.sortableApplied === "1") return;
-            listEl.dataset.sortableApplied = "1";
+        document.querySelectorAll("[id^='cards-col-']").forEach(list => {
 
-            new Sortable(listEl, {
+            if (list.dataset.sortableApplied === "1") return;
+            list.dataset.sortableApplied = "1";
+
+            new Sortable(list, {
                 group: "cards",
                 animation: 150,
                 ghostClass: "drag-ghost",
@@ -124,86 +218,49 @@
                         body: JSON.stringify({
                             card_id: Number(evt.item.dataset.cardId),
                             new_column_id: Number(evt.to.id.replace("cards-col-", "")),
-                            new_position: Number(evt.newIndex)
+                            new_position: evt.newIndex
                         })
                     });
                 }
             });
+
         });
+
     }
 
     document.addEventListener("DOMContentLoaded", initSortable);
     document.body.addEventListener("htmx:afterSwap", initSortable);
-
 </script>
-<script>
-    document.body.addEventListener("card-updated", function (ev) {
-        const cardId = ev.detail.card_id;
-
-        // elemento do card na coluna
-        const cardEl = document.querySelector(`li[data-card-id="${cardId}"]`);
-
-        if (!cardEl) return;
-
-        // Atualiza o card fazendo GET no endpoint que renderiza apenas o card
-        htmx.ajax("GET",
-            `/card/${cardId}/snippet/`,   // vamos criar isso
-            { target: cardEl, swap: "outerHTML" }
-        );
-    });
-
-
-
-
-
-    function updateBoardTitle(boardId) {
-        const titleEl = document.getElementById("board-title");
-        const newTitle = titleEl.innerText.trim();
-
-        const formData = new FormData();
-        formData.append("name", newTitle);
-
-        fetch(`/board/${boardId}/rename/`, {
-            method: "POST",
-            headers: { "X-CSRFToken": document.querySelector("meta[name='csrf-token']").content },
-            body: formData
-        });
-
-    }
-
-    function renameColumn(columnId) {
-        const el = document.getElementById(`column-title-${columnId}`);
-        if (!el) return;
-
-        const newName = el.innerText.trim();
-        if (!newName) return;
-
-        const formData = new FormData();
-        formData.append("name", newName);
-
-        fetch(`/column/${columnId}/rename/`, {
-            method: "POST",
-            headers: { "X-CSRFToken": document.querySelector("meta[name='csrf-token']").content },
-            body: formData
-        })
-            .then(res => res.text())
-            .then(html => {
-                document.querySelector(`#column-${columnId}`).outerHTML = html;
-            });
-    }
-
-
-
-
-</script>
-
-
 
 <style>
-    .drag-ghost {
-        opacity: 0.35;
-        background: #cfcfcf;
+    body {
+            {
+            % if board.background_image %
+        }
+
+        background-image: url("{{ board.background_image.url }}");
+
+            {
+            % elif board.background_url %
+        }
+
+        background-image: url("{{ board.background_url }}");
+
+            {
+            % else %
+        }
+
+        background-color: #f0f0f0;
+
+            {
+            % endif %
+        }
+
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
     }
 </style>
+
 
 {% endblock %}
