@@ -1,10 +1,8 @@
 function openModal() {
-    document.getElementById("modal-overlay")?.classList.remove("hidden");
     document.getElementById("modal")?.classList.remove("hidden");
 }
 
 function closeModal() {
-    document.getElementById("modal-overlay")?.classList.add("hidden");
     document.getElementById("modal")?.classList.add("hidden");
     document.getElementById("modal-body").innerHTML = "";
 }
@@ -27,7 +25,7 @@ document.body.addEventListener("htmx:afterSwap", function (e) {
         }
     });
 
-    // Carrega no editor o HTML do hidden
+       // Carrega no editor o HTML do hidden
     quill.root.innerHTML = hiddenInput.value || "";
 
     // Mantém hidden atualizado
@@ -35,10 +33,9 @@ document.body.addEventListener("htmx:afterSwap", function (e) {
         hiddenInput.value = quill.root.innerHTML;
     });
 
-    // Zera o editor depois que o modal recarrega
-quill.root.innerHTML = "";
-hiddenInput.value = "";
+    // Nada a zerar; manter conteúdo carregado
 
     // Agora o modal deve abrir
     openModal();
+
 });

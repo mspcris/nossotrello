@@ -65,10 +65,21 @@
     <div id="modal" class="fixed inset-0 flex items-center justify-center hidden">
         <div class="bg-white rounded shadow-lg w-1/2 max-h-[85vh] overflow-hidden flex flex-col">
 
-            <button onclick="closeModal()" class="self-end p-2 text-gray-500">X</button>
+            <div class="flex justify-end items-center p-2 gap-3">
+                <button type="button" class="text-gray-500 hover:text-gray-900 text-lg" title="Tela cheia"
+                    onclick="cardToggleFull()">
+                    ⛶
+                </button>
+
+                <button onclick="closeModal()" class="text-gray-500 hover:text-gray-900 text-xl">
+                    X
+                </button>
+            </div>
 
             <div id="modal-body" class="overflow-y-auto px-4 pb-4">
             </div>
+
+
         </div>
     </div>
 

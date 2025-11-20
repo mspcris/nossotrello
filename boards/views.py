@@ -214,41 +214,40 @@ def edit_card(request, card_id):
 def update_card(request, card_id):
     card = get_object_or_404(Card, id=card_id)
 
+    # TÍTULO
     card.title = request.POST.get("title", card.title)
 
-    raw_desc = request.POST.get("description", card.description)
+    # DESCRIÇÃO (fixa, não vai pro log em HTML)
+    raw_desc = request.POST.get("description", card.description or "")
     clean_desc, extracted_file = extract_base64_and_convert(raw_desc)
     card.description = clean_desc
 
+    # TAGS
     card.tags = request.POST.get("tags", card.tags)
 
+    # ANEXO (upload normal)
     if "attachment" in request.FILES and request.FILES["attachment"]:
         card.attachment = request.FILES["attachment"]
 
+    # ANEXO via imagem colada (base64)
     if extracted_file:
         card.attachment = extracted_file
 
     card.save()
 
+    # LOG: mensagem curta, sem despejar a descrição inteira
     CardLog.objects.create(
         card=card,
-        content=card.description or "",
+        content="Card atualizado (título/descrição/etiquetas/anexos).",
         attachment=card.attachment if card.attachment else None,
     )
 
-    return HttpResponse(
-    f"""
-    <script>
-        // Fecha o modal
-        closeModal();
-
-        // Dispara evento HTMX para atualizar o card
-        htmx.trigger(document.body, 'card-updated', {{
-            card_id: {card.id}
-        }});
-    </script>
-    """
-)
+    # Re-renderiza o corpo do modal (agora com abas)
+    return render(
+        request,
+        "boards/partials/card_modal_body.html",
+        {"card": card},
+    )
 
 
 # ============================================================
