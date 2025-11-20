@@ -1,94 +1,52 @@
-/* ================================
-   Estilos Globais
-================================ */
+/* ============================================================
+   VIDRO FOSCO (coluna base)
+   ============================================================ */
 
-body {
-    font-family: Arial, sans-serif;
-    margin: 20px;
+.column-glass {
+    background: rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.35);
 }
 
-/* Container das colunas — estilo Trello */
-.board-container {
-    display: flex;
-    gap: 30px;
-    overflow-x: auto;      /* scroll horizontal */
-    padding-bottom: 12px;
-    scrollbar-width: thin; /* Firefox */
-    scrollbar-color: #ccc transparent;
+
+/* ============================================================
+   TEMAS SEMI-TRANSPARENTES (OVERLAY)
+   ============================================================ */
+
+/* CINZA */
+.gray-column-bg {
+    background-color: rgba(240, 240, 240, 0.35) !important;
 }
 
-/* Cada coluna */
-.column-box {
-    min-width: 18rem;   /* semelhante ao w-72 */
-    border: 1px solid #ccc;
-    padding: 12px;
-    background: #fafafa;
-    border-radius: 6px;
-    flex-shrink: 0;     /* impede de encolher */
-    box-shadow:
-        0 1px 2px rgba(0,0,0,0.05),
-        0 1px 4px rgba(0,0,0,0.05);
+/* AZUL */
+.blue-column-bg {
+    background-color: rgba(59, 130, 246, 0.20) !important;
 }
 
-.column-box h4 {
-    margin-top: 0;
-    font-weight: bold;
+/* VERDE */
+.green-column-bg {
+    background-color: rgba(52, 211, 153, 0.20) !important;
 }
 
-/* Lista de cards */
-.column-box ul {
-    list-style: none;
-    padding-left: 0;
+/* ROXO */
+.purple-column-bg {
+    background-color: rgba(168, 85, 247, 0.20) !important;
 }
 
-/* Cada card */
-.column-box li {
-    cursor: grab;
-    list-style: none;
-    padding: 6px;
-    margin: 4px 0;
-    background: #f7f7f7;
-    border: 1px solid #ccc;
-    border-radius: 4px;
+/* AMARELO/AMBAR */
+.amber-column-bg {
+    background-color: rgba(251, 191, 36, 0.25) !important;
 }
 
-.column-box li:active {
-    cursor: grabbing;
-}
 
-/* Ghost quando arrasta card */
-.drag-ghost {
-    opacity: 0.35;
-    background: #ddd;
-}
+/* ============================================================
+   CARDS com leve vidro também (para combinar)
+   ============================================================ */
 
-/* Scrollbar custom (Chrome, Edge, Safari) */
-::-webkit-scrollbar {
-    height: 8px;
+.card-glass {
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border: 1px solid rgba(255, 255, 255, 0.35);
 }
-
-::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-    background: #c7c7c7;
-    border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: #a0a0a0;
-}
-/* Cards não podem expandir além da coluna */
-.card-content {
-    word-break: break-word;
-    overflow-wrap: break-word;
-    max-width: 100%;
-}
-
-/* Temas de coluna baseados no campo column.theme */
-.gray-column-bg  { background: rgba(240, 240, 240, 0.6); backdrop-filter: blur(8px); }
-.blue-column-bg  { background: rgba(190, 220, 255, 0.4); backdrop-filter: blur(8px); }
-.green-column-bg { background: rgba(200, 255, 210, 0.4); backdrop-filter: blur(8px); }
-.purple-column-bg{ background: rgba(230, 210, 255, 0.4); backdrop-filter: blur(8px); }
-.amber-column-bg { background: rgba(255, 240, 200, 0.4); backdrop-filter: blur(8px); }

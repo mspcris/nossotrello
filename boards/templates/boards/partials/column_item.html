@@ -1,17 +1,53 @@
-<div class="relative w-72 flex-shrink-0 rounded-xl shadow-lg border border-white/30 overflow-hidden
-            {{ column.theme|default:'gray'|add:'-column-bg' }}">
+<div class="relative w-72 flex-shrink-0 rounded-xl shadow-lg overflow-hidden
+            column-glass {{ column.theme|default:'gray'|add:'-column-bg' }}">
 
-    <!-- Barra superior (Adicionar Card) -->
+
+    <!-- Header da coluna -->
     <div class="flex items-center justify-between px-4 py-2 
                 bg-white/30 backdrop-blur-md border-b border-white/40 sticky top-0 z-10">
 
         <span class="text-gray-800 font-semibold truncate">{{ column.name }}</span>
 
-        <button class="text-gray-700 hover:text-gray-900 px-2 py-1 rounded-lg 
-                   bg-white/20 backdrop-blur-sm border border-white/40 transition"
-            hx-get="{% url 'boards:add_card' column.id %}" hx-target="#form-col-{{ column.id }}" hx-swap="innerHTML">
-            + Card
-        </button>
+        <div class="flex items-center gap-2">
+
+            <!-- Botão adicionar card -->
+            <button class="text-gray-700 hover:text-gray-900 px-2 py-1 rounded-lg 
+                       bg-white/20 backdrop-blur-sm border border-white/40 transition"
+                hx-get="{% url 'boards:add_card' column.id %}" hx-target="#form-col-{{ column.id }}"
+                hx-swap="innerHTML">
+                + Card
+            </button>
+
+            <!-- Botão de menu (...) -->
+            <div class="relative">
+
+                <button class="px-2 py-1 rounded-lg bg-white/20 border border-white/40 
+                               text-gray-700 hover:text-gray-900 backdrop-blur-sm transition"
+                    onclick="toggleMenu('{{ column.id }}')">
+                    ⋮
+                </button>
+
+                <!-- Menu suspenso -->
+                <div id="col-menu-{{ column.id }}" class="hidden absolute right-0 mt-2 w-32 rounded-lg shadow-lg 
+                            bg-white/90 backdrop-blur-md border border-gray-300 p-3 z-20">
+
+                    <p class="text-xs text-gray-600 mb-2">Cor da coluna:</p>
+
+                    <div class="flex gap-2">
+
+                        {% for value, label in column.THEME_CHOICES %}
+                        <div class="w-5 h-5 rounded-full cursor-pointer border border-gray-300 hover:scale-110 transition"
+                            style="background-color: var(--{{ value }}-color);"
+                            hx-post="{% url 'boards:set_column_theme' column.id %}" hx-vals='{"theme": "{{ value }}"}'
+                            hx-target="closest .relative" hx-swap="outerHTML">
+                        </div>
+                        {% endfor %}
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
     </div>
 
     <!-- Lista de Cards -->
@@ -26,7 +62,51 @@
         {% endfor %}
     </ul>
 
-    <!-- Form add card -->
+    <!-- Form de adicionar card -->
     <div id="form-col-{{ column.id }}" class="p-4"></div>
 
 </div>
+
+<script>
+    function toggleMenu(colId) {
+        let el = document.getElementById("col-menu-" + colId);
+        el.classList.toggle("hidden");
+    }
+</script>
+
+<style>
+    /* Cores reais usadas nos círculos */
+    :root {
+        --gray-color: #e5e7eb;
+        --blue-color: #bfdbfe;
+        --green-color: #bbf7d0;
+        --purple-color: #e9d5ff;
+        --amber-color: #fde68a;
+    }
+
+    /* Ajuste visual */
+    .gray-column-bg {
+        background: rgba(255, 255, 255, 0.45);
+        backdrop-filter: blur(10px);
+    }
+
+    .blue-column-bg {
+        background: rgba(191, 219, 254, 0.45);
+        backdrop-filter: blur(10px);
+    }
+
+    .green-column-bg {
+        background: rgba(187, 247, 208, 0.45);
+        backdrop-filter: blur(10px);
+    }
+
+    .purple-column-bg {
+        background: rgba(233, 213, 255, 0.45);
+        backdrop-filter: blur(10px);
+    }
+
+    .amber-column-bg {
+        background: rgba(253, 230, 138, 0.45);
+        backdrop-filter: blur(10px);
+    }
+</style>

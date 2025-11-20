@@ -92,6 +92,32 @@ def add_column(request, board_id):
 
 
 # ============================================================
+# SET COLUMN THEME (NOVO)
+# ============================================================
+
+@require_POST
+def set_column_theme(request, column_id):
+    column = get_object_or_404(Column, id=column_id)
+    theme = request.POST.get("theme")
+
+    # valida
+    valid_themes = [t[0] for t in Column.THEME_CHOICES]
+    if theme not in valid_themes:
+        return HttpResponse("Tema inválido", status=400)
+
+    # salva
+    column.theme = theme
+    column.save(update_fields=["theme"])
+
+    # retorna a coluna inteira refeita (card_item inclui hx-swap="outerHTML")
+    return render(
+        request,
+        "boards/partials/column_item.html",
+        {"column": column},
+    )
+
+
+# ============================================================
 # ADICIONAR CARD
 # ============================================================
 
@@ -309,26 +335,26 @@ def card_modal(request, card_id):
     return render(request, "boards/partials/card_modal_body.html", {"card": card})
 
 
+# ============================================================
+# UPDATE BOARD IMAGE
+# ============================================================
+
 import requests
 from django.core.files.base import ContentFile
 
 def update_board_image(request, board_id):
     board = get_object_or_404(Board, id=board_id)
 
-    # GET → abre modal
     if request.method == "GET":
         return render(request, "boards/partials/board_image_form.html", {"board": board})
 
-    # POST → salvar imagem
     if request.method == "POST":
 
-        # Upload direto
         if "image" in request.FILES and request.FILES["image"]:
             board.image = request.FILES["image"]
             board.save()
             return HttpResponse('<script>location.reload()</script>')
 
-        # URL da imagem
         url = request.POST.get("image_url")
         if url:
             try:
@@ -340,7 +366,6 @@ def update_board_image(request, board_id):
             except:
                 pass
 
-        # RETORNO DE ERRO PARA O MODAL (via HTMX)
         return HttpResponse(
             """
             <div class='bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-3'>
@@ -351,6 +376,9 @@ def update_board_image(request, board_id):
         )
 
 
+# ============================================================
+# REMOVE BOARD IMAGE
+# ============================================================
 
 @require_POST
 def remove_board_image(request, board_id):
