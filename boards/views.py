@@ -223,7 +223,18 @@ def update_card(request, card_id):
     card.description = clean_desc
 
     # TAGS
-    card.tags = request.POST.get("tags", card.tags)
+    old_tags_raw = card.tags or ""
+    new_tags_raw = request.POST.get("tags", old_tags_raw) or ""
+
+    old_tags = [t.strip() for t in old_tags_raw.split(",") if t.strip()]
+    new_tags = [t.strip() for t in new_tags_raw.split(",") if t.strip()]
+
+    card.tags = new_tags_raw  # mantém formato original enviado
+
+    # Detectar mudanças
+    removed = [t for t in old_tags if t not in new_tags]
+    added = [t for t in new_tags if t not in old_tags]
+
 
     # ANEXO (upload normal)
     if "attachment" in request.FILES and request.FILES["attachment"]:
@@ -236,11 +247,23 @@ def update_card(request, card_id):
     card.save()
 
     # LOG: mensagem curta, sem despejar a descrição inteira
-    CardLog.objects.create(
-        card=card,
-        content="Card atualizado (título/descrição/etiquetas/anexos).",
-        attachment=card.attachment if card.attachment else None,
-    )
+    # LOGS especificados
+    if removed:
+        for t in removed:
+            CardLog.objects.create(card=card, content=f"Etiqueta removida: {t}")
+
+    if added:
+        for t in added:
+            CardLog.objects.create(card=card, content=f"Etiqueta adicionada: {t}")
+
+    # Se nada mudou nas tags → log padrão
+    if not added and not removed:
+        CardLog.objects.create(
+            card=card,
+            content="Card atualizado (título/descrição/etiquetas/anexos).",
+            attachment=card.attachment if card.attachment else None,
+        )
+
 
     # Re-renderiza o corpo do modal (agora com abas)
     return render(
@@ -432,3 +455,48 @@ def delete_attachment(request, card_id):
 def card_snippet(request, card_id):
     card = get_object_or_404(Card, id=card_id)
     return render(request, "boards/partials/card_item.html", {"card": card})
+
+@require_POST
+def remove_tag(request, card_id):
+    card = get_object_or_404(Card, id=card_id)
+    tag = request.POST.get("tag", "").strip()
+
+    if not tag:
+        return HttpResponse("Tag inválida", status=400)
+
+    old_tags = [t.strip() for t in (card.tags or "").split(",") if t.strip()]
+    new_tags = [t for t in old_tags if t != tag]
+
+    # Nada para remover
+    if len(old_tags) == len(new_tags):
+        return HttpResponse("Tag não encontrada", status=404)
+
+    # Atualiza no banco
+    card.tags = ", ".join(new_tags)
+    card.save(update_fields=["tags"])
+
+    # Log imediato
+    CardLog.objects.create(
+        card=card,
+        content=f"Etiqueta removida: {tag}"
+    )
+
+    # Retorna modal atualizado
+    modal_html = render(
+        request,
+        "boards/partials/card_modal_body.html",
+        {"card": card}
+    ).content.decode("utf-8")
+
+    # Retorna snippet atualizado
+    snippet_html = render(
+        request,
+        "boards/partials/card_item.html",
+        {"card": card}
+    ).content.decode("utf-8")
+
+    return JsonResponse({
+        "modal": modal_html,
+        "snippet": snippet_html,
+        "card_id": card.id
+    })

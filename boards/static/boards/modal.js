@@ -1,14 +1,22 @@
 function openModal() {
+    document.getElementById("modal-overlay")?.classList.remove("hidden");
     document.getElementById("modal")?.classList.remove("hidden");
 }
 
+function refreshCardSnippet(cardId) {
+    htmx.ajax("GET", `/card/${cardId}/snippet/`, {
+        target: `#card-${cardId}`,
+        swap: "outerHTML"
+    });
+}
+
 function closeModal() {
+    document.getElementById("modal-overlay")?.classList.add("hidden");
     document.getElementById("modal")?.classList.add("hidden");
     document.getElementById("modal-body").innerHTML = "";
 }
 
 document.body.addEventListener("htmx:afterSwap", function (e) {
-    // Só inicializa quando o modal receber conteúdo
     if (e.detail.target.id !== "modal-body") return;
 
     const hiddenInput = document.getElementById("description-input");
@@ -25,17 +33,11 @@ document.body.addEventListener("htmx:afterSwap", function (e) {
         }
     });
 
-       // Carrega no editor o HTML do hidden
     quill.root.innerHTML = hiddenInput.value || "";
 
-    // Mantém hidden atualizado
     quill.on("text-change", () => {
         hiddenInput.value = quill.root.innerHTML;
     });
 
-    // Nada a zerar; manter conteúdo carregado
-
-    // Agora o modal deve abrir
     openModal();
-
 });

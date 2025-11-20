@@ -42,11 +42,12 @@
         <div id="card-tab-desc" class="card-tab-panel block">
 
             <form method="post" enctype="multipart/form-data" hx-post="{% url 'boards:update_card' card.id %}"
-                hx-target="#modal-body" hx-swap="innerHTML">
+                hx-target="#modal-body" hx-swap="innerHTML"
+                hx-on::after-request="htmx.ajax('GET', '{% url 'boards:card_snippet' card.id %}', '#card-{{ card.id }}')">
 
-                {% csrf_token %}
 
-                <label class="block text-sm font-medium mb-1">Título</label>
+
+                {% csrf_token %} <label class="block text-sm font-medium mb-1">Título</label>
                 <input type="text" name="title" value="{{ card.title }}" class="w-full border rounded px-3 py-2 mb-4">
 
                 <label class="block text-sm font-medium mb-1">Descrição</label>
@@ -70,9 +71,11 @@
 
                         <button type="button"
                             class="ml-1 text-red-600 hover:text-red-900 font-bold opacity-0 group-hover:opacity-100 transition"
-                            onclick="removeTag('{{ tag }}')">
+                            onclick="removeTagInstant({{ card.id }}, '{{ tag }}')">
                             ✕
                         </button>
+
+
                     </span>
                     {% endwith %}
                     {% endfor %}
@@ -109,11 +112,18 @@
                 </div>
 
                 <div class="mt-6 flex gap-3">
-                    <button type="submit"
-                        class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Salvar</button>
+                    <button type="submit" onclick="refreshCardSnippet({{ card.id }})"
+                        class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                        Salvar
+                    </button>
 
-                    <button type="button" onclick="closeModal()"
-                        class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Cancelar</button>
+
+                    <button type="button" onclick="refreshCardSnippet({{ card.id }}); closeModal();"
+                        class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">
+                        Fechar
+                    </button>
+
+
                 </div>
 
             </form>
@@ -176,7 +186,6 @@
         display: none;
     }
 </style>
-
 <script>
     function cardOpenTab(panelId) {
         document.querySelectorAll('.card-tab-btn').forEach(btn => {
@@ -187,6 +196,9 @@
         document.querySelectorAll('.card-tab-panel').forEach(p => {
             p.classList.toggle('hidden', p.id !== panelId);
         });
+
+        // salva aba ativa
+        sessionStorage.setItem('modalActiveTab', panelId);
     }
 
     function cardSetTheme(mode) {
@@ -204,23 +216,66 @@
         root.classList.toggle('h-[90vh]');
     }
 
+    // ==========================================================
+    // 🚀 REMOVER TAG IMEDIATAMENTE (com backend + log + snippet)
+    // ==========================================================
+    async function removeTagInstant(cardId, tag) {
 
-    function removeTag(tagToRemove) {
-        const input = document.querySelector('input[name="tags"]');
-        if (!input) return;
+        const csrf = document.querySelector("input[name='csrfmiddlewaretoken']").value;
 
-        // Transforma em lista limpa
-        let tags = input.value.split(',').map(t => t.trim()).filter(t => t);
+        const formData = new FormData();
+        formData.append("tag", tag);
 
-        // Remove a tag clicada
-        tags = tags.filter(t => t !== tagToRemove);
+        // chamada ao backend
+        let response = await fetch(`/card/${cardId}/remove_tag/`, {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": csrf
+            },
+            body: formData
+        });
 
-        // Atualiza campo de texto
-        input.value = tags.join(', ');
+        if (!response.ok) {
+            console.error("Erro ao remover tag");
+            return;
+        }
 
-        // Remove o badge visual
-        const badge = document.querySelector(`[data-tag="${tagToRemove}"]`);
-        if (badge) badge.remove();
+        let data = await response.json();
+
+        // 1) atualiza modal
+        document.querySelector("#modal-body").innerHTML = data.modal;
+
+        // 2) atualiza snippet do card no board
+        const cardDiv = document.querySelector(`#card-${data.card_id}`);
+        if (cardDiv) {
+            cardDiv.outerHTML = data.snippet;
+        }
+
+        // 3) restaura aba ativa
+        const activeTab = sessionStorage.getItem("modalActiveTab") || "card-tab-desc";
+        cardOpenTab(activeTab);
+
+        // 4) reinicializar Quill (mesmo processo usado no modal.js)
+        const hiddenInput = document.getElementById("description-input");
+
+        if (hiddenInput) {
+            const quill = new Quill("#quill-editor", {
+                theme: "snow",
+                modules: {
+                    toolbar: [
+                        [{ header: [1, 2, 3, false] }],
+                        ["bold", "italic", "underline"],
+                        ["link", "image"],
+                        [{ list: "ordered" }, { list: "bullet" }]
+                    ]
+                }
+            });
+
+            quill.root.innerHTML = hiddenInput.value || "";
+
+            quill.on("text-change", () => {
+                hiddenInput.value = quill.root.innerHTML;
+            });
+        }
     }
-
 </script>

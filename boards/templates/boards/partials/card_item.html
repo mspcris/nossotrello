@@ -1,8 +1,9 @@
 {% load tag_helpers %}
 
-<li data-card-id="{{ card.id }}"
+<li id="card-{{ card.id }}" data-card-id="{{ card.id }}"
     class="p-3 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm mb-3 cursor-pointer relative"
     hx-get="{% url 'boards:card_modal' card.id %}" hx-target="#modal-body" hx-swap="innerHTML">
+
 
     <!-- BOTÃO ... (abre modal focado no card) -->
     <button type="button" class="absolute top-1 left-1 text-gray-400 hover:text-gray-700 text-xs px-1"
