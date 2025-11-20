@@ -24,5 +24,6 @@ urlpatterns = [
 
     path("move-card/", views.move_card, name="move_card"),
     path("card/<int:card_id>/delete-attachment/", views.delete_attachment, name="delete_attachment"),
+    path("card/<int:card_id>/snippet/", views.card_snippet, name="card_snippet"),
 
 ]

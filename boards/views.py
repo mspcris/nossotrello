@@ -236,11 +236,19 @@ def update_card(request, card_id):
         attachment=card.attachment if card.attachment else None,
     )
 
-    return render(
-        request,
-        "boards/partials/card_modal_body.html",
-        {"card": card},
-    )
+    return HttpResponse(
+    f"""
+    <script>
+        // Fecha o modal
+        closeModal();
+
+        // Dispara evento HTMX para atualizar o card
+        htmx.trigger(document.body, 'card-updated', {{
+            card_id: {card.id}
+        }});
+    </script>
+    """
+)
 
 
 # ============================================================
@@ -420,3 +428,8 @@ def delete_attachment(request, card_id):
 
     # Retorna o template do modal atualizado
     return render(request, "boards/partials/card_modal_body.html", {"card": card})
+
+
+def card_snippet(request, card_id):
+    card = get_object_or_404(Card, id=card_id)
+    return render(request, "boards/partials/card_item.html", {"card": card})

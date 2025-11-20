@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load tag_helpers %}
 
 {% block title %}{{ board.name }}{% endblock %}
 
@@ -9,38 +10,24 @@
     ← Voltar aos Quadros
 </a>
 
-<!-- ================================ -->
-<!--   CABEÇALHO COM IMAGEM DO BOARD  -->
-<!-- ================================ -->
 <div class="flex items-center gap-4 mb-6">
 
     {% if board.image %}
-    <!-- CONTAINER DA IMAGEM - será removido com hx-swap="outerHTML" -->
-    <div id="board-image-box" class="relative group inline-block">
-
-        <div class="h-28 w-48 border border-gray-300 rounded-lg overflow-hidden bg-white
-                    flex items-center justify-center">
-            <img src="{{ board.image.url }}" class="h-full w-auto object-contain" onerror="this.style.display='none';
-                          this.parentElement.innerHTML=
-                          `<div class='text-red-700 text-center p-4 font-semibold'>
-                                Imagem corrompida<br>⚠️
-                           </div>`;">
+    <div class="relative group inline-block">
+        <div
+            class="h-28 w-48 border border-gray-300 rounded-lg overflow-hidden bg-white flex items-center justify-center">
+            <img src="{{ board.image.url }}" class="h-full w-auto object-contain">
         </div>
 
-        <!-- BOTÃO DE REMOVER IMAGEM -->
         <button class="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded
                        opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-            hx-post="{% url 'boards:remove_board_image' board.id %}" hx-target="#board-image-box" hx-swap="outerHTML"
-            hx-confirm="Remover a imagem deste quadro?">
+            hx-post="{% url 'boards:update_board_image' board.id %}?delete=1" hx-target="body" hx-swap="beforeend">
             X
         </button>
-
     </div>
-
     {% else %}
-    <!-- Quando NÃO há imagem -->
     <div class="h-28 w-48 flex items-center justify-center rounded-lg border border-gray-300 
-                bg-gray-100 text-gray-400 text-3xl cursor-pointer hover:bg-gray-200"
+               bg-gray-100 text-gray-400 text-3xl cursor-pointer hover:bg-gray-200"
         hx-get="{% url 'boards:update_board_image' board.id %}" hx-target="body" hx-swap="beforeend">
         +
     </div>
@@ -49,23 +36,23 @@
     <h1 class="text-2xl font-bold">{{ board.name }}</h1>
 </div>
 
+<!-- 🔍 FILTRO POR ETIQUETA -->
+<div class="mb-6 flex flex-wrap items-center gap-2">
+    <span class="text-sm font-semibold text-gray-600">Filtrar por etiquetas:</span>
 
-
-<!-- ================================ -->
-<!--            COLUNAS              -->
-<!-- ================================ -->
+    <input type="text" id="tag-filter" placeholder="Ex: urgente" class="border rounded px-3 py-2 text-sm w-60"
+        oninput="filterByTag(this.value)">
+</div>
 
 <h3 class="text-lg font-semibold mb-3">Colunas:</h3>
 
 <div id="columns-wrapper" class="flex gap-6 overflow-x-auto pb-6 pr-4">
-
     <div id="columns-list" class="flex gap-6">
         {% for column in board.columns.all %}
         {% include "boards/partials/column_item.html" %}
         {% endfor %}
     </div>
 
-    <!-- Criar nova coluna -->
     <div id="add-column-box"
         class="w-64 bg-white/60 backdrop-blur-md border border-gray-300 rounded-xl p-4 h-fit shrink-0 shadow-md">
 
@@ -75,7 +62,6 @@
             hx-swap="beforeend">
 
             {% csrf_token %}
-
             <label class="block text-sm font-medium mb-1">Nome:</label>
             <input type="text" name="name" class="w-full border rounded px-3 py-2 mb-3" placeholder="Nome da coluna">
 
@@ -84,19 +70,32 @@
             </button>
         </form>
     </div>
-
 </div>
 
-
-
-<!-- ================================ -->
-<!--        SORTABLE + FIX BLUR       -->
-<!-- ================================ -->
 <script>
+
+    function filterByTag(text) {
+        text = text.trim().toLowerCase();
+
+        document.querySelectorAll('[id^="cards-col-"] li[data-card-id]')
+            .forEach(card => {
+
+                const tags = card.querySelectorAll('span.text-xs');
+                let match = false;
+
+                tags.forEach(t => {
+                    if (t.innerText.toLowerCase().includes(text)) {
+                        match = true;
+                    }
+                });
+
+                card.style.display = (text === "" || match) ? "" : "none";
+            });
+    }
+
     function initSortable() {
         document.querySelectorAll("[id^='cards-col-']").forEach(listEl => {
 
-            // evita duplicar sortable (bug de múltiplos swaps)
             if (listEl.dataset.sortableApplied === "1") return;
             listEl.dataset.sortableApplied = "1";
 
@@ -125,22 +124,24 @@
         });
     }
 
-    function fixGlassColumns() {
-        document.querySelectorAll(".column-glass").forEach(col => {
-            col.style.willChange = "transform";
-            col.getBoundingClientRect();
-            col.style.willChange = "auto";
-        });
-    }
+    document.addEventListener("DOMContentLoaded", initSortable);
+    document.body.addEventListener("htmx:afterSwap", initSortable);
 
-    document.addEventListener("DOMContentLoaded", () => {
-        initSortable();
-        fixGlassColumns();
-    });
+</script>
+<script>
+    document.body.addEventListener("card-updated", function (ev) {
+        const cardId = ev.detail.card_id;
 
-    document.body.addEventListener("htmx:afterSwap", () => {
-        initSortable();
-        requestAnimationFrame(() => fixGlassColumns());
+        // elemento do card na coluna
+        const cardEl = document.querySelector(`li[data-card-id="${cardId}"]`);
+
+        if (!cardEl) return;
+
+        // Atualiza o card fazendo GET no endpoint que renderiza apenas o card
+        htmx.ajax("GET",
+            `/card/${cardId}/snippet/`,   // vamos criar isso
+            { target: cardEl, swap: "outerHTML" }
+        );
     });
 </script>
 

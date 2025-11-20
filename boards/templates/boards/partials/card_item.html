@@ -1,32 +1,43 @@
-<li data-card-id="{{ card.id }}" class="cursor-pointer p-3 rounded-xl border border-white/30 shadow-lg bg-white/30 backdrop-blur-md
-           hover:bg-white/40 transition relative break-words whitespace-normal overflow-hidden max-w-full"
-    hx-get="{% url 'boards:card_modal' card.id %}" hx-target="#modal-body" hx-swap="innerHTML" onclick="openModal()">
+{% load tag_helpers %}
 
-    <!-- Botão excluir -->
-    <button class="absolute top-1 right-1 text-red-600 text-sm z-20" hx-post="{% url 'boards:delete_card' card.id %}"
-        hx-target="closest li" hx-swap="outerHTML" onclick="event.stopPropagation();">
+<li data-card-id="{{ card.id }}"
+    class="p-3 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm mb-3 cursor-pointer relative"
+    hx-get="{% url 'boards:card_modal' card.id %}" hx-target="#modal-body" hx-swap="innerHTML">
+
+    <!-- BOTÃO ... (abre modal focado no card) -->
+    <button type="button" class="absolute top-1 left-1 text-gray-400 hover:text-gray-700 text-xs px-1"
+        onclick="event.stopPropagation();" hx-get="{% url 'boards:card_modal' card.id %}" hx-target="#modal-body"
+        hx-swap="innerHTML">
+        ⋮
+    </button>
+
+    <!-- BOTÃO EXCLUIR (soft delete) -->
+    <button type="button" class="absolute top-1 right-1 text-red-600 text-sm px-1" onclick="event.stopPropagation();"
+        hx-post="{% url 'boards:delete_card' card.id %}" hx-target="closest li" hx-swap="outerHTML"
+        hx-confirm="Enviar este card para a lixeira?">
         ✕
     </button>
 
-    <!-- Título -->
-    <div class="font-semibold text-gray-800 mb-2 break-words">
-        {{ card.title }}
-    </div>
-
-    {% if card.attachment %}
-    <div
-        class="w-full h-24 mb-2 rounded-lg overflow-hidden bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30">
-        <img src="{{ card.attachment.url }}" class="w-full h-full object-cover" onerror="this.style.display='none';
-                      this.parentElement.innerHTML =
-                      `<div class='text-red-700 text-sm font-semibold text-center p-2'>
-                          Arquivo corrompido<br>
-                          <span style='font-size:22px;'>⚠️</span>
-                       </div>`;">
+    <!-- TAGS -->
+    {% if card.tags %}
+    <div class="flex flex-wrap gap-1 mb-2 mt-4">
+        {% for tag in card.tags|split_tags %}
+        {% with tag|tag_color as color %}
+        <span class="text-xs font-semibold px-2 py-1 rounded-md" style="
+                              background-color: {{ color }}20;
+                              color: {{ color }};
+                              border: 1px solid {{ color }};
+                          ">
+            {{ tag }}
+        </span>
+        {% endwith %}
+        {% endfor %}
     </div>
     {% endif %}
 
-    <div class="card-content text-gray-600 text-sm whitespace-pre-wrap break-words">
-        {{ card.description|default:"" }}
-    </div>
+    <!-- TÍTULO -->
+    <span class="block text-sm text-gray-800">
+        {{ card.title }}
+    </span>
 
 </li>
