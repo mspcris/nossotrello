@@ -1,9 +1,12 @@
+// Variável global usada para saber qual card está aberto
+window.currentCardId = null;
+
 function openModal() {
-    document.getElementById("modal-overlay")?.classList.remove("hidden");
     document.getElementById("modal")?.classList.remove("hidden");
 }
 
 function refreshCardSnippet(cardId) {
+    if (!cardId) return;
     htmx.ajax("GET", `/card/${cardId}/snippet/`, {
         target: `#card-${cardId}`,
         swap: "outerHTML"
@@ -11,7 +14,6 @@ function refreshCardSnippet(cardId) {
 }
 
 function closeModal() {
-    document.getElementById("modal-overlay")?.classList.add("hidden");
     document.getElementById("modal")?.classList.add("hidden");
     document.getElementById("modal-body").innerHTML = "";
 }
