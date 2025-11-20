@@ -1,6 +1,6 @@
 <li data-card-id="{{ card.id }}" class="cursor-pointer p-3 rounded-xl border border-white/30 shadow-lg bg-white/30 backdrop-blur-md
            hover:bg-white/40 transition relative break-words whitespace-normal overflow-hidden max-w-full"
-    hx-get="{% url 'boards:card_modal' card.id %}" hx-target="body" hx-swap="beforeend">
+    hx-get="{% url 'boards:card_modal' card.id %}" hx-target="#modal-body" hx-swap="innerHTML" onclick="openModal()">
 
     <!-- Botão excluir -->
     <button class="absolute top-1 right-1 text-red-600 text-sm z-20" hx-post="{% url 'boards:delete_card' card.id %}"
