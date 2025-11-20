@@ -8,7 +8,10 @@
 
         <!-- Nome + Contador -->
         <div class="flex flex-col leading-tight max-w-[130px] truncate">
-            <span class="text-gray-800 font-semibold truncate">
+            <span id="column-title-{{ column.id }}" contenteditable="true"
+                class="text-gray-800 font-semibold truncate outline-none cursor-text"
+                onblur="renameColumn({{ column.id }})"
+                onkeypress="if(event.key==='Enter'){ event.preventDefault(); this.blur(); }">
                 {{ column.name }}
             </span>
 

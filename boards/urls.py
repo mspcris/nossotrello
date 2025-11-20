@@ -27,5 +27,6 @@ urlpatterns = [
     path("card/<int:card_id>/snippet/", views.card_snippet, name="card_snippet"),
     path("card/<int:card_id>/remove_tag/", views.remove_tag, name="remove_tag"),
     path("board/<int:board_id>/rename/", views.rename_board, name="rename_board"),
+    path("column/<int:column_id>/rename/", views.rename_column, name="rename_column"),
 
 ]

@@ -514,3 +514,21 @@ def rename_board(request, board_id):
     board.save(update_fields=["name"])
 
     return HttpResponse("OK", status=200)
+
+@require_POST
+def rename_column(request, column_id):
+    column = get_object_or_404(Column, id=column_id)
+    name = request.POST.get("name", "").strip()
+
+    if not name:
+        return HttpResponse("Nome inválido", status=400)
+
+    column.name = name
+    column.save(update_fields=["name"])
+
+    # retorna HTML atualizado da coluna
+    return render(
+        request,
+        "boards/partials/column_item.html",
+        {"column": column},
+    )
