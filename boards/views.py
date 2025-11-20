@@ -500,3 +500,17 @@ def remove_tag(request, card_id):
         "snippet": snippet_html,
         "card_id": card.id
     })
+
+
+@require_POST
+def rename_board(request, board_id):
+    board = get_object_or_404(Board, id=board_id)
+    name = request.POST.get("name", "").strip()
+
+    if not name:
+        return HttpResponse("Nome inválido", status=400)
+
+    board.name = name
+    board.save(update_fields=["name"])
+
+    return HttpResponse("OK", status=200)

@@ -26,5 +26,6 @@ urlpatterns = [
     path("card/<int:card_id>/delete-attachment/", views.delete_attachment, name="delete_attachment"),
     path("card/<int:card_id>/snippet/", views.card_snippet, name="card_snippet"),
     path("card/<int:card_id>/remove_tag/", views.remove_tag, name="remove_tag"),
+    path("board/<int:board_id>/rename/", views.rename_board, name="rename_board"),
 
 ]

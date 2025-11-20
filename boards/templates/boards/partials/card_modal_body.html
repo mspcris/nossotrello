@@ -7,8 +7,10 @@
         <div class="flex gap-2">
             <button type="button" class="w-4 h-4 rounded-full border border-gray-300 bg-white"
                 onclick="cardSetTheme('white')"></button>
+
             <button type="button" class="w-4 h-4 rounded-full border border-gray-300 bg-white/10 backdrop-blur-md"
                 onclick="cardSetTheme('aero')"></button>
+
             <button type="button" class="w-4 h-4 rounded-full border border-gray-300 bg-[#1e1e1e]"
                 onclick="cardSetTheme('dark')"></button>
         </div>
@@ -17,26 +19,32 @@
 
     </div>
 
-
-    <div class="flex border-b bg-white/80 backdrop-blur">
+    <!-- ABAS -->
+    <div id="card-tabs" class="flex border-b bg-white/80 backdrop-blur">
         <button type="button" class="card-tab-btn card-tab-active" data-tab-target="card-tab-desc"
-            onclick="cardOpenTab('card-tab-desc')">Descrição</button>
+            onclick="cardOpenTab('card-tab-desc')">
+            Descrição
+        </button>
 
         <button type="button" class="card-tab-btn" data-tab-target="card-tab-check"
-            onclick="cardOpenTab('card-tab-check')">Checklists</button>
+            onclick="cardOpenTab('card-tab-check')">
+            Checklists
+        </button>
 
         <button type="button" class="card-tab-btn" data-tab-target="card-tab-ativ"
-            onclick="cardOpenTab('card-tab-ativ')">Atividade</button>
+            onclick="cardOpenTab('card-tab-ativ')">
+            Atividade
+        </button>
     </div>
 
 
+    <!-- CONTEÚDO DAS ABAS -->
     <div class="flex-1 overflow-y-auto p-5 space-y-6">
 
+        <!-- ABA DESCRIÇÃO — INICIAL -->
         <div id="card-tab-desc" class="card-tab-panel block">
 
-            <!-- FORM SEM hx-on::after-request -->
-            <form method="post" enctype="multipart/form-data" hx-post="{% url 'boards:update_card' card.id %}"
-                hx-target="#modal-body" hx-swap="innerHTML">
+            <form method="post" enctype="multipart/form-data" hx-post="{% url 'boards:update_card' card.id %}">
 
                 {% csrf_token %}
 
@@ -91,13 +99,11 @@
 
                 <div class="mt-6 flex gap-3">
 
-                    <!-- SALVAR atualiza card -->
                     <button type="submit" onclick="refreshCardSnippet({{ card.id }})"
                         class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
                         Salvar
                     </button>
 
-                    <!-- FECHAR atualiza card -->
                     <button type="button" onclick="refreshCardSnippet({{ card.id }}); closeModal();"
                         class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">
                         Fechar
@@ -109,11 +115,13 @@
         </div>
 
 
-        <div id="card-tab-check" class="card-tab-panel hidden opacity-60 text-gray-500">
+        <!-- ABA CHECKLISTS — COMEÇA OCULTA -->
+        <div id="card-tab-check" class="card-tab-panel hidden">
             Checklists serão implementados depois.
         </div>
 
 
+        <!-- ABA ATIVIDADE — COMEÇA OCULTA -->
         <div id="card-tab-ativ" class="card-tab-panel hidden">
 
             <h3 class="text-lg font-semibold mb-2">Atividade</h3>
@@ -121,7 +129,9 @@
             <div class="space-y-3">
                 {% for log in card.logs.all %}
                 <div class="p-3 border rounded bg-gray-50">
-                    <div class="text-sm text-gray-600 mb-1">{{ log.created_at|date:"d/m/Y H:i" }}</div>
+                    <div class="text-sm text-gray-600 mb-1">
+                        {{ log.created_at|date:"d/m/Y H:i" }}
+                    </div>
                     <div class="text-sm">{{ log.content|safe }}</div>
                 </div>
                 {% empty %}
@@ -134,34 +144,3 @@
     </div>
 
 </div>
-
-<script>
-    window.currentCardId = {{ card.id }};
-
-    function cardOpenTab(panelId) {
-        document.querySelectorAll('.card-tab-btn').forEach(btn => {
-            btn.classList.toggle('card-tab-active', btn.getAttribute('data-tab-target') === panelId);
-        });
-
-        document.querySelectorAll('.card-tab-panel').forEach(p => {
-            p.classList.toggle('hidden', p.id !== panelId);
-        });
-
-        sessionStorage.setItem('modalActiveTab', panelId);
-    }
-
-    function cardSetTheme(mode) {
-        const root = document.getElementById('card-modal-root');
-        root.classList.remove('card-theme-white', 'card-theme-aero', 'card-theme-dark');
-
-        if (mode === 'white') root.classList.add('card-theme-white');
-        else if (mode === 'aero') root.classList.add('card-theme-aero');
-        else if (mode === 'dark') root.classList.add('card-theme-dark');
-    }
-
-    function cardToggleFull() {
-        const root = document.getElementById('card-modal-root');
-        root.classList.toggle('max-h-[80vh]');
-        root.classList.toggle('h-[90vh]');
-    }
-</script>

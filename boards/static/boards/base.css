@@ -91,3 +91,30 @@
 .card-theme-dark .ql-editor p {
     color: #ffffff !important;
 }
+/* ===== ABAS DO MODAL ===== */
+
+.card-tab-btn {
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    border-bottom: 2px solid transparent;
+    color: #444;
+    transition: all 0.2s ease-in-out;
+}
+
+.card-tab-btn:hover {
+    background: rgba(0,0,0,0.04);
+}
+
+.card-tab-active {
+    border-bottom: 2px solid #2563eb; /* azul tailwind */
+    color: #2563eb;
+}
+
+.card-tab-panel {
+    display: none;
+}
+
+.card-tab-panel.block {
+    display: block !important;
+}
