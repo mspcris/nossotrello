@@ -1,0 +1,34 @@
+/* Cores reais */
+:root {
+    --gray-color: #e5e7eb;
+    --blue-color: #bfdbfe;
+    --green-color: #bbf7d0;
+    --purple-color: #e9d5ff;
+    --amber-color: #fde68a;
+    --red-color: #fecaca;
+    --pink-color: #fbcfe8;
+    --teal-color: #ccfbf1;
+    --slate-color: #cbd5e1;
+}
+
+/* Vidro fosco base */
+.column-glass {
+    backdrop-filter: blur(12px);
+}
+
+/* Fundo das colunas */
+.gray-column-bg    { background: rgba(229, 231, 235, 0.45); }
+.blue-column-bg    { background: rgba(191, 219, 254, 0.45); }
+.green-column-bg   { background: rgba(187, 247, 208, 0.45); }
+.purple-column-bg  { background: rgba(233, 213, 255, 0.45); }
+.amber-column-bg   { background: rgba(253, 230, 138, 0.45); }
+.red-column-bg     { background: rgba(254, 202, 202, 0.45); }
+.pink-column-bg    { background: rgba(251, 207, 232, 0.45); }
+.teal-column-bg    { background: rgba(204, 251, 241, 0.45); }
+.slate-column-bg   { background: rgba(203, 213, 225, 0.45); }
+
+/* Header colorido */
+.column-header {
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(6px);
+}

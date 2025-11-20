@@ -9,34 +9,38 @@
     ← Voltar aos Quadros
 </a>
 
-
-
-
-
-<!-- Cabeçalho do Board com imagem igual ao estilo da index -->
-<!-- Cabeçalho do Board com imagem adaptativa -->
+<!-- ================================ -->
+<!--   CABEÇALHO COM IMAGEM DO BOARD  -->
+<!-- ================================ -->
 <div class="flex items-center gap-4 mb-6">
 
     {% if board.image %}
-    <div class="relative group inline-block">
+    <!-- CONTAINER DA IMAGEM - será removido com hx-swap="outerHTML" -->
+    <div id="board-image-box" class="relative group inline-block">
 
-        <!-- Container que se adapta ao tamanho da imagem -->
-        <div class="border border-gray-300 rounded-lg overflow-hidden inline-block bg-gray-100">
-            <img src="{{ board.image.url }}" class="max-h-28 w-auto object-contain">
+        <div class="h-28 w-48 border border-gray-300 rounded-lg overflow-hidden bg-white
+                    flex items-center justify-center">
+            <img src="{{ board.image.url }}" class="h-full w-auto object-contain" onerror="this.style.display='none';
+                          this.parentElement.innerHTML=
+                          `<div class='text-red-700 text-center p-4 font-semibold'>
+                                Imagem corrompida<br>⚠️
+                           </div>`;">
         </div>
 
-        <!-- Botão excluir (só aparece no hover) -->
-        <button class="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded 
-                   opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-            hx-post="{% url 'boards:update_board_image' board.id %}?delete=1" hx-target="body" hx-swap="beforeend">
+        <!-- BOTÃO DE REMOVER IMAGEM -->
+        <button class="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded
+                       opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+            hx-post="{% url 'boards:remove_board_image' board.id %}" hx-target="#board-image-box" hx-swap="outerHTML"
+            hx-confirm="Remover a imagem deste quadro?">
             X
         </button>
 
     </div>
 
     {% else %}
-    <div class="w-40 h-24 flex items-center justify-center rounded-lg border border-gray-300 
-               bg-gray-100 text-gray-400 text-3xl cursor-pointer hover:bg-gray-200"
+    <!-- Quando NÃO há imagem -->
+    <div class="h-28 w-48 flex items-center justify-center rounded-lg border border-gray-300 
+                bg-gray-100 text-gray-400 text-3xl cursor-pointer hover:bg-gray-200"
         hx-get="{% url 'boards:update_board_image' board.id %}" hx-target="body" hx-swap="beforeend">
         +
     </div>
@@ -47,24 +51,21 @@
 
 
 
-
-
-
+<!-- ================================ -->
+<!--            COLUNAS              -->
+<!-- ================================ -->
 
 <h3 class="text-lg font-semibold mb-3">Colunas:</h3>
 
-<!-- WRAPPER -->
 <div id="columns-wrapper" class="flex gap-6 overflow-x-auto pb-6 pr-4">
 
     <div id="columns-list" class="flex gap-6">
-
         {% for column in board.columns.all %}
         {% include "boards/partials/column_item.html" %}
         {% endfor %}
-
     </div>
 
-    <!-- Box para criar coluna -->
+    <!-- Criar nova coluna -->
     <div id="add-column-box"
         class="w-64 bg-white/60 backdrop-blur-md border border-gray-300 rounded-xl p-4 h-fit shrink-0 shadow-md">
 
@@ -82,17 +83,21 @@
                 Adicionar Coluna
             </button>
         </form>
-
     </div>
 
 </div>
 
-<!-- SORTABLE -->
+
+
+<!-- ================================ -->
+<!--        SORTABLE + FIX BLUR       -->
+<!-- ================================ -->
 <script>
     function initSortable() {
         document.querySelectorAll("[id^='cards-col-']").forEach(listEl => {
-            if (listEl.dataset.sortableApplied === "1") return;
 
+            // evita duplicar sortable (bug de múltiplos swaps)
+            if (listEl.dataset.sortableApplied === "1") return;
             listEl.dataset.sortableApplied = "1";
 
             new Sortable(listEl, {
@@ -102,6 +107,7 @@
 
                 onEnd: evt => {
                     const csrftoken = document.querySelector("[name=csrfmiddlewaretoken]")?.value;
+
                     fetch("{% url 'boards:move_card' %}", {
                         method: "POST",
                         headers: {
@@ -119,8 +125,23 @@
         });
     }
 
-    document.addEventListener("DOMContentLoaded", initSortable);
-    document.body.addEventListener("htmx:afterSwap", () => initSortable());
+    function fixGlassColumns() {
+        document.querySelectorAll(".column-glass").forEach(col => {
+            col.style.willChange = "transform";
+            col.getBoundingClientRect();
+            col.style.willChange = "auto";
+        });
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        initSortable();
+        fixGlassColumns();
+    });
+
+    document.body.addEventListener("htmx:afterSwap", () => {
+        initSortable();
+        requestAnimationFrame(() => fixGlassColumns());
+    });
 </script>
 
 <style>

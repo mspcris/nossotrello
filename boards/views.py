@@ -256,7 +256,8 @@ def delete_card(request, card_id):
         card.deleted_at = timezone.now()
         card.save(update_fields=["is_deleted", "deleted_at"])
 
-    return HttpResponse(status=204)
+    # IMPORTANTE: retornar 200 com string vazia para o HTMX
+    return HttpResponse("", status=200)
 
 
 # ============================================================
@@ -390,3 +391,32 @@ def remove_board_image(request, board_id):
         board.save(update_fields=["image"])
 
     return HttpResponse('<script>location.reload()</script>')
+
+
+
+from django.utils import timezone
+
+@require_POST
+def delete_attachment(request, card_id):
+    card = get_object_or_404(Card, id=card_id)
+
+    # Se não existe anexo, nada a fazer
+    if not card.attachment:
+        return HttpResponse("No attachment", status=204)
+
+    # REGISTRO NO LOG
+    CardLog.objects.create(
+        card=card,
+        content="Anexo removido",
+        attachment=None
+    )
+
+    # Apaga o arquivo físico
+    card.attachment.delete(save=False)
+
+    # Apaga referência no banco
+    card.attachment = None
+    card.save(update_fields=["attachment"])
+
+    # Retorna o template do modal atualizado
+    return render(request, "boards/partials/card_modal_body.html", {"card": card})

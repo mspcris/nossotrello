@@ -37,13 +37,25 @@ class Column(models.Model):
         ("green", "Verde"),
         ("purple", "Roxo"),
         ("amber", "Bege"),
+
+        # Novas cores
+        ("red", "Vermelho"),
+        ("pink", "Rosa"),
+        ("teal", "Verde-água"),
+        ("indigo", "Índigo"),
     ]
 
     theme = models.CharField(
         max_length=20,
         choices=THEME_CHOICES,
-        default="gray"
+        default="gray",
     )
+
+    class Meta:
+        ordering = ["position"]
+
+    def __str__(self):
+        return f"{self.board.name} - {self.name}"
 
     class Meta:
         ordering = ["position"]

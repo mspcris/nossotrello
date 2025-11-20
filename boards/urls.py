@@ -23,4 +23,6 @@ urlpatterns = [
     path("card/<int:card_id>/delete/", views.delete_card, name="delete_card"),
 
     path("move-card/", views.move_card, name="move_card"),
+    path("card/<int:card_id>/delete-attachment/", views.delete_attachment, name="delete_attachment"),
+
 ]

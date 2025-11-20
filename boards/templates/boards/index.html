@@ -17,20 +17,22 @@
         <!-- SE TIVER IMAGEM -->
         {% if board.image %}
         <a href="{% url 'boards:board_detail' board.id %}">
-            <img src="{{ board.image.url }}" class="h-20 w-full rounded-lg object-cover border border-gray-300" onerror="this.style.display='none';
-                              this.parentElement.innerHTML=
-                              `<div class='text-red-700 text-center p-4 font-semibold'>
-                                  Imagem corrompida<br>⚠️
-                               </div>`;">
+            <div
+                class="h-20 w-full rounded-lg border border-gray-300 overflow-hidden bg-white flex items-center justify-center">
+                <img src="{{ board.image.url }}" class="h-full w-auto object-contain" onerror="this.style.display='none';
+             this.parentElement.innerHTML=
+             `<div class='text-red-700 text-center p-4 font-semibold'>
+                 Imagem corrompida<br>⚠️
+              </div>`;">
+            </div>
         </a>
-
-        <!-- SEM IMAGEM → BOTÃO DE ADICIONAR -->
         {% else %}
-        <div hx-get="{% url 'boards:update_board_image' board.id %}" hx-target="body" hx-swap="beforeend" class="h-20 w-full bg-gray-300 rounded-lg border-2 border-dashed border-gray-600 
-                        flex items-center justify-center text-3xl font-bold text-gray-600 hover:bg-gray-200">
+        <div hx-get="{% url 'boards:update_board_image' board.id %}" hx-target="body" hx-swap="beforeend" class="h-20 w-full bg-gray-300 rounded-lg border-2 border-dashed border-gray-600
+            flex items-center justify-center text-3xl font-bold text-gray-600 hover:bg-gray-200">
             +
         </div>
         {% endif %}
+
 
         <a href="{% url 'boards:board_detail' board.id %}">
             <h2 class="text-xl font-bold">{{ board.name }}</h2>

@@ -5,38 +5,49 @@
 
     <h2 class="text-xl font-semibold mb-4">Editar Card</h2>
 
-    <!-- Campo Título -->
+    <!-- Título -->
     <label class="block text-sm font-medium mb-1">Título</label>
     <input type="text" name="title" value="{{ card.title }}" class="w-full border rounded px-3 py-2 mb-4">
 
-    <!-- Campo Descrição -->
+    <!-- Descrição -->
     <label class="block text-sm font-medium mb-1">Descrição</label>
     <div id="quill-editor" class="border rounded mb-2"></div>
 
-    <!-- Campo Hidden (HTML do Quill) -->
-    <!-- <input type="hidden" id="description-input" name="description" value="{{ card.description|safe }}"> -->
     <input type="hidden" id="description-input" name="description" value="{{ card.description|default_if_none:'' }}">
 
-    <!-- Campo Tags -->
+    <!-- Tags -->
     <label class="block text-sm font-medium mb-1 mt-4">Tags</label>
     <input type="text" name="tags" value="{{ card.tags }}" class="w-full border rounded px-3 py-2 mb-4"
         placeholder="Ex.: urgente, revisão...">
 
-    <!-- Campo Anexos -->
+    <!-- Upload de anexo -->
     <label class="block text-sm font-medium mb-1 mt-4">Anexos</label>
-    <input type="file" name="attachment" class="mb-4">
+    <input type="file" name="attachment" class="mb-2">
 
+    <!-- ========================= -->
+    <!-- ANEXO ATUAL (SE EXISTIR)  -->
+    <!-- ========================= -->
     {% if card.attachment %}
-    <div class="mt-3">
+    <div id="attachment-box" class="relative bg-gray-50 border p-3 rounded mb-4">
+
         <p class="text-sm font-medium mb-1">Arquivo atual:</p>
-        <a href="{{ card.attachment.url }}" target="_blank" class="text-blue-600 hover:underline text-sm">
+
+        <a href="{{ card.attachment.url }}" target="_blank" class="text-blue-600 hover:underline text-sm block mb-2">
             {{ card.attachment.name }}
         </a>
+
         {% with ext=card.attachment.url|lower %}
         {% if ext|slice:"-4:" == ".png" or ext|slice:"-4:" == ".jpg" or ext|slice:"-5:" == ".jpeg" %}
-        <img src="{{ card.attachment.url }}" class="mt-2 max-h-40 rounded">
+        <img src="{{ card.attachment.url }}" class="max-h-40 rounded mb-2">
         {% endif %}
         {% endwith %}
+
+        <!-- Botão deletar anexo -->
+        <button hx-post="{% url 'boards:delete_attachment' card.id %}" hx-target="#modal-body" hx-swap="innerHTML"
+            hx-confirm="Remover este anexo?" class="absolute top-2 right-2 bg-red-600 text-white px-2 py-1 rounded">
+            ✕
+        </button>
+
     </div>
     {% endif %}
 
@@ -45,28 +56,26 @@
         <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
             Salvar
         </button>
+
         <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">
             Cancelar
         </button>
     </div>
 
-
-
     <hr class="my-6">
 
+    <!-- Histórico -->
     <h3 class="text-lg font-semibold mb-2">Histórico</h3>
 
     <div class="space-y-3">
-
         {% for log in card.logs.all %}
         <div class="p-3 border rounded bg-gray-50">
+
             <div class="text-sm text-gray-600 mb-1">
                 {{ log.created_at|date:"d/m/Y H:i" }}
             </div>
 
-            <div class="text-sm">
-                {{ log.content|safe }}
-            </div>
+            <div class="text-sm">{{ log.content|safe }}</div>
 
             {% if log.attachment %}
             <div class="mt-2">
@@ -80,8 +89,5 @@
         <p class="text-gray-400 text-sm">Nenhum histórico ainda.</p>
         {% endfor %}
     </div>
-
-
-
 
 </form>
