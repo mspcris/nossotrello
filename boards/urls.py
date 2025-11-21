@@ -35,5 +35,6 @@ urlpatterns = [
     path("home/wallpaper/", views.update_home_wallpaper, name="update_home_wallpaper"),
     path("home/wallpaper/remove/", views.remove_home_wallpaper, name="remove_home_wallpaper"),
     path("home/wallpaper.css", views.home_wallpaper_css, name="home_wallpaper_css"),
+    path("card/<int:card_id>/activity/add/", views.add_activity, name="add_activity"),
 
 ]

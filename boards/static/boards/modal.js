@@ -38,14 +38,16 @@ window.refreshCardSnippet = function (cardId) {
 // =====================================================
 window.cardOpenTab = function (panelId) {
     document.querySelectorAll('.card-tab-btn').forEach(btn => {
-        btn.classList.toggle('card-tab-active',
-            btn.getAttribute('data-tab-target') === panelId);
+        btn.classList.toggle(
+            'card-tab-active',
+            btn.getAttribute('data-tab-target') === panelId
+        );
     });
 
     document.querySelectorAll('.card-tab-panel').forEach(panel => {
-        panel.classList.toggle('block', panel.id === panelId);
-        panel.classList.toggle('hidden', panel.id !== panelId);
-
+        const isTarget = panel.id === panelId;
+        panel.classList.toggle('block', isTarget);
+        panel.classList.toggle('hidden', !isTarget);
     });
 
     sessionStorage.setItem('modalActiveTab', panelId);
@@ -79,25 +81,49 @@ window.cardToggleFull = function () {
 // Inicializa Quill e aplica tema salvo
 // =====================================================
 window.initCardModal = function () {
+
+    // ----- Editor da DESCRIÇÃO -----
     const hiddenInput = document.getElementById("description-input");
-    if (!hiddenInput) return;
+    if (hiddenInput) {
+        const quill = new Quill("#quill-editor", {
+            theme: "snow",
+            modules: {
+                toolbar: [
+                    [{ header: [1, 2, 3, false] }],
+                    ["bold", "italic", "underline"],
+                    ["link", "image"],
+                    [{ list: "ordered" }, { list: "bullet" }]
+                ]
+            }
+        });
 
-    const quill = new Quill("#quill-editor", {
-        theme: "snow",
-        modules: {
-            toolbar: [
-                [{ header: [1, 2, 3, false] }],
-                ["bold", "italic", "underline"],
-                ["link", "image"],
-                [{ list: "ordered" }, { list: "bullet" }]
-            ]
-        }
-    });
+        quill.root.innerHTML = hiddenInput.value || "";
+        quill.on("text-change", () => {
+            hiddenInput.value = quill.root.innerHTML;
+        });
+    }
 
-    quill.root.innerHTML = hiddenInput.value || "";
-    quill.on("text-change", () => hiddenInput.value = quill.root.innerHTML);
+    // ----- Editor da ATIVIDADE -----
+    const activityHidden = document.getElementById("activity-input");
+    if (activityHidden) {
+        const quillAtiv = new Quill("#quill-editor-ativ", {
+            theme: "snow",
+            modules: {
+                toolbar: [
+                    [{ header: [1, 2, 3, false] }],
+                    ["bold", "italic", "underline"],
+                    ["link", "image"],
+                    [{ list: "ordered" }, { list: "bullet" }]
+                ]
+            }
+        });
 
-    // Reaplicar tema salvo
+        quillAtiv.on("text-change", () => {
+            activityHidden.value = quillAtiv.root.innerHTML;
+        });
+    }
+
+    // ----- Reaplicar tema salvo -----
     const savedTheme = sessionStorage.getItem("currentModalTheme");
     if (savedTheme) {
         const root = document.getElementById("card-modal-root");
@@ -114,7 +140,6 @@ document.body.addEventListener("htmx:afterSwap", function (e) {
     openModal();
     initCardModal();
 
-    // Restaurar aba ativa
     const active = sessionStorage.getItem("modalActiveTab") || "card-tab-desc";
     cardOpenTab(active);
 });
@@ -143,65 +168,22 @@ window.removeTagInstant = async function (cardId, tag) {
     const card = document.querySelector(`#card-${data.card_id}`);
     if (card) card.outerHTML = data.snippet;
 
-   window.initCardModal = function () {
-
-    /* EDITOR DE DESCRIÇÃO (JÁ EXISTENTE) */
-    const hiddenInput = document.getElementById("description-input");
-    if (hiddenInput) {
-        const quill = new Quill("#quill-editor", {
-            theme: "snow",
-            modules: {
-                toolbar: [
-                    [{ header: [1, 2, 3, false] }],
-                    ["bold", "italic", "underline"],
-                    ["link", "image"],
-                    [{ list: "ordered" }, { list: "bullet" }]
-                ]
-            }
-        });
-
-        quill.root.innerHTML = hiddenInput.value || "";
-        quill.on("text-change", () => hiddenInput.value = quill.root.innerHTML);
-    }
-
-    /* EDITOR DE ATIVIDADE (NOVO) */
-    const activityHidden = document.getElementById("activity-input");
-    if (activityHidden) {
-        const quillAtiv = new Quill("#quill-editor-ativ", {
-            theme: "snow",
-            modules: {
-                toolbar: [
-                    [{ header: [1, 2, 3, false] }],
-                    ["bold", "italic", "underline"],
-                    ["link", "image"],
-                    [{ list: "ordered" }, { list: "bullet" }]
-                ]
-            }
-        });
-
-        quillAtiv.on("text-change", () => {
-            activityHidden.value = quillAtiv.root.innerHTML;
-        });
-    }
-
-    /* TEMA SALVO */
-    const savedTheme = sessionStorage.getItem("currentModalTheme");
-    if (savedTheme) {
-        const root = document.getElementById("card-modal-root");
-        if (root) root.classList.add(savedTheme);
-    }
-};
-
+    initCardModal();
 
     const active = sessionStorage.getItem("modalActiveTab") || "card-tab-desc";
     cardOpenTab(active);
 };
 
-window.submitActivity = async function(cardId) {
-    const content = document.getElementById("activity-input").value;
+// =====================================================
+// Nova atividade: enviar e limpar editor
+// =====================================================
+window.submitActivity = async function (cardId) {
     const csrf = document.querySelector("meta[name='csrf-token']").content;
+    const activityInput = document.getElementById("activity-input");
+    if (!activityInput) return;
 
-    if (!content.trim()) return;
+    const content = activityInput.value.trim();
+    if (!content) return;
 
     const formData = new FormData();
     formData.append("content", content);
@@ -212,15 +194,25 @@ window.submitActivity = async function(cardId) {
         body: formData
     });
 
-    if (response.ok) {
-        const html = await response.text();
-        document.querySelector("#card-tab-ativ").innerHTML = html;
-        initCardModal();
+    if (!response.ok) return;
+
+    const html = await response.text();
+
+    const wrapper = document.getElementById("activity-panel-wrapper");
+    if (wrapper) {
+        wrapper.innerHTML = html;
     }
+
+    // limpa editor
+    window.clearActivityEditor();
+    // re-inicializa quill (pois o DOM foi alterado)
+    initCardModal();
 };
 
-window.clearActivityEditor = function() {
-    const container = document.querySelector("#quill-editor-ativ .ql-editor");
-    if (container) container.innerHTML = "";
-    document.getElementById("activity-input").value = "";
+window.clearActivityEditor = function () {
+    const editor = document.querySelector("#quill-editor-ativ .ql-editor");
+    const hidden = document.getElementById("activity-input");
+
+    if (editor) editor.innerHTML = "";
+    if (hidden) hidden.value = "";
 };

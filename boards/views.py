@@ -757,3 +757,30 @@ def add_activity(request, card_id):
     ).content.decode("utf-8")
 
     return HttpResponse(html)
+
+# ======================================================================
+# ADICIONAR ATIVIDADE NO CARD
+# Quem chama? → submitActivity() via HTMX POST
+# ======================================================================
+
+@require_POST
+def add_activity(request, card_id):
+    card = get_object_or_404(Card, id=card_id)
+
+    content = request.POST.get("content", "").strip()
+    if not content:
+        return HttpResponse("Conteúdo vazio", status=400)
+
+    CardLog.objects.create(
+        card=card,
+        content=content,
+        attachment=None
+    )
+
+    html = render(
+        request,
+        "boards/partials/card_activity_panel.html",
+        {"card": card}
+    ).content.decode("utf-8")
+
+    return HttpResponse(html)
