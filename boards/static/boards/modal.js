@@ -203,10 +203,8 @@ window.submitActivity = async function (cardId) {
         wrapper.innerHTML = html;
     }
 
-    // limpa editor
+    // limpa editor (sem recriar Quill)
     window.clearActivityEditor();
-    // re-inicializa quill (pois o DOM foi alterado)
-    initCardModal();
 };
 
 window.clearActivityEditor = function () {

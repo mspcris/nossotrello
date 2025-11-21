@@ -1,0 +1,113 @@
+{% load tag_helpers %}
+
+<!-- CONTEÚDO INTERNO DO MODAL DO CARD -->
+<div class="flex-1 p-5 space-y-6 overflow-hidden">
+
+    <!-- ABA DESCRIÇÃO -->
+    <div id="card-tab-desc" class="card-tab-panel block">
+
+        <form method="post" enctype="multipart/form-data" hx-post="{% url 'boards:update_card' card.id %}"
+            hx-target="#modal-body" hx-swap="innerHTML">
+
+            {% csrf_token %}
+
+            <label class="block text-sm font-medium mb-1">Título</label>
+            <input type="text" name="title" value="{{ card.title }}" class="w-full border rounded px-3 py-2 mb-4">
+
+            <label class="block text-sm font-medium mb-1">Descrição</label>
+            <div id="quill-editor" class="border rounded mb-2"></div>
+            <input type="hidden" id="description-input" name="description"
+                value="{{ card.description|default_if_none:'' }}">
+
+            <label class="block text-sm font-medium mb-1 mt-4">Etiquetas</label>
+            <input type="text" name="tags" value="{{ card.tags|default_if_none:'' }}"
+                class="w-full border rounded px-3 py-2 mb-2">
+
+            {% if card.tags %}
+            <div id="tags-preview" class="flex flex-wrap gap-1 mb-4">
+                {% for tag in card.tags|split_tags %}
+                {% with tag|tag_color as color %}
+                <span class="group relative flex items-center text-xs font-semibold px-2 py-1 rounded-md"
+                    style="background-color: {{ color }}20; color: {{ color }}; border: 1px solid {{ color }};"
+                    data-tag="{{ tag }}">
+                    {{ tag }}
+                    <button type="button"
+                        class="ml-1 text-red-600 hover:text-red-900 font-bold opacity-0 group-hover:opacity-100 transition"
+                        onclick="removeTagInstant({{ card.id }}, '{{ tag }}')">✕</button>
+                </span>
+                {% endwith %}
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <label class="block text-sm font-medium mb-1 mt-4">Anexos</label>
+            <input type="file" name="attachment" class="mb-4">
+
+            {% if card.attachment %}
+            <div class="mt-3 relative">
+                <p class="text-sm font-medium mb-1">Arquivo atual:</p>
+
+                <a href="{{ card.attachment.url }}" target="_blank"
+                    class="text-blue-600 hover:underline text-sm block mb-1">
+                    {{ card.attachment.name }}
+                </a>
+
+                {% with ext=card.attachment.url|lower %}
+                {% if ext|slice:"-4:" == ".png" or ext|slice:"-4:" == ".jpg" or ext|slice:"-5:" == ".jpeg" %}
+                <img src="{{ card.attachment.url }}" class="mt-2 max-h-40 rounded">
+                {% endif %}
+                {% endwith %}
+            </div>
+            {% endif %}
+
+            <div class="mt-6 flex gap-3">
+                <button type="submit" onclick="refreshCardSnippet({{ card.id }})"
+                    class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                    Salvar
+                </button>
+
+                <button type="button" onclick="refreshCardSnippet({{ card.id }}); closeModal();"
+                    class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">
+                    Fechar
+                </button>
+            </div>
+
+        </form>
+    </div>
+
+    <!-- ABA CHECKLISTS -->
+    <div id="card-tab-check" class="card-tab-panel hidden">
+        Checklists serão implementados depois.
+    </div>
+
+    <!-- ABA ATIVIDADE -->
+    <div id="card-tab-ativ" class="card-tab-panel hidden">
+
+        <!-- Editor de nova atividade -->
+        <div class="mb-5">
+            <label class="block text-sm font-medium mb-1">Nova atividade</label>
+
+            <div id="quill-editor-ativ" class="border rounded mb-2"></div>
+            <input type="hidden" id="activity-input" name="activity">
+
+            <div class="flex gap-3 mt-3">
+                <button type="button" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                    onclick="submitActivity({{ card.id }})">
+                    Incluir
+                </button>
+
+                <button type="button" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+                    onclick="clearActivityEditor()">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+
+        <!-- Wrapper para o painel de histórico (parcial) -->
+        <div id="activity-panel-wrapper">
+            {% include "boards/partials/card_activity_panel.html" %}
+        </div>
+
+    </div>
+
+</div>

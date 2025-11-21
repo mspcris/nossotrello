@@ -42,7 +42,8 @@
         <!-- ABA DESCRIÇÃO -->
         <div id="card-tab-desc" class="card-tab-panel block">
 
-            <form method="post" enctype="multipart/form-data" hx-post="{% url 'boards:update_card' card.id %}">
+            <form method="post" enctype="multipart/form-data" hx-post="{% url 'boards:update_card' card.id %}"
+                hx-target="#modal-body" hx-swap="innerHTML">
 
                 {% csrf_token %}
 
