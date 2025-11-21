@@ -34,7 +34,7 @@ window.refreshCardSnippet = function (cardId) {
 };
 
 // =====================================================
-// Alternar abas do modal (GLOBAL)
+// Alternar abas do modal
 // =====================================================
 window.cardOpenTab = function (panelId) {
     document.querySelectorAll('.card-tab-btn').forEach(btn => {
@@ -54,7 +54,7 @@ window.cardOpenTab = function (panelId) {
 };
 
 // =====================================================
-// Aplicar tema (GLOBAL)
+// Aplicar tema
 // =====================================================
 window.cardSetTheme = function (mode) {
     const root = document.getElementById('card-modal-root');
@@ -78,11 +78,11 @@ window.cardToggleFull = function () {
 };
 
 // =====================================================
-// Inicializa Quill e aplica tema salvo
+// Inicializa Quill + Prism + Copiar Código
 // =====================================================
 window.initCardModal = function () {
 
-    // ----- Editor da DESCRIÇÃO -----
+    // ----- DESCRIÇÃO -----
     const hiddenInput = document.getElementById("description-input");
     if (hiddenInput) {
         const quill = new Quill("#quill-editor", {
@@ -103,7 +103,7 @@ window.initCardModal = function () {
         });
     }
 
-    // ----- Editor da ATIVIDADE -----
+    // ----- ATIVIDADE -----
     const activityHidden = document.getElementById("activity-input");
     if (activityHidden) {
         const quillAtiv = new Quill("#quill-editor-ativ", {
@@ -123,16 +123,24 @@ window.initCardModal = function () {
         });
     }
 
-    // ----- Reaplicar tema salvo -----
+    // ----- Tema salvo -----
     const savedTheme = sessionStorage.getItem("currentModalTheme");
     if (savedTheme) {
         const root = document.getElementById("card-modal-root");
         if (root) root.classList.add(savedTheme);
     }
+
+    // ----- PrismJS Highlight -----
+    if (window.Prism) {
+        Prism.highlightAll();
+    }
+
+    // ----- Copiar botão e wrapper -----
+    enhanceCodeBlocks();
 };
 
 // =====================================================
-// HTMX: quando o modal for injetado
+// HTMX — quando o modal é injetado
 // =====================================================
 document.body.addEventListener("htmx:afterSwap", function (e) {
     if (e.detail.target.id !== "modal-body") return;
@@ -145,7 +153,7 @@ document.body.addEventListener("htmx:afterSwap", function (e) {
 });
 
 // =====================================================
-// Remover TAG em tempo real
+// Remover TAG
 // =====================================================
 window.removeTagInstant = async function (cardId, tag) {
     const csrf = document.querySelector("meta[name='csrf-token']").content;
@@ -175,7 +183,7 @@ window.removeTagInstant = async function (cardId, tag) {
 };
 
 // =====================================================
-// Nova atividade: enviar e limpar editor
+// Nova atividade
 // =====================================================
 window.submitActivity = async function (cardId) {
     const csrf = document.querySelector("meta[name='csrf-token']").content;
@@ -203,8 +211,11 @@ window.submitActivity = async function (cardId) {
         wrapper.innerHTML = html;
     }
 
-    // limpa editor (sem recriar Quill)
     window.clearActivityEditor();
+
+    // Reaplicar highlight no histórico atualizado
+    enhanceCodeBlocks();
+    if (window.Prism) Prism.highlightAll();
 };
 
 window.clearActivityEditor = function () {
@@ -214,3 +225,34 @@ window.clearActivityEditor = function () {
     if (editor) editor.innerHTML = "";
     if (hidden) hidden.value = "";
 };
+
+// =====================================================
+// Code Wrapper + Botão Copiar
+// =====================================================
+function enhanceCodeBlocks() {
+    document.querySelectorAll("pre:not(.enhanced)").forEach(pre => {
+        pre.classList.add("enhanced");
+
+        const wrapper = document.createElement("div");
+        wrapper.className = "code-wrapper relative";
+
+        const button = document.createElement("button");
+        button.className = "copy-code-btn absolute top-2 right-2 bg-gray-800 text-white text-xs px-2 py-1 rounded";
+        button.innerText = "Copiar";
+
+        pre.parentNode.insertBefore(wrapper, pre);
+        wrapper.appendChild(pre);
+        wrapper.appendChild(button);
+    });
+}
+
+document.addEventListener("click", function (e) {
+    if (!e.target.matches(".copy-code-btn")) return;
+
+    const codeBlock = e.target.closest(".code-wrapper").querySelector("code");
+    const text = codeBlock.innerText;
+
+    navigator.clipboard.writeText(text);
+    e.target.innerText = "Copiado!";
+    setTimeout(() => e.target.innerText = "Copiar", 1500);
+});
