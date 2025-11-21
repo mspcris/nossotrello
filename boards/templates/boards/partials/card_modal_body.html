@@ -124,15 +124,25 @@
         <!-- ABA ATIVIDADE — COMEÇA OCULTA -->
         <div id="card-tab-ativ" class="card-tab-panel hidden">
 
-            <h3 class="text-lg font-semibold mb-2">Atividade</h3>
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-lg font-semibold">Atividade</h3>
 
-            <div class="space-y-3">
+                <!-- Área reservada para ações futuras (clip, filtros, etc.) -->
+                <div class="flex items-center gap-2 text-xs text-gray-500">
+                    <!-- Futuro: ícone de clipe para anexos e outros controles -->
+                </div>
+            </div>
+
+            <!-- Painel de histórico -->
+            <div class="activity-panel space-y-3">
                 {% for log in card.logs.all %}
-                <div class="p-3 border rounded bg-gray-50">
-                    <div class="text-sm text-gray-600 mb-1">
+                <div class="activity-item">
+                    <div class="activity-meta">
                         {{ log.created_at|date:"d/m/Y H:i" }}
                     </div>
-                    <div class="text-sm">{{ log.content|safe }}</div>
+                    <div class="activity-content">
+                        {{ log.content|safe }}
+                    </div>
                 </div>
                 {% empty %}
                 <p class="text-gray-400 text-sm">Nenhuma atividade ainda.</p>
@@ -141,6 +151,5 @@
 
         </div>
 
-    </div>
 
-</div>
+    </div>

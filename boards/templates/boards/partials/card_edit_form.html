@@ -1,0 +1,56 @@
+{% load static %}
+{% load tag_helpers %}
+
+<div class="p-6 bg-white rounded-xl shadow-md w-full max-w-3xl mx-auto">
+
+    <h2 class="text-xl font-semibold mb-4">Editar Card</h2>
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <!-- TÍTULO -->
+        <label class="block text-sm font-medium mb-1">Título</label>
+        <input type="text" name="title" value="{{ card.title }}" class="w-full border rounded px-3 py-2 mb-4">
+
+        <!-- DESCRIÇÃO -->
+        <label class="block text-sm font-medium mb-1">Descrição</label>
+        <textarea name="description" class="w-full border rounded px-3 py-2 mb-4"
+            rows="5">{{ card.description|default_if_none:'' }}</textarea>
+
+        <!-- ETIQUETAS -->
+        <label class="block text-sm font-medium mb-1">Etiquetas</label>
+        <input type="text" name="tags" value="{{ card.tags|default_if_none:'' }}"
+            class="w-full border rounded px-3 py-2 mb-4">
+
+        <!-- ANEXO -->
+        <label class="block text-sm font-medium mb-1">Anexo</label>
+        <input type="file" name="attachment" class="mb-4">
+
+        {% if card.attachment %}
+        <div class="mb-4">
+            <p class="text-sm font-medium">Arquivo atual:</p>
+            <a href="{{ card.attachment.url }}" target="_blank" class="text-blue-600 hover:underline text-sm">
+                {{ card.attachment.name }}
+            </a>
+
+            {% with ext=card.attachment.url|lower %}
+            {% if ext|slice:"-4:" == ".png" or ext|slice:"-4:" == ".jpg" or ext|slice:"-5:" == ".jpeg" %}
+            <img src="{{ card.attachment.url }}" class="mt-2 max-h-40 rounded">
+            {% endif %}
+            {% endwith %}
+        </div>
+        {% endif %}
+
+        <!-- BOTÕES -->
+        <div class="flex gap-3 mt-6">
+            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                Salvar
+            </button>
+
+            <a href="/board/{{ card.column.board.id }}/" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">
+                Cancelar
+            </a>
+        </div>
+
+    </form>
+</div>

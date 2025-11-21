@@ -64,9 +64,10 @@
 
     <!-- Modal Global -->
     <div id="modal" class="fixed inset-0 flex items-center justify-center hidden">
-        <div class="bg-white rounded shadow-lg w-1/2 max-h-[85vh] overflow-hidden flex flex-col">
+        <div
+            class="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl w-4/5 max-w-5xl h-[92vh] overflow-hidden flex flex-col">
 
-            <div class="flex justify-end items-center p-2 gap-3">
+            <div class="flex justify-end items-center p-2 gap-3 border-b border-gray-200 bg-white/80 backdrop-blur-sm">
 
                 <button type="button" class="text-gray-500 hover:text-gray-900 text-lg" title="Tela cheia"
                     onclick="cardToggleFull()">
@@ -79,9 +80,11 @@
                 </button>
             </div>
 
-            <div id="modal-body" class="overflow-y-auto px-4 pb-4"></div>
+            <div id="modal-body" class="flex-1 overflow-y-auto px-4 pb-4"></div>
         </div>
     </div>
+
+
 
     <script src="{% static 'boards/modal.js' %}"></script>
 

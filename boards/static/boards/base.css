@@ -200,3 +200,37 @@ body.home-background .new-board-button:hover {
     background-size: cover;
     background-position: center;
 }
+
+/* ============================================================
+   PAINEL DE ATIVIDADE DO MODAL
+   - Fundo fosco leve para leitura em qualquer wallpaper/tema
+   ============================================================ */
+
+.activity-panel {
+    max-height: 60vh;
+    overflow-y: auto;
+    padding: 8px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border: 1px solid rgba(148, 163, 184, 0.4); /* slate-400 */
+}
+
+.activity-item {
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(248, 250, 252, 0.9);       /* slate-50 */
+    border: 1px solid rgba(226, 232, 240, 0.9); /* slate-200 */
+}
+
+.activity-meta {
+    font-size: 0.75rem;   /* 12px */
+    color: #6b7280;       /* gray-500 */
+    margin-bottom: 4px;
+}
+
+.activity-content {
+    font-size: 0.875rem;  /* 14px */
+    color: #111827;       /* gray-900 */
+}
