@@ -1,6 +1,7 @@
 {% load tag_helpers %}
 
-<div id="card-modal-root" class="flex flex-col max-h-[80vh]">
+<div id="card-modal-root" class="flex flex-col h-full">
+
 
     <div class="flex items-center justify-between px-4 py-3 border-b bg-white/80 backdrop-blur-md">
 
@@ -35,11 +36,36 @@
             onclick="cardOpenTab('card-tab-ativ')">
             Atividade
         </button>
+
+
+        <!-- EDITOR DE NOVA ATIVIDADE -->
+        <div class="mb-5">
+
+            <label class="block text-sm font-medium mb-1">Nova atividade</label>
+
+            <div id="quill-editor-ativ" class="border rounded mb-2"></div>
+
+            <input type="hidden" id="activity-input" name="activity">
+
+            <div class="flex gap-3 mt-3">
+                <button type="button" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                    onclick="submitActivity({{ card.id }})">
+                    Incluir
+                </button>
+
+                <button type="button" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+                    onclick="clearActivityEditor()">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+
     </div>
 
 
     <!-- CONTEÚDO DAS ABAS -->
-    <div class="flex-1 overflow-y-auto p-5 space-y-6">
+    <div class="flex-1 p-5 space-y-6 overflow-hidden">
+
 
         <!-- ABA DESCRIÇÃO — INICIAL -->
         <div id="card-tab-desc" class="card-tab-panel block">

@@ -724,3 +724,36 @@ def home_wallpaper_css(request):
     """
 
     return HttpResponse(css, content_type="text/css")
+
+
+# ======================================================================
+# ADICIONAR ATIVIDADE NO CARD
+# Quem chama? → submitActivity() via HTMX POST
+# ======================================================================
+
+from django.views.decorators.http import require_POST
+
+@require_POST
+def add_activity(request, card_id):
+    card = get_object_or_404(Card, id=card_id)
+
+    content = request.POST.get("content", "").strip()
+
+    if not content:
+        return HttpResponse("Conteúdo vazio", status=400)
+
+    # salva no log
+    CardLog.objects.create(
+        card=card,
+        content=content,
+        attachment=None
+    )
+
+    # retorna apenas a aba de atividades
+    html = render(
+        request,
+        "boards/partials/card_activity_panel.html",
+        {"card": card}
+    ).content.decode("utf-8")
+
+    return HttpResponse(html)

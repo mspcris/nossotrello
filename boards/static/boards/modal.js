@@ -143,9 +143,84 @@ window.removeTagInstant = async function (cardId, tag) {
     const card = document.querySelector(`#card-${data.card_id}`);
     if (card) card.outerHTML = data.snippet;
 
-    initCardModal();
+   window.initCardModal = function () {
+
+    /* EDITOR DE DESCRIÇÃO (JÁ EXISTENTE) */
+    const hiddenInput = document.getElementById("description-input");
+    if (hiddenInput) {
+        const quill = new Quill("#quill-editor", {
+            theme: "snow",
+            modules: {
+                toolbar: [
+                    [{ header: [1, 2, 3, false] }],
+                    ["bold", "italic", "underline"],
+                    ["link", "image"],
+                    [{ list: "ordered" }, { list: "bullet" }]
+                ]
+            }
+        });
+
+        quill.root.innerHTML = hiddenInput.value || "";
+        quill.on("text-change", () => hiddenInput.value = quill.root.innerHTML);
+    }
+
+    /* EDITOR DE ATIVIDADE (NOVO) */
+    const activityHidden = document.getElementById("activity-input");
+    if (activityHidden) {
+        const quillAtiv = new Quill("#quill-editor-ativ", {
+            theme: "snow",
+            modules: {
+                toolbar: [
+                    [{ header: [1, 2, 3, false] }],
+                    ["bold", "italic", "underline"],
+                    ["link", "image"],
+                    [{ list: "ordered" }, { list: "bullet" }]
+                ]
+            }
+        });
+
+        quillAtiv.on("text-change", () => {
+            activityHidden.value = quillAtiv.root.innerHTML;
+        });
+    }
+
+    /* TEMA SALVO */
+    const savedTheme = sessionStorage.getItem("currentModalTheme");
+    if (savedTheme) {
+        const root = document.getElementById("card-modal-root");
+        if (root) root.classList.add(savedTheme);
+    }
+};
+
 
     const active = sessionStorage.getItem("modalActiveTab") || "card-tab-desc";
     cardOpenTab(active);
 };
 
+window.submitActivity = async function(cardId) {
+    const content = document.getElementById("activity-input").value;
+    const csrf = document.querySelector("meta[name='csrf-token']").content;
+
+    if (!content.trim()) return;
+
+    const formData = new FormData();
+    formData.append("content", content);
+
+    const response = await fetch(`/card/${cardId}/activity/add/`, {
+        method: "POST",
+        headers: { "X-CSRFToken": csrf },
+        body: formData
+    });
+
+    if (response.ok) {
+        const html = await response.text();
+        document.querySelector("#card-tab-ativ").innerHTML = html;
+        initCardModal();
+    }
+};
+
+window.clearActivityEditor = function() {
+    const container = document.querySelector("#quill-editor-ativ .ql-editor");
+    if (container) container.innerHTML = "";
+    document.getElementById("activity-input").value = "";
+};
