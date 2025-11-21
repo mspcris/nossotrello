@@ -18,7 +18,12 @@
 
 <!-- ======================== MENU HAMBÚRGUER ======================== -->
 <div class="relative mt-4">
-    <button id="board-menu-btn" class="text-xl">☰</button>
+    <button id="board-menu-btn" class="text-xl text-gray-900 bg-white/80 border border-gray-400 rounded-md px-2 py-1 shadow-md
+               hover:bg-white transition">
+        ☰
+    </button>
+
+
 
     <div id="board-menu" class="hidden absolute left-0 mt-2 bg-white shadow-lg rounded-md border p-2 w-48 z-50">
         <a href="{% url 'boards:boards_index' %}" class="block px-4 py-2 hover:bg-gray-100 rounded">
@@ -90,14 +95,16 @@
 
 <!-- ======================== FILTRO DE TAGS ======================== -->
 <div class="mb-6 flex flex-wrap items-center gap-2">
-    <span class="text-sm font-semibold text-gray-600">Filtrar por etiquetas:</span>
+    <span class="text-sm font-semibold text-gray-600 board-label">Filtrar por etiquetas:</span>
+
 
     <input type="text" id="tag-filter" placeholder="Ex: urgente" class="border rounded px-3 py-2 text-sm w-60"
         oninput="filterByTag(this.value)">
 </div>
 
 
-<h3 class="text-lg font-semibold mb-3">Colunas:</h3>
+<h3 class="text-lg font-semibold mb-3 board-label">Colunas:</h3>
+
 
 
 
