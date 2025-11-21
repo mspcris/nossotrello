@@ -8,16 +8,11 @@ from django.utils import timezone
 
 class Board(models.Model):
     name = models.CharField(max_length=255)
+    image = models.ImageField(upload_to="board_covers/", null=True, blank=True)
 
-    # IMAGEM DO QUADRO (usada como banner / logo)
-    image = models.ImageField(
-        upload_to="board_covers/",
-        blank=True,
-        null=True
-    )
+    background_image = models.ImageField(upload_to="board_backgrounds/", null=True, blank=True)
+    background_url = models.URLField(null=True, blank=True)
 
-    def __str__(self):
-        return self.name
 
 
 # ============================================================

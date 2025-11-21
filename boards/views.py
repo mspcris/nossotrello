@@ -63,9 +63,34 @@ def extract_base64_and_convert(html_content):
 # Quem chama? → navegador quando acessa "/"
 # ======================================================================
 
+import os
+import random
+from django.conf import settings
+
 def index(request):
     boards = Board.objects.all()
-    return render(request, "boards/index.html", {"boards": boards})
+
+    # Caminho absoluto da pasta static/images/home/
+    home_bg_path = os.path.join(settings.BASE_DIR, "static", "images", "home")
+
+    # Lista todos os arquivos da pasta
+    try:
+        bg_files = [
+            f for f in os.listdir(home_bg_path)
+            if f.lower().endswith((".jpg", ".jpeg", ".png", ".webp"))
+        ]
+    except FileNotFoundError:
+        bg_files = []
+
+    # Escolhe uma imagem aleatória (se existir)
+    bg_image = random.choice(bg_files) if bg_files else None
+
+    return render(request, "boards/index.html", {
+        "boards": boards,
+        "home_bg": True,
+        "home_bg_image": bg_image,
+    })
+
 
 
 
@@ -592,3 +617,110 @@ def remove_board_wallpaper(request, board_id):
     board.background_url = ""
     board.save()
     return HttpResponse('<script>location.reload()</script>')
+
+
+def board_wallpaper_css(request, board_id):
+    board = Board.objects.get(id=board_id)
+
+    css = "body {"
+
+    # background a partir do upload
+    if board.background_image and board.background_image.name:
+        css += f'background-image: url("{board.background_image.url}");'
+
+    # background a partir de URL externa
+    elif board.background_url:
+        css += f'background-image: url("{board.background_url}");'
+
+    # caso não tenha wallpaper
+    else:
+        css += 'background-color: #f0f0f0;'
+
+    css += """
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+    }
+    """
+
+    return HttpResponse(css, content_type="text/css")
+
+
+# ---------------- HOME WALLPAPER ----------------
+
+from django.conf import settings
+import os
+
+HOME_WALLPAPER_FOLDER = os.path.join(settings.MEDIA_ROOT, "home_wallpapers")
+
+def update_home_wallpaper(request):
+
+    os.makedirs(HOME_WALLPAPER_FOLDER, exist_ok=True)
+
+    if request.method == "GET":
+        return render(request, "boards/partials/home_wallpaper_form.html", {})
+
+    # Upload
+    if "image" in request.FILES:
+        file = request.FILES["image"]
+        filepath = os.path.join(HOME_WALLPAPER_FOLDER, file.name)
+
+        # salva novo papel de parede
+        with open(filepath, "wb+") as dest:
+            for chunk in file.chunks():
+                dest.write(chunk)
+
+        request.session["home_wallpaper"] = file.name
+        return HttpResponse('<script>location.reload()</script>')
+
+    # URL externa
+    url = request.POST.get("image_url", "").strip()
+    if url:
+        try:
+            r = requests.get(url, timeout=5)
+            if r.status_code == 200:
+                filename = url.split("/")[-1]
+                filepath = os.path.join(HOME_WALLPAPER_FOLDER, filename)
+                with open(filepath, "wb") as f:
+                    f.write(r.content)
+
+                request.session["home_wallpaper"] = filename
+                return HttpResponse('<script>location.reload()</script>')
+        except:
+            pass
+
+    return HttpResponse("Erro ao importar imagem", status=400)
+
+
+
+def remove_home_wallpaper(request):
+    filename = request.session.get("home_wallpaper")
+
+    if filename:
+        filepath = os.path.join(HOME_WALLPAPER_FOLDER, filename)
+        if os.path.exists(filepath):
+            os.remove(filepath)
+
+    request.session["home_wallpaper"] = None
+    return HttpResponse('<script>location.reload()</script>')
+
+
+
+def home_wallpaper_css(request):
+    filename = request.session.get("home_wallpaper")
+
+    css = "body {"
+
+    if filename:
+        css += f'background-image: url("/media/home_wallpapers/{filename}");'
+    else:
+        css += "background-color: #f0f0f0;"
+
+    css += """
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+    }
+    """
+
+    return HttpResponse(css, content_type="text/css")

@@ -118,3 +118,85 @@
 .card-tab-panel.block {
     display: block !important;
 }
+
+.home-background {
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    background-attachment: fixed;
+    transition: background-image 0.8s ease-in-out;
+}
+
+
+/* ============================================
+   Glow geral aplicado SOMENTE NA HOME
+   ============================================ */
+body.home-background h1 {
+    color: #ffffff;
+    text-shadow: 0 0 12px rgba(255, 255, 255, 0.8);
+}
+
+/* Cards da Home ganham glow suave */
+body.home-background .board-card {
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(4px);
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Glow leve no hover */
+body.home-background .board-card:hover {
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Botão “Criar quadro” com brilho */
+body.home-background .new-board-button {
+    border: 1px solid rgba(173, 216, 255, 0.6);
+    background: rgba(50, 100, 180, 0.25);
+    color: #dbe8ff !important;
+    box-shadow: 0 0 10px rgba(120, 160, 255, 0.35);
+}
+
+body.home-background .new-board-button:hover {
+    background: rgba(80, 130, 220, 0.35);
+    box-shadow: 0 0 16px rgba(120, 160, 255, 0.5);
+}
+
+/* Brilho nos cards da home */
+.board-card {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    transition: 0.25s ease;
+}
+.board-card:hover {
+    background: rgba(255, 255, 255, 0.22);
+    transform: scale(1.03);
+}
+
+/* Texto contrastado */
+.home-card-text,
+.home-card-sub,
+.home-title {
+    color: white;
+    text-shadow: 0 0 8px rgba(0, 0, 0, 1);
+}
+
+/* Botão “Criar novo quadro” */
+.new-board-button {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    color: #fff;
+    backdrop-filter: blur(10px);
+}
+.new-board-button:hover {
+    background: rgba(255, 255, 255, 0.25);
+    color: #000;
+}
+/* Fundo padrão quando não há papel de parede */
+.home-default {
+    background: #111; /* preto suave */
+    background-size: cover;
+    background-position: center;
+}

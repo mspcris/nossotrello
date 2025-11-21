@@ -1,0 +1,5 @@
+/* estilos fixos do board, não do wallpaper */
+.drag-ghost {
+    opacity: 0.4;
+    border: 2px dashed #999;
+}

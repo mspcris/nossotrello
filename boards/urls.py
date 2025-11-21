@@ -30,6 +30,10 @@ urlpatterns = [
     path("column/<int:column_id>/rename/", views.rename_column, name="rename_column"),
     path("board/<int:board_id>/wallpaper/", views.update_board_wallpaper, name="update_board_wallpaper"),
     path("board/<int:board_id>/wallpaper/remove/", views.remove_board_wallpaper, name="remove_board_wallpaper"),
-
+    path("board/<int:board_id>/wallpaper.css",views.board_wallpaper_css,name="board_wallpaper_css"),
+    # WALLPAPER DA HOME
+    path("home/wallpaper/", views.update_home_wallpaper, name="update_home_wallpaper"),
+    path("home/wallpaper/remove/", views.remove_home_wallpaper, name="remove_home_wallpaper"),
+    path("home/wallpaper.css", views.home_wallpaper_css, name="home_wallpaper_css"),
 
 ]

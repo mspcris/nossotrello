@@ -1,59 +1,96 @@
 {% extends "base.html" %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% url 'boards:home_wallpaper_css' %}">
+{% endblock %}
+
 {% block title %}NossoTrello - Boards{% endblock %}
 
 {% block content %}
 
-<h1 class="text-2xl font-bold mb-6">Quadros</h1>
+<!-- MENU HAMBÚRGUER DA HOME -->
+<div class="relative mb-4">
+    <button id="home-menu-btn" class="text-xl text-white drop-shadow-lg">☰</button>
 
+    <div id="home-menu" class="hidden absolute left-0 mt-2 bg-white shadow-lg rounded-md border p-2 w-48 z-50">
+
+        <button class="block text-left w-full px-4 py-2 hover:bg-gray-100"
+            hx-get="{% url 'boards:update_home_wallpaper' %}" hx-target="body" hx-swap="beforeend">
+            Trocar Wallpaper
+        </button>
+
+        <button class="block text-left w-full px-4 py-2 hover:bg-gray-100 text-red-600"
+            hx-post="{% url 'boards:remove_home_wallpaper' %}" hx-target="body" hx-swap="beforeend">
+            Remover Papel de Fundo
+        </button>
+    </div>
+</div>
+
+<!-- TÍTULO COM EFEITO DE CONTRASTE -->
+<h1 class="text-2xl font-bold mb-6 home-title">Quadros</h1>
+
+<!-- LISTA DE BOARDS -->
 <div class="flex flex-wrap gap-6">
 
     {% for board in boards %}
 
     <!-- CARD DO BOARD -->
-    <div class="relative w-64 cursor-pointer border-2 border-gray-400 shadow-lg bg-gray-100 
-                hover:shadow-2xl transition p-6 rounded-xl flex flex-col gap-3">
+    <div class="board-card relative w-64 cursor-pointer shadow-lg p-6 rounded-xl flex flex-col gap-3">
 
-        <!-- SE TIVER IMAGEM -->
         {% if board.image %}
         <a href="{% url 'boards:board_detail' board.id %}">
-            <div
-                class="h-20 w-full rounded-lg border border-gray-300 overflow-hidden bg-white flex items-center justify-center">
+            <div class="h-20 w-full rounded-lg border overflow-hidden bg-white flex items-center justify-center">
                 <img src="{{ board.image.url }}" class="h-full w-auto object-contain" onerror="this.style.display='none';
-             this.parentElement.innerHTML=
-             `<div class='text-red-700 text-center p-4 font-semibold'>
-                 Imagem corrompida<br>⚠️
-              </div>`;">
+                              this.parentElement.innerHTML=
+                              `<div class='text-red-700 text-center p-4 font-semibold'>
+                                  Imagem corrompida<br>⚠️
+                               </div>`;">
             </div>
         </a>
         {% else %}
         <div hx-get="{% url 'boards:update_board_image' board.id %}" hx-target="body" hx-swap="beforeend" class="h-20 w-full bg-gray-300 rounded-lg border-2 border-dashed border-gray-600
-            flex items-center justify-center text-3xl font-bold text-gray-600 hover:bg-gray-200">
+                    flex items-center justify-center text-3xl font-bold text-gray-600 hover:bg-gray-200">
             +
         </div>
         {% endif %}
 
-
         <a href="{% url 'boards:board_detail' board.id %}">
-            <h2 class="text-xl font-bold">{{ board.name }}</h2>
-            <p class="text-gray-600 text-sm">Clique para abrir</p>
+            <h2 class="text-xl font-bold home-card-text">{{ board.name }}</h2>
+            <p class="text-sm home-card-sub">Clique para abrir</p>
         </a>
+
     </div>
 
     {% empty %}
-    <p class="text-gray-400">Nenhum quadro criado ainda.</p>
+    <p class="text-gray-300 backdrop-blur-lg px-4 py-2 rounded-lg">Nenhum quadro criado ainda.</p>
     {% endfor %}
 
-    <!-- Botão de criar novo board -->
-    <div hx-get="{% url 'boards:add_board' %}" hx-target="body" hx-swap="beforeend" class="cursor-pointer bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-300 
-                shadow-sm p-6 rounded-lg w-64 flex items-center justify-center font-semibold">
+    <!-- BOTÃO NOVO BOARD -->
+    <div hx-get="{% url 'boards:add_board' %}" hx-target="body" hx-swap="beforeend"
+        class="new-board-button cursor-pointer p-6 rounded-lg w-64 flex items-center justify-center font-semibold">
         + Criar novo quadro
     </div>
 
 </div>
 
+<!-- SCRIPT DO MENU -->
 <script>
-    // Recarga ao voltar da página de detalhes
+    const menuBtn = document.getElementById("home-menu-btn");
+    const menu = document.getElementById("home-menu");
+
+    menuBtn.addEventListener("click", () => {
+        menu.classList.toggle("hidden");
+    });
+
+    document.addEventListener("click", (ev) => {
+        if (!menu.contains(ev.target) && !menuBtn.contains(ev.target)) {
+            menu.classList.add("hidden");
+        }
+    });
+</script>
+
+<!-- RECARREGAR AO VOLTAR DO BOARD -->
+<script>
     window.addEventListener("pageshow", function (event) {
         if (event.persisted) {
             window.location.reload();

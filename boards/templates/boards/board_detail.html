@@ -6,166 +6,103 @@
 
 {% block content %}
 
-<style>
-    body {
-            {
-            % if board.background_image %
-        }
 
-        background-image: url("{{ board.background_image.url }}");
 
-            {
-            % elif board.background_url %
-        }
 
-        background-image: url("{{ board.background_url }}");
+<!-- CSS dinâmico do wallpaper -->
+<link rel="stylesheet" href="{% url 'boards:board_wallpaper_css' board.id %}">
 
-            {
-            % else %
-        }
+<!-- CSS estático do layout -->
+<link rel="stylesheet" href="{% static 'boards/board_detail.css' %}">
 
-        background: #f0f0f0;
-
-            {
-            % endif %
-        }
-
-        background-size: cover;
-        background-position: center;
-        background-attachment: fixed;
-    }
-</style>
 
 <!-- ======================== MENU HAMBÚRGUER ======================== -->
+<div class="relative mt-4">
+    <button id="board-menu-btn" class="text-xl">☰</button>
 
-<div class="relative mt-4 ml-4">
-    <button id="menu-btn" class="text-2xl p-2 rounded cursor-pointer">
-        ☰
-    </button>
-
-    <div id="menu-box" class="hidden absolute left-0 mt-2 bg-white border shadow-lg rounded-md w-48 p-2 z-50">
-
+    <div id="board-menu" class="hidden absolute left-0 mt-2 bg-white shadow-lg rounded-md border p-2 w-48 z-50">
         <a href="{% url 'boards:boards_index' %}" class="block px-4 py-2 hover:bg-gray-100 rounded">
             ← Voltar aos Quadros
         </a>
 
-        <button class="block w-full text-left px-4 py-2 hover:bg-gray-100"
+        <button class="block text-left w-full px-4 py-2 hover:bg-gray-100 rounded"
             hx-get="{% url 'boards:update_board_wallpaper' board.id %}" hx-target="body" hx-swap="beforeend">
             Trocar Wallpaper
         </button>
 
-        <button class="block w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100"
+        <button class="block text-left w-full px-4 py-2 hover:bg-gray-100 text-red-600"
             hx-post="{% url 'boards:remove_board_wallpaper' board.id %}" hx-target="body" hx-swap="beforeend">
             Remover papel de parede
         </button>
-
     </div>
 </div>
 
 <script>
-    document.addEventListener("DOMContentLoaded", function () {
+    const menuBtn = document.getElementById("board-menu-btn");
+    const menu = document.getElementById("board-menu");
 
-        const btn = document.getElementById("menu-btn");
-        const box = document.getElementById("menu-box");
+    menuBtn.addEventListener("click", () => {
+        menu.classList.toggle("hidden");
+    });
 
-        btn.addEventListener("click", function (e) {
-            e.stopPropagation();
-            box.classList.toggle("hidden");
-        });
-
-        document.addEventListener("click", function (e) {
-            if (!box.contains(e.target) && !btn.contains(e.target)) {
-                box.classList.add("hidden");
-            }
-        });
-
+    document.addEventListener("click", (ev) => {
+        if (!menu.contains(ev.target) && !menuBtn.contains(ev.target)) {
+            menu.classList.add("hidden");
+        }
     });
 </script>
 
-<!-- ======================== TOPO: LOGO + TÍTULO ======================== -->
 
-<div class="flex items-center gap-4 mb-6 ml-4 mt-6">
+
+<!-- ======================== TOPO DO BOARD ======================== -->
+<div class="flex items-center gap-4 mt-6 mb-6">
 
     {% if board.image %}
-    <div class="relative group">
-        <div class="h-28 w-48 border rounded-lg overflow-hidden bg-white flex items-center justify-center">
+    <div class="relative group inline-block">
+        <div
+            class="h-28 w-48 border border-gray-300 rounded-lg overflow-hidden bg-white flex items-center justify-center">
             <img src="{{ board.image.url }}" class="h-full w-auto object-contain">
         </div>
 
-        <button class="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded 
-                       opacity-0 group-hover:opacity-100 transition"
+        <button class="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded
+                       opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
             hx-post="{% url 'boards:update_board_image' board.id %}?delete=1" hx-target="body" hx-swap="beforeend">
             X
         </button>
-
     </div>
-
     {% else %}
-
-    <div class="h-28 w-48 flex items-center justify-center rounded-lg border bg-gray-100 text-gray-400 text-3xl cursor-pointer hover:bg-gray-200"
+    <div class="h-28 w-48 flex items-center justify-center rounded-lg border border-gray-300 
+               bg-gray-100 text-gray-400 text-3xl cursor-pointer hover:bg-gray-200"
         hx-get="{% url 'boards:update_board_image' board.id %}" hx-target="body" hx-swap="beforeend">
         +
     </div>
-
     {% endif %}
 
-    <h1 id="board-title" contenteditable="true" onblur="updateBoardTitle({{ board.id }})"
-        onkeypress="if(event.key==='Enter'){ event.preventDefault(); this.blur(); }"
-        class="text-3xl font-semibold bg-white/70 px-2 py-1 rounded inline-block">
+    <h1 id="board-title" contenteditable="true"
+        class="text-2xl font-semibold inline-block bg-white/70 px-2 py-1 rounded"
+        onblur="updateBoardTitle({{ board.id }})"
+        onkeypress="if(event.key==='Enter'){ event.preventDefault(); this.blur(); }">
         {{ board.name }}
     </h1>
-
 </div>
 
-<script>
-    function updateBoardTitle(boardId) {
-        const el = document.getElementById("board-title");
-        const newName = el.innerText.trim();
 
-        const data = new FormData();
-        data.append("name", newName);
-
-        fetch(`/board/${boardId}/rename/`, {
-            method: "POST",
-            headers: { "X-CSRFToken": document.querySelector("meta[name='csrf-token']").content },
-            body: data
-        });
-    }
-</script>
 
 <!-- ======================== FILTRO DE TAGS ======================== -->
+<div class="mb-6 flex flex-wrap items-center gap-2">
+    <span class="text-sm font-semibold text-gray-600">Filtrar por etiquetas:</span>
 
-<div class="mb-6 ml-4 flex gap-2 items-center">
-    <span class="text-sm font-semibold">Filtrar etiquetas:</span>
-
-    <input id="tag-filter" class="border rounded px-3 py-2 w-60 text-sm" placeholder="Ex: urgente"
+    <input type="text" id="tag-filter" placeholder="Ex: urgente" class="border rounded px-3 py-2 text-sm w-60"
         oninput="filterByTag(this.value)">
 </div>
 
-<script>
-    function filterByTag(text) {
-        text = text.toLowerCase();
 
-        document.querySelectorAll('[id^="cards-col-"] li[data-card-id]').forEach(el => {
+<h3 class="text-lg font-semibold mb-3">Colunas:</h3>
 
-            const tags = el.querySelectorAll("span.text-xs");
-            let match = false;
 
-            tags.forEach(t => {
-                if (t.innerText.toLowerCase().includes(text))
-                    match = true;
-            });
 
-            el.style.display = (!text || match) ? "" : "none";
-        });
-    }
-</script>
-
-<!-- ======================== COLUNAS ======================== -->
-
-<h3 class="text-lg font-semibold ml-4 mb-3">Colunas:</h3>
-
-<div id="columns-wrapper" class="flex gap-6 ml-4 overflow-x-auto pb-6 pr-4">
+<!-- ======================== LISTA DE COLUNAS ======================== -->
+<div id="columns-wrapper" class="flex gap-6 overflow-x-auto pb-6 pr-4">
 
     <div id="columns-list" class="flex gap-6">
         {% for column in board.columns.all %}
@@ -173,35 +110,52 @@
         {% endfor %}
     </div>
 
-    <div class="w-64 bg-white/70 border rounded-xl p-4 shadow-md h-fit">
+    <div id="add-column-box"
+        class="w-64 bg-white/60 backdrop-blur-md border border-gray-300 rounded-xl p-4 h-fit shrink-0 shadow-md">
+
         <h3 class="font-semibold mb-2">Adicionar nova coluna</h3>
 
         <form method="post" hx-post="{% url 'boards:add_column' board.id %}" hx-target="#columns-list"
             hx-swap="beforeend">
-
             {% csrf_token %}
-            <label class="block text-sm mb-1">Nome:</label>
-
-            <input type="text" name="name" class="w-full border rounded px-3 py-2 mb-3">
+            <label class="block text-sm font-medium mb-1">Nome:</label>
+            <input type="text" name="name" class="w-full border rounded px-3 py-2 mb-3" placeholder="Nome da coluna">
 
             <button class="px-3 py-2 bg-blue-600 text-white rounded w-full">
                 Adicionar Coluna
             </button>
-
         </form>
     </div>
-
 </div>
+
+
+
+<!-- ======================== SCRIPTS ======================== -->
+<script>
+    function filterByTag(text) {
+        text = text.trim().toLowerCase();
+        document.querySelectorAll('[id^="cards-col-"] li[data-card-id]').forEach(card => {
+            const tags = card.querySelectorAll('span.text-xs');
+            let match = false;
+
+            tags.forEach(t => {
+                if (t.innerText.toLowerCase().includes(text))
+                    match = true;
+            });
+
+            card.style.display = (text === "" || match) ? "" : "none";
+        });
+    }
+</script>
 
 <script>
     function initSortable() {
+        document.querySelectorAll("[id^='cards-col-']").forEach(listEl => {
 
-        document.querySelectorAll("[id^='cards-col-']").forEach(list => {
+            if (listEl.dataset.sortableApplied === "1") return;
+            listEl.dataset.sortableApplied = "1";
 
-            if (list.dataset.sortableApplied === "1") return;
-            list.dataset.sortableApplied = "1";
-
-            new Sortable(list, {
+            new Sortable(listEl, {
                 group: "cards",
                 animation: 150,
                 ghostClass: "drag-ghost",
@@ -218,49 +172,32 @@
                         body: JSON.stringify({
                             card_id: Number(evt.item.dataset.cardId),
                             new_column_id: Number(evt.to.id.replace("cards-col-", "")),
-                            new_position: evt.newIndex
+                            new_position: Number(evt.newIndex)
                         })
                     });
                 }
             });
-
         });
-
     }
 
     document.addEventListener("DOMContentLoaded", initSortable);
     document.body.addEventListener("htmx:afterSwap", initSortable);
 </script>
 
-<style>
-    body {
-            {
-            % if board.background_image %
-        }
+<script>
+    function updateBoardTitle(boardId) {
+        const titleEl = document.getElementById("board-title");
+        const newTitle = titleEl.innerText.trim();
 
-        background-image: url("{{ board.background_image.url }}");
+        const formData = new FormData();
+        formData.append("name", newTitle);
 
-            {
-            % elif board.background_url %
-        }
-
-        background-image: url("{{ board.background_url }}");
-
-            {
-            % else %
-        }
-
-        background-color: #f0f0f0;
-
-            {
-            % endif %
-        }
-
-        background-size: cover;
-        background-position: center;
-        background-attachment: fixed;
+        fetch(`/board/${boardId}/rename/`, {
+            method: "POST",
+            headers: { "X-CSRFToken": document.querySelector("meta[name='csrf-token']").content },
+            body: formData
+        });
     }
-</style>
-
+</script>
 
 {% endblock %}
