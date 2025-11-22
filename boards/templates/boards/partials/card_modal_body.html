@@ -3,23 +3,21 @@
 <div id="card-modal-root" class="flex flex-col h-full">
 
     <!-- HEADER DO MODAL (temas) -->
-    <div class="flex items-center justify-between px-4 py-3 border-b bg-white/80 backdrop-blur-md">
+    <div class="card-aero-header flex items-center justify-between px-4 py-3 border-b">
+
         <div class="flex gap-2">
-            <button type="button" class="w-4 h-4 rounded-full border border-gray-300 bg-white"
-                onclick="cardSetTheme('white')"></button>
-
-            <button type="button" class="w-4 h-4 rounded-full border border-gray-300 bg-white/10 backdrop-blur-md"
+            <button type="button" class="theme-dot bg-white" onclick="cardSetTheme('white')"></button>
+            <button type="button" class="theme-dot bg-white/10 backdrop-blur-md"
                 onclick="cardSetTheme('aero')"></button>
-
-            <button type="button" class="w-4 h-4 rounded-full border border-gray-300 bg-[#1e1e1e]"
-                onclick="cardSetTheme('dark')"></button>
+            <button type="button" class="theme-dot bg-[#1e1e1e]" onclick="cardSetTheme('dark')"></button>
         </div>
 
         <div class="flex items-center gap-3"></div>
     </div>
 
     <!-- ABAS -->
-    <div id="card-tabs" class="flex border-b bg-white/80 backdrop-blur">
+    <div id="card-tabs" class="card-aero-header flex border-b">
+
         <button type="button" class="card-tab-btn card-tab-active" data-tab-target="card-tab-desc"
             onclick="cardOpenTab('card-tab-desc')">
             Descrição
@@ -34,9 +32,11 @@
             onclick="cardOpenTab('card-tab-ativ')">
             Atividade
         </button>
+
     </div>
 
-    <!-- CONTEÚDO DAS ABAS (parcial separada) -->
+
+    <!-- CONTEÚDO DAS ABAS -->
     {% include "boards/partials/card_modal_content.html" %}
 
 </div>

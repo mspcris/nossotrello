@@ -49,6 +49,48 @@
 
     <!-- CSS dinamico: home_wallpaper_css OU board_wallpaper_css -->
     {% block extra_css %}{% endblock %}
+
+    <!-- ============================================================== -->
+    <!--  CSS para blocos de código + botão copiar                     -->
+    <!-- ============================================================== -->
+    <style>
+        pre {
+            background: transparent !important;
+            padding: 0 !important;
+            margin: 0 0 1rem 0 !important;
+            /* espaço entre blocos */
+            border-radius: 0 !important;
+            color: inherit !important;
+            box-shadow: none !important;
+            border: none !important;
+            position: relative;
+            white-space: pre-wrap !important;
+            word-break: break-word !important;
+        }
+
+
+        .code-wrapper {
+            position: relative;
+        }
+
+        .copy-code-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: #444;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            opacity: 0.8;
+            transition: 0.2s;
+        }
+
+        .copy-code-btn:hover {
+            opacity: 1;
+        }
+    </style>
 </head>
 
 
@@ -68,12 +110,17 @@
 
     {% block content %}{% endblock %}
 
-    <!-- Modal Global -->
+    <!-- Modal Global BARRA SUPERIOR-->
     <div id="modal" class="fixed inset-0 flex items-center justify-center hidden">
-        <div
-            class="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl w-4/5 max-w-5xl h-[92vh] overflow-hidden flex flex-col">
 
-            <div class="flex justify-end items-center p-2 gap-3 border-b border-gray-200 bg-white/80 backdrop-blur-sm">
+        <!-- BORDA DO MODAL BASE PARA TODOS OS MODAIS -->
+        <div class="modal-glass rounded-2xl shadow-2xl w-4/5 max-w-5xl h-[92vh] overflow-hidden flex flex-col">
+
+
+
+            <div
+                class="flex justify-end items-center p-2 gap-3 border-b border-white/20 bg-transparent backdrop-blur-none">
+
 
                 <button type="button" class="text-gray-500 hover:text-gray-900 text-lg" title="Tela cheia"
                     onclick="cardToggleFull()">
@@ -90,9 +137,48 @@
         </div>
     </div>
 
-
-
+    <!-- Scripts globais -->
     <script src="{% static 'boards/modal.js' %}"></script>
+
+    <!-- ============================================================== -->
+    <!--  JS: aplicar Prism + envelopar blocos de código                -->
+    <!-- ============================================================== -->
+    <script>
+        function enhanceCodeBlocks() {
+            document.querySelectorAll("pre:not(.enhanced)").forEach(pre => {
+                pre.classList.add("enhanced");
+
+                const wrapper = document.createElement("div");
+                wrapper.className = "code-wrapper";
+
+                const button = document.createElement("button");
+                button.className = "copy-code-btn";
+                button.innerText = "Copiar";
+
+                const parent = pre.parentNode;
+                parent.insertBefore(wrapper, pre);
+                wrapper.appendChild(pre);
+                wrapper.appendChild(button);
+            });
+
+            if (window.Prism) {
+                Prism.highlightAll();
+            }
+        }
+
+        document.addEventListener("click", function (e) {
+            if (!e.target.matches(".copy-code-btn")) return;
+
+            const codeBlock = e.target.closest(".code-wrapper").querySelector("code");
+            navigator.clipboard.writeText(codeBlock.innerText);
+
+            e.target.innerText = "Copiado!";
+            setTimeout(() => e.target.innerText = "Copiar", 1300);
+        });
+
+        document.addEventListener("DOMContentLoaded", enhanceCodeBlocks);
+        document.addEventListener("htmx:afterSwap", enhanceCodeBlocks);
+    </script>
 
 </body>
 

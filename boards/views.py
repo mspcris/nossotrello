@@ -725,62 +725,39 @@ def home_wallpaper_css(request):
 
     return HttpResponse(css, content_type="text/css")
 
-
 # ======================================================================
-# ADICIONAR ATIVIDADE NO CARD
-# Quem chama? → submitActivity() via HTMX POST
+# ADICIONAR ATIVIDADE NO CARD – TEXTO PURO + ESCAPE + PRISM
 # ======================================================================
 
-from django.views.decorators.http import require_POST
+from django.utils.html import escape
 
 @require_POST
 def add_activity(request, card_id):
     card = get_object_or_404(Card, id=card_id)
 
-    content = request.POST.get("content", "").strip()
-
-    if not content:
+    raw = request.POST.get("content", "").strip()
+    if not raw:
         return HttpResponse("Conteúdo vazio", status=400)
 
-    # salva no log
+    # TEXTO PURO → escapa HTML
+    safe_text = escape(raw)
+
+    # Wrap para PrismJS
+    html = f"<pre><code class='language-none'>{safe_text}</code></pre>"
+
+    # salva
     CardLog.objects.create(
         card=card,
-        content=content,
+        content=html,
         attachment=None
     )
 
-    # retorna apenas a aba de atividades
-    html = render(
+    # renderiza o painel inteiro atualizado
+    rendered = render(
         request,
         "boards/partials/card_activity_panel.html",
         {"card": card}
     ).content.decode("utf-8")
 
-    return HttpResponse(html)
+    return HttpResponse(rendered)
 
-# ======================================================================
-# ADICIONAR ATIVIDADE NO CARD
-# Quem chama? → submitActivity() via HTMX POST
-# ======================================================================
-
-@require_POST
-def add_activity(request, card_id):
-    card = get_object_or_404(Card, id=card_id)
-
-    content = request.POST.get("content", "").strip()
-    if not content:
-        return HttpResponse("Conteúdo vazio", status=400)
-
-    CardLog.objects.create(
-        card=card,
-        content=content,
-        attachment=None
-    )
-
-    html = render(
-        request,
-        "boards/partials/card_activity_panel.html",
-        {"card": card}
-    ).content.decode("utf-8")
-
-    return HttpResponse(html)

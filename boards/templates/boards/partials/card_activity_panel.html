@@ -1,26 +1,22 @@
 {% load tag_helpers %}
 
-<!-- Painel completo da aba Atividade -->
 <div class="flex flex-col h-full">
 
     <div class="flex items-center justify-between mb-3">
         <h3 class="text-lg font-semibold">Atividade</h3>
-
-        <!-- espaço reservado para futura toolbar -->
         <div class="flex items-center gap-2 text-xs text-gray-500"></div>
     </div>
 
-    <!-- HISTÓRICO -->
-    <div class="activity-panel space-y-4 flex-1 overflow-y-auto">
+    <div id="activity-panel-wrapper" class="activity-panel space-y-4 flex-1 overflow-y-auto">
 
         {% for log in card.logs.all %}
         <div class="activity-item p-3 rounded border border-gray-200 bg-white shadow-sm">
 
-            <div class="activity-meta text-xs text-gray-500 mb-1">
+            <div class="activity-meta text-xs text-gray-500 mb-2">
                 {{ log.created_at|date:"d/m/Y H:i" }}
             </div>
 
-            <div class="activity-content prose prose-sm max-w-none">
+            <div class="activity-content text-sm leading-relaxed whitespace-pre-wrap">
                 {{ log.content|safe }}
             </div>
 

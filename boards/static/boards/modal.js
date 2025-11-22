@@ -66,6 +66,8 @@ window.cardSetTheme = function (mode) {
     sessionStorage.setItem("currentModalTheme", `card-theme-${mode}`);
 };
 
+
+
 // =====================================================
 // Tela cheia
 // =====================================================
@@ -103,9 +105,13 @@ window.initCardModal = function () {
         });
     }
 
-    // ----- ATIVIDADE -----
+    // =====================================================
+    // ----- ATIVIDADE (100% corrigido — texto puro) -----
+    // =====================================================
+
     const activityHidden = document.getElementById("activity-input");
     if (activityHidden) {
+
         const quillAtiv = new Quill("#quill-editor-ativ", {
             theme: "snow",
             modules: {
@@ -118,8 +124,13 @@ window.initCardModal = function () {
             }
         });
 
+        quillAtiv.root.innerHTML = "";
+        activityHidden.value = "";
+
+        // TEXTO PURO — sem HTML, sem template
         quillAtiv.on("text-change", () => {
-            activityHidden.value = quillAtiv.root.innerHTML;
+            let text = quillAtiv.getText().trim();
+            activityHidden.value = text;
         });
     }
 
@@ -213,7 +224,6 @@ window.submitActivity = async function (cardId) {
 
     window.clearActivityEditor();
 
-    // Reaplicar highlight no histórico atualizado
     enhanceCodeBlocks();
     if (window.Prism) Prism.highlightAll();
 };

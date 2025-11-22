@@ -33,3 +33,25 @@ def tag_color(tag_name):
     b = (b + 150) // 2
 
     return f"rgb({r},{g},{b})"
+
+
+# ================================================================
+# NOVO FILTRO — trimstartswith
+# Permite usar no template:
+# {% if log.content|trimstartswith:"<pre><code" %}
+# ================================================================
+@register.filter
+def trimstartswith(value, arg):
+    """
+    Remove espaços e compara se começa com o valor indicado.
+    Garante que apenas blocos REAIS de código (<pre><code>) 
+    ativem o modo de exibição de código.
+    """
+    if not isinstance(value, str):
+        return False
+
+    value_clean = value.strip().lower()
+    arg_clean = str(arg).strip().lower()
+
+    return value_clean.startswith(arg_clean)
+
