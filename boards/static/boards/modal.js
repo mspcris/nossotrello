@@ -236,37 +236,6 @@ window.clearActivityEditor = function () {
     if (hidden) hidden.value = "";
 };
 
-// =====================================================
-// Code Wrapper + Botão Copiar
-// =====================================================
-function enhanceCodeBlocks() {
-    document.querySelectorAll("pre:not(.enhanced)").forEach(pre => {
-        pre.classList.add("enhanced");
-
-        const wrapper = document.createElement("div");
-        wrapper.className = "code-wrapper relative";
-
-        const button = document.createElement("button");
-        button.className = "copy-code-btn absolute top-2 right-2 bg-gray-800 text-white text-xs px-2 py-1 rounded";
-        button.innerText = "Copiar";
-
-        pre.parentNode.insertBefore(wrapper, pre);
-        wrapper.appendChild(pre);
-        wrapper.appendChild(button);
-    });
-}
-
-document.addEventListener("click", function (e) {
-    if (!e.target.matches(".copy-code-btn")) return;
-
-    const codeBlock = e.target.closest(".code-wrapper").querySelector("code");
-    const text = codeBlock.innerText;
-
-    navigator.clipboard.writeText(text);
-    e.target.innerText = "Copiado!";
-    setTimeout(() => e.target.innerText = "Copiar", 1500);
-});
-
 
 // =====================================================
 // Abrir/fechar editor futurista de atividade
@@ -288,3 +257,55 @@ window.toggleAtividadeEditor = function (forceClose = false) {
     wrapper.classList.remove("hidden");
     btn.classList.add("ativ-mini-tab-active");
 };
+
+
+
+// =====================================================
+// REMOVER COMPLETAMENTE O BOTÃO COPIAR E WRAPPERS
+// =====================================================
+function enhanceCodeBlocks() {
+    // Não envolve, não modifica, não adiciona nada
+    // Apenas reaplica Prism se necessário
+    if (window.Prism) {
+        Prism.highlightAll();
+    }
+}
+
+// Remove listeners antigos (caso algum esteja ativo)
+document.removeEventListener("click", function () {});
+
+
+
+
+
+
+
+
+// // =====================================================
+// // Expandir / Recolher itens de atividade
+// // =====================================================
+// window.toggleActivityItem = function (btn) {
+//     const wrapper = btn.previousElementSibling;
+
+//     const expanded = wrapper.classList.toggle("expanded");
+
+//     // Se expandiu, some o fade
+//     const fade = wrapper.querySelector(".activity-fade");
+//     if (fade) fade.style.display = expanded ? "none" : "block";
+
+//     btn.textContent = expanded ? "Recolher" : "Expandir";
+// };
+
+// window.toggleActivityItem = function (el) {
+//     const box = el.closest(".activity-item");
+
+//     if (box.classList.contains("collapsed")) {
+//         box.classList.remove("collapsed");
+//         box.classList.add("expanded");
+//         el.innerText = "Recolher";
+//     } else {
+//         box.classList.remove("expanded");
+//         box.classList.add("collapsed");
+//         el.innerText = "Expandir";
+//     }
+// };
