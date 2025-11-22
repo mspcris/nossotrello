@@ -279,3 +279,89 @@
     backdrop-filter: blur(12px);
     border: 1px solid rgba(255, 255, 255, 0.35);
 }
+
+
+/* ============================================================
+   AJUSTES DE LEGIBILIDADE — TEMA DARK / CARD-THEME-DARK
+   ============================================================ */
+
+/* Fundo do conteúdo */
+.card-theme-dark {
+    background-color: #1a1a1a !important; /* cinza escuro, não preto */
+    color: #f1f1f1 !important;
+}
+
+/* Inputs, textareas, quill */
+.card-theme-dark input,
+.card-theme-dark textarea,
+.card-theme-dark select,
+.card-theme-dark .ql-container,
+.card-theme-dark .ql-editor {
+    background-color: #2a2a2a !important;    /* cinza escuro */
+    border: 1px solid #444 !important;
+    color: #f1f1f1 !important;
+}
+
+.card-theme-dark .ql-toolbar {
+    background-color: #272727 !important; 
+    border-color: #444 !important;
+}
+
+.card-theme-dark #quill-editor .ql-editor,
+.card-theme-dark #quill-editor-ativ .ql-editor {
+    color: #f1f1f1 !important;
+}
+
+/* Labels */
+.card-theme-dark label {
+    color: #e5e5e5 !important;
+}
+
+/* ------------------------------------------------------------
+   BOTÕES — MANTER ALTO CONTRASTE NO TEMA BLACK
+   ------------------------------------------------------------ */
+
+/* Botão primário (Salvar, Incluir) */
+.card-theme-dark button.bg-blue-600 {
+    background-color: #2563eb !important;  /* azul tailwind */
+    color: white !important;
+}
+
+.card-theme-dark button.bg-blue-600:hover {
+    background-color: #1d4ed8 !important;
+}
+
+/* Botão secundário (Fechar, Limpar) */
+.card-theme-dark button.bg-gray-200 {
+    background-color: #3a3a3a !important;
+    color: #e5e5e5 !important;
+}
+
+.card-theme-dark button.bg-gray-200:hover {
+    background-color: #4a4a4a !important;
+    color: #fff !important;
+}
+
+/* ------------------------------------------------------------
+   TAGS dentro do modal
+   ------------------------------------------------------------ */
+
+.card-theme-dark #tags-preview span {
+    opacity: 0.9;
+    border-color: rgba(255,255,255,0.25) !important;
+}
+
+/* ------------------------------------------------------------
+   Painéis da atividade
+   ------------------------------------------------------------ */
+
+.card-theme-dark .activity-panel {
+    background: #1f1f1f !important;
+    border: 1px solid #333 !important;
+}
+
+.card-theme-dark .activity-item {
+    background: #2b2b2b !important;
+    border: 1px solid #3a3a3a !important;
+    color: #f1f1f1 !important;
+}
