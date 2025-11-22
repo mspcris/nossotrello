@@ -739,11 +739,11 @@ def add_activity(request, card_id):
     if not raw:
         return HttpResponse("Conteúdo vazio", status=400)
 
-    # TEXTO PURO → escapa HTML
-    safe_text = escape(raw)
+   
+    # aceita HTML real vindo do Quill (incluindo <img>)
+    safe_html = raw
+    html = safe_html
 
-    # Wrap para PrismJS
-    html = f"<pre><code class='language-none'>{safe_text}</code></pre>"
 
     # salva
     CardLog.objects.create(
@@ -761,3 +761,24 @@ def add_activity(request, card_id):
 
     return HttpResponse(rendered)
 
+# ============================================================
+# UPLOAD DE IMAGEM PARA O QUILL
+# ============================================================
+from django.views.decorators.csrf import csrf_exempt
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
+
+@csrf_exempt
+def quill_upload(request):
+    """
+    Endpoint para upload real de imagens enviadas pelo Quill.
+    Recebe um arquivo, salva em /media/quill/, retorna a URL.
+    """
+    if request.method != "POST" or "image" not in request.FILES:
+        return JsonResponse({"error": "Invalid request"}, status=400)
+
+    img = request.FILES["image"]
+    file_path = default_storage.save(f"quill/{img.name}", ContentFile(img.read()))
+    file_url = default_storage.url(file_path)
+
+    return JsonResponse({"success": 1, "url": file_url})

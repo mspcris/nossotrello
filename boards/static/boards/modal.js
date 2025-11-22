@@ -2,6 +2,8 @@
 // Variáveis globais
 // =====================================================
 window.currentCardId = null;
+let quillAtiv = null;   // necessário para limpar corretamente
+
 
 // =====================================================
 // Abrir modal
@@ -11,15 +13,18 @@ window.openModal = function () {
     if (modal) modal.classList.remove("hidden");
 };
 
+
 // =====================================================
 // Fechar modal
 // =====================================================
 window.closeModal = function () {
     const modal = document.getElementById("modal");
     const modalBody = document.getElementById("modal-body");
+
     if (modal) modal.classList.add("hidden");
     if (modalBody) modalBody.innerHTML = "";
 };
+
 
 // =====================================================
 // Atualiza o snippet do card na board
@@ -32,6 +37,7 @@ window.refreshCardSnippet = function (cardId) {
         swap: "outerHTML"
     });
 };
+
 
 // =====================================================
 // Alternar abas do modal
@@ -53,8 +59,9 @@ window.cardOpenTab = function (panelId) {
     sessionStorage.setItem('modalActiveTab', panelId);
 };
 
+
 // =====================================================
-// Aplicar tema
+// Aplicar tema manual
 // =====================================================
 window.cardSetTheme = function (mode) {
     const root = document.getElementById('card-modal-root');
@@ -67,25 +74,21 @@ window.cardSetTheme = function (mode) {
 };
 
 
-
 // =====================================================
-// Tela cheia
-// =====================================================
-// window.cardToggleFull = function () {
-//     const root = document.getElementById('card-modal-root');
-//     if (!root) return;
-
-//     root.classList.toggle('max-h-[80vh]');
-//     root.classList.toggle('h-[90vh]');
-// };
-
-// =====================================================
-// Inicializa Quill + Prism + Copiar Código
+// Inicializa Quill + Prism
 // =====================================================
 window.initCardModal = function () {
 
+    // Forçar tema AERO como default
+    const root = document.getElementById("card-modal-root");
+    if (root) {
+        root.classList.remove("card-theme-white", "card-theme-dark", "card-theme-aero");
+        root.classList.add("card-theme-aero");
+    }
+
     // ----- DESCRIÇÃO -----
     const hiddenInput = document.getElementById("description-input");
+
     if (hiddenInput) {
         const quill = new Quill("#quill-editor", {
             theme: "snow",
@@ -105,53 +108,66 @@ window.initCardModal = function () {
         });
     }
 
-    // =====================================================
-    // ----- ATIVIDADE (100% corrigido — texto puro) -----
-    // =====================================================
-
+    // ----- ATIVIDADE -----
     const activityHidden = document.getElementById("activity-input");
+
     if (activityHidden) {
 
-        const quillAtiv = new Quill("#quill-editor-ativ", {
+        quillAtiv = new Quill("#quill-editor-ativ", {
             theme: "snow",
             modules: {
-                toolbar: [
-                    [{ header: [1, 2, 3, false] }],
-                    ["bold", "italic", "underline"],
-                    ["link", "image"],
-                    [{ list: "ordered" }, { list: "bullet" }]
-                ]
+                toolbar: {
+                    container: [
+                        [{ header: [1, 2, 3, false] }],
+                        ["bold", "italic", "underline"],
+                        ["link", "image"],
+                        [{ list: "ordered" }, { list: "bullet" }]
+                    ],
+                    handlers: {
+                        image: function () {
+                            let fileInput = document.createElement("input");
+                            fileInput.setAttribute("type", "file");
+                            fileInput.setAttribute("accept", "image/*");
+
+                            fileInput.onchange = async () => {
+                                const file = fileInput.files[0];
+                                if (!file) return;
+
+                                let formData = new FormData();
+                                formData.append("image", file);
+
+                                const resp = await fetch("/quill/upload/", {
+                                    method: "POST",
+                                    body: formData
+                                });
+
+                                const data = await resp.json();
+
+                                if (data.url) {
+                                    let range = quillAtiv.getSelection();
+                                    quillAtiv.insertEmbed(range.index, "image", data.url);
+                                }
+                            };
+
+                            fileInput.click();
+                        }
+                    }
+                }
             }
         });
 
         quillAtiv.root.innerHTML = "";
         activityHidden.value = "";
 
-        // TEXTO PURO — sem HTML, sem template
         quillAtiv.on("text-change", () => {
-            let text = quillAtiv.getText().trim();
-            activityHidden.value = text;
+            activityHidden.value = quillAtiv.root.innerHTML;
         });
     }
-
-    // ----- Tema salvo -----
-    const savedTheme = sessionStorage.getItem("currentModalTheme");
-    if (savedTheme) {
-        const root = document.getElementById("card-modal-root");
-        if (root) root.classList.add(savedTheme);
-    }
-
-    // ----- PrismJS Highlight -----
-    if (window.Prism) {
-        Prism.highlightAll();
-    }
-
-    // ----- Copiar botão e wrapper -----
-    enhanceCodeBlocks();
 };
 
+
 // =====================================================
-// HTMX — quando o modal é injetado
+// HTMX – Modal carregado
 // =====================================================
 document.body.addEventListener("htmx:afterSwap", function (e) {
     if (e.detail.target.id !== "modal-body") return;
@@ -162,6 +178,7 @@ document.body.addEventListener("htmx:afterSwap", function (e) {
     const active = sessionStorage.getItem("modalActiveTab") || "card-tab-desc";
     cardOpenTab(active);
 });
+
 
 // =====================================================
 // Remover TAG
@@ -193,8 +210,25 @@ window.removeTagInstant = async function (cardId, tag) {
     cardOpenTab(active);
 };
 
+
 // =====================================================
-// Nova atividade
+// Limpar editor de atividade
+// =====================================================
+window.clearActivityEditor = function () {
+    const activityHidden = document.getElementById("activity-input");
+
+    if (quillAtiv) {
+        quillAtiv.setText("");
+    }
+
+    if (activityHidden) {
+        activityHidden.value = "";
+    }
+};
+
+
+// =====================================================
+// Enviar nova atividade
 // =====================================================
 window.submitActivity = async function (cardId) {
     const csrf = document.querySelector("meta[name='csrf-token']").content;
@@ -218,65 +252,17 @@ window.submitActivity = async function (cardId) {
     const html = await response.text();
 
     const wrapper = document.getElementById("activity-panel-wrapper");
-    if (wrapper) {
-        wrapper.innerHTML = html;
-    }
+    if (wrapper) wrapper.innerHTML = html;
 
-    window.clearActivityEditor();
+    clearActivityEditor();
+    ativSwitchSubTab("ativ-historico-panel");
 
-    enhanceCodeBlocks();
     if (window.Prism) Prism.highlightAll();
 };
 
-window.clearActivityEditor = function () {
-    const editor = document.querySelector("#quill-editor-ativ .ql-editor");
-    const hidden = document.getElementById("activity-input");
-
-    if (editor) editor.innerHTML = "";
-    if (hidden) hidden.value = "";
-};
-
 
 // =====================================================
-// Abrir/fechar editor futurista de atividade
-// =====================================================
-window.toggleAtividadeEditor = function (forceClose = false) {
-    const wrapper = document.getElementById("ativ-editor-wrapper");
-    const btn = document.getElementById("ativ-toggle-btn");
-
-    if (!wrapper || !btn) return;
-
-    const isOpen = !wrapper.classList.contains("hidden");
-
-    if (forceClose || isOpen) {
-        wrapper.classList.add("hidden");
-        btn.classList.remove("ativ-mini-tab-active");
-        return;
-    }
-
-    wrapper.classList.remove("hidden");
-    btn.classList.add("ativ-mini-tab-active");
-};
-
-
-
-// =====================================================
-// REMOVER COMPLETAMENTE O BOTÃO COPIAR E WRAPPERS
-// =====================================================
-function enhanceCodeBlocks() {
-    // Não envolve, não modifica, não adiciona nada
-    // Apenas reaplica Prism se necessário
-    if (window.Prism) {
-        Prism.highlightAll();
-    }
-}
-
-// Remove listeners antigos (caso algum esteja ativo)
-document.removeEventListener("click", function () {});
-
-
-// =====================================================
-// SUB-ABAS DE ATIVIDADE
+// Sub-abas de atividade
 // =====================================================
 window.ativSwitchSubTab = function (panelId) {
 
@@ -288,6 +274,6 @@ window.ativSwitchSubTab = function (panelId) {
     document.querySelectorAll(".ativ-subtab-btn")
         .forEach(b => b.classList.remove("ativ-subtab-active"));
 
-    document.querySelector(`.ativ-subtab-btn[data-subtab='${panelId}']`)
-        .classList.add("ativ-subtab-active");
+    const btn = document.querySelector(`.ativ-subtab-btn[data-subtab='${panelId}']`);
+    if (btn) btn.classList.add("ativ-subtab-active");
 };

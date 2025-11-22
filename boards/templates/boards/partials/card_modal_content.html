@@ -16,6 +16,7 @@
 
             <label class="block text-sm font-medium mb-1">Descrição</label>
             <div id="quill-editor" class="border rounded mb-2"></div>
+
             <input type="hidden" id="description-input" name="description"
                 value="{{ card.description|default_if_none:'' }}">
 
@@ -73,6 +74,7 @@
             </div>
 
         </form>
+
     </div>
 
     <!-- ABA CHECKLISTS -->
@@ -83,29 +85,14 @@
     <!-- ABA ATIVIDADE -->
     <div id="card-tab-ativ" class="card-tab-panel hidden">
 
-
-
-
-
-
-
-
-        <!-- SUB-ABAS DA ÁREA ATIVIDADE -->
+        <!-- SUB-ABAS -->
         <div class="flex gap-3 mb-4 border-b pb-2">
-            <button type="button" class="ativ-subtab-btn ativ-subtab-active" data-subtab="atividade-editor"
-                onclick="ativSwitchSubTab('atividade-editor')">
-                Nova atividade
-            </button>
-
-            <button type="button" class="ativ-subtab-btn" data-subtab="atividade-historico"
-                onclick="ativSwitchSubTab('atividade-historico')">
-                Histórico
-            </button>
+            <button class="ativ-subtab-btn" data-subtab="ativ-nova-panel">Nova atividade</button>
+            <button class="ativ-subtab-btn" data-subtab="ativ-historico-panel">Histórico</button>
         </div>
 
-
         <!-- SUB-ABA 1 — FORMULÁRIO -->
-        <div id="atividade-editor" class="ativ-subtab-panel block">
+        <div id="ativ-nova-panel" class="ativ-subtab-panel block">
 
             <label class="block text-sm font-medium mb-2">Nova atividade</label>
 
@@ -114,7 +101,7 @@
 
             <div class="flex gap-3 mt-3">
                 <button type="button" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                    onclick="submitActivity({{ card.id }})">
+                    onclick="submitActivity({{ card.id }}); ativSwitchSubTab('ativ-historico-panel');">
                     Incluir
                 </button>
 
@@ -126,16 +113,23 @@
 
         </div>
 
-
         <!-- SUB-ABA 2 — HISTÓRICO -->
-        <div id="atividade-historico" class="ativ-subtab-panel hidden"
+        <div id="ativ-historico-panel" class="ativ-subtab-panel hidden"
             style="overflow-y: auto; height: calc(92vh - 260px);">
 
             {% include "boards/partials/card_activity_panel.html" %}
 
         </div>
 
-
-
-
     </div>
+
+</div>
+
+<script>
+    document.querySelectorAll(".ativ-subtab-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const target = btn.getAttribute("data-subtab");
+            ativSwitchSubTab(target);
+        });
+    });
+</script>
