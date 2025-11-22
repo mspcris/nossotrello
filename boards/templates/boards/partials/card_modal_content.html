@@ -83,27 +83,38 @@
     <!-- ABA ATIVIDADE -->
     <div id="card-tab-ativ" class="card-tab-panel hidden">
 
-        <!-- Editor de nova atividade -->
-        <div class="mb-5">
-            <label class="block text-sm font-medium mb-1">Nova atividade</label>
-
-            <div id="quill-editor-ativ" class="border rounded mb-2"></div>
-            <input type="hidden" id="activity-input" name="activity">
-
-            <div class="flex gap-3 mt-3">
-                <button type="button" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                    onclick="submitActivity({{ card.id }})">
-                    Incluir
-                </button>
-
-                <button type="button" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
-                    onclick="clearActivityEditor()">
-                    Cancelar
-                </button>
-            </div>
+        <!-- BOTÃO FUTURISTA — NOVA ATIVIDADE -->
+        <div id="ativ-toggle-wrapper" class="mb-4">
+            <button type="button" id="ativ-toggle-btn" onclick="toggleAtividadeEditor()" class="ativ-mini-tab">
+                Nova atividade
+            </button>
         </div>
 
-        <!-- Wrapper para o painel de histórico (parcial) -->
+        <!-- BLOCO QUE ABRE/FECHA -->
+        <div id="ativ-editor-wrapper" class="hidden">
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-1">Nova atividade</label>
+
+                <div id="quill-editor-ativ" class="border rounded mb-2"></div>
+                <input type="hidden" id="activity-input" name="activity">
+
+                <div class="flex gap-3 mt-3">
+                    <button type="button" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                        onclick="submitActivity({{ card.id }})">
+                        Incluir
+                    </button>
+
+                    <button type="button" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+                        onclick="toggleAtividadeEditor(true)">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- WRAPPER DA ATIVIDADE (mantido) -->
         <div id="activity-panel-wrapper">
             {% include "boards/partials/card_activity_panel.html" %}
         </div>

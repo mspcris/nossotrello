@@ -266,3 +266,25 @@ document.addEventListener("click", function (e) {
     e.target.innerText = "Copiado!";
     setTimeout(() => e.target.innerText = "Copiar", 1500);
 });
+
+
+// =====================================================
+// Abrir/fechar editor futurista de atividade
+// =====================================================
+window.toggleAtividadeEditor = function (forceClose = false) {
+    const wrapper = document.getElementById("ativ-editor-wrapper");
+    const btn = document.getElementById("ativ-toggle-btn");
+
+    if (!wrapper || !btn) return;
+
+    const isOpen = !wrapper.classList.contains("hidden");
+
+    if (forceClose || isOpen) {
+        wrapper.classList.add("hidden");
+        btn.classList.remove("ativ-mini-tab-active");
+        return;
+    }
+
+    wrapper.classList.remove("hidden");
+    btn.classList.add("ativ-mini-tab-active");
+};
