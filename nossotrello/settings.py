@@ -20,6 +20,7 @@ ALLOWED_HOSTS = [
 'localhost',
 '192.168.1.18',
 '192.168.1.*',
+'tarefas.camim.com.br',
 ]
 
 
@@ -107,6 +108,10 @@ DATABASES = {
     }
 }
 
+CSRF_TRUSTED_ORIGINS = [
+    "http://tarefas.camim.com.br",
+    "http://tarefas.camim.com.br:8081",
+]
 
 # ============================================================
 # VALIDADORES DE SENHA
