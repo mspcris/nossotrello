@@ -29,6 +29,10 @@ class Column(models.Model):
     position = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # Soft delete
+    is_deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+
     THEME_CHOICES = [
         ("gray", "Cinza"),
         ("blue", "Azul"),
