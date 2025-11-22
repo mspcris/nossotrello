@@ -36,6 +36,7 @@ urlpatterns = [
 
     # ---------------------- COLUMN ----------------------
     path("column/<int:column_id>/add_card/", views.add_card, name="add_card"),
+    path("column/<int:column_id>/delete/", views.column_delete, name="column_delete"),
     path("column/<int:column_id>/delete/", views.delete_column, name="delete_column"),
     path("column/<int:column_id>/theme/", views.set_column_theme, name="set_column_theme"),
     path("column/<int:column_id>/rename/", views.rename_column, name="rename_column"),
@@ -75,14 +76,7 @@ urlpatterns = [
 
     # mover itens
     path(
-        "checklist/item/<int:item_id>/move-up/",
-        views.checklist_move_up,
-        name="checklist_move_up",
-    ),
-    path(
-        "checklist/item/<int:item_id>/move-down/",
-        views.checklist_move_down,
-        name="checklist_move_down",
-    ),
+        "checklist/item/<int:item_id>/move-up/", views.checklist_move_up, name="checklist_move_up",),
+    path("checklist/item/<int:item_id>/move-down/", views.checklist_move_down, name="checklist_move_down",),
 
 ]

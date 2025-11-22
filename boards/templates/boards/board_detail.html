@@ -112,9 +112,10 @@
 <div id="columns-wrapper" class="flex gap-6 overflow-x-auto pb-6 pr-4">
 
     <div id="columns-list" class="flex gap-6">
-        {% for column in board.columns.all %}
-        {% include "boards/partials/column_item.html" %}
+        {% for column in columns %}
+            {% include "boards/partials/column_item.html" %}
         {% endfor %}
+
     </div>
 
     <div id="add-column-box"

@@ -109,7 +109,9 @@ def index(request):
 
 def board_detail(request, board_id):
     board = get_object_or_404(Board, id=board_id)
-    return render(request, "boards/board_detail.html", {"board": board})
+    columns = board.columns.filter(is_deleted=False).order_by("position")
+    return render(request, "boards/board_detail.html", {"board": board, "columns": columns})
+
 
 
 # ======================================================================
@@ -350,14 +352,20 @@ def delete_card(request, card_id):
 def delete_column(request, column_id):
     column = get_object_or_404(Column, id=column_id)
 
+    # Não pode deletar se possui cards ativos
     if column.cards.exists():
         return JsonResponse(
             {"error": "A coluna possui cards e não pode ser excluída."},
             status=400,
         )
 
-    column.delete()
+    if not column.is_deleted:
+        column.is_deleted = True
+        column.deleted_at = timezone.now()
+        column.save(update_fields=["is_deleted", "deleted_at"])
+
     return HttpResponse(status=204)
+
 
 
 # ======================================================================
@@ -1095,3 +1103,57 @@ def checklist_move_down(request, item_id):
         "boards/partials/checklist_list.html",
         {"card": card},
     )
+
+from django.utils import timezone
+from django.http import HttpResponseBadRequest, HttpResponse
+from .models import Column, Card
+
+# ============================================================
+# SOFT DELETE DE COLUNA
+# ============================================================
+def column_delete(request, column_id):
+    if request.method != "POST":
+        return HttpResponseBadRequest("Método inválido.")
+
+    try:
+        column = Column.objects.get(id=column_id, is_deleted=False)
+    except Column.DoesNotExist:
+        return HttpResponseBadRequest("Coluna não encontrada.")
+
+    # Soft delete da coluna
+    column.is_deleted = True
+    column.deleted_at = timezone.now()
+    column.save()
+
+    # Soft delete dos cards vinculados
+    Card.objects.filter(column=column, is_deleted=False).update(
+        is_deleted=True,
+        deleted_at=timezone.now()
+    )
+
+    return HttpResponse("")
+
+# ============================================================
+# SOFT DELETE DE COLUNA
+# ============================================================
+def delete_column(request, column_id):
+    if request.method != "POST":
+        return HttpResponseBadRequest("Método inválido.")
+
+    try:
+        column = Column.objects.get(id=column_id, is_deleted=False)
+    except Column.DoesNotExist:
+        return HttpResponseBadRequest("Coluna não encontrada.")
+
+    # Soft delete da coluna
+    column.is_deleted = True
+    column.deleted_at = timezone.now()
+    column.save()
+
+    # Soft delete dos cards vinculados
+    Card.objects.filter(column=column, is_deleted=False).update(
+        is_deleted=True,
+        deleted_at=timezone.now()
+    )
+
+    return HttpResponse("")
