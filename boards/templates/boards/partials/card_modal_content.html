@@ -74,24 +74,28 @@
     </div>
 
     <!-- ABA CHECKLISTS -->
-    <div id="card-tab-check" class="card-tab-panel hidden">
+   <div
+    id="card-tab-check"
+    class="card-tab-panel hidden"
+    style="max-height: calc(92vh - 260px); overflow-y: auto;">
 
+        <!-- Criar novo checklist -->
         <form
             method="post"
-            hx-post="{% url 'boards:checklist_add_item' card.id %}"
+            hx-post="{% url 'boards:checklist_add' card.id %}"
             hx-target="#checklist-list"
             hx-swap="innerHTML"
-            class="mb-4"
+            class="mb-4 space-y-2"
         >
             {% csrf_token %}
-            <label class="block text-sm font-medium mb-1">Nova tarefa</label>
+            <label class="block text-sm font-medium">Novo checklist</label>
 
             <div class="flex gap-2">
                 <input
                     type="text"
-                    name="text"
+                    name="title"
                     class="flex-1 border rounded px-3 py-2 text-sm"
-                    placeholder="Descreva a tarefa..."
+                    placeholder="Ex: Tarefas desta semana"
                 >
                 <button
                     type="submit"
@@ -102,7 +106,8 @@
             </div>
         </form>
 
-        <div id="checklist-list" class="space-y-2">
+        <!-- Lista de checklists -->
+        <div id="checklist-list" class="space-y-4">
             {% include "boards/partials/checklist_list.html" %}
         </div>
 

@@ -103,7 +103,6 @@ class CardLog(models.Model):
     def __str__(self):
         return f"Log do card {self.card.id} em {self.created_at}"
 
-
 # ============================================================
 # CARD ATTACHMENT — múltiplos anexos por card
 # ============================================================
@@ -143,13 +142,14 @@ class Checklist(models.Model):
 # CHECKLIST ITEM
 # ============================================================
 class ChecklistItem(models.Model):
-    # Mantido para compatibilidade e filtros rápidos
+    # Mantém o vínculo direto com o card (retrocompatibilidade)
     card = models.ForeignKey(
         Card,
         related_name="checklist_items",
         on_delete=models.CASCADE,
     )
-    # Novo: checklist “pai” (permite vários checklists por card)
+
+    # Novo: checklist pai
     checklist = models.ForeignKey(
         Checklist,
         related_name="items",
@@ -157,6 +157,7 @@ class ChecklistItem(models.Model):
         null=True,
         blank=True,
     )
+
     text = models.CharField(max_length=255)
     is_done = models.BooleanField(default=False)
     position = models.PositiveIntegerField(default=0)
