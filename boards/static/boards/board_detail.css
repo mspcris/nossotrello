@@ -56,3 +56,7 @@
     border-radius: 8px;
     border: 1px solid rgba(255, 255, 255, 0.35);
 }
+
+.delete-card-btn {
+    z-index: 30;
+}

@@ -1192,3 +1192,15 @@ def delete_column(request, column_id):
     )
 
     return HttpResponse("")
+
+
+@require_POST
+def delete_card(request, card_id):
+    card = get_object_or_404(Card.all_objects, id=card_id)
+
+    if not card.is_deleted:
+        card.is_deleted = True
+        card.deleted_at = timezone.now()
+        card.save(update_fields=["is_deleted", "deleted_at"])
+
+    return HttpResponse("", status=200)

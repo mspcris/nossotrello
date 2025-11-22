@@ -11,16 +11,18 @@
         hx-swap="innerHTML">
         ⋮
     </button>
-
-    <!-- BOTÃO EXCLUIR (soft delete) -->
-<button 
-    class="text-red-600 hover:text-red-800 text-sm"
-    hx-post="{% url 'boards:column_delete' column.id %}"
-    hx-target="closest .column-glass"
-    hx-swap="outerHTML"
->
-    Excluir coluna
+    <!-- BOTÃO DE EXCLUSÃO (aparece apenas no modo "Excluir cards") -->
+<button type="button"
+        class="delete-card-btn hidden absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded"
+        onclick="event.stopPropagation();"
+        hx-post="{% url 'boards:delete_card' card.id %}"
+        hx-target="#card-{{ card.id }}"
+        hx-swap="outerHTML">
+    X
 </button>
+
+
+
 
 
     <!-- TAGS -->

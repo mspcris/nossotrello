@@ -39,6 +39,12 @@
             hx-post="{% url 'boards:remove_board_wallpaper' board.id %}" hx-target="body" hx-swap="beforeend">
             Remover papel de parede
         </button>
+
+        <button id="toggle-delete-cards"
+           class="block text-left w-full px-4 py-2 hover:bg-gray-100 text-red-600 rounded">
+           Excluir cards
+        </button>
+
     </div>
 </div>
 
@@ -207,5 +213,37 @@
         });
     }
 </script>
+
+<script>
+    let deleteCardsMode = false;
+
+    const toggleDeleteCardsBtn = document.getElementById("toggle-delete-cards");
+
+    toggleDeleteCardsBtn?.addEventListener("click", () => {
+        deleteCardsMode = !deleteCardsMode;
+
+        document.querySelectorAll(".delete-card-btn").forEach(btn => {
+            btn.classList.toggle("hidden", !deleteCardsMode);
+        });
+
+        toggleDeleteCardsBtn.innerText = deleteCardsMode
+            ? "Sair do modo de exclusão"
+            : "Excluir cards";
+    });
+
+    // ao excluir um card → desligar modo delete
+    document.body.addEventListener("htmx:afterRequest", function () {
+        if (deleteCardsMode) {
+            deleteCardsMode = false;
+
+            document.querySelectorAll(".delete-card-btn").forEach(btn => {
+                btn.classList.add("hidden");
+            });
+
+            toggleDeleteCardsBtn.innerText = "Excluir cards";
+        }
+    });
+</script>
+
 
 {% endblock %}
