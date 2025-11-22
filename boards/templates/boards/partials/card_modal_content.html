@@ -6,35 +6,37 @@
     <!-- ABA DESCRIÇÃO -->
     <div id="card-tab-desc" class="card-tab-panel block">
 
-        <form method="post" enctype="multipart/form-data" hx-post="{% url 'boards:update_card' card.id %}"
-            hx-target="#modal-body" hx-swap="innerHTML">
+        <form method="post" enctype="multipart/form-data"
+              hx-post="{% url 'boards:update_card' card.id %}"
+              hx-target="#modal-body" hx-swap="innerHTML">
 
             {% csrf_token %}
 
             <label class="block text-sm font-medium mb-1">Título</label>
-            <input type="text" name="title" value="{{ card.title }}" class="w-full border rounded px-3 py-2 mb-4">
+            <input type="text" name="title" value="{{ card.title }}"
+                   class="w-full border rounded px-3 py-2 mb-4">
 
             <label class="block text-sm font-medium mb-1">Descrição</label>
             <div id="quill-editor" class="border rounded mb-2"></div>
 
             <input type="hidden" id="description-input" name="description"
-                value="{{ card.description|default_if_none:'' }}">
+                   value="{{ card.description|default_if_none:'' }}">
 
             <label class="block text-sm font-medium mb-1 mt-4">Etiquetas</label>
             <input type="text" name="tags" value="{{ card.tags|default_if_none:'' }}"
-                class="w-full border rounded px-3 py-2 mb-2">
+                   class="w-full border rounded px-3 py-2 mb-2">
 
             {% if card.tags %}
             <div id="tags-preview" class="flex flex-wrap gap-1 mb-4">
                 {% for tag in card.tags|split_tags %}
                 {% with tag|tag_color as color %}
                 <span class="group relative flex items-center text-xs font-semibold px-2 py-1 rounded-md"
-                    style="background-color: {{ color }}20; color: {{ color }}; border: 1px solid {{ color }};"
-                    data-tag="{{ tag }}">
+                      style="background-color: {{ color }}20; color: {{ color }}; border: 1px solid {{ color }};"
+                      data-tag="{{ tag }}">
                     {{ tag }}
                     <button type="button"
-                        class="ml-1 text-red-600 hover:text-red-900 font-bold opacity-0 group-hover:opacity-100 transition"
-                        onclick="removeTagInstant({{ card.id }}, '{{ tag }}')">✕</button>
+                            class="ml-1 text-red-600 hover:text-red-900 font-bold opacity-0 group-hover:opacity-100 transition"
+                            onclick="removeTagInstant({{ card.id }}, '{{ tag }}')">✕</button>
                 </span>
                 {% endwith %}
                 {% endfor %}
@@ -49,26 +51,20 @@
                 <p class="text-sm font-medium mb-1">Arquivo atual:</p>
 
                 <a href="{{ card.attachment.url }}" target="_blank"
-                    class="text-blue-600 hover:underline text-sm block mb-1">
+                   class="text-blue-600 hover:underline text-sm block mb-1">
                     {{ card.attachment.name }}
                 </a>
-
-                {% with ext=card.attachment.url|lower %}
-                {% if ext|slice:"-4:" == ".png" or ext|slice:"-4:" == ".jpg" or ext|slice:"-5:" == ".jpeg" %}
-                <img src="{{ card.attachment.url }}" class="mt-2 max-h-40 rounded">
-                {% endif %}
-                {% endwith %}
             </div>
             {% endif %}
 
             <div class="mt-6 flex gap-3">
                 <button type="submit" onclick="refreshCardSnippet({{ card.id }})"
-                    class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                        class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
                     Salvar
                 </button>
 
                 <button type="button" onclick="refreshCardSnippet({{ card.id }}); closeModal();"
-                    class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">
+                        class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">
                     Fechar
                 </button>
             </div>
@@ -82,46 +78,81 @@
         Checklists serão implementados depois.
     </div>
 
-    <!-- ABA ATIVIDADE -->
-    <div id="card-tab-ativ" class="card-tab-panel hidden">
+</div>
 
-        <!-- SUB-ABAS -->
-        <div class="flex gap-3 mb-4 border-b pb-2">
-            <button class="ativ-subtab-btn" data-subtab="ativ-nova-panel">Nova atividade</button>
-            <button class="ativ-subtab-btn" data-subtab="ativ-historico-panel">Histórico</button>
-        </div>
 
-        <!-- SUB-ABA 1 — FORMULÁRIO -->
-        <div id="ativ-nova-panel" class="ativ-subtab-panel block">
+<!-- ABA ATIVIDADE -->
+<div id="card-tab-ativ" class="card-tab-panel hidden">
 
-            <label class="block text-sm font-medium mb-2">Nova atividade</label>
+    <div class="flex gap-3 mb-4 border-b pb-2">
+        <button class="ativ-subtab-btn" data-subtab="ativ-nova-panel">Nova atividade</button>
+        <button class="ativ-subtab-btn" data-subtab="ativ-historico-panel">Histórico</button>
+    </div>
 
-            <div id="quill-editor-ativ" class="border rounded mb-2"></div>
-            <input type="hidden" id="activity-input" name="activity">
+    <!-- SUB-ABA 1 — FORMULÁRIO -->
+    <div id="ativ-nova-panel" class="ativ-subtab-panel block">
 
-            <div class="flex gap-3 mt-3">
-                <button type="button" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+        <label class="block text-sm font-medium mb-2">Nova atividade</label>
+
+        <div id="quill-editor-ativ" class="border rounded mb-2"></div>
+        <input type="hidden" id="activity-input" name="activity">
+
+        <div class="flex gap-3 mt-3">
+            <button type="button"
+                    class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                     onclick="submitActivity({{ card.id }}); ativSwitchSubTab('ativ-historico-panel');">
-                    Incluir
-                </button>
+                Incluir
+            </button>
 
-                <button type="button" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+            <button type="button" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
                     onclick="clearActivityEditor()">
-                    Limpar
-                </button>
-            </div>
-
-        </div>
-
-        <!-- SUB-ABA 2 — HISTÓRICO -->
-        <div id="ativ-historico-panel" class="ativ-subtab-panel hidden"
-            style="overflow-y: auto; height: calc(92vh - 260px);">
-
-            {% include "boards/partials/card_activity_panel.html" %}
-
+                Limpar
+            </button>
         </div>
 
     </div>
+
+            <!-- SUB-ABA 2 — HISTÓRICO -->
+    <div id="ativ-historico-panel"
+     class="ativ-subtab-panel hidden"
+     style="max-height: calc(92vh - 260px); overflow-y: auto;">
+
+    {% include "boards/partials/card_activity_panel.html" %}
+
+    </div>
+
+
+</div>
+
+
+<!-- ABA ANEXOS -->
+<div id="card-tab-files" class="card-tab-panel hidden">
+
+    <div class="mb-4">
+        <label class="block text-sm font-medium mb-2">Enviar novo anexo:</label>
+
+        <input type="file" id="file-upload-input" name="file"
+               class="border rounded px-3 py-2 w-full"
+               hx-post="{% url 'boards:add_attachment' card.id %}"
+               hx-target="#attachments-list"
+               hx-swap="beforeend"
+               hx-trigger="change"
+               hx-encoding="multipart/form-data"
+               hx-on="htmx:afterRequest: document.getElementById('attachments-empty')?.remove()" />
+    </div>
+
+    <div id="attachments-list" class="space-y-3">
+        {% for attachment in card.attachments.all %}
+            {% include "boards/partials/attachment_item.html" %}
+        {% empty %}
+        <div id="attachments-empty" class="p-3 rounded border bg-white/40 backdrop-blur-sm shadow-sm">
+            <p class="font-medium text-sm">Nenhum anexo enviado ainda</p>
+            <p class="text-xs text-gray-500">Envie um arquivo acima.</p>
+        </div>
+        {% endfor %}
+    </div>
+
+</div>
 
 </div>
 

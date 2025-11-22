@@ -1,37 +1,31 @@
 {% load tag_helpers %}
-
-<div class="flex flex-col h-full">
-
+<div class="flex flex-col">
     <div class="flex items-center justify-between mb-3">
         <h3 class="text-lg font-semibold">Atividade</h3>
     </div>
 
-
-
-
-    <div id="activity-panel-wrapper" class="activity-panel space-y-4 overflow-y-auto">
-
-
-
-
-
-
+    <div id="activity-panel-wrapper" class="activity-panel space-y-4">
         {% for log in card.logs.all %}
         <div class="activity-item p-3 rounded border border-gray-200 bg-white shadow-sm">
-
             <div class="activity-meta text-xs text-gray-500 mb-2">
                 {{ log.created_at|date:"d/m/Y H:i" }}
             </div>
 
             <div class="activity-content text-sm leading-relaxed whitespace-pre-wrap">
+                {% if log.attachment %}
+                <p class="mb-1">
+                    <strong>Anexo:</strong>
+                    <a href="{{ log.attachment.url }}" target="_blank" class="text-blue-600 underline">
+                        {{ log.attachment.name|cut:"attachments/" }}
+                    </a>
+                </p>
+                {% endif %}
+
                 {{ log.content|safe }}
             </div>
-
         </div>
         {% empty %}
-        <p class="text-gray-400 text-sm">Nenhuma atividade ainda.</p>
+            <p class="text-gray-400 text-sm">Nenhuma atividade ainda.</p>
         {% endfor %}
-
     </div>
-
 </div>

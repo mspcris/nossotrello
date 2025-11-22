@@ -17,6 +17,8 @@ import re
 from django.core.files.base import ContentFile
 import requests
 
+from .models import CardAttachment
+
 
 # ======================================================================
 # FUNÇÃO AUXILIAR — Tirar imagens base64 da descrição do card
@@ -739,20 +741,38 @@ def add_activity(request, card_id):
     if not raw:
         return HttpResponse("Conteúdo vazio", status=400)
 
-   
-    # aceita HTML real vindo do Quill (incluindo <img>)
-    safe_html = raw
-    html = safe_html
+    # HTML vindo do Quill (já com <img src="...">)
+    html = raw
 
-
-    # salva
+    # 1) Salva o log normalmente
     CardLog.objects.create(
         card=card,
         content=html,
         attachment=None
     )
 
-    # renderiza o painel inteiro atualizado
+    # 2) Procura imagens do Quill e cria CardAttachment para cada uma
+    #    Ex: <img src="/media/quill/arquivo.png"> ou com domínio na frente
+    img_urls = re.findall(r'src="([^"]+)"', html)
+
+    for url in img_urls:
+        # Só consideramos imagens que estão dentro de /media/quill/
+        if "/media/quill/" not in url:
+            continue
+
+        # pega o caminho relativo a MEDIA_ROOT (tudo após /media/)
+        relative_path = url.split("/media/")[-1]
+
+        # evita duplicar se já houver attachment com esse arquivo
+        if card.attachments.filter(file=relative_path).exists():
+            continue
+
+        CardAttachment.objects.create(
+            card=card,
+            file=relative_path
+        )
+
+    # 3) Renderiza o painel inteiro atualizado
     rendered = render(
         request,
         "boards/partials/card_activity_panel.html",
@@ -760,6 +780,7 @@ def add_activity(request, card_id):
     ).content.decode("utf-8")
 
     return HttpResponse(rendered)
+
 
 # ============================================================
 # UPLOAD DE IMAGEM PARA O QUILL
@@ -782,3 +803,33 @@ def quill_upload(request):
     file_url = default_storage.url(file_path)
 
     return JsonResponse({"success": 1, "url": file_url})
+
+
+@require_POST
+def add_attachment(request, card_id):
+    card = get_object_or_404(Card, id=card_id)
+
+    if "file" not in request.FILES:
+        return HttpResponse("Nenhum arquivo enviado", status=400)
+
+    uploaded = request.FILES["file"]
+
+    # salva anexo
+    attachment = CardAttachment.objects.create(
+        card=card,
+        file=uploaded
+    )
+
+    # cria log vinculando o attachment
+    CardLog.objects.create(
+        card=card,
+        content=f"Anexo adicionado: {attachment.file.name.split('/')[-1]}",
+        attachment=attachment.file
+    )
+
+    # retorna apenas o item renderizado
+    return render(
+        request,
+        "boards/partials/attachment_item.html",
+        {"attachment": attachment}
+    )

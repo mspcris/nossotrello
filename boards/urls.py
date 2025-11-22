@@ -37,5 +37,6 @@ urlpatterns = [
     path("home/wallpaper.css", views.home_wallpaper_css, name="home_wallpaper_css"),
     path("card/<int:card_id>/activity/add/", views.add_activity, name="add_activity"),
     path("quill/upload/", views.quill_upload, name="quill_upload"),
+    path("card/<int:card_id>/attachments/add/", views.add_attachment, name="add_attachment"),
 
 ]
