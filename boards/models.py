@@ -16,8 +16,16 @@ class Board(models.Model):
     )
     background_url = models.URLField(null=True, blank=True)
 
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    # SOFT DELETE
+    is_deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+
     def __str__(self):
         return self.name
+
+
 
 
 # ============================================================
@@ -172,3 +180,4 @@ class ChecklistItem(models.Model):
 
     def __str__(self):
         return self.text
+

@@ -78,5 +78,7 @@ urlpatterns = [
     path(
         "checklist/item/<int:item_id>/move-up/", views.checklist_move_up, name="checklist_move_up",),
     path("checklist/item/<int:item_id>/move-down/", views.checklist_move_down, name="checklist_move_down",),
+    path("board/<int:board_id>/delete/", views.delete_board, name="delete_board"),
+
 
 ]

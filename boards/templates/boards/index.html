@@ -27,6 +27,11 @@
             hx-post="{% url 'boards:remove_home_wallpaper' %}" hx-target="body" hx-swap="beforeend">
             Remover Papel de Fundo
         </button>
+        <button id="toggle-delete-mode"
+             class="block text-left w-full px-4 py-2 hover:bg-gray-100 text-red-700 font-semibold">
+                Excluir quadros
+        </button>
+
     </div>
 </div>
 
@@ -56,6 +61,18 @@
             <h2 class="text-xl font-bold home-card-text">{{ board.name }}</h2>
             <p class="text-sm home-card-sub">Clique para abrir</p>
         </a>
+
+        <!-- Botão excluir quadro -->
+<button
+    hx-post="{% url 'boards:delete_board' board.id %}"
+    hx-target="closest .board-card"
+    hx-swap="outerHTML"
+    class="delete-button hidden text-red-600 text-sm underline hover:text-red-800 mt-2 text-left">
+    Excluir quadro
+</button>
+
+
+
     </div>
     {% empty %}
     <p class="text-gray-300 backdrop-blur-lg px-4 py-2 rounded-lg">Nenhum quadro criado ainda.</p>
@@ -89,5 +106,35 @@
         }
     });
 </script>
+
+<script>
+    let deleteMode = false;
+
+    const toggleBtn = document.getElementById("toggle-delete-mode");
+
+    toggleBtn?.addEventListener("click", () => {
+        deleteMode = !deleteMode;
+
+        document.querySelectorAll(".delete-button").forEach(btn => {
+            btn.classList.toggle("hidden", !deleteMode);
+        });
+
+        toggleBtn.innerText = deleteMode ? "Sair do modo de exclusão" : "Excluir quadros";
+    });
+
+    // Quando excluir um board → desliga automaticamente o modo delete
+    document.body.addEventListener("htmx:afterRequest", function (event) {
+        if (deleteMode) {
+            deleteMode = false;
+
+            document.querySelectorAll(".delete-button").forEach(btn => {
+                btn.classList.add("hidden");
+            });
+
+            toggleBtn.innerText = "Excluir quadros";
+        }
+    });
+</script>
+
 
 {% endblock %}

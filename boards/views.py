@@ -76,7 +76,7 @@ def extract_base64_and_convert(html_content):
 # ======================================================================
 
 def index(request):
-    boards = Board.objects.all()
+    boards = Board.objects.filter(is_deleted=False)
 
     home_bg_path = os.path.join(settings.BASE_DIR, "static", "images", "home")
 
@@ -226,6 +226,41 @@ def add_board(request):
         "boards/partials/add_board_form.html",
         {"form": BoardForm()},
     )
+
+# ============================================================
+#   SOFT DELETE DE QUADRO (BOARD)
+# ============================================================
+
+from django.utils import timezone
+from django.http import HttpResponseBadRequest, HttpResponse
+
+def delete_board(request, board_id):
+    if request.method != "POST":
+        return HttpResponseBadRequest("Método inválido.")
+
+    try:
+        board = Board.objects.get(id=board_id, is_deleted=False)
+    except Board.DoesNotExist:
+        return HttpResponseBadRequest("Quadro não encontrado.")
+
+    # marca o board como removido
+    board.is_deleted = True
+    board.deleted_at = timezone.now()
+    board.save()
+
+    # desativar colunas e cards ligados
+    Column.objects.filter(board=board, is_deleted=False).update(
+        is_deleted=True,
+        deleted_at=timezone.now()
+    )
+
+    Card.objects.filter(column__board=board, is_deleted=False).update(
+        is_deleted=True,
+        deleted_at=timezone.now()
+    )
+
+    # retorno vazio para HTMX remover o card visual da home
+    return HttpResponse("")
 
 
 # ======================================================================

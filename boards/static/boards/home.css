@@ -68,3 +68,8 @@
     border-color: rgba(255, 255, 255, 0.55);
     transform: translateY(-3px);
 }
+/* Modo Exclusão — deixa o card mais evidente ao mostrar o botão */
+.board-card.delete-mode {
+    border: 2px solid rgba(255, 80, 80, 0.8);
+    background: rgba(255, 0, 0, 0.15);
+}
