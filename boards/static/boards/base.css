@@ -375,3 +375,171 @@
 .ativ-subtab-panel {
     margin-top: 12px;
 }
+/* ============================================================
+   VIDRO FOSCO (coluna base)
+   ============================================================ */
+.column-glass {
+    background: rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+/* ============================================================
+   TEMA — DOT SELECTOR (AS BOLINHAS)
+   ============================================================ */
+.theme-dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.65);
+    cursor: pointer;
+    transition: 0.2s;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+}
+.theme-dot:hover {
+    transform: scale(1.15);
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.45);
+}
+
+/* ============================================================
+   TEMAS TRANSPARENTES (colunas)
+   ============================================================ */
+.gray-column-bg { background-color: rgba(240, 240, 240, 0.35) !important; }
+.blue-column-bg { background-color: rgba(59, 130, 246, 0.20) !important; }
+.green-column-bg { background-color: rgba(52, 211, 153, 0.20) !important; }
+.purple-column-bg { background-color: rgba(168, 85, 247, 0.20) !important; }
+.amber-column-bg { background-color: rgba(251, 191, 36, 0.25) !important; }
+
+/* ============================================================
+   CARDS com vidro
+   ============================================================ */
+.card-glass {
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+/* ============================================================
+   ATIVIDADE GLOBAL (tema neutro)
+   ============================================================ */
+.activity-panel {
+    /* max-height: 28vh;            MAIS ESPAÇO PARA O TOPO */
+    /* min-height: 140px;           ALTURA CONFORTÁVEL */
+    overflow-y: auto;
+    padding: 8px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.80);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(148, 163, 184, 0.4);
+}
+
+.activity-item {
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(248, 250, 252, 0.9);
+    border: 1px solid rgba(226, 232, 240, 0.9);
+}
+.activity-meta {
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin-bottom: 4px;
+}
+
+/* ============================================================
+   PRISMJS — SEM FUNDOS
+   ============================================================ */
+pre[class*="language-"],
+code[class*="language-"] {
+    background: transparent !important;
+    color: inherit !important;
+    border: none !important;
+}
+pre[class*="language-"] { white-space: pre-wrap !important; }
+
+/* ============================================================
+   ABAS — TEMA WHITE
+   ============================================================ */
+   
+.card-theme-white .card-tab-btn {
+    background: rgba(255,255,255,0.15) !important;
+    color: #222 !important;
+    border-radius: 10px 10px 0 0 !important;
+    border-bottom: 2px solid transparent !important;
+    transition: 0.2s ease !important;
+}
+
+.card-theme-white .card-tab-btn:hover {
+    background: rgba(255,255,255,0.28) !important;
+    color: #000 !important;
+    border-bottom-color: rgba(0,0,0,0.25) !important;
+}
+
+.card-theme-white .card-tab-active {
+    background: rgba(255,255,255,0.40) !important;
+    color: #000 !important;
+    border-bottom-color: rgba(0,0,0,0.55) !important;
+    box-shadow:
+        0 4px 12px rgba(0,0,0,0.10),
+        inset 0 0 10px rgba(255,255,255,0.45) !important;
+}
+
+/* ============================================================
+   TEMA DAS BOLINHAS — AJUSTE DEFINITIVO
+   (NÃO ALTERA NADA DO VISUAL ATUAL, APENAS REFINA CONTRASTE)
+   ============================================================ */
+
+/* ---------- Tema WHITE ---------- */
+.card-theme-white .theme-dot {
+    border-color: rgba(0,0,0,0.25) !important;
+    box-shadow: 0 0 4px rgba(0,0,0,0.15) !important;
+}
+
+/* 1: branca */
+.card-theme-white .theme-dot:nth-child(1) {
+    background: #ffffff !important;
+}
+
+/* 2: cinza médio opaco (substitui a aparência "fantasma") */
+.card-theme-white .theme-dot:nth-child(2) {
+    background: #d1d5db !important; /* Tailwind gray-300 */
+}
+
+/* 3: preta */
+.card-theme-white .theme-dot:nth-child(3) {
+    background: #1f1f1f !important;
+}
+
+
+/* ---------- Tema AERO ---------- */
+.card-theme-aero .theme-dot {
+    border-color: rgba(255,255,255,0.55) !important;
+    box-shadow: 0 0 6px rgba(0,0,0,0.25) !important;
+}
+
+/* mantém translucidez original */
+.card-theme-aero .theme-dot:nth-child(1) { background: #ffffff !important; }
+.card-theme-aero .theme-dot:nth-child(2) { background: rgba(255,255,255,0.22) !important; }
+.card-theme-aero .theme-dot:nth-child(3) { background: #111 !important; }
+
+
+/* ---------- Tema DARK ---------- */
+.card-theme-dark .theme-dot {
+    border-color: rgba(255,255,255,0.55) !important;
+    box-shadow: 0 0 6px rgba(255,255,255,0.25) !important;
+}
+
+.card-theme-dark .theme-dot:nth-child(1) { background: #ffffff !important; }
+.card-theme-dark .theme-dot:nth-child(2) { background: #bbbbbb !important; }
+.card-theme-dark .theme-dot:nth-child(3) { background: #111 !important; }
+
+
+
+
+/* ============================================================
+   VIDRO FOSCO (coluna base)
+   ============================================================ */
+.column-glass {
+    background: rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+}
