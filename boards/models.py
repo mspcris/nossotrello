@@ -2,7 +2,6 @@ from django.db import models
 from django.utils import timezone
 
 
-
 # ============================================================
 # BOARD (Quadro)
 # ============================================================
@@ -118,3 +117,53 @@ class CardAttachment(models.Model):
 
     def __str__(self):
         return f"Anexo do card {self.card.id}: {self.file.name}"
+
+
+# ============================================================
+# CHECKLIST (grupo de itens por card)
+# ============================================================
+class Checklist(models.Model):
+    card = models.ForeignKey(
+        Card,
+        related_name="checklists",
+        on_delete=models.CASCADE,
+    )
+    title = models.CharField(max_length=255)
+    position = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["position", "created_at"]
+
+    def __str__(self):
+        return f"Checklist '{self.title}' do card {self.card.id}"
+
+
+# ============================================================
+# CHECKLIST ITEM
+# ============================================================
+class ChecklistItem(models.Model):
+    # Mantido para compatibilidade e filtros rápidos
+    card = models.ForeignKey(
+        Card,
+        related_name="checklist_items",
+        on_delete=models.CASCADE,
+    )
+    # Novo: checklist “pai” (permite vários checklists por card)
+    checklist = models.ForeignKey(
+        Checklist,
+        related_name="items",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+    )
+    text = models.CharField(max_length=255)
+    is_done = models.BooleanField(default=False)
+    position = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["position", "created_at"]
+
+    def __str__(self):
+        return self.text

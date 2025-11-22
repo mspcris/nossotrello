@@ -1,0 +1,7 @@
+{% if card.checklist_items.exists %}
+    {% for item in card.checklist_items.all %}
+        {% include "boards/partials/checklist_item.html" with item=item %}
+    {% endfor %}
+{% else %}
+    <p class="text-xs text-gray-500">Nenhuma tarefa ainda. Adicione a primeira acima.</p>
+{% endif %}

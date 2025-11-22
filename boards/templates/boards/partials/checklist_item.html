@@ -1,0 +1,25 @@
+<div class="flex items-center justify-between px-3 py-2 rounded border bg-white/60 backdrop-blur-sm text-sm">
+
+    <label class="flex items-center gap-2">
+        <input
+            type="checkbox"
+            {% if item.is_done %}checked{% endif %}
+            hx-post="{% url 'boards:checklist_toggle_item' item.id %}"
+            hx-target="closest div"
+            hx-swap="outerHTML"
+        >
+        <span class="{% if item.is_done %}line-through text-gray-400{% endif %}">
+            {{ item.text }}
+        </span>
+    </label>
+
+    <button
+        type="button"
+        class="text-xs text-red-600 hover:text-red-800"
+        hx-post="{% url 'boards:checklist_delete_item' item.id %}"
+        hx-target="#checklist-list"
+        hx-swap="innerHTML"
+    >
+        Remover
+    </button>
+</div>

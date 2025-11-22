@@ -38,5 +38,7 @@ urlpatterns = [
     path("card/<int:card_id>/activity/add/", views.add_activity, name="add_activity"),
     path("quill/upload/", views.quill_upload, name="quill_upload"),
     path("card/<int:card_id>/attachments/add/", views.add_attachment, name="add_attachment"),
-
+    path("card/<int:card_id>/checklist/add/", views.checklist_add_item, name="checklist_add_item"),
+    path("checklist/<int:item_id>/toggle/", views.checklist_toggle_item, name="checklist_toggle_item"),
+    path("checklist/<int:item_id>/delete/", views.checklist_delete_item, name="checklist_delete_item"),
 ]

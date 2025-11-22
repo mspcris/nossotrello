@@ -18,6 +18,7 @@ from django.core.files.base import ContentFile
 import requests
 
 from .models import CardAttachment
+from .models import Board, Column, Card, CardLog, ChecklistItem  # <-- inclui ChecklistItem
 
 
 # ======================================================================
@@ -832,4 +833,51 @@ def add_attachment(request, card_id):
         request,
         "boards/partials/attachment_item.html",
         {"attachment": attachment}
+    )
+
+
+from django.views.decorators.http import require_http_methods
+
+
+@require_POST
+def checklist_add_item(request, card_id):
+    card = get_object_or_404(Card, id=card_id)
+
+    text = request.POST.get("text", "").strip()
+    if not text:
+        return HttpResponse("Texto vazio", status=400)
+
+    ChecklistItem.objects.create(card=card, text=text)
+
+    # devolve só a lista atualizada
+    return render(
+        request,
+        "boards/partials/checklist_list.html",
+        {"card": card},
+    )
+
+
+@require_POST
+def checklist_toggle_item(request, item_id):
+    item = get_object_or_404(ChecklistItem, id=item_id)
+    item.is_done = not item.is_done
+    item.save(update_fields=["is_done"])
+
+    return render(
+        request,
+        "boards/partials/checklist_item.html",
+        {"item": item},
+    )
+
+
+@require_http_methods(["POST"])
+def checklist_delete_item(request, item_id):
+    item = get_object_or_404(ChecklistItem, id=item_id)
+    card = item.card
+    item.delete()
+
+    return render(
+        request,
+        "boards/partials/checklist_list.html",
+        {"card": card},
     )

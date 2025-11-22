@@ -75,8 +75,39 @@
 
     <!-- ABA CHECKLISTS -->
     <div id="card-tab-check" class="card-tab-panel hidden">
-        Checklists serão implementados depois.
+
+        <form
+            method="post"
+            hx-post="{% url 'boards:checklist_add_item' card.id %}"
+            hx-target="#checklist-list"
+            hx-swap="innerHTML"
+            class="mb-4"
+        >
+            {% csrf_token %}
+            <label class="block text-sm font-medium mb-1">Nova tarefa</label>
+
+            <div class="flex gap-2">
+                <input
+                    type="text"
+                    name="text"
+                    class="flex-1 border rounded px-3 py-2 text-sm"
+                    placeholder="Descreva a tarefa..."
+                >
+                <button
+                    type="submit"
+                    class="px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                >
+                    Adicionar
+                </button>
+            </div>
+        </form>
+
+        <div id="checklist-list" class="space-y-2">
+            {% include "boards/partials/checklist_list.html" %}
+        </div>
+
     </div>
+
 
 </div>
 
