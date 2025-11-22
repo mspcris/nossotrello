@@ -16,12 +16,16 @@ SECRET_KEY = 'django-insecure-*g97-4tr#q7%rz+b%)i_dgnocxt17ziww%x=7=zea_n$#i9%mj
 DEBUG = True
 
 ALLOWED_HOSTS = [
-'127.0.0.1',
-'localhost',
-'192.168.1.18',
-'192.168.1.*',
-'tarefas.camim.com.br',
+    '127.0.0.1',
+    'localhost',
+    'tarefas.camim.com.br',
 ]
+
+CSRF_TRUSTED_ORIGINS = [
+    'http://tarefas.camim.com.br',
+    'http://tarefas.camim.com.br:8081',
+]
+
 
 
 # ============================================================
@@ -107,11 +111,6 @@ DATABASES = {
         'NAME': BASE_DIR / 'db' / 'db.sqlite3',
     }
 }
-
-CSRF_TRUSTED_ORIGINS = [
-    "http://tarefas.camim.com.br",
-    "http://tarefas.camim.com.br:8081",
-]
 
 # ============================================================
 # VALIDADORES DE SENHA
