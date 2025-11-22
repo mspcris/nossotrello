@@ -71,13 +71,13 @@ window.cardSetTheme = function (mode) {
 // =====================================================
 // Tela cheia
 // =====================================================
-window.cardToggleFull = function () {
-    const root = document.getElementById('card-modal-root');
-    if (!root) return;
+// window.cardToggleFull = function () {
+//     const root = document.getElementById('card-modal-root');
+//     if (!root) return;
 
-    root.classList.toggle('max-h-[80vh]');
-    root.classList.toggle('h-[90vh]');
-};
+//     root.classList.toggle('max-h-[80vh]');
+//     root.classList.toggle('h-[90vh]');
+// };
 
 // =====================================================
 // Inicializa Quill + Prism + Copiar Código
@@ -275,37 +275,19 @@ function enhanceCodeBlocks() {
 document.removeEventListener("click", function () {});
 
 
+// =====================================================
+// SUB-ABAS DE ATIVIDADE
+// =====================================================
+window.ativSwitchSubTab = function (panelId) {
 
+    document.querySelectorAll(".ativ-subtab-panel")
+        .forEach(p => p.classList.add("hidden"));
 
+    document.getElementById(panelId).classList.remove("hidden");
 
+    document.querySelectorAll(".ativ-subtab-btn")
+        .forEach(b => b.classList.remove("ativ-subtab-active"));
 
-
-
-// // =====================================================
-// // Expandir / Recolher itens de atividade
-// // =====================================================
-// window.toggleActivityItem = function (btn) {
-//     const wrapper = btn.previousElementSibling;
-
-//     const expanded = wrapper.classList.toggle("expanded");
-
-//     // Se expandiu, some o fade
-//     const fade = wrapper.querySelector(".activity-fade");
-//     if (fade) fade.style.display = expanded ? "none" : "block";
-
-//     btn.textContent = expanded ? "Recolher" : "Expandir";
-// };
-
-// window.toggleActivityItem = function (el) {
-//     const box = el.closest(".activity-item");
-
-//     if (box.classList.contains("collapsed")) {
-//         box.classList.remove("collapsed");
-//         box.classList.add("expanded");
-//         el.innerText = "Recolher";
-//     } else {
-//         box.classList.remove("expanded");
-//         box.classList.add("collapsed");
-//         el.innerText = "Expandir";
-//     }
-// };
+    document.querySelector(`.ativ-subtab-btn[data-subtab='${panelId}']`)
+        .classList.add("ativ-subtab-active");
+};

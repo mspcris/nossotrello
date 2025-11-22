@@ -83,40 +83,59 @@
     <!-- ABA ATIVIDADE -->
     <div id="card-tab-ativ" class="card-tab-panel hidden">
 
-        <!-- BOTÃO FUTURISTA — NOVA ATIVIDADE -->
-        <div id="ativ-toggle-wrapper" class="mb-4">
-            <button type="button" id="ativ-toggle-btn" onclick="toggleAtividadeEditor()" class="ativ-mini-tab">
+
+
+
+
+
+
+
+        <!-- SUB-ABAS DA ÁREA ATIVIDADE -->
+        <div class="flex gap-3 mb-4 border-b pb-2">
+            <button type="button" class="ativ-subtab-btn ativ-subtab-active" data-subtab="atividade-editor"
+                onclick="ativSwitchSubTab('atividade-editor')">
                 Nova atividade
+            </button>
+
+            <button type="button" class="ativ-subtab-btn" data-subtab="atividade-historico"
+                onclick="ativSwitchSubTab('atividade-historico')">
+                Histórico
             </button>
         </div>
 
-        <!-- BLOCO QUE ABRE/FECHA -->
-        <div id="ativ-editor-wrapper" class="hidden">
 
-            <div class="mb-4">
-                <label class="block text-sm font-medium mb-1">Nova atividade</label>
+        <!-- SUB-ABA 1 — FORMULÁRIO -->
+        <div id="atividade-editor" class="ativ-subtab-panel block">
 
-                <div id="quill-editor-ativ" class="border rounded mb-2"></div>
-                <input type="hidden" id="activity-input" name="activity">
+            <label class="block text-sm font-medium mb-2">Nova atividade</label>
 
-                <div class="flex gap-3 mt-3">
-                    <button type="button" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                        onclick="submitActivity({{ card.id }})">
-                        Incluir
-                    </button>
+            <div id="quill-editor-ativ" class="border rounded mb-2"></div>
+            <input type="hidden" id="activity-input" name="activity">
 
-                    <button type="button" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
-                        onclick="toggleAtividadeEditor(true)">
-                        Cancelar
-                    </button>
-                </div>
+            <div class="flex gap-3 mt-3">
+                <button type="button" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                    onclick="submitActivity({{ card.id }})">
+                    Incluir
+                </button>
+
+                <button type="button" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+                    onclick="clearActivityEditor()">
+                    Limpar
+                </button>
             </div>
 
         </div>
 
-        <!-- WRAPPER DA ATIVIDADE (mantido) -->
-        {% include "boards/partials/card_activity_panel.html" %}
+
+        <!-- SUB-ABA 2 — HISTÓRICO -->
+        <div id="atividade-historico" class="ativ-subtab-panel hidden"
+            style="overflow-y: auto; height: calc(92vh - 260px);">
+
+            {% include "boards/partials/card_activity_panel.html" %}
+
+        </div>
+
+
+
 
     </div>
-
-</div>
