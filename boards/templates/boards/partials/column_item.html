@@ -1,6 +1,16 @@
 <div class="relative w-72 flex-shrink-0 rounded-xl shadow-lg overflow-hidden
             column-glass {{ column.theme|default:'gray'|add:'-column-bg' }}">
 
+            <button type="button"
+        class="delete-column-btn hidden absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded z-30"
+        onclick="event.stopPropagation();"
+        hx-post="{% url 'boards:delete_column' column.id %}"
+        hx-target="closest .column-glass"
+        hx-swap="outerHTML">
+    X
+</button>
+
+
     <!-- ===================== HEADER ===================== -->
     <div class="column-header flex items-center justify-between 
             px-4 py-2 h-12 min-h-[48px]
@@ -56,14 +66,14 @@
                         {% endfor %}
                     </div>
                     <hr class="my-2">
-
+{% comment %} 
                     <button
                        hx-post="{% url 'boards:delete_column' column.id %}"
                        hx-target="closest .column-glass"
                        hx-swap="outerHTML"
                        class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-100 rounded">
                        Excluir coluna
-                    </button>
+                    </button> {% endcomment %}
 
                 </div>
             </div>

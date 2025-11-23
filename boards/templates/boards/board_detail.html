@@ -39,12 +39,15 @@
             hx-post="{% url 'boards:remove_board_wallpaper' board.id %}" hx-target="body" hx-swap="beforeend">
             Remover papel de parede
         </button>
+        <button id="toggle-delete-columns"
+            class="block text-left w-full px-4 py-2 hover:bg-gray-100 text-red-600 rounded">
+            Excluir colunas
+        </button>
 
         <button id="toggle-delete-cards"
            class="block text-left w-full px-4 py-2 hover:bg-gray-100 text-red-600 rounded">
            Excluir cards
-        </button>
-
+        </button> 
     </div>
 </div>
 
@@ -244,6 +247,38 @@
         }
     });
 </script>
+
+<script>
+    let deleteColumnsMode = false;
+
+    const toggleDeleteColumnsBtn = document.getElementById("toggle-delete-columns");
+
+    toggleDeleteColumnsBtn?.addEventListener("click", () => {
+        deleteColumnsMode = !deleteColumnsMode;
+
+        document.querySelectorAll(".delete-column-btn").forEach(btn => {
+            btn.classList.toggle("hidden", !deleteColumnsMode);
+        });
+
+        toggleDeleteColumnsBtn.innerText = deleteColumnsMode
+            ? "Sair do modo de exclusão"
+            : "Excluir colunas";
+    });
+
+    // ao excluir uma coluna → desliga o modo
+    document.body.addEventListener("htmx:afterRequest", function () {
+        if (deleteColumnsMode) {
+            deleteColumnsMode = false;
+
+            document.querySelectorAll(".delete-column-btn").forEach(btn => {
+                btn.classList.add("hidden");
+            });
+
+            toggleDeleteColumnsBtn.innerText = "Excluir colunas";
+        }
+    });
+</script>
+
 
 
 {% endblock %}
