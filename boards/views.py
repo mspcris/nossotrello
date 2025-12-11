@@ -29,7 +29,42 @@ from .models import (
     CardAttachment,
     Checklist,
     ChecklistItem,
+    Organization,
+    OrganizationMembership,
+    BoardMembership,
 )
+
+# ======================================================================
+# HELPER – Organização "default" por usuário
+# ======================================================================
+
+def get_or_create_user_default_organization(user):
+    """
+    Garante que cada usuário tenha uma organização "dona" dos boards.
+    - Se não existir, cria.
+    - Garante também o membership como OWNER.
+    """
+    if not user.is_authenticated:
+        return None
+
+    # nome amigável para o workspace
+    display_name = user.get_full_name() or user.get_username() or str(user)
+
+    org, created = Organization.objects.get_or_create(
+        owner=user,
+        defaults={
+            "name": f"Workspace de {display_name}",
+        },
+    )
+
+    # garante membership como OWNER
+    OrganizationMembership.objects.get_or_create(
+        organization=org,
+        user=user,
+        defaults={"role": OrganizationMembership.Role.OWNER},
+    )
+
+    return org
 
 
 # ======================================================================
@@ -76,7 +111,18 @@ def extract_base64_and_convert(html_content):
 # ======================================================================
 
 def index(request):
-    boards = Board.objects.filter(is_deleted=False)
+    # Se o usuário estiver autenticado, mostra apenas boards onde ele é membro.
+    if request.user.is_authenticated:
+        boards = (
+            Board.objects.filter(
+                is_deleted=False,
+                memberships__user=request.user,
+            )
+            .distinct()
+        )
+    else:
+        # Cenário legado / anônimo: mantém visibilidade global por enquanto
+        boards = Board.objects.filter(is_deleted=False)
 
     home_bg_path = os.path.join(settings.BASE_DIR, "static", "images", "home")
 
@@ -102,15 +148,34 @@ def index(request):
     )
 
 
+
 # ======================================================================
 # DETALHE DE UM BOARD
 # Quem chama? → "/board/1/"
 # ======================================================================
 
 def board_detail(request, board_id):
-    board = get_object_or_404(Board, id=board_id)
+    board = get_object_or_404(Board, id=board_id, is_deleted=False)
+
+    # Estratégia de transição:
+    # - Se o board já tiver memberships, aplicamos controle de acesso.
+    # - Se NÃO tiver memberships, tratamos como legado (acesso aberto).
+    memberships_qs = board.memberships.select_related("user")
+
+    if memberships_qs.exists():
+        if not request.user.is_authenticated:
+            return HttpResponse("Você não tem acesso a este quadro.", status=403)
+
+        if not memberships_qs.filter(user=request.user).exists():
+            return HttpResponse("Você não tem acesso a este quadro.", status=403)
+
     columns = board.columns.filter(is_deleted=False).order_by("position")
-    return render(request, "boards/board_detail.html", {"board": board, "columns": columns})
+
+    return render(
+        request,
+        "boards/board_detail.html",
+        {"board": board, "columns": columns},
+    )
 
 
 
@@ -214,7 +279,26 @@ def add_board(request):
     if request.method == "POST":
         form = BoardForm(request.POST)
         if form.is_valid():
-            board = form.save()
+            board = form.save(commit=False)
+
+            # Se estiver autenticado, amarramos:
+            # - quem criou
+            # - qual organização é dona
+            if request.user.is_authenticated:
+                board.created_by = request.user
+                org = get_or_create_user_default_organization(request.user)
+                board.organization = org
+
+            board.save()
+
+            # Cria membership do criador como OWNER (quando autenticado)
+            if request.user.is_authenticated:
+                BoardMembership.objects.get_or_create(
+                    board=board,
+                    user=request.user,
+                    defaults={"role": BoardMembership.Role.OWNER},
+                )
+
             return HttpResponse(
                 f'<script>window.location.href="/board/{board.id}/"</script>'
             )
@@ -226,6 +310,7 @@ def add_board(request):
         "boards/partials/add_board_form.html",
         {"form": BoardForm()},
     )
+
 
 # ============================================================
 #   SOFT DELETE DE QUADRO (BOARD)
