@@ -1,18 +1,95 @@
+from django.conf import settings
 from django.db import models
 from django.utils import timezone
+
+
+# ============================================================
+# ORGANIZATION (dona dos boards)
+# ============================================================
+class Organization(models.Model):
+    name = models.CharField(max_length=255)
+    slug = models.SlugField(max_length=255, unique=True)
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="owned_organizations",
+        on_delete=models.CASCADE,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        # slug simples a partir do nome, se não vier preenchido
+        if not self.slug:
+            from django.utils.text import slugify
+
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
+
+
+# ============================================================
+# ORGANIZATION MEMBERSHIP (usuário participante da organização)
+# ============================================================
+class OrganizationMembership(models.Model):
+    class Role(models.TextChoices):
+        OWNER = "owner", "Owner"
+        ADMIN = "admin", "Admin"
+        MEMBER = "member", "Member"
+
+    organization = models.ForeignKey(
+        Organization,
+        related_name="memberships",
+        on_delete=models.CASCADE,
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="organization_memberships",
+        on_delete=models.CASCADE,
+    )
+    role = models.CharField(
+        max_length=20,
+        choices=Role.choices,
+        default=Role.MEMBER,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("organization", "user")
+
+    def __str__(self):
+        return f"{self.user} em {self.organization} ({self.role})"
 
 
 # ============================================================
 # BOARD (Quadro)
 # ============================================================
 class Board(models.Model):
+    # Nova relação: organização dona do board
+    organization = models.ForeignKey(
+        Organization,
+        related_name="boards",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+    )
+
+    # Quem criou o board
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="created_boards",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+
     name = models.CharField(max_length=255)
     image = models.ImageField(upload_to="board_covers/", null=True, blank=True)
 
     background_image = models.ImageField(
         upload_to="board_backgrounds/",
         null=True,
-        blank=True
+        blank=True,
     )
     background_url = models.URLField(null=True, blank=True)
 
@@ -26,6 +103,37 @@ class Board(models.Model):
         return self.name
 
 
+# ============================================================
+# BOARD MEMBERSHIP (usuário com acesso ao board)
+# ============================================================
+class BoardMembership(models.Model):
+    class Role(models.TextChoices):
+        OWNER = "owner", "Owner"
+        EDITOR = "editor", "Editor"
+        VIEWER = "viewer", "Viewer"
+
+    board = models.ForeignKey(
+        Board,
+        related_name="memberships",
+        on_delete=models.CASCADE,
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="board_memberships",
+        on_delete=models.CASCADE,
+    )
+    role = models.CharField(
+        max_length=20,
+        choices=Role.choices,
+        default=Role.EDITOR,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("board", "user")
+
+    def __str__(self):
+        return f"{self.user} em {self.board} ({self.role})"
 
 
 # ============================================================
@@ -82,9 +190,6 @@ class Card(models.Model):
     description = models.TextField(blank=True, null=True)
     tags = models.CharField(max_length=255, blank=True, null=True)
 
-    # ⚠️ REMOVIDO: attachment único
-    # attachment = models.FileField(...)
-
     column = models.ForeignKey(Column, related_name="cards", on_delete=models.CASCADE)
     position = models.PositiveIntegerField(default=0)
 
@@ -114,6 +219,7 @@ class CardLog(models.Model):
 
     def __str__(self):
         return f"Log do card {self.card.id} em {self.created_at}"
+
 
 # ============================================================
 # CARD ATTACHMENT — múltiplos anexos por card
@@ -180,4 +286,3 @@ class ChecklistItem(models.Model):
 
     def __str__(self):
         return self.text
-
