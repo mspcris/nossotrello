@@ -24,6 +24,7 @@ ALLOWED_HOSTS = [
 CSRF_TRUSTED_ORIGINS = [
     'http://tarefas.camim.com.br',
     'http://tarefas.camim.com.br:8081',
+    'https://tarefas.camim.com.br',
 ]
 
 
