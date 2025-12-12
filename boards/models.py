@@ -14,10 +14,9 @@ class Organization(models.Model):
         related_name="owned_organizations",
         on_delete=models.CASCADE,
     )
-    created_at = models.DateTimeField(auto_now_add=True)
     home_wallpaper_filename = models.CharField(max_length=255, blank=True, default="")
-
-
+    created_at = models.DateTimeField(auto_now_add=True)
+    
     def __str__(self):
         return self.name
 
@@ -55,8 +54,7 @@ class OrganizationMembership(models.Model):
         default=Role.MEMBER,
     )
     created_at = models.DateTimeField(auto_now_add=True)
-    home_wallpaper_filename = models.CharField(max_length=255, blank=True, default="")
-
+   
     class Meta:
         unique_together = ("organization", "user")
 
@@ -97,8 +95,6 @@ class Board(models.Model):
     background_url = models.URLField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
-    home_wallpaper_filename = models.CharField(max_length=255, blank=True, default="")
-
 
     # SOFT DELETE
     is_deleted = models.BooleanField(default=False)
