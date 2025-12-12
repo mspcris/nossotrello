@@ -10,10 +10,7 @@
 
 {% block content %}
 
-<form method="post" action="{% url 'logout' %}" style="display:inline;">
-  {% csrf_token %}
-  <button type="submit">Sair</button>
-</form>
+
 
 
 <!-- MENU HAMBÚRGUER DA HOME -->
@@ -37,8 +34,14 @@
              class="block text-left w-full px-4 py-2 hover:bg-gray-100 text-red-700 font-semibold">
                 Excluir quadros
         </button>
+    
+        <form method="post" action="{% url 'logout' %}" style="display:inline;">
+            {% csrf_token %}
+        <button type="submit">Sair</button>
+</form>
 
     </div>
+
 </div>
 
 <h1 class="text-2xl font-bold mb-6 home-title">Quadros</h1>

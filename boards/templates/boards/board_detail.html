@@ -48,6 +48,10 @@
            class="block text-left w-full px-4 py-2 hover:bg-gray-100 text-red-600 rounded">
            Excluir cards
         </button> 
+        <form method="post" action="{% url 'logout' %}" style="display:inline;">
+            {% csrf_token %}
+        <button type="submit">Sair</button>
+        </form>
     </div>
 </div>
 
