@@ -22,9 +22,9 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
-    path("accounts/", include("django.contrib.auth.urls")),  # login/logout/reset padrão
+    path("accounts/", include("django.contrib.auth.urls")),  # /accounts/login/ /accounts/logout/ etc
     path("admin/", admin.site.urls),
-    path("", include("boards.urls")),  # app principal
+    path("", include("boards.urls")),
 ]
 
 if settings.DEBUG:
