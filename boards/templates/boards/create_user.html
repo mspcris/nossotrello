@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Criar usuário</title>
+</head>
+<body style="font-family: system-ui; max-width: 520px; margin: 48px auto; padding: 0 16px;">
+  <h1 style="margin-bottom: 8px;">Criar usuário</h1>
+  <p style="margin-top: 0; color: #444;">Apenas administradores (staff) podem acessar esta tela.</p>
+
+  {% if form.errors %}
+    <div style="padding: 12px; background: #ffecec; border: 1px solid #ffb3b3; margin: 16px 0;">
+      Revise os campos e tente novamente.
+    </div>
+  {% endif %}
+
+  <form method="post">
+    {% csrf_token %}
+
+    <div style="margin-bottom: 12px;">
+      <label>Usuário</label><br>
+      {{ form.username }}
+    </div>
+
+    <div style="margin-bottom: 12px;">
+      <label>Email (opcional)</label><br>
+      <input name="email" type="email" style="width: 100%; padding: 10px; box-sizing: border-box;">
+    </div>
+
+    <div style="margin-bottom: 12px;">
+      <label>Senha</label><br>
+      {{ form.password1 }}
+    </div>
+
+    <div style="margin-bottom: 12px;">
+      <label>Confirmar senha</label><br>
+      {{ form.password2 }}
+    </div>
+
+    <button type="submit" style="padding: 10px 14px; cursor: pointer;">Criar</button>
+  </form>
+</body>
+</html>

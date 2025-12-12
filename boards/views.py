@@ -19,6 +19,8 @@ from django.utils.html import escape
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.views.decorators.csrf import csrf_exempt
+from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth.forms import UserCreationForm
 
 from .forms import ColumnForm, CardForm, BoardForm
 from .models import (
@@ -1289,3 +1291,27 @@ def delete_card(request, card_id):
         card.save(update_fields=["is_deleted", "deleted_at"])
 
     return HttpResponse("", status=200)
+
+# ============================================================
+# USERS
+# ============================================================
+@staff_member_required
+def create_user(request):
+    """
+    Criação rápida de usuário (somente staff/superuser).
+    """
+    if request.method == "POST":
+        form = UserCreationForm(request.POST)
+        email = (request.POST.get("email") or "").strip()
+
+        if form.is_valid():
+            user = form.save(commit=False)
+            if email:
+                user.email = email
+            user.save()
+            return redirect("boards:boards_index")
+
+    else:
+        form = UserCreationForm()
+
+    return render(request, "boards/create_user.html", {"form": form})

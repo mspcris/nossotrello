@@ -10,6 +10,11 @@ urlpatterns = [
     # ---------------------- HOME ----------------------
     path("", views.index, name="boards_index"),
 
+
+    # ---------------------- LOGIN ----------------------
+    path("users/create/", views.create_user, name="create_user"),
+
+
     # ---------------------- BOARD ----------------------
     path("board/<int:board_id>/", views.board_detail, name="board_detail"),
     path("board/<int:board_id>/add_column/", views.add_column, name="add_column"),
