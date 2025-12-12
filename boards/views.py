@@ -784,6 +784,28 @@ def update_board_wallpaper(request, board_id):
 
         return HttpResponse("Erro", status=400)
 
+def home_wallpaper_css(request):
+    css = "body {"
+
+    if request.user.is_authenticated:
+        org = get_or_create_user_default_organization(request.user)
+        filename = (getattr(org, "home_wallpaper_filename", "") or "").strip()
+
+        if filename:
+            css += f'background-image: url("/media/home_wallpapers/{filename}");'
+        else:
+            css += "background-color: #f0f0f0;"
+    else:
+        css += "background-color: #f0f0f0;"
+
+    css += """
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+    }
+    """
+
+    return HttpResponse(css, content_type="text/css")
 
 # ======================================================================
 # REMOVER WALLPAPER DO BOARD
@@ -831,21 +853,27 @@ def update_home_wallpaper(request):
     os.makedirs(HOME_WALLPAPER_FOLDER, exist_ok=True)
 
     if request.method == "GET":
-        return render(
-            request,
-            "boards/partials/home_wallpaper_form.html",
-            {},
-        )
+        return render(request, "boards/partials/home_wallpaper_form.html", {})
+
+    # precisa estar logado pra ter "opção 2" por usuário
+    if not request.user.is_authenticated:
+        return HttpResponse("Login necessário.", status=401)
+
+    org = get_or_create_user_default_organization(request.user)
+    if not org:
+        return HttpResponse("Organização não encontrada.", status=400)
 
     if "image" in request.FILES:
         file = request.FILES["image"]
-        filepath = os.path.join(HOME_WALLPAPER_FOLDER, file.name)
+        filename = file.name
+        filepath = os.path.join(HOME_WALLPAPER_FOLDER, filename)
 
         with open(filepath, "wb+") as dest:
             for chunk in file.chunks():
                 dest.write(chunk)
 
-        request.session["home_wallpaper"] = file.name
+        org.home_wallpaper_filename = filename
+        org.save(update_fields=["home_wallpaper_filename"])
         return HttpResponse('<script>location.reload()</script>')
 
     url = request.POST.get("image_url", "").strip()
@@ -853,12 +881,14 @@ def update_home_wallpaper(request):
         try:
             r = requests.get(url, timeout=5)
             if r.status_code == 200:
-                filename = url.split("/")[-1]
+                filename = url.split("/")[-1] or "wallpaper.jpg"
                 filepath = os.path.join(HOME_WALLPAPER_FOLDER, filename)
+
                 with open(filepath, "wb") as f:
                     f.write(r.content)
 
-                request.session["home_wallpaper"] = filename
+                org.home_wallpaper_filename = filename
+                org.save(update_fields=["home_wallpaper_filename"])
                 return HttpResponse('<script>location.reload()</script>')
         except Exception:
             pass
@@ -867,35 +897,25 @@ def update_home_wallpaper(request):
 
 
 def remove_home_wallpaper(request):
-    filename = request.session.get("home_wallpaper")
+    if not request.user.is_authenticated:
+        return HttpResponse("Login necessário.", status=401)
 
+    org = get_or_create_user_default_organization(request.user)
+    if not org:
+        return HttpResponse("Organização não encontrada.", status=400)
+
+    filename = (org.home_wallpaper_filename or "").strip()
+
+    # opcional: apaga o arquivo do disco
     if filename:
         filepath = os.path.join(HOME_WALLPAPER_FOLDER, filename)
         if os.path.exists(filepath):
             os.remove(filepath)
 
-    request.session["home_wallpaper"] = None
+    org.home_wallpaper_filename = ""
+    org.save(update_fields=["home_wallpaper_filename"])
+
     return HttpResponse('<script>location.reload()</script>')
-
-
-def home_wallpaper_css(request):
-    filename = request.session.get("home_wallpaper")
-
-    css = "body {"
-
-    if filename:
-        css += f'background-image: url("/media/home_wallpapers/{filename}");'
-    else:
-        css += "background-color: #f0f0f0;"
-
-    css += """
-        background-size: cover;
-        background-position: center;
-        background-attachment: fixed;
-    }
-    """
-
-    return HttpResponse(css, content_type="text/css")
 
 
 # ======================================================================

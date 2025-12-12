@@ -53,6 +53,7 @@ class OrganizationMembership(models.Model):
         default=Role.MEMBER,
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    home_wallpaper_filename = models.CharField(max_length=255, blank=True, default="")
 
     class Meta:
         unique_together = ("organization", "user")
