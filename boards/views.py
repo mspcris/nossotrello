@@ -140,22 +140,15 @@ def index(request):
     # NÃO trocar a cada F5:
     # - Se o usuário já escolheu wallpaper (session["home_wallpaper"]), não usamos random.
     # - Se não escolheu, geramos 1 vez e guardamos na sessão (default estável).
-    bg_image = None
-    if not request.session.get("home_wallpaper"):
-        bg_image = request.session.get("home_default_bg")
-        if not bg_image and bg_files:
-            bg_image = random.choice(bg_files)
-            request.session["home_default_bg"] = bg_image
-
-    return render(
+        return render(
         request,
         "boards/index.html",
         {
             "boards": boards,
             "home_bg": True,
-            "home_bg_image": bg_image,
         },
     )
+
 
 
 
