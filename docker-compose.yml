@@ -5,7 +5,7 @@ services:
     build: .
     container_name: nossotrello_web
     restart: always
-    command: gunicorn nossotrello.wsgi:application -b 0.0.0.0:8000 --workers 3
+    command: sh -lc "mkdir -p /app/staticfiles && python manage.py collectstatic --noinput && gunicorn nossotrello.wsgi:application -b 0.0.0.0:8000 --workers 3"
     volumes:
       - .:/app
       - ./data/sqlite:/app/db
