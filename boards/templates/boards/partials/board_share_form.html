@@ -1,5 +1,4 @@
 {% load static %}
-{% csrf_token %}
 
 <div id="share-modal" class="fixed inset-0 z-50 flex items-center justify-center">
   <div class="absolute inset-0 bg-black/50" onclick="document.getElementById('share-modal').remove()"></div>
@@ -14,12 +13,24 @@
       Quadro: <span class="font-semibold">{{ board.name }}</span>
     </div>
 
+    {% if msg_error %}
+      <div class="mb-3 text-red-700 bg-red-50 border border-red-200 rounded p-2 text-sm font-semibold">
+        {{ msg_error }}
+      </div>
+    {% endif %}
+
+    {% if msg_success %}
+      <div class="mb-3 text-green-800 bg-green-50 border border-green-200 rounded p-2 text-sm font-semibold">
+        {{ msg_success }}
+      </div>
+    {% endif %}
+
     <div id="share-modal-body">
       <form
         method="post"
         hx-post="{% url 'boards:board_share' board.id %}"
-        hx-target="#share-modal-body"
-        hx-swap="innerHTML"
+        hx-target="#share-modal"
+        hx-swap="outerHTML"
         class="space-y-3"
       >
         {% csrf_token %}
@@ -32,8 +43,8 @@
         <div>
           <label class="text-sm font-semibold">Permissão</label>
           <select name="role" class="w-full border rounded px-3 py-2">
-            <option value="viewer">Somente leitura</option>
-            <option value="editor" selected>Pode editar</option>
+            <option value="VIEWER">Somente leitura</option>
+            <option value="EDITOR" selected>Pode editar</option>
           </select>
         </div>
 
@@ -47,6 +58,65 @@
           </button>
         </div>
       </form>
+
+      <div class="mt-5 pt-4 border-t">
+        <div class="flex items-center justify-between mb-2">
+          <h4 class="text-sm font-bold">Quem tem acesso</h4>
+          <span class="text-xs text-gray-500">{{ memberships|length }} pessoa(s)</span>
+        </div>
+
+        <div class="space-y-2">
+          {% for m in memberships %}
+            <div class="flex items-center justify-between border rounded-lg px-3 py-2">
+              <div class="min-w-0">
+                <div class="font-semibold text-sm truncate">
+                  {{ m.user.get_username }}
+                  {% if m.user.id == request.user.id %}
+                    <span class="text-xs text-gray-500">(você)</span>
+                  {% endif %}
+                </div>
+                <div class="text-xs text-gray-500 truncate">{{ m.user.email|default:"-" }}</div>
+              </div>
+
+              <div class="flex items-center gap-2">
+                {% if m.role == "OWNER" %}
+                  <span class="text-xs px-2 py-1 rounded bg-gray-100 border">Dono</span>
+                {% elif m.role == "EDITOR" %}
+                  <span class="text-xs px-2 py-1 rounded bg-blue-50 border">Editor</span>
+                {% else %}
+                  <span class="text-xs px-2 py-1 rounded bg-green-50 border">Leitor</span>
+                {% endif %}
+
+                {% if m.user.id != request.user.id %}
+                  <form
+                    method="post"
+                    hx-post="{% url 'boards:board_share_remove' board.id m.user.id %}"
+                    hx-target="#share-modal"
+                    hx-swap="outerHTML"
+                  >
+                    {% csrf_token %}
+                    <button
+                      class="w-8 h-8 rounded bg-red-600 text-white hover:bg-red-700"
+                      title="Remover acesso"
+                      type="submit"
+                    >
+                      ✕
+                    </button>
+                  </form>
+                {% endif %}
+              </div>
+            </div>
+          {% empty %}
+            <div class="text-sm text-gray-500">
+              Nenhum compartilhamento adicional ainda.
+            </div>
+          {% endfor %}
+        </div>
+
+        <div class="mt-3 text-xs text-gray-500">
+          Observação: não é possível remover o último “Dono” do quadro.
+        </div>
+      </div>
     </div>
   </div>
 </div>

@@ -1398,19 +1398,35 @@ def board_share(request, board_id):
         if board.created_by_id != request.user.id and not request.user.is_staff:
             return HttpResponse("Você não tem permissão para compartilhar este quadro.", status=403)
 
-    if request.method == "GET":
-        return render(request, "boards/partials/board_share_form.html", {"board": board})
+    # sempre manda a lista para a tela
+    memberships = board.memberships.select_related("user").order_by("role", "user__username")
 
-    # POST
+    if request.method == "GET":
+        return render(
+            request,
+            "boards/partials/board_share_form.html",
+            {"board": board, "memberships": memberships},
+        )
+
+    # POST (adicionar/atualizar permissão)
     identifier = (request.POST.get("identifier") or "").strip()
     role = (request.POST.get("role") or BoardMembership.Role.VIEWER).strip()
+
+    # aceita "viewer/editor/owner" e "VIEWER/EDITOR/OWNER"
+    role = role.upper()
 
     if role not in {BoardMembership.Role.OWNER, BoardMembership.Role.EDITOR, BoardMembership.Role.VIEWER}:
         role = BoardMembership.Role.VIEWER
 
     if not identifier:
-        return HttpResponse(
-            "<div class='text-red-600 font-semibold'>Informe e-mail ou username.</div>",
+        return render(
+            request,
+            "boards/partials/board_share_form.html",
+            {
+                "board": board,
+                "memberships": memberships,
+                "msg_error": "Informe e-mail ou username.",
+            },
             status=400,
         )
 
@@ -1419,18 +1435,29 @@ def board_share(request, board_id):
     # procura por email OU username (mesmo que o username tenha "@")
     target = User.objects.filter(
         Q(username__iexact=identifier) | Q(email__iexact=identifier)
-        ).first()
-    ()
+    ).first()
 
     if not target:
-        return HttpResponse(
-            "<div class='text-red-600 font-semibold'>Usuário não encontrado.</div>",
+        return render(
+            request,
+            "boards/partials/board_share_form.html",
+            {
+                "board": board,
+                "memberships": memberships,
+                "msg_error": "Usuário não encontrado.",
+            },
             status=404,
         )
 
     if target.id == request.user.id:
-        return HttpResponse(
-            "<div class='text-red-600 font-semibold'>Você já é membro deste quadro.</div>",
+        return render(
+            request,
+            "boards/partials/board_share_form.html",
+            {
+                "board": board,
+                "memberships": memberships,
+                "msg_error": "Você já é membro deste quadro.",
+            },
             status=400,
         )
 
@@ -1444,20 +1471,79 @@ def board_share(request, board_id):
         obj.role = role
         obj.save(update_fields=["role"])
 
-    return HttpResponse(
-        f"""
-        <div class="text-green-700 font-semibold">
-            Compartilhado com: {escape(target.get_username())} ({escape(target.email or "-")})
-        </div>
-        <div class="mt-3 flex gap-2">
-            <button class="px-3 py-2 rounded bg-gray-200 hover:bg-gray-300"
-                    onclick="document.getElementById('share-modal').remove()">
-                Fechar
-            </button>
-        </div>
-        """,
+    memberships = board.memberships.select_related("user").order_by("role", "user__username")
+
+    return render(
+        request,
+        "boards/partials/board_share_form.html",
+        {
+            "board": board,
+            "memberships": memberships,
+            "msg_success": f"Compartilhado com {escape(target.get_username())} ({escape(target.email or '-')}).",
+        },
         status=200,
     )
+
+
+@require_POST
+def board_share_remove(request, board_id, user_id):
+    if not request.user.is_authenticated:
+        return HttpResponse("Login necessário.", status=401)
+
+    board = get_object_or_404(Board, id=board_id, is_deleted=False)
+
+    # mesma regra de permissão do share: só OWNER
+    memberships_qs = board.memberships.select_related("user")
+    if memberships_qs.exists():
+        if not memberships_qs.filter(user=request.user, role=BoardMembership.Role.OWNER).exists():
+            return HttpResponse("Você não tem permissão para remover acessos deste quadro.", status=403)
+    else:
+        if board.created_by_id != request.user.id and not request.user.is_staff:
+            return HttpResponse("Você não tem permissão para remover acessos deste quadro.", status=403)
+
+    membership = BoardMembership.objects.filter(board=board, user_id=user_id).select_related("user").first()
+    memberships = board.memberships.select_related("user").order_by("role", "user__username")
+
+    if not membership:
+        return render(
+            request,
+            "boards/partials/board_share_form.html",
+            {"board": board, "memberships": memberships, "msg_error": "Acesso não encontrado."},
+            status=404,
+        )
+
+    # trava: não remover o último OWNER
+    if membership.role == BoardMembership.Role.OWNER:
+        owners_count = board.memberships.filter(role=BoardMembership.Role.OWNER).count()
+        if owners_count <= 1:
+            return render(
+                request,
+                "boards/partials/board_share_form.html",
+                {
+                    "board": board,
+                    "memberships": memberships,
+                    "msg_error": "Não é possível remover o último DONO do quadro.",
+                },
+                status=400,
+            )
+
+    removed_user = membership.user
+    membership.delete()
+
+    memberships = board.memberships.select_related("user").order_by("role", "user__username")
+
+    return render(
+        request,
+        "boards/partials/board_share_form.html",
+        {
+            "board": board,
+            "memberships": memberships,
+            "msg_success": f"Acesso removido: {escape(removed_user.get_username())}.",
+        },
+        status=200,
+    )
+
+
 
 
 # ============================================================
