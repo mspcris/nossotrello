@@ -126,6 +126,7 @@ def index(request):
         # Cenário legado / anônimo: mantém visibilidade global por enquanto
         boards = Board.objects.filter(is_deleted=False)
 
+    # Wallpapers da home (estático), com escolha estável via sessão
     home_bg_path = os.path.join(settings.BASE_DIR, "static", "images", "home")
 
     try:
@@ -138,16 +139,23 @@ def index(request):
         bg_files = []
 
     # NÃO trocar a cada F5:
-    # - Se o usuário já escolheu wallpaper (session["home_wallpaper"]), não usamos random.
-    # - Se não escolheu, geramos 1 vez e guardamos na sessão (default estável).
-        return render(
+    # - Se já existe um wallpaper salvo na sessão, reaproveita
+    # - Se não existe, escolhe 1 e salva na sessão
+    home_bg_image = request.session.get("home_bg_image")
+    if not home_bg_image and bg_files:
+        home_bg_image = random.choice(bg_files)
+        request.session["home_bg_image"] = home_bg_image
+
+    return render(
         request,
         "boards/index.html",
         {
             "boards": boards,
             "home_bg": True,
+            "home_bg_image": home_bg_image,
         },
     )
+
 
 
 

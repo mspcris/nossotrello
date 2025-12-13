@@ -147,10 +147,9 @@ USE_TZ = True
 # ============================================================
 
 # arquivos estáticos
-STATIC_URL = 'static/'
-STATICFILES_DIRS = [
-    BASE_DIR / "static"
-]
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # uploads de arquivos e imagens
