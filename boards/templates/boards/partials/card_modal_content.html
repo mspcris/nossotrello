@@ -43,20 +43,7 @@
             </div>
             {% endif %}
 
-            <label class="block text-sm font-medium mb-1 mt-4">Anexos</label>
-            <input type="file" name="attachment" class="mb-4">
-
-            {% if card.attachment %}
-            <div class="mt-3 relative">
-                <p class="text-sm font-medium mb-1">Arquivo atual:</p>
-
-                <a href="{{ card.attachment.url }}" target="_blank"
-                   class="text-blue-600 hover:underline text-sm block mb-1">
-                    {{ card.attachment.name }}
-                </a>
-            </div>
-            {% endif %}
-
+          
             <div class="mt-6 flex gap-3">
                 <button type="submit" onclick="refreshCardSnippet({{ card.id }})"
                         class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
