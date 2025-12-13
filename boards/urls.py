@@ -17,6 +17,7 @@ urlpatterns = [
 
     # ---------------------- BOARD ----------------------
     path("board/<int:board_id>/", views.board_detail, name="board_detail"),
+    path("board/<int:board_id>/share/", views.board_share, name="board_share"),
     path("board/<int:board_id>/add_column/", views.add_column, name="add_column"),
 
     # imagem principal do board

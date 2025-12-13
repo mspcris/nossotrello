@@ -46,8 +46,9 @@
 
 <h1 class="text-2xl font-bold mb-6 home-title">Quadros</h1>
 
-<div class="flex flex-wrap gap-6">
-    {% for board in boards %}
+<h2 class="text-lg font-semibold mb-3">Meus quadros</h2>
+<div class="flex flex-wrap gap-6 mb-10">
+    {% for board in owned_boards %}
     <div class="board-card relative w-64 cursor-pointer shadow-lg p-6 rounded-xl flex flex-col gap-3">
         {% if board.image %}
         <a href="{% url 'boards:board_detail' board.id %}">
@@ -71,17 +72,13 @@
             <p class="text-sm home-card-sub">Clique para abrir</p>
         </a>
 
-        <!-- Botão excluir quadro -->
-<button
-    hx-post="{% url 'boards:delete_board' board.id %}"
-    hx-target="closest .board-card"
-    hx-swap="outerHTML"
-    class="delete-button hidden text-red-600 text-sm underline hover:text-red-800 mt-2 text-left">
-    Excluir quadro
-</button>
-
-
-
+        <button
+            hx-post="{% url 'boards:delete_board' board.id %}"
+            hx-target="closest .board-card"
+            hx-swap="outerHTML"
+            class="delete-button hidden text-red-600 text-sm underline hover:text-red-800 mt-2 text-left">
+            Excluir quadro
+        </button>
     </div>
     {% empty %}
     <p class="text-gray-300 backdrop-blur-lg px-4 py-2 rounded-lg">Nenhum quadro criado ainda.</p>
@@ -92,6 +89,35 @@
         + Criar novo quadro
     </div>
 </div>
+
+{% if shared_boards %}
+<h2 class="text-lg font-semibold mb-3">Compartilhados comigo</h2>
+<div class="flex flex-wrap gap-6">
+    {% for board in shared_boards %}
+    <div class="board-card relative w-64 cursor-pointer shadow-lg p-6 rounded-xl flex flex-col gap-3">
+        {% if board.image %}
+        <a href="{% url 'boards:board_detail' board.id %}">
+            <div class="h-20 w-full rounded-lg border overflow-hidden bg-white flex items-center justify-center">
+                <img src="{{ board.image.url }}" class="h-full w-auto object-contain">
+            </div>
+        </a>
+        {% endif %}
+
+        <a href="{% url 'boards:board_detail' board.id %}">
+            <h2 class="text-xl font-bold home-card-text">{{ board.name }}</h2>
+            <p class="text-sm home-card-sub">Compartilhado com você</p>
+        </a>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+
+
+
+
+
+
 
 <script>
     const menuBtn = document.getElementById("home-menu-btn");

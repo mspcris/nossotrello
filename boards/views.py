@@ -22,6 +22,7 @@ from django.core.files.storage import default_storage
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth import get_user_model
 
 from .forms import ColumnForm, CardForm, BoardForm
 from .models import (
@@ -114,32 +115,36 @@ def extract_base64_and_convert(html_content):
 # ======================================================================
 
 def index(request):
-    # Se o usuário estiver autenticado, mostra apenas boards onde ele é membro.
     if request.user.is_authenticated:
-        boards = (
-            Board.objects.filter(
-                is_deleted=False,
-                memberships__user=request.user,
-            )
-            .distinct()
-        )
+        # memberships do usuário (somente boards ativos)
+        qs = BoardMembership.objects.filter(
+            user=request.user,
+            board__is_deleted=False,
+        ).select_related("board")
+
+        owned_ids = qs.filter(role=BoardMembership.Role.OWNER).values_list("board_id", flat=True)
+        shared_ids = qs.exclude(role=BoardMembership.Role.OWNER).values_list("board_id", flat=True)
+
+        owned_boards = Board.objects.filter(id__in=owned_ids, is_deleted=False).distinct().order_by("-created_at")
+        shared_boards = Board.objects.filter(id__in=shared_ids, is_deleted=False).distinct().order_by("-created_at")
     else:
-        boards = Board.objects.filter(is_deleted=False)
+        owned_boards = Board.objects.filter(is_deleted=False).order_by("-created_at")
+        shared_boards = Board.objects.none()
 
     # HOME wallpaper: fonte de verdade = Organization.home_wallpaper_filename
-    # (não usar mais background aleatório em sessão, porque “gruda” e ignora o remove/troca)
     home_bg_image = None
     if request.user.is_authenticated:
         org = get_or_create_user_default_organization(request.user)
         filename = (getattr(org, "home_wallpaper_filename", "") or "").strip()
         if filename:
-            home_bg_image = filename  # template/CSS decide como montar a URL
+            home_bg_image = filename
 
     return render(
         request,
         "boards/index.html",
         {
-            "boards": boards,
+            "owned_boards": owned_boards,
+            "shared_boards": shared_boards,
             "home_bg": True,
             "home_bg_image": home_bg_image,
         },
@@ -1367,6 +1372,92 @@ def delete_card(request, card_id):
         card.save(update_fields=["is_deleted", "deleted_at"])
 
     return HttpResponse("", status=200)
+
+
+
+
+# ============================================================
+# COMPARTILHAR BOARD
+# ============================================================
+
+@require_http_methods(["GET", "POST"])
+def board_share(request, board_id):
+    if not request.user.is_authenticated:
+        return HttpResponse("Login necessário.", status=401)
+
+    board = get_object_or_404(Board, id=board_id, is_deleted=False)
+
+    # Permissão: só OWNER do board (ou criador em board legado sem memberships)
+    memberships_qs = board.memberships.select_related("user")
+
+    if memberships_qs.exists():
+        if not memberships_qs.filter(user=request.user, role=BoardMembership.Role.OWNER).exists():
+            return HttpResponse("Você não tem permissão para compartilhar este quadro.", status=403)
+    else:
+        if board.created_by_id != request.user.id and not request.user.is_staff:
+            return HttpResponse("Você não tem permissão para compartilhar este quadro.", status=403)
+
+    if request.method == "GET":
+        return render(request, "boards/partials/board_share_form.html", {"board": board})
+
+    # POST
+    identifier = (request.POST.get("identifier") or "").strip()
+    role = (request.POST.get("role") or BoardMembership.Role.VIEWER).strip()
+
+    if role not in {BoardMembership.Role.OWNER, BoardMembership.Role.EDITOR, BoardMembership.Role.VIEWER}:
+        role = BoardMembership.Role.VIEWER
+
+    if not identifier:
+        return HttpResponse(
+            "<div class='text-red-600 font-semibold'>Informe e-mail ou username.</div>",
+            status=400,
+        )
+
+    User = get_user_model()
+
+    # procura por email ou username
+    if "@" in identifier:
+        target = User.objects.filter(email__iexact=identifier).first()
+    else:
+        target = User.objects.filter(username__iexact=identifier).first()
+
+    if not target:
+        return HttpResponse(
+            "<div class='text-red-600 font-semibold'>Usuário não encontrado.</div>",
+            status=404,
+        )
+
+    if target.id == request.user.id:
+        return HttpResponse(
+            "<div class='text-red-600 font-semibold'>Você já é membro deste quadro.</div>",
+            status=400,
+        )
+
+    obj, created = BoardMembership.objects.get_or_create(
+        board=board,
+        user=target,
+        defaults={"role": role},
+    )
+
+    if not created and obj.role != role:
+        obj.role = role
+        obj.save(update_fields=["role"])
+
+    return HttpResponse(
+        f"""
+        <div class="text-green-700 font-semibold">
+            Compartilhado com: {escape(target.get_username())} ({escape(target.email or "-")})
+        </div>
+        <div class="mt-3 flex gap-2">
+            <button class="px-3 py-2 rounded bg-gray-200 hover:bg-gray-300"
+                    onclick="document.getElementById('share-modal').remove()">
+                Fechar
+            </button>
+        </div>
+        """,
+        status=200,
+    )
+
 
 # ============================================================
 # USERS

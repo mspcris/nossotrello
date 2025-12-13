@@ -1,0 +1,52 @@
+{% load static %}
+{% csrf_token %}
+
+<div id="share-modal" class="fixed inset-0 z-50 flex items-center justify-center">
+  <div class="absolute inset-0 bg-black/50" onclick="document.getElementById('share-modal').remove()"></div>
+
+  <div class="relative bg-white rounded-2xl shadow-2xl w-[92%] max-w-lg p-5">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="text-lg font-bold">Compartilhar quadro</h3>
+      <button class="text-xl" onclick="document.getElementById('share-modal').remove()">✕</button>
+    </div>
+
+    <div class="text-sm text-gray-600 mb-4">
+      Quadro: <span class="font-semibold">{{ board.name }}</span>
+    </div>
+
+    <div id="share-modal-body">
+      <form
+        method="post"
+        hx-post="{% url 'boards:board_share' board.id %}"
+        hx-target="#share-modal-body"
+        hx-swap="innerHTML"
+        class="space-y-3"
+      >
+        {% csrf_token %}
+
+        <div>
+          <label class="text-sm font-semibold">E-mail ou username</label>
+          <input name="identifier" class="w-full border rounded px-3 py-2" placeholder="ex: usuario@dominio.com ou username" />
+        </div>
+
+        <div>
+          <label class="text-sm font-semibold">Permissão</label>
+          <select name="role" class="w-full border rounded px-3 py-2">
+            <option value="viewer">Somente leitura</option>
+            <option value="editor" selected>Pode editar</option>
+          </select>
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <button class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">
+            Compartilhar
+          </button>
+          <button type="button" class="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300"
+                  onclick="document.getElementById('share-modal').remove()">
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
