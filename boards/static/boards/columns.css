@@ -32,3 +32,31 @@
     background: rgba(255, 255, 255, 0.55);
     backdrop-filter: blur(6px);
 }
+
+/* ============================================================
+   DARK MODE OVERRIDES (quando <html class="dark">)
+   Objetivo: parar de “clarear” colunas e header no tema escuro
+   ============================================================ */
+
+html.dark .gray-column-bg  { background: rgba(15, 23, 42, 0.35) !important; }
+html.dark .blue-column-bg  { background: rgba(59, 130, 246, 0.18) !important; }
+html.dark .green-column-bg { background: rgba(52, 211, 153, 0.16) !important; }
+html.dark .purple-column-bg{ background: rgba(168, 85, 247, 0.16) !important; }
+html.dark .amber-column-bg { background: rgba(251, 191, 36, 0.18) !important; }
+
+html.dark .red-column-bg   { background: rgba(239, 68, 68, 0.16) !important; }
+html.dark .pink-column-bg  { background: rgba(236, 72, 153, 0.16) !important; }
+html.dark .teal-column-bg  { background: rgba(20, 184, 166, 0.14) !important; }
+html.dark .slate-column-bg { background: rgba(51, 65, 85, 0.35) !important; }
+
+/* Header das colunas */
+html.dark .column-header {
+    background: rgba(0, 0, 0, 0.45) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+/* Texto dentro do header (garantia contra classes Tailwind/hardcode) */
+html.dark .column-header,
+html.dark .column-header * {
+    color: rgba(241, 245, 249, 0.95) !important;
+}

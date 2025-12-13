@@ -79,11 +79,18 @@ window.cardSetTheme = function (mode) {
 // =====================================================
 window.initCardModal = function () {
 
-    // Forçar tema AERO como default
+    // Aplicar o tema salvo (ou cair no AERO apenas se ainda não houver tema salvo)
     const root = document.getElementById("card-modal-root");
     if (root) {
+        const savedTheme = sessionStorage.getItem("currentModalTheme") || "card-theme-aero";
+
         root.classList.remove("card-theme-white", "card-theme-dark", "card-theme-aero");
-        root.classList.add("card-theme-aero");
+        root.classList.add(savedTheme);
+
+        // Garante que sempre existe um valor padrão persistido
+        if (!sessionStorage.getItem("currentModalTheme")) {
+            sessionStorage.setItem("currentModalTheme", savedTheme);
+        }
     }
 
     // ----- DESCRIÇÃO -----

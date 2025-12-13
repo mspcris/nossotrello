@@ -1,27 +1,26 @@
 <div class="relative w-72 flex-shrink-0 rounded-xl shadow-lg overflow-hidden
             column-glass {{ column.theme|default:'gray'|add:'-column-bg' }}">
 
-            <button type="button"
-        class="delete-column-btn hidden absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded z-30"
-        onclick="event.stopPropagation();"
-        hx-post="{% url 'boards:delete_column' column.id %}"
-        hx-target="closest .column-glass"
-        hx-swap="outerHTML">
-    X
-</button>
-
+    <button type="button"
+            class="delete-column-btn hidden absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded z-30"
+            onclick="event.stopPropagation();"
+            hx-post="{% url 'boards:delete_column' column.id %}"
+            hx-target="closest .column-glass"
+            hx-swap="outerHTML">
+        X
+    </button>
 
     <!-- ===================== HEADER ===================== -->
-    <div class="column-header flex items-center justify-between 
-            px-4 py-2 h-12 min-h-[48px]
-            border-b border-white/40 sticky top-0 z-10 gap-3">
+    <div class="column-header flex items-center justify-between
+                px-4 py-2 h-12 min-h-[48px]
+                border-b border-white/40 sticky top-0 z-10 gap-3">
 
         <!-- Nome + Contador -->
         <div class="flex flex-col leading-tight max-w-[130px] truncate">
             <span id="column-title-{{ column.id }}" contenteditable="true"
-                class="text-gray-800 font-semibold truncate outline-none cursor-text"
-                onblur="renameColumn({{ column.id }})"
-                onkeypress="if(event.key==='Enter'){ event.preventDefault(); this.blur(); }">
+                  class="text-gray-800 font-semibold truncate outline-none cursor-text"
+                  onblur="renameColumn({{ column.id }})"
+                  onkeypress="if(event.key==='Enter'){ event.preventDefault(); this.blur(); }">
                 {{ column.name }}
             </span>
 
@@ -35,68 +34,86 @@
         <div class="flex items-center gap-2 shrink-0">
 
             <!-- + Card -->
-            <button class="text-gray-700 hover:text-gray-900 px-2 py-1 rounded-lg 
-                       bg-white/20 backdrop-blur-sm border border-white/40 transition"
-                hx-get="{% url 'boards:add_card' column.id %}" hx-target="#form-col-{{ column.id }}"
-                hx-swap="innerHTML">
+            <button class="text-gray-700 hover:text-gray-900 px-2 py-1 rounded-lg
+                           bg-white/20 backdrop-blur-sm border border-white/40 transition"
+                    hx-get="{% url 'boards:add_card' column.id %}"
+                    hx-target="#form-col-{{ column.id }}"
+                    hx-swap="innerHTML">
                 + Card
             </button>
 
             <!-- Menu -->
             <div class="relative">
-                <button class="px-2 py-1 rounded-lg bg-white/20 border border-white/40 
-                           text-gray-700 hover:text-gray-900 backdrop-blur-sm transition"
-                    onclick="toggleMenu('{{ column.id }}')">
+                <button class="px-2 py-1 rounded-lg bg-white/20 border border-white/40
+                               text-gray-700 hover:text-gray-900 backdrop-blur-sm transition"
+                        onclick="toggleMenu('{{ column.id }}')">
                     ⋮
                 </button>
 
                 <!-- Dropdown -->
-                <div id="col-menu-{{ column.id }}" class="hidden absolute right-0 mt-2 w-48 rounded-lg shadow-lg
+                <div id="col-menu-{{ column.id }}"
+                     class="hidden absolute right-0 mt-2 w-48 rounded-lg shadow-lg
                             bg-white/90 backdrop-blur-md border border-gray-300 p-3 z-20">
 
                     <p class="text-xs text-gray-600 mb-2">Cor da coluna:</p>
 
                     <div class="grid grid-cols-5 gap-2">
                         {% for value, label in column.THEME_CHOICES %}
-                        <div class="w-7 h-7 rounded-full cursor-pointer border border-gray-300 
-                                    hover:scale-110 transition" style="background-color: var(--{{ value }}-color);"
-                            hx-post="{% url 'boards:set_column_theme' column.id %}" hx-vals='{"theme": "{{ value }}"}'
-                            hx-target="closest .column-glass" hx-swap="outerHTML">
-                        </div>
+                            <div class="w-7 h-7 rounded-full cursor-pointer border border-gray-300
+                                        hover:scale-110 transition"
+                                 style="background-color: var(--{{ value }}-color);"
+                                 hx-post="{% url 'boards:set_column_theme' column.id %}"
+                                 hx-vals='{"theme": "{{ value }}"}'
+                                 hx-target="closest .column-glass"
+                                 hx-swap="outerHTML">
+                            </div>
                         {% endfor %}
                     </div>
+
                     <hr class="my-2">
-{% comment %} 
+
+                    {# botão de excluir antigo comentado #}
+                    {% comment %}
                     <button
                        hx-post="{% url 'boards:delete_column' column.id %}"
                        hx-target="closest .column-glass"
                        hx-swap="outerHTML"
                        class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-100 rounded">
                        Excluir coluna
-                    </button> {% endcomment %}
-
+                    </button>
+                    {% endcomment %}
                 </div>
             </div>
         </div>
     </div>
 
     <!-- ===================== LISTA DE CARDS ===================== -->
-
     <ul id="cards-col-{{ column.id }}" class="p-4 space-y-3">
 
         <!-- msg nenhum card -->
-        <li class="no-cards-msg text-gray-400 text-sm" {% if column.cards.count %}style="display:none" {% endif %}>
+        <li class="no-cards-msg text-gray-400 text-sm" {% if column.cards.count %}style="display:none"{% endif %}>
             Nenhum card ainda.
         </li>
 
         <!-- cards -->
         {% for card in column.cards.all %}
-        {% include "boards/partials/card_item.html" %}
+            {% include "boards/partials/card_item.html" %}
         {% endfor %}
     </ul>
 
     <!-- Form add card -->
-    <div id="form-col-{{ column.id }}" class="p-4"></div>
+    <div id="form-col-{{ column.id }}"
+         class="p-4"
+         hx-on="htmx:afterRequest:
+                if (event.detail.successful
+                    && event.target
+                    && event.target.tagName === 'FORM'
+                    && event.target.closest('#form-col-{{ column.id }}')) {
+                      event.target.reset();
+                      const firstField = event.target.querySelector('input[type=text], textarea');
+                      if (firstField) firstField.value = '';
+                }">
+    </div>
 
 </div>
 

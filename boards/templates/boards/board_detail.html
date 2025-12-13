@@ -3,6 +3,97 @@
 {% load tag_helpers %}
 
 {% block title %}{{ board.name }}{% endblock %}
+{% block header_left %}
+<div class="flex items-start gap-3">
+
+    <!-- MENU HAMBÚRGUER (topo esquerdo) -->
+    <div class="relative">
+        <button id="board-menu-btn"
+                class="text-xl text-gray-900 bg-white/80 border border-gray-400 rounded-md px-2 py-1 shadow-md hover:bg-white transition">
+            ☰
+        </button>
+
+        <div id="board-menu"
+             class="hidden absolute left-0 mt-2 bg-white shadow-lg rounded-md border p-2 w-48 z-50">
+            <a href="{% url 'boards:boards_index' %}" class="block px-4 py-2 hover:bg-gray-100 rounded">
+                ← Voltar aos Quadros
+            </a>
+
+            <button class="block text-left w-full px-4 py-2 hover:bg-gray-100 rounded"
+                    hx-get="{% url 'boards:update_board_wallpaper' board.id %}"
+                    hx-target="body" hx-swap="beforeend">
+                Trocar Wallpaper
+            </button>
+
+            <button class="block text-left w-full px-4 py-2 hover:bg-gray-100 text-red-600"
+                    hx-post="{% url 'boards:remove_board_wallpaper' board.id %}"
+                    hx-target="body" hx-swap="beforeend">
+                Remover papel de parede
+            </button>
+
+            <button id="toggle-delete-columns"
+                    class="block text-left w-full px-4 py-2 hover:bg-gray-100 text-red-600 rounded">
+                Excluir colunas
+            </button>
+
+            <button id="toggle-delete-cards"
+                    class="block text-left w-full px-4 py-2 hover:bg-gray-100 text-red-600 rounded">
+                Excluir cards
+            </button>
+
+            <form method="post" action="{% url 'logout' %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="px-4 py-2 w-full text-left hover:bg-gray-100 rounded">
+                    Sair
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- IMAGEM DO QUADRO (à direita do menu) -->
+    {% if board.image %}
+        <div class="relative group inline-block">
+            <div class="h-16 w-28 border border-gray-300 rounded-lg overflow-hidden bg-white flex items-center justify-center">
+                <img src="{{ board.image.url }}" class="h-full w-auto object-contain">
+            </div>
+
+            <button class="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-0.5 rounded
+                           opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                    hx-post="{% url 'boards:update_board_image' board.id %}?delete=1"
+                    hx-target="body" hx-swap="beforeend">
+                X
+            </button>
+        </div>
+    {% else %}
+        <div class="h-16 w-28 flex items-center justify-center rounded-lg border border-gray-300
+                    bg-gray-100 text-gray-400 text-2xl cursor-pointer hover:bg-gray-200"
+             hx-get="{% url 'boards:update_board_image' board.id %}"
+             hx-target="body" hx-swap="beforeend">
+            +
+        </div>
+    {% endif %}
+
+    <!-- NOME DO QUADRO (à direita da imagem) -->
+    <h1 id="board-title" contenteditable="true"
+        class="text-2xl font-semibold inline-block bg-white/70 px-2 py-1 rounded"
+        onblur="updateBoardTitle({{ board.id }})"
+        onkeypress="if(event.key==='Enter'){ event.preventDefault(); this.blur(); }">
+        {{ board.name }}
+    </h1>
+
+</div>
+{% endblock %}
+
+
+{% block header_right_under_logo %}
+<div class="w-64">
+    <span class="text-sm font-semibold text-gray-600 board-label">Filtrar por etiquetas:</span>
+    <input type="text" id="tag-filter" placeholder="Ex: urgente"
+           class="border rounded px-3 py-2 text-sm w-full mt-2"
+           oninput="filterByTag(this.value)">
+</div>
+{% endblock %}
+
 
 {% block content %}
 
@@ -15,45 +106,6 @@
 <!-- CSS estático do layout -->
 <link rel="stylesheet" href="{% static 'boards/board_detail.css' %}">
 
-
-<!-- ======================== MENU HAMBÚRGUER ======================== -->
-<div class="relative mt-4">
-    <button id="board-menu-btn" class="text-xl text-gray-900 bg-white/80 border border-gray-400 rounded-md px-2 py-1 shadow-md
-               hover:bg-white transition">
-        ☰
-    </button>
-
-
-
-    <div id="board-menu" class="hidden absolute left-0 mt-2 bg-white shadow-lg rounded-md border p-2 w-48 z-50">
-        <a href="{% url 'boards:boards_index' %}" class="block px-4 py-2 hover:bg-gray-100 rounded">
-            ← Voltar aos Quadros
-        </a>
-
-        <button class="block text-left w-full px-4 py-2 hover:bg-gray-100 rounded"
-            hx-get="{% url 'boards:update_board_wallpaper' board.id %}" hx-target="body" hx-swap="beforeend">
-            Trocar Wallpaper
-        </button>
-
-        <button class="block text-left w-full px-4 py-2 hover:bg-gray-100 text-red-600"
-            hx-post="{% url 'boards:remove_board_wallpaper' board.id %}" hx-target="body" hx-swap="beforeend">
-            Remover papel de parede
-        </button>
-        <button id="toggle-delete-columns"
-            class="block text-left w-full px-4 py-2 hover:bg-gray-100 text-red-600 rounded">
-            Excluir colunas
-        </button>
-
-        <button id="toggle-delete-cards"
-           class="block text-left w-full px-4 py-2 hover:bg-gray-100 text-red-600 rounded">
-           Excluir cards
-        </button> 
-        <form method="post" action="{% url 'logout' %}" style="display:inline;">
-            {% csrf_token %}
-        <button type="submit">Sair</button>
-        </form>
-    </div>
-</div>
 
 <script>
     const menuBtn = document.getElementById("board-menu-btn");
@@ -72,55 +124,6 @@
 
 
 
-<!-- ======================== TOPO DO BOARD ======================== -->
-<div class="flex items-center gap-4 mt-6 mb-6">
-
-    {% if board.image %}
-    <div class="relative group inline-block">
-        <div
-            class="h-28 w-48 border border-gray-300 rounded-lg overflow-hidden bg-white flex items-center justify-center">
-            <img src="{{ board.image.url }}" class="h-full w-auto object-contain">
-        </div>
-
-        <button class="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded
-                       opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-            hx-post="{% url 'boards:update_board_image' board.id %}?delete=1" hx-target="body" hx-swap="beforeend">
-            X
-        </button>
-    </div>
-    {% else %}
-    <div class="h-28 w-48 flex items-center justify-center rounded-lg border border-gray-300 
-               bg-gray-100 text-gray-400 text-3xl cursor-pointer hover:bg-gray-200"
-        hx-get="{% url 'boards:update_board_image' board.id %}" hx-target="body" hx-swap="beforeend">
-        +
-    </div>
-    {% endif %}
-
-    <h1 id="board-title" contenteditable="true"
-        class="text-2xl font-semibold inline-block bg-white/70 px-2 py-1 rounded"
-        onblur="updateBoardTitle({{ board.id }})"
-        onkeypress="if(event.key==='Enter'){ event.preventDefault(); this.blur(); }">
-        {{ board.name }}
-    </h1>
-</div>
-
-
-
-<!-- ======================== FILTRO DE TAGS ======================== -->
-<div class="mb-6 flex flex-wrap items-center gap-2">
-    <span class="text-sm font-semibold text-gray-600 board-label">Filtrar por etiquetas:</span>
-
-
-    <input type="text" id="tag-filter" placeholder="Ex: urgente" class="border rounded px-3 py-2 text-sm w-60"
-        oninput="filterByTag(this.value)">
-</div>
-
-
-<h3 class="text-lg font-semibold mb-3 board-label">Colunas:</h3>
-
-
-
-
 <!-- ======================== LISTA DE COLUNAS ======================== -->
 <div id="columns-wrapper" class="flex gap-6 overflow-x-auto pb-6 pr-4">
 
@@ -136,8 +139,12 @@
 
         <h3 class="font-semibold mb-2">Adicionar nova coluna</h3>
 
-        <form method="post" hx-post="{% url 'boards:add_column' board.id %}" hx-target="#columns-list"
-            hx-swap="beforeend">
+        <form method="post"
+            hx-post="{% url 'boards:add_column' board.id %}"
+            hx-target="#columns-list"
+            hx-swap="beforeend"
+            hx-on="htmx:afterRequest: if (event.detail.successful) this.reset()">
+
             {% csrf_token %}
             <label class="block text-sm font-medium mb-1">Nome:</label>
             <input type="text" name="name" class="w-full border rounded px-3 py-2 mb-3" placeholder="Nome da coluna">

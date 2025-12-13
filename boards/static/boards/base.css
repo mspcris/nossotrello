@@ -365,3 +365,67 @@
     border: 1px solid #3a3a3a !important;
     color: #f1f1f1 !important;
 }
+
+/* ============================================================
+   GLOBAL DARK OVERRIDES (quando <html class="dark">)
+   Mantém o estilo atual no light e estabiliza contraste no dark
+   ============================================================ */
+
+html.dark .modal-glass {
+    background: rgba(0, 0, 0, 0.55) !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+}
+
+html.dark .activity-panel {
+    background: rgba(0, 0, 0, 0.45) !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+}
+
+html.dark .activity-item {
+    background: rgba(0, 0, 0, 0.60) !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    color: rgba(241, 245, 249, 0.95) !important;
+}
+
+html.dark .activity-meta {
+    color: rgba(226, 232, 240, 0.70) !important;
+}
+
+html.dark .card-glass {
+    background: rgba(0, 0, 0, 0.35) !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+}
+
+html.dark .column-glass {
+    background: rgba(0, 0, 0, 0.30) !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+}
+
+/* Mini-abas de atividade */
+html.dark .ativ-subtab-btn {
+    background: rgba(0, 0, 0, 0.35) !important;
+    color: rgba(241, 245, 249, 0.90) !important;
+}
+
+html.dark .ativ-subtab-btn:hover {
+    background: rgba(0, 0, 0, 0.50) !important;
+}
+
+html.dark .ativ-subtab-active {
+    background: rgba(0, 0, 0, 0.65) !important;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.35) !important;
+}
+
+/* Botão "Copiar" (código) */
+html.dark .copy-code-btn {
+    background: rgba(0, 0, 0, 0.65) !important;
+    color: rgba(241, 245, 249, 0.95) !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+}
+
+/* Fundos translúcidos das colunas (evitar “clarear” demais no dark) */
+html.dark .gray-column-bg  { background-color: rgba(15, 23, 42, 0.35) !important; }
+html.dark .blue-column-bg  { background-color: rgba(59, 130, 246, 0.18) !important; }
+html.dark .green-column-bg { background-color: rgba(52, 211, 153, 0.16) !important; }
+html.dark .purple-column-bg{ background-color: rgba(168, 85, 247, 0.16) !important; }
+html.dark .amber-column-bg { background-color: rgba(251, 191, 36, 0.18) !important; }
