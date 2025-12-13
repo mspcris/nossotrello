@@ -23,6 +23,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import get_user_model
+from django.db.models import Q
 
 from .forms import ColumnForm, CardForm, BoardForm
 from .models import (
@@ -1415,11 +1416,11 @@ def board_share(request, board_id):
 
     User = get_user_model()
 
-    # procura por email ou username
-    if "@" in identifier:
-        target = User.objects.filter(email__iexact=identifier).first()
-    else:
-        target = User.objects.filter(username__iexact=identifier).first()
+    # procura por email OU username (mesmo que o username tenha "@")
+    target = User.objects.filter(
+        Q(username__iexact=identifier) | Q(email__iexact=identifier)
+        ).first()
+    ()
 
     if not target:
         return HttpResponse(

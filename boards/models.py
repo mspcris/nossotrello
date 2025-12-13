@@ -100,6 +100,9 @@ class Board(models.Model):
     is_deleted = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(null=True, blank=True)
 
+    # LEGADO (existe no banco e é NOT NULL)
+    home_wallpaper_filename = models.CharField(max_length=255, blank=True, default="")
+
     def __str__(self):
         return self.name
 
