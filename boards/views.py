@@ -887,6 +887,28 @@ def update_home_wallpaper(request):
 
     return HttpResponse("Erro ao importar imagem", status=400)
 
+# ======================================================================
+# REMOVER WALLPAPER DO BOARD
+# Quem chama? → botão remover wallpaper do board (HTMX POST)
+# ======================================================================
+
+@require_POST
+def remove_board_wallpaper(request, board_id):
+    board = get_object_or_404(Board, id=board_id)
+
+    # remove arquivo (se houver)
+    if board.background_image:
+        board.background_image.delete(save=False)
+        board.background_image = None
+
+    # remove URL (se houver)
+    board.background_url = ""
+
+    board.save(update_fields=["background_image", "background_url"])
+
+    return HttpResponse('<script>location.reload()</script>')
+
+
 
 def remove_home_wallpaper(request):
     if not request.user.is_authenticated:
