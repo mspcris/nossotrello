@@ -771,6 +771,39 @@ def update_board_wallpaper(request, board_id):
         return HttpResponse("Erro", status=400)
 
 # ======================================================================
+# CSS dinâmico do WALLPAPER do BOARD
+# (usado pela rota: board/<int:board_id>/wallpaper.css)
+# ======================================================================
+
+def board_wallpaper_css(request, board_id):
+    board = get_object_or_404(Board, id=board_id, is_deleted=False)
+
+    css = "body {"
+
+    if getattr(board, "background_image", None):
+        css += f"background-image: url('{board.background_image.url}');"
+    elif (getattr(board, "background_url", "") or "").strip():
+        css += f"background-image: url('{escape(board.background_url)}');"
+    else:
+        css += "background-image: none;"
+        css += "background-color: #f0f0f0;"
+
+    css += """
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+    }
+    """
+
+    resp = HttpResponse(css, content_type="text/css")
+    resp["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    resp["Pragma"] = "no-cache"
+    resp["Expires"] = "0"
+    return resp
+
+
+
+# ======================================================================
 # REMOVER WALLPAPER DO BOARD
 # ======================================================================
 
