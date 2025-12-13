@@ -8,6 +8,7 @@ import json
 import base64
 import re
 import requests
+import uuid
 
 from django.conf import settings
 from django.shortcuts import render, get_object_or_404, redirect
@@ -123,28 +124,16 @@ def index(request):
             .distinct()
         )
     else:
-        # Cenário legado / anônimo: mantém visibilidade global por enquanto
         boards = Board.objects.filter(is_deleted=False)
 
-    # Wallpapers da home (estático), com escolha estável via sessão
-    home_bg_path = os.path.join(settings.BASE_DIR, "static", "images", "home")
-
-    try:
-        bg_files = [
-            f
-            for f in os.listdir(home_bg_path)
-            if f.lower().endswith((".jpg", ".jpeg", ".png", ".webp"))
-        ]
-    except FileNotFoundError:
-        bg_files = []
-
-    # NÃO trocar a cada F5:
-    # - Se já existe um wallpaper salvo na sessão, reaproveita
-    # - Se não existe, escolhe 1 e salva na sessão
-    home_bg_image = request.session.get("home_bg_image")
-    if not home_bg_image and bg_files:
-        home_bg_image = random.choice(bg_files)
-        request.session["home_bg_image"] = home_bg_image
+    # HOME wallpaper: fonte de verdade = Organization.home_wallpaper_filename
+    # (não usar mais background aleatório em sessão, porque “gruda” e ignora o remove/troca)
+    home_bg_image = None
+    if request.user.is_authenticated:
+        org = get_or_create_user_default_organization(request.user)
+        filename = (getattr(org, "home_wallpaper_filename", "") or "").strip()
+        if filename:
+            home_bg_image = filename  # template/CSS decide como montar a URL
 
     return render(
         request,
@@ -155,10 +144,6 @@ def index(request):
             "home_bg_image": home_bg_image,
         },
     )
-
-
-
-
 
 # ======================================================================
 # DETALHE DE UM BOARD
@@ -785,7 +770,16 @@ def update_board_wallpaper(request, board_id):
 
         return HttpResponse("Erro", status=400)
 
+# ======================================================================
+# REMOVER WALLPAPER DO BOARD
+# ======================================================================
+
+#@require_POST
 def home_wallpaper_css(request):
+    """
+    CSS dinâmico da HOME.
+    Fonte de verdade: Organization.home_wallpaper_filename
+    """
     css = "body {"
 
     if request.user.is_authenticated:
@@ -795,8 +789,10 @@ def home_wallpaper_css(request):
         if filename:
             css += f'background-image: url("/media/home_wallpapers/{filename}");'
         else:
+            css += "background-image: none;"
             css += "background-color: #f0f0f0;"
     else:
+        css += "background-image: none;"
         css += "background-color: #f0f0f0;"
 
     css += """
@@ -806,42 +802,11 @@ def home_wallpaper_css(request):
     }
     """
 
-    return HttpResponse(css, content_type="text/css")
-
-# ======================================================================
-# REMOVER WALLPAPER DO BOARD
-# ======================================================================
-
-@require_POST
-def remove_board_wallpaper(request, board_id):
-    board = get_object_or_404(Board, id=board_id)
-    board.background_image = None
-    board.background_url = ""
-    board.save()
-    return HttpResponse('<script>location.reload()</script>')
-
-
-def board_wallpaper_css(request, board_id):
-    board = Board.objects.get(id=board_id)
-
-    css = "body {"
-
-    if board.background_image and board.background_image.name:
-        css += f'background-image: url("{board.background_image.url}");'
-    elif board.background_url:
-        css += f'background-image: url("{board.background_url}");'
-    else:
-        css += "background-color: #f0f0f0;"
-
-    css += """
-        background-size: cover;
-        background-position: center;
-        background-attachment: fixed;
-    }
-    """
-
-    return HttpResponse(css, content_type="text/css")
-
+    resp = HttpResponse(css, content_type="text/css")
+    resp["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    resp["Pragma"] = "no-cache"
+    resp["Expires"] = "0"
+    return resp
 
 # ======================================================================
 # WALLPAPER DA HOME
@@ -856,37 +821,63 @@ def update_home_wallpaper(request):
     if request.method == "GET":
         return render(request, "boards/partials/home_wallpaper_form.html", {})
 
-    # precisa estar logado pra ter "opção 2" por usuário
     if not request.user.is_authenticated:
+        request.session.pop("home_bg_image", None)
         return HttpResponse("Login necessário.", status=401)
 
     org = get_or_create_user_default_organization(request.user)
     if not org:
         return HttpResponse("Organização não encontrada.", status=400)
 
+    # Upload de arquivo
     if "image" in request.FILES:
         file = request.FILES["image"]
-        filename = file.name
+
+        # filename único para não “grudar” cache no browser
+        ext = os.path.splitext(file.name or "")[1] or ".jpg"
+        filename = f"{uuid.uuid4().hex}{ext}"
         filepath = os.path.join(HOME_WALLPAPER_FOLDER, filename)
 
         with open(filepath, "wb+") as dest:
             for chunk in file.chunks():
                 dest.write(chunk)
 
+        # opcional: apagar o antigo
+        old = (org.home_wallpaper_filename or "").strip()
+        if old:
+            old_path = os.path.join(HOME_WALLPAPER_FOLDER, old)
+            if os.path.exists(old_path):
+                try:
+                    os.remove(old_path)
+                except Exception:
+                    pass
+
         org.home_wallpaper_filename = filename
         org.save(update_fields=["home_wallpaper_filename"])
         return HttpResponse('<script>location.reload()</script>')
 
+    # Importar por URL
     url = request.POST.get("image_url", "").strip()
     if url:
         try:
-            r = requests.get(url, timeout=5)
+            r = requests.get(url, timeout=8)
             if r.status_code == 200:
-                filename = url.split("/")[-1] or "wallpaper.jpg"
+                # tenta extrair extensão da URL, senão cai em .jpg
+                parsed_ext = os.path.splitext(url.split("?")[0])[1] or ".jpg"
+                filename = f"{uuid.uuid4().hex}{parsed_ext}"
                 filepath = os.path.join(HOME_WALLPAPER_FOLDER, filename)
 
                 with open(filepath, "wb") as f:
                     f.write(r.content)
+
+                old = (org.home_wallpaper_filename or "").strip()
+                if old:
+                    old_path = os.path.join(HOME_WALLPAPER_FOLDER, old)
+                    if os.path.exists(old_path):
+                        try:
+                            os.remove(old_path)
+                        except Exception:
+                            pass
 
                 org.home_wallpaper_filename = filename
                 org.save(update_fields=["home_wallpaper_filename"])
@@ -899,6 +890,7 @@ def update_home_wallpaper(request):
 
 def remove_home_wallpaper(request):
     if not request.user.is_authenticated:
+        request.session.pop("home_bg_image", None)
         return HttpResponse("Login necessário.", status=401)
 
     org = get_or_create_user_default_organization(request.user)

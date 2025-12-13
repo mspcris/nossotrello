@@ -97,19 +97,13 @@
 </head>
 
 
-<body class="min-h-screen p-6 text-slate-900 dark:text-slate-100
-    {% if home_bg %} home-background {% endif %}" {% if home_bg and home_bg_image %} style="
-            background-image: url('{% static 'images/home/' %}{{ home_bg_image }}');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            background-attachment: fixed;
-        " {% elif home_bg %} style="background-color: #000;" {% endif %}>
+<body class="min-h-screen p-6 text-slate-900 dark:text-slate-100 {% if home_bg %} home-background {% endif %}">
 
     {% if home_bg and home_bg_image %}
         <!-- Camada de contraste para estabilizar legibilidade sobre wallpaper -->
         <div class="fixed inset-0 pointer-events-none z-0 bg-white/60 dark:bg-black/50"></div>
     {% endif %}
+
 
     <div class="relative z-10">
 
