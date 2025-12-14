@@ -253,6 +253,52 @@ def set_column_theme(request, column_id):
 
 
 # ======================================================================
+# REORDENAR COLUNAS
+# ======================================================================
+
+import json
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+from django.contrib.auth.decorators import login_required
+from django.db import transaction
+from django.shortcuts import get_object_or_404
+
+from .models import Board, Column
+
+
+@login_required
+@require_POST
+def reorder_columns(request, board_id):
+    board = get_object_or_404(Board, id=board_id, is_deleted=False)
+
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+        order = payload.get("order", [])
+        if not isinstance(order, list):
+            return JsonResponse({"ok": False, "error": "order inválido"}, status=400)
+        order = [int(x) for x in order]
+    except Exception:
+        return JsonResponse({"ok": False, "error": "JSON inválido"}, status=400)
+
+    cols = Column.objects.filter(board=board, is_deleted=False)
+    cols_map = {c.id: c for c in cols}
+
+    if any(cid not in cols_map for cid in order):
+        return JsonResponse({"ok": False, "error": "coluna fora do board"}, status=400)
+
+    with transaction.atomic():
+        for idx, cid in enumerate(order):
+            Column.objects.filter(id=cid, board=board).update(position=idx)
+
+    return JsonResponse({"ok": True})
+
+
+
+
+
+
+
+# ======================================================================
 # ADICIONAR CARD
 # ======================================================================
 

@@ -65,7 +65,7 @@
 
             <button class="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-0.5 rounded
                            opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                    hx-post="{% url 'boards:update_board_image' board.id %}?delete=1"
+                    hx-post="{% url 'boards:remove_board_image' board.id %}"
                     hx-target="body" hx-swap="beforeend">
                 X
             </button>
@@ -217,6 +217,56 @@
     document.addEventListener("DOMContentLoaded", initSortable);
     document.body.addEventListener("htmx:afterSwap", initSortable);
 </script>
+
+
+
+
+<script>
+  function initSortableColumns() {
+    const columnsList = document.getElementById("columns-list");
+    if (!columnsList) return;
+
+    if (columnsList.dataset.sortableColumnsApplied === "1") return;
+    columnsList.dataset.sortableColumnsApplied = "1";
+
+    new Sortable(columnsList, {
+      animation: 150,
+      ghostClass: "drag-ghost",
+
+      // arrasta SOMENTE pelo header
+      handle: ".column-header",
+
+      // garante que só os wrappers de coluna são “draggables”
+      draggable: ".column-item",
+
+      // evita treta ao clicar em botões/inputs
+      filter: "button, a, input, textarea, select, [contenteditable='true']",
+      preventOnFilter: false,
+
+      onEnd: () => {
+        const order = Array.from(columnsList.querySelectorAll(".column-item"))
+          .map(el => el.getAttribute("data-column-id"))
+          .filter(Boolean)
+          .map(Number);
+
+        fetch("{% url 'boards:reorder_columns' board.id %}", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": document.querySelector("meta[name='csrf-token']")?.content || ""
+          },
+          body: JSON.stringify({ order })
+        });
+      }
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", initSortableColumns);
+  document.body.addEventListener("htmx:afterSwap", initSortableColumns);
+</script>
+
+
+
 
 <script>
     function updateBoardTitle(boardId) {

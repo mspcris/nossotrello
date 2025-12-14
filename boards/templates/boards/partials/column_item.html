@@ -1,5 +1,7 @@
-<div class="relative w-72 flex-shrink-0 rounded-xl shadow-lg overflow-hidden
-            column-glass {{ column.theme|default:'gray'|add:'-column-bg' }}">
+<div class="column-item relative w-72 flex-shrink-0 rounded-xl shadow-lg overflow-hidden
+            column-glass {{ column.theme|default:'gray'|add:'-column-bg' }}"
+     data-column-id="{{ column.id }}">
+
 
     <button type="button"
             class="delete-column-btn hidden absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded z-30"
