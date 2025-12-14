@@ -119,12 +119,52 @@
         {% block header_left %}{% endblock %}
     </div>
 
-    <!-- Logo + slot abaixo do logo (filtros, etc.) -->
-    <div class="flex flex-col items-end gap-2">
-        <img src="{% static 'images/logo-camim.png' %}" alt="Logo Camim" class="h-16 w-auto object-contain">
+
+
+
+
+
+     <div class="flex items-start gap-3">
+        <!-- Coluna: Email -> Sair -> (Filtro/slot) -->
+         <div class="flex flex-col items-end gap-2 pt-1">
+         {% if request.user.is_authenticated %}
+      <span class="text-sm bg-white/70 px-2 py-1 rounded">
+        {{ request.user.email|default:request.user.get_username }}
+      </span>
+
+           <form method="post" action="{% url 'logout' %}" class="inline">
+        {% csrf_token %}
+        <button type="submit"
+                class="text-sm bg-white/80 border border-gray-300 rounded px-3 py-1 hover:bg-white">
+          Sair
+        </button>
+           </form>
+             {% endif %}
+
+              <!-- aqui fica “Filtrar por etiquetas” (ou qualquer coisa que a tela injete) -->
         {% block header_right_under_logo %}{% endblock %}
+        </div>
+
+  <!-- Logo no topo direito -->
+  <img src="{% static 'images/logo-camim.png' %}"
+       alt="Logo Camim"
+       class="h-16 w-auto object-contain">
+
     </div>
+
+
+
+
+</div>
 </header>
+
+
+
+
+
+
+
+
 
 
     {% block content %}{% endblock %}
