@@ -1,47 +1,32 @@
 {% load tag_helpers %}
 
-<div class="flex flex-col h-full">
+{# CAPA DO CARD #}
+{% if card.cover_image %}
+  <div class="px-4 pt-4">
+    <div class="group relative rounded-xl overflow-hidden border border-white/20 card-cover-wrap">
+      <a href="{{ card.cover_image.url }}" target="_blank" rel="noopener" class="block">
+        <img
+          src="{{ card.cover_image.url }}"
+          alt="Capa do card"
+          class="card-cover-img w-full object-cover"
+        >
+      </a>
 
-    <!-- HEADER DO MODAL (temas) -->
-    <div class="card-aero-header flex items-center justify-between px-4 py-3 border-b">
-
-        <div class="flex gap-2">
-            <button type="button" class="theme-dot bg-white" onclick="cardSetTheme('white')"></button>
-            <button type="button" class="theme-dot bg-white/10 backdrop-blur-md"
-                onclick="cardSetTheme('aero')"></button>
-            <button type="button" class="theme-dot bg-[#1e1e1e]" onclick="cardSetTheme('dark')"></button>
-
-        </div>
-
-        <div class="flex items-center gap-3"></div>
+      <button
+        type="button"
+        class="card-cover-remove absolute top-2 right-2 px-2 py-1 rounded text-xs
+               opacity-0 group-hover:opacity-100 transition"
+        hx-post="{% url 'boards:remove_card_cover' card.id %}"
+        hx-target="#modal-body"
+        hx-swap="innerHTML"
+        aria-label="Remover capa"
+        title="Remover capa"
+      >
+        ✕
+      </button>
     </div>
+  </div>
+{% endif %}
 
-    <!-- ABAS -->
-    <div id="card-tabs" class="card-aero-header flex border-b">
-
-        <button type="button" class="card-tab-btn card-tab-active" data-tab-target="card-tab-desc"
-            onclick="cardOpenTab('card-tab-desc')">
-            Descrição
-        </button>
-
-        <button type="button" class="card-tab-btn" data-tab-target="card-tab-check"
-            onclick="cardOpenTab('card-tab-check')">
-            Checklists
-        </button>
-
-        <button type="button" class="card-tab-btn" data-tab-target="card-tab-ativ"
-            onclick="cardOpenTab('card-tab-ativ')">
-            Atividade
-        </button>
-        <button type="button" class="card-tab-btn" data-tab-target="card-tab-files"
-            onclick="cardOpenTab('card-tab-files')">
-            Anexos
-        </button>
-
-    </div>
-
-
-    <!-- CONTEÚDO DAS ABAS -->
-    {% include "boards/partials/card_modal_content.html" %}
-
-</div>
+{# CONTEÚDO DO MODAL #}
+{% include "boards/partials/card_modal_content.html" %}

@@ -1,286 +1,423 @@
 // =====================================================
-// Variáveis globais
+// modal.js — Modal do Card (HTMX + Quill)
+// - Form único (Descrição + Etiquetas)
+// - Savebar sticky só quando houver mudanças
+// - Savebar aparece apenas em: Descrição e Etiquetas
+// - Sem temas (fixado em aero)
+// - Listeners por delegação (não duplica após HTMX swap)
 // =====================================================
+
 window.currentCardId = null;
-let quillAtiv = null;   // necessário para limpar corretamente
 
+let quillDesc = null;
+let quillAtiv = null;
+
+// Abas que suportam “savebar”
+const tabsWithSave = new Set(["card-tab-desc", "card-tab-tags"]);
+
+function getCsrfToken() {
+  return document.querySelector("meta[name='csrf-token']")?.content || "";
+}
+
+function qs(sel, root = document) {
+  return root.querySelector(sel);
+}
+
+function qsa(sel, root = document) {
+  return Array.from(root.querySelectorAll(sel));
+}
+
+function getModalBody() {
+  return document.getElementById("modal-body");
+}
+
+function getMainForm() {
+  const body = getModalBody();
+  if (!body) return null;
+  return qs("#card-desc-form", body);
+}
+
+function getSavebarElements() {
+  const form = getMainForm();
+  if (!form) return { bar: null, saveBtn: null };
+
+  const bar = qs("#desc-savebar", form);
+  const saveBtn = qs("button[type='submit']", form);
+  return { bar, saveBtn };
+}
 
 // =====================================================
-// Abrir modal
+// Abrir / Fechar modal
 // =====================================================
 window.openModal = function () {
-    const modal = document.getElementById("modal");
-    if (modal) modal.classList.remove("hidden");
+  const modal = document.getElementById("modal");
+  if (modal) modal.classList.remove("hidden");
 };
 
-
-// =====================================================
-// Fechar modal
-// =====================================================
 window.closeModal = function () {
-    const modal = document.getElementById("modal");
-    const modalBody = document.getElementById("modal-body");
+  const modal = document.getElementById("modal");
+  const modalBody = getModalBody();
 
-    if (modal) modal.classList.add("hidden");
-    if (modalBody) modalBody.innerHTML = "";
+  if (modal) modal.classList.add("hidden");
+  if (modalBody) modalBody.innerHTML = "";
+
+  window.currentCardId = null;
+  quillDesc = null;
+  quillAtiv = null;
 };
 
-
 // =====================================================
-// Atualiza o snippet do card na board
+// Atualiza snippet do card na board
 // =====================================================
 window.refreshCardSnippet = function (cardId) {
-    if (!cardId) return;
+  if (!cardId) return;
 
-    htmx.ajax("GET", `/card/${cardId}/snippet/`, {
-        target: `#card-${cardId}`,
-        swap: "outerHTML"
-    });
+  htmx.ajax("GET", `/card/${cardId}/snippet/`, {
+    target: `#card-${cardId}`,
+    swap: "outerHTML",
+  });
 };
 
+// =====================================================
+// Savebar helpers
+// =====================================================
+function hideSavebar() {
+  const { bar, saveBtn } = getSavebarElements();
+  if (!bar) return;
+
+  bar.classList.add("hidden");
+  bar.style.display = "none";
+  if (saveBtn) saveBtn.disabled = true;
+}
+
+function showSavebar() {
+  const { bar, saveBtn } = getSavebarElements();
+  if (!bar) return;
+
+  bar.classList.remove("hidden");
+  bar.style.display = "";
+  if (saveBtn) saveBtn.disabled = false;
+}
+
+function markDirty() {
+  const form = getMainForm();
+  if (!form) return;
+
+  form.classList.add("is-dirty");
+
+  const active = sessionStorage.getItem("modalActiveTab") || "card-tab-desc";
+  if (tabsWithSave.has(active)) showSavebar();
+}
+
+function clearDirty() {
+  const form = getMainForm();
+  if (!form) return;
+
+  form.classList.remove("is-dirty");
+  hideSavebar();
+}
+
+function maybeShowSavebar() {
+  const form = getMainForm();
+  if (!form) return;
+
+  if (form.classList.contains("is-dirty")) showSavebar();
+  else hideSavebar();
+}
 
 // =====================================================
 // Alternar abas do modal
 // =====================================================
 window.cardOpenTab = function (panelId) {
-    document.querySelectorAll('.card-tab-btn').forEach(btn => {
-        btn.classList.toggle(
-            'card-tab-active',
-            btn.getAttribute('data-tab-target') === panelId
-        );
-    });
+  qsa(".card-tab-btn").forEach((btn) => {
+    btn.classList.toggle(
+      "card-tab-active",
+      btn.getAttribute("data-tab-target") === panelId
+    );
+  });
 
-    document.querySelectorAll('.card-tab-panel').forEach(panel => {
-        const isTarget = panel.id === panelId;
-        panel.classList.toggle('block', isTarget);
-        panel.classList.toggle('hidden', !isTarget);
-    });
+  qsa(".card-tab-panel").forEach((panel) => {
+    const isTarget = panel.id === panelId;
+    panel.classList.toggle("block", isTarget);
+    panel.classList.toggle("hidden", !isTarget);
+  });
 
-    sessionStorage.setItem('modalActiveTab', panelId);
+  sessionStorage.setItem("modalActiveTab", panelId);
+
+  if (!tabsWithSave.has(panelId)) hideSavebar();
+  else maybeShowSavebar();
 };
 
-
 // =====================================================
-// Aplicar tema manual
+// Tema — DESATIVADO (mantido só pra não quebrar onclick legado)
 // =====================================================
-window.cardSetTheme = function (mode) {
-    const root = document.getElementById('card-modal-root');
-    if (!root) return;
-
-    root.classList.remove("card-theme-white", "card-theme-aero", "card-theme-dark");
-    root.classList.add(`card-theme-${mode}`);
-
-    sessionStorage.setItem("currentModalTheme", `card-theme-${mode}`);
+window.cardSetTheme = function () {
+  // temas removidos: modal fixo em aero
 };
 
+// =====================================================
+// Inserir imagem no Quill como base64 (para o backend extrair na hora do Save)
+// =====================================================
+function insertBase64ImageIntoQuill(quill, file) {
+  if (!quill || !file) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    const dataUrl = reader.result; // "data:image/png;base64,..."
+    const range = quill.getSelection(true) || { index: quill.getLength() };
+
+    quill.insertEmbed(range.index, "image", dataUrl, "user");
+    quill.setSelection(range.index + 1, 0, "user");
+    markDirty();
+  };
+  reader.readAsDataURL(file);
+}
 
 // =====================================================
-// Inicializa Quill + Prism
+// Dirty tracking por delegação (1x)
+// =====================================================
+function bindDelegatedDirtyTracking() {
+  const body = getModalBody();
+  if (!body || body.dataset.dirtyDelegationBound) return;
+
+  body.dataset.dirtyDelegationBound = "1";
+
+  body.addEventListener("input", (ev) => {
+    const form = getMainForm();
+    if (!form) return;
+    if (!form.contains(ev.target)) return;
+    markDirty();
+  });
+
+  body.addEventListener("change", (ev) => {
+    const form = getMainForm();
+    if (!form) return;
+    if (!form.contains(ev.target)) return;
+    markDirty();
+  });
+
+  body.addEventListener("submit", (ev) => {
+    const form = getMainForm();
+    if (!form || ev.target !== form) return;
+    const { saveBtn } = getSavebarElements();
+    if (saveBtn) saveBtn.disabled = true;
+  });
+}
+
+// =====================================================
+// Inicializa modal (pós-swap)
 // =====================================================
 window.initCardModal = function () {
+  const body = getModalBody();
+  if (!body) return;
 
-    // Aplicar o tema salvo (ou cair no AERO apenas se ainda não houver tema salvo)
-    const root = document.getElementById("card-modal-root");
-    if (root) {
-        const savedTheme = sessionStorage.getItem("currentModalTheme") || "card-theme-aero";
+  // Card ID
+  const root = qs("#card-modal-root", body);
+  if (root) {
+    const cid = root.getAttribute("data-card-id");
+    window.currentCardId = cid ? Number(cid) : null;
 
-        root.classList.remove("card-theme-white", "card-theme-dark", "card-theme-aero");
-        root.classList.add(savedTheme);
+    // FIXO: aero (sem alternância)
+    root.classList.remove("card-theme-white", "card-theme-dark");
+    if (!root.classList.contains("card-theme-aero")) root.classList.add("card-theme-aero");
+  }
 
-        // Garante que sempre existe um valor padrão persistido
-        if (!sessionStorage.getItem("currentModalTheme")) {
-            sessionStorage.setItem("currentModalTheme", savedTheme);
-        }
-    }
+  bindDelegatedDirtyTracking();
+  clearDirty();
 
-    // ----- DESCRIÇÃO -----
-    const hiddenInput = document.getElementById("description-input");
+  // Quill — Descrição
+  const hiddenDesc = qs("#description-input", body);
+  const quillDescEl = qs("#quill-editor", body);
 
-    if (hiddenInput) {
-        const quill = new Quill("#quill-editor", {
-            theme: "snow",
-            modules: {
-                toolbar: [
-                    [{ header: [1, 2, 3, false] }],
-                    ["bold", "italic", "underline"],
-                    ["link", "image"],
-                    [{ list: "ordered" }, { list: "bullet" }]
-                ]
-            }
-        });
+  if (hiddenDesc && quillDescEl && !quillDescEl.dataset.quillReady) {
+    quillDescEl.dataset.quillReady = "1";
 
-        quill.root.innerHTML = hiddenInput.value || "";
-        quill.on("text-change", () => {
-            hiddenInput.value = quill.root.innerHTML;
-        });
-    }
+    quillDesc = new Quill("#quill-editor", {
+      theme: "snow",
+      modules: {
+        toolbar: {
+          container: [
+            [{ header: [1, 2, 3, false] }],
+            ["bold", "italic", "underline"],
+            ["link", "image"],
+            [{ list: "ordered" }, { list: "bullet" }],
+          ],
+          handlers: {
+          image: function () {
+          const fileInput = document.createElement("input");
+          fileInput.type = "file";
+          fileInput.accept = "image/*";
 
-    // ----- ATIVIDADE -----
-    const activityHidden = document.getElementById("activity-input");
+          fileInput.onchange = () => {
+          const file = fileInput.files?.[0];
+          if (!file) return;
+          insertBase64ImageIntoQuill(quillDesc, file);
+    };
 
-    if (activityHidden) {
+    fileInput.click();
+  },
+},
 
-        quillAtiv = new Quill("#quill-editor-ativ", {
-            theme: "snow",
-            modules: {
-                toolbar: {
-                    container: [
-                        [{ header: [1, 2, 3, false] }],
-                        ["bold", "italic", "underline"],
-                        ["link", "image"],
-                        [{ list: "ordered" }, { list: "bullet" }]
-                    ],
-                    handlers: {
-                        image: function () {
-                            let fileInput = document.createElement("input");
-                            fileInput.setAttribute("type", "file");
-                            fileInput.setAttribute("accept", "image/*");
+        },
+      },
+    });
 
-                            fileInput.onchange = async () => {
-                                const file = fileInput.files[0];
-                                if (!file) return;
+    quillDesc.root.innerHTML = hiddenDesc.value || "";
 
-                                let formData = new FormData();
-                                formData.append("image", file);
+    quillDesc.on("text-change", () => {
+      hiddenDesc.value = quillDesc.root.innerHTML;
+      markDirty();
+    });
 
-                                const resp = await fetch("/quill/upload/", {
-                                    method: "POST",
-                                    body: formData
-                                });
+    quillDesc.root.addEventListener("paste", (e) => {
+  const cd = e.clipboardData;
+  if (!cd?.items?.length) return;
 
-                                const data = await resp.json();
+  const item = Array.from(cd.items).find((it) => it.kind === "file" && it.type?.startsWith("image/"));
+  if (!item) return;
 
-                                if (data.url) {
-                                    let range = quillAtiv.getSelection();
-                                    quillAtiv.insertEmbed(range.index, "image", data.url);
-                                }
-                            };
+  const file = item.getAsFile();
+  if (!file) return;
 
-                            fileInput.click();
-                        }
-                    }
-                }
-            }
-        });
-
-        quillAtiv.root.innerHTML = "";
-        activityHidden.value = "";
-
-        quillAtiv.on("text-change", () => {
-            activityHidden.value = quillAtiv.root.innerHTML;
-        });
-    }
-};
-
-
-// =====================================================
-// HTMX – Modal carregado
-// =====================================================
-document.body.addEventListener("htmx:afterSwap", function (e) {
-    if (e.detail.target.id !== "modal-body") return;
-
-    openModal();
-    initCardModal();
-
-    const active = sessionStorage.getItem("modalActiveTab") || "card-tab-desc";
-    cardOpenTab(active);
+  e.preventDefault();
+  insertBase64ImageIntoQuill(quillDesc, file);
 });
 
+  }
+
+  // Quill — Atividade
+  const activityHidden = qs("#activity-input", body);
+  const quillAtivEl = qs("#quill-editor-ativ", body);
+
+  if (activityHidden && quillAtivEl && !quillAtivEl.dataset.quillReady) {
+    quillAtivEl.dataset.quillReady = "1";
+
+    quillAtiv = new Quill("#quill-editor-ativ", {
+      theme: "snow",
+      modules: {
+        toolbar: {
+          container: [
+            [{ header: [1, 2, 3, false] }],
+            ["bold", "italic", "underline"],
+            ["link", "image"],
+            [{ list: "ordered" }, { list: "bullet" }],
+          ],
+        },
+      },
+    });
+
+    quillAtiv.root.innerHTML = "";
+    activityHidden.value = "";
+
+    quillAtiv.on("text-change", () => {
+      activityHidden.value = quillAtiv.root.innerHTML;
+    });
+  }
+
+  // Sub-abas atividade (delegação)
+  if (!body.dataset.ativSubtabsBound) {
+    body.dataset.ativSubtabsBound = "1";
+
+    body.addEventListener("click", (ev) => {
+      const btn = ev.target.closest(".ativ-subtab-btn");
+      if (!btn) return;
+      const target = btn.getAttribute("data-subtab");
+      if (target) ativSwitchSubTab(target);
+    });
+  }
+
+  if (window.Prism) Prism.highlightAll();
+};
+
+// =====================================================
+// HTMX – após swap do modal-body
+// =====================================================
+document.body.addEventListener("htmx:afterSwap", function (e) {
+  if (!e.detail?.target || e.detail.target.id !== "modal-body") return;
+
+  openModal();
+  initCardModal();
+
+  const active = sessionStorage.getItem("modalActiveTab") || "card-tab-desc";
+  cardOpenTab(active);
+});
 
 // =====================================================
 // Remover TAG
 // =====================================================
 window.removeTagInstant = async function (cardId, tag) {
-    const csrf = document.querySelector("meta[name='csrf-token']").content;
+  const formData = new FormData();
+  formData.append("tag", tag);
 
-    const formData = new FormData();
-    formData.append("tag", tag);
+  const response = await fetch(`/card/${cardId}/remove_tag/`, {
+    method: "POST",
+    headers: { "X-CSRFToken": getCsrfToken() },
+    body: formData,
+    credentials: "same-origin",
+  });
 
-    const response = await fetch(`/card/${cardId}/remove_tag/`, {
-        method: "POST",
-        headers: { "X-CSRFToken": csrf },
-        body: formData
-    });
+  if (!response.ok) return;
 
-    if (!response.ok) return;
+  const data = await response.json();
 
-    const data = await response.json();
+  const modalBody = getModalBody();
+  if (modalBody) modalBody.innerHTML = data.modal;
 
-    document.getElementById("modal-body").innerHTML = data.modal;
+  const card = document.querySelector(`#card-${data.card_id}`);
+  if (card) card.outerHTML = data.snippet;
 
-    const card = document.querySelector(`#card-${data.card_id}`);
-    if (card) card.outerHTML = data.snippet;
+  initCardModal();
 
-    initCardModal();
-
-    const active = sessionStorage.getItem("modalActiveTab") || "card-tab-desc";
-    cardOpenTab(active);
+  const active = sessionStorage.getItem("modalActiveTab") || "card-tab-desc";
+  cardOpenTab(active);
 };
 
-
 // =====================================================
-// Limpar editor de atividade
+// Atividade helpers
 // =====================================================
 window.clearActivityEditor = function () {
-    const activityHidden = document.getElementById("activity-input");
-
-    if (quillAtiv) {
-        quillAtiv.setText("");
-    }
-
-    if (activityHidden) {
-        activityHidden.value = "";
-    }
+  const activityHidden = document.getElementById("activity-input");
+  if (quillAtiv) quillAtiv.setText("");
+  if (activityHidden) activityHidden.value = "";
 };
 
-
-// =====================================================
-// Enviar nova atividade
-// =====================================================
 window.submitActivity = async function (cardId) {
-    const csrf = document.querySelector("meta[name='csrf-token']").content;
-    const activityInput = document.getElementById("activity-input");
-    if (!activityInput) return;
+  const activityInput = document.getElementById("activity-input");
+  if (!activityInput) return;
 
-    const content = activityInput.value.trim();
-    if (!content) return;
+  const content = activityInput.value.trim();
+  if (!content) return;
 
-    const formData = new FormData();
-    formData.append("content", content);
+  const formData = new FormData();
+  formData.append("content", content);
 
-    const response = await fetch(`/card/${cardId}/activity/add/`, {
-        method: "POST",
-        headers: { "X-CSRFToken": csrf },
-        body: formData
-    });
+  const response = await fetch(`/card/${cardId}/activity/add/`, {
+    method: "POST",
+    headers: { "X-CSRFToken": getCsrfToken() },
+    body: formData,
+    credentials: "same-origin",
+  });
 
-    if (!response.ok) return;
+  if (!response.ok) return;
 
-    const html = await response.text();
+  const html = await response.text();
+  const wrapper = document.getElementById("activity-panel-wrapper");
+  if (wrapper) wrapper.innerHTML = html;
 
-    const wrapper = document.getElementById("activity-panel-wrapper");
-    if (wrapper) wrapper.innerHTML = html;
+  //clearActivityEditor();
+  //ativSwitchSubTab("ativ-historico-panel");
 
-    clearActivityEditor();
-    ativSwitchSubTab("ativ-historico-panel");
-
-    if (window.Prism) Prism.highlightAll();
+  if (window.Prism) Prism.highlightAll();
 };
 
-
-// =====================================================
-// Sub-abas de atividade
-// =====================================================
 window.ativSwitchSubTab = function (panelId) {
+  qsa(".ativ-subtab-panel").forEach((p) => p.classList.add("hidden"));
 
-    document.querySelectorAll(".ativ-subtab-panel")
-        .forEach(p => p.classList.add("hidden"));
+  const panel = document.getElementById(panelId);
+  if (panel) panel.classList.remove("hidden");
 
-    document.getElementById(panelId).classList.remove("hidden");
+  qsa(".ativ-subtab-btn").forEach((b) => b.classList.remove("ativ-subtab-active"));
 
-    document.querySelectorAll(".ativ-subtab-btn")
-        .forEach(b => b.classList.remove("ativ-subtab-active"));
-
-    const btn = document.querySelector(`.ativ-subtab-btn[data-subtab='${panelId}']`);
-    if (btn) btn.classList.add("ativ-subtab-active");
+  const btn = document.querySelector(`.ativ-subtab-btn[data-subtab='${panelId}']`);
+  if (btn) btn.classList.add("ativ-subtab-active");
 };

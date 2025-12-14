@@ -191,8 +191,14 @@ class ActiveCardManager(models.Manager):
 # ============================================================
 class Card(models.Model):
     title = models.CharField(max_length=255)
+
+    # Descrição HTML (Quill). Regra nova: não guardamos <img> aqui.
     description = models.TextField(blank=True, null=True)
+
     tags = models.CharField(max_length=255, blank=True, null=True)
+
+    # Capa do card (última imagem colada na descrição)
+    cover_image = models.ImageField(upload_to="card_covers/", null=True, blank=True)
 
     column = models.ForeignKey(Column, related_name="cards", on_delete=models.CASCADE)
     position = models.PositiveIntegerField(default=0)

@@ -134,24 +134,64 @@
 
 
 
-    <!-- Modal Global BARRA SUPERIOR-->
-    <div id="modal" class="fixed inset-0 z-50 flex items-center justify-center hidden">
+<!-- Modal Global -->
+<div id="modal" class="fixed inset-0 z-50 flex items-center justify-center hidden">
 
-        <div id="card-modal-root"
-            class="modal-glass rounded-2xl shadow-2xl w-4/5 max-w-5xl flex flex-col overflow-visible">
+  <div id="card-modal-root"
+       class="card-modal modal-glass card-theme-aero rounded-2xl shadow-2xl w-4/5 max-w-5xl flex flex-col overflow-hidden">
 
-            <div class="flex justify-end items-center p-2 gap-3 border-b border-white/20">
-                <!-- <button type="button" class="text-gray-500 hover:text-gray-900 text-lg" title="Tela cheia"
-                    onclick="cardToggleFull()">
-                    ⛶
-                </button> -->
+    <div class="flex items-center justify-between p-2 gap-3 border-b border-white/20">
 
-                <button onclick="refreshCardSnippet(window.currentCardId); closeModal();"
-                    class="text-slate-500 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white text-xl">X</button>
+      <!-- ABAS NA BARRA SUPERIOR (lado esquerdo) -->
+      <div id="card-tabs" class="flex flex-wrap items-end gap-2">
+        <button type="button" class="card-tab-btn card-tab-active"
+                data-tab-target="card-tab-desc"
+                onclick="cardOpenTab('card-tab-desc')">Descrição</button>
+
+        <button type="button" class="card-tab-btn"
+                data-tab-target="card-tab-tags"
+                onclick="cardOpenTab('card-tab-tags')">Etiquetas</button>
+
+        <button type="button" class="card-tab-btn"
+                data-tab-target="card-tab-check"
+                onclick="cardOpenTab('card-tab-check')">Checklists</button>
+
+        <button type="button" class="card-tab-btn"
+                data-tab-target="card-tab-ativ"
+                onclick="cardOpenTab('card-tab-ativ')">Atividade</button>
+
+        <button type="button" class="card-tab-btn"
+                data-tab-target="card-tab-files"
+                onclick="cardOpenTab('card-tab-files')">Anexos</button>
+      </div>
+
+      <!-- X (lado direito) -->
+      <button class="modal-top-x"
+              onclick="refreshCardSnippet(window.currentCardId); closeModal();"
+              aria-label="Fechar"
+              title="Fechar">X</button>
+
+    </div>
+
+    <!-- Conteúdo dinâmico do card -->
+    <div id="modal-body" class="w-full min-w-0"></div>
+
+  </div>
+
+</div>
+
+
+
+        <button type="button"
+        onclick="refreshCardSnippet(window.currentCardId); closeModal();"
+        class="modal-top-x"
+        aria-label="Fechar"
+        title="Fechar">X</button>
 
             </div>
 
-            <div id="modal-body" class="px-4 pb-4 overflow-visible">
+            <div id="modal-body" class="card-modal-scroll"></div>
+
             </div>
 
         </div>
