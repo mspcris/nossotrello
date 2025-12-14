@@ -19,11 +19,23 @@
                 ← Voltar aos Quadros
             </a>
 
-            <button class="block text-left w-full px-4 py-2 hover:bg-gray-100 rounded"
-                    hx-get="{% url 'boards:board_share' board.id %}"
-                    hx-target="body" hx-swap="beforeend">
-                Compartilhar quadro
-            </button>
+{% if can_share_board %}
+<button class="block text-left w-full px-4 py-2 hover:bg-gray-100 rounded"
+        hx-get="{% url 'boards:board_share' board.id %}"
+        hx-target="body" hx-swap="beforeend">
+    Compartilhar quadro
+</button>
+{% elif can_leave_board %}
+<form method="post" action="{% url 'boards:board_leave' board.id %}">
+    {% csrf_token %}
+    <button type="submit"
+            class="block text-left w-full px-4 py-2 hover:bg-gray-100 text-red-600 rounded"
+            onclick="return confirm('Sair deste quadro? Ele vai sumir da sua lista.')">
+        Sair do quadro
+    </button>
+</form>
+{% endif %}
+
 
             <button class="block text-left w-full px-4 py-2 hover:bg-gray-100 rounded"
                     hx-get="{% url 'boards:update_board_wallpaper' board.id %}"

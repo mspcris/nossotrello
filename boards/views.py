@@ -24,7 +24,7 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 from urllib.parse import parse_qs
-
+from django.urls import reverse
 
 from .forms import ColumnForm, CardForm, BoardForm
 from .models import (
@@ -197,14 +197,83 @@ def board_detail(request, board_id):
     board = get_object_or_404(Board, id=board_id, is_deleted=False)
 
     memberships_qs = board.memberships.select_related("user")
+
+    my_membership = None
+    can_leave_board = False
+    can_share_board = False
+
     if memberships_qs.exists():
         if not request.user.is_authenticated:
             return HttpResponse("Você não tem acesso a este quadro.", status=403)
-        if not memberships_qs.filter(user=request.user).exists():
+
+        my_membership = memberships_qs.filter(user=request.user).first()
+        if not my_membership:
             return HttpResponse("Você não tem acesso a este quadro.", status=403)
 
+        # Share: somente OWNER
+        can_share_board = (my_membership.role == BoardMembership.Role.OWNER)
+
+        # Leave: não-owner pode sempre; owner só se houver outro owner
+        if my_membership.role != BoardMembership.Role.OWNER:
+            can_leave_board = True
+        else:
+            owners_count = memberships_qs.filter(role=BoardMembership.Role.OWNER).count()
+            can_leave_board = owners_count > 1
+
+    else:
+        # cenário legado (sem memberships): mantém regra antiga de share
+        if request.user.is_authenticated and (board.created_by_id == request.user.id or request.user.is_staff):
+            can_share_board = True
+
     columns = board.columns.filter(is_deleted=False).order_by("position")
-    return render(request, "boards/board_detail.html", {"board": board, "columns": columns})
+    return render(
+        request,
+        "boards/board_detail.html",
+        {
+            "board": board,
+            "columns": columns,
+            "my_membership": my_membership,
+            "can_leave_board": can_leave_board,
+            "can_share_board": can_share_board,
+        },
+    )
+
+
+
+
+
+
+# ======================================================================
+# SAIR DA BOARD
+# ======================================================================
+
+@require_POST
+def board_leave(request, board_id):
+    if not request.user.is_authenticated:
+        return HttpResponse("Login necessário.", status=401)
+
+    board = get_object_or_404(Board, id=board_id, is_deleted=False)
+
+    membership = BoardMembership.objects.filter(board=board, user=request.user).first()
+    if not membership:
+        return HttpResponse("Você não tem acesso a este quadro.", status=403)
+
+    if membership.role == BoardMembership.Role.OWNER:
+        owners_count = BoardMembership.objects.filter(board=board, role=BoardMembership.Role.OWNER).count()
+        if owners_count <= 1:
+            return HttpResponse("Você é o último DONO do quadro e não pode sair.", status=400)
+
+    membership.delete()
+
+    redirect_url = reverse("boards:boards_index")
+
+    # Compatível com HTMX (caso o menu use hx-post)
+    if request.headers.get("HX-Request") == "true":
+        resp = HttpResponse("")
+        resp["HX-Redirect"] = redirect_url
+        return resp
+
+    return redirect(redirect_url)
 
 
 # ======================================================================

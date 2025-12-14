@@ -18,6 +18,7 @@ urlpatterns = [
     # ---------------------- BOARD ----------------------
     path("board/<int:board_id>/", views.board_detail, name="board_detail"),
     path("board/<int:board_id>/share/", views.board_share, name="board_share"),
+    path("board/<int:board_id>/leave/", views.board_leave, name="board_leave"),
     path("board/<int:board_id>/share/remove/<int:user_id>/", views.board_share_remove, name="board_share_remove"),
     path("board/<int:board_id>/add_column/", views.add_column, name="add_column"),
 
