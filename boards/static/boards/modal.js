@@ -5,6 +5,7 @@
 // - Savebar aparece apenas em: Descrição e Etiquetas
 // - Sem temas (fixado em aero)
 // - Listeners por delegação (não duplica após HTMX swap)
+// - Atividade: limpar Quill no "Incluir" + atualizar histórico
 // =====================================================
 
 window.currentCardId = null;
@@ -27,8 +28,21 @@ function qsa(sel, root = document) {
   return Array.from(root.querySelectorAll(sel));
 }
 
+/**
+ * IMPORTANTE:
+ * seu base.html está com risco de ter ID duplicado "modal-body".
+ * Aqui a gente sempre tenta pegar o modal-body que está DENTRO do #modal.
+ */
 function getModalBody() {
-  return document.getElementById("modal-body");
+  return (
+    document.querySelector("#modal #card-modal-root #modal-body") ||
+    document.querySelector("#modal #modal-body") ||
+    document.getElementById("modal-body")
+  );
+}
+
+function getCardModalRoot() {
+  return document.getElementById("card-modal-root") || qs("#card-modal-root");
 }
 
 function getMainForm() {
@@ -156,14 +170,14 @@ window.cardSetTheme = function () {
 };
 
 // =====================================================
-// Inserir imagem no Quill como base64 (para o backend extrair na hora do Save)
+// Inserir imagem no Quill como base64
 // =====================================================
 function insertBase64ImageIntoQuill(quill, file) {
   if (!quill || !file) return;
 
   const reader = new FileReader();
   reader.onload = () => {
-    const dataUrl = reader.result; // "data:image/png;base64,..."
+    const dataUrl = reader.result;
     const range = quill.getSelection(true) || { index: quill.getLength() };
 
     quill.insertEmbed(range.index, "image", dataUrl, "user");
@@ -211,11 +225,16 @@ window.initCardModal = function () {
   const body = getModalBody();
   if (!body) return;
 
-  // Card ID
-  const root = qs("#card-modal-root", body);
+  // Root do modal (tema + cardId)
+  const root = getCardModalRoot();
   if (root) {
-    const cid = root.getAttribute("data-card-id");
-    window.currentCardId = cid ? Number(cid) : null;
+    // tenta pegar card_id de algum lugar renderizado
+    const cid =
+      root.getAttribute("data-card-id") ||
+      body.getAttribute("data-card-id") ||
+      qs("[data-card-id]", body)?.getAttribute("data-card-id");
+
+    window.currentCardId = cid ? Number(cid) : window.currentCardId;
 
     // FIXO: aero (sem alternância)
     root.classList.remove("card-theme-white", "card-theme-dark");
@@ -225,7 +244,9 @@ window.initCardModal = function () {
   bindDelegatedDirtyTracking();
   clearDirty();
 
+  // -----------------------------
   // Quill — Descrição
+  // -----------------------------
   const hiddenDesc = qs("#description-input", body);
   const quillDescEl = qs("#quill-editor", body);
 
@@ -243,21 +264,20 @@ window.initCardModal = function () {
             [{ list: "ordered" }, { list: "bullet" }],
           ],
           handlers: {
-          image: function () {
-          const fileInput = document.createElement("input");
-          fileInput.type = "file";
-          fileInput.accept = "image/*";
+            image: function () {
+              const fileInput = document.createElement("input");
+              fileInput.type = "file";
+              fileInput.accept = "image/*";
 
-          fileInput.onchange = () => {
-          const file = fileInput.files?.[0];
-          if (!file) return;
-          insertBase64ImageIntoQuill(quillDesc, file);
-    };
+              fileInput.onchange = () => {
+                const file = fileInput.files?.[0];
+                if (!file) return;
+                insertBase64ImageIntoQuill(quillDesc, file);
+              };
 
-    fileInput.click();
-  },
-},
-
+              fileInput.click();
+            },
+          },
         },
       },
     });
@@ -270,22 +290,25 @@ window.initCardModal = function () {
     });
 
     quillDesc.root.addEventListener("paste", (e) => {
-  const cd = e.clipboardData;
-  if (!cd?.items?.length) return;
+      const cd = e.clipboardData;
+      if (!cd?.items?.length) return;
 
-  const item = Array.from(cd.items).find((it) => it.kind === "file" && it.type?.startsWith("image/"));
-  if (!item) return;
+      const item = Array.from(cd.items).find(
+        (it) => it.kind === "file" && it.type?.startsWith("image/")
+      );
+      if (!item) return;
 
-  const file = item.getAsFile();
-  if (!file) return;
+      const file = item.getAsFile();
+      if (!file) return;
 
-  e.preventDefault();
-  insertBase64ImageIntoQuill(quillDesc, file);
-});
-
+      e.preventDefault();
+      insertBase64ImageIntoQuill(quillDesc, file);
+    });
   }
 
+  // -----------------------------
   // Quill — Atividade
+  // -----------------------------
   const activityHidden = qs("#activity-input", body);
   const quillAtivEl = qs("#quill-editor-ativ", body);
 
@@ -306,23 +329,14 @@ window.initCardModal = function () {
       },
     });
 
-    quillAtiv.root.innerHTML = "";
+    // começa limpo
+    quillAtiv.setContents([]);
     activityHidden.value = "";
 
+    // IMPORTANT: evita "<p><br></p>" virar "conteúdo válido"
     quillAtiv.on("text-change", () => {
-      activityHidden.value = quillAtiv.root.innerHTML;
-    });
-  }
-
-  // Sub-abas atividade (delegação)
-  if (!body.dataset.ativSubtabsBound) {
-    body.dataset.ativSubtabsBound = "1";
-
-    body.addEventListener("click", (ev) => {
-      const btn = ev.target.closest(".ativ-subtab-btn");
-      if (!btn) return;
-      const target = btn.getAttribute("data-subtab");
-      if (target) ativSwitchSubTab(target);
+      const plain = quillAtiv.getText().trim();
+      activityHidden.value = plain ? quillAtiv.root.innerHTML : "";
     });
   }
 
@@ -333,7 +347,9 @@ window.initCardModal = function () {
 // HTMX – após swap do modal-body
 // =====================================================
 document.body.addEventListener("htmx:afterSwap", function (e) {
-  if (!e.detail?.target || e.detail.target.id !== "modal-body") return;
+  const modalBody = getModalBody();
+  if (!e.detail?.target || !modalBody) return;
+  if (e.detail.target !== modalBody) return;
 
   openModal();
   initCardModal();
@@ -377,15 +393,63 @@ window.removeTagInstant = async function (cardId, tag) {
 // =====================================================
 window.clearActivityEditor = function () {
   const activityHidden = document.getElementById("activity-input");
-  if (quillAtiv) quillAtiv.setText("");
+
+  if (quillAtiv) {
+    quillAtiv.setContents([]);      // limpa de verdade (sem sobrar newline)
+    quillAtiv.root.innerHTML = "";  // redundância segura
+  }
+
   if (activityHidden) activityHidden.value = "";
 };
+
+/**
+ * Atualiza o HTML do histórico no painel correto, sem depender de IDs duplicados.
+ */
+function updateHistoryPanel(html) {
+  const body = getModalBody();
+  if (!body) return;
+
+  // prioridade: wrapper dentro do painel de histórico
+  const inHistory =
+    body.querySelector(".ativ-panel-history #activity-panel-wrapper") ||
+    body.querySelector("#card-tab-ativ .ativ-panel-history #activity-panel-wrapper");
+
+  if (inHistory) {
+    inHistory.innerHTML = html;
+    return;
+  }
+
+  // fallback: primeiro id encontrado
+  const byId = document.getElementById("activity-panel-wrapper");
+  if (byId) byId.innerHTML = html;
+}
+
+/**
+ * Após incluir, tenta selecionar a aba "Histórico" automaticamente.
+ * (no seu HTML atual, é CSS-only via radios)
+ */
+function goToHistorySubtab() {
+  const body = getModalBody();
+  if (!body) return;
+
+  // seu markup atual usa: <input id="ativ-subtab-history" ...>
+  const radio = body.querySelector("#ativ-subtab-history");
+  if (radio) {
+    radio.checked = true;
+    return;
+  }
+
+  // fallback legado (quando existe data-subtab + panels hidden)
+  if (typeof window.ativSwitchSubTab === "function") {
+    window.ativSwitchSubTab("ativ-historico-panel");
+  }
+}
 
 window.submitActivity = async function (cardId) {
   const activityInput = document.getElementById("activity-input");
   if (!activityInput) return;
 
-  const content = activityInput.value.trim();
+  const content = (activityInput.value || "").trim();
   if (!content) return;
 
   const formData = new FormData();
@@ -401,15 +465,23 @@ window.submitActivity = async function (cardId) {
   if (!response.ok) return;
 
   const html = await response.text();
-  const wrapper = document.getElementById("activity-panel-wrapper");
-  if (wrapper) wrapper.innerHTML = html;
 
-  //clearActivityEditor();
-  //ativSwitchSubTab("ativ-historico-panel");
+  // 1) atualiza histórico
+  updateHistoryPanel(html);
+
+  // 2) limpa editor de nova atividade
+  clearActivityEditor();
+
+  // 3) opcional: vai pra histórico pra ver o log recém incluído
+  goToHistorySubtab();
 
   if (window.Prism) Prism.highlightAll();
 };
 
+// =====================================================
+// Legado: sub-abas via JS (mantido por compatibilidade)
+// (se você estiver 100% no CSS-only por radios, isso não é usado)
+// =====================================================
 window.ativSwitchSubTab = function (panelId) {
   qsa(".ativ-subtab-panel").forEach((p) => p.classList.add("hidden"));
 
