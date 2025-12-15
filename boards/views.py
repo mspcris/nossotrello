@@ -1424,6 +1424,21 @@ def remove_home_wallpaper(request):
 # ======================================================================
 # ATIVIDADE NO CARD (Quill) + upload
 # ======================================================================
+@login_required
+@require_http_methods(["GET"])
+def activity_panel(request, card_id):
+    card = get_object_or_404(Card, id=card_id, is_deleted=False)
+
+    board = card.column.board
+    memberships_qs = board.memberships.all()
+
+    # regra de acesso igual ao board_detail: se tem membership, exige membership
+    if memberships_qs.exists():
+        if not memberships_qs.filter(user=request.user).exists():
+            return HttpResponse("Você não tem acesso a este quadro.", status=403)
+
+    return render(request, "boards/partials/card_activity_panel.html", {"card": card})
+
 
 @require_POST
 def add_activity(request, card_id):
