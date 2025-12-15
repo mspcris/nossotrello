@@ -568,24 +568,36 @@ window.submitActivity = async function (cardId) {
 
   // volta pra aba "Histórico" e força re-aplicação do show/hide
   const histRadio = document.getElementById("ativ-tab-hist");
-  if (histRadio) histRadio.checked = true;
+  if (histRadio) {
+  histRadio.checked = true;
+
+  // Importante: setar .checked NÃO dispara "change" automaticamente.
+  // Como o show/hide está amarrado no listener de change (initAtivSubtabs3),
+  // precisamos disparar o evento para efetivamente abrir a view do Histórico.
+  histRadio.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
   initAtivSubtabs3(body); // safe: tem guard no dataset
 
   if (window.Prism) Prism.highlightAll();
 };
 
+
 // =====================================================
 // Mover Card (sub-aba em Atividade)
 // - carrega opções via GET /card/<id>/move/options/
 // - move via POST /move-card/ (JSON)
+// - atualiza DOM da board (sem F5) quando for o mesmo board
+// - fecha modal ao concluir
 // =====================================================
+
 function getCurrentBoardIdFromUrl() {
   const m = (window.location.pathname || "").match(/\/board\/(\d+)\//);
   return m?.[1] ? Number(m[1]) : null;
 }
 
 function findColumnContainer(columnId) {
-  // tenta os padrões mais comuns sem depender do seu HTML exato
+  // tenta padrões comuns sem depender do HTML exato
   const selectors = [
     `#column-${columnId} .cards`,
     `#column-${columnId} ul`,
@@ -612,17 +624,20 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
   const target = findColumnContainer(newColumnId);
   if (!target) return false;
 
-  // tentamos inserir respeitando ordem por itens que possuem data-card-id
-  const items = Array.from(target.querySelectorAll("[data-card-id], li[id^='card-'], .card"));
+  // pega candidatos de "itens de card" dentro do destino
+  // (se o seu DOM for diferente, ajuste aqui com um seletor mais específico)
+  const items = Array.from(
+    target.querySelectorAll("[data-card-id], li[id^='card-'], .card")
+  );
+
   const idx = Math.max(0, Number(newPosition0 || 0));
 
-  // remove de onde estiver e insere no destino
+  // move nó para o destino
   if (items[idx]) target.insertBefore(cardEl, items[idx]);
   else target.appendChild(cardEl);
 
   return true;
 }
-
 
 (function bindMoveCardOnce() {
   if (window.__moveCardHookInstalled) return;
@@ -774,7 +789,7 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
     }
   };
 
-    window.submitMoveCard = async function (cardId) {
+  window.submitMoveCard = async function (cardId) {
     const { boardSel, colSel, posSel } = getMoveEls();
     if (!boardSel || !colSel || !posSel) return;
 
@@ -818,32 +833,32 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
       return;
     }
 
-    // 1) Atualiza DOM na board (sem F5)
+    // Se mover para outro board: não dá para refletir 100% sem navegar.
+    // Estratégia segura: fecha modal e reload para manter consistência da tela.
     const currentBoardId = getCurrentBoardIdFromUrl();
     const targetBoardId = Number(boardId);
 
-    // Se mover para outro quadro, a tela atual não tem como refletir 100% (card vai sumir daqui).
-    // Então fazemos reload da página atual para ficar consistente (remove do quadro atual).
     if (currentBoardId && targetBoardId && currentBoardId !== targetBoardId) {
       closeModal();
       window.location.reload();
       return;
     }
 
-    // tenta mover o nó do card pra coluna/posição nova
+    // Mesmo board: tenta atualizar DOM sem F5
     const moved = moveCardDom(cardId, Number(columnId), payload.new_position);
 
-    // refresh do snippet garante título/labels/etc atualizados, mesmo após mover o nó
-    if (moved) {
-      window.refreshCardSnippet(cardId);
-    } else {
-      // fallback seguro: se não achou container/DOM, faz reload (garante consistência)
+    if (!moved) {
+      // fallback: se não achou container/card, reload garante consistência
       closeModal();
       window.location.reload();
       return;
     }
 
-    // 2) Fecha modal (move = ação final)
+    // Atualiza o snippet no novo lugar (melhora consistência visual)
+    // (isso mantém o card na coluna nova, porque o target #card-<id> agora está lá)
+    window.refreshCardSnippet(cardId);
+
+    // ação final: fecha modal
     closeModal();
   };
 })();
