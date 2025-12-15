@@ -2,30 +2,41 @@
 Django settings for nossotrello project.
 """
 
+import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Fallback = seguro (prod/hml controlam via .env)
+SECRET_KEY = (os.getenv("DJANGO_SECRET_KEY") or "").strip() or "django-insecure-*g97-4tr#q7%rz+b%)i_dgnocxt17ziww%x=7=zea_n$#i9%mj"
+DEBUG = _env_bool("DEBUG", default=False)
+
+ALLOWED_HOSTS = _env_csv(
+    "ALLOWED_HOSTS",
+    default_list=["127.0.0.1", "localhost", "tarefas.camim.com.br"],
+)
+
+CSRF_TRUSTED_ORIGINS = _env_csv(
+    "CSRF_TRUSTED_ORIGINS",
+    default_list=[
+        "http://tarefas.camim.com.br",
+        "http://tarefas.camim.com.br:8081",
+        "https://tarefas.camim.com.br",
+    ],
+)
 
 # ============================================================
-# BÁSICO
+# BANCO (SQLite) — permite variar o nome via ENV
 # ============================================================
 
-SECRET_KEY = 'django-insecure-*g97-4tr#q7%rz+b%)i_dgnocxt17ziww%x=7=zea_n$#i9%mj'
+SQLITE_NAME = (os.getenv("SQLITE_NAME") or "db.sqlite3").strip() or "db.sqlite3"
 
-DEBUG = True
-
-ALLOWED_HOSTS = [
-    '127.0.0.1',
-    'localhost',
-    'tarefas.camim.com.br',
-]
-
-CSRF_TRUSTED_ORIGINS = [
-    'http://tarefas.camim.com.br',
-    'http://tarefas.camim.com.br:8081',
-    'https://tarefas.camim.com.br',
-]
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db" / SQLITE_NAME,
+    }
+}
 
 
 
@@ -106,17 +117,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'nossotrello.wsgi.application'
 
-
-# ============================================================
-# BANCO DE DADOS
-# ============================================================
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db' / 'db.sqlite3',
-    }
-}
 
 # ============================================================
 # VALIDADORES DE SENHA
