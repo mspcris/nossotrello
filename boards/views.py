@@ -9,21 +9,23 @@ import re
 import uuid
 import requests
 
+from urllib.parse import parse_qs
+
 from django.conf import settings
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest
 from django.views.decorators.http import require_POST, require_http_methods
+from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction
 from django.utils import timezone
 from django.utils.html import escape
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
-from django.views.decorators.csrf import csrf_exempt
 from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import get_user_model
 from django.db.models import Q
-from urllib.parse import parse_qs
 from django.urls import reverse
 
 from .forms import ColumnForm, CardForm, BoardForm
@@ -47,10 +49,63 @@ from .models import (
 DEFAULT_WALLPAPER_FILENAME = "ubuntu-focal-fossa-cat-66j69z5enzbmk2m6.jpg"
 DEFAULT_WALLPAPER_URL = f"/media/home_wallpapers/{DEFAULT_WALLPAPER_FILENAME}"
 
+HOME_WALLPAPER_FOLDER = os.path.join(settings.MEDIA_ROOT, "home_wallpapers")
+
+
+# ======================================================================
+# AUDITORIA (CardLog)
+# ======================================================================
+
+def _actor_label(request) -> str:
+    if getattr(request, "user", None) and request.user.is_authenticated:
+        return escape(request.user.email or request.user.get_username() or "usuário")
+    return "Sistema"
+
+
+def _log_card(card: Card, request, message_html: str, attachment=None) -> None:
+    """
+    Registra no histórico do card (CardLog).
+    message_html deve ser HTML válido.
+    """
+    try:
+        CardLog.objects.create(
+            card=card,
+            content=message_html,
+            attachment=attachment,
+        )
+    except Exception:
+        # Auditoria não pode derrubar fluxo de negócio
+        pass
+
+
+def _board_anchor_card(board: Board):
+    """
+    Para eventos de quadro/coluna sem um 'CardLog' próprio,
+    escolhe um card âncora do board para registrar a auditoria (sem flood).
+    """
+    try:
+        return (
+            Card.objects.filter(column__board=board, is_deleted=False)
+            .select_related("column", "column__board")
+            .order_by("-updated_at", "-id")
+            .first()
+        )
+    except Exception:
+        return None
+
+
+def _log_board(board: Board, request, message_html: str) -> None:
+    """
+    Registra evento de board/coluna no card âncora (se existir).
+    """
+    anchor = _board_anchor_card(board)
+    if anchor:
+        _log_card(anchor, request, message_html)
+
+
 # ======================================================================
 # HELPER – Organização "default" por usuário
 # ======================================================================
-
 
 def get_or_create_user_default_organization(user):
     if not user.is_authenticated:
@@ -79,11 +134,9 @@ def get_or_create_user_default_organization(user):
     return org
 
 
-
 # ======================================================================
 # HELPERS – HTML / imagens base64
 # ======================================================================
-
 
 def extract_base64_and_convert(html_content):
     """
@@ -127,7 +180,6 @@ def strip_img_tags(html):
     )
 
 
-
 def _card_has_cover_image(card: Card) -> bool:
     return hasattr(card, "cover_image")
 
@@ -162,7 +214,6 @@ def _set_cover_from_relative_path(card: Card, relative_path: str) -> bool:
 # HOME (lista de boards)
 # ======================================================================
 
-
 def index(request):
     if request.user.is_authenticated:
         qs = BoardMembership.objects.filter(
@@ -196,7 +247,6 @@ def index(request):
                 .select_related("user")
             )
             for m in owner_memberships:
-                # Se houver mais de um owner, mantém o primeiro encontrado
                 if m.board_id not in owner_by_board:
                     owner_by_board[m.board_id] = m.user
 
@@ -226,10 +276,10 @@ def index(request):
         },
     )
 
+
 # ======================================================================
 # DETALHE DE UM BOARD
 # ======================================================================
-
 
 def board_detail(request, board_id):
     board = get_object_or_404(Board, id=board_id, is_deleted=False)
@@ -248,10 +298,8 @@ def board_detail(request, board_id):
         if not my_membership:
             return HttpResponse("Você não tem acesso a este quadro.", status=403)
 
-        # Share: somente OWNER
         can_share_board = (my_membership.role == BoardMembership.Role.OWNER)
 
-        # Leave: não-owner pode sempre; owner só se houver outro owner
         if my_membership.role != BoardMembership.Role.OWNER:
             can_leave_board = True
         else:
@@ -259,7 +307,6 @@ def board_detail(request, board_id):
             can_leave_board = owners_count > 1
 
     else:
-        # cenário legado (sem memberships): mantém regra antiga de share
         if request.user.is_authenticated and (board.created_by_id == request.user.id or request.user.is_staff):
             can_share_board = True
 
@@ -275,10 +322,6 @@ def board_detail(request, board_id):
             "can_share_board": can_share_board,
         },
     )
-
-
-
-
 
 
 # ======================================================================
@@ -301,11 +344,17 @@ def board_leave(request, board_id):
         if owners_count <= 1:
             return HttpResponse("Você é o último DONO do quadro e não pode sair.", status=400)
 
+    actor = _actor_label(request)
     membership.delete()
+
+    _log_board(
+        board,
+        request,
+        f"<p><strong>{actor}</strong> saiu do quadro <strong>{escape(board.name)}</strong>.</p>",
+    )
 
     redirect_url = reverse("boards:boards_index")
 
-    # Compatível com HTMX (caso o menu use hx-post)
     if request.headers.get("HX-Request") == "true":
         resp = HttpResponse("")
         resp["HX-Redirect"] = redirect_url
@@ -318,7 +367,6 @@ def board_leave(request, board_id):
 # ADICIONAR COLUNA
 # ======================================================================
 
-
 def add_column(request, board_id):
     board = get_object_or_404(Board, id=board_id)
 
@@ -329,6 +377,14 @@ def add_column(request, board_id):
             column.board = board
             column.position = board.columns.count()
             column.save()
+
+            actor = _actor_label(request)
+            _log_board(
+                board,
+                request,
+                f"<p><strong>{actor}</strong> criou a coluna <strong>{escape(column.name)}</strong> no quadro <strong>{escape(board.name)}</strong>.</p>",
+            )
+
             return render(request, "boards/partials/column_item.html", {"column": column})
 
         return HttpResponse("Erro ao criar coluna.", status=400)
@@ -344,7 +400,6 @@ def add_column(request, board_id):
 # DEFINIR TEMA DA COLUNA
 # ======================================================================
 
-
 @require_POST
 def set_column_theme(request, column_id):
     column = get_object_or_404(Column, id=column_id)
@@ -354,24 +409,23 @@ def set_column_theme(request, column_id):
     if theme not in valid_themes:
         return HttpResponse("Tema inválido", status=400)
 
+    old_theme = getattr(column, "theme", "")
     column.theme = theme
     column.save(update_fields=["theme"])
+
+    actor = _actor_label(request)
+    _log_board(
+        column.board,
+        request,
+        f"<p><strong>{actor}</strong> alterou o tema da coluna <strong>{escape(column.name)}</strong> de <strong>{escape(old_theme)}</strong> para <strong>{escape(theme)}</strong>.</p>",
+    )
+
     return render(request, "boards/partials/column_item.html", {"column": column})
 
 
 # ======================================================================
 # REORDENAR COLUNAS
 # ======================================================================
-
-import json
-from django.http import JsonResponse
-from django.views.decorators.http import require_POST
-from django.contrib.auth.decorators import login_required
-from django.db import transaction
-from django.shortcuts import get_object_or_404
-
-from .models import Board, Column
-
 
 @login_required
 @require_POST
@@ -397,12 +451,14 @@ def reorder_columns(request, board_id):
         for idx, cid in enumerate(order):
             Column.objects.filter(id=cid, board=board).update(position=idx)
 
+    actor = _actor_label(request)
+    _log_board(
+        board,
+        request,
+        f"<p><strong>{actor}</strong> reordenou colunas no quadro <strong>{escape(board.name)}</strong>.</p>",
+    )
+
     return JsonResponse({"ok": True})
-
-
-
-
-
 
 
 # ======================================================================
@@ -419,14 +475,10 @@ def add_card(request, column_id):
 
         card = form.save(commit=False)
 
-         # descrição (HTML do Quill) — pode vir fora do form
         raw_desc = (request.POST.get("description") or card.description or "")
-
-        # garante variáveis sempre definidas
         clean_desc, extracted_file = extract_base64_and_convert(raw_desc)
 
         # se não veio base64, tenta pegar a primeira <img src="/media/...">
-        # (ex: /media/quill/..., /media/attachments/...)
         if not extracted_file:
             m = re.search(r'<img[^>]+src="([^"]+)"', raw_desc or "")
             if m:
@@ -436,42 +488,25 @@ def add_card(request, column_id):
                     if relative_path:
                         _set_cover_from_relative_path(card, relative_path)
 
-        # regra: descrição não guarda base64 (pesado). Mantém <img src="/media/..."> se existir
+        # descrição sem base64 pesado
         card.description = strip_img_tags(clean_desc)
 
-        # capa via base64 (se model suportar)
-        _set_cover_from_file(card, extracted_file)
-
-
-
-        # 2) se não veio base64, tenta pegar a primeira <img src="/media/...">
-        # (ex: /media/quill/..., /media/attachments/...)
-        if not extracted_file:
-            m = re.search(r'<img[^>]+src="([^"]+)"', raw_desc or "")
-            if m:
-                url = (m.group(1) or "").strip()
-                if "/media/" in url:
-                    relative_path = url.split("/media/")[-1].strip()
-                    if relative_path:
-                        _set_cover_from_relative_path(card, relative_path)
-
-        # 3) regra: descrição não guarda <img>
-        card.description = strip_img_tags(clean_desc)
-
-        # capa via base64 (se model suportar)
+        # capa via base64 (se existir)
         _set_cover_from_file(card, extracted_file)
 
         card.column = column
         card.position = column.cards.count()
         card.save()
 
-        # log se capa existir e estiver definida
-        if _card_has_cover_image(card) and getattr(card, "cover_image", None):
-            if card.cover_image:
-                CardLog.objects.create(
-                    card=card,
-                    content="<p><strong>Capa definida na criação do card</strong></p>",
-                )
+        actor = _actor_label(request)
+        _log_card(
+            card,
+            request,
+            f"<p><strong>{actor}</strong> criou este card na coluna <strong>{escape(column.name)}</strong>.</p>",
+        )
+
+        if _card_has_cover_image(card) and getattr(card, "cover_image", None) and card.cover_image:
+            _log_card(card, request, f"<p><strong>{actor}</strong> definiu uma capa na criação do card.</p>")
 
         return render(request, "boards/partials/card_item.html", {"card": card})
 
@@ -482,11 +517,9 @@ def add_card(request, column_id):
     )
 
 
-
 # ======================================================================
 # ADICIONAR BOARD
 # ======================================================================
-
 
 def add_board(request):
     if request.method == "POST":
@@ -509,6 +542,13 @@ def add_board(request):
                 defaults={"role": BoardMembership.Role.OWNER},
             )
 
+        actor = _actor_label(request)
+        _log_board(
+            board,
+            request,
+            f"<p><strong>{actor}</strong> criou o quadro <strong>{escape(board.name)}</strong>.</p>",
+        )
+
         return HttpResponse(f'<script>window.location.href="/board/{board.id}/"</script>')
 
     return render(request, "boards/partials/add_board_form.html", {"form": BoardForm()})
@@ -518,7 +558,6 @@ def add_board(request):
 # SOFT DELETE DE BOARD
 # ======================================================================
 
-
 def delete_board(request, board_id):
     if request.method != "POST":
         return HttpResponseBadRequest("Método inválido.")
@@ -527,6 +566,15 @@ def delete_board(request, board_id):
         board = Board.objects.get(id=board_id, is_deleted=False)
     except Board.DoesNotExist:
         return HttpResponseBadRequest("Quadro não encontrado.")
+
+    actor = _actor_label(request)
+
+    # log no âncora antes de apagar
+    _log_board(
+        board,
+        request,
+        f"<p><strong>{actor}</strong> excluiu (soft delete) o quadro <strong>{escape(board.name)}</strong>.</p>",
+    )
 
     now = timezone.now()
     board.is_deleted = True
@@ -543,7 +591,6 @@ def delete_board(request, board_id):
 # EDITAR CARD (modal antigo)
 # ======================================================================
 
-
 def edit_card(request, card_id):
     card = get_object_or_404(Card, id=card_id)
 
@@ -552,10 +599,8 @@ def edit_card(request, card_id):
         if form.is_valid():
             form.save()
 
-            CardLog.objects.create(
-                card=card,
-                content=card.description or "",
-            )
+            actor = _actor_label(request)
+            _log_card(card, request, f"<p><strong>{actor}</strong> editou o card (modal antigo).</p>")
 
             return render(request, "boards/partials/card_modal_body.html", {"card": card})
     else:
@@ -568,13 +613,15 @@ def edit_card(request, card_id):
 # ATUALIZAR CARD (modal novo)
 # ======================================================================
 
-
 @require_POST
 def update_card(request, card_id):
     card = get_object_or_404(Card, id=card_id)
 
+    actor = _actor_label(request)
+
     old_title = card.title
     old_desc = card.description or ""
+    old_tags_raw = card.tags or ""
 
     # título
     card.title = request.POST.get("title", card.title)
@@ -582,17 +629,17 @@ def update_card(request, card_id):
     # descrição (HTML do Quill)
     raw_desc = request.POST.get("description", card.description or "")
 
-    # 1) extrai base64 primeiro (se houver)
+    # base64 -> arquivo
     clean_desc, extracted_file = extract_base64_and_convert(raw_desc)
-    # 2) regra: descrição nunca guarda <img>
+
+    # regra: descrição nunca guarda base64
     clean_desc = strip_img_tags(clean_desc)
     card.description = clean_desc
 
-    # capa via base64 (se model suportar)
-    _set_cover_from_file(card, extracted_file)
+    # capa via base64 (se existir)
+    cover_changed = _set_cover_from_file(card, extracted_file)
 
     # tags
-    old_tags_raw = card.tags or ""
     new_tags_raw = request.POST.get("tags", old_tags_raw) or ""
 
     old_tags = [t.strip() for t in old_tags_raw.split(",") if t.strip()]
@@ -604,34 +651,30 @@ def update_card(request, card_id):
 
     card.save()
 
-    # logs de tags
-    for t in removed:
-        CardLog.objects.create(card=card, content=f"Etiqueta removida: {t}")
-    for t in added:
-        CardLog.objects.create(card=card, content=f"Etiqueta adicionada: {t}")
+    # logs
+    if removed:
+        for t in removed:
+            _log_card(card, request, f"<p><strong>{actor}</strong> removeu a etiqueta <strong>{escape(t)}</strong>.</p>")
+    if added:
+        for t in added:
+            _log_card(card, request, f"<p><strong>{actor}</strong> adicionou a etiqueta <strong>{escape(t)}</strong>.</p>")
 
-    # log de descrição
     if (old_desc or "").strip() != (card.description or "").strip():
-        CardLog.objects.create(
-            card=card,
-            content=("<p><strong>Descrição atualizada</strong></p>" f"{card.description}"),
-        )
+        _log_card(card, request, f"<p><strong>{actor}</strong> atualizou a descrição.</p>")
 
-    # log de título
     if (old_title or "").strip() != (card.title or "").strip():
-        CardLog.objects.create(
-            card=card,
-            content=f"<p><strong>Título atualizado</strong></p><p>{escape(card.title)}</p>",
+        _log_card(
+            card,
+            request,
+            f"<p><strong>{actor}</strong> alterou o título de <strong>{escape(old_title)}</strong> para <strong>{escape(card.title)}</strong>.</p>",
         )
 
-    # fallback
-    if (
-        not removed
-        and not added
-        and (old_desc.strip() == (card.description or "").strip())
-        and (old_title.strip() == card.title.strip())
-    ):
-        CardLog.objects.create(card=card, content="Card atualizado.")
+    if cover_changed:
+        _log_card(card, request, f"<p><strong>{actor}</strong> atualizou a capa do card.</p>")
+
+    # fallback (se nada foi detectado)
+    if not (removed or added or cover_changed or (old_desc.strip() != (card.description or "").strip()) or (old_title.strip() != card.title.strip())):
+        _log_card(card, request, f"<p><strong>{actor}</strong> atualizou o card.</p>")
 
     return render(request, "boards/partials/card_modal_body.html", {"card": card})
 
@@ -643,13 +686,9 @@ def update_card(request, card_id):
 @require_POST
 def set_card_cover(request, card_id):
     card = get_object_or_404(Card, id=card_id)
+    actor = _actor_label(request)
 
-    # Diagnóstico rápido (depois a gente remove)
-    print("COVER/SET content_type:", request.content_type)
-    print("COVER/SET POST keys:", list(request.POST.keys()))
-    #print("COVER/SET body head:", (request.body or b"")[:200])
-
-    # 1) tenta via POST normal (form-data / x-www-form-urlencoded)
+    # 1) tenta via POST normal
     url = (
         (request.POST.get("url") or "").strip()
         or (request.POST.get("src") or "").strip()
@@ -674,15 +713,12 @@ def set_card_cover(request, card_id):
         except Exception:
             pass
 
-    # 3) tenta body “cru” (alguns fetch mandam só a string)
+    # 3) tenta body cru
     if not url and request.body:
         raw = request.body.decode("utf-8", errors="ignore").strip()
-
-        # ex: "/media/quill/xxx.png"
         if raw.startswith("/media/") or raw.startswith("http"):
             url = raw
         else:
-            # ex: "url=/media/quill/xxx.png"
             parsed = parse_qs(raw)
             for k in ("url", "src", "image_url", "cover_url", "path", "file_url"):
                 if k in parsed and parsed[k]:
@@ -693,7 +729,6 @@ def set_card_cover(request, card_id):
     if not url:
         return HttpResponse("URL inválida", status=400)
 
-    # aceita "/media/..." ou url absoluta com "/media/"
     if url.startswith("/media/"):
         relative_path = url.split("/media/")[-1].strip()
     elif "/media/" in url:
@@ -709,10 +744,12 @@ def set_card_cover(request, card_id):
         return HttpResponse("Falha ao definir capa.", status=400)
 
     file_url = default_storage.url(relative_path)
-    CardLog.objects.create(
-        card=card,
-        content=(
-            "<p><strong>Imagem colada na descrição</strong> (definida como capa)</p>"
+
+    _log_card(
+        card,
+        request,
+        (
+            f"<p><strong>{actor}</strong> definiu a imagem como capa.</p>"
             f'<p><img src="{escape(file_url)}" /></p>'
         ),
     )
@@ -720,10 +757,10 @@ def set_card_cover(request, card_id):
     return render(request, "boards/partials/card_modal_body.html", {"card": card})
 
 
-
 @require_POST
 def remove_card_cover(request, card_id):
     card = get_object_or_404(Card, id=card_id)
+    actor = _actor_label(request)
 
     if not _card_has_cover_image(card):
         return HttpResponse("cover_image não configurado no model Card.", status=400)
@@ -731,8 +768,7 @@ def remove_card_cover(request, card_id):
     if card.cover_image:
         card.cover_image = None
         card.save(update_fields=["cover_image"])
-
-        CardLog.objects.create(card=card, content="<p><strong>Capa removida</strong></p>")
+        _log_card(card, request, f"<p><strong>{actor}</strong> removeu a capa do card.</p>")
 
     return render(request, "boards/partials/card_modal_body.html", {"card": card})
 
@@ -741,12 +777,13 @@ def remove_card_cover(request, card_id):
 # DELETAR CARD (soft delete)
 # ======================================================================
 
-
 @require_POST
 def delete_card(request, card_id):
     card = get_object_or_404(Card.all_objects, id=card_id)
+    actor = _actor_label(request)
 
     if not card.is_deleted:
+        _log_card(card, request, f"<p><strong>{actor}</strong> excluiu (soft delete) este card.</p>")
         card.is_deleted = True
         card.deleted_at = timezone.now()
         card.save(update_fields=["is_deleted", "deleted_at"])
@@ -758,7 +795,6 @@ def delete_card(request, card_id):
 # DELETAR COLUNA (soft delete + soft delete dos cards)
 # ======================================================================
 
-
 def delete_column(request, column_id):
     if request.method != "POST":
         return HttpResponseBadRequest("Método inválido.")
@@ -767,6 +803,19 @@ def delete_column(request, column_id):
         column = Column.objects.get(id=column_id, is_deleted=False)
     except Column.DoesNotExist:
         return HttpResponseBadRequest("Coluna não encontrada.")
+
+    actor = _actor_label(request)
+
+    # loga em todos cards (pecar por excesso) antes do soft delete
+    cards_in_col = Card.objects.filter(column=column, is_deleted=False)
+    for c in cards_in_col:
+        _log_card(c, request, f"<p><strong>{actor}</strong> excluiu (soft delete) a coluna <strong>{escape(column.name)}</strong>, removendo este card da visualização.</p>")
+
+    _log_board(
+        column.board,
+        request,
+        f"<p><strong>{actor}</strong> excluiu (soft delete) a coluna <strong>{escape(column.name)}</strong>.</p>",
+    )
 
     now = timezone.now()
     column.is_deleted = True
@@ -777,14 +826,13 @@ def delete_column(request, column_id):
     return HttpResponse("")
 
 
-# alias de compatibilidade (se o urls.py ainda usar column_delete)
+# alias de compatibilidade
 column_delete = delete_column
 
 
 # ======================================================================
 # MOVER CARD ENTRE COLUNAS
 # ======================================================================
-
 
 @require_POST
 @transaction.atomic
@@ -799,7 +847,11 @@ def move_card(request):
     old_column = card.column
     new_column = get_object_or_404(Column, id=new_column_id)
 
+    actor = _actor_label(request)
+    old_pos = card.position
+
     if old_column.id == new_column.id:
+        # reordenação dentro da mesma coluna
         cards = list(old_column.cards.order_by("position"))
         cards.remove(card)
         cards.insert(new_position, card)
@@ -809,8 +861,14 @@ def move_card(request):
                 c.position = index
                 c.save(update_fields=["position"])
 
+        _log_card(
+            card,
+            request,
+            f"<p><strong>{actor}</strong> reordenou este card dentro da coluna <strong>{escape(old_column.name)}</strong> (de {old_pos} para {new_position}).</p>",
+        )
         return JsonResponse({"status": "ok"})
 
+    # move de coluna
     old_cards = list(old_column.cards.exclude(id=card.id).order_by("position"))
     for index, c in enumerate(old_cards):
         if c.position != index:
@@ -828,13 +886,110 @@ def move_card(request):
             c.position = index
             c.save(update_fields=["position"])
 
+    _log_card(
+        card,
+        request,
+        f"<p><strong>{actor}</strong> moveu este card de <strong>{escape(old_column.name)}</strong> para <strong>{escape(new_column.name)}</strong>.</p>",
+    )
+
     return JsonResponse({"status": "ok"})
+
+# ======================================================================
+# MOVER CARD (Modal) — options + refresh painel atividade
+# ======================================================================
+
+@login_required
+@require_http_methods(["GET"])
+def card_move_options(request, card_id):
+    card = get_object_or_404(Card, id=card_id, is_deleted=False)
+    board_current = card.column.board
+
+    # Permissão: precisa ser editor/owner (ou criador/staff em board sem memberships)
+    def can_edit_board(board: Board) -> bool:
+        if not request.user.is_authenticated:
+            return False
+
+        memberships_qs = board.memberships.all()
+        if memberships_qs.exists():
+            m = memberships_qs.filter(user=request.user).first()
+            if not m:
+                return False
+            return m.role in {BoardMembership.Role.OWNER, BoardMembership.Role.EDITOR}
+
+        return bool(request.user.is_staff or board.created_by_id == request.user.id)
+
+    if not can_edit_board(board_current):
+        return JsonResponse({"error": "Sem permissão para mover card neste quadro."}, status=403)
+
+    # Boards acessíveis (editáveis)
+    boards = []
+    # 1) boards com membership editor/owner
+    for bm in BoardMembership.objects.filter(
+        user=request.user,
+        role__in=[BoardMembership.Role.OWNER, BoardMembership.Role.EDITOR],
+        board__is_deleted=False,
+    ).select_related("board"):
+        boards.append(bm.board)
+
+    # 2) boards “legado” sem memberships onde o user é criador ou staff
+    legacy_qs = Board.objects.filter(is_deleted=False).filter(
+        Q(created_by_id=request.user.id) | Q()
+    )
+    if request.user.is_staff:
+        legacy_qs = Board.objects.filter(is_deleted=False)
+
+    for b in legacy_qs:
+        if not b.memberships.exists():
+            boards.append(b)
+
+    # dedup por id
+    seen = set()
+    uniq = []
+    for b in boards:
+        if b.id in seen:
+            continue
+        seen.add(b.id)
+        uniq.append(b)
+
+    uniq.sort(key=lambda x: (x.created_at or timezone.now()), reverse=True)
+
+    columns_by_board = {}
+    for b in uniq:
+        cols = b.columns.filter(is_deleted=False).order_by("position")
+        columns_by_board[str(b.id)] = [
+            {
+                "id": c.id,
+                "name": c.name,
+                "positions_total_plus_one": (c.cards.count() + 1),  # Card.objects = ativos
+            }
+            for c in cols
+        ]
+
+    payload = {
+        "current": {
+            "board_id": board_current.id,
+            "board_name": board_current.name,
+            "column_id": card.column.id,
+            "column_name": card.column.name,
+            "position": int(card.position) + 1,  # UX 1-based
+        },
+        "boards": [{"id": b.id, "name": b.name} for b in uniq],
+        "columns_by_board": columns_by_board,
+    }
+    return JsonResponse(payload)
+
+
+@login_required
+@require_http_methods(["GET"])
+def activity_panel(request, card_id):
+    card = get_object_or_404(Card, id=card_id, is_deleted=False)
+    return render(request, "boards/partials/card_activity_panel.html", {"card": card})
+
 
 
 # ======================================================================
 # MODAL DO CARD
 # ======================================================================
-
 
 def card_modal(request, card_id):
     card = get_object_or_404(Card, id=card_id)
@@ -845,9 +1000,9 @@ def card_modal(request, card_id):
 # IMAGEM PRINCIPAL DO BOARD
 # ======================================================================
 
-
 def update_board_image(request, board_id):
     board = get_object_or_404(Board, id=board_id)
+    actor = _actor_label(request)
 
     if request.method == "GET":
         return render(request, "boards/partials/board_image_form.html", {"board": board})
@@ -856,6 +1011,7 @@ def update_board_image(request, board_id):
         if "image" in request.FILES and request.FILES["image"]:
             board.image = request.FILES["image"]
             board.save(update_fields=["image"])
+            _log_board(board, request, f"<p><strong>{actor}</strong> atualizou a imagem principal do quadro.</p>")
             return HttpResponse('<script>location.reload()</script>')
 
         url = (request.POST.get("image_url") or "").strip()
@@ -865,6 +1021,7 @@ def update_board_image(request, board_id):
                 if r.status_code == 200:
                     filename = url.split("/")[-1] or "board.jpg"
                     board.image.save(filename, ContentFile(r.content))
+                    _log_board(board, request, f"<p><strong>{actor}</strong> atualizou a imagem principal do quadro via URL.</p>")
                     return HttpResponse('<script>location.reload()</script>')
             except Exception:
                 pass
@@ -875,17 +1032,20 @@ def update_board_image(request, board_id):
 @require_POST
 def remove_board_image(request, board_id):
     board = get_object_or_404(Board, id=board_id)
+    actor = _actor_label(request)
+
     if board.image:
         board.image.delete(save=False)
         board.image = None
         board.save(update_fields=["image"])
+        _log_board(board, request, f"<p><strong>{actor}</strong> removeu a imagem principal do quadro.</p>")
+
     return HttpResponse('<script>location.reload()</script>')
 
 
 # ======================================================================
 # SNIPPET DO CARD
 # ======================================================================
-
 
 def card_snippet(request, card_id):
     card = get_object_or_404(Card, id=card_id)
@@ -896,10 +1056,11 @@ def card_snippet(request, card_id):
 # REMOVER TAG
 # ======================================================================
 
-
 @require_POST
 def remove_tag(request, card_id):
     card = get_object_or_404(Card, id=card_id)
+    actor = _actor_label(request)
+
     tag = request.POST.get("tag", "").strip()
     if not tag:
         return HttpResponse("Tag inválida", status=400)
@@ -913,7 +1074,7 @@ def remove_tag(request, card_id):
     card.tags = ", ".join(new_tags)
     card.save(update_fields=["tags"])
 
-    CardLog.objects.create(card=card, content=f"Etiqueta removida: {tag}")
+    _log_card(card, request, f"<p><strong>{actor}</strong> removeu a etiqueta <strong>{escape(tag)}</strong>.</p>")
 
     modal_html = render(request, "boards/partials/card_modal_body.html", {"card": card}).content.decode("utf-8")
     snippet_html = render(request, "boards/partials/card_item.html", {"card": card}).content.decode("utf-8")
@@ -925,28 +1086,55 @@ def remove_tag(request, card_id):
 # RENOMEAR BOARD / COLUNA
 # ======================================================================
 
-
 @require_POST
 def rename_board(request, board_id):
     board = get_object_or_404(Board, id=board_id)
+    actor = _actor_label(request)
+
+    old_name = board.name
     name = request.POST.get("name", "").strip()
     if not name:
         return HttpResponse("Nome inválido", status=400)
 
     board.name = name
     board.save(update_fields=["name"])
+
+    _log_board(
+        board,
+        request,
+        f"<p><strong>{actor}</strong> renomeou o quadro de <strong>{escape(old_name)}</strong> para <strong>{escape(name)}</strong>.</p>",
+    )
+
     return HttpResponse("OK", status=200)
 
 
 @require_POST
 def rename_column(request, column_id):
     column = get_object_or_404(Column, id=column_id)
+    actor = _actor_label(request)
+
+    old_name = column.name
     name = request.POST.get("name", "").strip()
     if not name:
         return HttpResponse("Nome inválido", status=400)
 
     column.name = name
     column.save(update_fields=["name"])
+
+    # loga nos cards da coluna (excesso controlado)
+    for c in Card.objects.filter(column=column, is_deleted=False):
+        _log_card(
+            c,
+            request,
+            f"<p><strong>{actor}</strong> renomeou a coluna de <strong>{escape(old_name)}</strong> para <strong>{escape(name)}</strong>.</p>",
+        )
+
+    _log_board(
+        column.board,
+        request,
+        f"<p><strong>{actor}</strong> renomeou a coluna de <strong>{escape(old_name)}</strong> para <strong>{escape(name)}</strong>.</p>",
+    )
+
     return render(request, "boards/partials/column_item.html", {"column": column})
 
 
@@ -954,9 +1142,9 @@ def rename_column(request, column_id):
 # WALLPAPER DO BOARD + CSS
 # ======================================================================
 
-
 def update_board_wallpaper(request, board_id):
     board = get_object_or_404(Board, id=board_id)
+    actor = _actor_label(request)
 
     if request.method == "GET":
         return render(request, "boards/partials/wallpaper_form.html", {"board": board})
@@ -966,6 +1154,7 @@ def update_board_wallpaper(request, board_id):
             board.background_image = request.FILES["image"]
             board.background_url = ""
             board.save(update_fields=["background_image", "background_url"])
+            _log_board(board, request, f"<p><strong>{actor}</strong> atualizou o wallpaper do quadro (upload).</p>")
             return HttpResponse('<script>location.reload()</script>')
 
         url = request.POST.get("image_url", "").strip()
@@ -973,6 +1162,7 @@ def update_board_wallpaper(request, board_id):
             board.background_url = url
             board.background_image = None
             board.save(update_fields=["background_image", "background_url"])
+            _log_board(board, request, f"<p><strong>{actor}</strong> atualizou o wallpaper do quadro (URL).</p>")
             return HttpResponse('<script>location.reload()</script>')
 
         return HttpResponse("Erro", status=400)
@@ -987,7 +1177,6 @@ def board_wallpaper_css(request, board_id):
     elif (getattr(board, "background_url", "") or "").strip():
         css += f"background-image: url('{escape(board.background_url)}');"
     else:
-        # Fallback padrão (não depende de salvar nada no board)
         css += f"background-image: url('{DEFAULT_WALLPAPER_URL}');"
 
     css += """
@@ -1003,10 +1192,10 @@ def board_wallpaper_css(request, board_id):
     return resp
 
 
-
 @require_POST
 def remove_board_wallpaper(request, board_id):
     board = get_object_or_404(Board, id=board_id)
+    actor = _actor_label(request)
 
     if board.background_image:
         board.background_image.delete(save=False)
@@ -1014,6 +1203,9 @@ def remove_board_wallpaper(request, board_id):
 
     board.background_url = ""
     board.save(update_fields=["background_image", "background_url"])
+
+    _log_board(board, request, f"<p><strong>{actor}</strong> removeu o wallpaper do quadro.</p>")
+
     return HttpResponse('<script>location.reload()</script>')
 
 
@@ -1021,14 +1213,9 @@ def remove_board_wallpaper(request, board_id):
 # HOME WALLPAPER (Organization.home_wallpaper_filename)
 # ======================================================================
 
-HOME_WALLPAPER_FOLDER = os.path.join(settings.MEDIA_ROOT, "home_wallpapers")
-
-
 def home_wallpaper_css(request):
-    # default
     url = DEFAULT_WALLPAPER_URL
 
-    # se logado, pega wallpaper do "workspace" (Organization)
     if request.user.is_authenticated:
         org = get_or_create_user_default_organization(request.user)
         filename = (getattr(org, "home_wallpaper_filename", "") or "").strip()
@@ -1051,7 +1238,6 @@ def home_wallpaper_css(request):
     return resp
 
 
-
 def update_home_wallpaper(request):
     os.makedirs(HOME_WALLPAPER_FOLDER, exist_ok=True)
 
@@ -1066,7 +1252,8 @@ def update_home_wallpaper(request):
     if not org:
         return HttpResponse("Organização não encontrada.", status=400)
 
-    # Upload
+    actor = _actor_label(request)
+
     if "image" in request.FILES:
         file = request.FILES["image"]
         ext = os.path.splitext(file.name or "")[1] or ".jpg"
@@ -1088,9 +1275,15 @@ def update_home_wallpaper(request):
 
         org.home_wallpaper_filename = filename
         org.save(update_fields=["home_wallpaper_filename"])
+
+        # board-level (âncora) — sem flood
+        _log_board(
+            Board.objects.filter(organization=org, is_deleted=False).order_by("-id").first() or None,
+            request,
+            f"<p><strong>{actor}</strong> atualizou o wallpaper da HOME (upload).</p>",
+        )
         return HttpResponse('<script>location.reload()</script>')
 
-    # URL
     url = request.POST.get("image_url", "").strip()
     if url:
         try:
@@ -1114,6 +1307,13 @@ def update_home_wallpaper(request):
 
                 org.home_wallpaper_filename = filename
                 org.save(update_fields=["home_wallpaper_filename"])
+
+                _log_board(
+                    Board.objects.filter(organization=org, is_deleted=False).order_by("-id").first() or None,
+                    request,
+                    f"<p><strong>{actor}</strong> atualizou o wallpaper da HOME (URL).</p>",
+                )
+
                 return HttpResponse('<script>location.reload()</script>')
         except Exception:
             pass
@@ -1130,6 +1330,8 @@ def remove_home_wallpaper(request):
     if not org:
         return HttpResponse("Organização não encontrada.", status=400)
 
+    actor = _actor_label(request)
+
     filename = (org.home_wallpaper_filename or "").strip()
     if filename:
         filepath = os.path.join(HOME_WALLPAPER_FOLDER, filename)
@@ -1141,6 +1343,13 @@ def remove_home_wallpaper(request):
 
     org.home_wallpaper_filename = ""
     org.save(update_fields=["home_wallpaper_filename"])
+
+    _log_board(
+        Board.objects.filter(organization=org, is_deleted=False).order_by("-id").first() or None,
+        request,
+        f"<p><strong>{actor}</strong> removeu o wallpaper da HOME.</p>",
+    )
+
     return HttpResponse('<script>location.reload()</script>')
 
 
@@ -1148,10 +1357,10 @@ def remove_home_wallpaper(request):
 # ATIVIDADE NO CARD (Quill) + upload
 # ======================================================================
 
-
 @require_POST
 def add_activity(request, card_id):
     card = get_object_or_404(Card, id=card_id)
+    actor = _actor_label(request)
 
     raw = request.POST.get("content", "").strip()
     if not raw:
@@ -1159,9 +1368,10 @@ def add_activity(request, card_id):
 
     html = raw
 
-    CardLog.objects.create(
-        card=card,
-        content=html,
+    _log_card(
+        card,
+        request,
+        f"<p><strong>{actor}</strong> adicionou uma atividade:</p>{html}",
         attachment=None,
     )
 
@@ -1199,10 +1409,10 @@ def quill_upload(request):
     return JsonResponse({"success": 1, "url": file_url})
 
 
-
 @require_POST
 def add_attachment(request, card_id):
     card = get_object_or_404(Card, id=card_id)
+    actor = _actor_label(request)
 
     if "file" not in request.FILES:
         return HttpResponse("Nenhum arquivo enviado", status=400)
@@ -1210,9 +1420,10 @@ def add_attachment(request, card_id):
     uploaded = request.FILES["file"]
     attachment = CardAttachment.objects.create(card=card, file=uploaded)
 
-    CardLog.objects.create(
-        card=card,
-        content=f"Anexo adicionado: {attachment.file.name.split('/')[-1]}",
+    _log_card(
+        card,
+        request,
+        f"<p><strong>{actor}</strong> adicionou um anexo: <strong>{escape(attachment.file.name.split('/')[-1])}</strong>.</p>",
         attachment=attachment.file,
     )
 
@@ -1223,14 +1434,17 @@ def add_attachment(request, card_id):
 # CHECKLISTS
 # ======================================================================
 
-
 @require_POST
 def checklist_add(request, card_id):
     card = get_object_or_404(Card, id=card_id)
+    actor = _actor_label(request)
+
     title = request.POST.get("title", "").strip() or "Checklist"
     position = card.checklists.count()
 
-    Checklist.objects.create(card=card, title=title, position=position)
+    checklist = Checklist.objects.create(card=card, title=title, position=position)
+    _log_card(card, request, f"<p><strong>{actor}</strong> criou a checklist <strong>{escape(checklist.title)}</strong>.</p>")
+
     return render(request, "boards/partials/checklist_list.html", {"card": card})
 
 
@@ -1238,11 +1452,14 @@ def checklist_add(request, card_id):
 def checklist_rename(request, checklist_id):
     checklist = get_object_or_404(Checklist, id=checklist_id)
     card = checklist.card
+    actor = _actor_label(request)
 
+    old_title = checklist.title
     title = request.POST.get("title", "").strip()
     if title:
         checklist.title = title
         checklist.save(update_fields=["title"])
+        _log_card(card, request, f"<p><strong>{actor}</strong> renomeou a checklist de <strong>{escape(old_title)}</strong> para <strong>{escape(title)}</strong>.</p>")
 
     return render(request, "boards/partials/checklist_list.html", {"card": card})
 
@@ -1251,13 +1468,17 @@ def checklist_rename(request, checklist_id):
 def checklist_delete(request, checklist_id):
     checklist = get_object_or_404(Checklist, id=checklist_id)
     card = checklist.card
+    actor = _actor_label(request)
 
+    title = checklist.title
     checklist.delete()
 
     for idx, c in enumerate(card.checklists.order_by("position", "created_at")):
         if c.position != idx:
             c.position = idx
             c.save(update_fields=["position"])
+
+    _log_card(card, request, f"<p><strong>{actor}</strong> excluiu a checklist <strong>{escape(title)}</strong>.</p>")
 
     return render(request, "boards/partials/checklist_list.html", {"card": card})
 
@@ -1266,13 +1487,16 @@ def checklist_delete(request, checklist_id):
 def checklist_add_item(request, checklist_id):
     checklist = get_object_or_404(Checklist, id=checklist_id)
     card = checklist.card
+    actor = _actor_label(request)
 
     text = request.POST.get("text", "").strip()
     if not text:
         return HttpResponse("Texto vazio", status=400)
 
     position = checklist.items.count()
-    ChecklistItem.objects.create(card=card, checklist=checklist, text=text, position=position)
+    item = ChecklistItem.objects.create(card=card, checklist=checklist, text=text, position=position)
+
+    _log_card(card, request, f"<p><strong>{actor}</strong> adicionou item na checklist <strong>{escape(checklist.title)}</strong>: {escape(item.text)}.</p>")
 
     return render(request, "boards/partials/checklist_list.html", {"card": card})
 
@@ -1280,8 +1504,14 @@ def checklist_add_item(request, checklist_id):
 @require_POST
 def checklist_toggle_item(request, item_id):
     item = get_object_or_404(ChecklistItem, id=item_id)
+    actor = _actor_label(request)
+
     item.is_done = not item.is_done
     item.save(update_fields=["is_done"])
+
+    status = "concluiu" if item.is_done else "reabriu"
+    _log_card(item.card, request, f"<p><strong>{actor}</strong> {status} um item da checklist: {escape(item.text)}.</p>")
+
     return render(request, "boards/partials/checklist_item.html", {"item": item})
 
 
@@ -1290,7 +1520,9 @@ def checklist_delete_item(request, item_id):
     item = get_object_or_404(ChecklistItem, id=item_id)
     card = item.card
     checklist = item.checklist
+    actor = _actor_label(request)
 
+    text = item.text
     item.delete()
 
     if checklist:
@@ -1299,18 +1531,26 @@ def checklist_delete_item(request, item_id):
                 it.position = idx
                 it.save(update_fields=["position"])
 
+    _log_card(card, request, f"<p><strong>{actor}</strong> excluiu um item da checklist: {escape(text)}.</p>")
+
     return render(request, "boards/partials/checklist_list.html", {"card": card})
 
 
 @require_POST
 def checklist_update_item(request, item_id):
     item = get_object_or_404(ChecklistItem, id=item_id)
+    actor = _actor_label(request)
+
+    old = item.text
     text = request.POST.get("text", "").strip()
     if not text:
         return HttpResponse("Texto vazio", status=400)
 
     item.text = text
     item.save(update_fields=["text"])
+
+    _log_card(item.card, request, f"<p><strong>{actor}</strong> editou um item da checklist de {escape(old)} para {escape(text)}.</p>")
+
     return render(request, "boards/partials/checklist_item.html", {"item": item})
 
 
@@ -1318,20 +1558,28 @@ def checklist_update_item(request, item_id):
 def checklist_move(request, checklist_id):
     checklist = get_object_or_404(Checklist, id=checklist_id)
     card = checklist.card
+    actor = _actor_label(request)
+
     direction = request.POST.get("direction")
 
     lists_ = list(card.checklists.order_by("position", "created_at"))
     idx = lists_.index(checklist)
 
+    moved = False
     if direction == "up" and idx > 0:
         lists_[idx], lists_[idx - 1] = lists_[idx - 1], lists_[idx]
+        moved = True
     elif direction == "down" and idx < len(lists_) - 1:
         lists_[idx], lists_[idx + 1] = lists_[idx + 1], lists_[idx]
+        moved = True
 
     for pos, c in enumerate(lists_):
         if c.position != pos:
             c.position = pos
             c.save(update_fields=["position"])
+
+    if moved:
+        _log_card(card, request, f"<p><strong>{actor}</strong> moveu a checklist <strong>{escape(checklist.title)}</strong> ({escape(direction)}).</p>")
 
     return render(request, "boards/partials/checklist_list.html", {"card": card})
 
@@ -1340,7 +1588,7 @@ def checklist_move(request, checklist_id):
 def checklist_move_up(request, item_id):
     item = get_object_or_404(ChecklistItem, id=item_id)
     checklist = item.checklist
-    card = item.card
+    actor = _actor_label(request)
 
     items = list(checklist.items.order_by("position", "created_at"))
     idx = items.index(item)
@@ -1353,14 +1601,16 @@ def checklist_move_up(request, item_id):
             it.position = pos
             it.save(update_fields=["position"])
 
-    return render(request, "boards/partials/checklist_list.html", {"card": card})
+    _log_card(item.card, request, f"<p><strong>{actor}</strong> moveu um item para cima na checklist: {escape(item.text)}.</p>")
+
+    return render(request, "boards/partials/checklist_list.html", {"card": item.card})
 
 
 @require_POST
 def checklist_move_down(request, item_id):
     item = get_object_or_404(ChecklistItem, id=item_id)
     checklist = item.checklist
-    card = item.card
+    actor = _actor_label(request)
 
     items = list(checklist.items.order_by("position", "created_at"))
     idx = items.index(item)
@@ -1373,7 +1623,9 @@ def checklist_move_down(request, item_id):
             it.position = pos
             it.save(update_fields=["position"])
 
-    return render(request, "boards/partials/checklist_list.html", {"card": card})
+    _log_card(item.card, request, f"<p><strong>{actor}</strong> moveu um item para baixo na checklist: {escape(item.text)}.</p>")
+
+    return render(request, "boards/partials/checklist_list.html", {"card": item.card})
 
 
 # ======================================================================
@@ -1400,9 +1652,9 @@ def board_share(request, board_id):
     if request.method == "GET":
         return render(request, "boards/partials/board_share_form.html", {"board": board, "memberships": memberships})
 
-    identifier = (request.POST.get("identifier") or "").strip()
+    actor = _actor_label(request)
 
-    # FIX: Role do TextChoices é lowercase ("owner"/"editor"/"viewer")
+    identifier = (request.POST.get("identifier") or "").strip()
     role = (request.POST.get("role") or BoardMembership.Role.VIEWER).strip().lower()
 
     if role not in {
@@ -1449,6 +1701,13 @@ def board_share(request, board_id):
         obj.role = role
         obj.save(update_fields=["role"])
 
+    # AUDITORIA
+    _log_board(
+        board,
+        request,
+        f"<p><strong>{actor}</strong> compartilhou o quadro com <strong>{escape(target.email or target.get_username())}</strong> como <strong>{escape(role)}</strong>.</p>",
+    )
+
     memberships = board.memberships.select_related("user").order_by("role", "user__username")
 
     return render(
@@ -1461,7 +1720,6 @@ def board_share(request, board_id):
         },
         status=200,
     )
-
 
 
 @require_POST
@@ -1478,6 +1736,8 @@ def board_share_remove(request, board_id, user_id):
     else:
         if board.created_by_id != request.user.id and not request.user.is_staff:
             return HttpResponse("Você não tem permissão para remover acessos deste quadro.", status=403)
+
+    actor = _actor_label(request)
 
     membership = BoardMembership.objects.filter(board=board, user_id=user_id).select_related("user").first()
     memberships = board.memberships.select_related("user").order_by("role", "user__username")
@@ -1503,6 +1763,12 @@ def board_share_remove(request, board_id, user_id):
     removed_user = membership.user
     membership.delete()
 
+    _log_board(
+        board,
+        request,
+        f"<p><strong>{actor}</strong> removeu o acesso de <strong>{escape(removed_user.email or removed_user.get_username())}</strong> do quadro.</p>",
+    )
+
     memberships = board.memberships.select_related("user").order_by("role", "user__username")
 
     return render(
@@ -1516,7 +1782,6 @@ def board_share_remove(request, board_id, user_id):
 # ======================================================================
 # USERS
 # ======================================================================
-
 
 @staff_member_required
 def create_user(request):

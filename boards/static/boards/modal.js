@@ -504,8 +504,9 @@ window.submitActivity = async function (cardId) {
   const html = await response.text();
 
   // Seu backend parece devolver HTML pra este wrapper (ou parcial).
-  const wrapper = qs("#activity-panel-wrapper", body);
-  if (wrapper) wrapper.innerHTML = html;
+  const panel = qs("#card-activity-panel", body);
+  if (panel) panel.outerHTML = html;
+
 
   window.clearActivityEditor();
 
@@ -514,3 +515,245 @@ window.submitActivity = async function (cardId) {
 
   if (window.Prism) Prism.highlightAll();
 };
+
+
+// =====================================================
+// Atividade: sub-aba Histórico | Mover Card
+// =====================================================
+
+function setAtivSubtab(which) {
+  const body = getModalBody();
+  if (!body) return;
+
+  const hist = qs("#ativ-panel-hist", body);
+  const move = qs("#ativ-panel-move", body);
+  const bHist = qs("#ativ-subtab-btn-hist", body);
+  const bMove = qs("#ativ-subtab-btn-move", body);
+
+  if (!hist || !move) return;
+
+  const isHist = which === "hist";
+
+  hist.classList.toggle("hidden", !isHist);
+  hist.classList.toggle("block", isHist);
+
+  move.classList.toggle("hidden", isHist);
+  move.classList.toggle("block", !isHist);
+
+  if (bHist) bHist.classList.toggle("font-semibold", isHist);
+  if (bMove) bMove.classList.toggle("font-semibold", !isHist);
+}
+
+async function loadMoveCardOptions(cardId) {
+  const body = getModalBody();
+  if (!body) return;
+
+  const boardSel = qs("#move-board", body);
+  const colSel = qs("#move-column", body);
+  const posSel = qs("#move-position", body);
+  const loc = qs("#move-current-location", body);
+  const err = qs("#move-error", body);
+
+  if (!boardSel || !colSel || !posSel || !loc) return;
+
+  if (err) {
+    err.classList.add("hidden");
+    err.textContent = "";
+  }
+
+  boardSel.innerHTML = `<option value="">Carregando…</option>`;
+  colSel.innerHTML = `<option value="">Selecione um quadro</option>`;
+  posSel.innerHTML = `<option value="">Selecione uma coluna</option>`;
+  colSel.disabled = true;
+  posSel.disabled = true;
+
+  let data;
+  try {
+    const r = await fetch(`/card/${cardId}/move/options/`, {
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+      credentials: "same-origin",
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    data = await r.json();
+  } catch (e) {
+    if (err) {
+      err.textContent = "Falha ao carregar opções de mover.";
+      err.classList.remove("hidden");
+    }
+    loc.textContent = "—";
+    boardSel.innerHTML = `<option value="">Erro ao carregar</option>`;
+    return;
+  }
+
+  const cur = data.current || {};
+  loc.textContent = `${cur.board_name || "—"} > ${cur.column_name || "—"} > Posição ${cur.position || "—"}`;
+
+  const boards = Array.isArray(data.boards) ? data.boards : [];
+  const columnsByBoard = data.columns_by_board || {};
+
+  boardSel.innerHTML =
+    `<option value="">Selecione…</option>` +
+    boards.map((b) => `<option value="${b.id}">${b.name}</option>`).join("");
+
+  boardSel.onchange = () => {
+    const bid = boardSel.value;
+    const cols = Array.isArray(columnsByBoard[String(bid)]) ? columnsByBoard[String(bid)] : [];
+
+    colSel.disabled = !bid;
+    posSel.disabled = true;
+
+    colSel.innerHTML = bid
+      ? `<option value="">Selecione…</option>` +
+        cols
+          .map(
+            (c) =>
+              `<option value="${c.id}" data-pos-max="${c.positions_total_plus_one}">${c.name}</option>`
+          )
+          .join("")
+      : `<option value="">Selecione um quadro</option>`;
+
+    posSel.innerHTML = `<option value="">Selecione uma coluna</option>`;
+  };
+
+  colSel.onchange = () => {
+    const opt = colSel.selectedOptions?.[0];
+    const max = Number(opt?.getAttribute("data-pos-max") || 0);
+
+    posSel.disabled = !opt || !max;
+    if (!max) {
+      posSel.innerHTML = `<option value="">Selecione uma coluna</option>`;
+      return;
+    }
+
+    posSel.innerHTML =
+      `<option value="">Selecione…</option>` +
+      Array.from({ length: max }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join("");
+  };
+
+  // pré-seleção (melhor UX)
+  if (cur.board_id) {
+    boardSel.value = String(cur.board_id);
+    boardSel.onchange();
+  }
+  if (cur.column_id) {
+    colSel.value = String(cur.column_id);
+    colSel.onchange();
+  }
+  if (cur.position) {
+    posSel.value = String(cur.position);
+  }
+}
+
+async function refreshActivityPanel(cardId) {
+  const body = getModalBody();
+  if (!body) return;
+
+  let html = "";
+  try {
+    const r = await fetch(`/card/${cardId}/activity/panel/`, { credentials: "same-origin" });
+    if (!r.ok) return;
+    html = await r.text();
+  } catch (e) {
+    return;
+  }
+
+  const panel = qs("#card-activity-panel", body);
+  if (panel) panel.outerHTML = html;
+}
+
+async function submitMoveCard(cardId) {
+  const body = getModalBody();
+  if (!body) return;
+
+  const boardSel = qs("#move-board", body);
+  const colSel = qs("#move-column", body);
+  const posSel = qs("#move-position", body);
+  const err = qs("#move-error", body);
+
+  const boardId = boardSel?.value;
+  const columnId = colSel?.value;
+  const position1 = posSel?.value;
+
+  if (err) {
+    err.classList.add("hidden");
+    err.textContent = "";
+  }
+
+  if (!boardId || !columnId || !position1) {
+    if (err) {
+      err.textContent = "Selecione quadro, coluna e posição.";
+      err.classList.remove("hidden");
+    }
+    return;
+  }
+
+  // Seu move_card espera JSON e new_position 0-based
+  const payload = {
+    card_id: Number(cardId),
+    new_column_id: Number(columnId),
+    new_position: Number(position1) - 1,
+  };
+
+  let r;
+  try {
+    r = await fetch(`/move-card/`, {
+      method: "POST",
+      headers: {
+        "X-CSRFToken": getCsrfToken(),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+      credentials: "same-origin",
+    });
+  } catch (e) {
+    if (err) {
+      err.textContent = "Falha de rede ao mover.";
+      err.classList.remove("hidden");
+    }
+    return;
+  }
+
+  if (!r.ok) {
+    const msg = await r.text().catch(() => "");
+    if (err) {
+      err.textContent = msg || `Falha ao mover (HTTP ${r.status}).`;
+      err.classList.remove("hidden");
+    }
+    return;
+  }
+
+  // Atualiza histórico para aparecer o CardLog do move e volta pro Histórico
+  await refreshActivityPanel(cardId);
+  setAtivSubtab("hist");
+
+  if (window.Prism) Prism.highlightAll();
+}
+
+(function bindAtivMoveOnce() {
+  if (window.__ativMoveBound) return;
+  window.__ativMoveBound = true;
+
+  document.body.addEventListener("click", (ev) => {
+    const t = ev.target.closest("[data-ativ-subtab]");
+    if (t) {
+      const which = t.getAttribute("data-ativ-subtab");
+      setAtivSubtab(which);
+
+      if (which === "move" && window.currentCardId) {
+        loadMoveCardOptions(window.currentCardId);
+      }
+      return;
+    }
+
+    const btnMove = ev.target.closest("#btn-move-card");
+    if (btnMove && window.currentCardId) {
+      submitMoveCard(window.currentCardId);
+    }
+  });
+
+  // default: manter Histórico selecionado quando re-renderiza painel
+  document.body.addEventListener("htmx:afterSwap", (e) => {
+    if (!e.detail?.target || e.detail.target.id !== "modal-body") return;
+    setAtivSubtab("hist");
+  });
+})();

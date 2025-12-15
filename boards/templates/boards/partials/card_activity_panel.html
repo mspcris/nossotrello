@@ -1,32 +1,110 @@
 {% load tag_helpers %}
-<div class="flex flex-col">
-    <div class="flex items-center justify-between mb-3">
-        <h3 class="text-lg font-semibold">Atividade</h3>
-    </div>
 
-<div id="activity-panel-wrapper"
-     class="activity-panel space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-        {% for log in card.logs.all %}
+<div id="card-activity-panel" class="flex flex-col">
+  <div class="flex items-center justify-between mb-3">
+    <h3 class="text-lg font-semibold">Atividade</h3>
+
+    <div class="inline-flex rounded-lg border border-gray-200 bg-white overflow-hidden">
+      <button
+        type="button"
+        class="px-3 py-1.5 text-sm font-semibold"
+        data-ativ-subtab="hist"
+        id="ativ-subtab-btn-hist"
+      >
+        Histórico
+      </button>
+
+      <button
+        type="button"
+        class="px-3 py-1.5 text-sm border-l border-gray-200"
+        data-ativ-subtab="move"
+        id="ativ-subtab-btn-move"
+      >
+        Mover Card
+      </button>
+    </div>
+  </div>
+
+  {# HISTÓRICO #}
+  <div id="ativ-panel-hist" class="block">
+    <div
+      id="activity-panel-wrapper"
+      class="activity-panel space-y-4 max-h-[60vh] overflow-y-auto pr-2"
+    >
+      {% for log in card.logs.all %}
         <div class="activity-item p-3 rounded border border-gray-200 bg-white shadow-sm">
-            <div class="activity-meta text-xs text-gray-500 mb-2">
-                {{ log.created_at|date:"d/m/Y H:i" }}
-            </div>
+          <div class="activity-meta text-xs text-gray-500 mb-2">
+            {{ log.created_at|date:"d/m/Y H:i" }}
+          </div>
 
-            <div class="activity-content text-sm leading-relaxed whitespace-pre-wrap">
-                {% if log.attachment %}
-                <p class="mb-1">
-                    <strong>Anexo:</strong>
-                    <a href="{{ log.attachment.url }}" target="_blank" class="text-blue-600 underline">
-                        {{ log.attachment.name|cut:"attachments/" }}
-                    </a>
-                </p>
-                {% endif %}
+          <div class="activity-content text-sm leading-relaxed whitespace-pre-wrap">
+            {% if log.attachment %}
+              <p class="mb-1">
+                <strong>Anexo:</strong>
+                <a href="{{ log.attachment.url }}" target="_blank" class="text-blue-600 underline">
+                  {{ log.attachment.name|cut:"attachments/" }}
+                </a>
+              </p>
+            {% endif %}
 
-                {{ log.content|safe }}
-            </div>
+            {{ log.content|safe }}
+          </div>
         </div>
-        {% empty %}
-            <p class="text-gray-400 text-sm">Nenhuma atividade ainda.</p>
-        {% endfor %}
+      {% empty %}
+        <p class="text-gray-400 text-sm">Nenhuma atividade ainda.</p>
+      {% endfor %}
     </div>
+  </div>
+
+  {# MOVER #}
+  <div id="ativ-panel-move" class="hidden">
+    <div class="p-3 rounded border border-gray-200 bg-white shadow-sm space-y-3">
+      <div class="text-sm text-gray-600">
+        <div><strong>Local atual:</strong> <span id="move-current-location">carregando…</span></div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <label class="block">
+          <span class="text-xs text-gray-500">Quadro</span>
+          <select id="move-board" class="w-full border border-gray-200 rounded px-2 py-2 text-sm">
+            <option value="">Carregando…</option>
+          </select>
+        </label>
+
+        <label class="block">
+          <span class="text-xs text-gray-500">Coluna</span>
+          <select id="move-column" class="w-full border border-gray-200 rounded px-2 py-2 text-sm" disabled>
+            <option value="">Selecione um quadro</option>
+          </select>
+        </label>
+
+        <label class="block">
+          <span class="text-xs text-gray-500">Posição</span>
+          <select id="move-position" class="w-full border border-gray-200 rounded px-2 py-2 text-sm" disabled>
+            <option value="">Selecione uma coluna</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-2">
+        <button
+          type="button"
+          class="px-3 py-2 rounded border border-gray-200 text-sm"
+          data-ativ-subtab="hist"
+        >
+          Cancelar
+        </button>
+
+        <button
+          type="button"
+          class="px-4 py-2 rounded bg-blue-600 text-white text-sm"
+          id="btn-move-card"
+        >
+          Mover
+        </button>
+      </div>
+
+      <p id="move-error" class="text-sm text-red-600 hidden"></p>
+    </div>
+  </div>
 </div>

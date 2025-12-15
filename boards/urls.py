@@ -67,6 +67,11 @@ urlpatterns = [
     # arrastar/mover card
     path("move-card/", views.move_card, name="move_card"),
 
+        # mover card (modal)
+    path("card/<int:card_id>/move/options/", views.card_move_options, name="card_move_options"),
+    path("card/<int:card_id>/activity/panel/", views.activity_panel, name="activity_panel"),
+
+
     # atividades (Quill)
     path("card/<int:card_id>/activity/add/", views.add_activity, name="add_activity"),
     path("quill/upload/", views.quill_upload, name="quill_upload"),
