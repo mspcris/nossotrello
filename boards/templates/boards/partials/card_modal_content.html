@@ -112,7 +112,7 @@
   </div>
 
   <!-- =========================
-       ABA ATIVIDADE (sub-abas: Nova atividade / Histórico)
+       ABA ATIVIDADE (sub-abas: Nova atividade / Histórico / Mover Card)
        ========================= -->
   <div id="card-tab-ativ" class="card-tab-panel hidden">
 
@@ -120,10 +120,13 @@
 
       <input class="ativ-subtab-radio" type="radio" name="ativ-subtab" id="ativ-tab-new" checked>
       <input class="ativ-subtab-radio" type="radio" name="ativ-subtab" id="ativ-tab-hist">
+      <input class="ativ-subtab-radio" type="radio" name="ativ-subtab" id="ativ-tab-move">
 
       <div class="ativ-subtab-buttons">
         <label for="ativ-tab-new" class="ativ-subtab-btn">Nova atividade</label>
         <label for="ativ-tab-hist" class="ativ-subtab-btn">Histórico</label>
+        <label for="ativ-tab-move" class="ativ-subtab-btn">Mover Card</label>
+
       </div>
 
       <div class="ativ-subtab-views">
@@ -151,8 +154,57 @@
         </div>
 
         <!-- VIEW: HISTÓRICO -->
-        <div class="ativ-view ativ-view-hist">
+        <div class="ativ-view ativ-view-hist hidden">
           {% include "boards/partials/card_activity_panel.html" %}
+        </div>
+
+        <!-- VIEW: MOVER CARD -->
+        <div class="ativ-view ativ-view-move hidden">
+          <div class="p-3 rounded border border-gray-200 bg-white shadow-sm space-y-3">
+            <div class="text-sm text-gray-600">
+              <div><strong>Local atual:</strong> <span id="move-current-location">carregando…</span></div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <label class="block">
+                <span class="text-xs text-gray-500">Quadro</span>
+                <select id="move-board" class="w-full border border-gray-200 rounded px-2 py-2 text-sm">
+                  <option value="">Carregando…</option>
+                </select>
+              </label>
+
+              <label class="block">
+                <span class="text-xs text-gray-500">Coluna</span>
+                <select id="move-column" class="w-full border border-gray-200 rounded px-2 py-2 text-sm" disabled>
+                  <option value="">Selecione um quadro</option>
+                </select>
+              </label>
+
+              <label class="block">
+                <span class="text-xs text-gray-500">Posição</span>
+                <select id="move-position" class="w-full border border-gray-200 rounded px-2 py-2 text-sm" disabled>
+                  <option value="">Selecione uma coluna</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="flex items-center justify-end gap-2 pt-2">
+              <button type="button"
+                      class="px-3 py-2 rounded border border-gray-200 text-sm"
+                      onclick="document.getElementById('ativ-tab-hist')?.click();">
+                Cancelar
+              </button>
+
+              <button type="button"
+                      class="px-4 py-2 rounded bg-blue-600 text-white text-sm"
+                      id="btn-move-card"
+                      onclick="window.submitMoveCard?.({{ card.id }});">
+                Mover
+              </button>
+            </div>
+
+            <p id="move-error" class="text-sm text-red-600 hidden"></p>
+          </div>
         </div>
 
       </div><!-- /.ativ-subtab-views -->
