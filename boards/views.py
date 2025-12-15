@@ -853,13 +853,22 @@ def move_card(request):
 
     def can_move_in_board(board: Board) -> bool:
         if not request.user.is_authenticated:
-            return False
+        return False
 
-        memberships_qs = board.memberships.all()
-        if memberships_qs.exists():
-            return memberships_qs.filter(user=request.user).exists()
+    # staff sempre pode
+    if request.user.is_staff:
+        return True
 
-        return bool(request.user.is_staff or board.created_by_id == request.user.id)
+    memberships_qs = board.memberships.all()
+    if memberships_qs.exists():
+        # aqui é o ponto: só OWNER/EDITOR pode mover
+        return memberships_qs.filter(
+            user=request.user,
+            role__in=[BoardMembership.Role.OWNER, BoardMembership.Role.EDITOR],
+        ).exists()
+
+    # legado sem memberships
+    return bool(board.created_by_id == request.user.id)
 
     # Permissão no board de origem e no board de destino
     if not can_move_in_board(old_board) or not can_move_in_board(new_board):
@@ -924,15 +933,24 @@ def card_move_options(request, card_id):
     board_current = card.column.board
 
     def can_move_in_board(board: Board) -> bool:
-
         if not request.user.is_authenticated:
-            return False
+        return False
 
-        memberships_qs = board.memberships.all()
-        if memberships_qs.exists():
-            return memberships_qs.filter(user=request.user).exists()
+    # staff sempre pode
+    if request.user.is_staff:
+        return True
 
-        return bool(request.user.is_staff or board.created_by_id == request.user.id)
+    memberships_qs = board.memberships.all()
+    if memberships_qs.exists():
+        # aqui é o ponto: só OWNER/EDITOR pode mover
+        return memberships_qs.filter(
+            user=request.user,
+            role__in=[BoardMembership.Role.OWNER, BoardMembership.Role.EDITOR],
+        ).exists()
+
+    # legado sem memberships
+    return bool(board.created_by_id == request.user.id)
+
 
     # Permissão no board atual
     if not can_move_in_board(board_current):
