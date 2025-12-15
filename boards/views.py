@@ -924,11 +924,7 @@ def card_move_options(request, card_id):
     board_current = card.column.board
 
     def can_move_in_board(board: Board) -> bool:
-        """
-        Regra unificada (mesma regra que vamos aplicar no /move-card/):
-        - Se o board tem memberships: precisa ter membership (qualquer role).
-        - Se o board NÃO tem memberships: criador ou staff.
-        """
+
         if not request.user.is_authenticated:
             return False
 
@@ -996,7 +992,6 @@ def card_move_options(request, card_id):
         "columns_by_board": columns_by_board,
     }
     return JsonResponse(payload)
-
 
 
 # ======================================================================
