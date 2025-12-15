@@ -1146,13 +1146,36 @@ def rename_column(request, column_id):
 # WALLPAPER DO BOARD + CSS
 # ======================================================================
 
-def _default_wallpaper_static_url():
-    # Import local para não depender de import duplicado no topo do arquivo
+def _default_wallpaper_url():
+    """
+    Default resiliente:
+    - Preferir /static/images/<DEFAULT_WALLPAPER_FILENAME>
+    - Se não existir em staticfiles, tentar /media/home_wallpapers/<DEFAULT_WALLPAPER_FILENAME>
+    - Fallback final: /static/images/<DEFAULT_WALLPAPER_FILENAME>
+    """
     from django.templatetags.static import static as static_url
 
-    # Fallback SEMPRE para /static/images/<DEFAULT_WALLPAPER_FILENAME>
-    # (evita 404 na VM quando DEFAULT_WALLPAPER_URL estiver em /media)
-    return static_url(f"images/{DEFAULT_WALLPAPER_FILENAME}")
+    rel_static = f"images/{DEFAULT_WALLPAPER_FILENAME}"
+
+    # 1) tenta achar em STATICFILES (quando collectstatic está ok)
+    try:
+        from django.contrib.staticfiles import finders
+        found = finders.find(rel_static)
+        if found:
+            return static_url(rel_static)
+    except Exception:
+        pass
+
+    # 2) tenta achar em MEDIA (caso alguém tenha colocado o default lá)
+    try:
+        rel_media = f"home_wallpapers/{DEFAULT_WALLPAPER_FILENAME}"
+        if default_storage.exists(rel_media):
+            return default_storage.url(rel_media)
+    except Exception:
+        pass
+
+    # 3) fallback final
+    return static_url(rel_static)
 
 
 def update_board_wallpaper(request, board_id):
@@ -1163,7 +1186,7 @@ def update_board_wallpaper(request, board_id):
         return render(request, "boards/partials/wallpaper_form.html", {"board": board})
 
     if request.method == "POST":
-        if "image" in request.FILES:
+        if "image" in request.FILES and request.FILES["image"]:
             board.background_image = request.FILES["image"]
             board.background_url = ""
             board.save(update_fields=["background_image", "background_url"])
@@ -1184,20 +1207,22 @@ def update_board_wallpaper(request, board_id):
 def board_wallpaper_css(request, board_id):
     board = get_object_or_404(Board, id=board_id, is_deleted=False)
 
-    css = "body {"
     if getattr(board, "background_image", None):
-        css += f"background-image: url('{board.background_image.url}');"
+        img_url = board.background_image.url
     elif (getattr(board, "background_url", "") or "").strip():
-        css += f"background-image: url('{escape(board.background_url)}');"
+        img_url = escape((getattr(board, "background_url", "") or "").strip())
     else:
-        # Default do sistema SEMPRE em /static (não /media)
-        css += f"background-image: url('{_default_wallpaper_static_url()}');"
+        img_url = _default_wallpaper_url()
 
-    css += """
-        background-size: cover;
-        background-position: center;
-        background-attachment: fixed;
-    }
+    css = f"""
+    body {{
+        background-image: url('{img_url}') !important;
+        background-size: cover !important;
+        background-position: center !important;
+        background-attachment: fixed !important;
+        background-repeat: no-repeat !important;
+        background-color: transparent !important;
+    }}
     """
     resp = HttpResponse(css, content_type="text/css")
     resp["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
@@ -1219,7 +1244,6 @@ def remove_board_wallpaper(request, board_id):
     board.save(update_fields=["background_image", "background_url"])
 
     _log_board(board, request, f"<p><strong>{actor}</strong> removeu o wallpaper do quadro.</p>")
-
     return HttpResponse('<script>location.reload()</script>')
 
 
@@ -1228,25 +1252,32 @@ def remove_board_wallpaper(request, board_id):
 # ======================================================================
 
 def home_wallpaper_css(request):
-    # Default do sistema SEMPRE em /static (não /media)
-    url = _default_wallpaper_static_url()
+    # default do sistema (robusto)
+    url = _default_wallpaper_url()
 
     if request.user.is_authenticated:
         org = get_or_create_user_default_organization(request.user)
         filename = (getattr(org, "home_wallpaper_filename", "") or "").strip()
-        if filename:
-            # Uploads continuam em /media (desde que nginx sirva /media em produção)
-            url = f"/media/home_wallpapers/{escape(filename)}"
+
+        # Se for vazio OU for o default, mantém /static (não força /media)
+        if filename and filename != DEFAULT_WALLPAPER_FILENAME:
+            rel = f"home_wallpapers/{filename}"
+            try:
+                if default_storage.exists(rel):
+                    url = default_storage.url(rel)
+            except Exception:
+                pass
 
     css = f"""
     body {{
-        background-image: url('{url}');
-        background-size: cover;
-        background-position: center;
-        background-attachment: fixed;
+        background-image: url('{url}') !important;
+        background-size: cover !important;
+        background-position: center !important;
+        background-attachment: fixed !important;
+        background-repeat: no-repeat !important;
+        background-color: transparent !important;
     }}
     """
-
     resp = HttpResponse(css, content_type="text/css")
     resp["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     resp["Pragma"] = "no-cache"
@@ -1254,15 +1285,11 @@ def home_wallpaper_css(request):
     return resp
 
 
-
-
 # ======================================================================
-# HOME WALLPAPER (Organization.home_wallpaper_filename) (SEM CSS)
+# HOME WALLPAPER (upload/remoção)
 # ======================================================================
 
 def update_home_wallpaper(request):
-    os.makedirs(HOME_WALLPAPER_FOLDER, exist_ok=True)
-
     if request.method == "GET":
         return render(request, "boards/partials/home_wallpaper_form.html", {})
 
@@ -1275,77 +1302,68 @@ def update_home_wallpaper(request):
 
     actor = _actor_label(request)
 
-    # Para auditoria sem flood: tenta logar num board âncora da org (se existir)
     def _anchor_board_for_org(_org):
         try:
             return Board.objects.filter(organization=_org, is_deleted=False).order_by("-id").first()
         except Exception:
             return None
 
+    # UPLOAD
     if "image" in request.FILES and request.FILES["image"]:
         file = request.FILES["image"]
         ext = os.path.splitext(file.name or "")[1] or ".jpg"
         filename = f"{uuid.uuid4().hex}{ext}"
-        filepath = os.path.join(HOME_WALLPAPER_FOLDER, filename)
+        rel = f"home_wallpapers/{filename}"
 
-        with open(filepath, "wb+") as dest:
-            for chunk in file.chunks():
-                dest.write(chunk)
+        # salva via storage (mesma “fonte de verdade” do CSS)
+        default_storage.save(rel, file)
 
-        # remove o antigo (se existir)
+        # remove o antigo (não remove o default do sistema)
         old = (getattr(org, "home_wallpaper_filename", "") or "").strip()
-        if old:
-            old_path = os.path.join(HOME_WALLPAPER_FOLDER, old)
-            if os.path.exists(old_path):
-                try:
-                    os.remove(old_path)
-                except Exception:
-                    pass
+        if old and old != DEFAULT_WALLPAPER_FILENAME:
+            old_rel = f"home_wallpapers/{old}"
+            try:
+                if default_storage.exists(old_rel):
+                    default_storage.delete(old_rel)
+            except Exception:
+                pass
 
         org.home_wallpaper_filename = filename
         org.save(update_fields=["home_wallpaper_filename"])
 
         board_anchor = _anchor_board_for_org(org)
         if board_anchor:
-            _log_board(
-                board_anchor,
-                request,
-                f"<p><strong>{actor}</strong> atualizou o wallpaper da HOME (upload).</p>",
-            )
+            _log_board(board_anchor, request, f"<p><strong>{actor}</strong> atualizou o wallpaper da HOME (upload).</p>")
 
         return HttpResponse('<script>location.reload()</script>')
 
+    # IMPORTAR VIA URL
     url = (request.POST.get("image_url") or "").strip()
     if url:
         try:
             r = requests.get(url, timeout=8)
-            if r.status_code == 200:
-                parsed_ext = os.path.splitext(url.split("?")[0])[1] or ".jpg"
+            if r.status_code == 200 and r.content:
+                parsed_ext = os.path.splitext((url.split("?")[0] or "").strip())[1] or ".jpg"
                 filename = f"{uuid.uuid4().hex}{parsed_ext}"
-                filepath = os.path.join(HOME_WALLPAPER_FOLDER, filename)
+                rel = f"home_wallpapers/{filename}"
 
-                with open(filepath, "wb") as f:
-                    f.write(r.content)
+                default_storage.save(rel, ContentFile(r.content))
 
                 old = (getattr(org, "home_wallpaper_filename", "") or "").strip()
-                if old:
-                    old_path = os.path.join(HOME_WALLPAPER_FOLDER, old)
-                    if os.path.exists(old_path):
-                        try:
-                            os.remove(old_path)
-                        except Exception:
-                            pass
+                if old and old != DEFAULT_WALLPAPER_FILENAME:
+                    old_rel = f"home_wallpapers/{old}"
+                    try:
+                        if default_storage.exists(old_rel):
+                            default_storage.delete(old_rel)
+                    except Exception:
+                        pass
 
                 org.home_wallpaper_filename = filename
                 org.save(update_fields=["home_wallpaper_filename"])
 
                 board_anchor = _anchor_board_for_org(org)
                 if board_anchor:
-                    _log_board(
-                        board_anchor,
-                        request,
-                        f"<p><strong>{actor}</strong> atualizou o wallpaper da HOME (URL).</p>",
-                    )
+                    _log_board(board_anchor, request, f"<p><strong>{actor}</strong> atualizou o wallpaper da HOME (URL).</p>")
 
                 return HttpResponse('<script>location.reload()</script>')
         except Exception:
@@ -1366,13 +1384,15 @@ def remove_home_wallpaper(request):
     actor = _actor_label(request)
 
     filename = (getattr(org, "home_wallpaper_filename", "") or "").strip()
-    if filename:
-        filepath = os.path.join(HOME_WALLPAPER_FOLDER, filename)
-        if os.path.exists(filepath):
-            try:
-                os.remove(filepath)
-            except Exception:
-                pass
+
+    # apaga somente se não for o default do sistema
+    if filename and filename != DEFAULT_WALLPAPER_FILENAME:
+        rel = f"home_wallpapers/{filename}"
+        try:
+            if default_storage.exists(rel):
+                default_storage.delete(rel)
+        except Exception:
+            pass
 
     # volta para o default do sistema
     org.home_wallpaper_filename = DEFAULT_WALLPAPER_FILENAME
@@ -1382,15 +1402,16 @@ def remove_home_wallpaper(request):
     try:
         board_anchor = Board.objects.filter(organization=org, is_deleted=False).order_by("-id").first()
         if board_anchor:
-            _log_board(
-                board_anchor,
-                request,
-                f"<p><strong>{actor}</strong> removeu o wallpaper da HOME.</p>",
-            )
+            _log_board(board_anchor, request, f"<p><strong>{actor}</strong> removeu o wallpaper da HOME.</p>")
     except Exception:
         pass
 
     return HttpResponse('<script>location.reload()</script>')
+
+
+
+
+
 
 
 # ======================================================================
