@@ -1209,17 +1209,30 @@ def remove_board_wallpaper(request, board_id):
     return HttpResponse('<script>location.reload()</script>')
 
 
+
+
 # ======================================================================
 # HOME WALLPAPER (Organization.home_wallpaper_filename)
 # ======================================================================
 
+from django.http import HttpResponse
+from django.templatetags.static import static as static_url
+from django.utils.html import escape
+
 def home_wallpaper_css(request):
-    url = DEFAULT_WALLPAPER_URL
+    # DEFAULT_WALLPAPER_URL deve ser "/static/..." (não "/media/...").
+    # Se ele já estiver correto, ok. Se não, a linha abaixo garante fallback seguro:
+    url = DEFAULT_WALLPAPER_URL or static_url("images/ubuntu-focal-fossa-cat-66j69z5enzbmk2m6.jpg")
+
+    # Se DEFAULT_WALLPAPER_URL estiver apontando para /media, força /static (evita 404 na VM)
+    if isinstance(url, str) and url.startswith("/media/"):
+        url = static_url("images/ubuntu-focal-fossa-cat-66j69z5enzbmk2m6.jpg")
 
     if request.user.is_authenticated:
         org = get_or_create_user_default_organization(request.user)
         filename = (getattr(org, "home_wallpaper_filename", "") or "").strip()
         if filename:
+            # uploads continuam em /media/ (desde que nginx sirva /media em produção)
             url = f"/media/home_wallpapers/{escape(filename)}"
 
     css = f"""
@@ -1238,119 +1251,10 @@ def home_wallpaper_css(request):
     return resp
 
 
-def update_home_wallpaper(request):
-    os.makedirs(HOME_WALLPAPER_FOLDER, exist_ok=True)
-
-    if request.method == "GET":
-        return render(request, "boards/partials/home_wallpaper_form.html", {})
-
-    if not request.user.is_authenticated:
-        request.session.pop("home_bg_image", None)
-        return HttpResponse("Login necessário.", status=401)
-
-    org = get_or_create_user_default_organization(request.user)
-    if not org:
-        return HttpResponse("Organização não encontrada.", status=400)
-
-    actor = _actor_label(request)
-
-    if "image" in request.FILES:
-        file = request.FILES["image"]
-        ext = os.path.splitext(file.name or "")[1] or ".jpg"
-        filename = f"{uuid.uuid4().hex}{ext}"
-        filepath = os.path.join(HOME_WALLPAPER_FOLDER, filename)
-
-        with open(filepath, "wb+") as dest:
-            for chunk in file.chunks():
-                dest.write(chunk)
-
-        old = (org.home_wallpaper_filename or "").strip()
-        if old:
-            old_path = os.path.join(HOME_WALLPAPER_FOLDER, old)
-            if os.path.exists(old_path):
-                try:
-                    os.remove(old_path)
-                except Exception:
-                    pass
-
-        org.home_wallpaper_filename = filename
-        org.save(update_fields=["home_wallpaper_filename"])
-
-        # board-level (âncora) — sem flood
-        _log_board(
-            Board.objects.filter(organization=org, is_deleted=False).order_by("-id").first() or None,
-            request,
-            f"<p><strong>{actor}</strong> atualizou o wallpaper da HOME (upload).</p>",
-        )
-        return HttpResponse('<script>location.reload()</script>')
-
-    url = request.POST.get("image_url", "").strip()
-    if url:
-        try:
-            r = requests.get(url, timeout=8)
-            if r.status_code == 200:
-                parsed_ext = os.path.splitext(url.split("?")[0])[1] or ".jpg"
-                filename = f"{uuid.uuid4().hex}{parsed_ext}"
-                filepath = os.path.join(HOME_WALLPAPER_FOLDER, filename)
-
-                with open(filepath, "wb") as f:
-                    f.write(r.content)
-
-                old = (org.home_wallpaper_filename or "").strip()
-                if old:
-                    old_path = os.path.join(HOME_WALLPAPER_FOLDER, old)
-                    if os.path.exists(old_path):
-                        try:
-                            os.remove(old_path)
-                        except Exception:
-                            pass
-
-                org.home_wallpaper_filename = filename
-                org.save(update_fields=["home_wallpaper_filename"])
-
-                _log_board(
-                    Board.objects.filter(organization=org, is_deleted=False).order_by("-id").first() or None,
-                    request,
-                    f"<p><strong>{actor}</strong> atualizou o wallpaper da HOME (URL).</p>",
-                )
-
-                return HttpResponse('<script>location.reload()</script>')
-        except Exception:
-            pass
-
-    return HttpResponse("Erro ao importar imagem", status=400)
 
 
-def remove_home_wallpaper(request):
-    if not request.user.is_authenticated:
-        request.session.pop("home_bg_image", None)
-        return HttpResponse("Login necessário.", status=401)
 
-    org = get_or_create_user_default_organization(request.user)
-    if not org:
-        return HttpResponse("Organização não encontrada.", status=400)
 
-    actor = _actor_label(request)
-
-    filename = (org.home_wallpaper_filename or "").strip()
-    if filename:
-        filepath = os.path.join(HOME_WALLPAPER_FOLDER, filename)
-        if os.path.exists(filepath):
-            try:
-                os.remove(filepath)
-            except Exception:
-                pass
-
-    org.home_wallpaper_filename = ""
-    org.save(update_fields=["home_wallpaper_filename"])
-
-    _log_board(
-        Board.objects.filter(organization=org, is_deleted=False).order_by("-id").first() or None,
-        request,
-        f"<p><strong>{actor}</strong> removeu o wallpaper da HOME.</p>",
-    )
-
-    return HttpResponse('<script>location.reload()</script>')
 
 
 # ======================================================================
