@@ -9,11 +9,9 @@
        - Mantém update_card seguro
        - Savebar sticky top e só aparece quando tiver mudança
        ======================================================= -->
-    <form id="card-desc-form" method="post" enctype="multipart/form-data"
+  <form id="card-desc-form" method="post" enctype="multipart/form-data"
         hx-post="{% url 'boards:update_card' card.id %}"
         hx-target="#modal-body" hx-swap="innerHTML">
-
-
 
     {% csrf_token %}
 
@@ -113,52 +111,55 @@
 
   </div>
 
+  <!-- =========================
+       ABA ATIVIDADE (sub-abas: Nova atividade / Histórico)
+       ========================= -->
+  <div id="card-tab-ativ" class="card-tab-panel hidden">
 
-<!-- =========================
-     ABA ATIVIDADE (sub-abas: Nova atividade / Histórico)
-     ========================= -->
-<div id="card-tab-ativ" class="card-tab-panel hidden">
+    <div class="ativ-subtab-wrap">
 
-  <div class="ativ-subtab-wrap">
-  <input class="ativ-subtab-radio" type="radio" name="ativ-subtab" id="ativ-tab-new" checked>
-  <input class="ativ-subtab-radio" type="radio" name="ativ-subtab" id="ativ-tab-hist">
+      <input class="ativ-subtab-radio" type="radio" name="ativ-subtab" id="ativ-tab-new" checked>
+      <input class="ativ-subtab-radio" type="radio" name="ativ-subtab" id="ativ-tab-hist">
 
-  <div class="ativ-subtab-buttons">
-    <label for="ativ-tab-new" class="ativ-subtab-btn">Nova atividade</label>
-    <label for="ativ-tab-hist" class="ativ-subtab-btn">Histórico</label>
-  </div>
-
-  <div class="ativ-subtab-views">
-    <!-- VIEW: NOVA ATIVIDADE -->
-    <div class="ativ-view ativ-view-new">
-      <label class="block text-sm font-medium mb-2">Nova atividade</label>
-
-      <div id="quill-editor-ativ" class="border rounded mb-2"></div>
-      <input type="hidden" id="activity-input" name="activity">
-
-      <div class="flex gap-3 mt-3">
-        <button type="button"
-                class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                onclick="submitActivity({{ card.id }});">
-          Incluir
-        </button>
-
-        <button type="button"
-                class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
-                onclick="clearActivityEditor()">
-          Limpar
-        </button>
+      <div class="ativ-subtab-buttons">
+        <label for="ativ-tab-new" class="ativ-subtab-btn">Nova atividade</label>
+        <label for="ativ-tab-hist" class="ativ-subtab-btn">Histórico</label>
       </div>
-    </div>
 
-    <!-- VIEW: HISTÓRICO -->
-    <div class="ativ-view ativ-view-hist">
-      {% include "boards/partials/card_activity_panel.html" %}
-    </div>
-  </div>
-</div>
+      <div class="ativ-subtab-views">
 
+        <!-- VIEW: NOVA ATIVIDADE -->
+        <div class="ativ-view ativ-view-new">
+          <label class="block text-sm font-medium mb-2">Nova atividade</label>
 
+          <div id="quill-editor-ativ" class="border rounded mb-2"></div>
+          <input type="hidden" id="activity-input" name="activity">
+
+          <div class="flex gap-3 mt-3">
+            <button type="button"
+                    class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                    onclick="submitActivity({{ card.id }});">
+              Incluir
+            </button>
+
+            <button type="button"
+                    class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+                    onclick="clearActivityEditor()">
+              Limpar
+            </button>
+          </div>
+        </div>
+
+        <!-- VIEW: HISTÓRICO -->
+        <div class="ativ-view ativ-view-hist">
+          {% include "boards/partials/card_activity_panel.html" %}
+        </div>
+
+      </div><!-- /.ativ-subtab-views -->
+
+    </div><!-- /.ativ-subtab-wrap -->
+
+  </div><!-- /#card-tab-ativ -->
 
   <!-- =========================
        ABA ANEXOS
@@ -189,7 +190,7 @@
       {% endfor %}
     </div>
 
-  </div>
+  </div><!-- /#card-tab-files -->
 
 </div>
 <!-- FIM DO CONTEÚDO INTERNO DO MODAL DO CARD -->

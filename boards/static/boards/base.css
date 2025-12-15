@@ -1040,7 +1040,7 @@ html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !import
   background-size: 220% 220%;
   -webkit-background-clip: text;
   background-clip: text;
-  color: transparent;F
+  color: transparent;
 
   filter:
     drop-shadow(0 1px 1px rgba(0,0,0,0.85))
