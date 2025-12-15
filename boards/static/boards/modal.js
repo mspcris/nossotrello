@@ -405,14 +405,31 @@ function initAtivSubtabs3(body) {
   // exporta o show para uso interno (submitActivity / etc)
   wrap.__ativShow = show;
 
-  if (rMove?.checked) show("move");
-  else if (rHist?.checked) show("hist");
-  else show("new");
+  function showFromChecked() {
+    if (rMove?.checked) show("move");
+    else if (rHist?.checked) show("hist");
+    else show("new");
+  }
 
-  if (rNew) rNew.addEventListener("change", () => { if (rNew.checked) show("new"); });
+  // primeira aplicação
+  showFromChecked();
+
+  // change (quando realmente muda)
+  if (rNew)  rNew.addEventListener("change", () => { if (rNew.checked)  show("new");  });
   if (rHist) rHist.addEventListener("change", () => { if (rHist.checked) show("hist"); });
   if (rMove) rMove.addEventListener("change", () => { if (rMove.checked) show("move"); });
-}
+
+  // FIX: clique no label nem sempre dispara "change" (ex: já estava marcado)
+  qsa(".ativ-subtab-btn", wrap).forEach((lbl) => {
+    lbl.addEventListener("click", () => {
+      // aguarda o browser marcar o rádio
+      setTimeout(showFromChecked, 0);
+    });
+  });
+
+  // export para reaplicar quando a aba principal "Atividade" voltar a ficar visível
+  wrap.__ativShowFromChecked = showFromChecked;
+
 
 // =====================================================
 // Inicializa modal (pós-swap)
