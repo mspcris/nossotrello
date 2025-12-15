@@ -1,6 +1,11 @@
 {% extends "base.html" %}
 {% load static %}
 {% load tag_helpers %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% url 'boards:board_wallpaper_css' board.id %}">
+<link rel="stylesheet" href="{% static 'boards/board_detail.css' %}">
+{% endblock %}
+
 
 {% block title %}{{ board.name }}{% endblock %}
 {% block header_left %}
@@ -117,12 +122,6 @@
 
 
 
-
-<!-- CSS dinâmico do wallpaper -->
-<link rel="stylesheet" href="{% url 'boards:board_wallpaper_css' board.id %}">
-
-<!-- CSS estático do layout -->
-<link rel="stylesheet" href="{% static 'boards/board_detail.css' %}">
 
 
 <script>

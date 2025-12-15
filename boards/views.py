@@ -41,16 +41,18 @@ from .models import (
 )
 
 # ======================================================================
+# constantes
+# ======================================================================
+
+DEFAULT_WALLPAPER_FILENAME = "ubuntu-focal-fossa-cat-66j69z5enzbmk2m6.jpg"
+DEFAULT_WALLPAPER_URL = f"/media/home_wallpapers/{DEFAULT_WALLPAPER_FILENAME}"
+
+# ======================================================================
 # HELPER – Organização "default" por usuário
 # ======================================================================
 
 
 def get_or_create_user_default_organization(user):
-    """
-    Garante que cada usuário tenha uma organização "dona" dos boards.
-    - Se não existir, cria.
-    - Garante também o membership como OWNER.
-    """
     if not user.is_authenticated:
         return None
 
@@ -58,8 +60,15 @@ def get_or_create_user_default_organization(user):
 
     org, _created = Organization.objects.get_or_create(
         owner=user,
-        defaults={"name": f"Workspace de {display_name}"},
+        defaults={
+            "name": f"Workspace de {display_name}",
+            "home_wallpaper_filename": DEFAULT_WALLPAPER_FILENAME,
+        },
     )
+
+    if not (getattr(org, "home_wallpaper_filename", "") or "").strip():
+        org.home_wallpaper_filename = DEFAULT_WALLPAPER_FILENAME
+        org.save(update_fields=["home_wallpaper_filename"])
 
     OrganizationMembership.objects.get_or_create(
         organization=org,
@@ -68,6 +77,7 @@ def get_or_create_user_default_organization(user):
     )
 
     return org
+
 
 
 # ======================================================================
@@ -977,8 +987,8 @@ def board_wallpaper_css(request, board_id):
     elif (getattr(board, "background_url", "") or "").strip():
         css += f"background-image: url('{escape(board.background_url)}');"
     else:
-        css += "background-image: none;"
-        css += "background-color: #f0f0f0;"
+        # Fallback padrão (não depende de salvar nada no board)
+        css += f"background-image: url('{DEFAULT_WALLPAPER_URL}');"
 
     css += """
         background-size: cover;
@@ -986,12 +996,12 @@ def board_wallpaper_css(request, board_id):
         background-attachment: fixed;
     }
     """
-
     resp = HttpResponse(css, content_type="text/css")
     resp["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     resp["Pragma"] = "no-cache"
     resp["Expires"] = "0"
     return resp
+
 
 
 @require_POST
@@ -1015,25 +1025,23 @@ HOME_WALLPAPER_FOLDER = os.path.join(settings.MEDIA_ROOT, "home_wallpapers")
 
 
 def home_wallpaper_css(request):
-    css = "body {"
+    # default
+    url = DEFAULT_WALLPAPER_URL
 
+    # se logado, pega wallpaper do "workspace" (Organization)
     if request.user.is_authenticated:
         org = get_or_create_user_default_organization(request.user)
         filename = (getattr(org, "home_wallpaper_filename", "") or "").strip()
         if filename:
-            css += f'background-image: url("/media/home_wallpapers/{filename}");'
-        else:
-            css += "background-image: none;"
-            css += "background-color: #f0f0f0;"
-    else:
-        css += "background-image: none;"
-        css += "background-color: #f0f0f0;"
+            url = f"/media/home_wallpapers/{escape(filename)}"
 
-    css += """
+    css = f"""
+    body {{
+        background-image: url('{url}');
         background-size: cover;
         background-position: center;
         background-attachment: fixed;
-    }
+    }}
     """
 
     resp = HttpResponse(css, content_type="text/css")
@@ -1041,6 +1049,7 @@ def home_wallpaper_css(request):
     resp["Pragma"] = "no-cache"
     resp["Expires"] = "0"
     return resp
+
 
 
 def update_home_wallpaper(request):

@@ -42,6 +42,7 @@ urlpatterns = [
     path("home/wallpaper/remove/", views.remove_home_wallpaper, name="remove_home_wallpaper"),
     path("home/wallpaper.css", views.home_wallpaper_css, name="home_wallpaper_css"),
 
+
     # ---------------------- COLUMN ----------------------
     path("column/<int:column_id>/add_card/", views.add_card, name="add_card"),
     path("column/<int:column_id>/delete/", views.column_delete, name="column_delete"),
