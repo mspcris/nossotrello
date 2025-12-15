@@ -119,16 +119,18 @@
      ========================= -->
 <div id="card-tab-ativ" class="card-tab-panel hidden">
 
-  <div class="ativ-subtabs">
+  <div class="ativ-subtab-wrap">
+  <input class="ativ-subtab-radio" type="radio" name="ativ-subtab" id="ativ-tab-new" checked>
+  <input class="ativ-subtab-radio" type="radio" name="ativ-subtab" id="ativ-tab-hist">
 
-    <input type="radio" name="ativ-subtab" id="ativ-subtab-compose" checked>
-    <label for="ativ-subtab-compose" class="ativ-subtab-btn">Nova atividade</label>
+  <div class="ativ-subtab-buttons">
+    <label for="ativ-tab-new" class="ativ-subtab-btn">Nova atividade</label>
+    <label for="ativ-tab-hist" class="ativ-subtab-btn">Histórico</label>
+  </div>
 
-    <input type="radio" name="ativ-subtab" id="ativ-subtab-history">
-    <label for="ativ-subtab-history" class="ativ-subtab-btn">Histórico</label>
-
-    <!-- PAINEL: NOVA ATIVIDADE -->
-    <div class="ativ-panel ativ-panel-compose">
+  <div class="ativ-subtab-views">
+    <!-- VIEW: NOVA ATIVIDADE -->
+    <div class="ativ-view ativ-view-new">
       <label class="block text-sm font-medium mb-2">Nova atividade</label>
 
       <div id="quill-editor-ativ" class="border rounded mb-2"></div>
@@ -149,15 +151,11 @@
       </div>
     </div>
 
-    <!-- PAINEL: HISTÓRICO -->
-    <div class="ativ-panel ativ-panel-history">
-      <div id="activity-panel-wrapper" class="activity-panel">
-        {% include "boards/partials/card_activity_panel.html" %}
-      </div>
+    <!-- VIEW: HISTÓRICO -->
+    <div class="ativ-view ativ-view-hist">
+      {% include "boards/partials/card_activity_panel.html" %}
     </div>
-
   </div>
-
 </div>
 
 
