@@ -30,3 +30,37 @@
 
 {# CONTEÚDO DO MODAL #}
 {% include "boards/partials/card_modal_content.html" %}
+
+<script>
+(function () {
+  // evita registrar listener múltiplas vezes
+  if (window.__activityClearHookInstalled) return;
+  window.__activityClearHookInstalled = true;
+
+  document.body.addEventListener("htmx:afterRequest", function (evt) {
+    if (!evt?.detail?.successful) return;
+
+    // garante que foi o POST de "add_activity"
+    const responseURL = evt.detail?.xhr?.responseURL || "";
+    if (!responseURL.includes("/activity/add/")) return;
+
+    // limpa APENAS o editor dentro do form que disparou o request
+    const trigger = evt.target;
+    const form = trigger?.closest?.("form");
+    if (!form) return;
+
+    // limpa Quill (conteúdo visual)
+    const qlEditor = form.querySelector(".ql-editor");
+    if (qlEditor) qlEditor.innerHTML = "";
+
+    // limpa campos de payload comuns
+    const contentField =
+      form.querySelector('input[name="content"]') ||
+      form.querySelector('textarea[name="content"]') ||
+      form.querySelector('input[name="description"]') ||
+      form.querySelector('textarea[name="description"]');
+
+    if (contentField) contentField.value = "";
+  });
+})();
+</script>
