@@ -132,6 +132,17 @@ function maybeShowSavebar() {
   else hideSavebar();
 }
 
+function htmlImageCount(html) {
+  const tmp = document.createElement("div");
+  tmp.innerHTML = html || "";
+  return tmp.querySelectorAll("img").length;
+}
+
+function toastError(msg) {
+  // simples e efetivo (se quiser, trocamos por um toast bonitinho depois)
+  alert(msg);
+}
+
 // =====================================================
 // Alternar abas do modal (escopo: dentro do #modal)
 // =====================================================
@@ -280,34 +291,79 @@ function initQuillDesc(body) {
 // =====================================================
 // Inicializa Quill da atividade
 // =====================================================
-function initQuillAtividade(body) {
   const activityHidden = qs("#activity-input", body);
   const quillAtivEl = qs("#quill-editor-ativ", body);
 
-  if (!activityHidden || !quillAtivEl) return;
+  if (activityHidden && quillAtivEl && !quillAtivEl.dataset.quillReady) {
+    quillAtivEl.dataset.quillReady = "1";
 
-  if (quillAtivEl.dataset.quillReady === "1") return;
-  quillAtivEl.dataset.quillReady = "1";
+    quillAtiv = new Quill("#quill-editor-ativ", {
+      theme: "snow",
+      modules: {
+        toolbar: {
+          container: [
+            [{ header: [1, 2, 3, false] }],
+            ["bold", "italic", "underline"],
+            ["link", "image"],
+            [{ list: "ordered" }, { list: "bullet" }],
+          ],
+          handlers: {
+            image: function () {
+              // garante 1 imagem no máximo
+              const currentCount = htmlImageCount(quillAtiv?.root?.innerHTML || "");
+              if (currentCount >= 1) {
+                toastError("No momento, cada atividade aceita no máximo 1 imagem.");
+                return;
+              }
 
-  quillAtiv = new Quill("#quill-editor-ativ", {
-    theme: "snow",
-    modules: {
-      toolbar: [
-        [{ header: [1, 2, 3, false] }],
-        ["bold", "italic", "underline"],
-        ["link", "image"],
-        [{ list: "ordered" }, { list: "bullet" }],
-      ],
-    },
-  });
+              const fileInput = document.createElement("input");
+              fileInput.type = "file";
+              fileInput.accept = "image/*";
 
-  quillAtiv.root.innerHTML = "";
-  activityHidden.value = "";
+              fileInput.onchange = () => {
+                const file = fileInput.files?.[0];
+                if (!file) return;
+                insertBase64ImageIntoQuill(quillAtiv, file);
+              };
 
-  quillAtiv.on("text-change", () => {
-    activityHidden.value = quillAtiv.root.innerHTML;
-  });
-}
+              fileInput.click();
+            },
+          },
+        },
+      },
+    });
+
+    quillAtiv.root.innerHTML = "";
+    activityHidden.value = "";
+
+    quillAtiv.on("text-change", () => {
+      activityHidden.value = quillAtiv.root.innerHTML;
+    });
+
+    // bloqueia colar múltiplas imagens
+    quillAtiv.root.addEventListener("paste", (e) => {
+      const cd = e.clipboardData;
+      if (!cd?.items?.length) return;
+
+      const imgItems = Array.from(cd.items).filter(
+        (it) => it.kind === "file" && it.type?.startsWith("image/")
+      );
+
+      if (!imgItems.length) return;
+
+      const currentCount = htmlImageCount(quillAtiv.root.innerHTML);
+      if (currentCount + imgItems.length > 1) {
+        e.preventDefault();
+        toastError("No momento, cada atividade aceita no máximo 1 imagem. Cole apenas uma.");
+        return;
+      }
+
+      // deixa seguir o fluxo padrão do seu insertBase64 (mais consistente)
+      e.preventDefault();
+      const file = imgItems[0].getAsFile();
+      if (file) insertBase64ImageIntoQuill(quillAtiv, file);
+    });
+  }
 
 // =====================================================
 // Inicializa modal (pós-swap)
@@ -428,38 +484,50 @@ function replaceActivityPanelFromHTML(html) {
 }
 
 window.submitActivity = async function (cardId) {
-  const body = getModalBody();
-  if (!body) return;
-
-  const activityInput = qs("#activity-input", body);
+  const activityInput = document.getElementById("activity-input");
   if (!activityInput) return;
 
   const content = (activityInput.value || "").trim();
   if (!content) return;
 
+  // regra: 1 imagem no máximo (alinha com backend atual)
+  const imgCount = htmlImageCount(content);
+  if (imgCount > 1) {
+    toastError("No momento, cada atividade aceita no máximo 1 imagem. Remova uma das imagens e tente novamente.");
+    return;
+  }
+
   const formData = new FormData();
   formData.append("content", content);
 
-  const response = await fetch(`/card/${cardId}/activity/add/`, {
-    method: "POST",
-    headers: { "X-CSRFToken": getCsrfToken() },
-    body: formData,
-    credentials: "same-origin",
-  });
+  let response;
+  try {
+    response = await fetch(`/card/${cardId}/activity/add/`, {
+      method: "POST",
+      headers: { "X-CSRFToken": getCsrfToken() },
+      body: formData,
+      credentials: "same-origin",
+    });
+  } catch (err) {
+    toastError("Falha de rede ao incluir atividade. Verifique conexão/console.");
+    return;
+  }
 
-  if (!response.ok) return;
+  if (!response.ok) {
+    const msg = await response.text().catch(() => "");
+    // exemplos comuns: 400 (validação: 2 imagens), 413 (payload grande), 500 (erro server)
+    toastError(msg || `Falha ao incluir atividade (HTTP ${response.status}).`);
+    return;
+  }
 
   const html = await response.text();
+  const wrapper = document.getElementById("activity-panel-wrapper");
+  if (wrapper) wrapper.innerHTML = html;
 
-  // atualiza histórico
-  replaceActivityPanelFromHTML(html);
+  clearActivityEditor();
 
-  // limpa editor (o que você pediu)
-  window.clearActivityEditor();
-
-  // garante que o usuário continue na aba Atividade e vá pro Histórico
-  window.cardOpenTab("card-tab-ativ");
-  const histRadio = qs("#ativ-subtab-history", body);
+  // opcional: já joga no histórico depois de incluir
+  const histRadio = document.getElementById("ativ-tab-hist");
   if (histRadio) histRadio.checked = true;
 
   if (window.Prism) Prism.highlightAll();
