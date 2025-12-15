@@ -831,9 +831,10 @@ column_delete = delete_column
 
 
 # ======================================================================
-# MOVER CARD ENTRE COLUNAS
+# MOVER CARD ENTRE COLUNAS (Drag and Drop)
 # ======================================================================
 
+@login_required
 @require_POST
 @transaction.atomic
 def move_card(request):
@@ -846,6 +847,23 @@ def move_card(request):
     card = get_object_or_404(Card, id=card_id)
     old_column = card.column
     new_column = get_object_or_404(Column, id=new_column_id)
+
+    old_board = old_column.board
+    new_board = new_column.board
+
+    def can_move_in_board(board: Board) -> bool:
+        if not request.user.is_authenticated:
+            return False
+
+        memberships_qs = board.memberships.all()
+        if memberships_qs.exists():
+            return memberships_qs.filter(user=request.user).exists()
+
+        return bool(request.user.is_staff or board.created_by_id == request.user.id)
+
+    # Permissão no board de origem e no board de destino
+    if not can_move_in_board(old_board) or not can_move_in_board(new_board):
+        return JsonResponse({"error": "Sem permissão para mover card neste quadro."}, status=403)
 
     actor = _actor_label(request)
     old_pos = card.position
@@ -894,6 +912,7 @@ def move_card(request):
 
     return JsonResponse({"status": "ok"})
 
+
 # ======================================================================
 # MOVER CARD (Modal) — options + refresh painel atividade
 # ======================================================================
@@ -904,39 +923,39 @@ def card_move_options(request, card_id):
     card = get_object_or_404(Card, id=card_id, is_deleted=False)
     board_current = card.column.board
 
-    # Permissão: precisa ser editor/owner (ou criador/staff em board sem memberships)
-    def can_edit_board(board: Board) -> bool:
+    def can_move_in_board(board: Board) -> bool:
+        """
+        Regra unificada (mesma regra que vamos aplicar no /move-card/):
+        - Se o board tem memberships: precisa ter membership (qualquer role).
+        - Se o board NÃO tem memberships: criador ou staff.
+        """
         if not request.user.is_authenticated:
             return False
 
         memberships_qs = board.memberships.all()
         if memberships_qs.exists():
-            m = memberships_qs.filter(user=request.user).first()
-            if not m:
-                return False
-            return m.role in {BoardMembership.Role.OWNER, BoardMembership.Role.EDITOR}
+            return memberships_qs.filter(user=request.user).exists()
 
         return bool(request.user.is_staff or board.created_by_id == request.user.id)
 
-    if not can_edit_board(board_current):
+    # Permissão no board atual
+    if not can_move_in_board(board_current):
         return JsonResponse({"error": "Sem permissão para mover card neste quadro."}, status=403)
 
-    # Boards acessíveis (editáveis)
+    # Boards acessíveis para mover (mesma regra)
     boards = []
-    # 1) boards com membership editor/owner
+
+    # 1) boards com membership (qualquer role)
     for bm in BoardMembership.objects.filter(
         user=request.user,
-        role__in=[BoardMembership.Role.OWNER, BoardMembership.Role.EDITOR],
         board__is_deleted=False,
     ).select_related("board"):
         boards.append(bm.board)
 
-    # 2) boards “legado” sem memberships onde o user é criador ou staff
-    legacy_qs = Board.objects.filter(is_deleted=False).filter(
-        Q(created_by_id=request.user.id) | Q()
-    )
-    if request.user.is_staff:
-        legacy_qs = Board.objects.filter(is_deleted=False)
+    # 2) boards “legado” sem memberships (criador/staff)
+    legacy_qs = Board.objects.filter(is_deleted=False)
+    if not request.user.is_staff:
+        legacy_qs = legacy_qs.filter(created_by_id=request.user.id)
 
     for b in legacy_qs:
         if not b.memberships.exists():
@@ -960,7 +979,7 @@ def card_move_options(request, card_id):
             {
                 "id": c.id,
                 "name": c.name,
-                "positions_total_plus_one": (c.cards.count() + 1),  # Card.objects = ativos
+                "positions_total_plus_one": (c.cards.count() + 1),
             }
             for c in cols
         ]
@@ -971,19 +990,12 @@ def card_move_options(request, card_id):
             "board_name": board_current.name,
             "column_id": card.column.id,
             "column_name": card.column.name,
-            "position": int(card.position) + 1,  # UX 1-based
+            "position": int(card.position) + 1,
         },
         "boards": [{"id": b.id, "name": b.name} for b in uniq],
         "columns_by_board": columns_by_board,
     }
     return JsonResponse(payload)
-
-
-@login_required
-@require_http_methods(["GET"])
-def activity_panel(request, card_id):
-    card = get_object_or_404(Card, id=card_id, is_deleted=False)
-    return render(request, "boards/partials/card_activity_panel.html", {"card": card})
 
 
 
