@@ -3,13 +3,13 @@ services:
     build: .
     restart: always
     command: sh -lc "mkdir -p /app/staticfiles && python manage.py collectstatic --noinput && gunicorn nossotrello.wsgi:application -b 0.0.0.0:8000 --workers 3"
-    volumes:
-      - .:/app
-      - ./data/sqlite:/app/db
-      - ./static:/app/staticfiles
-      - ./media:/app/media
     env_file:
       - .env
+    volumes:
+      - .:/app
+      - ${SQLITE_DIR:-./data/sqlite}:/app/db
+      - ./static:/app/staticfiles
+      - ./media:/app/media
     environment:
       DJANGO_SETTINGS_MODULE: nossotrello.settings
     expose:

@@ -7,7 +7,25 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Fallback = seguro (prod/hml controlam via .env)
+# ============================================================
+# BÁSICO (via ENV, com fallback no PROD)
+# ============================================================
+
+def _env_bool(key: str, default: bool = False) -> bool:
+    v = (os.getenv(key, "") or "").strip().lower()
+    if v in {"1", "true", "yes", "on"}:
+        return True
+    if v in {"0", "false", "no", "off"}:
+        return False
+    return default
+
+def _env_csv(key: str, default_list: list[str]) -> list[str]:
+    raw = (os.getenv(key, "") or "").strip()
+    if not raw:
+        return default_list
+    return [x.strip() for x in raw.split(",") if x.strip()]
+
+# Fallback = o que já existia no PROD (evita quebrar build/collectstatic)
 SECRET_KEY = (os.getenv("DJANGO_SECRET_KEY") or "").strip() or "django-insecure-*g97-4tr#q7%rz+b%)i_dgnocxt17ziww%x=7=zea_n$#i9%mj"
 DEBUG = _env_bool("DEBUG", default=False)
 
@@ -19,9 +37,9 @@ ALLOWED_HOSTS = _env_csv(
 CSRF_TRUSTED_ORIGINS = _env_csv(
     "CSRF_TRUSTED_ORIGINS",
     default_list=[
+        "https://tarefas.camim.com.br",
         "http://tarefas.camim.com.br",
         "http://tarefas.camim.com.br:8081",
-        "https://tarefas.camim.com.br",
     ],
 )
 
@@ -37,7 +55,6 @@ DATABASES = {
         "NAME": BASE_DIR / "db" / SQLITE_NAME,
     }
 }
-
 
 
 # ============================================================
