@@ -168,14 +168,16 @@ window.cardOpenTab = function (panelId) {
 
   sessionStorage.setItem("modalActiveTab", panelId);
 
-   if (!tabsWithSave.has(panelId)) hideSavebar();
-    else maybeShowSavebar();
+  if (!tabsWithSave.has(panelId)) hideSavebar();
+  else maybeShowSavebar();
 
   // ao entrar na aba "Atividade", reaplica a sub-aba correta
   if (panelId === "card-tab-ativ") {
     const wrap = qs(".ativ-subtab-wrap", body);
     if (wrap?.__ativShowFromChecked) wrap.__ativShowFromChecked();
   }
+};
+
 
 // =====================================================
 // Inserir imagem no Quill como base64
@@ -385,21 +387,24 @@ function initAtivSubtabs3(body) {
   const vMove = qs(".ativ-view-move", wrap);
 
   function show(which) {
-    // INLINE "block" ganha de qualquer .hidden/.block do CSS/Tailwind
-    if (vNew)  vNew.style.display  = (which === "new")  ? "block" : "none";
-    if (vHist) vHist.style.display = (which === "hist") ? "block" : "none";
-    if (vMove) vMove.style.display = (which === "move") ? "block" : "none";
-
-    // coerência com Tailwind (evita ficar preso em "hidden" do template)
-    if (vNew)  vNew.classList.toggle("hidden", which !== "new");
-    if (vHist) vHist.classList.toggle("hidden", which !== "hist");
-    if (vMove) vMove.classList.toggle("hidden", which !== "move");
+    // Força aparecer mesmo se vier com .hidden no HTML
+    if (vNew) {
+      vNew.style.display = (which === "new") ? "block" : "none";
+      vNew.classList.toggle("hidden", which !== "new");
+    }
+    if (vHist) {
+      vHist.style.display = (which === "hist") ? "block" : "none";
+      vHist.classList.toggle("hidden", which !== "hist");
+    }
+    if (vMove) {
+      vMove.style.display = (which === "move") ? "block" : "none";
+      vMove.classList.toggle("hidden", which !== "move");
+    }
 
     if (which === "move" && window.currentCardId && typeof window.loadMoveCardOptions === "function") {
       window.loadMoveCardOptions(window.currentCardId);
     }
   }
-
 
   function showFromChecked() {
     if (rMove?.checked) show("move");
@@ -411,7 +416,7 @@ function initAtivSubtabs3(body) {
   wrap.__ativShow = show;
   wrap.__ativShowFromChecked = showFromChecked;
 
-  // aplica imediatamente
+  // aplica imediatamente (sempre)
   showFromChecked();
 
   // evita listeners duplicados
@@ -422,15 +427,11 @@ function initAtivSubtabs3(body) {
   if (rHist) rHist.addEventListener("change", () => { if (rHist.checked) show("hist"); });
   if (rMove) rMove.addEventListener("change", () => { if (rMove.checked) show("move"); });
 
-  // clique no label às vezes não dispara "change" (principalmente se já estava checked)
+  // clique no label às vezes não dispara "change"
   qsa(".ativ-subtab-btn", wrap).forEach((lbl) => {
     lbl.addEventListener("click", () => setTimeout(showFromChecked, 0));
   });
 }
-
-  // export para reaplicar quando a aba principal "Atividade" voltar a ficar visível
-  //wrap.__ativShowFromChecked = showFromChecked;
-//}
 
 // =====================================================
 // Inicializa modal (pós-swap)
