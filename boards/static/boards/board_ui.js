@@ -3,11 +3,98 @@
 // Estratégia:
 // 1) MutationObserver observa SÓ a lista de cards (evita reagir ao contador/título)
 // 2) Só escreve no DOM quando o valor realmente muda
+//
+// + Popover "Cor da coluna":
+// - Toggle ao clicar nas 3 bolinhas
+// - Fecha ao clicar fora (capture=true para não depender de bubbling)
+// - Sem depender de offsetParent (que falha em alguns layouts)
 
 (function () {
+  console.log("[board_ui] loaded", new Date().toISOString());
+
   function qs(sel, root = document) { return root.querySelector(sel); }
   function qsa(sel, root = document) { return Array.from(root.querySelectorAll(sel)); }
 
+  // =========================
+  // Popover "Cor da coluna"
+  // =========================
+  const BTN_SELECTOR =
+    ".col-menu-btn, .column-menu-btn, .col-dots, [data-col-menu-btn], [data-col-menu]";
+
+  const POPOVER_SELECTOR =
+    ".col-color-popover, .column-color-popover, .color-popover, .color-picker-popover, .popover, [data-popover], [data-colors-popover], [data-col-color-popover]";
+
+  function isVisible(el) {
+    if (!el) return false;
+    if (el.classList.contains("hidden")) return false;
+    const cs = window.getComputedStyle(el);
+    return cs.display !== "none" && cs.visibility !== "hidden";
+  }
+
+  function showPopover(el) {
+    if (!el) return;
+    el.classList.remove("hidden");
+    el.style.display = "block";
+    if (!el.style.position) el.style.position = "absolute";
+    if (!el.style.zIndex) el.style.zIndex = "9999";
+  }
+
+  function hidePopover(el) {
+    if (!el) return;
+    el.classList.add("hidden");
+    el.style.display = "none";
+  }
+
+  function hideAllPopovers(exceptEl = null) {
+    qsa(POPOVER_SELECTOR).forEach((p) => {
+      if (exceptEl && p === exceptEl) return;
+      hidePopover(p);
+    });
+  }
+
+  function findPopoverNearButton(btn) {
+    const scope =
+      btn.closest("[data-column-id]") ||
+      btn.closest("[id^='column-'], [id^='col-']") ||
+      btn.closest(".column, .board-column, .trello-column, .coluna") ||
+      document;
+
+    return scope.querySelector(POPOVER_SELECTOR);
+  }
+
+  // Clique global (capture): fecha ao clicar fora + toggle no botão
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest(BTN_SELECTOR);
+    const popClicked = e.target.closest(POPOVER_SELECTOR);
+
+    // Clique no botão (3 bolinhas) -> toggle do popover mais próximo
+    if (btn) {
+      const target = findPopoverNearButton(btn);
+      if (!target) {
+        console.warn("[board_ui] popover NÃO encontrado perto do botão", btn);
+        return;
+      }
+
+      const open = isVisible(target);
+      // Fecha todos antes (evita múltiplos abertos)
+      hideAllPopovers(target);
+
+      if (open) hidePopover(target);
+      else showPopover(target);
+
+      return;
+    }
+
+    // Clique dentro do popover -> mantém aberto
+    if (popClicked) return;
+
+    // Clique fora -> fecha tudo
+    hideAllPopovers();
+  }, true);
+
+  // =========================
+  // Contador + Empty state
+  // =========================
   function findColumns() {
     const byData = qsa("[data-column-id]");
     if (byData.length) return byData;
@@ -35,11 +122,9 @@
   }
 
   function findCounterEl(columnEl) {
-    // Ideal: você marcar no template com data-card-count
     const explicit = qs("[data-card-count]", columnEl) || qs(".col-card-count", columnEl);
     if (explicit) return explicit;
 
-    // Fallback seguro: só se o texto for exatamente "X cards"
     const candidates = qsa("span, small, p, div", columnEl).slice(0, 80);
     for (const c of candidates) {
       const t = (c.textContent || "").trim();
@@ -97,8 +182,6 @@
     columnEl.dataset.colObserverBound = "1";
 
     const list = findCardList(columnEl);
-
-    // Observa preferencialmente a lista de cards (evita loop com contador/título)
     const target = list || columnEl;
 
     let scheduled = false;
@@ -112,7 +195,6 @@
     });
 
     obs.observe(target, { childList: true, subtree: true });
-
     refreshColumnUI(columnEl);
   }
 
