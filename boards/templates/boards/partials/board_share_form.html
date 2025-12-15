@@ -43,9 +43,10 @@
         <div>
           <label class="text-sm font-semibold">Permissão</label>
           <select name="role" class="w-full border rounded px-3 py-2">
-            <option value="VIEWER">Somente leitura</option>
-            <option value="EDITOR" selected>Pode editar</option>
+            <option value="viewer">Somente leitura</option>
+            <option value="editor" selected>Pode editar</option>
           </select>
+
         </div>
 
         <div class="flex gap-2 pt-2">
@@ -79,13 +80,14 @@
               </div>
 
               <div class="flex items-center gap-2">
-                {% if m.role == "OWNER" %}
+                {% if m.role == "owner" %}
                   <span class="text-xs px-2 py-1 rounded bg-gray-100 border">Dono</span>
-                {% elif m.role == "EDITOR" %}
-                  <span class="text-xs px-2 py-1 rounded bg-blue-50 border">Editor</span>
+                {% elif m.role == "editor" %}
+                  <span class="text-xs px-2 py-1 rounded bg-blue-50 border">Pode editar</span>
                 {% else %}
                   <span class="text-xs px-2 py-1 rounded bg-green-50 border">Leitor</span>
                 {% endif %}
+
 
                 {% if m.user.id != request.user.id %}
                   <form

@@ -1343,7 +1343,6 @@ def checklist_move_down(request, item_id):
 # COMPARTILHAR BOARD
 # ======================================================================
 
-
 @require_http_methods(["GET", "POST"])
 def board_share(request, board_id):
     if not request.user.is_authenticated:
@@ -1365,9 +1364,15 @@ def board_share(request, board_id):
         return render(request, "boards/partials/board_share_form.html", {"board": board, "memberships": memberships})
 
     identifier = (request.POST.get("identifier") or "").strip()
-    role = (request.POST.get("role") or BoardMembership.Role.VIEWER).strip().upper()
 
-    if role not in {BoardMembership.Role.OWNER, BoardMembership.Role.EDITOR, BoardMembership.Role.VIEWER}:
+    # FIX: Role do TextChoices é lowercase ("owner"/"editor"/"viewer")
+    role = (request.POST.get("role") or BoardMembership.Role.VIEWER).strip().lower()
+
+    if role not in {
+        BoardMembership.Role.OWNER,
+        BoardMembership.Role.EDITOR,
+        BoardMembership.Role.VIEWER,
+    }:
         role = BoardMembership.Role.VIEWER
 
     if not identifier:
@@ -1419,6 +1424,7 @@ def board_share(request, board_id):
         },
         status=200,
     )
+
 
 
 @require_POST
