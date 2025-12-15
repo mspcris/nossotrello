@@ -809,7 +809,11 @@ def delete_column(request, column_id):
     # loga em todos cards (pecar por excesso) antes do soft delete
     cards_in_col = Card.objects.filter(column=column, is_deleted=False)
     for c in cards_in_col:
-        _log_card(c, request, f"<p><strong>{actor}</strong> excluiu (soft delete) a coluna <strong>{escape(column.name)}</strong>, removendo este card da visualização.</p>")
+        _log_card(
+            c,
+            request,
+            f"<p><strong>{actor}</strong> excluiu (soft delete) a coluna <strong>{escape(column.name)}</strong>, removendo este card da visualização.</p>",
+        )
 
     _log_board(
         column.board,
@@ -853,22 +857,22 @@ def move_card(request):
 
     def can_move_in_board(board: Board) -> bool:
         if not request.user.is_authenticated:
-        return False
+            return False
 
-    # staff sempre pode
-    if request.user.is_staff:
-        return True
+        # staff sempre pode
+        if request.user.is_staff:
+            return True
 
-    memberships_qs = board.memberships.all()
-    if memberships_qs.exists():
-        # aqui é o ponto: só OWNER/EDITOR pode mover
-        return memberships_qs.filter(
-            user=request.user,
-            role__in=[BoardMembership.Role.OWNER, BoardMembership.Role.EDITOR],
-        ).exists()
+        memberships_qs = board.memberships.all()
+        if memberships_qs.exists():
+            # só OWNER/EDITOR pode mover
+            return memberships_qs.filter(
+                user=request.user,
+                role__in=[BoardMembership.Role.OWNER, BoardMembership.Role.EDITOR],
+            ).exists()
 
-    # legado sem memberships
-    return bool(board.created_by_id == request.user.id)
+        # legado sem memberships
+        return bool(board.created_by_id == request.user.id)
 
     # Permissão no board de origem e no board de destino
     if not can_move_in_board(old_board) or not can_move_in_board(new_board):
@@ -934,23 +938,22 @@ def card_move_options(request, card_id):
 
     def can_move_in_board(board: Board) -> bool:
         if not request.user.is_authenticated:
-        return False
+            return False
 
-    # staff sempre pode
-    if request.user.is_staff:
-        return True
+        # staff sempre pode
+        if request.user.is_staff:
+            return True
 
-    memberships_qs = board.memberships.all()
-    if memberships_qs.exists():
-        # aqui é o ponto: só OWNER/EDITOR pode mover
-        return memberships_qs.filter(
-            user=request.user,
-            role__in=[BoardMembership.Role.OWNER, BoardMembership.Role.EDITOR],
-        ).exists()
+        memberships_qs = board.memberships.all()
+        if memberships_qs.exists():
+            # só OWNER/EDITOR pode mover
+            return memberships_qs.filter(
+                user=request.user,
+                role__in=[BoardMembership.Role.OWNER, BoardMembership.Role.EDITOR],
+            ).exists()
 
-    # legado sem memberships
-    return bool(board.created_by_id == request.user.id)
-
+        # legado sem memberships: só criador
+        return bool(board.created_by_id == request.user.id)
 
     # Permissão no board atual
     if not can_move_in_board(board_current):
@@ -1161,10 +1164,6 @@ def rename_column(request, column_id):
     )
 
     return render(request, "boards/partials/column_item.html", {"column": column})
-
-
-
-
 
 
 # ======================================================================
@@ -1434,14 +1433,10 @@ def remove_home_wallpaper(request):
     return HttpResponse('<script>location.reload()</script>')
 
 
-
-
-
-
-
 # ======================================================================
 # ATIVIDADE NO CARD (Quill) + upload
 # ======================================================================
+
 @login_required
 @require_http_methods(["GET"])
 def activity_panel(request, card_id):
