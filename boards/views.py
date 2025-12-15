@@ -160,11 +160,40 @@ def index(request):
             board__is_deleted=False,
         ).select_related("board")
 
-        owned_ids = qs.filter(role=BoardMembership.Role.OWNER).values_list("board_id", flat=True)
-        shared_ids = qs.exclude(role=BoardMembership.Role.OWNER).values_list("board_id", flat=True)
+        owned_ids = list(qs.filter(role=BoardMembership.Role.OWNER).values_list("board_id", flat=True))
+        shared_ids = list(qs.exclude(role=BoardMembership.Role.OWNER).values_list("board_id", flat=True))
 
-        owned_boards = Board.objects.filter(id__in=owned_ids, is_deleted=False).distinct().order_by("-created_at")
-        shared_boards = Board.objects.filter(id__in=shared_ids, is_deleted=False).distinct().order_by("-created_at")
+        owned_boards = (
+            Board.objects.filter(id__in=owned_ids, is_deleted=False)
+            .distinct()
+            .order_by("-created_at")
+        )
+
+        shared_boards = (
+            Board.objects.filter(id__in=shared_ids, is_deleted=False)
+            .distinct()
+            .order_by("-created_at")
+        )
+
+        # Dono do board (para exibir na Home em "Compartilhados comigo")
+        owner_by_board = {}
+        if shared_ids:
+            owner_memberships = (
+                BoardMembership.objects.filter(
+                    board_id__in=shared_ids,
+                    role=BoardMembership.Role.OWNER,
+                )
+                .select_related("user")
+            )
+            for m in owner_memberships:
+                # Se houver mais de um owner, mantém o primeiro encontrado
+                if m.board_id not in owner_by_board:
+                    owner_by_board[m.board_id] = m.user
+
+        for b in shared_boards:
+            u = owner_by_board.get(b.id)
+            b.owner_email = (u.email or u.get_username()) if u else ""
+
     else:
         owned_boards = Board.objects.filter(is_deleted=False).order_by("-created_at")
         shared_boards = Board.objects.none()
@@ -186,7 +215,6 @@ def index(request):
             "home_bg_image": home_bg_image,
         },
     )
-
 
 # ======================================================================
 # DETALHE DE UM BOARD
