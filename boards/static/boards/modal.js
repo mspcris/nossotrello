@@ -170,7 +170,14 @@ window.cardOpenTab = function (panelId) {
 
   if (!tabsWithSave.has(panelId)) hideSavebar();
   else maybeShowSavebar();
+
+  // FIX: ao voltar para a aba principal "Atividade", reimpoe a sub-aba correta (evita sumir o "Mover Card")
+  if (panelId === "card-tab-ativ") {
+    const wrap = qs(".ativ-subtab-wrap", body);
+    if (wrap?.__ativShowFromChecked) wrap.__ativShowFromChecked();
+  }
 };
+
 
 // =====================================================
 // Inserir imagem no Quill como base64
@@ -429,7 +436,7 @@ function initAtivSubtabs3(body) {
 
   // export para reaplicar quando a aba principal "Atividade" voltar a ficar visível
   wrap.__ativShowFromChecked = showFromChecked;
-
+}
 
 // =====================================================
 // Inicializa modal (pós-swap)
