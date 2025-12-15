@@ -1,112 +1,126 @@
 // boards/static/boards/board_ui.js
-// Atualiza contador de cards e estado "Nenhum card ainda" em tempo real
-// sem depender do Sortable (usa MutationObserver).
+// Contador + "Nenhum card ainda" em tempo real, sem loop infinito.
+// Estratégia:
+// 1) MutationObserver observa SÓ a lista de cards (evita reagir ao contador/título)
+// 2) Só escreve no DOM quando o valor realmente muda
 
 (function () {
   function qs(sel, root = document) { return root.querySelector(sel); }
   function qsa(sel, root = document) { return Array.from(root.querySelectorAll(sel)); }
 
   function findColumns() {
-    // tenta achar colunas por data-attr ou classes comuns
     const byData = qsa("[data-column-id]");
     if (byData.length) return byData;
 
-    // fallback: heurística (ajuste se você tiver uma classe padrão)
+    const byId = qsa("[id^='column-'], [id^='col-']");
+    if (byId.length) return byId;
+
     return qsa(".column, .board-column, .trello-column, .coluna");
   }
 
   function findCardList(columnEl) {
-    // 1) listas mais prováveis
-    let list = qs("[data-card-list]", columnEl) || qs(".card-list, .cards, ul, ol", columnEl);
-    return list || null;
+    return (
+      qs("[data-card-list]", columnEl) ||
+      qs(".card-list", columnEl) ||
+      qs(".cards", columnEl) ||
+      qs("ul", columnEl) ||
+      qs("ol", columnEl) ||
+      null
+    );
   }
 
-  function countCards(listEl) {
-    if (!listEl) return 0;
-    // pega pelos padrões mais comuns no seu projeto
-    const cards = qsa("li[id^='card-'], li[data-card-id], .card-item, .card", listEl);
-    return cards.length;
+  function countCards(scopeEl) {
+    if (!scopeEl) return 0;
+    return qsa("li[id^='card-'], li[data-card-id], .card-item, .card", scopeEl).length;
   }
 
   function findCounterEl(columnEl) {
-    // preferência: um alvo específico (se existir)
-    let el = qs("[data-card-count]", columnEl) || qs(".col-card-count", columnEl);
-    if (el) return el;
+    // Ideal: você marcar no template com data-card-count
+    const explicit = qs("[data-card-count]", columnEl) || qs(".col-card-count", columnEl);
+    if (explicit) return explicit;
 
-    // fallback: tenta achar um texto tipo "3 cards" em spans pequenos
-    const candidates = qsa("span, p, small, div", columnEl).slice(0, 60);
+    // Fallback seguro: só se o texto for exatamente "X cards"
+    const candidates = qsa("span, small, p, div", columnEl).slice(0, 80);
     for (const c of candidates) {
       const t = (c.textContent || "").trim();
-      if (/\d+\s+cards?\b/i.test(t)) return c;
-      if (/\d+\s+card(s)?\b/i.test(t)) return c;
-      if (/\d+\s+cards?\b/i.test(t)) return c;
-      // português (se você estiver usando "3 cards" mesmo, já cobre acima)
+      if (/^\d+\s+cards?$/i.test(t)) return c;
     }
     return null;
   }
 
-  function findEmptyEl(columnEl) {
-    let el = qs("[data-col-empty]", columnEl) || qs(".col-empty, .column-empty", columnEl);
-    if (el) return el;
+  function findEmptyEls(columnEl) {
+    const els = [];
+    els.push(...qsa("[data-col-empty]", columnEl));
+    els.push(...qsa(".col-empty, .column-empty", columnEl));
 
-    // fallback por texto (último recurso)
-    const candidates = qsa("p, div, span, small", columnEl).slice(0, 80);
+    const candidates = qsa("p, div, span, small", columnEl).slice(0, 120);
     for (const c of candidates) {
       const t = (c.textContent || "").trim().toLowerCase();
-      if (t.includes("nenhum card")) return c;
+      if (t === "nenhum card ainda." || t === "nenhum card ainda") els.push(c);
     }
-    return null;
+    return Array.from(new Set(els));
   }
 
-  function setEmptyVisible(emptyEl, visible) {
-    if (!emptyEl) return;
-    // suporta tailwind e css puro
-    emptyEl.classList.toggle("hidden", !visible);
-    emptyEl.style.display = visible ? "" : "none";
+  function setHidden(el, hidden) {
+    if (!el) return;
+    const alreadyHidden = el.classList.contains("hidden") || el.style.display === "none";
+    if (hidden && alreadyHidden) return;
+    if (!hidden && !alreadyHidden) return;
+
+    el.classList.toggle("hidden", hidden);
+    el.style.display = hidden ? "none" : "";
   }
 
   function refreshColumnUI(columnEl) {
     const list = findCardList(columnEl);
-    const n = countCards(list);
+    const scope = list || columnEl;
+    const n = countCards(scope);
 
     const counterEl = findCounterEl(columnEl);
     if (counterEl) {
-      // mantém formato "X cards"
-      counterEl.textContent = `${n} cards`;
+      const next = `${n} cards`;
+      if ((counterEl.textContent || "").trim() !== next) {
+        counterEl.textContent = next;
+      }
     }
 
-    const emptyEl = findEmptyEl(columnEl);
-    setEmptyVisible(emptyEl, n === 0);
+    const showEmpty = (n === 0);
+    const emptyEls = findEmptyEls(columnEl);
+    emptyEls.forEach((el) => setHidden(el, !showEmpty));
   }
 
   function bindObserverForColumn(columnEl) {
-    const list = findCardList(columnEl);
-    if (!list) return;
-
-    if (list.dataset.cardObserverBound === "1") {
-      // já está monitorando
+    if (columnEl.dataset.colObserverBound === "1") {
       refreshColumnUI(columnEl);
       return;
     }
-    list.dataset.cardObserverBound = "1";
+    columnEl.dataset.colObserverBound = "1";
 
-    const obs = new MutationObserver(() => refreshColumnUI(columnEl));
-    obs.observe(list, { childList: true, subtree: true });
+    const list = findCardList(columnEl);
 
-    // primeira atualização imediata
+    // Observa preferencialmente a lista de cards (evita loop com contador/título)
+    const target = list || columnEl;
+
+    let scheduled = false;
+    const obs = new MutationObserver(() => {
+      if (scheduled) return;
+      scheduled = true;
+      requestAnimationFrame(() => {
+        scheduled = false;
+        refreshColumnUI(columnEl);
+      });
+    });
+
+    obs.observe(target, { childList: true, subtree: true });
+
     refreshColumnUI(columnEl);
   }
 
   function scanAndBind() {
-    const cols = findColumns();
-    cols.forEach(bindObserverForColumn);
+    findColumns().forEach(bindObserverForColumn);
   }
 
-  // DOM inicial
   document.addEventListener("DOMContentLoaded", scanAndBind);
-
-  // Se você usa HTMX em algum ponto do quadro, garante rebind
   document.body.addEventListener("htmx:afterSwap", scanAndBind);
   document.body.addEventListener("htmx:afterSettle", scanAndBind);
-
 })();
