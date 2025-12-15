@@ -46,18 +46,23 @@
             </button>
 
             <!-- Menu -->
-            <div class="relative">
+            <div class="relative" data-color-popover-scope>
                 <button type="button"
-                        class="px-2 py-1 rounded-lg bg-white/20 border border-white/40
-                               text-gray-700 hover:text-gray-900 backdrop-blur-sm transition"
-                        onclick="toggleMenu('{{ column.id }}')">
-                    ⋮
+                class="px-2 py-1 rounded-lg bg-white/20 border border-white/40
+                text-gray-700 hover:text-gray-900 backdrop-blur-sm transition"
+                data-color-popover-trigger
+                aria-expanded="false"
+                onclick="toggleMenu('{{ column.id }}')">
+                ⋮
                 </button>
+
 
                 <!-- Dropdown -->
                 <div id="col-menu-{{ column.id }}"
-                     class="hidden absolute right-0 mt-2 w-48 rounded-lg shadow-lg
+                    data-color-popover
+                        class="hidden absolute right-0 mt-2 w-48 rounded-lg shadow-lg
                             bg-white/90 backdrop-blur-md border border-gray-300 p-3 z-20">
+
 
                     <p class="text-xs text-gray-600 mb-2">Cor da coluna:</p>
 
@@ -118,7 +123,46 @@
 
 <script>
     function toggleMenu(colId) {
-        let el = document.getElementById("col-menu-" + colId);
-        el.classList.toggle("hidden");
+        const el = document.getElementById("col-menu-" + colId);
+        const btn = el?.closest("[data-color-popover-scope]")?.querySelector("[data-color-popover-trigger]");
+        const isHidden = el.classList.contains("hidden");
+
+        // fecha todos antes (evita ficar mais de um aberto)
+        document.querySelectorAll("[data-color-popover]").forEach((p) => p.classList.add("hidden"));
+
+        // abre/fecha o atual
+        if (isHidden) {
+            el.classList.remove("hidden");
+            if (btn) btn.setAttribute("aria-expanded", "true");
+        } else {
+            el.classList.add("hidden");
+            if (btn) btn.setAttribute("aria-expanded", "false");
+        }
+    }
+
+    // instala 1x (mesmo com HTMX trocando HTML)
+    if (!window.__colorPopoverOutsideInstalled) {
+        window.__colorPopoverOutsideInstalled = true;
+
+        document.addEventListener("click", function (e) {
+            document.querySelectorAll("[data-color-popover-scope]").forEach((scope) => {
+                const pop = scope.querySelector("[data-color-popover]");
+                if (!pop || pop.classList.contains("hidden")) return;
+
+                const btn = scope.querySelector("[data-color-popover-trigger]");
+                const clickedInside = pop.contains(e.target) || (btn && btn.contains(e.target));
+                if (!clickedInside) {
+                    pop.classList.add("hidden");
+                    if (btn) btn.setAttribute("aria-expanded", "false");
+                }
+            });
+        }, true);
+
+        document.addEventListener("keydown", function (e) {
+            if (e.key !== "Escape") return;
+            document.querySelectorAll("[data-color-popover]").forEach((p) => p.classList.add("hidden"));
+            document.querySelectorAll("[data-color-popover-trigger]").forEach((b) => b.setAttribute("aria-expanded", "false"));
+        });
     }
 </script>
+
