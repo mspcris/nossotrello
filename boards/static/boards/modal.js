@@ -4,8 +4,8 @@
 // - Savebar sticky só quando houver mudanças
 // - Modal com scroll único em #modal-body.card-modal-scroll (base.html)
 // - Atividade: "Incluir" atualiza histórico e limpa Quill
-// - Sub-abas Atividade (Nova atividade / Histórico / Mover Card) controladas via JS
-// - Sem listeners duplicados após HTMX swap
+// - Abas internas Atividade: Nova atividade / Histórico / Mover Card
+// - Mover: atualiza DOM sem F5 e fecha modal
 // =====================================================
 
 window.currentCardId = null;
@@ -383,7 +383,8 @@ function initAtivSubtabs3(body) {
   function show(which) {
     [vNew, vHist, vMove].forEach((v) => {
       if (!v) return;
-      v.style.display = "none";
+      v.classList.add("hidden");
+      v.classList.remove("block");
     });
 
     const target =
@@ -391,22 +392,24 @@ function initAtivSubtabs3(body) {
       which === "move" ? vMove :
       vNew;
 
-    if (target) target.style.display = "block";
+    if (target) {
+      target.classList.remove("hidden");
+      target.classList.add("block");
+    }
 
-    if (
-      which === "move" &&
-      window.currentCardId &&
-      typeof window.loadMoveCardOptions === "function"
-    ) {
+    if (which === "move" && window.currentCardId && typeof window.loadMoveCardOptions === "function") {
       window.loadMoveCardOptions(window.currentCardId);
     }
   }
+
+  // exporta o show para uso interno (submitActivity / etc)
+  wrap.__ativShow = show;
 
   if (rMove?.checked) show("move");
   else if (rHist?.checked) show("hist");
   else show("new");
 
-  if (rNew)  rNew.addEventListener("change", () => { if (rNew.checked) show("new"); });
+  if (rNew) rNew.addEventListener("change", () => { if (rNew.checked) show("new"); });
   if (rHist) rHist.addEventListener("change", () => { if (rHist.checked) show("hist"); });
   if (rMove) rMove.addEventListener("change", () => { if (rMove.checked) show("move"); });
 }
@@ -428,8 +431,6 @@ window.initCardModal = function () {
 
   initQuillDesc(body);
   initQuillAtividade(body);
-
-  // sub-abas Atividade (3)
   initAtivSubtabs3(body);
 
   if (window.Prism) Prism.highlightAll();
@@ -566,29 +567,25 @@ window.submitActivity = async function (cardId) {
 
   window.clearActivityEditor();
 
-  // volta pra aba "Histórico" e força re-aplicação do show/hide
+  // FIX: marcar checked não dispara change → então a aba não “abre”
   const histRadio = document.getElementById("ativ-tab-hist");
   if (histRadio) {
-  histRadio.checked = true;
+    histRadio.checked = true;
+    histRadio.dispatchEvent(new Event("change", { bubbles: true }));
+  }
 
-  // Importante: setar .checked NÃO dispara "change" automaticamente.
-  // Como o show/hide está amarrado no listener de change (initAtivSubtabs3),
-  // precisamos disparar o evento para efetivamente abrir a view do Histórico.
-  histRadio.dispatchEvent(new Event("change", { bubbles: true }));
-}
-
-  initAtivSubtabs3(body); // safe: tem guard no dataset
+  // fallback adicional: se por algum motivo listeners não existirem
+  const wrap = qs(".ativ-subtab-wrap", body);
+  if (wrap?.__ativShow) wrap.__ativShow("hist");
 
   if (window.Prism) Prism.highlightAll();
 };
-
 
 // =====================================================
 // Mover Card (sub-aba em Atividade)
 // - carrega opções via GET /card/<id>/move/options/
 // - move via POST /move-card/ (JSON)
-// - atualiza DOM da board (sem F5) quando for o mesmo board
-// - fecha modal ao concluir
+// - após mover: atualiza DOM (sem F5) e fecha modal
 // =====================================================
 
 function getCurrentBoardIdFromUrl() {
@@ -597,7 +594,6 @@ function getCurrentBoardIdFromUrl() {
 }
 
 function findColumnContainer(columnId) {
-  // tenta padrões comuns sem depender do HTML exato
   const selectors = [
     `#column-${columnId} .cards`,
     `#column-${columnId} ul`,
@@ -624,15 +620,12 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
   const target = findColumnContainer(newColumnId);
   if (!target) return false;
 
-  // pega candidatos de "itens de card" dentro do destino
-  // (se o seu DOM for diferente, ajuste aqui com um seletor mais específico)
   const items = Array.from(
-    target.querySelectorAll("[data-card-id], li[id^='card-'], .card")
+    target.querySelectorAll("[data-card-id], li[id^='card-'], #card-" + cardId + ", .card")
   );
 
   const idx = Math.max(0, Number(newPosition0 || 0));
 
-  // move nó para o destino
   if (items[idx]) target.insertBefore(cardEl, items[idx]);
   else target.appendChild(cardEl);
 
@@ -681,6 +674,7 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
     };
   }
 
+  // Exposto pro template
   window.loadMoveCardOptions = async function (cardId) {
     const { boardSel, colSel, posSel } = getMoveEls();
     if (!boardSel || !colSel || !posSel) return;
@@ -696,21 +690,36 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
     setCurrentLocationText("carregando…");
 
     let data;
+    let status = 0;
+    let raw = "";
+
     try {
       const r = await fetch(`/card/${cardId}/move/options/`, {
-        headers: { "X-Requested-With": "XMLHttpRequest" },
+        headers: {
+          "X-Requested-With": "XMLHttpRequest",
+          "Accept": "application/json",
+        },
         credentials: "same-origin",
       });
 
-      if (!r.ok) {
-        const t = await r.text().catch(() => "");
-        throw new Error(t || `HTTP ${r.status}`);
-      }
+      status = r.status;
 
-      data = await r.json();
+      // Para diagnosticar VM: pode vir HTML/redirect. Então lemos text e parseamos.
+      raw = await r.text();
+
+      if (!r.ok) throw new Error(raw || `HTTP ${status}`);
+
+      try {
+        data = JSON.parse(raw);
+      } catch (e) {
+        throw new Error(`Resposta não é JSON (HTTP ${status}). Início: ${raw.slice(0, 120)}`);
+      }
     } catch (e) {
+      console.error("[move/options] erro:", e);
       setCurrentLocationText("—");
-      setMoveError("Falha ao carregar opções de mover.");
+      setMoveError(
+        `Falha ao carregar opções de mover. ${status ? `HTTP ${status}. ` : ""}${String(e?.message || "").slice(0, 180)}`
+      );
       fillSelect(boardSel, `<option value="">Erro ao carregar</option>`);
       return;
     }
@@ -789,6 +798,7 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
     }
   };
 
+  // Exposto pro template
   window.submitMoveCard = async function (cardId) {
     const { boardSel, colSel, posSel } = getMoveEls();
     if (!boardSel || !colSel || !posSel) return;
@@ -833,32 +843,30 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
       return;
     }
 
-    // Se mover para outro board: não dá para refletir 100% sem navegar.
-    // Estratégia segura: fecha modal e reload para manter consistência da tela.
+    // 1) Atualiza DOM na board (sem F5)
     const currentBoardId = getCurrentBoardIdFromUrl();
     const targetBoardId = Number(boardId);
 
+    // Mover para outro quadro: reload garante consistência (card some do quadro atual)
     if (currentBoardId && targetBoardId && currentBoardId !== targetBoardId) {
       closeModal();
       window.location.reload();
       return;
     }
 
-    // Mesmo board: tenta atualizar DOM sem F5
+    // tenta mover nó do card pra coluna/posição nova
     const moved = moveCardDom(cardId, Number(columnId), payload.new_position);
 
-    if (!moved) {
-      // fallback: se não achou container/card, reload garante consistência
+    // refresh do snippet garante update de labels/título/etc
+    if (moved) {
+      window.refreshCardSnippet(cardId);
+    } else {
       closeModal();
       window.location.reload();
       return;
     }
 
-    // Atualiza o snippet no novo lugar (melhora consistência visual)
-    // (isso mantém o card na coluna nova, porque o target #card-<id> agora está lá)
-    window.refreshCardSnippet(cardId);
-
-    // ação final: fecha modal
+    // 2) Fecha modal (move = ação final)
     closeModal();
   };
 })();
