@@ -1,3 +1,4 @@
+{# boards/templates/boards/partials/card_modal_content.html #}
 {% load tag_helpers %}
 
 <!-- CONTEÚDO INTERNO DO MODAL DO CARD -->
@@ -33,8 +34,7 @@
     <!-- =========================
          ABA DESCRIÇÃO
          ========================= -->
-    <div id="card-tab-desc" class="card-tab-panel block">
-
+    <div id="card-tab-desc" class="card-tab-panel" data-panel="desc">
       <label class="block text-sm font-medium mb-1">Título</label>
       <input type="text" name="title" value="{{ card.title }}"
              class="w-full border rounded px-3 py-2 mb-3">
@@ -49,8 +49,7 @@
     <!-- =========================
          ABA ETIQUETAS
          ========================= -->
-    <div id="card-tab-tags" class="card-tab-panel hidden">
-
+    <div id="card-tab-tags" class="card-tab-panel hidden" data-panel="tags">
       <label class="block text-sm font-medium mb-1">Etiquetas</label>
       <input type="text" name="tags" value="{{ card.tags|default_if_none:'' }}"
              class="w-full border rounded px-3 py-2 mb-2">
@@ -83,7 +82,7 @@
        ABA CHECKLISTS
        (sem scroll interno — usa o scroll único do modal)
        ========================= -->
-  <div id="card-tab-check" class="card-tab-panel hidden">
+  <div id="card-tab-check" class="card-tab-panel hidden" data-panel="check">
 
     <form method="post"
           hx-post="{% url 'boards:checklist_add' card.id %}"
@@ -114,7 +113,7 @@
   <!-- =========================
        ABA ATIVIDADE (sub-abas: Nova atividade / Histórico / Mover Card)
        ========================= -->
-  <div id="card-tab-ativ" class="card-tab-panel hidden">
+  <div id="card-tab-ativ" class="card-tab-panel hidden" data-panel="ativ">
 
     <div class="ativ-subtab-wrap">
 
@@ -126,7 +125,6 @@
         <label for="ativ-tab-new" class="ativ-subtab-btn">Nova atividade</label>
         <label for="ativ-tab-hist" class="ativ-subtab-btn">Histórico</label>
         <label for="ativ-tab-move" class="ativ-subtab-btn">Mover Card</label>
-
       </div>
 
       <div class="ativ-subtab-views">
@@ -216,7 +214,7 @@
   <!-- =========================
        ABA ANEXOS
        ========================= -->
-  <div id="card-tab-files" class="card-tab-panel hidden">
+  <div id="card-tab-files" class="card-tab-panel hidden" data-panel="files">
 
     <div class="mb-4">
       <label class="block text-sm font-medium mb-2">Enviar novo anexo:</label>

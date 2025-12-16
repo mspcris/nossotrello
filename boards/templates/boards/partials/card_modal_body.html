@@ -1,3 +1,4 @@
+{# boards/templates/boards/partials/card_modal_body.html #}
 {% load tag_helpers %}
 
 {# CAPA DO CARD #}
@@ -64,9 +65,6 @@
   });
 })();
 </script>
-
-
-
 
 <script>
 (function () {
@@ -162,5 +160,45 @@
       initChecklistDnD();
     }
   });
+})();
+</script>
+
+<script>
+(function () {
+  // instala listeners 1x, mas re-inicializa sempre que o body do modal for trocado
+  if (!window.__modalTabsBootInstalled) {
+    window.__modalTabsBootInstalled = true;
+
+    document.addEventListener("DOMContentLoaded", () => window.__initModalTabs?.());
+    document.body.addEventListener("htmx:afterSwap", (evt) => {
+      const t = evt.target;
+      if (!t) return;
+      if (t.id === "modal-body" || t.closest?.("#modal-body")) window.__initModalTabs?.();
+    });
+  }
+
+  window.__initModalTabs = function () {
+    const modal = document.getElementById("modal") || document.querySelector(".card-modal-root");
+    if (!modal) return;
+
+    // As tabs ficam no header do modal (fora do modal-body). Por isso o root é o #modal.
+    const tabs = modal.querySelectorAll(".tab-btn[data-tab]");
+    const panels = modal.querySelectorAll(".card-tab-panel[data-panel]");
+    if (!tabs.length || !panels.length) return;
+
+    function activate(name) {
+      tabs.forEach(t => t.classList.toggle("active", t.dataset.tab === name));
+      panels.forEach(p => p.classList.toggle("hidden", p.dataset.panel !== name));
+    }
+
+    tabs.forEach(t => {
+      if (t.dataset.bound === "1") return;
+      t.dataset.bound = "1";
+      t.addEventListener("click", () => activate(t.dataset.tab));
+    });
+
+    // default
+    activate("desc");
+  };
 })();
 </script>
