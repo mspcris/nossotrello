@@ -175,6 +175,13 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 
 # ============================================================
+# Limites de upload no Django (não resolve 413 do Nginx, mas evita gargalos no app)
+# ============================================================
+
+DATA_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024   # 100MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024   # 100MB
+
+# ============================================================
 # PADRÃO DJANGO
 # ============================================================
 
