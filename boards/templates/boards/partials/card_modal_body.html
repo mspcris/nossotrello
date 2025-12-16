@@ -64,3 +64,103 @@
   });
 })();
 </script>
+
+
+
+
+<script>
+(function () {
+  if (window.__checklistDnDPersistInstalled) return;
+  window.__checklistDnDPersistInstalled = true;
+
+  function getCSRF() {
+    return document.querySelector("meta[name='csrf-token']")?.content
+      || document.querySelector("[name=csrfmiddlewaretoken]")?.value
+      || "";
+  }
+
+  function initChecklistDnD() {
+    const container = document.getElementById("checklists-container");
+    if (!container) return;
+
+    const urlReorderChecklists = container.dataset.reorderChecklistsUrl;
+    const urlReorderItems = container.dataset.reorderItemsUrl;
+
+    // Sortable: checklists
+    if (container.dataset.sortableChecklistsApplied !== "1") {
+      container.dataset.sortableChecklistsApplied = "1";
+
+      new Sortable(container, {
+        animation: 160,
+        ghostClass: "drag-ghost",
+        chosenClass: "drag-chosen",
+        draggable: ".checklist-block",
+        handle: ".checklist-drag",
+        onEnd: () => {
+          const order = Array.from(container.querySelectorAll(".checklist-block"))
+            .map(el => Number(el.getAttribute("data-checklist-id")))
+            .filter(Boolean);
+
+          fetch(urlReorderChecklists, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": getCSRF()
+            },
+            body: JSON.stringify({ order })
+          });
+        }
+      });
+    }
+
+    // Sortable: items (entre checklists)
+    container.querySelectorAll(".checklist-items").forEach(list => {
+      if (list.dataset.sortableItemsApplied === "1") return;
+      list.dataset.sortableItemsApplied = "1";
+
+      new Sortable(list, {
+        group: "checklist-items",
+        animation: 160,
+        ghostClass: "drag-ghost",
+        chosenClass: "drag-chosen",
+        draggable: ".checklist-item",
+        handle: ".item-drag",
+        onEnd: (evt) => {
+          const touched = [evt.from, evt.to].filter((x, i, a) => x && a.indexOf(x) === i);
+
+          const updates = [];
+          touched.forEach(l => {
+            const checklistId = Number(l.getAttribute("data-checklist-id"));
+            Array.from(l.querySelectorAll(".checklist-item")).forEach((itemEl, idx) => {
+              updates.push({
+                item_id: Number(itemEl.getAttribute("data-item-id")),
+                checklist_id: checklistId,
+                position: idx
+              });
+            });
+          });
+
+          fetch(urlReorderItems, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": getCSRF()
+            },
+            body: JSON.stringify({ updates })
+          });
+        }
+      });
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", initChecklistDnD);
+  document.body.addEventListener("htmx:afterSwap", (evt) => {
+    const t = evt.target;
+    if (!t) return;
+
+    if (t.id === "checklist-list" || t.id === "modal-body" || t.closest?.("#modal-body")) {
+      initChecklistDnD();
+    }
+  });
+})();
+</script>

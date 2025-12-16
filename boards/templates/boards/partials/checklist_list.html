@@ -1,9 +1,11 @@
 {# templates/boards/partials/checklist_list.html #}
 
-<div id="checklists-container" class="checklists-container space-y-4">
-  {% for checklist in card.checklists.all %}
-    <div class="checklist-card checklist-block"
-         data-checklist-id="{{ checklist.id }}">
+<div id="checklists-container"
+     class="checklists-container space-y-4"
+     data-card-id="{{ card.id }}"
+     data-reorder-checklists-url="{% url 'boards:checklists_reorder' card.id %}"
+     data-reorder-items-url="{% url 'boards:checklist_items_reorder' card.id %}">
+
 
       <!-- header -->
       <div class="checklist-head flex items-center gap-2">
@@ -50,8 +52,8 @@
       {% endwith %}
 
       <!-- itens (draggable container) -->
-      <div class="checklist-items space-y-1"
-           data-checklist-id="{{ checklist.id }}">
+        <div class="checklist-items space-y-1" data-checklist-id="{{ checklist.id }}">
+
         {% for item in checklist.items.all %}
           {% include "boards/partials/checklist_item.html" %}
         {% empty %}
