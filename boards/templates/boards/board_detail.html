@@ -265,8 +265,9 @@
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "X-CSRFToken": document.querySelector("meta[name='csrf-token']")?.content || ""
-          },
+            "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]")?.value || ""
+        },
+
           body: JSON.stringify({ order })
         });
       }
@@ -290,11 +291,14 @@
 
         fetch(`/board/${boardId}/rename/`, {
             method: "POST",
-            headers: { "X-CSRFToken": document.querySelector("meta[name='csrf-token']").content },
+            headers: {
+                "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]")?.value || ""
+            },
             body: formData
         });
     }
 </script>
+
 
 <script>
     let deleteCardsMode = false;
