@@ -1305,3 +1305,23 @@ html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !import
 #card-modal-root.theme-dark label{
   color: rgba(241,245,249,0.85) !important;
 }
+
+
+/* =======================================================================
+   FIX: X (Fechar) legível no tema dark
+   ======================================================================= */
+#card-modal-root.card-theme-dark .modal-top-x{
+  background: rgba(0,0,0,0.55) !important;
+  border: 1px solid rgba(255,255,255,0.22) !important;
+  border-radius: 10px !important;
+  box-shadow:
+    0 10px 26px rgba(0,0,0,0.55),
+    inset 0 0 0 1px rgba(255,255,255,0.10) !important;
+}
+
+/* aumenta contraste do “metal” */
+#card-modal-root.card-theme-dark .modal-top-x::before{
+  filter:
+    drop-shadow(0 2px 2px rgba(0,0,0,0.90))
+    drop-shadow(0 0 14px rgba(255,255,255,0.25)) !important;
+}
