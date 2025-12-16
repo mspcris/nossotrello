@@ -46,7 +46,7 @@ body {
   --border-light: rgba(255,255,255,0.25);
   --border-dark: rgba(255,255,255,0.14);
 
-  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-bg: rgba(255, 255, 255, 0.86);
   --glass-blur: blur(16px) saturate(140%);
 
   --shadow-thumb: rgba(0,0,0,0.25);
@@ -1236,4 +1236,72 @@ html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !import
 #modal:not(.hidden) #card-modal-root{
   opacity: 1 !important;
   transform: translateY(0) scale(1) !important;
+}
+
+
+
+/* =======================================================================
+   MODAL THEMES (2 modos): GLASS (menos transparente) e DARK
+   Uso: classes no #card-modal-root -> theme-glass | theme-dark
+   ======================================================================= */
+
+/* Overlay do fundo (atrás do modal) por tema */
+#modal.theme-glass { background: rgba(0,0,0,0.25); }
+#modal.theme-dark  { background: rgba(0,0,0,0.55); }
+
+/* ===== GLASS (menos transparente) ===== */
+#card-modal-root.theme-glass{
+  --glass-bg: rgba(255,255,255,0.86);
+  --glass-blur: blur(14px) saturate(140%);
+  color: #111;
+}
+
+/* Abas e savebar com mais corpo no glass */
+#card-modal-root.theme-glass #card-tabs{
+  background: rgba(255,255,255,0.45) !important;
+}
+#card-modal-root.theme-glass .card-savebar{
+  background: rgba(255,255,255,0.55);
+  border: 1px solid rgba(0,0,0,0.08);
+}
+
+/* ===== DARK ===== */
+#card-modal-root.theme-dark{
+  --glass-bg: rgba(0,0,0,0.62);
+  --glass-blur: blur(12px) saturate(130%);
+  color: rgba(241,245,249,0.95);
+  border: 1px solid rgba(255,255,255,0.12) !important;
+}
+
+/* Abas e savebar no dark */
+#card-modal-root.theme-dark #card-tabs{
+  background: rgba(0,0,0,0.55) !important;
+  border-bottom: 1px solid rgba(255,255,255,0.10) !important;
+}
+#card-modal-root.theme-dark .card-tab-btn{
+  background: rgba(255,255,255,0.06) !important;
+  color: rgba(241,245,249,0.80) !important;
+}
+#card-modal-root.theme-dark .card-tab-active{
+  background: rgba(255,255,255,0.16) !important;
+  color: #fff !important;
+  border-bottom-color: rgba(255,255,255,0.70) !important;
+}
+#card-modal-root.theme-dark .card-savebar{
+  background: rgba(0,0,0,0.40);
+  border: 1px solid rgba(255,255,255,0.12);
+}
+
+/* Inputs no dark (sem depender do html.dark) */
+#card-modal-root.theme-dark input,
+#card-modal-root.theme-dark textarea,
+#card-modal-root.theme-dark select,
+#card-modal-root.theme-dark .ql-container,
+#card-modal-root.theme-dark .ql-editor{
+  background: rgba(20,20,20,0.55) !important;
+  border: 1px solid rgba(255,255,255,0.14) !important;
+  color: rgba(241,245,249,0.95) !important;
+}
+#card-modal-root.theme-dark label{
+  color: rgba(241,245,249,0.85) !important;
 }

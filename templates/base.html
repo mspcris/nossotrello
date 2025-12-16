@@ -192,11 +192,25 @@
                 onclick="cardOpenTab('card-tab-files')">Anexos</button>
       </div>
 
-      <!-- X (lado direito) -->
-      <button class="modal-top-x"
-              onclick="refreshCardSnippet(window.currentCardId); closeModal();"
-              aria-label="Fechar"
-              title="Fechar">X</button>
+<!-- Theme toggle (lado direito, antes do X) -->
+<div class="flex items-center gap-2 mr-2">
+  <button type="button" class="theme-dot"
+          style="background: rgba(255,255,255,0.90); border-color: rgba(0,0,0,0.20);"
+          title="Glass"
+          onclick="window.setModalTheme?.('glass')"></button>
+
+  <button type="button" class="theme-dot"
+          style="background: #0b0b0b;"
+          title="Dark"
+          onclick="window.setModalTheme?.('dark')"></button>
+</div>
+
+<!-- X (lado direito) -->
+<button class="modal-top-x"
+        onclick="refreshCardSnippet(window.currentCardId); closeModal();"
+        aria-label="Fechar"
+        title="Fechar">X</button>
+
     </div>
 
     

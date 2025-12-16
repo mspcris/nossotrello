@@ -912,3 +912,45 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
     closeModal();
   };
 })();
+
+
+
+// ===== Modal Theme: glass | dark (persistente) =====
+(function () {
+  function apply(theme) {
+    const modal = document.getElementById("modal");
+    const root  = document.getElementById("card-modal-root");
+    if (!modal || !root) return;
+
+    const isDark = theme === "dark";
+
+    modal.classList.toggle("theme-dark",  isDark);
+    modal.classList.toggle("theme-glass", !isDark);
+
+    root.classList.toggle("theme-dark",  isDark);
+    root.classList.toggle("theme-glass", !isDark);
+
+    // se você quiser manter o “aero” no glass:
+    root.classList.toggle("card-theme-aero", !isDark);
+    root.classList.toggle("card-theme-dark", isDark);
+
+    localStorage.setItem("modalTheme", isDark ? "dark" : "glass");
+  }
+
+  window.setModalTheme = function (theme) {
+    apply(theme || "glass");
+  };
+
+  // default
+  document.addEventListener("DOMContentLoaded", function () {
+    apply(localStorage.getItem("modalTheme") || "glass");
+  });
+
+  // HTMX swaps: reaplica após trocar conteúdo do modal
+  document.body.addEventListener("htmx:afterSwap", function (evt) {
+    const t = evt.target;
+    if (t && (t.id === "modal-body" || t.closest?.("#modal"))) {
+      apply(localStorage.getItem("modalTheme") || "glass");
+    }
+  });
+})();
