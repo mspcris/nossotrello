@@ -7,8 +7,6 @@
      data-reorder-checklists-url="{% url 'boards:checklists_reorder' card.id %}"
      data-reorder-items-url="{% url 'boards:checklist_items_reorder' card.id %}">
 
-    {# Se a view passar "checklists" anotado (done/total), usa ele.
-       Caso contrário, cai no card.checklists.all e o "done" vira 0 (sem 500). #}
     {% for checklist in checklists|default:card.checklists.all %}
 
       <div class="checklist-block space-y-2"

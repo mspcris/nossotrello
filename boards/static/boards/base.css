@@ -1246,15 +1246,12 @@ html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !import
    ======================================================================= */
 
 /* Overlay do fundo (atrás do modal) por tema */
-#modal.theme-glass { background: rgba(0,0,0,0.25); }
-#modal.theme-dark  { background: rgba(0,0,0,0.55); }
-
-/* ===== GLASS (menos transparente) ===== */
 #card-modal-root.theme-glass{
-  --glass-bg: rgba(255,255,255,0.86);
-  --glass-blur: blur(14px) saturate(140%);
+  --glass-bg: rgba(255,255,255,0.95);   /* 0.86 -> 0.95 */
+  --glass-blur: blur(12px) saturate(140%); /* opcional: um pouco menos “névoa” */
   color: #111;
 }
+
 
 /* Abas e savebar com mais corpo no glass */
 #card-modal-root.theme-glass #card-tabs{
@@ -1569,4 +1566,53 @@ html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !import
    ============================================================ */
 #card-modal-root.cm-mode #card-tabs{
   display: none !important;
+}
+
+/* =========================
+   FIX CONTRASTE: tema branco/glass
+   ========================= */
+
+/* 1) cor base do texto no modal */
+#card-modal-root.card-theme-white,
+#card-modal-root.theme-glass{
+  color: #111 !important;
+}
+
+/* 2) labels, textos e conteúdo em geral */
+#card-modal-root.card-theme-white label,
+#card-modal-root.theme-glass label,
+#card-modal-root.card-theme-white .activity-content,
+#card-modal-root.theme-glass .activity-content,
+#card-modal-root.card-theme-white .activity-meta,
+#card-modal-root.theme-glass .activity-meta{
+  color: #111 !important;
+}
+
+/* 3) inputs/textarea/quill: texto + placeholder legível */
+#card-modal-root.card-theme-white input,
+#card-modal-root.card-theme-white textarea,
+#card-modal-root.card-theme-white select,
+#card-modal-root.card-theme-white .ql-editor,
+#card-modal-root.theme-glass input,
+#card-modal-root.theme-glass textarea,
+#card-modal-root.theme-glass select,
+#card-modal-root.theme-glass .ql-editor{
+  color: #111 !important;
+}
+
+#card-modal-root.card-theme-white input::placeholder,
+#card-modal-root.card-theme-white textarea::placeholder,
+#card-modal-root.theme-glass input::placeholder,
+#card-modal-root.theme-glass textarea::placeholder{
+  color: rgba(0,0,0,0.55) !important;
+}
+
+/* 4) abas (pra não ficar “lavado”) */
+#card-modal-root.card-theme-white .card-tab-btn,
+#card-modal-root.theme-glass .card-tab-btn{
+  color: rgba(0,0,0,0.78) !important;
+}
+#card-modal-root.card-theme-white .card-tab-active,
+#card-modal-root.theme-glass .card-tab-active{
+  color: #111 !important;
 }
