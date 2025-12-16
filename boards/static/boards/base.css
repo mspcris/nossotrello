@@ -1064,6 +1064,81 @@ html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !import
     drop-shadow(0 0 24px rgba(120,220,255,0.35));
 }
 
+
+
+
+/* =======================================================================
+   FIX: CAPA/IMAGEM NO CARD + MODAL (preview sem crop agressivo)
+   Estratégia:
+   - limitar altura
+   - trocar cover -> contain no preview
+   - funcionar tanto para <img> quanto para <div style="background-image">
+   ======================================================================= */
+
+:root{
+  --card-cover-thumb-h: 110px;                 /* altura no card da coluna */
+  --card-cover-modal-h: clamp(110px, 14vh, 180px); /* altura no modal */
+  --card-cover-bg: rgba(0,0,0,0.10);           /* “letterbox” discreto */
+}
+
+/* ======================
+   BOARD (cards na coluna)
+   ====================== */
+#columns-wrapper li[data-card-id] .card-cover-wrap{
+  max-height: var(--card-cover-thumb-h) !important;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+}
+
+#columns-wrapper li[data-card-id] .card-cover-img{
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;     /* <-- tira o corte */
+  background: var(--card-cover-bg) !important;
+  display: block;
+}
+
+/* se a capa for um container com background-image */
+#columns-wrapper li[data-card-id] .card-cover-img:not(img){
+  background-size: contain !important; /* <-- tira o corte */
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-color: var(--card-cover-bg) !important;
+}
+
+/* ===============
+   MODAL (capa topo)
+   =============== */
+#card-modal-root .card-cover-wrap{
+  max-height: var(--card-cover-modal-h) !important;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+}
+
+#card-modal-root .card-cover-img{
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;      /* <-- tira o corte */
+  background: var(--card-cover-bg) !important;
+  display: block;
+}
+
+/* se a capa do modal for um container com background-image */
+#card-modal-root .card-cover-img:not(img){
+  background-size: contain !important; /* <-- tira o corte */
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-color: var(--card-cover-bg) !important;
+}
+
+/* UX: deixa claro que dá pra clicar */
+#columns-wrapper li[data-card-id] .card-cover-img,
+#card-modal-root .card-cover-img{
+  cursor: zoom-in;
+}
+
+
+
 /* =======================================================================
    FIM
    ======================================================================= */
