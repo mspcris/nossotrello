@@ -265,6 +265,21 @@ class Checklist(models.Model):
     def __str__(self):
         return f"Checklist '{self.title}' do card {self.card.id}"
 
+    @property
+    def total_items(self) -> int:
+        try:
+            return self.items.count()
+        except Exception:
+            return 0
+
+    @property
+    def done_items(self) -> int:
+        try:
+            return self.items.filter(is_done=True).count()
+        except Exception:
+            return 0
+
+
 
 # ============================================================
 # CHECKLIST ITEM

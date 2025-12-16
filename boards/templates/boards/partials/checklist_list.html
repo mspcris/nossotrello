@@ -6,9 +6,12 @@
      data-reorder-checklists-url="{% url 'boards:checklists_reorder' card.id %}"
      data-reorder-items-url="{% url 'boards:checklist_items_reorder' card.id %}">
 
+  {% for checklist in card.checklists.all %}
+    <div class="bg-white/70 rounded border px-3 py-2 checklist-block"
+         data-checklist-id="{{ checklist.id }}">
 
       <!-- header -->
-      <div class="checklist-head flex items-center gap-2">
+      <div class="checklist-head flex items-center gap-2 mb-2">
         <button type="button"
                 class="checklist-drag checklist-handle"
                 title="Arrastar checklist"
@@ -17,7 +20,7 @@
         <input
           type="text"
           value="{{ checklist.title }}"
-          class="checklist-title flex-1"
+          class="checklist-title flex-1 border rounded px-2 py-1 text-sm"
           hx-post="{% url 'boards:checklist_rename' checklist.id %}"
           hx-trigger="change"
           name="title"
@@ -25,7 +28,7 @@
 
         <button
           type="button"
-          class="checklist-icon-btn danger"
+          class="text-xs text-red-600 px-2 py-1"
           hx-post="{% url 'boards:checklist_delete' checklist.id %}"
           hx-confirm="Remover este checklist?"
           hx-target="#checklist-list"
@@ -36,46 +39,53 @@
       </div>
 
       <!-- progress -->
-      {% with total=checklist.items.count done=checklist.items.filter.count %}
-      {% endwith %}
       {% with total=checklist.items.count done=checklist.items.filter(is_done=True).count %}
         {% if total %}
-          <div class="checklist-progress">
-            <div class="checklist-progress-meta">
-              <span>{{ done }}/{{ total }}</span>
-            </div>
-            <div class="checklist-progress-bar">
-              <div class="checklist-progress-fill" style="width:{% widthratio done total 100 %}%"></div>
+          <div class="checklist-progress mb-2">
+            <div class="text-xs text-gray-600 mb-1">{{ done }}/{{ total }}</div>
+            <div class="h-2 rounded bg-black/10 overflow-hidden">
+              <div class="h-2 rounded bg-blue-600" style="width:{% widthratio done total 100 %}%"></div>
             </div>
           </div>
         {% endif %}
       {% endwith %}
 
       <!-- itens (draggable container) -->
-        <div class="checklist-items space-y-1" data-checklist-id="{{ checklist.id }}">
-
+      <div class="checklist-items space-y-1" data-checklist-id="{{ checklist.id }}">
         {% for item in checklist.items.all %}
           {% include "boards/partials/checklist_item.html" %}
         {% empty %}
-          <p class="checklist-empty">Nenhum item ainda.</p>
+          <p class="text-xs text-gray-400">Nenhum item ainda.</p>
         {% endfor %}
       </div>
 
-      <!-- add item (UX estilo Trello) -->
-      <div class="checklist-add">
-        <button type="button" class="checklist-add-open">Adicionar um item</button>
+      <!-- add item -->
+      <div class="checklist-add mt-2">
+        <button type="button"
+                class="checklist-add-open text-xs px-2 py-1 border rounded bg-white hover:bg-gray-100">
+          Adicionar um item
+        </button>
 
         <form method="post"
-              class="checklist-add-form hidden"
+              class="checklist-add-form hidden mt-2"
               hx-post="{% url 'boards:checklist_add_item' checklist.id %}"
               hx-target="#checklist-list"
               hx-swap="innerHTML">
           {% csrf_token %}
 
-          <input type="text" name="text" class="checklist-add-input" placeholder="Nova tarefa…">
-          <div class="checklist-add-actions">
-            <button type="submit" class="checklist-add-btn">Adicionar</button>
-            <button type="button" class="checklist-add-cancel">Cancelar</button>
+          <input type="text" name="text"
+                 class="w-full border rounded px-2 py-1 text-xs"
+                 placeholder="Nova tarefa…">
+
+          <div class="flex gap-2 mt-2">
+            <button type="submit"
+                    class="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">
+              Adicionar
+            </button>
+            <button type="button"
+                    class="checklist-add-cancel px-2 py-1 border rounded text-xs">
+              Cancelar
+            </button>
           </div>
         </form>
       </div>
@@ -86,4 +96,31 @@
       Nenhum checklist ainda. Crie o primeiro no campo acima.
     </p>
   {% endfor %}
+
 </div>
+
+<script>
+(function () {
+  if (window.__checklistAddUXInstalled) return;
+  window.__checklistAddUXInstalled = true;
+
+  document.body.addEventListener("click", function (e) {
+    const openBtn = e.target.closest(".checklist-add-open");
+    if (openBtn) {
+      const wrap = openBtn.closest(".checklist-add");
+      wrap?.querySelector(".checklist-add-form")?.classList.remove("hidden");
+      openBtn.classList.add("hidden");
+      wrap?.querySelector("input[name='text']")?.focus();
+      return;
+    }
+
+    const cancelBtn = e.target.closest(".checklist-add-cancel");
+    if (cancelBtn) {
+      const wrap = cancelBtn.closest(".checklist-add");
+      wrap?.querySelector(".checklist-add-form")?.classList.add("hidden");
+      wrap?.querySelector(".checklist-add-open")?.classList.remove("hidden");
+      return;
+    }
+  });
+})();
+</script>
