@@ -1,204 +1,25 @@
 {# boards/templates/boards/partials/card_modal_body.html #}
-{% load tag_helpers %}
 
-{# CAPA DO CARD #}
-{% if card.cover_image %}
-  <div class="px-4 pt-4">
-    <div class="group relative rounded-xl overflow-hidden border border-white/20 card-cover-wrap">
-      <a href="{{ card.cover_image.url }}" target="_blank" rel="noopener" class="block">
-        <img
-          src="{{ card.cover_image.url }}"
-          alt="Capa do card"
-          class="card-cover-img w-full object-cover"
-        >
-      </a>
-
-      <button
-        type="button"
-        class="card-cover-remove absolute top-2 right-2 px-2 py-1 rounded text-xs
-               opacity-0 group-hover:opacity-100 transition"
-        hx-post="{% url 'boards:remove_card_cover' card.id %}"
-        hx-target="#modal-body"
-        hx-swap="innerHTML"
-        aria-label="Remover capa"
-        title="Remover capa"
-      >
-        ✕
-      </button>
-    </div>
+<div class="p-4 space-y-3">
+  <div class="text-xl font-semibold">
+    {{ card.title }}
   </div>
-{% endif %}
 
-{# CONTEÚDO DO MODAL #}
-{% include "boards/partials/card_modal_content.html" %}
+  <div class="text-sm opacity-80">
+    Card #{{ card.id }} • Coluna: {{ card.column.name }} • Quadro: {{ card.column.board.name }}
+  </div>
 
-<script>
-(function () {
-  // evita registrar listener múltiplas vezes
-  if (window.__activityClearHookInstalled) return;
-  window.__activityClearHookInstalled = true;
+  <hr class="my-3">
 
-  document.body.addEventListener("htmx:afterRequest", function (evt) {
-    if (!evt?.detail?.successful) return;
+  <div class="prose max-w-none">
+    {{ card.description|default_if_none:""|safe }}
+  </div>
 
-    // garante que foi o POST de "add_activity"
-    const responseURL = evt.detail?.xhr?.responseURL || "";
-    if (!responseURL.includes("/activity/add/")) return;
-
-    // limpa APENAS o editor dentro do form que disparou o request
-    const trigger = evt.target;
-    const form = trigger?.closest?.("form");
-    if (!form) return;
-
-    // limpa Quill (conteúdo visual)
-    const qlEditor = form.querySelector(".ql-editor");
-    if (qlEditor) qlEditor.innerHTML = "";
-
-    // limpa campos de payload comuns
-    const contentField =
-      form.querySelector('input[name="content"]') ||
-      form.querySelector('textarea[name="content"]') ||
-      form.querySelector('input[name="description"]') ||
-      form.querySelector('textarea[name="description"]');
-
-    if (contentField) contentField.value = "";
-  });
-})();
-</script>
-
-<script>
-(function () {
-  if (window.__checklistDnDPersistInstalled) return;
-  window.__checklistDnDPersistInstalled = true;
-
-  function getCSRF() {
-    return document.querySelector("meta[name='csrf-token']")?.content
-      || document.querySelector("[name=csrfmiddlewaretoken]")?.value
-      || "";
-  }
-
-  function initChecklistDnD() {
-    const container = document.getElementById("checklists-container");
-    if (!container) return;
-
-    const urlReorderChecklists = container.dataset.reorderChecklistsUrl;
-    const urlReorderItems = container.dataset.reorderItemsUrl;
-
-    // Sortable: checklists
-    if (container.dataset.sortableChecklistsApplied !== "1") {
-      container.dataset.sortableChecklistsApplied = "1";
-
-      new Sortable(container, {
-        animation: 160,
-        ghostClass: "drag-ghost",
-        chosenClass: "drag-chosen",
-        draggable: ".checklist-block",
-        handle: ".checklist-drag",
-        onEnd: () => {
-          const order = Array.from(container.querySelectorAll(".checklist-block"))
-            .map(el => Number(el.getAttribute("data-checklist-id")))
-            .filter(Boolean);
-
-          fetch(urlReorderChecklists, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-CSRFToken": getCSRF()
-            },
-            body: JSON.stringify({ order })
-          });
-        }
-      });
-    }
-
-    // Sortable: items (entre checklists)
-    container.querySelectorAll(".checklist-items").forEach(list => {
-      if (list.dataset.sortableItemsApplied === "1") return;
-      list.dataset.sortableItemsApplied = "1";
-
-      new Sortable(list, {
-        group: "checklist-items",
-        animation: 160,
-        ghostClass: "drag-ghost",
-        chosenClass: "drag-chosen",
-        draggable: ".checklist-item",
-        handle: ".item-drag",
-        onEnd: (evt) => {
-          const touched = [evt.from, evt.to].filter((x, i, a) => x && a.indexOf(x) === i);
-
-          const updates = [];
-          touched.forEach(l => {
-            const checklistId = Number(l.getAttribute("data-checklist-id"));
-            Array.from(l.querySelectorAll(".checklist-item")).forEach((itemEl, idx) => {
-              updates.push({
-                item_id: Number(itemEl.getAttribute("data-item-id")),
-                checklist_id: checklistId,
-                position: idx
-              });
-            });
-          });
-
-          fetch(urlReorderItems, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-CSRFToken": getCSRF()
-            },
-            body: JSON.stringify({ updates })
-          });
-        }
-      });
-    });
-  }
-
-  document.addEventListener("DOMContentLoaded", initChecklistDnD);
-  document.body.addEventListener("htmx:afterSwap", (evt) => {
-    const t = evt.target;
-    if (!t) return;
-
-    if (t.id === "checklist-list" || t.id === "modal-body" || t.closest?.("#modal-body")) {
-      initChecklistDnD();
-    }
-  });
-})();
-</script>
-
-<script>
-(function () {
-  // instala listeners 1x, mas re-inicializa sempre que o body do modal for trocado
-  if (!window.__modalTabsBootInstalled) {
-    window.__modalTabsBootInstalled = true;
-
-    document.addEventListener("DOMContentLoaded", () => window.__initModalTabs?.());
-    document.body.addEventListener("htmx:afterSwap", (evt) => {
-      const t = evt.target;
-      if (!t) return;
-      if (t.id === "modal-body" || t.closest?.("#modal-body")) window.__initModalTabs?.();
-    });
-  }
-
-  window.__initModalTabs = function () {
-    const modal = document.getElementById("modal") || document.querySelector(".card-modal-root");
-    if (!modal) return;
-
-    // As tabs ficam no header do modal (fora do modal-body). Por isso o root é o #modal.
-    const tabs = modal.querySelectorAll(".tab-btn[data-tab]");
-    const panels = modal.querySelectorAll(".card-tab-panel[data-panel]");
-    if (!tabs.length || !panels.length) return;
-
-    function activate(name) {
-      tabs.forEach(t => t.classList.toggle("active", t.dataset.tab === name));
-      panels.forEach(p => p.classList.toggle("hidden", p.dataset.panel !== name));
-    }
-
-    tabs.forEach(t => {
-      if (t.dataset.bound === "1") return;
-      t.dataset.bound = "1";
-      t.addEventListener("click", () => activate(t.dataset.tab));
-    });
-
-    // default
-    activate("desc");
-  };
-})();
-</script>
+  <div class="pt-4">
+    <button type="button"
+            class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+            onclick="closeModal?.();">
+      Fechar
+    </button>
+  </div>
+</div>
