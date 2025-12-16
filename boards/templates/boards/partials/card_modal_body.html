@@ -270,10 +270,13 @@
     tabs.forEach(b => {
       if (b.dataset.cmBound === "1") return;
       b.dataset.cmBound = "1";
-      b.addEventListener("click", () => activate(b.getAttribute("data-cm-tab")));
+      b.addEventListener("click", () => {
+      const name = b.getAttribute("data-cm-tab");
+      sessionStorage.setItem("cmActiveTab", name);
+      activate(name);
     });
-
-    activate("desc");
+    
+    activate(sessionStorage.getItem("cmActiveTab") || "desc");
 
     const saveBtn = root.querySelector("#cm-save-btn");
     const form = root.querySelector("#cm-main-form");
