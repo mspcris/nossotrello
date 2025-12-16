@@ -43,8 +43,7 @@
         </div>
 
         <!-- progress -->
-        {# total: usa annotation checklist.total se existir; senão usa checklist.items.count (ok no template).
-           done: usa annotation checklist.done se existir; senão 0 (evita TemplateSyntaxError). #}
+
         {% with total=checklist.total|default:checklist.items.count done=checklist.done|default:0 %}
           {% if total %}
             <div class="checklist-progress">
