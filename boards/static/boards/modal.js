@@ -475,33 +475,52 @@ window.initCardModal = function () {
 };
 
 // =====================================================
-// Captura cardId antes do HTMX disparar (delegação)
+// ABERTURA RADICAL DO MODAL (não depende do hx-target no HTML)
+// - clicou em um card -> carrega /card/<id>/modal/ direto no #modal-body
 // =====================================================
-function bindCardIdCapture() {
-  if (document.body.dataset.cardIdCaptureBound) return;
-  document.body.dataset.cardIdCaptureBound = "1";
+(function bindCardOpenRadical() {
+  if (document.body.dataset.cardOpenRadicalBound === "1") return;
+  document.body.dataset.cardOpenRadicalBound = "1";
+
+  function shouldIgnoreClick(ev) {
+    // Evita abrir modal ao clicar em botões/ações dentro do card
+    const ignoreSelectors = [
+      ".delete-card-btn",
+      "[data-no-modal]",
+      "button",
+      "a[href]",
+      "input",
+      "textarea",
+      "select",
+      "label",
+      "form",
+    ];
+    return ignoreSelectors.some((sel) => ev.target.closest(sel));
+  }
 
   document.body.addEventListener("click", (ev) => {
-    const trigger = ev.target.closest('[hx-target="#modal-body"][hx-get]');
-    if (!trigger) return;
+    const cardEl = ev.target.closest("li[data-card-id]");
+    if (!cardEl) return;
 
+    if (shouldIgnoreClick(ev)) return;
+
+    const cardId = Number(cardEl.dataset.cardId || 0);
+    if (!cardId) return;
+
+    ev.preventDefault();
+    ev.stopPropagation();
+
+    window.currentCardId = cardId;
     openModal();
-    
-    const li = trigger.closest("li[data-card-id]");
-    if (li?.dataset?.cardId) {
-      window.currentCardId = Number(li.dataset.cardId);
-      return;
-    }
-    
 
+    // Carrega o HTML do modal direto no target correto
+    htmx.ajax("GET", `/card/${cardId}/modal/`, {
+      target: "#modal-body",
+      swap: "innerHTML",
+    });
+  }, true);
+})();
 
-    const url = trigger.getAttribute("hx-get") || "";
-    const m = url.match(/\/card\/(\d+)\//);
-    if (m?.[1]) window.currentCardId = Number(m[1]);
-  });
-}
-
-bindCardIdCapture();
 
 // =====================================================
 // HTMX – após swap do modal-body

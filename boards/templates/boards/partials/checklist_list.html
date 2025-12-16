@@ -1,13 +1,12 @@
 {# templates/boards/partials/checklist_list.html #}
 
 {# alvo padrão de swaps HTMX (hx-target="#checklist-list") #}
-<div id="checklist-list">
+<div id="checklists-container"
+     class="checklists-container space-y-4"
+     data-card-id="{{ card.id }}"
+     data-reorder-checklists-url="{% url 'boards:checklists_reorder' card.id %}"
+     data-reorder-items-url="{% url 'boards:checklist_items_reorder' card.id %}">
 
-  <div id="checklists-container"
-       class="checklists-container space-y-4"
-       data-card-id="{{ card.id }}"
-       data-reorder-checklists-url="{% url 'boards:checklists_reorder' card.id %}"
-       data-reorder-items-url="{% url 'boards:checklist_items_reorder' card.id %}">
 
     {% for checklist in card.checklists.all %}
 
@@ -94,5 +93,5 @@
       </p>
     {% endfor %}
 
-  </div>
+
 </div>
