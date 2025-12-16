@@ -1,6 +1,8 @@
 {# templates/boards/partials/checklist_list.html #}
 
+{# alvo padrão de swaps HTMX (hx-target="#checklist-list") #}
 <div id="checklist-list">
+
   <div id="checklists-container"
        class="checklists-container space-y-4"
        data-card-id="{{ card.id }}"
@@ -8,6 +10,7 @@
        data-reorder-items-url="{% url 'boards:checklist_items_reorder' card.id %}">
 
     {% for checklist in card.checklists.all %}
+
       <div class="checklist-block space-y-2"
            data-checklist-id="{{ checklist.id }}">
 
@@ -49,16 +52,14 @@
                 <span>{{ done }}/{{ total }}</span>
               </div>
               <div class="checklist-progress-bar">
-                <div class="checklist-progress-fill"
-                     style="width:{% widthratio done total 100 %}%"></div>
+                <div class="checklist-progress-fill" style="width:{% widthratio done total 100 %}%"></div>
               </div>
             </div>
           {% endif %}
         {% endwith %}
 
         <!-- itens (draggable container) -->
-        <div class="checklist-items space-y-1"
-             data-checklist-id="{{ checklist.id }}">
+        <div class="checklist-items space-y-1" data-checklist-id="{{ checklist.id }}">
           {% for item in checklist.items.all %}
             {% include "boards/partials/checklist_item.html" %}
           {% empty %}
@@ -66,7 +67,7 @@
           {% endfor %}
         </div>
 
-        <!-- add item -->
+        <!-- add item (UX estilo Trello) -->
         <div class="checklist-add">
           <button type="button" class="checklist-add-open">Adicionar um item</button>
 
@@ -76,6 +77,7 @@
                 hx-target="#checklist-list"
                 hx-swap="innerHTML">
             {% csrf_token %}
+
             <input type="text" name="text" class="checklist-add-input" placeholder="Nova tarefa…">
             <div class="checklist-add-actions">
               <button type="submit" class="checklist-add-btn">Adicionar</button>
@@ -85,10 +87,12 @@
         </div>
 
       </div>
+
     {% empty %}
       <p class="text-sm text-gray-500">
-        Nenhum checklist ainda.
+        Nenhum checklist ainda. Crie o primeiro no campo acima.
       </p>
     {% endfor %}
+
   </div>
 </div>
