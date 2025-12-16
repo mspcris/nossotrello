@@ -86,7 +86,7 @@
 
   <div class="cm-topbar">
     <div class="cm-tabs" role="tablist" aria-label="Abas do card">
-      <button type="button" class="cm-tabbtn" data-cm-tab="desc">Descrição</button>
+      <button type="button" class="cm-tabbtn is-active" data-cm-tab="desc">Descrição</button>
       <button type="button" class="cm-tabbtn" data-cm-tab="tags">Etiquetas</button>
       <button type="button" class="cm-tabbtn" data-cm-tab="check">Checklists</button>
       <button type="button" class="cm-tabbtn" data-cm-tab="ativ">Atividade</button>
@@ -108,7 +108,8 @@
 
     {% csrf_token %}
 
-    <section class="cm-panel" data-cm-panel="desc" role="tabpanel">
+    <section class="cm-panel is-active" data-cm-panel="desc" role="tabpanel">
+
       <div class="cm-card space-y-3">
         <div>
           <label class="cm-label">Título</label>

@@ -51,6 +51,50 @@ function getSavebarElements() {
   return { bar, saveBtn };
 }
 
+
+
+
+
+
+
+// =====================================================
+// CM modal (tabs) — funciona após HTMX swap (sem script inline)
+// =====================================================
+function initCmModal(body) {
+  const root = body?.querySelector?.("#cm-root");
+  if (!root) return;
+
+  const tabs = Array.from(root.querySelectorAll("[data-cm-tab]"));
+  const panels = Array.from(root.querySelectorAll("[data-cm-panel]"));
+  if (!tabs.length || !panels.length) return;
+
+  function activate(name) {
+    tabs.forEach(b => b.classList.toggle("is-active", b.getAttribute("data-cm-tab") === name));
+    panels.forEach(p => p.classList.toggle("is-active", p.getAttribute("data-cm-panel") === name));
+  }
+
+  // bind 1x
+  tabs.forEach(b => {
+    if (b.dataset.cmBound === "1") return;
+    b.dataset.cmBound = "1";
+    b.addEventListener("click", () => activate(b.getAttribute("data-cm-tab")));
+  });
+
+  // default seguro: abre desc se nada estiver ativo
+  const anyActive = panels.some(p => p.classList.contains("is-active"));
+  if (!anyActive) activate("desc");
+
+  // botão salvar do CM (se existir)
+  const saveBtn = root.querySelector("#cm-save-btn");
+  const form = root.querySelector("#cm-main-form");
+  if (saveBtn && form && saveBtn.dataset.cmBound !== "1") {
+    saveBtn.dataset.cmBound = "1";
+    saveBtn.addEventListener("click", () => {
+      try { form.requestSubmit(); } catch (e) { form.submit(); }
+    });
+  }
+}
+
 // =====================================================
 // Abrir / Fechar modal
 // =====================================================
