@@ -58,15 +58,15 @@ window.openModal = function () {
   const modal = getModalEl();
   if (!modal) return;
 
-  // garante que está visível antes de animar
   modal.classList.remove("hidden");
   modal.classList.remove("modal-closing");
 
-  // aplica no próximo frame pra disparar transition
-  requestAnimationFrame(() => {
-    modal.classList.add("modal-open");
-  });
+  // força o browser a aplicar o estado inicial antes do transition
+  void modal.offsetHeight;
+
+  modal.classList.add("modal-open");
 };
+
 
 window.closeModal = function () {
   const modal = getModalEl();
@@ -485,11 +485,15 @@ function bindCardIdCapture() {
     const trigger = ev.target.closest('[hx-target="#modal-body"][hx-get]');
     if (!trigger) return;
 
+    openModal();
+    
     const li = trigger.closest("li[data-card-id]");
     if (li?.dataset?.cardId) {
       window.currentCardId = Number(li.dataset.cardId);
       return;
     }
+    
+
 
     const url = trigger.getAttribute("hx-get") || "";
     const m = url.match(/\/card\/(\d+)\//);

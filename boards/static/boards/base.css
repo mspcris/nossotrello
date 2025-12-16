@@ -1222,6 +1222,18 @@ html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !import
   opacity: 0;
 }
 
+
+
+
 /* =======================================================================
-   FIM
+   FALLBACK:    
    ======================================================================= */
+/* FALLBACK: se o overlay está visível (não está .hidden), não pode ficar transparente */
+#modal:not(.hidden){
+  opacity: 1 !important;
+}
+
+#modal:not(.hidden) #card-modal-root{
+  opacity: 1 !important;
+  transform: translateY(0) scale(1) !important;
+}
