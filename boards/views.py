@@ -1994,3 +1994,117 @@ def checklist_update_item(request, item_id):
 
     _log_card(card, request, f"<p><strong>{actor}</strong> editou um item da checklist de {escape(old)} para {escape(text)}.</p>")
     return render(request, "boards/partials/checklist_item.html", {"item": item})
+
+
+
+
+# ======================================================================
+# CHECKLISTS — COMPAT/LEGADO (para não quebrar rotas antigas)
+# ======================================================================
+
+@login_required
+@require_POST
+def checklist_move(request, checklist_id):
+    checklist = get_object_or_404(Checklist, id=checklist_id)
+    card = checklist.card
+    board = card.column.board
+
+    if not _can_edit_board(request, board):
+        return HttpResponse("Sem permissão.", status=403)
+
+    direction = (request.POST.get("direction") or "").strip().lower()
+    new_position_raw = (request.POST.get("position") or request.POST.get("new_position") or "").strip()
+
+    checklists = list(card.checklists.order_by("position", "created_at"))
+    if not checklists:
+        return render(request, "boards/partials/checklist_list.html", {"card": card})
+
+    try:
+        current_index = next(i for i, c in enumerate(checklists) if c.id == checklist.id)
+    except StopIteration:
+        return HttpResponseBadRequest("Checklist inválido.")
+
+    # Determina novo índice
+    if new_position_raw:
+        try:
+            # aceita 0-based e 1-based (se vier 1..N)
+            pos = int(new_position_raw)
+            if 1 <= pos <= len(checklists):
+                new_index = pos - 1
+            else:
+                new_index = pos
+        except Exception:
+            return HttpResponseBadRequest("position inválido.")
+    elif direction in ("up", "down"):
+        new_index = current_index - 1 if direction == "up" else current_index + 1
+    else:
+        return HttpResponseBadRequest("Informe 'direction' (up/down) ou 'position'.")
+
+    new_index = max(0, min(len(checklists) - 1, new_index))
+    if new_index != current_index:
+        moved = checklists.pop(current_index)
+        checklists.insert(new_index, moved)
+
+        with transaction.atomic():
+            for idx, c in enumerate(checklists):
+                if c.position != idx:
+                    c.position = idx
+                    c.save(update_fields=["position"])
+
+        actor = _actor_label(request)
+        _log_card(card, request, f"<p><strong>{actor}</strong> reordenou checklists (legado).</p>")
+
+    return render(request, "boards/partials/checklist_list.html", {"card": card})
+
+
+@login_required
+@require_POST
+def checklist_move_up(request, item_id):
+    return _checklist_move_item_delta(request, item_id, delta=-1)
+
+
+@login_required
+@require_POST
+def checklist_move_down(request, item_id):
+    return _checklist_move_item_delta(request, item_id, delta=+1)
+
+
+def _checklist_move_item_delta(request, item_id, delta: int):
+    item = get_object_or_404(ChecklistItem, id=item_id)
+    card = item.card
+    board = card.column.board
+
+    if not _can_edit_board(request, board):
+        return HttpResponse("Sem permissão.", status=403)
+
+    if not item.checklist_id:
+        return HttpResponseBadRequest("Item não está associado a um checklist.")
+
+    items = list(
+        ChecklistItem.objects.filter(checklist_id=item.checklist_id).order_by("position", "created_at")
+    )
+
+    try:
+        idx = next(i for i, it in enumerate(items) if it.id == item.id)
+    except StopIteration:
+        return HttpResponseBadRequest("Item inválido.")
+
+    new_idx = idx + delta
+    if new_idx < 0 or new_idx >= len(items):
+        return render(request, "boards/partials/checklist_list.html", {"card": card})
+
+    a = items[idx]
+    b = items[new_idx]
+
+    with transaction.atomic():
+        a_pos = a.position
+        b_pos = b.position
+        a.position = b_pos
+        b.position = a_pos
+        a.save(update_fields=["position"])
+        b.save(update_fields=["position"])
+
+    actor = _actor_label(request)
+    _log_card(card, request, f"<p><strong>{actor}</strong> reordenou item de checklist (legado).</p>")
+
+    return render(request, "boards/partials/checklist_list.html", {"card": card})
