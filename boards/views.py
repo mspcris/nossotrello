@@ -1526,33 +1526,62 @@ def add_attachment(request, card_id):
     return render(request, "boards/partials/attachment_item.html", {"attachment": attachment})
 
 
+
+
+
+
 # ======================================================================
 # CHECKLISTS
 # ======================================================================
+
+def _can_edit_board(request, board: Board) -> bool:
+    """
+    Padrão de permissão do app:
+    - staff: sempre
+    - se board tem memberships: OWNER/EDITOR
+    - se board não tem memberships: criador
+    """
+    if not request.user.is_authenticated:
+        return False
+
+    if request.user.is_staff:
+        return True
+
+    memberships_qs = board.memberships.all()
+    if memberships_qs.exists():
+        return memberships_qs.filter(
+            user=request.user,
+            role__in=[BoardMembership.Role.OWNER, BoardMembership.Role.EDITOR],
+        ).exists()
+
+    return bool(board.created_by_id == request.user.id)
+
+
+# ======================================================================
+# CHECKLISTS — REORDER (Drag and Drop)
+# ======================================================================
+
 @login_required
 @require_POST
 def checklists_reorder(request, card_id):
     card = get_object_or_404(Card, id=card_id, is_deleted=False)
-
-    # permissão alinhada ao padrão do board (se tem memberships, exige membership)
     board = card.column.board
-    if board.memberships.exists() and not board.memberships.filter(user=request.user).exists():
-        return JsonResponse({"ok": False, "error": "Sem acesso a este quadro."}, status=403)
+
+    if not _can_edit_board(request, board):
+        return JsonResponse({"ok": False, "error": "Sem permissão."}, status=403)
 
     try:
         payload = json.loads(request.body.decode("utf-8"))
         order = payload.get("order", [])
-        if not isinstance(order, list):
+        if not isinstance(order, list) or not order:
             return JsonResponse({"ok": False, "error": "order inválido"}, status=400)
         order = [int(x) for x in order]
     except Exception:
         return JsonResponse({"ok": False, "error": "JSON inválido"}, status=400)
 
-    qs = Checklist.objects.filter(card=card)
-    cl_map = {c.id: c for c in qs}
-
-    if any(cid not in cl_map for cid in order):
-        return JsonResponse({"ok": False, "error": "Checklist fora do card."}, status=400)
+    valid_ids = set(card.checklists.values_list("id", flat=True))
+    if set(order) != valid_ids:
+        return JsonResponse({"ok": False, "error": "checklist fora do card"}, status=400)
 
     with transaction.atomic():
         for idx, cid in enumerate(order):
@@ -1568,10 +1597,10 @@ def checklists_reorder(request, card_id):
 @require_POST
 def checklist_items_reorder(request, card_id):
     card = get_object_or_404(Card, id=card_id, is_deleted=False)
-
     board = card.column.board
-    if board.memberships.exists() and not board.memberships.filter(user=request.user).exists():
-        return JsonResponse({"ok": False, "error": "Sem acesso a este quadro."}, status=403)
+
+    if not _can_edit_board(request, board):
+        return JsonResponse({"ok": False, "error": "Sem permissão."}, status=403)
 
     try:
         payload = json.loads(request.body.decode("utf-8"))
@@ -1581,50 +1610,56 @@ def checklist_items_reorder(request, card_id):
     except Exception:
         return JsonResponse({"ok": False, "error": "JSON inválido"}, status=400)
 
-    item_ids = []
+    # valida tipos + coleta ids
     checklist_ids = set()
-
-    try:
-        for u in updates:
-            item_ids.append(int(u.get("item_id")))
+    item_ids = set()
+    for u in updates:
+        try:
             checklist_ids.add(int(u.get("checklist_id")))
+            item_ids.add(int(u.get("item_id")))
             int(u.get("position"))
-    except Exception:
-        return JsonResponse({"ok": False, "error": "Payload inválido (tipos)."}, status=400)
+        except Exception:
+            return JsonResponse({"ok": False, "error": "payload inválido"}, status=400)
 
-    # garante que checklists do payload são do card
+    # valida checklists pertencem ao card
     valid_checklists = set(
-        Checklist.objects.filter(card=card, id__in=list(checklist_ids)).values_list("id", flat=True)
+        Checklist.objects.filter(card=card, id__in=checklist_ids).values_list("id", flat=True)
     )
-    if valid_checklists != checklist_ids:
-        return JsonResponse({"ok": False, "error": "Checklist fora do card."}, status=400)
+    if checklist_ids - valid_checklists:
+        return JsonResponse({"ok": False, "error": "checklist fora do card"}, status=400)
 
-    # garante que itens do payload são do card
+    # valida itens pertencem ao card
     items = list(ChecklistItem.objects.filter(card=card, id__in=item_ids))
     items_map = {it.id: it for it in items}
-    if len(items_map) != len(set(item_ids)):
-        return JsonResponse({"ok": False, "error": "Item fora do card."}, status=400)
+    if set(item_ids) - set(items_map.keys()):
+        return JsonResponse({"ok": False, "error": "item fora do card"}, status=400)
 
+    # aplica mudanças em memória e faz bulk_update
     changed = []
     for u in updates:
-        it = items_map[int(u["item_id"])]
-        new_checklist_id = int(u["checklist_id"])
-        new_pos = int(u["position"])
+        iid = int(u["item_id"])
+        cid = int(u["checklist_id"])
+        pos = int(u["position"])
+        it = items_map[iid]
 
-        if it.checklist_id != new_checklist_id or it.position != new_pos:
-            it.checklist_id = new_checklist_id
-            it.position = new_pos
+        if it.checklist_id != cid or it.position != pos:
+            it.checklist_id = cid
+            it.position = pos
             changed.append(it)
 
     with transaction.atomic():
         if changed:
-            ChecklistItem.objects.bulk_update(changed, ["checklist", "position"])
+            ChecklistItem.objects.bulk_update(changed, ["checklist_id", "position"])
 
     actor = _actor_label(request)
     _log_card(card, request, f"<p><strong>{actor}</strong> reordenou itens de checklist (drag).</p>")
 
     return JsonResponse({"ok": True})
 
+
+# ======================================================================
+# CHECKLISTS — CRUD
+# ======================================================================
 
 @require_POST
 def checklist_add(request, card_id):
@@ -1822,125 +1857,6 @@ def checklist_move_down(request, item_id):
 
 
 
-
-# ======================================================================
-# CHECKLISTS — REORDER (Drag and Drop)
-# ======================================================================
-
-@login_required
-@require_POST
-def checklists_reorder(request, card_id):
-    card = get_object_or_404(Card, id=card_id, is_deleted=False)
-    board = card.column.board
-
-    memberships_qs = board.memberships.all()
-    if not request.user.is_staff:
-        if memberships_qs.exists():
-            allowed = memberships_qs.filter(
-                user=request.user,
-                role__in=[BoardMembership.Role.OWNER, BoardMembership.Role.EDITOR],
-            ).exists()
-            if not allowed:
-                return JsonResponse({"ok": False, "error": "Sem permissão."}, status=403)
-        else:
-            if board.created_by_id != request.user.id:
-                return JsonResponse({"ok": False, "error": "Sem permissão."}, status=403)
-
-    try:
-        payload = json.loads(request.body.decode("utf-8"))
-        order = payload.get("order", [])
-        if not isinstance(order, list):
-            return JsonResponse({"ok": False, "error": "order inválido"}, status=400)
-        order = [int(x) for x in order]
-    except Exception:
-        return JsonResponse({"ok": False, "error": "JSON inválido"}, status=400)
-
-    valid_ids = set(card.checklists.values_list("id", flat=True))
-    if any(cid not in valid_ids for cid in order):
-        return JsonResponse({"ok": False, "error": "checklist fora do card"}, status=400)
-
-    with transaction.atomic():
-        for idx, cid in enumerate(order):
-            Checklist.objects.filter(id=cid, card=card).update(position=idx)
-
-    actor = _actor_label(request)
-    _log_card(card, request, f"<p><strong>{actor}</strong> reordenou checklists (drag).</p>")
-
-    return JsonResponse({"ok": True})
-
-
-@login_required
-@require_POST
-def checklist_items_reorder(request, card_id):
-    card = get_object_or_404(Card, id=card_id, is_deleted=False)
-    board = card.column.board
-
-    memberships_qs = board.memberships.all()
-    if not request.user.is_staff:
-        if memberships_qs.exists():
-            allowed = memberships_qs.filter(
-                user=request.user,
-                role__in=[BoardMembership.Role.OWNER, BoardMembership.Role.EDITOR],
-            ).exists()
-            if not allowed:
-                return JsonResponse({"ok": False, "error": "Sem permissão."}, status=403)
-        else:
-            if board.created_by_id != request.user.id:
-                return JsonResponse({"ok": False, "error": "Sem permissão."}, status=403)
-
-    try:
-        payload = json.loads(request.body.decode("utf-8"))
-        updates = payload.get("updates", [])
-        if not isinstance(updates, list) or not updates:
-            return JsonResponse({"ok": False, "error": "updates inválido"}, status=400)
-    except Exception:
-        return JsonResponse({"ok": False, "error": "JSON inválido"}, status=400)
-
-    checklist_ids = set()
-    item_ids = set()
-
-    # valida payload
-    for u in updates:
-        try:
-            checklist_ids.add(int(u.get("checklist_id")))
-            item_ids.add(int(u.get("item_id")))
-            int(u.get("position"))
-        except Exception:
-            return JsonResponse({"ok": False, "error": "payload inválido"}, status=400)
-
-    # valida checklists do card
-    valid_checklists = set(
-        Checklist.objects.filter(card=card, id__in=checklist_ids).values_list("id", flat=True)
-    )
-    if checklist_ids - valid_checklists:
-        return JsonResponse({"ok": False, "error": "checklist fora do card"}, status=400)
-
-    # valida itens do card
-    items = list(ChecklistItem.objects.filter(card=card, id__in=item_ids))
-    items_map = {it.id: it for it in items}
-    if set(item_ids) - set(items_map.keys()):
-        return JsonResponse({"ok": False, "error": "item fora do card"}, status=400)
-
-    changed = []
-    for u in updates:
-        iid = int(u["item_id"])
-        cid = int(u["checklist_id"])
-        pos = int(u["position"])
-        it = items_map[iid]
-
-        if it.checklist_id != cid or it.position != pos:
-            it.checklist_id = cid
-            it.position = pos
-            changed.append(it)
-
-    with transaction.atomic():
-        if changed:
-            ChecklistItem.objects.bulk_update(changed, ["checklist_id", "position"])
-
-    actor = _actor_label(request)
-    _log_card(card, request, f"<p><strong>{actor}</strong> reordenou itens de checklist (drag).</p>")
-
-    return JsonResponse({"ok": True})
 
 
 

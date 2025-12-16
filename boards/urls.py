@@ -89,6 +89,7 @@ urlpatterns = [
         # reordenação via drag (Trello-like)
     path("card/<int:card_id>/checklists/reorder/", views.checklists_reorder, name="checklists_reorder"),
     path("card/<int:card_id>/checklist/items/reorder/", views.checklist_items_reorder, name="checklist_items_reorder"),
+    
 
 
     # itens do checklist
