@@ -1706,9 +1706,9 @@ def create_user(request):
 # CHECKLISTS
 # ======================================================================
 
-# ----------------------------------------------------------------------
-# CHECKLISTS — Permissões (governança padrão do board)
-# ----------------------------------------------------------------------
+# ======================================================================
+# CHECKLISTS — PERMISSÕES (padrão do board)
+# ======================================================================
 
 def _can_view_board(request, board: Board) -> bool:
     if not request.user.is_authenticated:
@@ -1741,17 +1741,9 @@ def _can_edit_board(request, board: Board) -> bool:
     return bool(board.created_by_id == request.user.id)
 
 
-def _deny_edit():
-    return HttpResponse("Sem permissão.", status=403)
-
-
-def _deny_edit_json():
-    return JsonResponse({"ok": False, "error": "Sem permissão."}, status=403)
-
-
-# ----------------------------------------------------------------------
-# CHECKLISTS — REORDER (Drag and Drop)
-# ----------------------------------------------------------------------
+# ======================================================================
+# CHECKLISTS — REORDER (Drag and Drop) + AUDITORIA
+# ======================================================================
 
 @login_required
 @require_POST
@@ -1760,23 +1752,21 @@ def checklists_reorder(request, card_id):
     board = card.column.board
 
     if not _can_edit_board(request, board):
-        return _deny_edit_json()
+        return JsonResponse({"ok": False, "error": "Sem permissão."}, status=403)
 
     try:
         payload = json.loads(request.body.decode("utf-8"))
         order = payload.get("order", [])
-        if not isinstance(order, list):
+        if not isinstance(order, list) or not order:
             return JsonResponse({"ok": False, "error": "order inválido"}, status=400)
         order = [int(x) for x in order]
     except Exception:
         return JsonResponse({"ok": False, "error": "JSON inválido"}, status=400)
 
-    # valida: ids precisam existir e pertencer ao card
     valid_ids = set(Checklist.objects.filter(card=card).values_list("id", flat=True))
-    if not order or any(cid not in valid_ids for cid in order):
+    if set(order) != valid_ids:
         return JsonResponse({"ok": False, "error": "Checklist fora do card."}, status=400)
 
-    # não exige set(order)==valid_ids para evitar 400 quando DOM está defasado
     with transaction.atomic():
         for idx, cid in enumerate(order):
             Checklist.objects.filter(id=cid, card=card).update(position=idx)
@@ -1794,7 +1784,7 @@ def checklist_items_reorder(request, card_id):
     board = card.column.board
 
     if not _can_edit_board(request, board):
-        return _deny_edit_json()
+        return JsonResponse({"ok": False, "error": "Sem permissão."}, status=403)
 
     try:
         payload = json.loads(request.body.decode("utf-8"))
@@ -1807,29 +1797,28 @@ def checklist_items_reorder(request, card_id):
     checklist_ids = set()
     item_ids = set()
 
-    # valida payload
-    try:
-        for u in updates:
+    # valida tipos + coleta ids
+    for u in updates:
+        try:
             checklist_ids.add(int(u.get("checklist_id")))
             item_ids.add(int(u.get("item_id")))
             int(u.get("position"))
-    except Exception:
-        return JsonResponse({"ok": False, "error": "Payload inválido (tipos)."}, status=400)
+        except Exception:
+            return JsonResponse({"ok": False, "error": "Payload inválido (tipos)."}, status=400)
 
-    # valida checklists do payload pertencem ao card
+    # valida checklists pertencem ao card
     valid_checklists = set(
         Checklist.objects.filter(card=card, id__in=checklist_ids).values_list("id", flat=True)
     )
     if checklist_ids - valid_checklists:
         return JsonResponse({"ok": False, "error": "Checklist fora do card."}, status=400)
 
-    # valida itens do payload pertencem ao card
+    # valida itens pertencem ao card
     items = list(ChecklistItem.objects.filter(card=card, id__in=item_ids))
     items_map = {it.id: it for it in items}
-    if item_ids - set(items_map.keys()):
+    if set(item_ids) - set(items_map.keys()):
         return JsonResponse({"ok": False, "error": "Item fora do card."}, status=400)
 
-    # aplica mudanças e bulk_update
     changed = []
     for u in updates:
         iid = int(u["item_id"])
@@ -1852,9 +1841,9 @@ def checklist_items_reorder(request, card_id):
     return JsonResponse({"ok": True})
 
 
-# ----------------------------------------------------------------------
-# CHECKLISTS — CRUD (sempre com auditoria)
-# ----------------------------------------------------------------------
+# ======================================================================
+# CHECKLISTS — CRUD + AUDITORIA
+# ======================================================================
 
 @login_required
 @require_POST
@@ -1862,7 +1851,7 @@ def checklist_add(request, card_id):
     card = get_object_or_404(Card, id=card_id, is_deleted=False)
     board = card.column.board
     if not _can_edit_board(request, board):
-        return _deny_edit()
+        return HttpResponse("Sem permissão.", status=403)
 
     actor = _actor_label(request)
     title = (request.POST.get("title") or "").strip() or "Checklist"
@@ -1871,7 +1860,6 @@ def checklist_add(request, card_id):
     checklist = Checklist.objects.create(card=card, title=title, position=position)
 
     _log_card(card, request, f"<p><strong>{actor}</strong> criou a checklist <strong>{escape(checklist.title)}</strong>.</p>")
-
     return render(request, "boards/partials/checklist_list.html", {"card": card})
 
 
@@ -1882,11 +1870,10 @@ def checklist_rename(request, checklist_id):
     card = checklist.card
     board = card.column.board
     if not _can_edit_board(request, board):
-        return _deny_edit()
+        return HttpResponse("Sem permissão.", status=403)
 
     actor = _actor_label(request)
     old_title = checklist.title
-
     title = (request.POST.get("title") or "").strip()
     if not title:
         return HttpResponse("Título inválido.", status=400)
@@ -1894,12 +1881,7 @@ def checklist_rename(request, checklist_id):
     checklist.title = title
     checklist.save(update_fields=["title"])
 
-    _log_card(
-        card,
-        request,
-        f"<p><strong>{actor}</strong> renomeou a checklist de <strong>{escape(old_title)}</strong> para <strong>{escape(title)}</strong>.</p>",
-    )
-
+    _log_card(card, request, f"<p><strong>{actor}</strong> renomeou a checklist de <strong>{escape(old_title)}</strong> para <strong>{escape(title)}</strong>.</p>")
     return render(request, "boards/partials/checklist_list.html", {"card": card})
 
 
@@ -1910,11 +1892,10 @@ def checklist_delete(request, checklist_id):
     card = checklist.card
     board = card.column.board
     if not _can_edit_board(request, board):
-        return _deny_edit()
+        return HttpResponse("Sem permissão.", status=403)
 
     actor = _actor_label(request)
     title = checklist.title
-
     checklist.delete()
 
     # reindex positions
@@ -1924,7 +1905,6 @@ def checklist_delete(request, checklist_id):
             c.save(update_fields=["position"])
 
     _log_card(card, request, f"<p><strong>{actor}</strong> excluiu a checklist <strong>{escape(title)}</strong>.</p>")
-
     return render(request, "boards/partials/checklist_list.html", {"card": card})
 
 
@@ -1935,10 +1915,9 @@ def checklist_add_item(request, checklist_id):
     card = checklist.card
     board = card.column.board
     if not _can_edit_board(request, board):
-        return _deny_edit()
+        return HttpResponse("Sem permissão.", status=403)
 
     actor = _actor_label(request)
-
     text = (request.POST.get("text") or "").strip()
     if not text:
         return HttpResponse("Texto vazio", status=400)
@@ -1946,12 +1925,7 @@ def checklist_add_item(request, checklist_id):
     position = checklist.items.count()
     item = ChecklistItem.objects.create(card=card, checklist=checklist, text=text, position=position)
 
-    _log_card(
-        card,
-        request,
-        f"<p><strong>{actor}</strong> adicionou item na checklist <strong>{escape(checklist.title)}</strong>: {escape(item.text)}.</p>",
-    )
-
+    _log_card(card, request, f"<p><strong>{actor}</strong> adicionou item na checklist <strong>{escape(checklist.title)}</strong>: {escape(item.text)}.</p>")
     return render(request, "boards/partials/checklist_list.html", {"card": card})
 
 
@@ -1962,7 +1936,7 @@ def checklist_toggle_item(request, item_id):
     card = item.card
     board = card.column.board
     if not _can_edit_board(request, board):
-        return _deny_edit()
+        return HttpResponse("Sem permissão.", status=403)
 
     actor = _actor_label(request)
 
@@ -1982,14 +1956,14 @@ def checklist_delete_item(request, item_id):
     card = item.card
     board = card.column.board
     if not _can_edit_board(request, board):
-        return _deny_edit()
+        return HttpResponse("Sem permissão.", status=403)
 
     actor = _actor_label(request)
     text = item.text
     checklist = item.checklist
-
     item.delete()
 
+    # reindex positions
     if checklist:
         for idx, it in enumerate(checklist.items.order_by("position", "created_at")):
             if it.position != idx:
@@ -1997,7 +1971,6 @@ def checklist_delete_item(request, item_id):
                 it.save(update_fields=["position"])
 
     _log_card(card, request, f"<p><strong>{actor}</strong> excluiu um item da checklist: {escape(text)}.</p>")
-
     return render(request, "boards/partials/checklist_list.html", {"card": card})
 
 
@@ -2008,10 +1981,9 @@ def checklist_update_item(request, item_id):
     card = item.card
     board = card.column.board
     if not _can_edit_board(request, board):
-        return _deny_edit()
+        return HttpResponse("Sem permissão.", status=403)
 
     actor = _actor_label(request)
-
     old = item.text
     text = (request.POST.get("text") or "").strip()
     if not text:
@@ -2021,100 +1993,4 @@ def checklist_update_item(request, item_id):
     item.save(update_fields=["text"])
 
     _log_card(card, request, f"<p><strong>{actor}</strong> editou um item da checklist de {escape(old)} para {escape(text)}.</p>")
-
     return render(request, "boards/partials/checklist_item.html", {"item": item})
-
-
-# ----------------------------------------------------------------------
-# CHECKLISTS — MOVE (se ainda existir no front)
-# ----------------------------------------------------------------------
-
-@login_required
-@require_POST
-def checklist_move(request, checklist_id):
-    checklist = get_object_or_404(Checklist, id=checklist_id)
-    card = checklist.card
-    board = card.column.board
-    if not _can_edit_board(request, board):
-        return _deny_edit()
-
-    actor = _actor_label(request)
-    direction = request.POST.get("direction")
-
-    lists_ = list(card.checklists.order_by("position", "created_at"))
-    idx = lists_.index(checklist)
-
-    moved = False
-    if direction == "up" and idx > 0:
-        lists_[idx], lists_[idx - 1] = lists_[idx - 1], lists_[idx]
-        moved = True
-    elif direction == "down" and idx < len(lists_) - 1:
-        lists_[idx], lists_[idx + 1] = lists_[idx + 1], lists_[idx]
-        moved = True
-
-    for pos, c in enumerate(lists_):
-        if c.position != pos:
-            c.position = pos
-            c.save(update_fields=["position"])
-
-    if moved:
-        _log_card(card, request, f"<p><strong>{actor}</strong> moveu a checklist <strong>{escape(checklist.title)}</strong> ({escape(direction)}).</p>")
-
-    return render(request, "boards/partials/checklist_list.html", {"card": card})
-
-
-@login_required
-@require_POST
-def checklist_move_up(request, item_id):
-    item = get_object_or_404(ChecklistItem, id=item_id)
-    card = item.card
-    board = card.column.board
-    if not _can_edit_board(request, board):
-        return _deny_edit()
-
-    actor = _actor_label(request)
-    checklist = item.checklist
-
-    items = list(checklist.items.order_by("position", "created_at"))
-    idx = items.index(item)
-
-    if idx > 0:
-        items[idx], items[idx - 1] = items[idx - 1], items[idx]
-
-    for pos, it in enumerate(items):
-        if it.position != pos:
-            it.position = pos
-            it.save(update_fields=["position"])
-
-    _log_card(card, request, f"<p><strong>{actor}</strong> moveu um item para cima na checklist: {escape(item.text)}.</p>")
-
-    return render(request, "boards/partials/checklist_list.html", {"card": card})
-
-
-@login_required
-@require_POST
-def checklist_move_down(request, item_id):
-    item = get_object_or_404(ChecklistItem, id=item_id)
-    card = item.card
-    board = card.column.board
-    if not _can_edit_board(request, board):
-        return _deny_edit()
-
-    actor = _actor_label(request)
-    checklist = item.checklist
-
-    items = list(checklist.items.order_by("position", "created_at"))
-    idx = items.index(item)
-
-    if idx < len(items) - 1:
-        items[idx], items[idx + 1] = items[idx + 1], items[idx]
-
-    for pos, it in enumerate(items):
-        if it.position != pos:
-            it.position = pos
-            it.save(update_fields=["position"])
-
-    _log_card(card, request, f"<p><strong>{actor}</strong> moveu um item para baixo na checklist: {escape(item.text)}.</p>")
-
-    return render(request, "boards/partials/checklist_list.html", {"card": card})
-
