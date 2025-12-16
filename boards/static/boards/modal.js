@@ -516,6 +516,8 @@ window.initCardModal = function () {
   initAtivSubtabs3(body);
 
   if (window.Prism) Prism.highlightAll();
+  initCmModal(body);
+
 };
 
 // =====================================================
@@ -575,8 +577,12 @@ document.body.addEventListener("htmx:afterSwap", function (e) {
   openModal();
   initCardModal();
 
-  const active = sessionStorage.getItem("modalActiveTab") || "card-tab-desc";
-  window.cardOpenTab(active);
+   // Se for modal novo (CM), não aplicar tabs do modal antigo
+  if (!document.querySelector("#cm-root")) {
+    const active = sessionStorage.getItem("modalActiveTab") || "card-tab-desc";
+    window.cardOpenTab(active);
+  }
+
 });
 
 // =====================================================

@@ -245,14 +245,14 @@
     if (document.body.dataset.cmHtmxCsrfBound === "1") return;
     document.body.dataset.cmHtmxCsrfBound = "1";
 
-    document.body.addEventListener("htmx:configRequest", function (evt) {
-      try {
-        const token = getCookie("csrftoken");
-        if (token) {
-          evt.detail.headers["X-CSRFToken"] = token;
-        }
-      } catch (e) { /* no-op */ }
-    });
+    document.body.addEventListener("htmx:afterSwap", function (evt) {
+  const t = evt.target;
+  if (!t) return;
+
+  // Só reinicializa quando o swap foi do modal inteiro
+  if (t.id === "modal-body") boot();
+});
+
   }
 
   function initRadicalTabs(root) {
