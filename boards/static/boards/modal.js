@@ -954,3 +954,79 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
     }
   });
 })();
+
+(function () {
+  function initChecklistUX(root) {
+    const scope = root || document;
+
+    // abrir/fechar “Adicionar um item”
+    scope.querySelectorAll(".checklist-add").forEach(wrap => {
+      if (wrap.dataset.binded === "1") return;
+      wrap.dataset.binded = "1";
+
+      const openBtn = wrap.querySelector(".checklist-add-open");
+      const form = wrap.querySelector(".checklist-add-form");
+      const cancel = wrap.querySelector(".checklist-add-cancel");
+      const input = wrap.querySelector(".checklist-add-input");
+
+      openBtn?.addEventListener("click", () => {
+        form?.classList.remove("hidden");
+        openBtn?.classList.add("hidden");
+        setTimeout(() => input?.focus(), 0);
+      });
+
+      cancel?.addEventListener("click", () => {
+        form?.classList.add("hidden");
+        openBtn?.classList.remove("hidden");
+        if (input) input.value = "";
+      });
+    });
+  }
+
+  function initChecklistDnD() {
+    const container = document.getElementById("checklists-container");
+    if (!container || container.dataset.sortableApplied === "1") return;
+    container.dataset.sortableApplied = "1";
+
+    // DnD de checklists (card)
+    new Sortable(container, {
+      animation: 160,
+      ghostClass: "drag-ghost",
+      chosenClass: "drag-chosen",
+      draggable: ".checklist-block",
+      handle: ".checklist-drag",
+    });
+
+    // DnD de itens (entre checklists também)
+    container.querySelectorAll(".checklist-items").forEach(list => {
+      if (list.dataset.sortableApplied === "1") return;
+      list.dataset.sortableApplied = "1";
+
+      new Sortable(list, {
+        group: "checklist-items",
+        animation: 160,
+        ghostClass: "drag-ghost",
+        chosenClass: "drag-chosen",
+        draggable: ".checklist-item",
+        handle: ".item-drag",
+      });
+    });
+  }
+
+  // inicializa no load e após swaps HTMX do modal
+  document.addEventListener("DOMContentLoaded", () => {
+    initChecklistUX(document);
+    initChecklistDnD();
+  });
+
+  document.body.addEventListener("htmx:afterSwap", (evt) => {
+    // quando o checklist-list ou modal-body trocar, reinicializa
+    const t = evt.target;
+    if (!t) return;
+
+    if (t.id === "checklist-list" || t.id === "modal-body" || t.closest?.("#modal-body")) {
+      initChecklistUX(t);
+      initChecklistDnD();
+    }
+  });
+})();

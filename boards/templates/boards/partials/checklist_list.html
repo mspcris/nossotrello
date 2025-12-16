@@ -1,87 +1,87 @@
-{# Lista de todos os checklists do card #}
+{# templates/boards/partials/checklist_list.html #}
 
-<div class="space-y-4">
-    {% for checklist in card.checklists.all %}
-        <div class="bg-white/70 rounded border px-3 py-2 checklist-block"
-             data-checklist-id="{{ checklist.id }}">
+<div id="checklists-container" class="checklists-container space-y-4">
+  {% for checklist in card.checklists.all %}
+    <div class="checklist-card checklist-block"
+         data-checklist-id="{{ checklist.id }}">
 
-            <div class="flex items-center justify-between mb-2 gap-2">
-                <input
-                    type="text"
-                    value="{{ checklist.title }}"
-                    class="flex-1 border rounded px-2 py-1 text-sm"
-                    hx-post="{% url 'boards:checklist_rename' checklist.id %}"
-                    hx-trigger="change"
-                    name="title"
-                >
+      <!-- header -->
+      <div class="checklist-head flex items-center gap-2">
+        <button type="button"
+                class="checklist-drag checklist-handle"
+                title="Arrastar checklist"
+                aria-label="Arrastar checklist">⋮⋮</button>
 
-                <div class="flex items-center gap-1">
-                    <button
-                        type="button"
-                        class="text-xs px-2 py-1 border rounded"
-                        hx-post="{% url 'boards:checklist_move' checklist.id %}"
-                        hx-vals='{"direction": "up"}'
-                        hx-target="#checklist-list"
-                        hx-swap="innerHTML"
-                    >?</button>
+        <input
+          type="text"
+          value="{{ checklist.title }}"
+          class="checklist-title flex-1"
+          hx-post="{% url 'boards:checklist_rename' checklist.id %}"
+          hx-trigger="change"
+          name="title"
+        >
 
-                    <button
-                        type="button"
-                        class="text-xs px-2 py-1 border rounded"
-                        hx-post="{% url 'boards:checklist_move' checklist.id %}"
-                        hx-vals='{"direction": "down"}'
-                        hx-target="#checklist-list"
-                        hx-swap="innerHTML"
-                    >?</button>
+        <button
+          type="button"
+          class="checklist-icon-btn danger"
+          hx-post="{% url 'boards:checklist_delete' checklist.id %}"
+          hx-confirm="Remover este checklist?"
+          hx-target="#checklist-list"
+          hx-swap="innerHTML"
+          title="Remover checklist">
+          Remover
+        </button>
+      </div>
 
-                    <button
-                        type="button"
-                        class="text-xs text-red-600 px-2 py-1"
-                        hx-post="{% url 'boards:checklist_delete' checklist.id %}"
-                        hx-confirm="Remover este checklist?"
-                        hx-target="#checklist-list"
-                        hx-swap="innerHTML"
-                    >
-                        Remover
-                    </button>
-                </div>
+      <!-- progress -->
+      {% with total=checklist.items.count done=checklist.items.filter.count %}
+      {% endwith %}
+      {% with total=checklist.items.count done=checklist.items.filter(is_done=True).count %}
+        {% if total %}
+          <div class="checklist-progress">
+            <div class="checklist-progress-meta">
+              <span>{{ done }}/{{ total }}</span>
             </div>
-
-            {# itens do checklist #}
-            <div class="space-y-1 mb-2">
-                {% for item in checklist.items.all %}
-                    {% include "boards/partials/checklist_item.html" %}
-                {% empty %}
-                    <p class="text-xs text-gray-400">Nenhum item ainda.</p>
-                {% endfor %}
+            <div class="checklist-progress-bar">
+              <div class="checklist-progress-fill" style="width:{% widthratio done total 100 %}%"></div>
             </div>
+          </div>
+        {% endif %}
+      {% endwith %}
 
-            {# adicionar item neste checklist #}
-            <form
-                method="post"
-                class="flex gap-2 mt-1"
-                hx-post="{% url 'boards:checklist_add_item' checklist.id %}"
-                hx-target="#checklist-list"
-                hx-swap="innerHTML"
-            >
-                {% csrf_token %}
-                <input
-                    type="text"
-                    name="text"
-                    class="flex-1 border rounded px-2 py-1 text-xs"
-                    placeholder="Nova tarefa..."
-                >
-                <button
-                    type="submit"
-                    class="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
-                >
-                    Adicionar
-                </button>
-            </form>
-        </div>
-    {% empty %}
-        <p class="text-sm text-gray-500">
-            Nenhum checklist ainda. Crie o primeiro no campo acima.
-        </p>
-    {% endfor %}
+      <!-- itens (draggable container) -->
+      <div class="checklist-items space-y-1"
+           data-checklist-id="{{ checklist.id }}">
+        {% for item in checklist.items.all %}
+          {% include "boards/partials/checklist_item.html" %}
+        {% empty %}
+          <p class="checklist-empty">Nenhum item ainda.</p>
+        {% endfor %}
+      </div>
+
+      <!-- add item (UX estilo Trello) -->
+      <div class="checklist-add">
+        <button type="button" class="checklist-add-open">Adicionar um item</button>
+
+        <form method="post"
+              class="checklist-add-form hidden"
+              hx-post="{% url 'boards:checklist_add_item' checklist.id %}"
+              hx-target="#checklist-list"
+              hx-swap="innerHTML">
+          {% csrf_token %}
+
+          <input type="text" name="text" class="checklist-add-input" placeholder="Nova tarefa…">
+          <div class="checklist-add-actions">
+            <button type="submit" class="checklist-add-btn">Adicionar</button>
+            <button type="button" class="checklist-add-cancel">Cancelar</button>
+          </div>
+        </form>
+      </div>
+
+    </div>
+  {% empty %}
+    <p class="text-sm text-gray-500">
+      Nenhum checklist ainda. Crie o primeiro no campo acima.
+    </p>
+  {% endfor %}
 </div>

@@ -1,71 +1,52 @@
 {# templates/boards/partials/checklist_item.html #}
 
-<div id="checklist-item-{{ item.id }}" class="flex items-center gap-2 py-1">
+<div id="checklist-item-{{ item.id }}"
+     class="checklist-item flex items-start gap-2 py-2"
+     data-item-id="{{ item.id }}">
 
-    {# checkbox de concluído #}
-    <input
-        type="checkbox"
-        class="mt-0.5"
-        hx-post="{% url 'boards:checklist_toggle_item' item.id %}"
-        hx-target="#checklist-item-{{ item.id }}"
-        hx-swap="outerHTML"
-        {% if item.is_done %}checked{% endif %}
-    >
+  <!-- handle (drag) -->
+  <button type="button"
+          class="item-drag checklist-handle"
+          title="Arrastar para reordenar"
+          aria-label="Arrastar">
+    ⋮⋮
+  </button>
 
-    {# texto editável do item #}
-    <form
-        class="flex-1"
+  <!-- checkbox -->
+  <input
+    type="checkbox"
+    class="checklist-checkbox mt-1"
+    hx-post="{% url 'boards:checklist_toggle_item' item.id %}"
+    hx-target="#checklist-item-{{ item.id }}"
+    hx-swap="outerHTML"
+    {% if item.is_done %}checked{% endif %}
+  >
+
+  <!-- inline edit -->
+  <form class="flex-1"
         hx-post="{% url 'boards:checklist_update_item' item.id %}"
+        hx-trigger="change, keyup[key=='Enter']"
         hx-target="#checklist-item-{{ item.id }}"
-        hx-swap="outerHTML"
+        hx-swap="outerHTML">
+    <input
+      type="text"
+      name="text"
+      value="{{ item.text }}"
+      class="checklist-input w-full
+             {% if item.is_done %}is-done{% endif %}"
+      placeholder="Escreva uma tarefa…"
     >
-        <input
-            type="text"
-            name="text"
-            value="{{ item.text }}"
-            class="w-full border border-transparent rounded px-1 py-0.5 text-sm
-                   {% if item.is_done %}line-through text-gray-400{% endif %}
-                   focus:border-blue-400 focus:bg-white focus:outline-none"
-        >
-    </form>
+  </form>
 
-    {# botões de ação com ícones #}
-    <div class="flex items-center gap-1 text-xs">
+  <!-- ações -->
+  <button
+    type="button"
+    class="item-del checklist-icon-btn"
+    title="Remover item"
+    hx-post="{% url 'boards:checklist_delete_item' item.id %}"
+    hx-target="#checklist-list"
+    hx-swap="innerHTML">
+    ✕
+  </button>
 
-        {# subir #}
-        <button
-            type="button"
-            title="Mover para cima"
-            class="px-2 py-1 border rounded bg-white hover:bg-gray-100"
-            hx-post="{% url 'boards:checklist_move_up' item.id %}"
-            hx-target="#checklist-list"
-            hx-swap="innerHTML"
-        >
-            ▲
-        </button>
-
-        {# descer #}
-        <button
-            type="button"
-            title="Mover para baixo"
-            class="px-2 py-1 border rounded bg-white hover:bg-gray-100"
-            hx-post="{% url 'boards:checklist_move_down' item.id %}"
-            hx-target="#checklist-list"
-            hx-swap="innerHTML"
-        >
-            ▼
-        </button>
-
-        {# remover #}
-        <button
-            type="button"
-            title="Remover item"
-            class="px-2 py-1 border rounded bg-red-50 text-red-600 hover:bg-red-100"
-            hx-post="{% url 'boards:checklist_delete_item' item.id %}"
-            hx-target="#checklist-list"
-            hx-swap="innerHTML"
-        >
-            ✕
-        </button>
-    </div>
 </div>

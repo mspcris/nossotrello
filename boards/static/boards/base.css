@@ -1325,3 +1325,239 @@ html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !import
     drop-shadow(0 2px 2px rgba(0,0,0,0.90))
     drop-shadow(0 0 14px rgba(255,255,255,0.25)) !important;
 }
+
+
+/* =======================================================================
+   CHECKLIST — Trello-like (visual + fluidez + drag)
+   ======================================================================= */
+
+#card-modal-root .checklists-container { width: 100%; }
+
+#card-modal-root .checklist-card{
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.22);
+  background: rgba(255,255,255,0.55);
+  box-shadow: 0 10px 26px rgba(0,0,0,0.10);
+  padding: 12px;
+  transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+}
+
+#card-modal-root .checklist-card:hover{
+  transform: translateY(-1px);
+  box-shadow: 0 14px 34px rgba(0,0,0,0.14);
+  background: rgba(255,255,255,0.62);
+}
+
+#card-modal-root.card-theme-dark .checklist-card{
+  background: rgba(0,0,0,0.55);
+  border-color: rgba(255,255,255,0.12);
+  box-shadow: 0 14px 34px rgba(0,0,0,0.35);
+}
+
+#card-modal-root .checklist-head{
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+}
+#card-modal-root.card-theme-dark .checklist-head{
+  border-bottom-color: rgba(255,255,255,0.10);
+}
+
+#card-modal-root .checklist-title{
+  border-radius: 10px;
+  padding: 8px 10px;
+  border: 1px solid rgba(0,0,0,0.10);
+  background: rgba(255,255,255,0.60);
+}
+#card-modal-root.card-theme-dark .checklist-title{
+  border-color: rgba(255,255,255,0.14);
+  background: rgba(0,0,0,0.35);
+  color: rgba(255,255,255,0.92);
+}
+
+#card-modal-root .checklist-progress{
+  margin: 8px 0 10px;
+}
+#card-modal-root .checklist-progress-meta{
+  font-size: 12px;
+  opacity: .75;
+  margin-bottom: 6px;
+}
+#card-modal-root .checklist-progress-bar{
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.10);
+  overflow: hidden;
+}
+#card-modal-root.card-theme-dark .checklist-progress-bar{
+  background: rgba(255,255,255,0.10);
+}
+#card-modal-root .checklist-progress-fill{
+  height: 100%;
+  border-radius: 999px;
+  background: rgba(59,130,246,0.85);
+  transition: width .18s ease;
+}
+
+#card-modal-root .checklist-empty{
+  font-size: 12px;
+  opacity: .65;
+  padding: 6px 2px;
+}
+
+#card-modal-root .checklist-item{
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,0.08);
+  background: rgba(255,255,255,0.55);
+  padding: 8px 10px;
+  transition: background .12s ease, transform .12s ease, box-shadow .12s ease;
+}
+#card-modal-root .checklist-item:hover{
+  background: rgba(255,255,255,0.68);
+  box-shadow: 0 8px 18px rgba(0,0,0,0.10);
+}
+#card-modal-root.card-theme-dark .checklist-item{
+  background: rgba(0,0,0,0.35);
+  border-color: rgba(255,255,255,0.12);
+}
+#card-modal-root.card-theme-dark .checklist-item:hover{
+  background: rgba(0,0,0,0.45);
+}
+
+#card-modal-root .checklist-handle{
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,0.10);
+  background: rgba(255,255,255,0.55);
+  cursor: grab;
+  opacity: .55;
+  transition: opacity .12s ease, transform .12s ease, background .12s ease;
+}
+#card-modal-root .checklist-item:hover .checklist-handle,
+#card-modal-root .checklist-head:hover .checklist-handle{
+  opacity: .95;
+}
+#card-modal-root .checklist-handle:active{ cursor: grabbing; transform: scale(0.98); }
+#card-modal-root.card-theme-dark .checklist-handle{
+  border-color: rgba(255,255,255,0.14);
+  background: rgba(0,0,0,0.35);
+  color: rgba(255,255,255,0.90);
+}
+
+#card-modal-root .checklist-checkbox{
+  width: 16px;
+  height: 16px;
+}
+
+#card-modal-root .checklist-input{
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 10px;
+  padding: 6px 8px;
+  outline: none;
+}
+#card-modal-root .checklist-input:focus{
+  background: rgba(255,255,255,0.75);
+  border-color: rgba(59,130,246,0.55);
+}
+#card-modal-root.card-theme-dark .checklist-input{
+  color: rgba(255,255,255,0.92);
+}
+#card-modal-root.card-theme-dark .checklist-input:focus{
+  background: rgba(0,0,0,0.55);
+  border-color: rgba(59,130,246,0.55);
+}
+
+#card-modal-root .checklist-input.is-done{
+  text-decoration: line-through;
+  opacity: .55;
+}
+
+#card-modal-root .checklist-icon-btn{
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,0.10);
+  background: rgba(255,255,255,0.55);
+  padding: 7px 10px;
+  transition: transform .12s ease, background .12s ease, opacity .12s ease;
+}
+#card-modal-root .checklist-icon-btn:hover{
+  transform: translateY(-1px);
+  background: rgba(255,255,255,0.75);
+}
+#card-modal-root .checklist-icon-btn.danger{
+  color: rgba(220,38,38,0.95);
+  border-color: rgba(220,38,38,0.22);
+}
+#card-modal-root.card-theme-dark .checklist-icon-btn{
+  border-color: rgba(255,255,255,0.14);
+  background: rgba(0,0,0,0.35);
+  color: rgba(255,255,255,0.90);
+}
+#card-modal-root.card-theme-dark .checklist-icon-btn.danger{
+  color: rgba(248,113,113,0.95);
+}
+
+#card-modal-root .checklist-add{ margin-top: 10px; }
+#card-modal-root .checklist-add-open{
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px dashed rgba(0,0,0,0.20);
+  background: rgba(255,255,255,0.35);
+  opacity: .9;
+}
+#card-modal-root.card-theme-dark .checklist-add-open{
+  border-color: rgba(255,255,255,0.18);
+  background: rgba(0,0,0,0.25);
+  color: rgba(255,255,255,0.90);
+}
+
+#card-modal-root .checklist-add-form{
+  margin-top: 8px;
+}
+#card-modal-root .checklist-add-input{
+  width: 100%;
+  border-radius: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(0,0,0,0.12);
+  background: rgba(255,255,255,0.70);
+}
+#card-modal-root.card-theme-dark .checklist-add-input{
+  border-color: rgba(255,255,255,0.14);
+  background: rgba(0,0,0,0.35);
+  color: rgba(255,255,255,0.92);
+}
+
+#card-modal-root .checklist-add-actions{
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+#card-modal-root .checklist-add-btn{
+  border-radius: 12px;
+  padding: 9px 12px;
+  background: rgba(59,130,246,0.90);
+  color: #fff;
+}
+#card-modal-root .checklist-add-cancel{
+  border-radius: 12px;
+  padding: 9px 12px;
+  border: 1px solid rgba(0,0,0,0.10);
+  background: rgba(255,255,255,0.55);
+}
+#card-modal-root.card-theme-dark .checklist-add-cancel{
+  border-color: rgba(255,255,255,0.14);
+  background: rgba(0,0,0,0.35);
+  color: rgba(255,255,255,0.92);
+}
+
+/* Drag visuals (Sortable) */
+#card-modal-root .drag-ghost{
+  opacity: .55;
+  transform: rotate(-1deg);
+}
+#card-modal-root .drag-chosen{
+  box-shadow: 0 18px 44px rgba(0,0,0,0.22);
+}
