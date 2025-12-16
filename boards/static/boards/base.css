@@ -1267,7 +1267,7 @@ html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !import
 
 /* ===== DARK ===== */
 #card-modal-root.theme-dark{
-  --glass-bg: rgba(0,0,0,0.62);
+  --glass-bg: rgba(0,0,0,0.86);
   --glass-blur: blur(12px) saturate(130%);
   color: rgba(241,245,249,0.95);
   border: 1px solid rgba(255,255,255,0.12) !important;
