@@ -1559,15 +1559,6 @@ html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !import
   box-shadow: 0 18px 44px rgba(0,0,0,0.22);
 }
 
-
-/* ============================================================
-   MODO "CM" (card_modal_body radical)
-   - quando o conteúdo #cm-root existe, escondemos as abas globais
-   ============================================================ */
-#card-modal-root.cm-mode #card-tabs{
-  display: none !important;
-}
-
 /* =========================
    FIX CONTRASTE: tema branco/glass
    ========================= */
@@ -1615,4 +1606,84 @@ html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !import
 #card-modal-root.card-theme-white .card-tab-active,
 #card-modal-root.theme-glass .card-tab-active{
   color: #111 !important;
+}
+
+/* ============================================================
+   FIX CONTRASTE (tema claro / glass / white)
+   - dá “corpo” pro fundo (sem depender de blur)
+   - força tipografia escura e legível
+   Cole no FINAL do base.css
+   ============================================================ */
+
+/* deixa o fundo do modal menos transparente no claro */
+#modal.theme-glass { background: rgba(0,0,0,0.40) !important; }
+
+#card-modal-root.theme-glass,
+#card-modal-root.card-theme-white{
+  --glass-bg: rgba(255,255,255,0.96) !important;
+  color: #111 !important;
+}
+
+/* textos principais (sem esmagar botões) */
+#card-modal-root.theme-glass :where(p,span,label,small,li,dt,dd,h1,h2,h3,h4,h5,h6,pre,code){
+  color: #111 !important;
+}
+
+/* textos “muted” */
+#card-modal-root.theme-glass :where(.activity-meta,.muted,.text-muted){
+  color: #444 !important;
+}
+
+/* inputs/quill legíveis */
+#card-modal-root.theme-glass input,
+#card-modal-root.theme-glass textarea,
+#card-modal-root.theme-glass select,
+#card-modal-root.theme-glass .ql-container,
+#card-modal-root.theme-glass .ql-editor{
+  color: #111 !important;
+  background: rgba(255,255,255,0.88) !important;
+  border-color: rgba(0,0,0,0.12) !important;
+}
+
+#card-modal-root.theme-glass ::placeholder{
+  color: rgba(0,0,0,0.45) !important;
+}
+
+/* abas: aumentar opacidade (já que blur interno foi proibido) */
+#card-modal-root.theme-glass #card-tabs{
+  background: rgba(255,255,255,0.88) !important;
+  border-bottom: 1px solid rgba(0,0,0,0.10) !important;
+}
+
+#card-modal-root.theme-glass .card-tab-btn{
+  background: rgba(255,255,255,0.72) !important;
+  color: #111 !important;
+}
+
+#card-modal-root.theme-glass .card-tab-btn:hover{
+  background: rgba(255,255,255,0.86) !important;
+  color: #111 !important;
+}
+
+#card-modal-root.theme-glass .card-tab-active{
+  background: rgba(255,255,255,0.96) !important;
+  color: #111 !important;
+  border-bottom-color: rgba(0,0,0,0.40) !important;
+}
+
+/* savebar no claro com mais contraste */
+#card-modal-root.theme-glass .card-savebar{
+  background: rgba(255,255,255,0.82) !important;
+  border: 1px solid rgba(0,0,0,0.10) !important;
+}
+
+
+
+
+/* ============================================================
+   MODO "CM" (card_modal_body radical)
+   - quando o conteúdo #cm-root existe, escondemos as abas globais
+   ============================================================ */
+#card-modal-root.cm-mode #card-tabs{
+  display: none !important;
 }
