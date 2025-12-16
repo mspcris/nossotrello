@@ -25,7 +25,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import get_user_model
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.urls import reverse
 
 from .forms import ColumnForm, CardForm, BoardForm
@@ -1019,10 +1019,24 @@ def card_move_options(request, card_id):
 # MODAL DO CARD
 # ======================================================================
 
-def card_modal(request, card_id):
-    card = get_object_or_404(Card, id=card_id)
-    return render(request, "boards/partials/card_modal_body.html", {"card": card})
+def _card_checklists_qs(card: Card):
+    return (
+        card.checklists
+        .annotate(
+            total=Count("items"),
+            done=Count("items", filter=Q(items__is_done=True)),
+        )
+        .prefetch_related("items")
+        .order_by("position", "created_at")
+    )
 
+def _card_modal_context(card: Card) -> dict:
+    return {"card": card, "checklists": _card_checklists_qs(card)}
+
+
+def card_modal(request, card_id):
+    card = get_object_or_404(Card, id=card_id, is_deleted=False)
+    return render(request, "boards/partials/card_modal_body.html", _card_modal_context(card))
 
 # ======================================================================
 # IMAGEM PRINCIPAL DO BOARD

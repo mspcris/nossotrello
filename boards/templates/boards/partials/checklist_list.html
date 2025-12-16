@@ -7,8 +7,9 @@
      data-reorder-checklists-url="{% url 'boards:checklists_reorder' card.id %}"
      data-reorder-items-url="{% url 'boards:checklist_items_reorder' card.id %}">
 
-
-    {% for checklist in card.checklists.all %}
+    {# Se a view passar "checklists" anotado (done/total), usa ele.
+       Caso contrário, cai no card.checklists.all e o "done" vira 0 (sem 500). #}
+    {% for checklist in checklists|default:card.checklists.all %}
 
       <div class="checklist-block space-y-2"
            data-checklist-id="{{ checklist.id }}">
@@ -44,7 +45,9 @@
         </div>
 
         <!-- progress -->
-        {% with total=checklist.items.count done=checklist.items.filter(is_done=True).count %}
+        {# total: usa annotation checklist.total se existir; senão usa checklist.items.count (ok no template).
+           done: usa annotation checklist.done se existir; senão 0 (evita TemplateSyntaxError). #}
+        {% with total=checklist.total|default:checklist.items.count done=checklist.done|default:0 %}
           {% if total %}
             <div class="checklist-progress">
               <div class="checklist-progress-meta">
@@ -92,6 +95,4 @@
         Nenhum checklist ainda. Crie o primeiro no campo acima.
       </p>
     {% endfor %}
-
-
 </div>
