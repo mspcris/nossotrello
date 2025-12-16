@@ -1,20 +1,18 @@
 /* =======================================================================
-   BASE.CSS — ORGANIZADO POR BLOCOS
+   BASE.CSS — CONSOLIDADO (SEM DUPLICIDADES)
    Objetivo do modal:
-   - “Cabe” em qualquer viewport (inclusive 1366x768 @ 100%)
-   - Scroll interno único (aparece só quando necessário)
-   - Conteúdo nunca vaza fora do modal
-   - Barra "Salvar" fixa abaixo das abas (só quando houver mudanças)
+   - Cabe em qualquer viewport
+   - Scroll interno único (só quando necessário)
+   - Conteúdo não vaza
+   - Contraste no claro garantido
+   - Sem concorrência de temas
    ======================================================================= */
 
-   /* ============================================================
-   DENSIDADE GLOBAL (padrão do app)
-   Objetivo: 100% do browser com “cara” de ~75% (mais compacto)
-   Estratégia: reduzir a base do REM (cross-browser e previsível)
+/* ============================================================
+   DENSIDADE GLOBAL
    ============================================================ */
-
 html {
-  font-size: 75%; /* 16px -> 12px (equivale visualmente a ~75% de zoom) */
+  font-size: 75%; /* 16px -> 12px */
 }
 
 body {
@@ -22,43 +20,42 @@ body {
   line-height: 1.35;
 }
 
-/* Opcional (Chromium): se quiser 100% = exatamente zoom 75% */
+/* Opcional (Chromium): manter 100% */
 @supports (zoom: 1) {
   body { zoom: 1; }
 }
 
-
 /* =======================================================================
-   [0] TOKENS / VARIÁVEIS
+   [0] TOKENS / VARIÁVEIS (APENAS UMA VEZ)
    ======================================================================= */
-
 :root {
-  --modal-max-w: 2000px; /* >= viewport, para ocupar o máximo possível sem cortar */
+  /* Modal layout */
+  --modal-edge-gap: 10px;
   --modal-radius: 16px;
-  --modal-max-h: 92vh;
-
   --modal-pad-x: 20px;
   --modal-pad-y: 18px;
 
-  --footer-pad-y: 10px;
-  --footer-pad-x: 14px;
+  /* Vidro (aplicado SOMENTE no ::before do #card-modal-root.modal-glass) */
+  --glass-bg: rgba(255, 255, 255, 0.95);
+  --glass-blur: blur(12px) saturate(140%);
 
+  /* Bordas / sombras */
   --border-light: rgba(255,255,255,0.25);
   --border-dark: rgba(255,255,255,0.14);
-
-  --glass-bg: rgba(255, 255, 255, 0.86);
-  --glass-blur: blur(16px) saturate(140%);
-
   --shadow-thumb: rgba(0,0,0,0.25);
-  --scrollbar-w: 16px; /* gutter padrão Windows/Chromium */
 
+  /* Scroll */
+  --scrollbar-w: 16px;
+
+  /* Capa */
+  --card-cover-thumb-h: 110px;
+  --card-cover-modal-h: clamp(110px, 14vh, 180px);
+  --card-cover-bg: rgba(0,0,0,0.10);
 }
-
 
 /* =======================================================================
    [1] COLUNAS / CARDS — VIDRO E CORES
    ======================================================================= */
-
 .column-glass {
   background: rgba(255, 255, 255, 0.25);
   backdrop-filter: blur(12px);
@@ -78,16 +75,13 @@ body {
 .purple-column-bg { background-color: rgba(168, 85, 247, 0.20) !important; }
 .amber-column-bg  { background-color: rgba(251, 191, 36, 0.25) !important; }
 
-
 /* =======================================================================
    [2] ATIVIDADE — ESTILO COMPACTO
    ======================================================================= */
-
 .activity-panel {
   padding: 8px !important;
   border-radius: 10px !important;
   background: rgba(255, 255, 255, 0.55) !important;
-  backdrop-filter: blur(4px) !important;
   border: 1px solid rgba(160, 160, 160, 0.25) !important;
   overflow-y: auto !important;
 }
@@ -138,175 +132,120 @@ body {
   margin-bottom: 6px !important;
 }
 
-
 /* =======================================================================
    [3] MODAL — VIDRO (BASE)
    IMPORTANTE:
-   - NUNCA aplicar backdrop-filter no .modal-glass genérico
-   - O blur do modal fica SOMENTE no #card-modal-root.modal-glass::before
+   - NUNCA aplicar blur em filhos do modal
+   - Blur somente no ::before do #card-modal-root.modal-glass
    ======================================================================= */
-
 .modal-glass {
   background: transparent !important;
   border: 1px solid rgba(255, 255, 255, 0.40) !important;
-
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
 
-
 /* =======================================================================
-   [4] MODAL — THEMES (WHITE / AERO / DARK)
+   [4] MODAL — THEME MODEL ÚNICO
+   Padrão oficial: #card-modal-root.theme-glass | #card-modal-root.theme-dark
+   Compat (não quebra): card-theme-white/aero/dark viram alias.
    ======================================================================= */
 
-/* --- WHITE --- */
-.card-theme-white {
-  background: rgba(255, 255, 255, 0.92) !important;
-  backdrop-filter: blur(14px) saturate(150%);
-  border: 1px solid rgba(255, 255, 255, 0.65);
+/* ---------- ALIAS (remove concorrência sem trocar JS agora) ---------- */
+#card-modal-root.card-theme-white,
+#card-modal-root.card-theme-aero {
+  /* trata como glass */
+  /* não coloca blur aqui; blur é no ::before */
+}
+
+#card-modal-root.card-theme-dark {
+  /* trata como dark */
+}
+
+/* ---------- GLASS (claro) ---------- */
+#card-modal-root.theme-glass,
+#card-modal-root.card-theme-white,
+#card-modal-root.card-theme-aero {
   color: #111 !important;
+  --glass-bg: rgba(255,255,255,0.96);
+  --glass-blur: blur(12px) saturate(140%);
 }
 
-.card-theme-white input,
-.card-theme-white textarea,
-.card-theme-white .ql-container,
-.card-theme-white .ql-editor {
-  background: rgba(255, 255, 255, 0.65);
-  border: 1px solid rgba(0,0,0,0.10);
-  color: #111 !important;
+/* ---------- DARK ---------- */
+#card-modal-root.theme-dark,
+#card-modal-root.card-theme-dark {
+  color: rgba(241,245,249,0.95) !important;
+  --glass-bg: rgba(0,0,0,0.86);
+  --glass-blur: blur(12px) saturate(130%);
+  border: 1px solid rgba(255,255,255,0.12) !important;
 }
 
-/* --- AERO (abas) --- */
-.card-theme-aero #card-tabs {
-  background: rgba(255,255,255,0.20) !important;
-  backdrop-filter: blur(14px) saturate(180%) !important;
-  border-bottom: 1px solid rgba(200,200,200,0.35) !important;
+/* Inputs no dark */
+#card-modal-root.theme-dark input,
+#card-modal-root.theme-dark textarea,
+#card-modal-root.theme-dark select,
+#card-modal-root.theme-dark .ql-container,
+#card-modal-root.theme-dark .ql-editor,
+#card-modal-root.card-theme-dark input,
+#card-modal-root.card-theme-dark textarea,
+#card-modal-root.card-theme-dark select,
+#card-modal-root.card-theme-dark .ql-container,
+#card-modal-root.card-theme-dark .ql-editor{
+  background: rgba(20,20,20,0.55) !important;
+  border: 1px solid rgba(255,255,255,0.14) !important;
+  color: rgba(241,245,249,0.95) !important;
 }
 
-.card-theme-aero .card-tab-btn {
-  padding: 10px 18px !important;
-  border-radius: 10px 10px 0 0 !important;
-  background: rgba(255,255,255,0.10) !important;
-  color: rgba(30,30,30,0.75) !important;
-  border-bottom: 2px solid transparent !important;
+#card-modal-root.theme-dark label,
+#card-modal-root.card-theme-dark label{
+  color: rgba(241,245,249,0.85) !important;
 }
 
-.card-theme-aero .card-tab-btn:hover {
-  background: rgba(255,255,255,0.22) !important;
-  color: rgba(0,0,0,0.85) !important;
-  border-bottom-color: rgba(0,0,0,0.25) !important;
-}
-
-.card-theme-aero .card-tab-active {
-  background: rgba(255,255,255,0.28) !important;
-  color: #111 !important;
-  border-bottom-color: rgba(0,0,0,0.55) !important;
-  box-shadow: inset 0 0 14px rgba(255,255,255,0.30) !important;
-}
-
-/* --- DARK (tema + abas) --- */
-.card-theme-dark {
-  background-color: #1a1a1a !important;
-  color: #f1f1f1 !important;
-  border: 2px solid #1f1f1f !important;
-}
-
-.card-theme-dark #card-tabs {
-  background: #000 !important;
-  border-bottom: 1px solid #333 !important;
-}
-
-.card-theme-dark .card-tab-btn {
-  padding: 10px 18px !important;
-  border-radius: 12px 12px 0 0 !important;
-  background: rgba(255,255,255,0.06) !important;
-  color: #bbb !important;
-  border-bottom: 2px solid transparent !important;
-}
-
-.card-theme-dark .card-tab-btn:hover {
-  background: rgba(255,255,255,0.14) !important;
-  color: #fff !important;
-  border-bottom-color: rgba(255,255,255,0.30) !important;
-}
-
-.card-theme-dark .card-tab-active {
-  background: rgba(255,255,255,0.22) !important;
-  color: #fff !important;
-  border-bottom-color: #fff !important;
-  box-shadow: inset 0 0 18px rgba(255,255,255,0.25) !important;
-}
-
-/* Inputs / quill no dark */
-.card-theme-dark input,
-.card-theme-dark textarea,
-.card-theme-dark select,
-.card-theme-dark .ql-container,
-.card-theme-dark .ql-editor {
-  background-color: #2a2a2a !important;
-  border: 1px solid #444 !important;
-  color: #f1f1f1 !important;
-}
-
-.card-theme-dark .ql-toolbar {
-  background-color: #272727 !important;
-  border-color: #444 !important;
-}
-
-.card-theme-dark label {
-  color: #e5e5e5 !important;
-}
-
-/* ============================================================
-   SAVE BAR (Descrição/Etiquetas) — sticky top, só aparece quando dirty
-   ============================================================ */
-
+/* =======================================================================
+   [5] SAVE BAR — sticky top (sem blur interno; blur é proibido no modal)
+   ======================================================================= */
 .card-savebar {
   position: sticky;
   top: 0;
   z-index: 20;
 
-  padding: 6px 8px;        /* era 10/12 */
-  margin: 6px 0 8px 0;     /* era 12px só embaixo */
-  border-radius: 10px;     /* era 14px */
+  padding: 6px 8px;
+  margin: 6px 0 8px 0;
+  border-radius: 10px;
 
-  background: rgba(255,255,255,0.45);
-  backdrop-filter: blur(8px) saturate(140%);
-  border: 1px solid rgba(255,255,255,0.28);
+  background: rgba(255,255,255,0.82);
+  border: 1px solid rgba(0,0,0,0.10);
 }
 
 .card-savebar.hidden { display: none !important; }
 
-.card-theme-dark .card-savebar {
-  background: rgba(0,0,0,0.38);
-  border: 1px solid rgba(255,255,255,0.14);
+#card-modal-root.theme-dark .card-savebar,
+#card-modal-root.card-theme-dark .card-savebar {
+  background: rgba(0,0,0,0.40);
+  border: 1px solid rgba(255,255,255,0.12);
 }
 
-/* Botões menores dentro da savebar (sem mexer no resto do app) */
+/* Botões menores dentro da savebar */
 #card-modal-root .card-savebar button {
-  padding: 6px 10px !important;  /* reduz altura/largura */
+  padding: 6px 10px !important;
   font-size: 0.92rem !important;
 }
 
-/* ============================================================
-   FIX DEFINITIVO: BACKDROP-FILTER BLEED (Chromium)
-   Estratégia:
-   1) blur somente no ::before do #card-modal-root
-   2) nenhum filho do modal pode ter backdrop-filter
-   ============================================================ */
-
+/* =======================================================================
+   [6] FIX DEFINITIVO: BACKDROP-FILTER BLEED (Chromium)
+   - blur só no ::before
+   - filhos SEM blur (hard rule)
+   ======================================================================= */
 #card-modal-root.modal-glass {
   background: transparent !important;
-
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 
   position: relative;
-  overflow: hidden;                 /* fallback */
+  overflow: hidden;
   border-radius: var(--modal-radius);
 }
 
-/* Camada real do vidro (clippada pelo border-radius do modal) */
 #card-modal-root.modal-glass::before {
   content: "";
   position: absolute;
@@ -321,24 +260,20 @@ body {
   z-index: 0;
 }
 
-/* Conteúdo acima do vidro */
 #card-modal-root.modal-glass > * {
   position: relative;
   z-index: 1;
 }
 
-/* HARD RULE: dentro do modal, ninguém mais usa blur */
+/* HARD RULE: dentro do modal ninguém usa blur */
 #card-modal-root * {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
 
-
-
 /* =======================================================================
-   [5] DOTS (troca de tema)
+   [7] DOTS (troca de tema)
    ======================================================================= */
-
 .theme-dot {
   width: 18px;
   height: 18px;
@@ -348,29 +283,20 @@ body {
   transition: 0.2s;
   box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
 }
-
 .theme-dot:hover {
   transform: scale(1.15);
   box-shadow: 0 0 8px rgba(0, 0, 0, 0.45);
 }
 
-
 /* =======================================================================
-   [6] MINI-ABAS ATIVIDADE (sem JS, compatível com HTMX swap)
+   [8] MINI-ABAS ATIVIDADE (mantém seu modelo original)
    ======================================================================= */
-
-#card-modal-root .ativ-subtab-wrap{
-  width: 100%;
-  min-width: 0;
-}
-
+#card-modal-root .ativ-subtab-wrap{ width: 100%; min-width: 0; }
 #card-modal-root .ativ-subtab-radio{
   position: absolute;
   opacity: 0;
   pointer-events: none;
 }
-
-/* barra de botões */
 #card-modal-root .ativ-subtab-buttons{
   display: flex;
   gap: 10px;
@@ -379,7 +305,6 @@ body {
   width: 100%;
   min-width: 0;
 }
-
 #card-modal-root .ativ-subtab-btn{
   padding: 8px 16px;
   background: rgba(255,255,255,0.25);
@@ -388,94 +313,66 @@ body {
   transition: 0.2s ease;
   user-select: none;
 }
+#card-modal-root .ativ-subtab-btn:hover{ background: rgba(255,255,255,0.40); }
+#card-modal-root .ativ-subtab-views{ width: 100%; min-width: 0; }
+#card-modal-root .ativ-view{ display: none; width: 100%; min-width: 0; }
 
-#card-modal-root .ativ-subtab-btn:hover{
-  background: rgba(255,255,255,0.40);
-}
-
-/* views */
-#card-modal-root .ativ-subtab-views{
-  width: 100%;
-  min-width: 0;
-}
-
-#card-modal-root .ativ-view{
-  display: none;
-  width: 100%;
-  min-width: 0;
-}
-
-/* ativa view + estilo do “botão ativo” */
 #card-modal-root #ativ-tab-new:checked ~ .ativ-subtab-buttons label[for="ativ-tab-new"],
 #card-modal-root #ativ-tab-hist:checked ~ .ativ-subtab-buttons label[for="ativ-tab-hist"]{
   background: rgba(255,255,255,0.60) !important;
   border-bottom: 2px solid #444 !important;
 }
-
-#card-modal-root #ativ-tab-new:checked ~ .ativ-subtab-views .ativ-view-new{
-  display: block;
-}
-
-#card-modal-root #ativ-tab-hist:checked ~ .ativ-subtab-views .ativ-view-hist{
-  display: block;
-}
-
-
+#card-modal-root #ativ-tab-new:checked ~ .ativ-subtab-views .ativ-view-new{ display: block; }
+#card-modal-root #ativ-tab-hist:checked ~ .ativ-subtab-views .ativ-view-hist{ display: block; }
 
 /* =======================================================================
-   [7] DARK GLOBAL (quando <html class="dark">)
+   [9] DARK GLOBAL (html.dark) — mantém pro board
    ======================================================================= */
-
 html.dark .modal-glass {
   background: rgba(0, 0, 0, 0.55) !important;
   border: 1px solid var(--border-dark) !important;
 }
-
 html.dark .activity-panel {
   background: rgba(0, 0, 0, 0.45) !important;
   border: 1px solid var(--border-dark) !important;
 }
-
 html.dark .activity-item {
   background: rgba(0, 0, 0, 0.60) !important;
   border: 1px solid var(--border-dark) !important;
   color: rgba(241, 245, 249, 0.95) !important;
 }
-
 html.dark .activity-meta { color: rgba(226, 232, 240, 0.70) !important; }
-
 html.dark .card-glass {
   background: rgba(0, 0, 0, 0.35) !important;
   border: 1px solid var(--border-dark) !important;
 }
-
 html.dark .column-glass {
   background: rgba(0, 0, 0, 0.30) !important;
   border: 1px solid var(--border-dark) !important;
 }
-
-/* Fundos translúcidos das colunas no dark */
 html.dark .gray-column-bg   { background-color: rgba(15, 23, 42, 0.35) !important; }
 html.dark .blue-column-bg   { background-color: rgba(59, 130, 246, 0.18) !important; }
 html.dark .green-column-bg  { background-color: rgba(52, 211, 153, 0.16) !important; }
 html.dark .purple-column-bg { background-color: rgba(168, 85, 247, 0.16) !important; }
 html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !important; }
 
-
-
 /* =======================================================================
-   [8] MODAL — ARQUITETURA ROBUSTA
-   Objetivo: modal nunca ultrapassa o pai e nunca é “cortado” à direita.
+   [10] MODAL — ARQUITETURA ROBUSTA (fullscreen estável)
    ======================================================================= */
-
 #card-modal-root,
 #card-modal-root * { box-sizing: border-box; }
 
-/* Casca do modal: width 100% (não estoura o container pai) + max-width por viewport */
+#modal{
+  padding: var(--modal-edge-gap);
+}
+
+/* Modal ocupa viewport; scroll único no body do modal */
 #card-modal-root.card-modal{
-  width: 100%;
-  max-width: min(var(--modal-max-w), 96vw);
-  max-height: var(--modal-max-h);
+  width: calc(100vw - (var(--modal-edge-gap) * 2)) !important;
+  max-width: calc(100vw - (var(--modal-edge-gap) * 2)) !important;
+
+  height: calc(100vh - (var(--modal-edge-gap) * 2)) !important;
+  max-height: calc(100vh - (var(--modal-edge-gap) * 2)) !important;
 
   display: flex;
   flex-direction: column;
@@ -488,22 +385,20 @@ html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !import
 
   position: relative;
   isolation: isolate;
-  margin: 0 auto;
+
+  margin: 0 !important;
 }
 
-/* Header/tabs/capa nunca podem empurrar largura */
-#card-modal-root .card-aero-header,
-#card-modal-root #card-tabs{
+#card-modal-root .card-aero-header{
   width: 100%;
   min-width: 0;
   max-width: 100%;
   overflow-x: hidden;
-
-  padding-right: 10px; /* <-- ADICIONE ESTA LINHA */
+  padding-right: 10px;
 }
 
-
-/* Área rolável única do conteúdo */
+/* Scroll único */
+#modal-body.card-modal-scroll,
 #card-modal-root .card-modal-scroll{
   flex: 1 1 auto;
   min-height: 0;
@@ -515,21 +410,18 @@ html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !import
   overflow-y: auto;
   overflow-x: hidden;
 
-  scrollbar-gutter: stable; /* <-- ADICIONE ESTA LINHA AQUI */
-
+  scrollbar-gutter: stable;
   padding: var(--modal-pad-y) var(--modal-pad-x);
   scroll-padding-bottom: 96px;
 }
 
-
-/* Scrollbar */
 #card-modal-root .card-modal-scroll::-webkit-scrollbar{ width: 10px; }
 #card-modal-root .card-modal-scroll::-webkit-scrollbar-thumb{
   background: var(--shadow-thumb);
   border-radius: 10px;
 }
 
-/* Inputs e blocos principais contidos (sem “clamp universal”) */
+/* Contenção */
 #card-modal-root input,
 #card-modal-root textarea,
 #card-modal-root select,
@@ -551,7 +443,6 @@ html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !import
   overflow-x: hidden;
 }
 
-/* Toolbar do Quill quebra linha */
 #card-modal-root .ql-toolbar.ql-snow{
   display: flex !important;
   flex-wrap: wrap !important;
@@ -562,7 +453,6 @@ html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !import
   margin-right: 6px !important;
 }
 
-/* Texto sem espaço: quebra garantida */
 #card-modal-root .ql-editor,
 #card-modal-root .ql-editor *{
   white-space: pre-wrap;
@@ -579,9 +469,7 @@ html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !import
   height: auto;
 }
 
-/* =========================
-   ATIVIDADE — 2 colunas sem estourar
-   ========================= */
+/* Atividade em 2 colunas */
 #card-modal-root .card-activity-layout{
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -593,26 +481,16 @@ html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !import
   min-width: 0;
   max-width: 100%;
 }
-
-/* em telas menores, empilha */
 @media (max-width: 1024px){
   #card-modal-root .card-activity-layout{
     grid-template-columns: minmax(0, 1fr);
   }
 }
 
-
 /* =======================================================================
-   [9] MODAL — RESPONSIVO (só quando necessário)
+   [11] COMPACT MODE — 1366x768
    ======================================================================= */
-
-
-/* =======================================================================
-   [10] COMPACT MODE — 1366x768 @ 100% (só no modal)
-   ======================================================================= */
-
 @media (max-width: 1366px) and (max-height: 768px) {
-  /* reduz densidade do modal sem mexer no app inteiro */
   #card-modal-root { font-size: 14px; }
 
   #card-modal-root .card-aero-header {
@@ -620,48 +498,10 @@ html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !import
     padding-bottom: 8px !important;
   }
 
-  #card-modal-root #card-tabs { margin-top: 8px !important; }
-
-  #card-modal-root #card-tabs .card-tab-btn {
-    padding: 7px 10px !important;
-    font-size: 0.90rem !important;
-  }
-
   #card-modal-root .theme-dot {
     width: 14px;
     height: 14px;
   }
-
-  #card-modal-root .card-cover-img { max-height: 140px; }
-
-  /* FIX: capa não pode ultrapassar o modal */
-#card-modal-root .card-cover-img{
-  display: block;
-  width: 100% !important;
-  max-width: 100% !important;
-  height: auto !important;
-  object-fit: cover;
-}
-
-/* se a capa for um container (div) com background-image */
-#card-modal-root .card-cover-img:not(img){
-  width: 100% !important;
-  max-width: 100% !important;
-  background-size: cover;
-  background-position: center;
-}
-
-/* garante que a área do header recorte a capa (evita bleed visual) */
-#card-modal-root .card-aero-header,
-#card-modal-root #card-tabs{
-  width: 100%;
-  min-width: 0;
-  max-width: 100%;
-  overflow-x: hidden;
-
-  padding-right: 10px; /* <-- ADICIONE ESTA LINHA */
-}
-
 
   #card-modal-root label {
     font-size: 0.85rem !important;
@@ -679,322 +519,72 @@ html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !import
     padding: 12px 14px;
   }
 
-  /* Quill mais baixo */
   #card-modal-root #quill-editor .ql-editor { min-height: 140px; }
   #card-modal-root #quill-editor-ativ .ql-editor { min-height: 110px; }
 }
 
-
 /* =======================================================================
-   [11] CHECKLIST / HISTÓRICO — LIMITES (só quando necessário)
-   Se você ainda usa style inline de max-height, pode remover depois.
+   [12] CHECKLIST / HISTÓRICO
    ======================================================================= */
-
 #card-tab-check,
 #ativ-historico-panel {
   overflow: auto;
 }
 
 /* =======================================================================
-   CAPA DO CARD — ALTURA LIMITADA + CLIQUE ABRE FULL
+   [13] CAPA/IMAGEM — BOARD + MODAL (SEM DUPLICIDADE)
    ======================================================================= */
-
-#card-modal-root .card-cover-wrap{
-  /* ~1/3 do que você tinha (responsivo, sem estourar) */
-  max-height: clamp(120px, 18vh, 220px);
+/* BOARD */
+#columns-wrapper li[data-card-id] .card-cover-wrap{
+  max-height: var(--card-cover-thumb-h) !important;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+}
+#columns-wrapper li[data-card-id] .card-cover-img{
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  background: var(--card-cover-bg) !important;
+  display: block;
+}
+#columns-wrapper li[data-card-id] .card-cover-img:not(img){
+  background-size: contain !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-color: var(--card-cover-bg) !important;
 }
 
+/* MODAL */
+#card-modal-root .card-cover-wrap{
+  max-height: var(--card-cover-modal-h) !important;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  width: 100%;
+}
 #card-modal-root .card-cover-img{
-  display: block;
   width: 100% !important;
   height: 100% !important;
-  object-fit: cover;
-}
-
-/* Botão remover capa com contraste garantido */
-/* =======================================================================
-   X “metalizado” (sempre chamativo) + “luminoso” no hover
-   ======================================================================= */
-
-/* Base do botão */
-#card-modal-root .card-cover-remove{
-  /* posicionamento você já tem no HTML (absolute top-2 right-2) */
-  border: 1px solid rgba(255,255,255,0.70);
-  border-radius: 999px;
-
-  /* fundo vidro escuro para contraste em capa clara/escura */
-  background: rgba(0,0,0,0.38);
-  backdrop-filter: blur(8px) saturate(160%);
-  -webkit-backdrop-filter: blur(8px) saturate(160%);
-
-  /* mata o “X” padrão: texto fica transparente, o X vem do pseudo-elemento */
-  color: transparent !important;
-  font-size: 0 !important;
-  line-height: 0 !important;
-
-  width: 34px;
-  height: 34px;
-
-  display: grid;
-  place-items: center;
-
-  box-shadow:
-    0 10px 26px rgba(0,0,0,0.45),
-    inset 0 0 0 2px rgba(255,255,255,0.18);
-
-  cursor: pointer;
-  transition: transform .18s ease, box-shadow .18s ease, background .18s ease, border-color .18s ease;
-  will-change: transform, box-shadow, filter;
-}
-
-/* O “X” fora do comum: metalizado e com brilho animado */
-#card-modal-root .card-cover-remove::before{
-  content: "✖";
-  font-size: 18px;
-  line-height: 1;
-  font-weight: 900;
-  letter-spacing: 0;
-
-  /* metalizado (gradiente) */
-  background: linear-gradient(
-    115deg,
-    #ffffff 0%,
-    #9aa7ff 18%,
-    #ffffff 32%,
-    #ffb7f2 50%,
-    #ffffff 68%,
-    #a7f3ff 82%,
-    #ffffff 100%
-  );
-  background-size: 220% 220%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-
-  /* dá presença em qualquer capa */
-  filter: drop-shadow(0 1px 1px rgba(0,0,0,0.75))
-          drop-shadow(0 0 6px rgba(255,255,255,0.18));
-
-  animation: coverXMetal 2.2s linear infinite;
-}
-
-/* “halo” discreto sempre ativo */
-#card-modal-root .card-cover-remove::after{
-  content: "";
-  position: absolute;
-  inset: -6px;
-  border-radius: inherit;
-  pointer-events: none;
-
-  background: radial-gradient(circle at 50% 50%,
-    rgba(255,255,255,0.14) 0%,
-    rgba(255,255,255,0.06) 35%,
-    rgba(255,255,255,0.00) 70%
-  );
-
-  opacity: 0.9;
-  transition: opacity .18s ease, filter .18s ease;
-}
-
-/* Hover: luminoso, “neon”, chama atenção */
-#card-modal-root .card-cover-remove:hover{
-  transform: scale(1.08);
-  background: rgba(0,0,0,0.52);
-  border-color: rgba(255,255,255,0.95);
-
-  box-shadow:
-    0 16px 38px rgba(0,0,0,0.55),
-    0 0 0 2px rgba(255,255,255,0.22),
-    0 0 22px rgba(180,160,255,0.45),
-    0 0 34px rgba(255,170,220,0.28);
-}
-
-#card-modal-root .card-cover-remove:hover::before{
-  /* aumenta o brilho e acelera o metal */
-  filter: drop-shadow(0 1px 1px rgba(0,0,0,0.75))
-          drop-shadow(0 0 10px rgba(255,255,255,0.55))
-          drop-shadow(0 0 22px rgba(170,140,255,0.55));
-  animation-duration: .9s;
-}
-
-#card-modal-root .card-cover-remove:hover::after{
-  opacity: 1;
-  filter: blur(1px);
-}
-
-/* Animação do metal */
-@keyframes coverXMetal{
-  0%   { background-position: 0% 50%; }
-  50%  { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-/* Acessibilidade: foco visível */
-#card-modal-root .card-cover-remove:focus-visible{
-  outline: none;
-  box-shadow:
-    0 16px 38px rgba(0,0,0,0.55),
-    0 0 0 3px rgba(255,255,255,0.35),
-    0 0 0 6px rgba(120,220,255,0.22);
-}
-
-
-/* =======================================================================
-   PATCH: CAPA DO CARD (altura limitada + clique abre em nova aba)
-   ======================================================================= */
-#card-modal-root .card-cover-wrap{
-  /* ~ 1/3 do que você tinha: ajusta fino aqui */
-  max-height: 22vh;
-  width: 100%;
-}
-
-#card-modal-root .card-cover-wrap .card-cover-img{
+  object-fit: contain !important;
+  background: var(--card-cover-bg) !important;
   display: block;
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: cover;
 }
-
-/* X com contraste em imagem clara/escura */
-#card-modal-root .card-cover-remove{
-  background: rgba(0,0,0,0.45);
-  color: #fff;
-  border: 1px solid rgba(255,255,255,0.85);
-  box-shadow:
-    0 2px 8px rgba(0,0,0,0.45),
-    0 0 0 2px rgba(255,255,255,0.25);
-  text-shadow: 0 1px 2px rgba(0,0,0,0.65);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+#card-modal-root .card-cover-img:not(img){
+  background-size: contain !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-color: var(--card-cover-bg) !important;
 }
-
-#card-modal-root .card-cover-remove:hover{
-  background: rgba(0,0,0,0.65);
+#columns-wrapper li[data-card-id] .card-cover-img,
+#card-modal-root .card-cover-img{
+  cursor: zoom-in;
 }
 
 /* =======================================================================
-   PATCH: ABAS SEM DEPENDER DO .card-theme-aero
-   (isso resolve “após salvar as abas perdem CSS”)
+   [14] X DO MODAL — metalizado (mantido)
    ======================================================================= */
-#card-modal-root #card-tabs{
-  background: rgba(255,255,255,0.20) !important;
-  border-bottom: 1px solid rgba(200,200,200,0.35) !important;
-}
-
-#card-modal-root .card-tab-btn{
-  padding: 10px 18px !important;
-  border-radius: 10px 10px 0 0 !important;
-  background: rgba(255,255,255,0.10) !important;
-  color: rgba(30,30,30,0.75) !important;
-  border-bottom: 2px solid transparent !important;
-}
-
-#card-modal-root .card-tab-btn:hover{
-  background: rgba(255,255,255,0.22) !important;
-  color: rgba(0,0,0,0.85) !important;
-  border-bottom-color: rgba(0,0,0,0.25) !important;
-}
-
-#card-modal-root .card-tab-active{
-  background: rgba(255,255,255,0.28) !important;
-  color: #111 !important;
-  border-bottom-color: rgba(0,0,0,0.55) !important;
-  box-shadow: inset 0 0 14px rgba(255,255,255,0.30) !important;
-}
-
-/* mantém override dark que você já tem */
-#card-modal-root.card-theme-dark #card-tabs{
-  background: #000 !important;
-  border-bottom: 1px solid #333 !important;
-}
-#card-modal-root.card-theme-dark .card-tab-btn{
-  background: rgba(255,255,255,0.06) !important;
-  color: #bbb !important;
-}
-#card-modal-root.card-theme-dark .card-tab-btn:hover{
-  background: rgba(255,255,255,0.14) !important;
-  color: #fff !important;
-}
-#card-modal-root.card-theme-dark .card-tab-active{
-  background: rgba(255,255,255,0.22) !important;
-  color: #fff !important;
-  border-bottom-color: #fff !important;
-}
-
-/* =======================================================================
-   PATCH: ROLAGEM SEMPRE NO MODAL (não dentro do Quill)
-   ======================================================================= */
-#card-modal-root #quill-editor .ql-container,
-#card-modal-root #quill-editor-ativ .ql-container{
-  height: auto !important;
-  overflow: visible !important;
-}
-
-#card-modal-root #quill-editor .ql-editor,
-#card-modal-root #quill-editor-ativ .ql-editor{
-  height: auto !important;
-  max-height: none !important;
-  overflow: visible !important; /* mata a scrollbar interna */
-}
-
-/* =======================================================================
-   ATIVIDADE: MINI-ABAS (CSS-only, não quebra com HTMX swap)
-   ======================================================================= */
-#card-modal-root .ativ-subtabs{
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-#card-modal-root .ativ-subtabs input[type="radio"]{
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-
-#card-modal-root .ativ-subtabs label.ativ-subtab-btn{
-  padding: 8px 16px;
-  background: rgba(255,255,255,0.25);
-  border-radius: 8px 8px 0 0;
-  cursor: pointer;
-  transition: 0.2s ease;
-}
-
-#card-modal-root .ativ-subtabs label.ativ-subtab-btn:hover{
-  background: rgba(255,255,255,0.40);
-}
-
-#card-modal-root #ativ-subtab-compose:checked + label,
-#card-modal-root #ativ-subtab-history:checked + label{
-  background: rgba(255,255,255,0.60) !important;
-  border-bottom: 2px solid #444 !important;
-}
-
-#card-modal-root .ativ-panel{
-  width: 100%;
-  margin-top: 8px;
-}
-
-#card-modal-root .ativ-panel-compose,
-#card-modal-root .ativ-panel-history{
-  display: none;
-}
-
-/* toggle panes */
-#card-modal-root #ativ-subtab-compose:checked ~ .ativ-panel-compose{ display: block; }
-#card-modal-root #ativ-subtab-history:checked ~ .ativ-panel-history{ display: block; }
-
-/* =======================================================================
-   X DO MODAL (canto superior direito) — metalizado sempre visível + glow no hover
-   Aplica SOMENTE no X do modal global (base.html)
-   ======================================================================= */
-
-/* X DO MODAL — sem círculo (só o X), ainda metalizado + glow */
 #modal .modal-top-x{
   position: relative;
 
-  /* remove círculo/badge */
   width: auto;
   height: auto;
   border: 0 !important;
@@ -1002,10 +592,8 @@ html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !import
   background: transparent !important;
   box-shadow: none !important;
 
-  /* mantém clique confortável */
   padding: 8px 10px;
 
-  /* mata o texto */
   color: transparent !important;
   font-size: 0 !important;
   line-height: 0 !important;
@@ -1015,12 +603,8 @@ html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !import
   will-change: transform, filter;
 }
 
-/* remove halo circular */
-#modal .modal-top-x::after{
-  content: none !important;
-}
+#modal .modal-top-x::after{ content: none !important; }
 
-/* mantém o X metalizado */
 #modal .modal-top-x::before{
   content: "✖";
   font-size: 20px;
@@ -1049,6 +633,12 @@ html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !import
   animation: modalXMetal 2.4s linear infinite;
 }
 
+@keyframes modalXMetal{
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
 #modal .modal-top-x:hover{
   transform: scale(1.12);
   filter:
@@ -1056,7 +646,6 @@ html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !import
     drop-shadow(0 0 22px rgba(170,140,255,0.65))
     drop-shadow(0 0 34px rgba(255,170,220,0.40));
 }
-
 #modal .modal-top-x:focus-visible{
   outline: none;
   filter:
@@ -1064,626 +653,83 @@ html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !import
     drop-shadow(0 0 24px rgba(120,220,255,0.35));
 }
 
-
-
-
 /* =======================================================================
-   FIX: CAPA/IMAGEM NO CARD + MODAL (preview sem crop agressivo)
-   Estratégia:
-   - limitar altura
-   - trocar cover -> contain no preview
-   - funcionar tanto para <img> quanto para <div style="background-image">
+   [15] ANIMAÇÃO estilo macOS (open/close) + fallback
    ======================================================================= */
-
-:root{
-  --card-cover-thumb-h: 110px;                 /* altura no card da coluna */
-  --card-cover-modal-h: clamp(110px, 14vh, 180px); /* altura no modal */
-  --card-cover-bg: rgba(0,0,0,0.10);           /* “letterbox” discreto */
-}
-
-/* ======================
-   BOARD (cards na coluna)
-   ====================== */
-#columns-wrapper li[data-card-id] .card-cover-wrap{
-  max-height: var(--card-cover-thumb-h) !important;
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
-}
-
-#columns-wrapper li[data-card-id] .card-cover-img{
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: contain !important;     /* <-- tira o corte */
-  background: var(--card-cover-bg) !important;
-  display: block;
-}
-
-/* se a capa for um container com background-image */
-#columns-wrapper li[data-card-id] .card-cover-img:not(img){
-  background-size: contain !important; /* <-- tira o corte */
-  background-repeat: no-repeat !important;
-  background-position: center !important;
-  background-color: var(--card-cover-bg) !important;
-}
-
-/* ===============
-   MODAL (capa topo)
-   =============== */
-#card-modal-root .card-cover-wrap{
-  max-height: var(--card-cover-modal-h) !important;
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
-}
-
-#card-modal-root .card-cover-img{
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: contain !important;      /* <-- tira o corte */
-  background: var(--card-cover-bg) !important;
-  display: block;
-}
-
-/* se a capa do modal for um container com background-image */
-#card-modal-root .card-cover-img:not(img){
-  background-size: contain !important; /* <-- tira o corte */
-  background-repeat: no-repeat !important;
-  background-position: center !important;
-  background-color: var(--card-cover-bg) !important;
-}
-
-/* UX: deixa claro que dá pra clicar */
-#columns-wrapper li[data-card-id] .card-cover-img,
-#card-modal-root .card-cover-img{
-  cursor: zoom-in;
-}
-
-
-
-
-
-
-
-/* =======================================================================
-   MODAL: quase fullscreen, estável (sem vazar pra direita)
-   ======================================================================= */
-:root{
-  --modal-edge-gap: 10px; /* margem mínima */
-  --modal-max-w: 9999px;  /* deixa o vw mandar */
-  --modal-max-h: 9999px;
-}
-
-/* o overlay ganha padding pra garantir respiro */
-#modal{
-  padding: var(--modal-edge-gap);
-}
-
-/* tamanho fixo por viewport (não por conteúdo) */
-#card-modal-root.card-modal{
-  width: calc(100vw - (var(--modal-edge-gap) * 2)) !important;
-  max-width: calc(100vw - (var(--modal-edge-gap) * 2)) !important;
-
-  height: calc(100vh - (var(--modal-edge-gap) * 2)) !important;
-  max-height: calc(100vh - (var(--modal-edge-gap) * 2)) !important;
-
-  margin: 0 !important;
-}
-
-/* header nunca “empurra” e body sempre vira o scroll único */
-#card-modal-root.card-modal{
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  min-height: 0;
-}
-
-#modal-body.card-modal-scroll{
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-
-
-
-
-/* =======================================================================
-   ANIMAÇÃO estilo macOS (open/close)
-   ======================================================================= */
-
-/* estado base (quando está hidden, nem aparece; quando aparece sem modal-open, fica “pré-animação”) */
 #modal{
   opacity: 0;
   transition: opacity 180ms ease;
 }
-
 #card-modal-root{
   transform: translateY(10px) scale(0.98);
   opacity: 0;
   transition: transform 220ms cubic-bezier(0.2, 0.9, 0.2, 1), opacity 180ms ease;
   will-change: transform, opacity;
 }
-
-/* aberto */
-#modal.modal-open{
-  opacity: 1;
-}
+#modal.modal-open{ opacity: 1; }
 #modal.modal-open #card-modal-root{
   transform: translateY(0) scale(1);
   opacity: 1;
 }
-
-/* fechando */
-#modal.modal-closing{
-  opacity: 0;
-}
+#modal.modal-closing{ opacity: 0; }
 #modal.modal-closing #card-modal-root{
   transform: translateY(8px) scale(0.985);
   opacity: 0;
 }
 
-
-
-
-/* =======================================================================
-   FALLBACK:    
-   ======================================================================= */
-/* FALLBACK: se o overlay está visível (não está .hidden), não pode ficar transparente */
+/* fallback: overlay visível não pode ficar transparente */
 #modal:not(.hidden){
   opacity: 1 !important;
 }
-
 #modal:not(.hidden) #card-modal-root{
   opacity: 1 !important;
   transform: translateY(0) scale(1) !important;
 }
 
-
-
 /* =======================================================================
-   MODAL THEMES (2 modos): GLASS (menos transparente) e DARK
-   Uso: classes no #card-modal-root -> theme-glass | theme-dark
+   [16] CONTRASTE — FIX DEFINITIVO (não depende de classe)
+   Aplica quando modal está aberto e root NÃO está em dark.
    ======================================================================= */
-
-/* Overlay do fundo (atrás do modal) por tema */
-#card-modal-root.theme-glass{
-  --glass-bg: rgba(255,255,255,0.95);   /* 0.86 -> 0.95 */
-  --glass-blur: blur(12px) saturate(140%); /* opcional: um pouco menos “névoa” */
-  color: #111;
-}
-
-
-/* Abas e savebar com mais corpo no glass */
-#card-modal-root.theme-glass #card-tabs{
-  background: rgba(255,255,255,0.45) !important;
-}
-#card-modal-root.theme-glass .card-savebar{
-  background: rgba(255,255,255,0.55);
-  border: 1px solid rgba(0,0,0,0.08);
-}
-
-/* ===== DARK ===== */
-#card-modal-root.theme-dark{
-  --glass-bg: rgba(0,0,0,0.86);
-  --glass-blur: blur(12px) saturate(130%);
-  color: rgba(241,245,249,0.95);
-  border: 1px solid rgba(255,255,255,0.12) !important;
-}
-
-/* Abas e savebar no dark */
-#card-modal-root.theme-dark #card-tabs{
-  background: rgba(0,0,0,0.55) !important;
-  border-bottom: 1px solid rgba(255,255,255,0.10) !important;
-}
-#card-modal-root.theme-dark .card-tab-btn{
-  background: rgba(255,255,255,0.06) !important;
-  color: rgba(241,245,249,0.80) !important;
-}
-#card-modal-root.theme-dark .card-tab-active{
-  background: rgba(255,255,255,0.16) !important;
-  color: #fff !important;
-  border-bottom-color: rgba(255,255,255,0.70) !important;
-}
-#card-modal-root.theme-dark .card-savebar{
-  background: rgba(0,0,0,0.40);
-  border: 1px solid rgba(255,255,255,0.12);
-}
-
-/* Inputs no dark (sem depender do html.dark) */
-#card-modal-root.theme-dark input,
-#card-modal-root.theme-dark textarea,
-#card-modal-root.theme-dark select,
-#card-modal-root.theme-dark .ql-container,
-#card-modal-root.theme-dark .ql-editor{
-  background: rgba(20,20,20,0.55) !important;
-  border: 1px solid rgba(255,255,255,0.14) !important;
-  color: rgba(241,245,249,0.95) !important;
-}
-#card-modal-root.theme-dark label{
-  color: rgba(241,245,249,0.85) !important;
-}
-
-
-/* =======================================================================
-   FIX: X (Fechar) legível no tema dark
-   ======================================================================= */
-#card-modal-root.card-theme-dark .modal-top-x{
-  background: rgba(0,0,0,0.55) !important;
-  border: 1px solid rgba(255,255,255,0.22) !important;
-  border-radius: 10px !important;
-  box-shadow:
-    0 10px 26px rgba(0,0,0,0.55),
-    inset 0 0 0 1px rgba(255,255,255,0.10) !important;
-}
-
-/* aumenta contraste do “metal” */
-#card-modal-root.card-theme-dark .modal-top-x::before{
-  filter:
-    drop-shadow(0 2px 2px rgba(0,0,0,0.90))
-    drop-shadow(0 0 14px rgba(255,255,255,0.25)) !important;
-}
-
-
-/* =======================================================================
-   CHECKLIST — Trello-like (visual + fluidez + drag)
-   ======================================================================= */
-
-#card-modal-root .checklists-container { width: 100%; }
-
-#card-modal-root .checklist-card{
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,0.22);
-  background: rgba(255,255,255,0.55);
-  box-shadow: 0 10px 26px rgba(0,0,0,0.10);
-  padding: 12px;
-  transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
-}
-
-#card-modal-root .checklist-card:hover{
-  transform: translateY(-1px);
-  box-shadow: 0 14px 34px rgba(0,0,0,0.14);
-  background: rgba(255,255,255,0.62);
-}
-
-#card-modal-root.card-theme-dark .checklist-card{
-  background: rgba(0,0,0,0.55);
-  border-color: rgba(255,255,255,0.12);
-  box-shadow: 0 14px 34px rgba(0,0,0,0.35);
-}
-
-#card-modal-root .checklist-head{
-  padding-bottom: 8px;
-  margin-bottom: 8px;
-  border-bottom: 1px solid rgba(0,0,0,0.08);
-}
-#card-modal-root.card-theme-dark .checklist-head{
-  border-bottom-color: rgba(255,255,255,0.10);
-}
-
-#card-modal-root .checklist-title{
-  border-radius: 10px;
-  padding: 8px 10px;
-  border: 1px solid rgba(0,0,0,0.10);
-  background: rgba(255,255,255,0.60);
-}
-#card-modal-root.card-theme-dark .checklist-title{
-  border-color: rgba(255,255,255,0.14);
-  background: rgba(0,0,0,0.35);
-  color: rgba(255,255,255,0.92);
-}
-
-#card-modal-root .checklist-progress{
-  margin: 8px 0 10px;
-}
-#card-modal-root .checklist-progress-meta{
-  font-size: 12px;
-  opacity: .75;
-  margin-bottom: 6px;
-}
-#card-modal-root .checklist-progress-bar{
-  height: 8px;
-  border-radius: 999px;
-  background: rgba(0,0,0,0.10);
-  overflow: hidden;
-}
-#card-modal-root.card-theme-dark .checklist-progress-bar{
-  background: rgba(255,255,255,0.10);
-}
-#card-modal-root .checklist-progress-fill{
-  height: 100%;
-  border-radius: 999px;
-  background: rgba(59,130,246,0.85);
-  transition: width .18s ease;
-}
-
-#card-modal-root .checklist-empty{
-  font-size: 12px;
-  opacity: .65;
-  padding: 6px 2px;
-}
-
-#card-modal-root .checklist-item{
-  border-radius: 12px;
-  border: 1px solid rgba(0,0,0,0.08);
-  background: rgba(255,255,255,0.55);
-  padding: 8px 10px;
-  transition: background .12s ease, transform .12s ease, box-shadow .12s ease;
-}
-#card-modal-root .checklist-item:hover{
-  background: rgba(255,255,255,0.68);
-  box-shadow: 0 8px 18px rgba(0,0,0,0.10);
-}
-#card-modal-root.card-theme-dark .checklist-item{
-  background: rgba(0,0,0,0.35);
-  border-color: rgba(255,255,255,0.12);
-}
-#card-modal-root.card-theme-dark .checklist-item:hover{
-  background: rgba(0,0,0,0.45);
-}
-
-#card-modal-root .checklist-handle{
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  border: 1px solid rgba(0,0,0,0.10);
-  background: rgba(255,255,255,0.55);
-  cursor: grab;
-  opacity: .55;
-  transition: opacity .12s ease, transform .12s ease, background .12s ease;
-}
-#card-modal-root .checklist-item:hover .checklist-handle,
-#card-modal-root .checklist-head:hover .checklist-handle{
-  opacity: .95;
-}
-#card-modal-root .checklist-handle:active{ cursor: grabbing; transform: scale(0.98); }
-#card-modal-root.card-theme-dark .checklist-handle{
-  border-color: rgba(255,255,255,0.14);
-  background: rgba(0,0,0,0.35);
-  color: rgba(255,255,255,0.90);
-}
-
-#card-modal-root .checklist-checkbox{
-  width: 16px;
-  height: 16px;
-}
-
-#card-modal-root .checklist-input{
-  border: 1px solid transparent;
-  background: transparent;
-  border-radius: 10px;
-  padding: 6px 8px;
-  outline: none;
-}
-#card-modal-root .checklist-input:focus{
-  background: rgba(255,255,255,0.75);
-  border-color: rgba(59,130,246,0.55);
-}
-#card-modal-root.card-theme-dark .checklist-input{
-  color: rgba(255,255,255,0.92);
-}
-#card-modal-root.card-theme-dark .checklist-input:focus{
-  background: rgba(0,0,0,0.55);
-  border-color: rgba(59,130,246,0.55);
-}
-
-#card-modal-root .checklist-input.is-done{
-  text-decoration: line-through;
-  opacity: .55;
-}
-
-#card-modal-root .checklist-icon-btn{
-  border-radius: 10px;
-  border: 1px solid rgba(0,0,0,0.10);
-  background: rgba(255,255,255,0.55);
-  padding: 7px 10px;
-  transition: transform .12s ease, background .12s ease, opacity .12s ease;
-}
-#card-modal-root .checklist-icon-btn:hover{
-  transform: translateY(-1px);
-  background: rgba(255,255,255,0.75);
-}
-#card-modal-root .checklist-icon-btn.danger{
-  color: rgba(220,38,38,0.95);
-  border-color: rgba(220,38,38,0.22);
-}
-#card-modal-root.card-theme-dark .checklist-icon-btn{
-  border-color: rgba(255,255,255,0.14);
-  background: rgba(0,0,0,0.35);
-  color: rgba(255,255,255,0.90);
-}
-#card-modal-root.card-theme-dark .checklist-icon-btn.danger{
-  color: rgba(248,113,113,0.95);
-}
-
-#card-modal-root .checklist-add{ margin-top: 10px; }
-#card-modal-root .checklist-add-open{
-  width: 100%;
-  text-align: left;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px dashed rgba(0,0,0,0.20);
-  background: rgba(255,255,255,0.35);
-  opacity: .9;
-}
-#card-modal-root.card-theme-dark .checklist-add-open{
-  border-color: rgba(255,255,255,0.18);
-  background: rgba(0,0,0,0.25);
-  color: rgba(255,255,255,0.90);
-}
-
-#card-modal-root .checklist-add-form{
-  margin-top: 8px;
-}
-#card-modal-root .checklist-add-input{
-  width: 100%;
-  border-radius: 12px;
-  padding: 10px 12px;
-  border: 1px solid rgba(0,0,0,0.12);
-  background: rgba(255,255,255,0.70);
-}
-#card-modal-root.card-theme-dark .checklist-add-input{
-  border-color: rgba(255,255,255,0.14);
-  background: rgba(0,0,0,0.35);
-  color: rgba(255,255,255,0.92);
-}
-
-#card-modal-root .checklist-add-actions{
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
-}
-#card-modal-root .checklist-add-btn{
-  border-radius: 12px;
-  padding: 9px 12px;
-  background: rgba(59,130,246,0.90);
-  color: #fff;
-}
-#card-modal-root .checklist-add-cancel{
-  border-radius: 12px;
-  padding: 9px 12px;
-  border: 1px solid rgba(0,0,0,0.10);
-  background: rgba(255,255,255,0.55);
-}
-#card-modal-root.card-theme-dark .checklist-add-cancel{
-  border-color: rgba(255,255,255,0.14);
-  background: rgba(0,0,0,0.35);
-  color: rgba(255,255,255,0.92);
-}
-
-/* Drag visuals (Sortable) */
-#card-modal-root .drag-ghost{
-  opacity: .55;
-  transform: rotate(-1deg);
-}
-#card-modal-root .drag-chosen{
-  box-shadow: 0 18px 44px rgba(0,0,0,0.22);
-}
-
-/* =========================
-   FIX CONTRASTE: tema branco/glass
-   ========================= */
-
-/* 1) cor base do texto no modal */
-#card-modal-root.card-theme-white,
-#card-modal-root.theme-glass{
+#modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-dark){
   color: #111 !important;
 }
 
-/* 2) labels, textos e conteúdo em geral */
-#card-modal-root.card-theme-white label,
-#card-modal-root.theme-glass label,
-#card-modal-root.card-theme-white .activity-content,
-#card-modal-root.theme-glass .activity-content,
-#card-modal-root.card-theme-white .activity-meta,
-#card-modal-root.theme-glass .activity-meta{
+#modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-dark)
+:where(p,span,small,li,dt,dd,label,pre,code,h1,h2,h3,h4,h5,h6){
   color: #111 !important;
 }
 
-/* 3) inputs/textarea/quill: texto + placeholder legível */
-#card-modal-root.card-theme-white input,
-#card-modal-root.card-theme-white textarea,
-#card-modal-root.card-theme-white select,
-#card-modal-root.card-theme-white .ql-editor,
-#card-modal-root.theme-glass input,
-#card-modal-root.theme-glass textarea,
-#card-modal-root.theme-glass select,
-#card-modal-root.theme-glass .ql-editor{
+#modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-dark)
+:where(input,textarea,select,.ql-container,.ql-editor){
   color: #111 !important;
 }
 
-#card-modal-root.card-theme-white input::placeholder,
-#card-modal-root.card-theme-white textarea::placeholder,
-#card-modal-root.theme-glass input::placeholder,
-#card-modal-root.theme-glass textarea::placeholder{
+#modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-dark)
+:where(input,textarea)::placeholder{
   color: rgba(0,0,0,0.55) !important;
 }
 
-/* 4) abas (pra não ficar “lavado”) */
-#card-modal-root.card-theme-white .card-tab-btn,
-#card-modal-root.theme-glass .card-tab-btn{
-  color: rgba(0,0,0,0.78) !important;
-}
-#card-modal-root.card-theme-white .card-tab-active,
-#card-modal-root.theme-glass .card-tab-active{
-  color: #111 !important;
+/* =======================================================================
+   [17] REMOVER BARRAS DE CIMA (O QUE VOCÊ PEDIU)
+   Opção A (recomendada): remove só a barra de abas (tabs superiores)
+   ======================================================================= */
+#card-modal-root #card-tabs{
+  display: none !important;
 }
 
-/* ============================================================
-   FIX CONTRASTE (tema claro / glass / white)
-   - dá “corpo” pro fundo (sem depender de blur)
-   - força tipografia escura e legível
-   Cole no FINAL do base.css
-   ============================================================ */
-
-/* deixa o fundo do modal menos transparente no claro */
-#modal.theme-glass { background: rgba(0,0,0,0.40) !important; }
-
-#card-modal-root.theme-glass,
-#card-modal-root.card-theme-white{
-  --glass-bg: rgba(255,255,255,0.96) !important;
-  color: #111 !important;
+/* Opção B (se quiser remover TUDO do topo, inclusive header/capa):
+   DESCOMENTE
+*/
+/*
+#card-modal-root .card-aero-header{
+  display: none !important;
 }
+*/
 
-/* textos principais (sem esmagar botões) */
-#card-modal-root.theme-glass :where(p,span,label,small,li,dt,dd,h1,h2,h3,h4,h5,h6,pre,code){
-  color: #111 !important;
-}
-
-/* textos “muted” */
-#card-modal-root.theme-glass :where(.activity-meta,.muted,.text-muted){
-  color: #444 !important;
-}
-
-/* inputs/quill legíveis */
-#card-modal-root.theme-glass input,
-#card-modal-root.theme-glass textarea,
-#card-modal-root.theme-glass select,
-#card-modal-root.theme-glass .ql-container,
-#card-modal-root.theme-glass .ql-editor{
-  color: #111 !important;
-  background: rgba(255,255,255,0.88) !important;
-  border-color: rgba(0,0,0,0.12) !important;
-}
-
-#card-modal-root.theme-glass ::placeholder{
-  color: rgba(0,0,0,0.45) !important;
-}
-
-/* abas: aumentar opacidade (já que blur interno foi proibido) */
-#card-modal-root.theme-glass #card-tabs{
-  background: rgba(255,255,255,0.88) !important;
-  border-bottom: 1px solid rgba(0,0,0,0.10) !important;
-}
-
-#card-modal-root.theme-glass .card-tab-btn{
-  background: rgba(255,255,255,0.72) !important;
-  color: #111 !important;
-}
-
-#card-modal-root.theme-glass .card-tab-btn:hover{
-  background: rgba(255,255,255,0.86) !important;
-  color: #111 !important;
-}
-
-#card-modal-root.theme-glass .card-tab-active{
-  background: rgba(255,255,255,0.96) !important;
-  color: #111 !important;
-  border-bottom-color: rgba(0,0,0,0.40) !important;
-}
-
-/* savebar no claro com mais contraste */
-#card-modal-root.theme-glass .card-savebar{
-  background: rgba(255,255,255,0.82) !important;
-  border: 1px solid rgba(0,0,0,0.10) !important;
-}
-
-
-
-
-/* ============================================================
-   MODO "CM" (card_modal_body radical)
-   - quando o conteúdo #cm-root existe, escondemos as abas globais
-   ============================================================ */
+/* Modo "CM": mantém compat (se seu JS já seta cm-mode) */
 #card-modal-root.cm-mode #card-tabs{
   display: none !important;
 }
+/* =======================================================================
+   FIM DO BASE.CSS CONSOLIDADO
+   ======================================================================= */
