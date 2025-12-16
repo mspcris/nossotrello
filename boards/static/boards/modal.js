@@ -56,19 +56,38 @@ function getSavebarElements() {
 // =====================================================
 window.openModal = function () {
   const modal = getModalEl();
-  if (modal) modal.classList.remove("hidden");
+  if (!modal) return;
+
+  // garante que está visível antes de animar
+  modal.classList.remove("hidden");
+  modal.classList.remove("modal-closing");
+
+  // aplica no próximo frame pra disparar transition
+  requestAnimationFrame(() => {
+    modal.classList.add("modal-open");
+  });
 };
 
 window.closeModal = function () {
   const modal = getModalEl();
   const modalBody = getModalBody();
+  if (!modal) return;
 
-  if (modal) modal.classList.add("hidden");
-  if (modalBody) modalBody.innerHTML = "";
+  // inicia animação de saída
+  modal.classList.remove("modal-open");
+  modal.classList.add("modal-closing");
 
-  window.currentCardId = null;
-  quillDesc = null;
-  quillAtiv = null;
+  // tempo alinhado com o CSS (220ms)
+  setTimeout(() => {
+    modal.classList.add("hidden");
+    modal.classList.remove("modal-closing");
+
+    if (modalBody) modalBody.innerHTML = "";
+
+    window.currentCardId = null;
+    quillDesc = null;
+    quillAtiv = null;
+  }, 230);
 };
 
 // =====================================================

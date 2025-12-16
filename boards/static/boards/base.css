@@ -1139,6 +1139,89 @@ html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !import
 
 
 
+
+
+
+
+/* =======================================================================
+   MODAL: quase fullscreen, estável (sem vazar pra direita)
+   ======================================================================= */
+:root{
+  --modal-edge-gap: 10px; /* margem mínima */
+  --modal-max-w: 9999px;  /* deixa o vw mandar */
+  --modal-max-h: 9999px;
+}
+
+/* o overlay ganha padding pra garantir respiro */
+#modal{
+  padding: var(--modal-edge-gap);
+}
+
+/* tamanho fixo por viewport (não por conteúdo) */
+#card-modal-root.card-modal{
+  width: calc(100vw - (var(--modal-edge-gap) * 2)) !important;
+  max-width: calc(100vw - (var(--modal-edge-gap) * 2)) !important;
+
+  height: calc(100vh - (var(--modal-edge-gap) * 2)) !important;
+  max-height: calc(100vh - (var(--modal-edge-gap) * 2)) !important;
+
+  margin: 0 !important;
+}
+
+/* header nunca “empurra” e body sempre vira o scroll único */
+#card-modal-root.card-modal{
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+#modal-body.card-modal-scroll{
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+
+
+
+
+/* =======================================================================
+   ANIMAÇÃO estilo macOS (open/close)
+   ======================================================================= */
+
+/* estado base (quando está hidden, nem aparece; quando aparece sem modal-open, fica “pré-animação”) */
+#modal{
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+#card-modal-root{
+  transform: translateY(10px) scale(0.98);
+  opacity: 0;
+  transition: transform 220ms cubic-bezier(0.2, 0.9, 0.2, 1), opacity 180ms ease;
+  will-change: transform, opacity;
+}
+
+/* aberto */
+#modal.modal-open{
+  opacity: 1;
+}
+#modal.modal-open #card-modal-root{
+  transform: translateY(0) scale(1);
+  opacity: 1;
+}
+
+/* fechando */
+#modal.modal-closing{
+  opacity: 0;
+}
+#modal.modal-closing #card-modal-root{
+  transform: translateY(8px) scale(0.985);
+  opacity: 0;
+}
+
 /* =======================================================================
    FIM
    ======================================================================= */
