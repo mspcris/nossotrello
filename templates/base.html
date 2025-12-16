@@ -276,3 +276,20 @@
 </body>
 
 </html>
+
+
+
+
+
+<script>
+  document.body.addEventListener("htmx:responseError", function (evt) {
+    const xhr = evt.detail.xhr;
+    const target = evt.detail.target;
+    if (target && target.id === "modal-body") {
+      target.innerHTML =
+        "<div class='p-4 text-red-600 bg-white/80 rounded'>Erro ao carregar o card (" +
+        xhr.status +
+        "). Veja o log do servidor.</div>";
+    }
+  });
+</script>
