@@ -293,9 +293,12 @@
   document.addEventListener("DOMContentLoaded", boot);
 
   document.body.addEventListener("htmx:afterSwap", function (evt) {
-    const t = evt.target;
-    if (!t) return;
-    if (t.id === "modal-body" || t.closest?.("#modal-body")) boot();
-  });
+  const t = evt.target;
+  if (!t) return;
+
+  // Só reinicializa quando o modal inteiro foi trocado
+  if (t.id === "modal-body") boot();
+});
+
 })();
 </script>
