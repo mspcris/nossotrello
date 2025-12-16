@@ -233,6 +233,37 @@
 <script src="{% static 'boards/modal.js' %}"></script>
 
 
+<script>
+(function () {
+  function syncCardModalMode(){
+    const root = document.getElementById("card-modal-root");
+    const body = document.getElementById("modal-body");
+    if (!root || !body) return;
+
+    const hasRadical = !!body.querySelector("#cm-root");
+    root.classList.toggle("cm-mode", hasRadical);
+  }
+
+  document.addEventListener("DOMContentLoaded", syncCardModalMode);
+
+  document.body.addEventListener("htmx:afterSwap", function (evt) {
+    const t = evt.target;
+    if (t && (t.id === "modal-body" || t.closest?.("#modal-body"))) {
+      syncCardModalMode();
+    }
+  });
+
+  document.body.addEventListener("htmx:afterSettle", function (evt) {
+    const t = evt.target;
+    if (t && (t.id === "modal-body" || t.closest?.("#modal-body"))) {
+      syncCardModalMode();
+    }
+  });
+})();
+</script>
+
+
+
     <!-- ============================================================== -->
     <!--  JS: aplicar Prism + envelopar blocos de código                -->
     <!-- ============================================================== -->

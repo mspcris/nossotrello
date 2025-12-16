@@ -86,7 +86,7 @@
   .cm-muted { font-size: 12px; opacity: .75; color:#fff; }
 </style>
 
-<div class="cm-wrap" id="cm-root">
+<div class="cm-wrap" id="cm-root" data-card-id="{{ card.id }}">
 
   <div class="cm-topbar">
     <div class="cm-tabs" role="tablist" aria-label="Abas do card">
@@ -234,6 +234,30 @@
 
 <script>
 (function () {
+  // ============================================================
+  // HTMX + Django CSRF (cobre hx-post fora de <form> com csrf_token)
+  // ============================================================
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+  }
+
+  function bindHtmxCsrfOnce() {
+    if (document.body.dataset.cmHtmxCsrfBound === "1") return;
+    document.body.dataset.cmHtmxCsrfBound = "1";
+
+    document.body.addEventListener("htmx:configRequest", function (evt) {
+      try {
+        const token = getCookie("csrftoken");
+        if (token) {
+          evt.detail.headers["X-CSRFToken"] = token;
+        }
+      } catch (e) { /* no-op */ }
+    });
+  }
+
   function initRadicalTabs(root) {
     if (!root) return;
 
@@ -265,6 +289,7 @@
   }
 
   function boot() {
+    bindHtmxCsrfOnce();
     initRadicalTabs(document.getElementById("cm-root"));
   }
 

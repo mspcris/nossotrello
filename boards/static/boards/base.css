@@ -1561,3 +1561,12 @@ html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !import
 #card-modal-root .drag-chosen{
   box-shadow: 0 18px 44px rgba(0,0,0,0.22);
 }
+
+
+/* ============================================================
+   MODO "CM" (card_modal_body radical)
+   - quando o conteúdo #cm-root existe, escondemos as abas globais
+   ============================================================ */
+#card-modal-root.cm-mode #card-tabs{
+  display: none !important;
+}
