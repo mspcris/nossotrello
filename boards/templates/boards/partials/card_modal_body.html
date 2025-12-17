@@ -271,7 +271,9 @@
      id="cm-root"
      data-card-id="{{ card.id }}"
      data-cm-active="desc"
-     data-tag-colors='{{ card.tag_colors|default_if_none:"{}"|escapejs }}'>
+     data-tag-colors='{{ card.tag_colors|default_if_none:"{}"|escape }}'>
+
+
 
   {# ===================== TOPBAR: só abas e botão salvar ===================== #}
   <div class="cm-topbar">
@@ -613,7 +615,12 @@ colors = JSON.parse(raw);
 
     let colors = {};
     try {
-      colors = JSON.parse(root.dataset.tagColors || "{}");
+      colors = JSON.parse(
+       root.dataset.tagColors ||
+       root.getAttribute("data-tag-colors") ||
+  "{}"
+);
+
     } catch {}
 
     picker.value = colors[tag] || "#3b82f6";
@@ -644,7 +651,11 @@ colors = JSON.parse(raw);
     // 2️⃣ Atualiza estado local do modal (picker)
     let colors = {};
     try {
-      colors = JSON.parse(root.dataset.tagColors || "{}");
+colors = JSON.parse(
+  root.dataset.tagColors ||
+  root.getAttribute("data-tag-colors") ||
+  "{}"
+);
     } catch {}
 
     colors[tag] = color;
