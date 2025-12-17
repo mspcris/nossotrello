@@ -899,6 +899,14 @@ html.dark #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-
   border-color: var(--cm-border);
 }
 
+/* Checklist: blindagem contra overrides globais */
+#card-modal-root #cm-root .checklist-input{
+  color: var(--cm-text) !important;
+}
+#card-modal-root #cm-root .checklist-input::placeholder{
+  color: var(--cm-muted) !important;
+}
+
 
 /* =======================================================================
    FIM DO BASE.CSS CONSOLIDADO
