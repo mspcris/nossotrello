@@ -987,23 +987,28 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
 // ===== Modal Theme: glass | dark (persistente) =====
 (function () {
   function apply(theme) {
-    const modal = document.getElementById("modal");
-    const root  = document.getElementById("card-modal-root");
-    if (!modal || !root) return;
+  const modal = document.getElementById("modal");
+  const root  = document.getElementById("card-modal-root");
+  if (!modal || !root) return;
 
-    const isDark = theme === "dark";
+  const isDark = theme === "dark";
 
-    modal.classList.toggle("theme-dark",  isDark);
-    modal.classList.toggle("theme-glass", !isDark);
+  modal.classList.toggle("theme-dark",  isDark);
+  modal.classList.toggle("theme-glass", !isDark);
 
-    root.classList.toggle("theme-dark",  isDark);
-    root.classList.toggle("theme-glass", !isDark);
+  root.classList.toggle("theme-dark",  isDark);
+  root.classList.toggle("theme-glass", !isDark);
 
-    // se você quiser manter o “aero” no glass:
-    root.classList.toggle("card-theme-aero", !isDark);
-    root.classList.toggle("card-theme-dark", isDark);
+  // >>> ADD: habilita o ::before que aplica blur/bg corretamente
+  root.classList.add("modal-glass");
 
-    localStorage.setItem("modalTheme", isDark ? "dark" : "glass");
+  // aliases (opcional manter)
+  root.classList.toggle("card-theme-aero", !isDark);
+  root.classList.toggle("card-theme-dark", isDark);
+
+  localStorage.setItem("modalTheme", isDark ? "dark" : "glass");
+}
+calStorage.setItem("modalTheme", isDark ? "dark" : "glass");
   }
 
   window.setModalTheme = function (theme) {
