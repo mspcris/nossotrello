@@ -237,6 +237,7 @@ class CardLog(models.Model):
 class CardAttachment(models.Model):
     card = models.ForeignKey(Card, related_name="attachments", on_delete=models.CASCADE)
     file = models.FileField(upload_to="attachments/")
+    description = models.CharField(max_length=255, blank=True, default="")  # <-- ADD
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -244,6 +245,7 @@ class CardAttachment(models.Model):
 
     def __str__(self):
         return f"Anexo do card {self.card.id}: {self.file.name}"
+
 
 
 # ============================================================

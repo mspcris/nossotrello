@@ -1528,14 +1528,30 @@ def add_attachment(request, card_id):
         return HttpResponse("Nenhum arquivo enviado", status=400)
 
     uploaded = request.FILES["file"]
-    attachment = CardAttachment.objects.create(card=card, file=uploaded)
+    desc = (request.POST.get("description") or "").strip()
 
-    _log_card(
-        card,
-        request,
-        f"<p><strong>{actor}</strong> adicionou um anexo: <strong>{escape(attachment.file.name.split('/')[-1])}</strong>.</p>",
-        attachment=attachment.file,
+    attachment = CardAttachment.objects.create(
+        card=card,
+        file=uploaded,
+        description=desc,
     )
+
+    # auditoria
+    pretty_name = attachment.file.name.split("/")[-1]
+    if desc:
+        _log_card(
+            card,
+            request,
+            f"<p><strong>{actor}</strong> adicionou um anexo: <strong>{escape(pretty_name)}</strong> — {escape(desc)}.</p>",
+            attachment=attachment.file,
+        )
+    else:
+        _log_card(
+            card,
+            request,
+            f"<p><strong>{actor}</strong> adicionou um anexo: <strong>{escape(pretty_name)}</strong>.</p>",
+            attachment=attachment.file,
+        )
 
     return render(request, "boards/partials/attachment_item.html", {"attachment": attachment})
 
