@@ -296,18 +296,17 @@
   </div>
 
   {# ✅ Form invisível + color picker invisível (para salvar cor via HTMX) #}
-  <form id="cm-tag-color-form"
-        class="hidden"
-        method="post"
-        hx-post="{% url 'boards:set_tag_color' card.id %}"
-        hx-target="#cm-tags-wrap"
-        hx-swap="innerHTML">
-        hx-on::after-request="window.refreshCardSnippet({{ card.id }})"
-        
-    {% csrf_token %}
-    <input type="hidden" name="tag" id="cm-tag-color-tag">
-    <input type="hidden" name="color" id="cm-tag-color-value">
-  </form>
+<form id="cm-tag-color-form"
+      class="hidden"
+      method="post"
+      hx-post="{% url 'boards:set_tag_color' card.id %}"
+      hx-target="#cm-tags-wrap"
+      hx-swap="innerHTML"
+      hx-on::after-request="window.refreshCardSnippet({{ card.id }})">
+  {% csrf_token %}
+  <input type="hidden" name="tag" id="cm-tag-color-tag">
+  <input type="hidden" name="color" id="cm-tag-color-value">
+</form>
 
 <div id="cm-tag-color-popover"
      class="hidden absolute z-50 mt-2 p-3 rounded-xl border bg-white shadow-lg">
@@ -623,9 +622,33 @@ picker.value = color;
   });
 
   save.addEventListener("click", () => {
-    const colors = JSON.parse(root.dataset.tagColors || "{}");
-    colors[tag] = color;
-    root.dataset.tagColors = JSON.stringify(colors);
+  if (!currentBtn) return;
+
+  const tag = currentBtn.dataset.tag;
+  const color = picker.value;
+
+  // 1️⃣ Atualiza visual imediato
+  currentBtn.dataset.color = color;
+  currentBtn.style.backgroundColor = color + "20";
+  currentBtn.style.color = color;
+  currentBtn.style.borderColor = color;
+
+  // 2️⃣ Atualiza dataset do modal (fonte local)
+  try {
+    const rootColors = JSON.parse(root.dataset.tagColors || "{}");
+    rootColors[tag] = color;
+    root.dataset.tagColors = JSON.stringify(rootColors);
+  } catch {}
+
+  // 3️⃣ Prepara submit backend
+  inpTag.value = tag;
+  inpCol.value = color;
+
+  pop.classList.add("hidden");
+
+  // 4️⃣ Salva no backend
+  try { form.requestSubmit(); } catch { form.submit(); }
+});
 
 
     // Atualiza visual IMEDIATO
