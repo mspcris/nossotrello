@@ -51,6 +51,7 @@ body {
   --card-cover-thumb-h: 110px;
   --card-cover-modal-h: clamp(110px, 14vh, 180px);
   --card-cover-bg: rgba(0,0,0,0.10);
+  
 }
 
 /* =======================================================================
@@ -143,7 +144,53 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.40) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+
+  #card-modal-root.theme-glass .cm-card,
+#card-modal-root.theme-glass .activity-panel,
+#card-modal-root.theme-glass .activity-item{
+  background: rgba(255,255,255,0.92) !important;
+  border: 1px solid rgba(15, 23, 42, 0.10) !important;
+  box-shadow: 0 1px 0 rgba(15,23,42,0.04);
 }
+
+
+}
+
+#card-modal-root.theme-glass input,
+#card-modal-root.theme-glass textarea,
+#card-modal-root.theme-glass select,
+#card-modal-root.theme-glass .ql-container{
+  background: #fff !important;
+  color: #0f172a !important;
+  border: 1px solid rgba(15, 23, 42, 0.14) !important;
+}
+
+#card-modal-root.theme-glass input:focus,
+#card-modal-root.theme-glass textarea:focus,
+#card-modal-root.theme-glass select:focus{
+  outline: none !important;
+  border-color: rgba(37, 99, 235, 0.55) !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18) !important;
+}
+
+#card-modal-root.theme-glass .cm-topbar{
+  background: rgba(255,255,255,0.86) !important;
+  border: 1px solid rgba(15, 23, 42, 0.10) !important;
+}
+
+#card-modal-root.theme-glass .cm-tabbtn,
+#card-modal-root.theme-glass .cm-btn,
+#card-modal-root.theme-glass .cm-label,
+#card-modal-root.theme-glass .cm-muted{
+  color: #0f172a !important;
+  border-color: rgba(15, 23, 42, 0.12) !important;
+  background: rgba(255,255,255,0.70) !important;
+}
+#card-modal-root.theme-glass .cm-tabbtn.is-active{
+  background: #fff !important;
+  border-color: rgba(37, 99, 235, 0.35) !important;
+}
+
 
 /* =======================================================================
    [4] MODAL — THEME MODEL ÚNICO
@@ -166,10 +213,11 @@ body {
 #card-modal-root.theme-glass,
 #card-modal-root.card-theme-white,
 #card-modal-root.card-theme-aero {
-  color: #111 !important;
-  --glass-bg: rgba(255,255,255,0.96);
-  --glass-blur: blur(12px) saturate(140%);
+  color: #0f172a !important;                 /* slate-900 */
+  --glass-bg: rgba(255,255,255,0.985);       /* mais sólido */
+  --glass-blur: blur(10px) saturate(130%);
 }
+
 
 /* ---------- DARK ---------- */
 #card-modal-root.theme-dark,
@@ -387,6 +435,11 @@ html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !import
   isolation: isolate;
 
   margin: 0 !important;
+
+  box-shadow:
+    0 18px 60px rgba(2, 6, 23, 0.22),
+    0 2px 10px rgba(2, 6, 23, 0.10);
+  border: 1px solid rgba(15, 23, 42, 0.10);
 }
 
 #card-modal-root .card-aero-header{
