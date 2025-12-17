@@ -804,7 +804,30 @@ def set_tag_color(request, card_id):
     card.save(update_fields=["tag_colors"])
 
     # retorna só a barra de tags para o HTMX trocar
-    return render(request, "boards/partials/card_tags_bar.html", {"card": card})
+    data[tag] = color
+    card.tag_colors = json.dumps(data, ensure_ascii=False)
+    card.save(update_fields=["tag_colors"])
+
+    # re-render do modal (barra de tags)
+    modal_html = render(
+        request,
+        "boards/partials/card_tags_bar.html",
+        {"card": card},
+    ).content.decode("utf-8")
+
+    # re-render do card na coluna
+    snippet_html = render(
+        request,
+        "boards/partials/card_item.html",
+        {"card": card},
+    ).content.decode("utf-8")
+
+    return JsonResponse({
+        "modal": modal_html,
+        "snippet": snippet_html,
+        "card_id": card.id,
+    })
+
 
 
 
