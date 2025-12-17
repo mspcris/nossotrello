@@ -51,12 +51,6 @@ function getSavebarElements() {
   return { bar, saveBtn };
 }
 
-
-
-
-
-
-
 // =====================================================
 // CM modal (tabs) — funciona após HTMX swap (sem script inline)
 // =====================================================
@@ -69,20 +63,28 @@ function initCmModal(body) {
   if (!tabs.length || !panels.length) return;
 
   function activate(name) {
-    tabs.forEach(b => b.classList.toggle("is-active", b.getAttribute("data-cm-tab") === name));
-    panels.forEach(p => p.classList.toggle("is-active", p.getAttribute("data-cm-panel") === name));
+    root.dataset.cmActive = name;
+    tabs.forEach((b) =>
+      b.classList.toggle("is-active", b.getAttribute("data-cm-tab") === name)
+    );
+    panels.forEach((p) =>
+      p.classList.toggle("is-active", p.getAttribute("data-cm-panel") === name)
+    );
   }
 
   // bind 1x
-  tabs.forEach(b => {
+  tabs.forEach((b) => {
     if (b.dataset.cmBound === "1") return;
     b.dataset.cmBound = "1";
-    b.addEventListener("click", () => activate(b.getAttribute("data-cm-tab")));
+    b.addEventListener("click", () => {
+      const name = b.getAttribute("data-cm-tab");
+      sessionStorage.setItem("cmActiveTab", name);
+      activate(name);
+    });
   });
 
-  // default seguro: abre desc se nada estiver ativo
-  const anyActive = panels.some(p => p.classList.contains("is-active"));
-  if (!anyActive) activate("desc");
+  // default: último aberto, senão desc
+  activate(sessionStorage.getItem("cmActiveTab") || "desc");
 
   // botão salvar do CM (se existir)
   const saveBtn = root.querySelector("#cm-save-btn");
@@ -90,9 +92,298 @@ function initCmModal(body) {
   if (saveBtn && form && saveBtn.dataset.cmBound !== "1") {
     saveBtn.dataset.cmBound = "1";
     saveBtn.addEventListener("click", () => {
-      try { form.requestSubmit(); } catch (e) { form.submit(); }
+      try {
+        form.requestSubmit();
+      } catch (e) {
+        form.submit();
+      }
     });
   }
+}
+
+// =====================================================
+// CM modal — extras (cores de tags + erros anexos/atividade)
+// - roda a cada abertura do modal CM via initCardModal()
+// - listeners globais instalados 1x
+// =====================================================
+function cmGetRoot(body) {
+  return body?.querySelector?.("#cm-root") || document.getElementById("cm-root");
+}
+
+function cmEnsureTagColorsState(root) {
+  if (!root) return;
+  if (!root.dataset.tagColors) {
+    root.dataset.tagColors = root.getAttribute("data-tag-colors") || "{}";
+  }
+}
+
+function cmApplySavedTagColors(root) {
+  if (!root) return;
+
+  let colors = {};
+  try {
+    const raw =
+      root.dataset.tagColors || root.getAttribute("data-tag-colors") || "{}";
+    colors = JSON.parse(raw);
+    if (!colors || typeof colors !== "object") colors = {};
+  } catch (e) {
+    colors = {};
+  }
+
+  const wrap = root.querySelector("#cm-tags-wrap");
+  if (!wrap) return;
+
+  wrap.querySelectorAll("button[data-tag]").forEach((btn) => {
+    const tag = btn.getAttribute("data-tag");
+    const c = colors[tag];
+    if (!c) return;
+
+    btn.style.backgroundColor = c + "20";
+    btn.style.color = c;
+    btn.style.borderColor = c;
+  });
+}
+
+function cmInitTagColorPicker(root) {
+  if (!root) return;
+
+  // bind 1x por root (root troca a cada HTMX swap)
+  if (root.dataset.cmTagColorBound === "1") return;
+  root.dataset.cmTagColorBound = "1";
+
+  const wrap = root.querySelector("#cm-tags-wrap");
+  const picker = root.querySelector("#cm-tag-color-picker");
+  const pop = root.querySelector("#cm-tag-color-popover");
+  const save = root.querySelector("#cm-tag-color-save");
+  const cancel = root.querySelector("#cm-tag-color-cancel");
+  const form = root.querySelector("#cm-tag-color-form");
+  const inpTag = root.querySelector("#cm-tag-color-tag");
+  const inpCol = root.querySelector("#cm-tag-color-value");
+
+  if (!wrap || !picker || !pop || !save || !cancel || !form || !inpTag || !inpCol) return;
+
+  let currentBtn = null;
+
+  wrap.addEventListener("click", function (e) {
+    const btn = e.target.closest(".cm-tag-btn");
+    if (!btn) return;
+
+    currentBtn = btn;
+    const tag = btn.dataset.tag;
+
+    let colors = {};
+    try {
+      colors = JSON.parse(
+        root.dataset.tagColors || root.getAttribute("data-tag-colors") || "{}"
+      );
+    } catch {}
+
+    picker.value = colors[tag] || "#3b82f6";
+
+const mb = document.getElementById("modal-body");
+const mbRect = mb?.getBoundingClientRect() || { top: 0, left: 0 };
+
+const rect = btn.getBoundingClientRect();
+const top  = (rect.bottom - mbRect.top) + (mb?.scrollTop || 0);
+const left = (rect.left   - mbRect.left) + (mb?.scrollLeft || 0);
+
+pop.style.top  = top  + "px";
+pop.style.left = left + "px";
+
+    pop.classList.remove("hidden");
+  });
+
+  cancel.addEventListener("click", function () {
+    pop.classList.add("hidden");
+    currentBtn = null;
+  });
+
+  save.addEventListener("click", function () {
+    if (!currentBtn) return;
+
+    const tag = currentBtn.dataset.tag;
+    const color = picker.value;
+
+    // UI imediata
+    currentBtn.style.backgroundColor = color + "20";
+    currentBtn.style.color = color;
+    currentBtn.style.borderColor = color;
+
+    // estado local
+    let colors = {};
+    try {
+      colors = JSON.parse(
+        root.dataset.tagColors || root.getAttribute("data-tag-colors") || "{}"
+      );
+    } catch {}
+    colors[tag] = color;
+    root.dataset.tagColors = JSON.stringify(colors);
+
+    // payload
+    inpTag.value = tag;
+    inpCol.value = color;
+
+    pop.classList.add("hidden");
+
+    // persistência via endpoint do form
+    fetch(form.action, {
+      method: "POST",
+      credentials: "same-origin",
+      body: new FormData(form),
+      headers: {
+        "X-CSRFToken": form.querySelector('[name=csrfmiddlewaretoken]').value,
+      },
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error("Falha ao salvar cor da tag");
+        return r.json();
+      })
+      .then((data) => {
+        // atualiza tags no modal
+        const wrapEl = document.getElementById("cm-tags-wrap");
+        if (wrapEl && data.modal) wrapEl.innerHTML = data.modal;
+
+        // atualiza card na board
+        const cardEl = document.getElementById("card-" + data.card_id);
+        if (cardEl && data.snippet) cardEl.outerHTML = data.snippet;
+
+        // rebind seguro (novo HTML)
+        const rootNow = document.getElementById("cm-root");
+        cmEnsureTagColorsState(rootNow);
+        cmApplySavedTagColors(rootNow);
+        cmInitTagColorPicker(rootNow);
+      })
+      .catch((err) => console.error(err));
+  });
+}
+
+function cmInstallAttachmentErrorsOnce() {
+  if (document.body.dataset.cmAttachErrBound === "1") return;
+  document.body.dataset.cmAttachErrBound = "1";
+
+  function getRoot() { return document.getElementById("cm-root"); }
+  function fileEl(root) { return root?.querySelector?.("#attachment-file"); }
+  function descEl(root) { return root?.querySelector?.("#attachment-desc"); }
+
+  function showErr(root, msg) {
+    const box = root?.querySelector?.("#attachments-error");
+    if (!box) return;
+    box.textContent = msg;
+    box.classList.remove("hidden");
+  }
+
+  function clearErr(root) {
+    const box = root?.querySelector?.("#attachments-error");
+    if (!box) return;
+    box.textContent = "";
+    box.classList.add("hidden");
+  }
+
+  function resetFields(root) {
+    const f = fileEl(root);
+    const d = descEl(root);
+    if (f) f.value = "";
+    if (d) d.value = "";
+  }
+
+  document.body.addEventListener("htmx:beforeRequest", function (evt) {
+    const root = getRoot();
+    const elt = evt.detail?.elt;
+    if (!root || !elt || !elt.matches?.("#attachment-file") || !root.contains(elt)) return;
+
+    root.dataset.cmUploading = "1";
+    root.dataset.cmLastAttachmentDesc = (descEl(root)?.value || "").trim();
+    clearErr(root);
+  });
+
+  document.body.addEventListener("htmx:afterSwap", function (evt) {
+    const root = getRoot();
+    const target = evt.target;
+    if (!root || !target || target.id !== "attachments-list") return;
+    if (root.dataset.cmUploading !== "1") return;
+
+    resetFields(root);
+    clearErr(root);
+
+    const desc = (root.dataset.cmLastAttachmentDesc || "").trim();
+    if (desc) {
+      const last = target.lastElementChild;
+      if (last && !last.querySelector(".cm-attach-desc")) {
+        const div = document.createElement("div");
+        div.className = "cm-muted cm-attach-desc";
+        div.style.marginTop = "4px";
+        div.textContent = desc;
+        last.appendChild(div);
+      }
+    }
+
+    root.dataset.cmUploading = "0";
+    root.dataset.cmLastAttachmentDesc = "";
+  });
+
+  document.body.addEventListener("htmx:responseError", function (evt) {
+    const root = getRoot();
+    const elt = evt.detail?.elt;
+    const xhr = evt.detail?.xhr;
+    if (!root || !elt || !elt.matches?.("#attachment-file") || !root.contains(elt)) return;
+
+    if (xhr && xhr.status === 413) {
+      showErr(root, "Arquivo acima de 50MB. O limite de anexo é 50MB. Comprima o arquivo ou envie um link (Drive/Dropbox) e tente novamente.");
+    } else {
+      showErr(root, "Não foi possível enviar o anexo agora. Tente novamente.");
+    }
+
+    resetFields(root);
+    root.dataset.cmUploading = "0";
+    root.dataset.cmLastAttachmentDesc = "";
+  });
+
+  document.body.addEventListener("htmx:afterRequest", function (evt) {
+    const root = getRoot();
+    const elt = evt.detail?.elt;
+    const xhr = evt.detail?.xhr;
+    if (!root || !elt || !elt.matches?.("#attachment-file") || !root.contains(elt)) return;
+
+    if (xhr && xhr.status >= 200 && xhr.status < 300) {
+      resetFields(root);
+      clearErr(root);
+      root.dataset.cmUploading = "0";
+      root.dataset.cmLastAttachmentDesc = "";
+    }
+  });
+}
+
+function cmInstallActivityErrorsOnce() {
+  if (document.body.dataset.cmActivityErrBound === "1") return;
+  document.body.dataset.cmActivityErrBound = "1";
+
+  document.body.addEventListener("htmx:responseError", function (evt) {
+    const elt = evt.detail?.elt;
+    const xhr = evt.detail?.xhr;
+
+    if (!elt || !elt.matches?.('form[hx-post*="add_activity"]')) return;
+
+    const box = document.getElementById("activity-error");
+    if (box) {
+      box.textContent =
+        (xhr && xhr.responseText) ? xhr.responseText : "Não foi possível incluir a atividade.";
+      box.classList.remove("hidden");
+    }
+
+    try { elt.reset(); } catch (e) {}
+  });
+}
+
+function cmBoot(body) {
+  const root = cmGetRoot(body);
+  if (!root) return;
+
+  cmEnsureTagColorsState(root);
+  cmApplySavedTagColors(root);
+  cmInitTagColorPicker(root);
+
+  cmInstallAttachmentErrorsOnce();
+  cmInstallActivityErrorsOnce();
 }
 
 // =====================================================
@@ -110,7 +401,6 @@ window.openModal = function () {
 
   modal.classList.add("modal-open");
 };
-
 
 window.closeModal = function () {
   const modal = getModalEl();
@@ -240,7 +530,6 @@ window.cardOpenTab = function (panelId) {
     if (wrap?.__ativShowFromChecked) wrap.__ativShowFromChecked();
   }
 };
-
 
 // =====================================================
 // Inserir imagem no Quill como base64
@@ -441,30 +730,33 @@ function initAtivSubtabs3(body) {
   const wrap = qs(".ativ-subtab-wrap", body);
   if (!wrap) return;
 
-  const rNew  = qs("#ativ-tab-new",  wrap);
+  const rNew = qs("#ativ-tab-new", wrap);
   const rHist = qs("#ativ-tab-hist", wrap);
   const rMove = qs("#ativ-tab-move", wrap);
 
-  const vNew  = qs(".ativ-view-new",  wrap);
+  const vNew = qs(".ativ-view-new", wrap);
   const vHist = qs(".ativ-view-hist", wrap);
   const vMove = qs(".ativ-view-move", wrap);
 
   function show(which) {
-    // Força aparecer mesmo se vier com .hidden no HTML
     if (vNew) {
-      vNew.style.display = (which === "new") ? "block" : "none";
+      vNew.style.display = which === "new" ? "block" : "none";
       vNew.classList.toggle("hidden", which !== "new");
     }
     if (vHist) {
-      vHist.style.display = (which === "hist") ? "block" : "none";
+      vHist.style.display = which === "hist" ? "block" : "none";
       vHist.classList.toggle("hidden", which !== "hist");
     }
     if (vMove) {
-      vMove.style.display = (which === "move") ? "block" : "none";
+      vMove.style.display = which === "move" ? "block" : "none";
       vMove.classList.toggle("hidden", which !== "move");
     }
 
-    if (which === "move" && window.currentCardId && typeof window.loadMoveCardOptions === "function") {
+    if (
+      which === "move" &&
+      window.currentCardId &&
+      typeof window.loadMoveCardOptions === "function"
+    ) {
       window.loadMoveCardOptions(window.currentCardId);
     }
   }
@@ -475,22 +767,18 @@ function initAtivSubtabs3(body) {
     else show("new");
   }
 
-  // expõe helpers (submitActivity / cardOpenTab etc)
   wrap.__ativShow = show;
   wrap.__ativShowFromChecked = showFromChecked;
 
-  // aplica imediatamente (sempre)
   showFromChecked();
 
-  // evita listeners duplicados
   if (wrap.dataset.ativ3Ready === "1") return;
   wrap.dataset.ativ3Ready = "1";
 
-  if (rNew)  rNew.addEventListener("change",  () => { if (rNew.checked)  show("new");  });
+  if (rNew) rNew.addEventListener("change", () => { if (rNew.checked) show("new"); });
   if (rHist) rHist.addEventListener("change", () => { if (rHist.checked) show("hist"); });
   if (rMove) rMove.addEventListener("change", () => { if (rMove.checked) show("move"); });
 
-  // clique no label às vezes não dispara "change"
   qsa(".ativ-subtab-btn", wrap).forEach((lbl) => {
     lbl.addEventListener("click", () => setTimeout(showFromChecked, 0));
   });
@@ -503,7 +791,6 @@ window.initCardModal = function () {
   const body = getModalBody();
   if (!body) return;
 
-  // tenta capturar cardId do root do modal (fallback do click-capture)
   const root = qs("#card-modal-root");
   const cid = root?.getAttribute?.("data-card-id");
   if (cid) window.currentCardId = Number(cid);
@@ -516,20 +803,20 @@ window.initCardModal = function () {
   initAtivSubtabs3(body);
 
   if (window.Prism) Prism.highlightAll();
-  initCmModal(body);
 
+  // CM
+  initCmModal(body);
+  cmBoot(body);
 };
 
 // =====================================================
-// ABERTURA RADICAL DO MODAL (não depende do hx-target no HTML)
-// - clicou em um card -> carrega /card/<id>/modal/ direto no #modal-body
+// ABERTURA RADICAL DO MODAL
 // =====================================================
 (function bindCardOpenRadical() {
   if (document.body.dataset.cardOpenRadicalBound === "1") return;
   document.body.dataset.cardOpenRadicalBound = "1";
 
   function shouldIgnoreClick(ev) {
-    // Evita abrir modal ao clicar em botões/ações dentro do card
     const ignoreSelectors = [
       ".delete-card-btn",
       "[data-no-modal]",
@@ -544,29 +831,31 @@ window.initCardModal = function () {
     return ignoreSelectors.some((sel) => ev.target.closest(sel));
   }
 
-  document.body.addEventListener("click", (ev) => {
-    const cardEl = ev.target.closest("li[data-card-id]");
-    if (!cardEl) return;
+  document.body.addEventListener(
+    "click",
+    (ev) => {
+      const cardEl = ev.target.closest("li[data-card-id]");
+      if (!cardEl) return;
 
-    if (shouldIgnoreClick(ev)) return;
+      if (shouldIgnoreClick(ev)) return;
 
-    const cardId = Number(cardEl.dataset.cardId || 0);
-    if (!cardId) return;
+      const cardId = Number(cardEl.dataset.cardId || 0);
+      if (!cardId) return;
 
-    ev.preventDefault();
-    ev.stopPropagation();
+      ev.preventDefault();
+      ev.stopPropagation();
 
-    window.currentCardId = cardId;
-    openModal();
+      window.currentCardId = cardId;
+      openModal();
 
-    // Carrega o HTML do modal direto no target correto
-    htmx.ajax("GET", `/card/${cardId}/modal/`, {
-      target: "#modal-body",
-      swap: "innerHTML",
-    });
-  }, true);
+      htmx.ajax("GET", `/card/${cardId}/modal/`, {
+        target: "#modal-body",
+        swap: "innerHTML",
+      });
+    },
+    true
+  );
 })();
-
 
 // =====================================================
 // HTMX – após swap do modal-body
@@ -577,12 +866,11 @@ document.body.addEventListener("htmx:afterSwap", function (e) {
   openModal();
   initCardModal();
 
-   // Se for modal novo (CM), não aplicar tabs do modal antigo
+  // Se for modal novo (CM), não aplicar tabs do modal antigo
   if (!document.querySelector("#cm-root")) {
     const active = sessionStorage.getItem("modalActiveTab") || "card-tab-desc";
     window.cardOpenTab(active);
   }
-
 });
 
 // =====================================================
@@ -615,7 +903,6 @@ window.removeTagInstant = async function (cardId, tag) {
   window.cardOpenTab(active);
 };
 
-
 // =====================================================
 // ALTERAR COR DA TAG (instantâneo)
 // =====================================================
@@ -638,18 +925,14 @@ window.setTagColorInstant = async function (cardId, tag, color) {
 
   const data = await response.json();
 
-  // 1️⃣ atualiza o MODAL
   const modalBody = getModalBody();
   if (modalBody) modalBody.innerHTML = data.modal;
 
-  // 2️⃣ atualiza o CARD NA BOARD (🚨 ISSO É O QUE FALTAVA)
   const card = document.querySelector(`#card-${data.card_id}`);
   if (card) card.outerHTML = data.snippet;
 
-  // 3️⃣ reativa JS do modal
   initCardModal();
 };
-
 
 // =====================================================
 // Atividade helpers
@@ -703,7 +986,6 @@ window.submitActivity = async function (cardId) {
 
   const html = await response.text();
 
-  // backend devolve o painel inteiro (card_activity_panel.html)
   const panel = qs("#card-activity-panel", body);
   if (panel) {
     panel.outerHTML = html;
@@ -714,14 +996,12 @@ window.submitActivity = async function (cardId) {
 
   window.clearActivityEditor();
 
-  // FIX: marcar checked não dispara change → então a aba não “abre”
   const histRadio = document.getElementById("ativ-tab-hist");
   if (histRadio) {
     histRadio.checked = true;
     histRadio.dispatchEvent(new Event("change", { bubbles: true }));
   }
 
-  // fallback adicional: se por algum motivo listeners não existirem
   const wrap = qs(".ativ-subtab-wrap", body);
   if (wrap?.__ativShow) wrap.__ativShow("hist");
 
@@ -729,12 +1009,8 @@ window.submitActivity = async function (cardId) {
 };
 
 // =====================================================
-// Mover Card (sub-aba em Atividade)
-// - carrega opções via GET /card/<id>/move/options/
-// - move via POST /move-card/ (JSON)
-// - após mover: atualiza DOM (sem F5) e fecha modal
+// Mover Card
 // =====================================================
-
 function getCurrentBoardIdFromUrl() {
   const m = (window.location.pathname || "").match(/\/board\/(\d+)\//);
   return m?.[1] ? Number(m[1]) : null;
@@ -821,7 +1097,6 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
     };
   }
 
-  // Exposto pro template
   window.loadMoveCardOptions = async function (cardId) {
     const { boardSel, colSel, posSel } = getMoveEls();
     if (!boardSel || !colSel || !posSel) return;
@@ -844,14 +1119,12 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
       const r = await fetch(`/card/${cardId}/move/options/`, {
         headers: {
           "X-Requested-With": "XMLHttpRequest",
-          "Accept": "application/json",
+          Accept: "application/json",
         },
         credentials: "same-origin",
       });
 
       status = r.status;
-
-      // Para diagnosticar VM: pode vir HTML/redirect. Então lemos text e parseamos.
       raw = await r.text();
 
       if (!r.ok) throw new Error(raw || `HTTP ${status}`);
@@ -931,7 +1204,6 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
       fillSelect(posSel, opts, `<option value="">Selecione…</option>`);
     };
 
-    // Pré-seleção
     if (cur.board_id) {
       boardSel.value = String(cur.board_id);
       boardSel.onchange();
@@ -945,7 +1217,6 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
     }
   };
 
-  // Exposto pro template
   window.submitMoveCard = async function (cardId) {
     const { boardSel, colSel, posSel } = getMoveEls();
     if (!boardSel || !colSel || !posSel) return;
@@ -990,21 +1261,17 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
       return;
     }
 
-    // 1) Atualiza DOM na board (sem F5)
     const currentBoardId = getCurrentBoardIdFromUrl();
     const targetBoardId = Number(boardId);
 
-    // Mover para outro quadro: reload garante consistência (card some do quadro atual)
     if (currentBoardId && targetBoardId && currentBoardId !== targetBoardId) {
       closeModal();
       window.location.reload();
       return;
     }
 
-    // tenta mover nó do card pra coluna/posição nova
     const moved = moveCardDom(cardId, Number(columnId), payload.new_position);
 
-    // refresh do snippet garante update de labels/título/etc
     if (moved) {
       window.refreshCardSnippet(cardId);
     } else {
@@ -1013,47 +1280,41 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
       return;
     }
 
-    // 2) Fecha modal (move = ação final)
     closeModal();
   };
 })();
 
-
-
 // ===== Modal Theme: glass | dark (persistente) =====
 (function () {
- function apply(theme) {
-  const modal = document.getElementById("modal");
-  const root  = document.getElementById("card-modal-root");
-  if (!modal || !root) return;
+  function apply(theme) {
+    const modal = document.getElementById("modal");
+    const root = document.getElementById("card-modal-root");
+    if (!modal || !root) return;
 
-  const isDark = theme === "dark";
+    const isDark = theme === "dark";
 
-  modal.classList.toggle("theme-dark",  isDark);
-  modal.classList.toggle("theme-glass", !isDark);
+    modal.classList.toggle("theme-dark", isDark);
+    modal.classList.toggle("theme-glass", !isDark);
 
-  root.classList.toggle("theme-dark",  isDark);
-  root.classList.toggle("theme-glass", !isDark);
+    root.classList.toggle("theme-dark", isDark);
+    root.classList.toggle("theme-glass", !isDark);
 
-  // >>> ADD: habilita o ::before que aplica blur/bg corretamente
-  root.classList.add("modal-glass");
+    root.classList.add("modal-glass");
 
-  // aliases (opcional manter)
-  root.classList.toggle("card-theme-aero", !isDark);
-  root.classList.toggle("card-theme-dark", isDark);
+    root.classList.toggle("card-theme-aero", !isDark);
+    root.classList.toggle("card-theme-dark", isDark);
 
-  localStorage.setItem("modalTheme", isDark ? "dark" : "glass");
-}
+    localStorage.setItem("modalTheme", isDark ? "dark" : "glass");
+  }
+
   window.setModalTheme = function (theme) {
     apply(theme || "glass");
   };
 
-  // default
   document.addEventListener("DOMContentLoaded", function () {
     apply(localStorage.getItem("modalTheme") || "glass");
   });
 
-  // HTMX swaps: reaplica após trocar conteúdo do modal
   document.body.addEventListener("htmx:afterSwap", function (evt) {
     const t = evt.target;
     if (t && (t.id === "modal-body" || t.closest?.("#modal"))) {
@@ -1062,12 +1323,12 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
   });
 })();
 
+// ===== Checklist UX + DnD =====
 (function () {
   function initChecklistUX(root) {
     const scope = root || document;
 
-    // abrir/fechar “Adicionar um item”
-    scope.querySelectorAll(".checklist-add").forEach(wrap => {
+    scope.querySelectorAll(".checklist-add").forEach((wrap) => {
       if (wrap.dataset.binded === "1") return;
       wrap.dataset.binded = "1";
 
@@ -1095,7 +1356,6 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
     if (!container || container.dataset.sortableApplied === "1") return;
     container.dataset.sortableApplied = "1";
 
-    // DnD de checklists (card)
     new Sortable(container, {
       animation: 160,
       ghostClass: "drag-ghost",
@@ -1104,8 +1364,7 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
       handle: ".checklist-drag",
     });
 
-    // DnD de itens (entre checklists também)
-    container.querySelectorAll(".checklist-items").forEach(list => {
+    container.querySelectorAll(".checklist-items").forEach((list) => {
       if (list.dataset.sortableApplied === "1") return;
       list.dataset.sortableApplied = "1";
 
@@ -1120,14 +1379,12 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
     });
   }
 
-  // inicializa no load e após swaps HTMX do modal
   document.addEventListener("DOMContentLoaded", () => {
     initChecklistUX(document);
     initChecklistDnD();
   });
 
   document.body.addEventListener("htmx:afterSwap", (evt) => {
-    // quando o checklist-list ou modal-body trocar, reinicializa
     const t = evt.target;
     if (!t) return;
 
