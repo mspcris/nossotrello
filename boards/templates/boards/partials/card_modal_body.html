@@ -22,64 +22,142 @@
 {% endif %}
 
 <style>
-  .cm-wrap { padding: 16px; width: 100%; min-width: 0; }
-  .cm-topbar {
+  /* ============================================================
+     CM Modal (card_modal_body.html) — tema claro/dark consistente
+     - Sem blur interno (base.css proíbe)
+     - Tokens (CSS variables) controlam o visual
+     - Legibilidade forte no claro e no dark
+     ============================================================ */
+
+  /* Tokens default (CLARO) */
+  #cm-root{
+    --cm-bg: rgba(255,255,255,0.92);
+    --cm-surface: rgba(255,255,255,0.86);
+    --cm-surface-2: rgba(248,250,252,0.92);
+    --cm-border: rgba(15,23,42,0.12);
+
+    --cm-text: #0f172a;
+    --cm-muted: rgba(15,23,42,0.70);
+
+    --cm-link: #2563eb;
+    --cm-link-hover: #1d4ed8;
+
+    --cm-focus: rgba(37,99,235,0.35);
+  }
+
+  /* Tokens DARK (quando o root do modal estiver em tema dark) */
+  #card-modal-root.theme-dark #cm-root,
+  #card-modal-root.card-theme-dark #cm-root{
+    --cm-bg: rgba(2,6,23,0.72);
+    --cm-surface: rgba(15,23,42,0.62);
+    --cm-surface-2: rgba(15,23,42,0.72);
+    --cm-border: rgba(226,232,240,0.14);
+
+    --cm-text: rgba(241,245,249,0.92);
+    --cm-muted: rgba(226,232,240,0.72);
+
+    --cm-link: #93c5fd;
+    --cm-link-hover: #bfdbfe;
+
+    --cm-focus: rgba(147,197,253,0.35);
+  }
+
+  /* Base */
+  .cm-wrap{ padding: 16px; width: 100%; min-width: 0; color: var(--cm-text); }
+  .cm-panel{ display:none; }
+  .cm-panel.is-active{ display:block; }
+
+  /* Topbar */
+  .cm-topbar{
     position: sticky; top: 0; z-index: 10;
-    background: rgba(15,15,15,.55);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(255,255,255,.12);
+    background: var(--cm-bg);
+    border: 1px solid var(--cm-border);
     border-radius: 14px;
     padding: 10px;
     margin-bottom: 12px;
+    backdrop-filter: none !important; /* regra do modal */
+    -webkit-backdrop-filter: none !important;
   }
-  .cm-tabs { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
-  .cm-tabbtn {
+
+  .cm-tabs{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+
+  /* Tabs */
+  .cm-tabbtn{
     padding: 8px 10px;
-    border-radius: 10px;
+    border-radius: 999px;
     font-size: 13px;
-    border: 1px solid rgba(255,255,255,.14);
-    background: rgba(255,255,255,.06);
-    color: rgba(255,255,255,.92);
+    border: 1px solid var(--cm-border);
+    background: transparent;
+    color: var(--cm-text);
     cursor: pointer;
     user-select: none;
+    transition: background .15s ease, transform .08s ease, border-color .15s ease;
   }
-  .cm-tabbtn.is-active {
-    background: rgba(255,255,255,.16);
-    border-color: rgba(255,255,255,.30);
+  .cm-tabbtn:hover{ background: var(--cm-surface-2); }
+  .cm-tabbtn:active{ transform: translateY(1px); }
+  .cm-tabbtn.is-active{
+    background: var(--cm-surface);
+    border-color: rgba(37,99,235,0.35);
   }
-  .cm-actions { margin-left:auto; display:flex; gap:8px; }
-  .cm-btn {
+
+  /* Ações / botões */
+  .cm-actions{ margin-left:auto; display:flex; gap:8px; }
+  .cm-btn{
     padding: 8px 12px;
     border-radius: 10px;
-    border: 1px solid rgba(255,255,255,.14);
-    background: rgba(255,255,255,.08);
-    color: rgba(255,255,255,.92);
+    border: 1px solid var(--cm-border);
+    background: var(--cm-surface);
+    color: var(--cm-text);
     cursor:pointer;
     font-size: 13px;
+    transition: transform .08s ease, filter .15s ease;
   }
-  .cm-btn.primary { background: rgba(37, 99, 235, .92); border-color: rgba(37, 99, 235, 1); }
+  .cm-btn:hover{ filter: brightness(1.02); }
+  .cm-btn:active{ transform: translateY(1px); }
+  .cm-btn.primary{
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #fff;
+  }
 
-  .cm-panel { display:none; }
-  .cm-panel.is-active { display:block; }
+  /* Labels e textos */
+  .cm-label{ display:block; font-size: 12px; margin: 0 0 6px 2px; color: var(--cm-muted); }
+  .cm-muted{ font-size: 12px; color: var(--cm-muted); }
 
-  .cm-label { display:block; font-size: 12px; opacity:.85; margin: 0 0 6px 2px; color:#fff; }
-  .cm-input, .cm-textarea, .cm-select {
+  /* Inputs */
+  .cm-input, .cm-textarea, .cm-select{
     width:100%;
     border-radius: 10px;
-    border: 1px solid rgba(255,255,255,.14);
-    background: rgba(255,255,255,.06);
-    color: rgba(255,255,255,.92);
+    border: 1px solid var(--cm-border);
+    background: var(--cm-surface-2);
+    color: var(--cm-text);
     padding: 10px 12px;
     outline: none;
   }
-  .cm-textarea { min-height: 220px; }
-  .cm-card {
-    border-radius: 14px;
-    border: 1px solid rgba(255,255,255,.12);
-    background: rgba(255,255,255,.05);
-    padding: 12px;
+  .cm-textarea{ min-height: 220px; }
+  .cm-input::placeholder, .cm-textarea::placeholder{ color: var(--cm-muted); }
+
+  .cm-input:focus, .cm-textarea:focus, .cm-select:focus{
+    box-shadow: 0 0 0 3px var(--cm-focus);
+    border-color: rgba(37,99,235,0.55);
   }
-  .cm-muted { font-size: 12px; opacity: .75; color:#fff; }
+
+  /* Cards/surface */
+  .cm-card{
+    border-radius: 14px;
+    border: 1px solid var(--cm-border);
+    background: var(--cm-surface);
+    padding: 12px;
+    color: var(--cm-text);
+  }
+
+  /* Links (resolve “Anexos” no dark) */
+  #cm-root a{
+    color: var(--cm-link);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  #cm-root a:hover{ color: var(--cm-link-hover); }
 </style>
 
 <div class="cm-wrap" id="cm-root" data-card-id="{{ card.id }}">
