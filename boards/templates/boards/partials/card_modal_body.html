@@ -389,7 +389,7 @@
       <button type="button" class="cm-tabbtn" data-cm-tab="ativ">Atividade</button>
       <button type="button" class="cm-tabbtn" data-cm-tab="files">Anexos</button>
 
-      <div class="cm-actions hidden" id="cm-actions">
+      <div class="cm-actions" id="cm-actions">
         <button type="button" class="cm-btn primary" id="cm-save-btn">Salvar</button>
       </div>
     </div>
@@ -527,17 +527,25 @@
 (function () {
 
   function syncModalTheme() {
-    const modalRoot = document.getElementById("card-modal-root");
-    if (!modalRoot) return;
+  const modalRoot = document.getElementById("card-modal-root");
+  if (!modalRoot) return;
 
-    const isDark = document.documentElement.classList.contains("dark");
-
-    modalRoot.classList.remove(
-      "theme-dark","theme-glass","card-theme-dark","card-theme-white","card-theme-aero"
-    );
-
-    modalRoot.classList.add(isDark ? "theme-dark" : "theme-glass");
+  // Se já tem tema definido no modal, NÃO mexe (evita trocar pra branco após hx-swap)
+  if (
+    modalRoot.classList.contains("theme-dark") ||
+    modalRoot.classList.contains("theme-glass") ||
+    modalRoot.classList.contains("card-theme-dark") ||
+    modalRoot.classList.contains("card-theme-white") ||
+    modalRoot.classList.contains("card-theme-aero")
+  ) {
+    return;
   }
+
+  // Só define um default se estiver "sem tema nenhum"
+  const isDark = document.documentElement.classList.contains("dark");
+  modalRoot.classList.add(isDark ? "theme-dark" : "theme-glass");
+}
+
 
   function initRadicalTabs(root) {
     if (!root) return;
@@ -552,10 +560,11 @@
 
       // Salvar só em Descrição e Etiquetas
       const actions = root.querySelector("#cm-actions");
-      if (actions) {
-        const shouldShowSave = (name === "desc" || name === "tags");
-        actions.classList.toggle("hidden", !shouldShowSave);
-      }
+if (actions) {
+  const shouldShowSave = (name === "desc" || name === "tags");
+  actions.classList.toggle("hidden", !shouldShowSave);
+}
+
     }
 
     tabs.forEach(b => {
