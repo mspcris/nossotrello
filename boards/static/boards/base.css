@@ -704,26 +704,44 @@ html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !import
 }
 
 /* =======================================================================
-   [16] CONTRASTE — FIX DEFINITIVO (não depende de classe)
-   Aplica quando modal está aberto e root NÃO está em dark.
+   [16] CONTRASTE — FIX (robusto)
+   - Se NÃO estiver em dark global (html.dark), força claro.
+   - Se estiver em dark global (html.dark) e o root não tiver theme-dark,
+     força texto claro como fallback.
    ======================================================================= */
-#modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-dark){
+
+/* Caso CLARO: modal aberto e root não está em dark */
+html:not(.dark) #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-dark){
   color: #111 !important;
 }
-
-#modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-dark)
+html:not(.dark) #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-dark)
 :where(p,span,small,li,dt,dd,label,pre,code,h1,h2,h3,h4,h5,h6){
   color: #111 !important;
 }
-
-#modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-dark)
+html:not(.dark) #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-dark)
 :where(input,textarea,select,.ql-container,.ql-editor){
   color: #111 !important;
 }
-
-#modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-dark)
+html:not(.dark) #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-dark)
 :where(input,textarea)::placeholder{
   color: rgba(0,0,0,0.55) !important;
+}
+
+/* Fallback DARK: se a página está em dark (html.dark) mas o root não está em theme-dark */
+html.dark #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-dark){
+  color: rgba(241,245,249,0.95) !important;
+}
+html.dark #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-dark)
+:where(p,span,small,li,dt,dd,label,pre,code,h1,h2,h3,h4,h5,h6){
+  color: rgba(241,245,249,0.95) !important;
+}
+html.dark #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-dark)
+:where(input,textarea,select,.ql-container,.ql-editor){
+  color: rgba(241,245,249,0.95) !important;
+}
+html.dark #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-dark)
+:where(input,textarea)::placeholder{
+  color: rgba(226,232,240,0.55) !important;
 }
 
 /* =======================================================================
