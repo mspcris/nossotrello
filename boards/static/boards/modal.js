@@ -247,6 +247,9 @@ pop.style.left = left + "px";
         const cardEl = document.getElementById("card-" + data.card_id);
         if (cardEl && data.snippet) cardEl.outerHTML = data.snippet;
 
+        applyBoardTagColorsNow();
+
+
         // rebind seguro (novo HTML)
         const rootNow = document.getElementById("cm-root");
         cmEnsureTagColorsState(rootNow);
@@ -436,6 +439,8 @@ window.refreshCardSnippet = function (cardId) {
   });
 };
 
+
+
 // =====================================================
 // Savebar helpers
 // =====================================================
@@ -446,6 +451,12 @@ function hideSavebar() {
   bar.classList.add("hidden");
   bar.style.display = "none";
   if (saveBtn) saveBtn.disabled = true;
+}
+
+function applyBoardTagColorsNow() {
+  if (typeof window.applySavedTagColorsToBoard === "function") {
+    window.applySavedTagColorsToBoard(document);
+  }
 }
 
 function showSavebar() {
@@ -791,9 +802,11 @@ window.initCardModal = function () {
   const body = getModalBody();
   if (!body) return;
 
-  const root = qs("#card-modal-root");
-  const cid = root?.getAttribute?.("data-card-id");
+  const cmRoot = qs("#cm-root", body);
+  const legacyRoot = qs("#card-modal-root", body) || qs("#card-modal-root");
+  const cid = cmRoot?.getAttribute?.("data-card-id") || legacyRoot?.getAttribute?.("data-card-id");
   if (cid) window.currentCardId = Number(cid);
+
 
   bindDelegatedDirtyTracking();
   clearDirty();
@@ -894,10 +907,12 @@ window.removeTagInstant = async function (cardId, tag) {
   const modalBody = getModalBody();
   if (modalBody) modalBody.innerHTML = data.modal;
 
-  const card = document.querySelector(`#card-${data.card_id}`);
-  if (card) card.outerHTML = data.snippet;
+ const card = document.querySelector(`#card-${data.card_id}`);
+ if (card) card.outerHTML = data.snippet;
 
-  initCardModal();
+ applyBoardTagColorsNow();
+
+ initCardModal();
 
   const active = sessionStorage.getItem("modalActiveTab") || "card-tab-desc";
   window.cardOpenTab(active);
