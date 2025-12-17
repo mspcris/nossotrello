@@ -364,4 +364,46 @@
 
 
 
+
+
+<script>
+  // Aplica as cores salvas (card.tag_colors) nas tags renderizadas na board
+  window.applySavedTagColorsToBoard = function (scope) {
+    const root = scope || document;
+
+    root.querySelectorAll('li[data-card-id][data-tag-colors]').forEach((cardEl) => {
+      let colors = {};
+      try {
+        colors = JSON.parse(cardEl.getAttribute("data-tag-colors") || "{}");
+        if (!colors || typeof colors !== "object") colors = {};
+      } catch (e) {
+        colors = {};
+      }
+
+      cardEl.querySelectorAll("[data-tag]").forEach((tagEl) => {
+        const tag = tagEl.getAttribute("data-tag");
+        const c = colors[tag];
+        if (!c) return;
+
+        tagEl.style.backgroundColor = c + "20";
+        tagEl.style.color = c;
+        tagEl.style.borderColor = c;
+      });
+    });
+  };
+
+  document.addEventListener("DOMContentLoaded", () => {
+    window.applySavedTagColorsToBoard(document);
+  });
+
+  document.body.addEventListener("htmx:afterSwap", (evt) => {
+    window.applySavedTagColorsToBoard(evt.target);
+  });
+</script>
+
+
+
+
+
+
 {% endblock %}

@@ -1,71 +1,69 @@
-{# templates/boards/partials/checklist_item.html #}
+{% load tag_helpers %}
 
-<div id="checklist-item-{{ item.id }}"
-     class="checklist-item group flex items-start gap-2 py-2 px-2 rounded-md transition
-            hover:bg-black/5 dark:hover:bg-white/5"
-     data-item-id="{{ item.id }}">
-
-  {# handle (drag) #}
-  <button type="button"
-          class="item-drag checklist-handle mt-0.5 select-none cursor-grab active:cursor-grabbing
-                 inline-flex items-center justify-center w-7 h-7 rounded-md
-                 opacity-50 group-hover:opacity-100 transition
-                 text-gray-600 hover:text-gray-900
-                 dark:text-gray-300 dark:hover:text-white"
-          title="Arrastar para reordenar"
-          aria-label="Arrastar"
-          tabindex="-1">
-    <span class="text-base leading-none">⋮⋮</span>
-  </button>
-
-  {# checkbox #}
-  <input
-    type="checkbox"
-    class="checklist-checkbox mt-1 h-4 w-4 rounded border-gray-300
-           text-blue-600 focus:ring-blue-500
-           dark:border-white/30 dark:bg-white/10"
-    hx-post="{% url 'boards:checklist_toggle_item' item.id %}"
-    hx-target="#checklist-item-{{ item.id }}"
-    hx-swap="outerHTML"
-    {% if item.is_done %}checked{% endif %}
-  >
-
-  {# inline edit #}
-  <form class="flex-1"
-        hx-post="{% url 'boards:checklist_update_item' item.id %}"
-        hx-trigger="change, keyup[key=='Enter']"
-        hx-target="#checklist-item-{{ item.id }}"
-        hx-swap="outerHTML">
-
-    <input
-      type="text"
-      name="text"
-      value="{{ item.text }}"
-      class="checklist-input w-full text-sm rounded-md px-2 py-1.5
-             bg-transparent border border-transparent
-             placeholder:text-gray-400
-             focus:outline-none focus:border-blue-400 focus:bg-white/90
-             dark:focus:bg-black/30 dark:focus:border-blue-300
-             {% if item.is_done %}line-through text-gray-400 dark:text-gray-400{% else %}text-gray-900 dark:text-gray-100{% endif %}"
-      placeholder="Escreva uma tarefa…"
-      autocomplete="off"
-    >
-  </form>
-
-  {# ações #}
-  <button
-    type="button"
-    class="item-del checklist-icon-btn mt-0.5 inline-flex items-center justify-center
-           w-7 h-7 rounded-md border border-transparent
-           opacity-0 group-hover:opacity-100 transition
-           text-gray-500 hover:text-red-600 hover:bg-red-50
-           dark:text-gray-300 dark:hover:text-red-300 dark:hover:bg-red-500/10"
-    title="Remover item"
-    aria-label="Remover item"
-    hx-post="{% url 'boards:checklist_delete_item' item.id %}"
-    hx-target="#checklist-list"
+<li id="card-{{ card.id }}"
+    data-card-id="{{ card.id }}"
+    data-tag-colors='{{ card.tag_colors|default_if_none:"{}"|escapejs }}'
+    class="p-3 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm mb-3 cursor-pointer relative overflow-hidden"
+    hx-get="{% url 'boards:card_modal' card.id %}"
+    hx-target="#modal-body"
     hx-swap="innerHTML">
-    <span class="text-base leading-none">✕</span>
-  </button>
 
-</div>
+    {# MINIATURA PADRONIZADA (capa) #}
+    {% if card.cover_image %}
+      <div class="-mx-3 -mt-3 mb-3">
+        <img
+          src="{{ card.cover_image.url }}"
+          alt="Capa do card"
+          class="w-full h-24 object-cover block"
+          loading="lazy"
+          decoding="async"
+        >
+      </div>
+    {% endif %}
+
+    <!-- BOTÃO ... (abre modal focado no card) -->
+    <button type="button"
+        class="absolute top-1 left-1 text-gray-400 hover:text-gray-700 text-xs px-1 z-10"
+        onclick="event.stopPropagation();"
+        hx-get="{% url 'boards:card_modal' card.id %}"
+        hx-target="#modal-body"
+        hx-swap="innerHTML">
+        ⋮
+    </button>
+
+    <!-- BOTÃO DE EXCLUSÃO (aparece apenas no modo "Excluir cards") -->
+    <button type="button"
+        class="delete-card-btn hidden absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded z-10"
+        onclick="event.stopPropagation();"
+        hx-post="{% url 'boards:delete_card' card.id %}"
+        hx-target="#card-{{ card.id }}"
+        hx-swap="outerHTML">
+      X
+    </button>
+
+    <!-- TAGS -->
+    {% if card.tags %}
+      <div class="flex flex-wrap gap-1 mb-2 mt-4">
+        {% for tag in card.tags|split_tags %}
+          {% with tag|tag_color as color %}
+            <span
+              class="text-xs font-semibold px-2 py-1 rounded-md"
+              data-tag="{{ tag }}"
+              style="
+                background-color: {{ color }}20;
+                color: {{ color }};
+                border: 1px solid {{ color }};
+              ">
+              {{ tag }}
+            </span>
+          {% endwith %}
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <!-- TÍTULO -->
+    <span class="block text-sm text-gray-800">
+      {{ card.title }}
+    </span>
+
+</li>
