@@ -986,7 +986,7 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
 
 // ===== Modal Theme: glass | dark (persistente) =====
 (function () {
-  function apply(theme) {
+ function apply(theme) {
   const modal = document.getElementById("modal");
   const root  = document.getElementById("card-modal-root");
   if (!modal || !root) return;
@@ -1008,9 +1008,6 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
 
   localStorage.setItem("modalTheme", isDark ? "dark" : "glass");
 }
-calStorage.setItem("modalTheme", isDark ? "dark" : "glass");
-  }
-
   window.setModalTheme = function (theme) {
     apply(theme || "glass");
   };
