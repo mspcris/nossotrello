@@ -1,3 +1,4 @@
+{# templates/boards/partials/card_modal_body.html (arquivo completo) #}
 {% load tag_helpers %}
 
 {% if card.cover_image %}
@@ -23,10 +24,12 @@
 
 <style>
   /* ============================================================
-     CM MODAL (card_modal_body.html) — Light/Dark legível e moderno
-     - Sem blur (base.css força backdrop-filter:none)
-     - Contraste forte em checklist/anexos
-     - Fallback: se o root não estiver com .theme-dark, usa html.dark
+     CM MODAL (card_modal_body.html)
+     - Tema: NÃO troca tema no salvar / hx-swap
+     - Botão salvar: só em Descrição e Etiquetas (travado via CSS + data-attr)
+     - UX 413: mensagem amigável e limpa input
+     - Atividade: força texto legível
+     - Anexos: links mais legíveis e campo "Descrição do anexo"
      ============================================================ */
 
   /* ---------- Tokens ---------- */
@@ -54,7 +57,7 @@
     --cm-ring: 0 0 0 3px rgba(37,99,235,0.22);
   }
 
-  /* Dark override (quando o root estiver certo) */
+  /* Dark override */
   #card-modal-root.theme-dark #cm-root,
   #card-modal-root.card-theme-dark #cm-root{
     --cm-bg: rgba(2,6,23,0.55);
@@ -63,15 +66,18 @@
     --cm-border: rgba(255,255,255,0.14);
     --cm-border-2: rgba(255,255,255,0.10);
     --cm-text: rgba(241,245,249,0.94);
-    --cm-muted: rgba(226,232,240,0.70);
-    --cm-placeholder: rgba(226,232,240,0.50);
+    --cm-muted: rgba(226,232,240,0.72);
+    --cm-placeholder: rgba(226,232,240,0.52);
+
+    /* deixa links/anexos mais legíveis no dark */
+    --cm-accent: rgb(96 165 250);
 
     --cm-shadow: 0 14px 40px rgba(0,0,0,0.35);
     --cm-shadow-sm: 0 10px 26px rgba(0,0,0,0.30);
     --cm-ring: 0 0 0 3px rgba(59,130,246,0.25);
   }
 
-  /* Fallback caso o root NÃO esteja com theme-dark, mas o site esteja em dark */
+  /* Fallback: site em dark */
   html.dark #cm-root{
     --cm-bg: rgba(2,6,23,0.55);
     --cm-surface: rgba(2,6,23,0.62);
@@ -79,8 +85,9 @@
     --cm-border: rgba(255,255,255,0.14);
     --cm-border-2: rgba(255,255,255,0.10);
     --cm-text: rgba(241,245,249,0.94);
-    --cm-muted: rgba(226,232,240,0.70);
-    --cm-placeholder: rgba(226,232,240,0.50);
+    --cm-muted: rgba(226,232,240,0.72);
+    --cm-placeholder: rgba(226,232,240,0.52);
+    --cm-accent: rgb(96 165 250);
     --cm-shadow: 0 14px 40px rgba(0,0,0,0.35);
     --cm-shadow-sm: 0 10px 26px rgba(0,0,0,0.30);
     --cm-ring: 0 0 0 3px rgba(59,130,246,0.25);
@@ -121,12 +128,27 @@
     margin-bottom: 12px;
   }
 
+  /* barra: tabs à esquerda + ações à direita, sempre alinhado */
+  .cm-bar{
+    display:flex;
+    align-items:center;
+    gap: 10px;
+    width: 100%;
+    min-width: 0;
+  }
+
   .cm-tabs{
     display:flex;
-    flex-wrap:wrap;
     gap: 8px;
     align-items:center;
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    padding-bottom: 2px;
   }
+  .cm-tabs::-webkit-scrollbar{ height: 6px; }
+  .cm-tabs::-webkit-scrollbar-thumb{ background: rgba(255,255,255,0.12); border-radius: 999px; }
 
   .cm-tabbtn{
     padding: 8px 12px;
@@ -137,7 +159,9 @@
     color: var(--cm-text) !important;
     cursor: pointer;
     user-select: none;
+    white-space: nowrap;
     transition: transform .12s ease, border-color .12s ease, background .12s ease;
+    flex: 0 0 auto;
   }
   .cm-tabbtn:hover{
     transform: translateY(-1px);
@@ -150,9 +174,10 @@
   }
 
   .cm-actions{
-    margin-left:auto;
     display:flex;
     gap:8px;
+    flex: 0 0 auto;
+    align-self:center;
   }
 
   .cm-btn{
@@ -164,6 +189,7 @@
     cursor:pointer;
     font-size: 13px;
     transition: transform .12s ease, filter .12s ease, border-color .12s ease;
+    white-space: nowrap;
   }
   .cm-btn:hover{ transform: translateY(-1px); border-color: var(--cm-border); }
   .cm-btn.primary{
@@ -210,6 +236,13 @@
   .cm-panel{ display:none; }
   .cm-panel.is-active{ display:block; }
 
+  /* ---------- Salvar: só em Descrição e Etiquetas ---------- */
+  #cm-actions{ display:none; }
+  #cm-root[data-cm-active="desc"] #cm-actions,
+  #cm-root[data-cm-active="tags"] #cm-actions{
+    display:flex;
+  }
+
   /* ---------- Checklist ---------- */
   #cm-root .checklists-container,
   #cm-root .checklist-block,
@@ -239,10 +272,7 @@
     background: var(--cm-surface);
   }
 
-  #cm-root .checklist-item{
-    border-radius: 10px;
-    border: 1px solid transparent;
-  }
+  #cm-root .checklist-item{ border-radius: 10px; border: 1px solid transparent; }
   #cm-root .checklist-item:hover{
     background: rgba(2,6,23,0.04);
     border-color: var(--cm-border-2);
@@ -328,15 +358,47 @@
     cursor: pointer;
   }
 
+  /* Hard override: checklist item SEM depender de CSS global */
+  #cm-root .checklist-item{
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 8px !important;
+  }
+  #cm-root .checklist-item form{
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+  }
+  #cm-root .checklist-input{
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* ---------- Atividade: força legibilidade ---------- */
+  #cm-root #cm-activity-panel,
+  #cm-root #cm-activity-panel *{
+    color: var(--cm-text) !important;
+  }
+  #cm-root #cm-activity-panel a{
+    color: var(--cm-accent) !important;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
   /* ---------- Anexos ---------- */
   #cm-root #attachments-list a{
     color: var(--cm-accent) !important;
-    text-decoration: none;
+    text-decoration: underline;
+    text-underline-offset: 2px;
     font-weight: 600;
   }
   #cm-root #attachments-list a:hover{
-    text-decoration: underline;
-    filter: brightness(1.05);
+    filter: brightness(1.08);
+  }
+
+  /* ---------- Erro upload ---------- */
+  #attachments-error{
+    border-radius: 10px;
   }
 
   /* ---------- Foco ---------- */
@@ -355,53 +417,20 @@
     .cm-wrap{ padding: 12px; }
   }
 
-  /* Hard override: checklist item SEM depender de CSS global */
-  #cm-root .checklist-item{
-    display: flex !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
-    gap: 8px !important;
-  }
-
-  #cm-root .checklist-item form{
-    flex: 1 1 auto !important;
-    min-width: 0 !important;
-  }
-
-  #cm-root .checklist-input{
-    width: 100% !important;
-    min-width: 0 !important;
-    color: var(--cm-text) !important;
-    background: transparent !important;
-  }
-
   .hidden{ display:none !important; }
-
-.cm-tabs{
-  position: relative;
-  padding-right: 130px; /* reserva espaço pro botão não “sumir” */
-}
-
-.cm-actions{
-  position: absolute;
-  right: 10px;
-  top: 10px;
-  margin-left: 0 !important;
-  z-index: 20;
-}
-
-
 </style>
 
-<div class="cm-wrap" id="cm-root" data-card-id="{{ card.id }}">
+<div class="cm-wrap" id="cm-root" data-card-id="{{ card.id }}" data-cm-active="desc">
 
   <div class="cm-topbar">
-    <div class="cm-tabs" role="tablist" aria-label="Abas do card">
-      <button type="button" class="cm-tabbtn is-active" data-cm-tab="desc">Descrição</button>
-      <button type="button" class="cm-tabbtn" data-cm-tab="tags">Etiquetas</button>
-      <button type="button" class="cm-tabbtn" data-cm-tab="check">Checklists</button>
-      <button type="button" class="cm-tabbtn" data-cm-tab="ativ">Atividade</button>
-      <button type="button" class="cm-tabbtn" data-cm-tab="files">Anexos</button>
+    <div class="cm-bar" role="tablist" aria-label="Abas do card">
+      <div class="cm-tabs">
+        <button type="button" class="cm-tabbtn is-active" data-cm-tab="desc">Descrição</button>
+        <button type="button" class="cm-tabbtn" data-cm-tab="tags">Etiquetas</button>
+        <button type="button" class="cm-tabbtn" data-cm-tab="check">Checklists</button>
+        <button type="button" class="cm-tabbtn" data-cm-tab="ativ">Atividade</button>
+        <button type="button" class="cm-tabbtn" data-cm-tab="files">Anexos</button>
+      </div>
 
       <div class="cm-actions" id="cm-actions">
         <button type="button" class="cm-btn primary" id="cm-save-btn">Salvar</button>
@@ -508,7 +537,7 @@
   <section class="cm-panel" data-cm-panel="files" role="tabpanel">
     <div class="cm-card space-y-3">
 
-      <!-- ✅ NOVO: caixa de erro amigável para upload (413 etc.) -->
+      <!-- Erro amigável para upload (413 etc.) -->
       <div id="attachments-error"
            class="hidden mb-2 px-3 py-2 rounded-md text-sm border
                   border-red-500/30 bg-red-500/10 text-red-200">
@@ -516,13 +545,31 @@
 
       <div>
         <label class="cm-label">Enviar novo anexo</label>
-        <input type="file" name="file"
-               class="cm-input"
-               hx-post="{% url 'boards:add_attachment' card.id %}"
-               hx-target="#attachments-list"
-               hx-swap="beforeend"
-               hx-trigger="change"
-               hx-encoding="multipart/form-data" />
+
+        <!-- Campo novo: descrição do anexo -->
+        <div class="flex gap-2 flex-wrap">
+          <input type="text"
+                 id="attachment-desc"
+                 name="description"
+                 class="cm-input"
+                 style="max-width: 420px;"
+                 placeholder="Descrição do anexo (opcional)">
+
+          <input type="file" name="file"
+                 id="attachment-file"
+                 class="cm-input"
+                 style="max-width: 520px;"
+                 hx-post="{% url 'boards:add_attachment' card.id %}"
+                 hx-target="#attachments-list"
+                 hx-swap="beforeend"
+                 hx-trigger="change"
+                 hx-encoding="multipart/form-data"
+                 hx-include="#attachment-desc" />
+        </div>
+
+        <div class="cm-muted" style="margin-top:6px;">
+          Limite: 50MB por arquivo.
+        </div>
       </div>
 
       <div id="attachments-list" class="space-y-3">
@@ -540,26 +587,23 @@
 <script>
 (function () {
 
-  function syncModalTheme() {
-  const modalRoot = document.getElementById("card-modal-root");
-  if (!modalRoot) return;
+  // NÃO troca tema do modal. Só define um default se estiver "sem tema nenhum".
+  function syncModalThemeSafely() {
+    const modalRoot = document.getElementById("card-modal-root");
+    if (!modalRoot) return;
 
-  // Se já tem tema definido no modal, NÃO mexe (evita trocar pra branco após hx-swap)
-  if (
-    modalRoot.classList.contains("theme-dark") ||
-    modalRoot.classList.contains("theme-glass") ||
-    modalRoot.classList.contains("card-theme-dark") ||
-    modalRoot.classList.contains("card-theme-white") ||
-    modalRoot.classList.contains("card-theme-aero")
-  ) {
-    return;
+    const hasAnyTheme =
+      modalRoot.classList.contains("theme-dark") ||
+      modalRoot.classList.contains("theme-glass") ||
+      modalRoot.classList.contains("card-theme-dark") ||
+      modalRoot.classList.contains("card-theme-white") ||
+      modalRoot.classList.contains("card-theme-aero");
+
+    if (hasAnyTheme) return;
+
+    const isDark = document.documentElement.classList.contains("dark");
+    modalRoot.classList.add(isDark ? "theme-dark" : "theme-glass");
   }
-
-  // Só define um default se estiver "sem tema nenhum"
-  const isDark = document.documentElement.classList.contains("dark");
-  modalRoot.classList.add(isDark ? "theme-dark" : "theme-glass");
-}
-
 
   function initRadicalTabs(root) {
     if (!root) return;
@@ -569,19 +613,12 @@
     if (!tabs.length || !panels.length) return;
 
     function activate(name) {
-    tabs.forEach(b => b.classList.toggle("is-active", b.getAttribute("data-cm-tab") === name));
-    panels.forEach(p => p.classList.toggle("is-active", p.getAttribute("data-cm-panel") === name));
+      // estado (também controla visibilidade do salvar via CSS)
+      root.dataset.cmActive = name;
 
-  // ✅ Salvar só em Descrição e Etiquetas (forçando layout)
-    const actions = root.querySelector("#cm-actions");
-    if (actions) {
-    const shouldShowSave = (name === "desc" || name === "tags");
-    actions.classList.toggle("hidden", !shouldShowSave);
+      tabs.forEach(b => b.classList.toggle("is-active", b.getAttribute("data-cm-tab") === name));
+      panels.forEach(p => p.classList.toggle("is-active", p.getAttribute("data-cm-panel") === name));
     }
-  }
-
-
-
 
     tabs.forEach(b => {
       if (b.dataset.cmBound === "1") return;
@@ -606,7 +643,7 @@
     }
   }
 
-  // ✅ NOVO: UX de erro amigável pro upload (413)
+  // UX de erro amigável pro upload (413)
   function initAttachmentErrors(root) {
     if (!root) return;
     if (root.dataset.cmAttachBound === "1") return;
@@ -626,9 +663,27 @@
       box.classList.add("hidden");
     }
 
+    function resetAttachmentFields() {
+      const file = root.querySelector("#attachment-file");
+      const desc = root.querySelector("#attachment-desc");
+      if (file) file.value = "";
+      if (desc) desc.value = "";
+    }
+
     root.addEventListener("change", function (e) {
-      if (e.target && e.target.matches('input[type="file"][name="file"]')) {
+      if (e.target && e.target.matches('#attachment-file')) {
         clearAttachmentError();
+      }
+    });
+
+    // Se o upload deu certo, limpa campos (evita parecer bug)
+    document.body.addEventListener("htmx:afterRequest", function (evt) {
+      const elt = evt.detail.elt;
+      const xhr = evt.detail.xhr;
+      if (!elt || !elt.matches || !elt.matches('#attachment-file')) return;
+      if (xhr && xhr.status >= 200 && xhr.status < 300) {
+        clearAttachmentError();
+        resetAttachmentFields();
       }
     });
 
@@ -637,21 +692,21 @@
       const elt = evt.detail.elt;
 
       // só trata o input de anexo desse modal
-      if (!elt || !elt.matches || !elt.matches('#cm-root input[type="file"][name="file"]')) return;
+      if (!elt || !elt.matches || !elt.matches('#attachment-file')) return;
 
       if (xhr && xhr.status === 413) {
         showAttachmentError("Arquivo acima de 50MB. O limite de anexo é 50MB. Comprima o arquivo ou envie um link (Drive/Dropbox) e tente novamente.");
-        elt.value = ""; // limpa o nome do arquivo (evita parecer bug)
+        resetAttachmentFields();
         return;
       }
 
       showAttachmentError("Não foi possível enviar o anexo agora. Tente novamente.");
-      elt.value = "";
+      resetAttachmentFields();
     });
   }
 
   function boot() {
-    syncModalTheme();
+    syncModalThemeSafely();
     const root = document.getElementById("cm-root");
     initRadicalTabs(root);
     initAttachmentErrors(root);
