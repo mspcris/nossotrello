@@ -308,6 +308,24 @@
   </form>
   <input type="color" id="cm-tag-color-picker" class="hidden">
 
+  <div id="cm-tag-color-popover"
+     class="hidden absolute z-50 mt-2 p-3 rounded-xl border bg-white shadow-lg">
+  <div class="flex gap-2 items-center">
+    <button type="button"
+            class="cm-btn primary"
+            id="cm-tag-color-save">
+      Salvar cor
+    </button>
+
+    <button type="button"
+            class="cm-btn"
+            id="cm-tag-color-cancel">
+      Cancelar
+    </button>
+  </div>
+</div>
+
+
   {# ===================== FORM PRINCIPAL (desc + tags) ===================== #}
   <form id="cm-main-form"
         method="post"
@@ -531,41 +549,77 @@
     });
   }
 
-  function initTagColorPicker(root) {
-    if (!root) return;
-    if (root.dataset.cmTagColorBound === "1") return;
-    root.dataset.cmTagColorBound = "1";
+function initTagColorPicker(root) {
+  if (!root) return;
+  if (root.dataset.cmTagColorBound === "1") return;
+  root.dataset.cmTagColorBound = "1";
 
-    const wrap = root.querySelector("#cm-tags-wrap");
-    const form = root.querySelector("#cm-tag-color-form");
-    const inpTag = root.querySelector("#cm-tag-color-tag");
-    const inpColor = root.querySelector("#cm-tag-color-value");
-    const picker = root.querySelector("#cm-tag-color-picker");
+  const wrap   = root.querySelector("#cm-tags-wrap");
+  const picker = root.querySelector("#cm-tag-color-picker");
+  const pop    = root.querySelector("#cm-tag-color-popover");
+  const save   = root.querySelector("#cm-tag-color-save");
+  const cancel = root.querySelector("#cm-tag-color-cancel");
+  const form   = root.querySelector("#cm-tag-color-form");
+  const inpTag = root.querySelector("#cm-tag-color-tag");
+  const inpCol = root.querySelector("#cm-tag-color-value");
 
-    if (!wrap || !form || !inpTag || !inpColor || !picker) return;
+  if (!wrap || !picker || !pop || !save || !cancel || !form) return;
 
-    let currentTag = "";
+  let currentBtn = null;
 
-    wrap.addEventListener("click", function (e) {
-      const btn = e.target.closest("button[data-tag]");
-      if (!btn) return;
+  wrap.addEventListener("click", (e) => {
+    const btn = e.target.closest(".cm-tag-btn");
+    if (!btn) return;
 
-      currentTag = btn.getAttribute("data-tag") || "";
-      if (!currentTag) return;
+    currentBtn = btn;
 
-      picker.value = "#3b82f6";
-      picker.click();
-    });
+    const color = btn.dataset.color || "#3b82f6";
+    picker.value = color;
 
-    picker.addEventListener("change", function () {
-      if (!currentTag) return;
+    const rect = btn.getBoundingClientRect();
+    pop.style.top  = rect.bottom + window.scrollY + "px";
+    pop.style.left = rect.left  + window.scrollX + "px";
 
-      inpTag.value = currentTag;
-      inpColor.value = picker.value;
+    pop.classList.remove("hidden");
+  });
 
-      try { form.requestSubmit(); } catch (e) { form.submit(); }
-    });
-  }
+  cancel.addEventListener("click", () => {
+    pop.classList.add("hidden");
+    currentBtn = null;
+  });
+
+  save.addEventListener("click", () => {
+    if (!currentBtn) return;
+
+    const tag   = currentBtn.dataset.tag;
+    const color = picker.value;
+
+    inpTag.value = tag;
+    inpCol.value = color;
+
+    // Atualiza visual IMEDIATO
+    currentBtn.dataset.color = color;
+    currentBtn.style.backgroundColor = color + "20";
+    currentBtn.style.color = color;
+    currentBtn.style.borderColor = color;
+
+    // Atualiza dataset global
+    try {
+      const rootColors = JSON.parse(root.dataset.tagColors || "{}");
+      rootColors[tag] = color;
+      root.dataset.tagColors = JSON.stringify(rootColors);
+    } catch {}
+
+    pop.classList.add("hidden");
+
+    // Salva no backend
+    try { form.requestSubmit(); } catch { form.submit(); }
+
+    // Atualiza card na board
+    refreshCardSnippet(root.dataset.cardId);
+  });
+}
+
 
   function initAttachmentErrors(root) {
     if (!root) return;
