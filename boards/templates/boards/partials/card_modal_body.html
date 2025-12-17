@@ -306,24 +306,34 @@
     <input type="hidden" name="tag" id="cm-tag-color-tag">
     <input type="hidden" name="color" id="cm-tag-color-value">
   </form>
-  <input type="color" id="cm-tag-color-picker" class="hidden">
 
-  <div id="cm-tag-color-popover"
+<div id="cm-tag-color-popover"
      class="hidden absolute z-50 mt-2 p-3 rounded-xl border bg-white shadow-lg">
-  <div class="flex gap-2 items-center">
-    <button type="button"
-            class="cm-btn primary"
-            id="cm-tag-color-save">
-      Salvar cor
-    </button>
 
-    <button type="button"
-            class="cm-btn"
-            id="cm-tag-color-cancel">
-      Cancelar
-    </button>
+  <div class="flex flex-col gap-3">
+
+    <!-- SELETOR DE COR VISÍVEL -->
+    <input type="color"
+           id="cm-tag-color-picker"
+           class="w-12 h-12 border rounded cursor-pointer">
+
+    <div class="flex gap-2 justify-end">
+      <button type="button"
+              class="cm-btn"
+              id="cm-tag-color-cancel">
+        Cancelar
+      </button>
+
+      <button type="button"
+              class="cm-btn primary"
+              id="cm-tag-color-save">
+        Salvar cor
+      </button>
+    </div>
+
   </div>
 </div>
+
 
 
   {# ===================== FORM PRINCIPAL (desc + tags) ===================== #}
