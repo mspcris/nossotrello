@@ -1,7 +1,7 @@
 {# templates/boards/partials/checklist_item.html #}
 
 <div id="checklist-item-{{ item.id }}"
-     class="checklist-item group flex items-center w-full gap-1 py-2 px-2 rounded-md transition
+     class="checklist-item group w-full flex items-center gap-2 py-2 px-2 rounded-md transition
             hover:bg-black/5 dark:hover:bg-white/5"
      data-item-id="{{ item.id }}">
 
@@ -18,15 +18,15 @@
     <span class="text-base leading-none">⋮⋮</span>
   </button>
 
-  {# checkbox (colado à esquerda) #}
+  {# checkbox #}
   <input
     type="checkbox"
-    class="checklist-checkbox h-4 w-4 rounded border-gray-300
+    class="checklist-checkbox h-4 w-4 shrink-0 rounded border-gray-300
            text-blue-600 focus:ring-blue-500
            dark:border-white/30 dark:bg-white/10"
     hx-post="{% url 'boards:checklist_toggle_item' item.id %}"
-    hx-target="#checklist-list"
-    hx-swap="innerHTML"
+    hx-target="closest .checklist-block"
+    hx-swap="outerHTML"
     {% if item.is_done %}checked{% endif %}
   >
 
@@ -53,17 +53,18 @@
   </form>
 
   {# ações #}
-  <button type="button"
-          class="item-del checklist-icon-btn inline-flex items-center justify-center
-                 w-7 h-7 rounded-md border border-transparent
-                 opacity-0 group-hover:opacity-100 transition
-                 text-gray-500 hover:text-red-600 hover:bg-red-50
-                 dark:text-gray-300 dark:hover:text-red-300 dark:hover:bg-red-500/10"
-          title="Remover item"
-          aria-label="Remover item"
-          hx-post="{% url 'boards:checklist_delete_item' item.id %}"
-          hx-target="#checklist-list"
-          hx-swap="innerHTML">
+  <button
+    type="button"
+    class="item-del checklist-icon-btn inline-flex items-center justify-center
+           w-7 h-7 shrink-0 rounded-md border border-transparent
+           opacity-0 group-hover:opacity-100 transition
+           text-gray-500 hover:text-red-600 hover:bg-red-50
+           dark:text-gray-300 dark:hover:text-red-300 dark:hover:bg-red-500/10"
+    title="Remover item"
+    aria-label="Remover item"
+    hx-post="{% url 'boards:checklist_delete_item' item.id %}"
+    hx-target="closest .checklist-block"
+    hx-swap="outerHTML">
     <span class="text-base leading-none">✕</span>
   </button>
 
