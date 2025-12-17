@@ -907,15 +907,19 @@ window.removeTagInstant = async function (cardId, tag) {
   const modalBody = getModalBody();
   if (modalBody) modalBody.innerHTML = data.modal;
 
- const card = document.querySelector(`#card-${data.card_id}`);
- if (card) card.outerHTML = data.snippet;
+  const card = document.querySelector(`#card-${data.card_id}`);
+  if (card) card.outerHTML = data.snippet;
 
- applyBoardTagColorsNow();
+  applyBoardTagColorsNow();
 
- initCardModal();
+  // reativa JS do modal (CM/legado)
+  initCardModal();
 
-  const active = sessionStorage.getItem("modalActiveTab") || "card-tab-desc";
-  window.cardOpenTab(active);
+  // se for modal legado (não-CM), mantém a aba atual
+  if (!document.querySelector("#cm-root")) {
+    const active = sessionStorage.getItem("modalActiveTab") || "card-tab-desc";
+    window.cardOpenTab(active);
+  }
 };
 
 // =====================================================
