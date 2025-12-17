@@ -25,20 +25,13 @@
 <style>
   /* ============================================================
      CM MODAL (card_modal_body.html)
-     - Tema: NÃO troca tema no salvar / hx-swap
-     - Botão salvar: só em Descrição e Etiquetas (travado via CSS + data-attr)
-     - UX 413: mensagem amigável e limpa input
-     - Atividade: força texto legível
-     - Anexos: links mais legíveis e campo "Descrição do anexo"
      ============================================================ */
 
-  /* ---------- Tokens ---------- */
   #cm-root{
     --cm-radius: 14px;
     --cm-radius-sm: 10px;
     --cm-pad: 14px;
 
-    /* Light (default) */
     --cm-bg: rgba(255,255,255,0.86);
     --cm-surface: rgba(255,255,255,0.92);
     --cm-surface-2: rgba(250,250,250,0.95);
@@ -57,7 +50,6 @@
     --cm-ring: 0 0 0 3px rgba(37,99,235,0.22);
   }
 
-  /* Dark override */
   #card-modal-root.theme-dark #cm-root,
   #card-modal-root.card-theme-dark #cm-root{
     --cm-bg: rgba(2,6,23,0.55);
@@ -68,16 +60,12 @@
     --cm-text: rgba(241,245,249,0.94);
     --cm-muted: rgba(226,232,240,0.72);
     --cm-placeholder: rgba(226,232,240,0.52);
-
-    /* deixa links/anexos mais legíveis no dark */
     --cm-accent: rgb(96 165 250);
-
     --cm-shadow: 0 14px 40px rgba(0,0,0,0.35);
     --cm-shadow-sm: 0 10px 26px rgba(0,0,0,0.30);
     --cm-ring: 0 0 0 3px rgba(59,130,246,0.25);
   }
 
-  /* Fallback: site em dark */
   html.dark #cm-root{
     --cm-bg: rgba(2,6,23,0.55);
     --cm-surface: rgba(2,6,23,0.62);
@@ -93,7 +81,6 @@
     --cm-ring: 0 0 0 3px rgba(59,130,246,0.25);
   }
 
-  /* ---------- Layout base ---------- */
   .cm-wrap{
     padding: 16px;
     width: 100%;
@@ -114,7 +101,6 @@
     color: var(--cm-muted) !important;
   }
 
-  /* ---------- Topbar / Tabs ---------- */
   .cm-topbar{
     position: sticky;
     top: 0;
@@ -125,10 +111,9 @@
     background: var(--cm-bg);
     box-shadow: var(--cm-shadow);
     padding: 10px;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
   }
 
-  /* barra: tabs à esquerda + ações à direita, sempre alinhado */
   .cm-bar{
     display:flex;
     align-items:center;
@@ -200,7 +185,6 @@
   }
   .cm-btn.primary:hover{ filter: brightness(1.05); }
 
-  /* ---------- Campos ---------- */
   .cm-label{
     display:block;
     font-size: 12px;
@@ -232,149 +216,24 @@
 
   .cm-textarea{ min-height: 220px; resize: vertical; }
 
-  /* ---------- Panel toggling ---------- */
   .cm-panel{ display:none; }
   .cm-panel.is-active{ display:block; }
 
-  /* ---------- Salvar: só em Descrição e Etiquetas ---------- */
   #cm-actions{ display:none; }
   #cm-root[data-cm-active="desc"] #cm-actions,
   #cm-root[data-cm-active="tags"] #cm-actions{
     display:flex;
   }
 
-  /* ---------- Checklist ---------- */
-  #cm-root .checklists-container,
-  #cm-root .checklist-block,
-  #cm-root .checklist-items{
-    color: var(--cm-text) !important;
+  /* --- Barra fixa de tags (fica entre topbar e conteúdo) --- */
+  #cm-tags-wrap{
+    margin-bottom: 10px;
   }
-
-  #cm-root .checklist-head{
-    padding: 8px 10px;
-    border-radius: var(--cm-radius-sm);
-    border: 1px solid var(--cm-border-2);
-    background: var(--cm-surface-2);
-  }
-
-  #cm-root .checklist-title{
-    width: 100%;
-    border-radius: 10px;
-    border: 1px solid transparent;
-    background: transparent;
-    color: var(--cm-text) !important;
-    padding: 8px 10px;
-    outline: none;
-  }
-  #cm-root .checklist-title:focus{
-    border-color: rgba(37,99,235,0.55);
-    box-shadow: var(--cm-ring);
-    background: var(--cm-surface);
-  }
-
-  #cm-root .checklist-item{ border-radius: 10px; border: 1px solid transparent; }
-  #cm-root .checklist-item:hover{
-    background: rgba(2,6,23,0.04);
-    border-color: var(--cm-border-2);
-  }
-  #card-modal-root.theme-dark #cm-root .checklist-item:hover,
-  #card-modal-root.card-theme-dark #cm-root .checklist-item:hover,
-  html.dark #cm-root .checklist-item:hover{
-    background: rgba(255,255,255,0.06);
-    border-color: rgba(255,255,255,0.10);
-  }
-
-  #cm-root .checklist-input{
-    color: var(--cm-text) !important;
-    background: transparent !important;
-  }
-  #cm-root .checklist-input:focus{
-    background: var(--cm-surface) !important;
-    border-color: rgba(37,99,235,0.55) !important;
-    box-shadow: var(--cm-ring) !important;
-  }
-
-  #cm-root .checklist-empty{
-    margin: 6px 2px 0 2px;
-    color: var(--cm-muted) !important;
-    font-size: 12px;
-  }
-
-  #cm-root .checklist-icon-btn,
-  #cm-root .item-del{ border-radius: 10px; }
-
-  #cm-root .checklist-icon-btn.danger{
-    color: var(--cm-danger) !important;
-    border: 1px solid rgba(220,38,38,0.22);
-    background: rgba(220,38,38,0.06);
-    padding: 6px 10px;
-  }
-  #cm-root .checklist-icon-btn.danger:hover{
-    background: rgba(220,38,38,0.10);
-    border-color: rgba(220,38,38,0.35);
-  }
-
-  #cm-root .checklist-add{
-    margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px dashed var(--cm-border-2);
-  }
-  #cm-root .checklist-add-open{
-    background: transparent;
-    border: 1px solid var(--cm-border-2);
-    color: var(--cm-text) !important;
-    padding: 8px 10px;
-    border-radius: 10px;
-    cursor: pointer;
-  }
-  #cm-root .checklist-add-open:hover{
-    border-color: var(--cm-border);
-    background: rgba(37,99,235,0.06);
-  }
-  #cm-root .checklist-add-input{
-    width: 100%;
-    border-radius: 10px;
-    border: 1px solid var(--cm-border-2);
-    background: var(--cm-surface-2);
-    color: var(--cm-text) !important;
-    padding: 10px 12px;
-    outline: none;
-  }
-  #cm-root .checklist-add-actions{ display:flex; gap:8px; margin-top: 8px; }
-  #cm-root .checklist-add-btn{
-    padding: 8px 12px;
-    border-radius: 10px;
-    border: 1px solid rgba(37,99,235,0.85);
-    background: var(--cm-accent);
-    color: #fff !important;
-    cursor: pointer;
-  }
-  #cm-root .checklist-add-cancel{
-    padding: 8px 12px;
-    border-radius: 10px;
-    border: 1px solid var(--cm-border-2);
-    background: var(--cm-surface-2);
-    color: var(--cm-text) !important;
+  #cm-tags-bar button{
     cursor: pointer;
   }
 
-  /* Hard override: checklist item SEM depender de CSS global */
-  #cm-root .checklist-item{
-    display: flex !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
-    gap: 8px !important;
-  }
-  #cm-root .checklist-item form{
-    flex: 1 1 auto !important;
-    min-width: 0 !important;
-  }
-  #cm-root .checklist-input{
-    width: 100% !important;
-    min-width: 0 !important;
-  }
-
-  /* ---------- Atividade: força legibilidade ---------- */
+  /* Atividade */
   #cm-root #cm-activity-panel,
   #cm-root #cm-activity-panel *{
     color: var(--cm-text) !important;
@@ -385,7 +244,7 @@
     text-underline-offset: 2px;
   }
 
-  /* ---------- Anexos ---------- */
+  /* Anexos */
   #cm-root #attachments-list a{
     color: var(--cm-accent) !important;
     text-decoration: underline;
@@ -396,72 +255,25 @@
     filter: brightness(1.08);
   }
 
-  /* ---------- Erro upload ---------- */
-  #attachments-error{
-    border-radius: 10px;
-  }
+  #attachments-error{ border-radius: 10px; }
 
-  /* ---------- Foco ---------- */
-  .cm-tabbtn:focus-visible,
-  .cm-btn:focus-visible,
-  .cm-input:focus-visible,
-  .cm-textarea:focus-visible,
-  .cm-select:focus-visible{
-    outline: none;
-    box-shadow: var(--cm-ring);
-  }
+  .hidden{ display:none !important; }
 
   @media (max-width: 1024px){
     .cm-topbar{ padding: 8px; }
     .cm-tabbtn, .cm-btn{ padding: 8px 10px; }
     .cm-wrap{ padding: 12px; }
   }
-
-  .hidden{ display:none !important; }
-
-
- #cm-root[data-cm-active="ativ"] #cm-activity-panel,
-  #cm-root[data-cm-active="ativ"] #cm-activity-panel *{
-    color: var(--cm-text) !important;
-  }
-
-  
-  #cm-root[data-cm-active="ativ"] #cm-activity-panel > div,
-  #cm-root[data-cm-active="ativ"] #cm-activity-panel .cm-card,
-  #cm-root[data-cm-active="ativ"] #cm-activity-panel .card,
-  #cm-root[data-cm-active="ativ"] #cm-activity-panel .panel,
-  #cm-root[data-cm-active="ativ"] #cm-activity-panel .activity-item,
-  #cm-root[data-cm-active="ativ"] #cm-activity-panel .activity-row,
-  #cm-root[data-cm-active="ativ"] #cm-activity-panel .activity-log,
-  #cm-root[data-cm-active="ativ"] #cm-activity-panel .activity-entry{
-    background: var(--cm-surface) !important;
-    border: 1px solid var(--cm-border) !important;
-  }
-
-  
-  #cm-root[data-cm-active="ativ"] #cm-activity-panel small,
-  #cm-root[data-cm-active="ativ"] #cm-activity-panel .muted,
-  #cm-root[data-cm-active="ativ"] #cm-activity-panel .text-muted,
-  #cm-root[data-cm-active="ativ"] #cm-activity-panel .timestamp,
-  #cm-root[data-cm-active="ativ"] #cm-activity-panel .meta{
-    color: var(--cm-muted) !important;
-  }
-
-  
-  #cm-root[data-cm-active="ativ"] #cm-activity-panel a{
-    color: var(--cm-accent) !important;
-    text-decoration: underline !important;
-    text-underline-offset: 2px !important;
-  }
-
-   #cm-root[data-cm-active="ativ"] #cm-activity-panel [style*="background"]{
-    background: var(--cm-surface) !important;
-  }
-
 </style>
 
-<div class="cm-wrap" id="cm-root" data-card-id="{{ card.id }}" data-cm-active="desc">
+{# ✅ IMPORTANTE: data-tag-colors aqui para o JS aplicar as cores salvas #}
+<div class="cm-wrap"
+     id="cm-root"
+     data-card-id="{{ card.id }}"
+     data-cm-active="desc"
+     data-tag-colors='{{ card.tag_colors|default:"{}" }}'>
 
+  {# ===================== TOPBAR: só abas e botão salvar ===================== #}
   <div class="cm-topbar">
     <div class="cm-bar" role="tablist" aria-label="Abas do card">
       <div class="cm-tabs">
@@ -472,16 +284,31 @@
         <button type="button" class="cm-tabbtn" data-cm-tab="files">Anexos</button>
       </div>
 
-    
-    {% include "boards/partials/card_tags_bar.html" %}
-
-
       <div class="cm-actions" id="cm-actions">
         <button type="button" class="cm-btn primary" id="cm-save-btn">Salvar</button>
       </div>
     </div>
   </div>
 
+  {# ===================== TAGS FIXAS NO TOPO (fora da aba) ===================== #}
+  <div id="cm-tags-wrap">
+    {% include "boards/partials/card_tags_bar.html" %}
+  </div>
+
+  {# ✅ Form invisível + color picker invisível (para salvar cor via HTMX) #}
+  <form id="cm-tag-color-form"
+        class="hidden"
+        method="post"
+        hx-post="{% url 'boards:set_tag_color' card.id %}"
+        hx-target="#cm-tags-wrap"
+        hx-swap="innerHTML">
+    {% csrf_token %}
+    <input type="hidden" name="tag" id="cm-tag-color-tag">
+    <input type="hidden" name="color" id="cm-tag-color-value">
+  </form>
+  <input type="color" id="cm-tag-color-picker" class="hidden">
+
+  {# ===================== FORM PRINCIPAL (desc + tags) ===================== #}
   <form id="cm-main-form"
         method="post"
         enctype="multipart/form-data"
@@ -514,25 +341,14 @@
           <input type="text" name="tags" value="{{ card.tags|default_if_none:"" }}" class="cm-input">
         </div>
 
-        {% if card.tags %}
-          <div class="cm-muted">Pré-visualização:</div>
-          <div class="flex flex-wrap gap-2">
-            {% for tag in card.tags|split_tags %}
-              {% with tag|tag_color as color %}
-                <span class="px-2 py-1 rounded-md text-xs font-semibold"
-                      style="background-color: {{ color }}20; color: {{ color }}; border: 1px solid {{ color }};">
-                  {{ tag }}
-                </span>
-              {% endwith %}
-            {% endfor %}
-          </div>
-        {% else %}
-          <div class="cm-muted">Nenhuma etiqueta ainda.</div>
-        {% endif %}
+        <div class="cm-muted">
+          Dica: as etiquetas agora ficam sempre visíveis no topo do modal (clique nelas para escolher a cor).
+        </div>
       </div>
     </section>
   </form>
 
+  {# ===================== CHECKLISTS ===================== #}
   <section class="cm-panel" data-cm-panel="check" role="tabpanel">
     <div class="cm-card space-y-3">
       <form method="post"
@@ -553,18 +369,18 @@
     </div>
   </section>
 
+  {# ===================== ATIVIDADE ===================== #}
   <section class="cm-panel" data-cm-panel="ativ" role="tabpanel">
     <div class="cm-card space-y-3">
       <form method="post"
-      hx-post="{% url 'boards:add_activity' card.id %}"
-      hx-target="#cm-activity-panel"
-      hx-swap="innerHTML"
-      hx-on::after-request="this.reset()">
+            hx-post="{% url 'boards:add_activity' card.id %}"
+            hx-target="#cm-activity-panel"
+            hx-swap="innerHTML"
+            hx-on::after-request="this.reset()">
+        {% csrf_token %}
 
-  {% csrf_token %}
-
-  <div id="activity-error"
-       class="hidden mb-2 px-3 py-2 rounded-md text-sm border border-red-500/30 bg-red-500/10 text-red-200"></div>
+        <div id="activity-error"
+             class="hidden mb-2 px-3 py-2 rounded-md text-sm border border-red-500/30 bg-red-500/10 text-red-200"></div>
 
         <label class="cm-label">Nova atividade</label>
         <textarea name="content" class="cm-textarea" style="min-height:140px;" placeholder="Escreva aqui..."></textarea>
@@ -584,42 +400,42 @@
     </div>
   </section>
 
+  {# ===================== ANEXOS ===================== #}
   <section class="cm-panel" data-cm-panel="files" role="tabpanel">
     <div class="cm-card space-y-3">
 
-      <!-- Erro amigável para upload (413 etc.) -->
       <div id="attachments-error"
            class="hidden mb-2 px-3 py-2 rounded-md text-sm border
                   border-red-500/30 bg-red-500/10 text-red-200">
       </div>
 
-<div>
-  <label class="cm-label">Enviar novo anexo</label>
+      <div>
+        <label class="cm-label">Enviar novo anexo</label>
 
-  <div class="flex gap-2 flex-wrap">
-    <input type="text"
-           id="attachment-desc"
-           name="description"
-           class="cm-input"
-           style="max-width: 420px;"
-           placeholder="Descrição do anexo (opcional)">
+        <div class="flex gap-2 flex-wrap">
+          <input type="text"
+                 id="attachment-desc"
+                 name="description"
+                 class="cm-input"
+                 style="max-width: 420px;"
+                 placeholder="Descrição do anexo (opcional)">
 
-    <input type="file" name="file"
-           id="attachment-file"
-           class="cm-input"
-           style="max-width: 520px;"
-           hx-post="{% url 'boards:add_attachment' card.id %}"
-           hx-target="#attachments-list"
-           hx-swap="beforeend"
-           hx-trigger="change"
-           hx-encoding="multipart/form-data"
-           hx-include="#attachment-desc" />
-  </div>
+          <input type="file" name="file"
+                 id="attachment-file"
+                 class="cm-input"
+                 style="max-width: 520px;"
+                 hx-post="{% url 'boards:add_attachment' card.id %}"
+                 hx-target="#attachments-list"
+                 hx-swap="beforeend"
+                 hx-trigger="change"
+                 hx-encoding="multipart/form-data"
+                 hx-include="#attachment-desc" />
+        </div>
 
-  <div class="cm-muted" style="margin-top:6px;">
-    Limite: 50MB por arquivo.
-  </div>
-</div>
+        <div class="cm-muted" style="margin-top:6px;">
+          Limite: 50MB por arquivo.
+        </div>
+      </div>
 
       <div id="attachments-list" class="space-y-3">
         {% for attachment in card.attachments.all %}
@@ -636,7 +452,6 @@
 <script>
 (function () {
 
-  // NÃO troca tema do modal. Só define um default se estiver "sem tema nenhum".
   function syncModalThemeSafely() {
     const modalRoot = document.getElementById("card-modal-root");
     if (!modalRoot) return;
@@ -662,9 +477,7 @@
     if (!tabs.length || !panels.length) return;
 
     function activate(name) {
-      // estado (também controla visibilidade do salvar via CSS)
       root.dataset.cmActive = name;
-
       tabs.forEach(b => b.classList.toggle("is-active", b.getAttribute("data-cm-tab") === name));
       panels.forEach(p => p.classList.toggle("is-active", p.getAttribute("data-cm-panel") === name));
     }
@@ -692,126 +505,197 @@
     }
   }
 
-  // UX de erro amigável pro upload (413)
+  function applySavedTagColors(root) {
+    if (!root) return;
+
+    let colors = {};
+    try {
+      const raw = root.getAttribute("data-tag-colors") || "{}";
+      colors = JSON.parse(raw);
+      if (!colors || typeof colors !== "object") colors = {};
+    } catch (e) {
+      colors = {};
+    }
+
+    const wrap = root.querySelector("#cm-tags-wrap");
+    if (!wrap) return;
+
+    wrap.querySelectorAll("button[data-tag]").forEach(btn => {
+      const tag = btn.getAttribute("data-tag");
+      const c = colors[tag];
+      if (!c) return;
+
+      btn.style.backgroundColor = c + "20";
+      btn.style.color = c;
+      btn.style.borderColor = c;
+    });
+  }
+
+  function initTagColorPicker(root) {
+    if (!root) return;
+    if (root.dataset.cmTagColorBound === "1") return;
+    root.dataset.cmTagColorBound = "1";
+
+    const wrap = root.querySelector("#cm-tags-wrap");
+    const form = root.querySelector("#cm-tag-color-form");
+    const inpTag = root.querySelector("#cm-tag-color-tag");
+    const inpColor = root.querySelector("#cm-tag-color-value");
+    const picker = root.querySelector("#cm-tag-color-picker");
+
+    if (!wrap || !form || !inpTag || !inpColor || !picker) return;
+
+    let currentTag = "";
+
+    wrap.addEventListener("click", function (e) {
+      const btn = e.target.closest("button[data-tag]");
+      if (!btn) return;
+
+      currentTag = btn.getAttribute("data-tag") || "";
+      if (!currentTag) return;
+
+      picker.value = "#3b82f6";
+      picker.click();
+    });
+
+    picker.addEventListener("change", function () {
+      if (!currentTag) return;
+
+      inpTag.value = currentTag;
+      inpColor.value = picker.value;
+
+      try { form.requestSubmit(); } catch (e) { form.submit(); }
+    });
+  }
+
   function initAttachmentErrors(root) {
-  if (!root) return;
-  if (root.dataset.cmAttachBound === "1") return;
-  root.dataset.cmAttachBound = "1";
+    if (!root) return;
+    if (root.dataset.cmAttachBound === "1") return;
+    root.dataset.cmAttachBound = "1";
 
-  function fileEl() { return root.querySelector("#attachment-file"); }
-  function descEl() { return root.querySelector("#attachment-desc"); }
+    function fileEl() { return root.querySelector("#attachment-file"); }
+    function descEl() { return root.querySelector("#attachment-desc"); }
 
-  function showAttachmentError(msg) {
-    const box = root.querySelector("#attachments-error");
-    if (!box) return;
-    box.textContent = msg;
-    box.classList.remove("hidden");
-  }
-
-  function clearAttachmentError() {
-    const box = root.querySelector("#attachments-error");
-    if (!box) return;
-    box.textContent = "";
-    box.classList.add("hidden");
-  }
-
-  function resetAttachmentFields() {
-    const f = fileEl();
-    const d = descEl();
-    if (f) f.value = "";
-    if (d) d.value = "";
-  }
-
-  // Sempre que selecionar arquivo, limpa erro anterior
-  root.addEventListener("change", function (e) {
-    if (e.target && e.target.matches("#attachment-file")) {
-      clearAttachmentError();
+    function showAttachmentError(msg) {
+      const box = root.querySelector("#attachments-error");
+      if (!box) return;
+      box.textContent = msg;
+      box.classList.remove("hidden");
     }
-  });
 
-  // Antes de enviar: guarda descrição e marca "upload em andamento"
-  document.body.addEventListener("htmx:beforeRequest", function (evt) {
-    const elt = evt.detail && evt.detail.elt;
-    if (!elt || !elt.matches || !elt.matches("#attachment-file")) return;
+    function clearAttachmentError() {
+      const box = root.querySelector("#attachments-error");
+      if (!box) return;
+      box.textContent = "";
+      box.classList.add("hidden");
+    }
 
-    root.dataset.cmUploading = "1";
-    root.dataset.cmLastAttachmentDesc = (descEl()?.value || "").trim();
-  });
+    function resetAttachmentFields() {
+      const f = fileEl();
+      const d = descEl();
+      if (f) f.value = "";
+      if (d) d.value = "";
+    }
 
-  // Depois que o HTML foi anexado na lista: limpa campos SEMPRE e aplica fallback de descrição no último item
-  document.body.addEventListener("htmx:afterSwap", function (evt) {
-    const target = evt.target;
-    if (!target || target.id !== "attachments-list") return;
-
-    // só roda se esse swap veio do upload
-    if (root.dataset.cmUploading !== "1") return;
-
-    // limpa campos SEMPRE após inserir o item
-    resetAttachmentFields();
-    clearAttachmentError();
-
-    // fallback visual: mostra a descrição no item recém-adicionado, se o backend não renderizar
-    const desc = (root.dataset.cmLastAttachmentDesc || "").trim();
-    if (desc) {
-      const last = target.lastElementChild;
-      if (last) {
-        // evita duplicar caso o backend já tenha mostrado
-        const already = last.querySelector(".cm-attach-desc");
-        if (!already) {
-          const div = document.createElement("div");
-          div.className = "cm-muted cm-attach-desc";
-          div.style.marginTop = "4px";
-          div.textContent = desc;
-          last.appendChild(div);
-        }
+    root.addEventListener("change", function (e) {
+      if (e.target && e.target.matches("#attachment-file")) {
+        clearAttachmentError();
       }
-    }
+    });
 
-    root.dataset.cmUploading = "0";
-    root.dataset.cmLastAttachmentDesc = "";
-  });
+    document.body.addEventListener("htmx:beforeRequest", function (evt) {
+      const elt = evt.detail && evt.detail.elt;
+      if (!elt || !elt.matches || !elt.matches("#attachment-file")) return;
 
-  // Se der erro HTTP (413, 5xx etc): mostra mensagem e LIMPA campos também
-  document.body.addEventListener("htmx:responseError", function (evt) {
-    const elt = evt.detail && evt.detail.elt;
-    const xhr = evt.detail && evt.detail.xhr;
+      root.dataset.cmUploading = "1";
+      root.dataset.cmLastAttachmentDesc = (descEl()?.value || "").trim();
+    });
 
-    if (!elt || !elt.matches || !elt.matches("#attachment-file")) return;
+    document.body.addEventListener("htmx:afterSwap", function (evt) {
+      const target = evt.target;
+      if (!target || target.id !== "attachments-list") return;
+      if (root.dataset.cmUploading !== "1") return;
 
-    if (xhr && xhr.status === 413) {
-      showAttachmentError("Arquivo acima de 50MB. O limite de anexo é 50MB. Comprima o arquivo ou envie um link (Drive/Dropbox) e tente novamente.");
-    } else {
-      showAttachmentError("Não foi possível enviar o anexo agora. Tente novamente.");
-    }
-
-    resetAttachmentFields();               // <- requisito (3)
-    root.dataset.cmUploading = "0";
-    root.dataset.cmLastAttachmentDesc = "";
-  });
-
-  // Se a request concluiu (sucesso ou não), mas sem swap (edge cases): garante limpeza
-  document.body.addEventListener("htmx:afterRequest", function (evt) {
-    const elt = evt.detail && evt.detail.elt;
-    const xhr = evt.detail && evt.detail.xhr;
-    if (!elt || !elt.matches || !elt.matches("#attachment-file")) return;
-
-    // Se não foi 2xx, já limpamos no responseError; aqui é “rede OK mas sem swap”
-    if (xhr && (xhr.status >= 200 && xhr.status < 300)) {
-      // em 2xx, se por algum motivo não houve afterSwap, limpa aqui também
       resetAttachmentFields();
       clearAttachmentError();
+
+      const desc = (root.dataset.cmLastAttachmentDesc || "").trim();
+      if (desc) {
+        const last = target.lastElementChild;
+        if (last) {
+          const already = last.querySelector(".cm-attach-desc");
+          if (!already) {
+            const div = document.createElement("div");
+            div.className = "cm-muted cm-attach-desc";
+            div.style.marginTop = "4px";
+            div.textContent = desc;
+            last.appendChild(div);
+          }
+        }
+      }
+
       root.dataset.cmUploading = "0";
       root.dataset.cmLastAttachmentDesc = "";
-    }
-  });
-}
+    });
 
+    document.body.addEventListener("htmx:responseError", function (evt) {
+      const elt = evt.detail && evt.detail.elt;
+      const xhr = evt.detail && evt.detail.xhr;
+
+      if (!elt || !elt.matches || !elt.matches("#attachment-file")) return;
+
+      if (xhr && xhr.status === 413) {
+        showAttachmentError("Arquivo acima de 50MB. O limite de anexo é 50MB. Comprima o arquivo ou envie um link (Drive/Dropbox) e tente novamente.");
+      } else {
+        showAttachmentError("Não foi possível enviar o anexo agora. Tente novamente.");
+      }
+
+      resetAttachmentFields();
+      root.dataset.cmUploading = "0";
+      root.dataset.cmLastAttachmentDesc = "";
+    });
+
+    document.body.addEventListener("htmx:afterRequest", function (evt) {
+      const elt = evt.detail && evt.detail.elt;
+      const xhr = evt.detail && evt.detail.xhr;
+      if (!elt || !elt.matches || !elt.matches("#attachment-file")) return;
+
+      if (xhr && (xhr.status >= 200 && xhr.status < 300)) {
+        resetAttachmentFields();
+        clearAttachmentError();
+        root.dataset.cmUploading = "0";
+        root.dataset.cmLastAttachmentDesc = "";
+      }
+    });
+  }
+
+  function initActivityErrorsOnce() {
+    if (document.body.dataset.cmActivityErrBound === "1") return;
+    document.body.dataset.cmActivityErrBound = "1";
+
+    document.body.addEventListener("htmx:responseError", function (evt) {
+      const elt = evt.detail && evt.detail.elt;
+      const xhr = evt.detail && evt.detail.xhr;
+
+      if (!elt || !elt.matches || !elt.matches('form[hx-post*="add_activity"]')) return;
+
+      const box = document.getElementById("activity-error");
+      if (box) {
+        box.textContent = (xhr && xhr.responseText) ? xhr.responseText : "Não foi possível incluir a atividade.";
+        box.classList.remove("hidden");
+      }
+
+      try { elt.reset(); } catch (e) {}
+    });
+  }
 
   function boot() {
     syncModalThemeSafely();
     const root = document.getElementById("cm-root");
     initRadicalTabs(root);
     initAttachmentErrors(root);
+    initTagColorPicker(root);
+    applySavedTagColors(root);
+    initActivityErrorsOnce();
   }
 
   document.addEventListener("DOMContentLoaded", boot);
@@ -821,24 +705,11 @@
     if (!t) return;
     if (t.id === "modal-body") boot();
 
-    // Erro ao incluir atividade: mostra mensagem e limpa o textarea
-document.body.addEventListener("htmx:responseError", function (evt) {
-  const elt = evt.detail && evt.detail.elt;
-  const xhr = evt.detail && evt.detail.xhr;
-
-  // Só para o form de atividade (o que chama add_activity)
-  if (!elt || !elt.matches || !elt.matches('form[hx-post*="add_activity"]')) return;
-
-  const box = document.getElementById("activity-error");
-  if (box) {
-    box.textContent = (xhr && xhr.responseText) ? xhr.responseText : "Não foi possível incluir a atividade.";
-    box.classList.remove("hidden");
-  }
-
-  // limpa mesmo em erro (requisito)
-  try { elt.reset(); } catch (e) {}
-});
-
+    // quando a barra de tags for re-renderizada (swap do set_tag_color), reaplica as cores salvas
+    if (t.id === "cm-tags-wrap") {
+      const root = document.getElementById("cm-root");
+      applySavedTagColors(root);
+    }
   });
 
 })();
