@@ -560,6 +560,10 @@
     });
   }
 
+
+
+
+<script>
 function initTagColorPicker(root) {
   if (!root) return;
   if (root.dataset.cmTagColorBound === "1") return;
@@ -578,36 +582,19 @@ function initTagColorPicker(root) {
 
   let currentBtn = null;
 
-  wrap.addEventListener("click", (e) => {
+  wrap.addEventListener("click", function (e) {
     const btn = e.target.closest(".cm-tag-btn");
     if (!btn) return;
 
     currentBtn = btn;
+    const tag = btn.dataset.tag;
 
-      // tenta pegar a cor real exibida na etiqueta
-let color =
-  btn.dataset.color ||
-  btn.style.color ||
-  window.getComputedStyle(btn).color;
+    let colors = {};
+    try {
+      colors = JSON.parse(root.dataset.tagColors || "{}");
+    } catch {}
 
-// converte rgb(...) para hex se necessário
-function rgbToHex(rgb) {
-  const m = rgb.match(/\d+/g);
-  if (!m) return "#3b82f6";
-  return (
-    "#" +
-    m.slice(0, 3)
-     .map(x => Number(x).toString(16).padStart(2, "0"))
-     .join("")
-  );
-}
-
-if (color.startsWith("rgb")) {
-  color = rgbToHex(color);
-}
-
-picker.value = color;
-
+    picker.value = colors[tag] || "#3b82f6";
 
     const rect = btn.getBoundingClientRect();
     pop.style.top  = rect.bottom + window.scrollY + "px";
@@ -616,40 +603,43 @@ picker.value = color;
     pop.classList.remove("hidden");
   });
 
-  cancel.addEventListener("click", () => {
+  cancel.addEventListener("click", function () {
     pop.classList.add("hidden");
     currentBtn = null;
   });
 
-  save.addEventListener("click", () => {
-  if (!currentBtn) return;
+  save.addEventListener("click", function () {
+    if (!currentBtn) return;
 
-  const tag = currentBtn.dataset.tag;
-  const color = picker.value;
+    const tag   = currentBtn.dataset.tag;
+    const color = picker.value;
 
-  // 1️⃣ Atualiza visual imediato
-  currentBtn.dataset.color = color;
-  currentBtn.style.backgroundColor = color + "20";
-  currentBtn.style.color = color;
-  currentBtn.style.borderColor = color;
+    // Atualiza visual imediatamente
+    currentBtn.style.backgroundColor = color + "20";
+    currentBtn.style.color = color;
+    currentBtn.style.borderColor = color;
 
-  // 2️⃣ Atualiza dataset do modal (fonte local)
-  try {
-    const rootColors = JSON.parse(root.dataset.tagColors || "{}");
-    rootColors[tag] = color;
-    root.dataset.tagColors = JSON.stringify(rootColors);
-  } catch {}
+    // Atualiza estado local do modal
+    let colors = {};
+    try {
+      colors = JSON.parse(root.dataset.tagColors || "{}");
+    } catch {}
 
-  // 3️⃣ Prepara submit backend
-  inpTag.value = tag;
-  inpCol.value = color;
+    colors[tag] = color;
+    root.dataset.tagColors = JSON.stringify(colors);
 
-  pop.classList.add("hidden");
+    // Prepara envio para o backend
+    inpTag.value = tag;
+    inpCol.value = color;
 
-  // 4️⃣ Salva no backend
-  try { form.requestSubmit(); } catch { form.submit(); }
-});
-} 
+    pop.classList.add("hidden");
+    form.requestSubmit();
+  });
+}
+</script>
+
+
+
 
 
 
