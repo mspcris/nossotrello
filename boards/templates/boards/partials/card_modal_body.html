@@ -356,26 +356,26 @@
   }
 
   /* Hard override: checklist item SEM depender de CSS global */
-#cm-root .checklist-item{
-  display: flex !important;
-  align-items: center !important;
-  justify-content: flex-start !important;
-  gap: 8px !important;
-}
+  #cm-root .checklist-item{
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 8px !important;
+  }
 
-#cm-root .checklist-item form{
-  flex: 1 1 auto !important;
-  min-width: 0 !important;
-}
+  #cm-root .checklist-item form{
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+  }
 
-#cm-root .checklist-input{
-  width: 100% !important;
-  min-width: 0 !important;
-  color: var(--cm-text) !important;
-  background: transparent !important;
-}
+  #cm-root .checklist-input{
+    width: 100% !important;
+    min-width: 0 !important;
+    color: var(--cm-text) !important;
+    background: transparent !important;
+  }
 
-.hidden{ display:none !important; }
+  .hidden{ display:none !important; }
 
 </style>
 
@@ -391,8 +391,7 @@
 
       <div class="cm-actions hidden" id="cm-actions">
         <button type="button" class="cm-btn primary" id="cm-save-btn">Salvar</button>
-    </div>
-
+      </div>
     </div>
   </div>
 
@@ -494,6 +493,13 @@
 
   <section class="cm-panel" data-cm-panel="files" role="tabpanel">
     <div class="cm-card space-y-3">
+
+      <!-- ✅ NOVO: caixa de erro amigável para upload (413 etc.) -->
+      <div id="attachments-error"
+           class="hidden mb-2 px-3 py-2 rounded-md text-sm border
+                  border-red-500/30 bg-red-500/10 text-red-200">
+      </div>
+
       <div>
         <label class="cm-label">Enviar novo anexo</label>
         <input type="file" name="file"
@@ -540,18 +546,17 @@
     const panels = root.querySelectorAll("[data-cm-panel]");
     if (!tabs.length || !panels.length) return;
 
-  function activate(name) {
-    tabs.forEach(b => b.classList.toggle("is-active", b.getAttribute("data-cm-tab") === name));
-    panels.forEach(p => p.classList.toggle("is-active", p.getAttribute("data-cm-panel") === name));
+    function activate(name) {
+      tabs.forEach(b => b.classList.toggle("is-active", b.getAttribute("data-cm-tab") === name));
+      panels.forEach(p => p.classList.toggle("is-active", p.getAttribute("data-cm-panel") === name));
 
-  // Salvar só em Descrição e Etiquetas
-  const actions = root.querySelector("#cm-actions");
-    if (actions) {
-  const shouldShowSave = (name === "desc" || name === "tags");
-    actions.classList.toggle("hidden", !shouldShowSave);
+      // Salvar só em Descrição e Etiquetas
+      const actions = root.querySelector("#cm-actions");
+      if (actions) {
+        const shouldShowSave = (name === "desc" || name === "tags");
+        actions.classList.toggle("hidden", !shouldShowSave);
+      }
     }
-  }
-
 
     tabs.forEach(b => {
       if (b.dataset.cmBound === "1") return;
@@ -576,9 +581,55 @@
     }
   }
 
+  // ✅ NOVO: UX de erro amigável pro upload (413)
+  function initAttachmentErrors(root) {
+    if (!root) return;
+    if (root.dataset.cmAttachBound === "1") return;
+    root.dataset.cmAttachBound = "1";
+
+    function showAttachmentError(msg) {
+      const box = root.querySelector("#attachments-error");
+      if (!box) return;
+      box.textContent = msg;
+      box.classList.remove("hidden");
+    }
+
+    function clearAttachmentError() {
+      const box = root.querySelector("#attachments-error");
+      if (!box) return;
+      box.textContent = "";
+      box.classList.add("hidden");
+    }
+
+    root.addEventListener("change", function (e) {
+      if (e.target && e.target.matches('input[type="file"][name="file"]')) {
+        clearAttachmentError();
+      }
+    });
+
+    document.body.addEventListener("htmx:responseError", function (evt) {
+      const xhr = evt.detail.xhr;
+      const elt = evt.detail.elt;
+
+      // só trata o input de anexo desse modal
+      if (!elt || !elt.matches || !elt.matches('#cm-root input[type="file"][name="file"]')) return;
+
+      if (xhr && xhr.status === 413) {
+        showAttachmentError("Arquivo acima de 50MB. O limite de anexo é 50MB. Comprima o arquivo ou envie um link (Drive/Dropbox) e tente novamente.");
+        elt.value = ""; // limpa o nome do arquivo (evita parecer bug)
+        return;
+      }
+
+      showAttachmentError("Não foi possível enviar o anexo agora. Tente novamente.");
+      elt.value = "";
+    });
+  }
+
   function boot() {
     syncModalTheme();
-    initRadicalTabs(document.getElementById("cm-root"));
+    const root = document.getElementById("cm-root");
+    initRadicalTabs(root);
+    initAttachmentErrors(root);
   }
 
   document.addEventListener("DOMContentLoaded", boot);
