@@ -139,56 +139,20 @@ body {
    - NUNCA aplicar blur em filhos do modal
    - Blur somente no ::before do #card-modal-root.modal-glass
    ======================================================================= */
-.modal-glass {
+.modal-glass{
   background: transparent !important;
   border: 1px solid rgba(255, 255, 255, 0.40) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+}
 
-  #card-modal-root.theme-glass .cm-card,
+/* Tema glass: cards/atividade */
+#card-modal-root.theme-glass .cm-card,
 #card-modal-root.theme-glass .activity-panel,
 #card-modal-root.theme-glass .activity-item{
   background: rgba(255,255,255,0.92) !important;
   border: 1px solid rgba(15, 23, 42, 0.10) !important;
   box-shadow: 0 1px 0 rgba(15,23,42,0.04);
-}
-
-
-}
-
-#card-modal-root.theme-glass input,
-#card-modal-root.theme-glass textarea,
-#card-modal-root.theme-glass select,
-#card-modal-root.theme-glass .ql-container{
-  background: #fff !important;
-  color: #0f172a !important;
-  border: 1px solid rgba(15, 23, 42, 0.14) !important;
-}
-
-#card-modal-root.theme-glass input:focus,
-#card-modal-root.theme-glass textarea:focus,
-#card-modal-root.theme-glass select:focus{
-  outline: none !important;
-  border-color: rgba(37, 99, 235, 0.55) !important;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18) !important;
-}
-
-#card-modal-root.theme-glass .cm-topbar{
-  background: rgba(255,255,255,0.86) !important;
-  border: 1px solid rgba(15, 23, 42, 0.10) !important;
-}
-
-#card-modal-root.theme-glass .cm-tabbtn,
-#card-modal-root.theme-glass .cm-btn,
-#card-modal-root.theme-glass .cm-label,
-#card-modal-root.theme-glass .cm-muted{
-  color: #0f172a !important;
-  border-color: rgba(15, 23, 42, 0.12) !important;
-  background: rgba(255,255,255,0.70) !important;
-}
-#card-modal-root.theme-glass .cm-tabbtn.is-active{
-  background: #fff !important;
-  border-color: rgba(37, 99, 235, 0.35) !important;
 }
 
 
