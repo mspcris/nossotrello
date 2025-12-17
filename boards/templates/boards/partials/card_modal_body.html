@@ -651,28 +651,8 @@ picker.value = color;
 });
 
 
-    // Atualiza visual IMEDIATO
-    currentBtn.dataset.color = color;
-    currentBtn.style.backgroundColor = color + "20";
-    currentBtn.style.color = color;
-    currentBtn.style.borderColor = color;
 
-    // Atualiza dataset global
-    try {
-      const rootColors = JSON.parse(root.dataset.tagColors || "{}");
-      rootColors[tag] = color;
-      root.dataset.tagColors = JSON.stringify(rootColors);
-    } catch {}
 
-    pop.classList.add("hidden");
-
-    // Salva no backend
-    try { form.requestSubmit(); } catch { form.submit(); }
-
-    // Atualiza card na board
-    refreshCardSnippet(root.dataset.cardId);
-  });
-}
 
 
   function initAttachmentErrors(root) {
