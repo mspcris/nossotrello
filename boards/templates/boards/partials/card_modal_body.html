@@ -583,34 +583,33 @@
                   border-red-500/30 bg-red-500/10 text-red-200">
       </div>
 
-      <div>
-        <label class="cm-label">Enviar novo anexo</label>
+<div>
+  <label class="cm-label">Enviar novo anexo</label>
 
-        <!-- Campo novo: descrição do anexo -->
-        <div class="flex gap-2 flex-wrap">
-          <input type="text"
-                 id="attachment-desc"
-                 name="description"
-                 class="cm-input"
-                 style="max-width: 420px;"
-                 placeholder="Descrição do anexo (opcional)">
+  <div class="flex gap-2 flex-wrap">
+    <input type="text"
+           id="attachment-desc"
+           name="description"
+           class="cm-input"
+           style="max-width: 420px;"
+           placeholder="Descrição do anexo (opcional)">
 
-          <input type="file" name="file"
-                 id="attachment-file"
-                 class="cm-input"
-                 style="max-width: 520px;"
-                 hx-post="{% url 'boards:add_attachment' card.id %}"
-                 hx-target="#attachments-list"
-                 hx-swap="beforeend"
-                 hx-trigger="change"
-                 hx-encoding="multipart/form-data"
-                 hx-include="#attachment-desc" />
-        </div>
+    <input type="file" name="file"
+           id="attachment-file"
+           class="cm-input"
+           style="max-width: 520px;"
+           hx-post="{% url 'boards:add_attachment' card.id %}"
+           hx-target="#attachments-list"
+           hx-swap="beforeend"
+           hx-trigger="change"
+           hx-encoding="multipart/form-data"
+           hx-include="#attachment-desc" />
+  </div>
 
-        <div class="cm-muted" style="margin-top:6px;">
-          Limite: 50MB por arquivo.
-        </div>
-      </div>
+  <div class="cm-muted" style="margin-top:6px;">
+    Limite: 50MB por arquivo.
+  </div>
+</div>
 
       <div id="attachments-list" class="space-y-3">
         {% for attachment in card.attachments.all %}
@@ -685,65 +684,118 @@
 
   // UX de erro amigável pro upload (413)
   function initAttachmentErrors(root) {
-    if (!root) return;
-    if (root.dataset.cmAttachBound === "1") return;
-    root.dataset.cmAttachBound = "1";
+  if (!root) return;
+  if (root.dataset.cmAttachBound === "1") return;
+  root.dataset.cmAttachBound = "1";
 
-    function showAttachmentError(msg) {
-      const box = root.querySelector("#attachments-error");
-      if (!box) return;
-      box.textContent = msg;
-      box.classList.remove("hidden");
-    }
+  function fileEl() { return root.querySelector("#attachment-file"); }
+  function descEl() { return root.querySelector("#attachment-desc"); }
 
-    function clearAttachmentError() {
-      const box = root.querySelector("#attachments-error");
-      if (!box) return;
-      box.textContent = "";
-      box.classList.add("hidden");
-    }
-
-    function resetAttachmentFields() {
-      const file = root.querySelector("#attachment-file");
-      const desc = root.querySelector("#attachment-desc");
-      if (file) file.value = "";
-      if (desc) desc.value = "";
-    }
-
-    root.addEventListener("change", function (e) {
-      if (e.target && e.target.matches('#attachment-file')) {
-        clearAttachmentError();
-      }
-    });
-
-    // Se o upload deu certo, limpa campos (evita parecer bug)
-    document.body.addEventListener("htmx:afterRequest", function (evt) {
-      const elt = evt.detail.elt;
-      const xhr = evt.detail.xhr;
-      if (!elt || !elt.matches || !elt.matches('#attachment-file')) return;
-      if (xhr && xhr.status >= 200 && xhr.status < 300) {
-        clearAttachmentError();
-        resetAttachmentFields();
-      }
-    });
-
-    document.body.addEventListener("htmx:responseError", function (evt) {
-      const xhr = evt.detail.xhr;
-      const elt = evt.detail.elt;
-
-      // só trata o input de anexo desse modal
-      if (!elt || !elt.matches || !elt.matches('#attachment-file')) return;
-
-      if (xhr && xhr.status === 413) {
-        showAttachmentError("Arquivo acima de 50MB. O limite de anexo é 50MB. Comprima o arquivo ou envie um link (Drive/Dropbox) e tente novamente.");
-        resetAttachmentFields();
-        return;
-      }
-
-      showAttachmentError("Não foi possível enviar o anexo agora. Tente novamente.");
-      resetAttachmentFields();
-    });
+  function showAttachmentError(msg) {
+    const box = root.querySelector("#attachments-error");
+    if (!box) return;
+    box.textContent = msg;
+    box.classList.remove("hidden");
   }
+
+  function clearAttachmentError() {
+    const box = root.querySelector("#attachments-error");
+    if (!box) return;
+    box.textContent = "";
+    box.classList.add("hidden");
+  }
+
+  function resetAttachmentFields() {
+    const f = fileEl();
+    const d = descEl();
+    if (f) f.value = "";
+    if (d) d.value = "";
+  }
+
+  // Sempre que selecionar arquivo, limpa erro anterior
+  root.addEventListener("change", function (e) {
+    if (e.target && e.target.matches("#attachment-file")) {
+      clearAttachmentError();
+    }
+  });
+
+  // Antes de enviar: guarda descrição e marca "upload em andamento"
+  document.body.addEventListener("htmx:beforeRequest", function (evt) {
+    const elt = evt.detail && evt.detail.elt;
+    if (!elt || !elt.matches || !elt.matches("#attachment-file")) return;
+
+    root.dataset.cmUploading = "1";
+    root.dataset.cmLastAttachmentDesc = (descEl()?.value || "").trim();
+  });
+
+  // Depois que o HTML foi anexado na lista: limpa campos SEMPRE e aplica fallback de descrição no último item
+  document.body.addEventListener("htmx:afterSwap", function (evt) {
+    const target = evt.target;
+    if (!target || target.id !== "attachments-list") return;
+
+    // só roda se esse swap veio do upload
+    if (root.dataset.cmUploading !== "1") return;
+
+    // limpa campos SEMPRE após inserir o item
+    resetAttachmentFields();
+    clearAttachmentError();
+
+    // fallback visual: mostra a descrição no item recém-adicionado, se o backend não renderizar
+    const desc = (root.dataset.cmLastAttachmentDesc || "").trim();
+    if (desc) {
+      const last = target.lastElementChild;
+      if (last) {
+        // evita duplicar caso o backend já tenha mostrado
+        const already = last.querySelector(".cm-attach-desc");
+        if (!already) {
+          const div = document.createElement("div");
+          div.className = "cm-muted cm-attach-desc";
+          div.style.marginTop = "4px";
+          div.textContent = desc;
+          last.appendChild(div);
+        }
+      }
+    }
+
+    root.dataset.cmUploading = "0";
+    root.dataset.cmLastAttachmentDesc = "";
+  });
+
+  // Se der erro HTTP (413, 5xx etc): mostra mensagem e LIMPA campos também
+  document.body.addEventListener("htmx:responseError", function (evt) {
+    const elt = evt.detail && evt.detail.elt;
+    const xhr = evt.detail && evt.detail.xhr;
+
+    if (!elt || !elt.matches || !elt.matches("#attachment-file")) return;
+
+    if (xhr && xhr.status === 413) {
+      showAttachmentError("Arquivo acima de 50MB. O limite de anexo é 50MB. Comprima o arquivo ou envie um link (Drive/Dropbox) e tente novamente.");
+    } else {
+      showAttachmentError("Não foi possível enviar o anexo agora. Tente novamente.");
+    }
+
+    resetAttachmentFields();               // <- requisito (3)
+    root.dataset.cmUploading = "0";
+    root.dataset.cmLastAttachmentDesc = "";
+  });
+
+  // Se a request concluiu (sucesso ou não), mas sem swap (edge cases): garante limpeza
+  document.body.addEventListener("htmx:afterRequest", function (evt) {
+    const elt = evt.detail && evt.detail.elt;
+    const xhr = evt.detail && evt.detail.xhr;
+    if (!elt || !elt.matches || !elt.matches("#attachment-file")) return;
+
+    // Se não foi 2xx, já limpamos no responseError; aqui é “rede OK mas sem swap”
+    if (xhr && (xhr.status >= 200 && xhr.status < 300)) {
+      // em 2xx, se por algum motivo não houve afterSwap, limpa aqui também
+      resetAttachmentFields();
+      clearAttachmentError();
+      root.dataset.cmUploading = "0";
+      root.dataset.cmLastAttachmentDesc = "";
+    }
+  });
+}
+
 
   function boot() {
     syncModalThemeSafely();
