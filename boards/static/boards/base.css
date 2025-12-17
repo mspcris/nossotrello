@@ -783,6 +783,141 @@ html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !import
 #card-modal-root.cm-mode #card-tabs{
   display: none !important;
 }
+
+
+/* =======================================================================
+   [18] CM (card_modal_body.html) — THEME TOKENS (claro/dark)
+   Objetivo: legibilidade + consistência + links e checklist OK
+   ======================================================================= */
+
+#card-modal-root #cm-root{
+  --cm-bg: rgba(255,255,255,0.92);
+  --cm-surface: rgba(255,255,255,0.86);
+  --cm-surface-2: rgba(248,250,252,0.92);
+  --cm-border: rgba(15,23,42,0.12);
+  --cm-text: #0f172a;
+  --cm-muted: rgba(15,23,42,0.70);
+  --cm-link: #2563eb;
+  --cm-link-hover: #1d4ed8;
+  --cm-focus: rgba(37,99,235,0.35);
+}
+
+/* Dark: só troca tokens */
+#card-modal-root.theme-dark #cm-root,
+#card-modal-root.card-theme-dark #cm-root{
+  --cm-bg: rgba(2,6,23,0.72);
+  --cm-surface: rgba(15,23,42,0.62);
+  --cm-surface-2: rgba(15,23,42,0.72);
+  --cm-border: rgba(226,232,240,0.14);
+  --cm-text: rgba(241,245,249,0.92);
+  --cm-muted: rgba(226,232,240,0.72);
+  --cm-link: #93c5fd;
+  --cm-link-hover: #bfdbfe;
+  --cm-focus: rgba(147,197,253,0.35);
+}
+
+/* Estrutura */
+#card-modal-root #cm-root .cm-wrap{ padding: 16px; width: 100%; min-width: 0; }
+#card-modal-root #cm-root .cm-topbar{
+  background: var(--cm-bg);
+  border: 1px solid var(--cm-border);
+  border-radius: 14px;
+  padding: 10px;
+  margin-bottom: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  backdrop-filter: none !important; /* regra do modal */
+}
+#card-modal-root #cm-root .cm-tabs{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+
+#card-modal-root #cm-root .cm-tabbtn{
+  padding: 8px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  border: 1px solid var(--cm-border);
+  background: transparent;
+  color: var(--cm-text);
+  cursor: pointer;
+  user-select: none;
+  transition: background .15s ease, transform .08s ease, border-color .15s ease;
+}
+#card-modal-root #cm-root .cm-tabbtn:hover{ background: var(--cm-surface-2); }
+#card-modal-root #cm-root .cm-tabbtn:active{ transform: translateY(1px); }
+#card-modal-root #cm-root .cm-tabbtn.is-active{
+  background: var(--cm-surface);
+  border-color: rgba(37,99,235,0.35);
+}
+
+/* Botões */
+#card-modal-root #cm-root .cm-actions{ margin-left:auto; display:flex; gap:8px; }
+#card-modal-root #cm-root .cm-btn{
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--cm-border);
+  background: var(--cm-surface);
+  color: var(--cm-text);
+  cursor:pointer;
+  font-size: 13px;
+}
+#card-modal-root #cm-root .cm-btn.primary{
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+
+/* Cards/painéis */
+#card-modal-root #cm-root .cm-card{
+  border-radius: 14px;
+  border: 1px solid var(--cm-border);
+  background: var(--cm-surface);
+  padding: 12px;
+  color: var(--cm-text);
+}
+#card-modal-root #cm-root .cm-label{ display:block; font-size: 12px; margin: 0 0 6px 2px; color: var(--cm-muted); }
+#card-modal-root #cm-root .cm-muted{ font-size: 12px; color: var(--cm-muted); }
+
+/* Inputs */
+#card-modal-root #cm-root .cm-input,
+#card-modal-root #cm-root .cm-textarea,
+#card-modal-root #cm-root .cm-select{
+  width:100%;
+  border-radius: 10px;
+  border: 1px solid var(--cm-border);
+  background: var(--cm-surface-2);
+  color: var(--cm-text);
+  padding: 10px 12px;
+  outline: none;
+}
+#card-modal-root #cm-root .cm-textarea{ min-height: 220px; }
+#card-modal-root #cm-root .cm-input:focus,
+#card-modal-root #cm-root .cm-textarea:focus,
+#card-modal-root #cm-root .cm-select:focus{
+  box-shadow: 0 0 0 3px var(--cm-focus);
+  border-color: rgba(37,99,235,0.55);
+}
+
+/* Links (resolve “Anexos” no dark e melhora no claro) */
+#card-modal-root #cm-root a{
+  color: var(--cm-link);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+#card-modal-root #cm-root a:hover{ color: var(--cm-link-hover); }
+
+/* Checklist: garante leitura (texto, linhas, contêiner) */
+#card-modal-root #cm-root #checklist-list,
+#card-modal-root #cm-root #checklist-list *{
+  color: var(--cm-text);
+}
+#card-modal-root #cm-root #checklist-list input,
+#card-modal-root #cm-root #checklist-list textarea,
+#card-modal-root #cm-root #checklist-list select{
+  background: var(--cm-surface-2);
+  border-color: var(--cm-border);
+}
+
+
 /* =======================================================================
    FIM DO BASE.CSS CONSOLIDADO
    ======================================================================= */
