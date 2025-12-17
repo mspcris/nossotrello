@@ -354,6 +354,27 @@
     .cm-tabbtn, .cm-btn{ padding: 8px 10px; }
     .cm-wrap{ padding: 12px; }
   }
+
+  /* Hard override: checklist item SEM depender de CSS global */
+#cm-root .checklist-item{
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 8px !important;
+}
+
+#cm-root .checklist-item form{
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+}
+
+#cm-root .checklist-input{
+  width: 100% !important;
+  min-width: 0 !important;
+  color: var(--cm-text) !important;
+  background: transparent !important;
+}
+
 </style>
 
 <div class="cm-wrap" id="cm-root" data-card-id="{{ card.id }}">
