@@ -7,8 +7,8 @@
 
   {# handle (drag) #}
   <button type="button"
-          class="item-drag checklist-handle select-none cursor-grab active:cursor-grabbing
-                 inline-flex items-center justify-center w-7 h-7 rounded-md
+          class="item-drag checklist-handle mt-0.5 select-none cursor-grab active:cursor-grabbing
+                 inline-flex items-center justify-center w-7 h-7 shrink-0 rounded-md
                  opacity-50 group-hover:opacity-100 transition
                  text-gray-600 hover:text-gray-900
                  dark:text-gray-300 dark:hover:text-white"
@@ -25,8 +25,8 @@
            text-blue-600 focus:ring-blue-500
            dark:border-white/30 dark:bg-white/10"
     hx-post="{% url 'boards:checklist_toggle_item' item.id %}"
-    hx-target="closest .checklist-block"
-    hx-swap="outerHTML"
+    hx-target="#checklist-list"
+    hx-swap="innerHTML"
     {% if item.is_done %}checked{% endif %}
   >
 
@@ -55,7 +55,7 @@
   {# ações #}
   <button
     type="button"
-    class="item-del checklist-icon-btn inline-flex items-center justify-center
+    class="item-del checklist-icon-btn mt-0.5 inline-flex items-center justify-center
            w-7 h-7 shrink-0 rounded-md border border-transparent
            opacity-0 group-hover:opacity-100 transition
            text-gray-500 hover:text-red-600 hover:bg-red-50
@@ -63,8 +63,8 @@
     title="Remover item"
     aria-label="Remover item"
     hx-post="{% url 'boards:checklist_delete_item' item.id %}"
-    hx-target="closest .checklist-block"
-    hx-swap="outerHTML">
+    hx-target="#checklist-list"
+    hx-swap="innerHTML">
     <span class="text-base leading-none">✕</span>
   </button>
 
