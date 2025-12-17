@@ -24,8 +24,7 @@
 <style>
   /* ============================================================
      CM MODAL (card_modal_body.html) — Light/Dark legível e moderno
-     Regras:
-     - Sem blur (seu base.css força backdrop-filter:none)
+     - Sem blur (base.css força backdrop-filter:none)
      - Contraste forte em checklist/anexos
      - Fallback: se o root não estiver com .theme-dark, usa html.dark
      ============================================================ */
@@ -46,8 +45,8 @@
     --cm-muted: rgba(15,23,42,0.62);
     --cm-placeholder: rgba(15,23,42,0.45);
 
-    --cm-accent: rgb(37 99 235);          /* blue-600 */
-    --cm-accent-2: rgba(37,99,235,0.12);  /* focus bg */
+    --cm-accent: rgb(37 99 235);
+    --cm-accent-2: rgba(37,99,235,0.12);
     --cm-danger: rgb(220 38 38);
 
     --cm-shadow: 0 10px 30px rgba(2,6,23,0.10);
@@ -95,7 +94,6 @@
     color: var(--cm-text) !important;
   }
 
-  /* cards / containers */
   .cm-card{
     border-radius: var(--cm-radius);
     border: 1px solid var(--cm-border);
@@ -212,9 +210,7 @@
   .cm-panel{ display:none; }
   .cm-panel.is-active{ display:block; }
 
-  /* ---------- Checklist (corrige legibilidade no claro/escuro) ---------- */
-  /* Se o texto “some” no dark, isso geralmente é conflito de cor global.
-     Aqui a gente força cor e fundo nos inputs do checklist. */
+  /* ---------- Checklist ---------- */
   #cm-root .checklists-container,
   #cm-root .checklist-block,
   #cm-root .checklist-items{
@@ -274,11 +270,9 @@
     font-size: 12px;
   }
 
-  /* Botões do checklist (remover etc) */
   #cm-root .checklist-icon-btn,
-  #cm-root .item-del{
-    border-radius: 10px;
-  }
+  #cm-root .item-del{ border-radius: 10px; }
+
   #cm-root .checklist-icon-btn.danger{
     color: var(--cm-danger) !important;
     border: 1px solid rgba(220,38,38,0.22);
@@ -290,7 +284,6 @@
     border-color: rgba(220,38,38,0.35);
   }
 
-  /* Add item (Trello-like) */
   #cm-root .checklist-add{
     margin-top: 8px;
     padding-top: 8px;
@@ -335,7 +328,7 @@
     cursor: pointer;
   }
 
-  /* ---------- Anexos (links legíveis no dark) ---------- */
+  /* ---------- Anexos ---------- */
   #cm-root #attachments-list a{
     color: var(--cm-accent) !important;
     text-decoration: none;
@@ -346,7 +339,7 @@
     filter: brightness(1.05);
   }
 
-  /* ---------- Acessibilidade / foco ---------- */
+  /* ---------- Foco ---------- */
   .cm-tabbtn:focus-visible,
   .cm-btn:focus-visible,
   .cm-input:focus-visible,
@@ -356,7 +349,6 @@
     box-shadow: var(--cm-ring);
   }
 
-  /* ---------- Responsivo ---------- */
   @media (max-width: 1024px){
     .cm-topbar{ padding: 8px; }
     .cm-tabbtn, .cm-btn{ padding: 8px 10px; }
@@ -387,11 +379,9 @@
         hx-post="{% url 'boards:update_card' card.id %}"
         hx-target="#modal-body"
         hx-swap="innerHTML">
-
     {% csrf_token %}
 
     <section class="cm-panel is-active" data-cm-panel="desc" role="tabpanel">
-
       <div class="cm-card space-y-3">
         <div>
           <label class="cm-label">Título</label>
@@ -432,12 +422,10 @@
         {% endif %}
       </div>
     </section>
-
   </form>
 
   <section class="cm-panel" data-cm-panel="check" role="tabpanel">
     <div class="cm-card space-y-3">
-
       <form method="post"
             hx-post="{% url 'boards:checklist_add' card.id %}"
             hx-target="#checklist-list"
@@ -453,13 +441,11 @@
       <div id="checklist-list" class="space-y-4">
         {% include "boards/partials/checklist_list.html" with checklists=checklists %}
       </div>
-
     </div>
   </section>
 
   <section class="cm-panel" data-cm-panel="ativ" role="tabpanel">
     <div class="cm-card space-y-3">
-
       <form method="post"
             hx-post="{% url 'boards:add_activity' card.id %}"
             hx-target="#cm-activity-panel"
@@ -480,13 +466,11 @@
       <div id="cm-activity-panel">
         {% include "boards/partials/card_activity_panel.html" %}
       </div>
-
     </div>
   </section>
 
   <section class="cm-panel" data-cm-panel="files" role="tabpanel">
     <div class="cm-card space-y-3">
-
       <div>
         <label class="cm-label">Enviar novo anexo</label>
         <input type="file" name="file"
@@ -505,7 +489,6 @@
           <div class="cm-muted">Nenhum anexo ainda.</div>
         {% endfor %}
       </div>
-
     </div>
   </section>
 
@@ -513,28 +496,18 @@
 
 <script>
 (function () {
-  // ============================================================
-  // HTMX + Django CSRF (cobre hx-post fora de <form> com csrf_token)
-  // ============================================================
-  function getCookie(name) {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop().split(';').shift();
-    return null;
-  }
 
-  function bindHtmxCsrfOnce() {
-    if (document.body.dataset.cmHtmxCsrfBound === "1") return;
-    document.body.dataset.cmHtmxCsrfBound = "1";
+  function syncModalTheme() {
+    const modalRoot = document.getElementById("card-modal-root");
+    if (!modalRoot) return;
 
-    document.body.addEventListener("htmx:afterSwap", function (evt) {
-  const t = evt.target;
-  if (!t) return;
+    const isDark = document.documentElement.classList.contains("dark");
 
-  // Só reinicializa quando o swap foi do modal inteiro
-  if (t.id === "modal-body") boot();
-});
+    modalRoot.classList.remove(
+      "theme-dark","theme-glass","card-theme-dark","card-theme-white","card-theme-aero"
+    );
 
+    modalRoot.classList.add(isDark ? "theme-dark" : "theme-glass");
   }
 
   function initRadicalTabs(root) {
@@ -552,12 +525,14 @@
     tabs.forEach(b => {
       if (b.dataset.cmBound === "1") return;
       b.dataset.cmBound = "1";
+
       b.addEventListener("click", () => {
-      const name = b.getAttribute("data-cm-tab");
-      sessionStorage.setItem("cmActiveTab", name);
-      activate(name);
+        const name = b.getAttribute("data-cm-tab");
+        sessionStorage.setItem("cmActiveTab", name);
+        activate(name);
+      });
     });
-    
+
     activate(sessionStorage.getItem("cmActiveTab") || "desc");
 
     const saveBtn = root.querySelector("#cm-save-btn");
@@ -571,19 +546,17 @@
   }
 
   function boot() {
-    bindHtmxCsrfOnce();
+    syncModalTheme();
     initRadicalTabs(document.getElementById("cm-root"));
   }
 
   document.addEventListener("DOMContentLoaded", boot);
 
   document.body.addEventListener("htmx:afterSwap", function (evt) {
-  const t = evt.target;
-  if (!t) return;
-
-  // Só reinicializa quando o modal inteiro foi trocado
-  if (t.id === "modal-body") boot();
-});
+    const t = evt.target;
+    if (!t) return;
+    if (t.id === "modal-body") boot();
+  });
 
 })();
 </script>
