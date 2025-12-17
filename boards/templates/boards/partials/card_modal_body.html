@@ -389,7 +389,6 @@
 
       <div class="cm-actions">
         <button type="button" class="cm-btn primary" id="cm-save-btn">Salvar</button>
-        <button type="button" class="cm-btn" onclick="(window.closeModal ? window.closeModal() : null);">Fechar</button>
       </div>
     </div>
   </div>
@@ -538,10 +537,18 @@
     const panels = root.querySelectorAll("[data-cm-panel]");
     if (!tabs.length || !panels.length) return;
 
-    function activate(name) {
-      tabs.forEach(b => b.classList.toggle("is-active", b.getAttribute("data-cm-tab") === name));
-      panels.forEach(p => p.classList.toggle("is-active", p.getAttribute("data-cm-panel") === name));
+  function activate(name) {
+    tabs.forEach(b => b.classList.toggle("is-active", b.getAttribute("data-cm-tab") === name));
+    panels.forEach(p => p.classList.toggle("is-active", p.getAttribute("data-cm-panel") === name));
+
+  // Salvar só em Descrição e Etiquetas
+  const actions = root.querySelector("#cm-actions");
+    if (actions) {
+  const shouldShowSave = (name === "desc" || name === "tags");
+    actions.classList.toggle("hidden", !shouldShowSave);
     }
+  }
+
 
     tabs.forEach(b => {
       if (b.dataset.cmBound === "1") return;
