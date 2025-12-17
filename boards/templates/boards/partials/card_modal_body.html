@@ -377,6 +377,20 @@
 
   .hidden{ display:none !important; }
 
+.cm-tabs{
+  position: relative;
+  padding-right: 130px; /* reserva espaço pro botão não “sumir” */
+}
+
+.cm-actions{
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  margin-left: 0 !important;
+  z-index: 20;
+}
+
+
 </style>
 
 <div class="cm-wrap" id="cm-root" data-card-id="{{ card.id }}">
@@ -555,17 +569,19 @@
     if (!tabs.length || !panels.length) return;
 
     function activate(name) {
-      tabs.forEach(b => b.classList.toggle("is-active", b.getAttribute("data-cm-tab") === name));
-      panels.forEach(p => p.classList.toggle("is-active", p.getAttribute("data-cm-panel") === name));
+    tabs.forEach(b => b.classList.toggle("is-active", b.getAttribute("data-cm-tab") === name));
+    panels.forEach(p => p.classList.toggle("is-active", p.getAttribute("data-cm-panel") === name));
 
-      // Salvar só em Descrição e Etiquetas
-      const actions = root.querySelector("#cm-actions");
-if (actions) {
-  const shouldShowSave = (name === "desc" || name === "tags");
-  actions.classList.toggle("hidden", !shouldShowSave);
-}
-
+  // ✅ Salvar só em Descrição e Etiquetas (forçando layout)
+    const actions = root.querySelector("#cm-actions");
+    if (actions) {
+    const shouldShowSave = (name === "desc" || name === "tags");
+    actions.classList.toggle("hidden", !shouldShowSave);
     }
+  }
+
+
+
 
     tabs.forEach(b => {
       if (b.dataset.cmBound === "1") return;
