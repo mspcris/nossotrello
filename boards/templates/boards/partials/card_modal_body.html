@@ -418,6 +418,46 @@
   }
 
   .hidden{ display:none !important; }
+
+
+ #cm-root[data-cm-active="ativ"] #cm-activity-panel,
+  #cm-root[data-cm-active="ativ"] #cm-activity-panel *{
+    color: var(--cm-text) !important;
+  }
+
+  
+  #cm-root[data-cm-active="ativ"] #cm-activity-panel > div,
+  #cm-root[data-cm-active="ativ"] #cm-activity-panel .cm-card,
+  #cm-root[data-cm-active="ativ"] #cm-activity-panel .card,
+  #cm-root[data-cm-active="ativ"] #cm-activity-panel .panel,
+  #cm-root[data-cm-active="ativ"] #cm-activity-panel .activity-item,
+  #cm-root[data-cm-active="ativ"] #cm-activity-panel .activity-row,
+  #cm-root[data-cm-active="ativ"] #cm-activity-panel .activity-log,
+  #cm-root[data-cm-active="ativ"] #cm-activity-panel .activity-entry{
+    background: var(--cm-surface) !important;
+    border: 1px solid var(--cm-border) !important;
+  }
+
+  
+  #cm-root[data-cm-active="ativ"] #cm-activity-panel small,
+  #cm-root[data-cm-active="ativ"] #cm-activity-panel .muted,
+  #cm-root[data-cm-active="ativ"] #cm-activity-panel .text-muted,
+  #cm-root[data-cm-active="ativ"] #cm-activity-panel .timestamp,
+  #cm-root[data-cm-active="ativ"] #cm-activity-panel .meta{
+    color: var(--cm-muted) !important;
+  }
+
+  
+  #cm-root[data-cm-active="ativ"] #cm-activity-panel a{
+    color: var(--cm-accent) !important;
+    text-decoration: underline !important;
+    text-underline-offset: 2px !important;
+  }
+
+   #cm-root[data-cm-active="ativ"] #cm-activity-panel [style*="background"]{
+    background: var(--cm-surface) !important;
+  }
+
 </style>
 
 <div class="cm-wrap" id="cm-root" data-card-id="{{ card.id }}" data-cm-active="desc">
