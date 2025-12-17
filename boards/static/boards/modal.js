@@ -615,6 +615,42 @@ window.removeTagInstant = async function (cardId, tag) {
   window.cardOpenTab(active);
 };
 
+
+// =====================================================
+// ALTERAR COR DA TAG (instantâneo)
+// =====================================================
+window.setTagColorInstant = async function (cardId, tag, color) {
+  const formData = new FormData();
+  formData.append("tag", tag);
+  formData.append("color", color);
+
+  const response = await fetch(`/card/${cardId}/set_tag_color/`, {
+    method: "POST",
+    headers: { "X-CSRFToken": getCsrfToken() },
+    body: formData,
+    credentials: "same-origin",
+  });
+
+  if (!response.ok) {
+    console.error("Erro ao salvar cor da tag");
+    return;
+  }
+
+  const data = await response.json();
+
+  // 1️⃣ atualiza o MODAL
+  const modalBody = getModalBody();
+  if (modalBody) modalBody.innerHTML = data.modal;
+
+  // 2️⃣ atualiza o CARD NA BOARD (🚨 ISSO É O QUE FALTAVA)
+  const card = document.querySelector(`#card-${data.card_id}`);
+  if (card) card.outerHTML = data.snippet;
+
+  // 3️⃣ reativa JS do modal
+  initCardModal();
+};
+
+
 // =====================================================
 // Atividade helpers
 // =====================================================
