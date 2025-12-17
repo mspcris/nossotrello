@@ -1,12 +1,13 @@
 {# templates/boards/partials/checklist_item.html #}
 
 <div id="checklist-item-{{ item.id }}"
-     class="checklist-item group flex items-start gap-2 py-2 px-2 rounded-md transition
+     class="checklist-item group flex items-center w-full gap-1 py-2 px-2 rounded-md transition
             hover:bg-black/5 dark:hover:bg-white/5"
      data-item-id="{{ item.id }}">
 
+  {# handle (drag) #}
   <button type="button"
-          class="item-drag checklist-handle mt-0.5 select-none cursor-grab active:cursor-grabbing
+          class="item-drag checklist-handle select-none cursor-grab active:cursor-grabbing
                  inline-flex items-center justify-center w-7 h-7 rounded-md
                  opacity-50 group-hover:opacity-100 transition
                  text-gray-600 hover:text-gray-900
@@ -17,17 +18,19 @@
     <span class="text-base leading-none">⋮⋮</span>
   </button>
 
+  {# checkbox (colado à esquerda) #}
   <input
     type="checkbox"
-    class="checklist-checkbox mt-1 h-4 w-4 rounded border-gray-300
+    class="checklist-checkbox h-4 w-4 rounded border-gray-300
            text-blue-600 focus:ring-blue-500
            dark:border-white/30 dark:bg-white/10"
     hx-post="{% url 'boards:checklist_toggle_item' item.id %}"
-    hx-target="#checklist-item-{{ item.id }}"
-    hx-swap="outerHTML"
+    hx-target="#checklist-list"
+    hx-swap="innerHTML"
     {% if item.is_done %}checked{% endif %}
   >
 
+  {# inline edit #}
   <form class="flex-1 min-w-0"
         hx-post="{% url 'boards:checklist_update_item' item.id %}"
         hx-trigger="change, keyup[key=='Enter']"
@@ -49,8 +52,9 @@
     >
   </form>
 
+  {# ações #}
   <button type="button"
-          class="item-del checklist-icon-btn mt-0.5 inline-flex items-center justify-center
+          class="item-del checklist-icon-btn inline-flex items-center justify-center
                  w-7 h-7 rounded-md border border-transparent
                  opacity-0 group-hover:opacity-100 transition
                  text-gray-500 hover:text-red-600 hover:bg-red-50
