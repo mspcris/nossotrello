@@ -23,141 +23,345 @@
 
 <style>
   /* ============================================================
-     CM Modal (card_modal_body.html) — tema claro/dark consistente
-     - Sem blur interno (base.css proíbe)
-     - Tokens (CSS variables) controlam o visual
-     - Legibilidade forte no claro e no dark
+     CM MODAL (card_modal_body.html) — Light/Dark legível e moderno
+     Regras:
+     - Sem blur (seu base.css força backdrop-filter:none)
+     - Contraste forte em checklist/anexos
+     - Fallback: se o root não estiver com .theme-dark, usa html.dark
      ============================================================ */
 
-  /* Tokens default (CLARO) */
+  /* ---------- Tokens ---------- */
   #cm-root{
-    --cm-bg: rgba(255,255,255,0.92);
-    --cm-surface: rgba(255,255,255,0.86);
-    --cm-surface-2: rgba(248,250,252,0.92);
+    --cm-radius: 14px;
+    --cm-radius-sm: 10px;
+    --cm-pad: 14px;
+
+    /* Light (default) */
+    --cm-bg: rgba(255,255,255,0.86);
+    --cm-surface: rgba(255,255,255,0.92);
+    --cm-surface-2: rgba(250,250,250,0.95);
     --cm-border: rgba(15,23,42,0.12);
+    --cm-border-2: rgba(15,23,42,0.08);
+    --cm-text: rgba(15,23,42,0.92);
+    --cm-muted: rgba(15,23,42,0.62);
+    --cm-placeholder: rgba(15,23,42,0.45);
 
-    --cm-text: #0f172a;
-    --cm-muted: rgba(15,23,42,0.70);
+    --cm-accent: rgb(37 99 235);          /* blue-600 */
+    --cm-accent-2: rgba(37,99,235,0.12);  /* focus bg */
+    --cm-danger: rgb(220 38 38);
 
-    --cm-link: #2563eb;
-    --cm-link-hover: #1d4ed8;
-
-    --cm-focus: rgba(37,99,235,0.35);
+    --cm-shadow: 0 10px 30px rgba(2,6,23,0.10);
+    --cm-shadow-sm: 0 6px 18px rgba(2,6,23,0.08);
+    --cm-ring: 0 0 0 3px rgba(37,99,235,0.22);
   }
 
-  /* Tokens DARK (quando o root do modal estiver em tema dark) */
+  /* Dark override (quando o root estiver certo) */
   #card-modal-root.theme-dark #cm-root,
   #card-modal-root.card-theme-dark #cm-root{
-    --cm-bg: rgba(2,6,23,0.72);
-    --cm-surface: rgba(15,23,42,0.62);
-    --cm-surface-2: rgba(15,23,42,0.72);
-    --cm-border: rgba(226,232,240,0.14);
+    --cm-bg: rgba(2,6,23,0.55);
+    --cm-surface: rgba(2,6,23,0.62);
+    --cm-surface-2: rgba(15,23,42,0.56);
+    --cm-border: rgba(255,255,255,0.14);
+    --cm-border-2: rgba(255,255,255,0.10);
+    --cm-text: rgba(241,245,249,0.94);
+    --cm-muted: rgba(226,232,240,0.70);
+    --cm-placeholder: rgba(226,232,240,0.50);
 
-    --cm-text: rgba(241,245,249,0.92);
-    --cm-muted: rgba(226,232,240,0.72);
-
-    --cm-link: #93c5fd;
-    --cm-link-hover: #bfdbfe;
-
-    --cm-focus: rgba(147,197,253,0.35);
+    --cm-shadow: 0 14px 40px rgba(0,0,0,0.35);
+    --cm-shadow-sm: 0 10px 26px rgba(0,0,0,0.30);
+    --cm-ring: 0 0 0 3px rgba(59,130,246,0.25);
   }
 
-  /* Base */
-  .cm-wrap{ padding: 16px; width: 100%; min-width: 0; color: var(--cm-text); }
+  /* Fallback caso o root NÃO esteja com theme-dark, mas o site esteja em dark */
+  html.dark #cm-root{
+    --cm-bg: rgba(2,6,23,0.55);
+    --cm-surface: rgba(2,6,23,0.62);
+    --cm-surface-2: rgba(15,23,42,0.56);
+    --cm-border: rgba(255,255,255,0.14);
+    --cm-border-2: rgba(255,255,255,0.10);
+    --cm-text: rgba(241,245,249,0.94);
+    --cm-muted: rgba(226,232,240,0.70);
+    --cm-placeholder: rgba(226,232,240,0.50);
+    --cm-shadow: 0 14px 40px rgba(0,0,0,0.35);
+    --cm-shadow-sm: 0 10px 26px rgba(0,0,0,0.30);
+    --cm-ring: 0 0 0 3px rgba(59,130,246,0.25);
+  }
+
+  /* ---------- Layout base ---------- */
+  .cm-wrap{
+    padding: 16px;
+    width: 100%;
+    min-width: 0;
+    color: var(--cm-text) !important;
+  }
+
+  /* cards / containers */
+  .cm-card{
+    border-radius: var(--cm-radius);
+    border: 1px solid var(--cm-border);
+    background: var(--cm-surface);
+    box-shadow: var(--cm-shadow-sm);
+    padding: var(--cm-pad);
+  }
+
+  .cm-muted{
+    font-size: 12px;
+    color: var(--cm-muted) !important;
+  }
+
+  /* ---------- Topbar / Tabs ---------- */
+  .cm-topbar{
+    position: sticky;
+    top: 0;
+    z-index: 10;
+
+    border-radius: var(--cm-radius);
+    border: 1px solid var(--cm-border);
+    background: var(--cm-bg);
+    box-shadow: var(--cm-shadow);
+    padding: 10px;
+    margin-bottom: 12px;
+  }
+
+  .cm-tabs{
+    display:flex;
+    flex-wrap:wrap;
+    gap: 8px;
+    align-items:center;
+  }
+
+  .cm-tabbtn{
+    padding: 8px 12px;
+    border-radius: 999px;
+    font-size: 13px;
+    border: 1px solid var(--cm-border-2);
+    background: var(--cm-surface-2);
+    color: var(--cm-text) !important;
+    cursor: pointer;
+    user-select: none;
+    transition: transform .12s ease, border-color .12s ease, background .12s ease;
+  }
+  .cm-tabbtn:hover{
+    transform: translateY(-1px);
+    border-color: var(--cm-border);
+  }
+  .cm-tabbtn.is-active{
+    background: linear-gradient(180deg, rgba(37,99,235,0.16), rgba(37,99,235,0.10));
+    border-color: rgba(37,99,235,0.38);
+    box-shadow: 0 0 0 1px rgba(37,99,235,0.12) inset;
+  }
+
+  .cm-actions{
+    margin-left:auto;
+    display:flex;
+    gap:8px;
+  }
+
+  .cm-btn{
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--cm-border-2);
+    background: var(--cm-surface-2);
+    color: var(--cm-text) !important;
+    cursor:pointer;
+    font-size: 13px;
+    transition: transform .12s ease, filter .12s ease, border-color .12s ease;
+  }
+  .cm-btn:hover{ transform: translateY(-1px); border-color: var(--cm-border); }
+  .cm-btn.primary{
+    background: var(--cm-accent);
+    border-color: rgba(37,99,235,0.85);
+    color: #fff !important;
+    box-shadow: 0 10px 22px rgba(37,99,235,0.22);
+  }
+  .cm-btn.primary:hover{ filter: brightness(1.05); }
+
+  /* ---------- Campos ---------- */
+  .cm-label{
+    display:block;
+    font-size: 12px;
+    margin: 0 0 6px 2px;
+    color: var(--cm-muted) !important;
+  }
+
+  .cm-input, .cm-textarea, .cm-select{
+    width:100%;
+    border-radius: var(--cm-radius-sm);
+    border: 1px solid var(--cm-border-2);
+    background: var(--cm-surface-2);
+    color: var(--cm-text) !important;
+    padding: 10px 12px;
+    outline: none;
+    transition: box-shadow .12s ease, border-color .12s ease, background .12s ease;
+  }
+  .cm-input::placeholder,
+  .cm-textarea::placeholder{
+    color: var(--cm-placeholder) !important;
+  }
+  .cm-input:focus,
+  .cm-textarea:focus,
+  .cm-select:focus{
+    border-color: rgba(37,99,235,0.55);
+    box-shadow: var(--cm-ring);
+    background: var(--cm-surface);
+  }
+
+  .cm-textarea{ min-height: 220px; resize: vertical; }
+
+  /* ---------- Panel toggling ---------- */
   .cm-panel{ display:none; }
   .cm-panel.is-active{ display:block; }
 
-  /* Topbar */
-  .cm-topbar{
-    position: sticky; top: 0; z-index: 10;
-    background: var(--cm-bg);
-    border: 1px solid var(--cm-border);
-    border-radius: 14px;
-    padding: 10px;
-    margin-bottom: 12px;
-    backdrop-filter: none !important; /* regra do modal */
-    -webkit-backdrop-filter: none !important;
+  /* ---------- Checklist (corrige legibilidade no claro/escuro) ---------- */
+  /* Se o texto “some” no dark, isso geralmente é conflito de cor global.
+     Aqui a gente força cor e fundo nos inputs do checklist. */
+  #cm-root .checklists-container,
+  #cm-root .checklist-block,
+  #cm-root .checklist-items{
+    color: var(--cm-text) !important;
   }
 
-  .cm-tabs{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
-
-  /* Tabs */
-  .cm-tabbtn{
+  #cm-root .checklist-head{
     padding: 8px 10px;
-    border-radius: 999px;
-    font-size: 13px;
-    border: 1px solid var(--cm-border);
-    background: transparent;
-    color: var(--cm-text);
-    cursor: pointer;
-    user-select: none;
-    transition: background .15s ease, transform .08s ease, border-color .15s ease;
-  }
-  .cm-tabbtn:hover{ background: var(--cm-surface-2); }
-  .cm-tabbtn:active{ transform: translateY(1px); }
-  .cm-tabbtn.is-active{
-    background: var(--cm-surface);
-    border-color: rgba(37,99,235,0.35);
-  }
-
-  /* Ações / botões */
-  .cm-actions{ margin-left:auto; display:flex; gap:8px; }
-  .cm-btn{
-    padding: 8px 12px;
-    border-radius: 10px;
-    border: 1px solid var(--cm-border);
-    background: var(--cm-surface);
-    color: var(--cm-text);
-    cursor:pointer;
-    font-size: 13px;
-    transition: transform .08s ease, filter .15s ease;
-  }
-  .cm-btn:hover{ filter: brightness(1.02); }
-  .cm-btn:active{ transform: translateY(1px); }
-  .cm-btn.primary{
-    background: #2563eb;
-    border-color: #2563eb;
-    color: #fff;
-  }
-
-  /* Labels e textos */
-  .cm-label{ display:block; font-size: 12px; margin: 0 0 6px 2px; color: var(--cm-muted); }
-  .cm-muted{ font-size: 12px; color: var(--cm-muted); }
-
-  /* Inputs */
-  .cm-input, .cm-textarea, .cm-select{
-    width:100%;
-    border-radius: 10px;
-    border: 1px solid var(--cm-border);
+    border-radius: var(--cm-radius-sm);
+    border: 1px solid var(--cm-border-2);
     background: var(--cm-surface-2);
-    color: var(--cm-text);
+  }
+
+  #cm-root .checklist-title{
+    width: 100%;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--cm-text) !important;
+    padding: 8px 10px;
+    outline: none;
+  }
+  #cm-root .checklist-title:focus{
+    border-color: rgba(37,99,235,0.55);
+    box-shadow: var(--cm-ring);
+    background: var(--cm-surface);
+  }
+
+  #cm-root .checklist-item{
+    border-radius: 10px;
+    border: 1px solid transparent;
+  }
+  #cm-root .checklist-item:hover{
+    background: rgba(2,6,23,0.04);
+    border-color: var(--cm-border-2);
+  }
+  #card-modal-root.theme-dark #cm-root .checklist-item:hover,
+  #card-modal-root.card-theme-dark #cm-root .checklist-item:hover,
+  html.dark #cm-root .checklist-item:hover{
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.10);
+  }
+
+  #cm-root .checklist-input{
+    color: var(--cm-text) !important;
+    background: transparent !important;
+  }
+  #cm-root .checklist-input:focus{
+    background: var(--cm-surface) !important;
+    border-color: rgba(37,99,235,0.55) !important;
+    box-shadow: var(--cm-ring) !important;
+  }
+
+  #cm-root .checklist-empty{
+    margin: 6px 2px 0 2px;
+    color: var(--cm-muted) !important;
+    font-size: 12px;
+  }
+
+  /* Botões do checklist (remover etc) */
+  #cm-root .checklist-icon-btn,
+  #cm-root .item-del{
+    border-radius: 10px;
+  }
+  #cm-root .checklist-icon-btn.danger{
+    color: var(--cm-danger) !important;
+    border: 1px solid rgba(220,38,38,0.22);
+    background: rgba(220,38,38,0.06);
+    padding: 6px 10px;
+  }
+  #cm-root .checklist-icon-btn.danger:hover{
+    background: rgba(220,38,38,0.10);
+    border-color: rgba(220,38,38,0.35);
+  }
+
+  /* Add item (Trello-like) */
+  #cm-root .checklist-add{
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--cm-border-2);
+  }
+  #cm-root .checklist-add-open{
+    background: transparent;
+    border: 1px solid var(--cm-border-2);
+    color: var(--cm-text) !important;
+    padding: 8px 10px;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+  #cm-root .checklist-add-open:hover{
+    border-color: var(--cm-border);
+    background: rgba(37,99,235,0.06);
+  }
+  #cm-root .checklist-add-input{
+    width: 100%;
+    border-radius: 10px;
+    border: 1px solid var(--cm-border-2);
+    background: var(--cm-surface-2);
+    color: var(--cm-text) !important;
     padding: 10px 12px;
     outline: none;
   }
-  .cm-textarea{ min-height: 220px; }
-  .cm-input::placeholder, .cm-textarea::placeholder{ color: var(--cm-muted); }
-
-  .cm-input:focus, .cm-textarea:focus, .cm-select:focus{
-    box-shadow: 0 0 0 3px var(--cm-focus);
-    border-color: rgba(37,99,235,0.55);
+  #cm-root .checklist-add-actions{ display:flex; gap:8px; margin-top: 8px; }
+  #cm-root .checklist-add-btn{
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(37,99,235,0.85);
+    background: var(--cm-accent);
+    color: #fff !important;
+    cursor: pointer;
+  }
+  #cm-root .checklist-add-cancel{
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--cm-border-2);
+    background: var(--cm-surface-2);
+    color: var(--cm-text) !important;
+    cursor: pointer;
   }
 
-  /* Cards/surface */
-  .cm-card{
-    border-radius: 14px;
-    border: 1px solid var(--cm-border);
-    background: var(--cm-surface);
-    padding: 12px;
-    color: var(--cm-text);
+  /* ---------- Anexos (links legíveis no dark) ---------- */
+  #cm-root #attachments-list a{
+    color: var(--cm-accent) !important;
+    text-decoration: none;
+    font-weight: 600;
   }
-
-  /* Links (resolve “Anexos” no dark) */
-  #cm-root a{
-    color: var(--cm-link);
+  #cm-root #attachments-list a:hover{
     text-decoration: underline;
-    text-underline-offset: 2px;
+    filter: brightness(1.05);
   }
-  #cm-root a:hover{ color: var(--cm-link-hover); }
+
+  /* ---------- Acessibilidade / foco ---------- */
+  .cm-tabbtn:focus-visible,
+  .cm-btn:focus-visible,
+  .cm-input:focus-visible,
+  .cm-textarea:focus-visible,
+  .cm-select:focus-visible{
+    outline: none;
+    box-shadow: var(--cm-ring);
+  }
+
+  /* ---------- Responsivo ---------- */
+  @media (max-width: 1024px){
+    .cm-topbar{ padding: 8px; }
+    .cm-tabbtn, .cm-btn{ padding: 8px 10px; }
+    .cm-wrap{ padding: 12px; }
+  }
 </style>
 
 <div class="cm-wrap" id="cm-root" data-card-id="{{ card.id }}">
