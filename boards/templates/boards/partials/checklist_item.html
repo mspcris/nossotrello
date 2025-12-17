@@ -30,6 +30,13 @@
     {% if item.is_done %}checked{% endif %}
   >
 
+
+<span class="text-xs" style="color: var(--cm-text) !important;">
+  [DEBUG: {{ item.text }}]
+</span>
+
+
+
   {# inline edit #}
   <form class="flex-1"
         hx-post="{% url 'boards:checklist_update_item' item.id %}"
@@ -37,10 +44,12 @@
         hx-target="#checklist-item-{{ item.id }}"
         hx-swap="outerHTML">
 
+    {% csrf_token %}
+
     <input
       type="text"
       name="text"
-      value="{{ item.text }}"
+      value="{{ item.text|default_if_none:'' }}"
       class="checklist-input w-full text-sm rounded-md px-2 py-1.5
              bg-transparent border border-transparent
              placeholder:text-gray-400
