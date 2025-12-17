@@ -61,7 +61,11 @@ urlpatterns = [
     path("card/<int:card_id>/modal/", views.card_modal, name="card_modal"),
     path("card/<int:card_id>/update/", views.update_card, name="update_card"),
     path("card/<int:card_id>/delete/", views.delete_card, name="delete_card"),
-    # path("card/<int:card_id>/delete-attachment/", views.delete_attachment, name="delete_attachment"),
+    # anexos múltiplos
+    path("card/<int:card_id>/attachments/add/", views.add_attachment, name="add_attachment"),
+    path(
+    "card/<int:card_id>/attachments/<int:attachment_id>/delete/", views.delete_attachment,name="delete_attachment",),
+
     path("card/<int:card_id>/snippet/", views.card_snippet, name="card_snippet"),
     path("card/<int:card_id>/remove_tag/", views.remove_tag, name="remove_tag"),
     path("card/<int:card_id>/cover/set/", views.set_card_cover, name="set_card_cover"),

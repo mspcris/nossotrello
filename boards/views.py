@@ -1573,6 +1573,62 @@ def quill_upload(request):
 
 
 @require_POST
+def delete_attachment(request, card_id, attachment_id):
+    card = get_object_or_404(Card, id=card_id, is_deleted=False)
+    attachment = get_object_or_404(CardAttachment, id=attachment_id, card=card)
+
+    board = card.column.board
+    if not _can_edit_board(request, board):
+        return HttpResponse("Sem permissão.", status=403)
+
+    actor = _actor_label(request)
+
+    file_name = (attachment.file.name or "")
+    pretty_name = file_name.split("/")[-1] if file_name else "arquivo"
+    desc = (attachment.description or "").strip()
+
+    # Política: só deletar o arquivo físico se for upload "attachments/"
+    # (evita quebrar imagens de atividades que vêm de "quill/").
+    should_delete_file = file_name.startswith("attachments/")
+
+    # Evita apagar o arquivo físico se ele estiver referenciado por outro attachment
+    if should_delete_file:
+        try:
+            if CardAttachment.objects.filter(file=file_name).exclude(id=attachment.id).exists():
+                should_delete_file = False
+        except Exception:
+            pass
+
+    # Apaga arquivo físico (quando aplicável)
+    if should_delete_file:
+        try:
+            attachment.file.delete(save=False)
+        except Exception:
+            pass
+
+    # Apaga registro do attachment
+    attachment.delete()
+
+    # Auditoria
+    if desc:
+        _log_card(
+            card,
+            request,
+            f"<p><strong>{actor}</strong> removeu o anexo <strong>{escape(pretty_name)}</strong> — {escape(desc)}.</p>",
+        )
+    else:
+        _log_card(
+            card,
+            request,
+            f"<p><strong>{actor}</strong> removeu o anexo <strong>{escape(pretty_name)}</strong>.</p>",
+        )
+
+    # HTMX: remover o item da lista (hx-swap outerHTML)
+    return HttpResponse("", status=200)
+
+
+
+@require_POST
 def add_attachment(request, card_id):
     card = get_object_or_404(Card, id=card_id)
     actor = _actor_label(request)
