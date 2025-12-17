@@ -302,6 +302,8 @@
         hx-post="{% url 'boards:set_tag_color' card.id %}"
         hx-target="#cm-tags-wrap"
         hx-swap="innerHTML">
+        hx-on::after-request="window.refreshCardSnippet({{ card.id }})"
+        
     {% csrf_token %}
     <input type="hidden" name="tag" id="cm-tag-color-tag">
     <input type="hidden" name="color" id="cm-tag-color-value">
@@ -621,13 +623,10 @@ picker.value = color;
   });
 
   save.addEventListener("click", () => {
-    if (!currentBtn) return;
+    const colors = JSON.parse(root.dataset.tagColors || "{}");
+    colors[tag] = color;
+    root.dataset.tagColors = JSON.stringify(colors);
 
-    const tag   = currentBtn.dataset.tag;
-    const color = picker.value;
-
-    inpTag.value = tag;
-    inpCol.value = color;
 
     // Atualiza visual IMEDIATO
     currentBtn.dataset.color = color;
