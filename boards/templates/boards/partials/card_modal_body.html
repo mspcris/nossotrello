@@ -583,8 +583,30 @@ function initTagColorPicker(root) {
 
     currentBtn = btn;
 
-    const color = btn.dataset.color || "#3b82f6";
-    picker.value = color;
+      // tenta pegar a cor real exibida na etiqueta
+let color =
+  btn.dataset.color ||
+  btn.style.color ||
+  window.getComputedStyle(btn).color;
+
+// converte rgb(...) para hex se necessário
+function rgbToHex(rgb) {
+  const m = rgb.match(/\d+/g);
+  if (!m) return "#3b82f6";
+  return (
+    "#" +
+    m.slice(0, 3)
+     .map(x => Number(x).toString(16).padStart(2, "0"))
+     .join("")
+  );
+}
+
+if (color.startsWith("rgb")) {
+  color = rgbToHex(color);
+}
+
+picker.value = color;
+
 
     const rect = btn.getBoundingClientRect();
     pop.style.top  = rect.bottom + window.scrollY + "px";
