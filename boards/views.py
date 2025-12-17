@@ -782,13 +782,13 @@ def remove_card_cover(request, card_id):
 @require_POST
 def set_tag_color(request, card_id):
     card = get_object_or_404(Card, id=card_id)
+
     tag = (request.POST.get("tag") or "").strip()
     color = (request.POST.get("color") or "").strip()
 
     if not tag:
         return HttpResponse("Tag inválida", status=400)
 
-    # valida hex simples (#RRGGBB)
     if not re.match(r"^#[0-9a-fA-F]{6}$", color):
         return HttpResponse("Cor inválida", status=400)
 
@@ -801,32 +801,17 @@ def set_tag_color(request, card_id):
 
     data[tag] = color
     card.tag_colors = json.dumps(data, ensure_ascii=False)
+
+    # 🔥 ISSO É O QUE ESTAVA FALTANDO
     card.save(update_fields=["tag_colors"])
 
-    # retorna só a barra de tags para o HTMX trocar
-    data[tag] = color
-    card.tag_colors = json.dumps(data, ensure_ascii=False)
-    card.save(update_fields=["tag_colors"])
-
-    # re-render do modal (barra de tags)
-    modal_html = render(
+    # ⚠️ NÃO RETORNA JSON
+    # ⚠️ RETORNA HTML, PORQUE O HTMX ESPERA HTML
+    return render(
         request,
         "boards/partials/card_tags_bar.html",
         {"card": card},
-    ).content.decode("utf-8")
-
-    # re-render do card na coluna
-    snippet_html = render(
-        request,
-        "boards/partials/card_item.html",
-        {"card": card},
-    ).content.decode("utf-8")
-
-    return JsonResponse({
-        "modal": modal_html,
-        "snippet": snippet_html,
-        "card_id": card.id,
-    })
+    )
 
 
 
