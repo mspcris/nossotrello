@@ -197,6 +197,21 @@ class Card(models.Model):
 
     tags = models.CharField(max_length=255, blank=True, null=True)
 
+from django.db import models
+import json
+
+class Card(models.Model):
+    title = models.CharField(max_length=255)
+
+    description = models.TextField(blank=True, null=True)
+
+    tags = models.CharField(max_length=255, blank=True, null=True)
+
+    # ✅ NOVO: mapeia cor por etiqueta (ex: {"Etiqueta1":"#ff0000"})
+    tag_colors = models.TextField(blank=True, default="{}")
+
+    cover_image = models.ImageField(upload_to="card_covers/", null=True, blank=True)
+
     # NOVO: cores por etiqueta (ex: {"Etiqueta1": "#ff0000"})
     tag_colors = models.JSONField(default=dict, blank=True)
 

@@ -20,6 +20,9 @@ urlpatterns = [
     path("board/<int:board_id>/share/remove/<int:user_id>/", views.board_share_remove, name="board_share_remove"),
     path("board/<int:board_id>/add_column/", views.add_column, name="add_column"),
 
+    # etiqueta do board
+    path("cards/<int:card_id>/tag-color/", views.set_tag_color, name="set_tag_color"),
+
     # imagem principal do board
     path("board/<int:board_id>/image/", views.update_board_image, name="update_board_image"),
     path("board/<int:board_id>/image/remove/", views.remove_board_image, name="remove_board_image"),

@@ -773,6 +773,43 @@ def remove_card_cover(request, card_id):
     return render(request, "boards/partials/card_modal_body.html", {"card": card})
 
 
+
+
+# ======================================================================
+# ETIQUETAS COLORIDAS CLICAVEIS
+# ======================================================================
+
+@require_POST
+def set_tag_color(request, card_id):
+    card = get_object_or_404(Card, id=card_id)
+    tag = (request.POST.get("tag") or "").strip()
+    color = (request.POST.get("color") or "").strip()
+
+    if not tag:
+        return HttpResponse("Tag inválida", status=400)
+
+    # valida hex simples (#RRGGBB)
+    if not re.match(r"^#[0-9a-fA-F]{6}$", color):
+        return HttpResponse("Cor inválida", status=400)
+
+    try:
+        data = json.loads(card.tag_colors or "{}")
+        if not isinstance(data, dict):
+            data = {}
+    except Exception:
+        data = {}
+
+    data[tag] = color
+    card.tag_colors = json.dumps(data, ensure_ascii=False)
+    card.save(update_fields=["tag_colors"])
+
+    # retorna só a barra de tags para o HTMX trocar
+    return render(request, "boards/partials/card_tags_bar.html", {"card": card})
+
+
+
+
+
 # ======================================================================
 # DELETAR CARD (soft delete)
 # ======================================================================
