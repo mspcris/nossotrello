@@ -793,6 +793,93 @@
       });
     }
 
+
+
+
+
+
+
+
+(function () {
+
+  function syncModalThemeSafely() { /* ... */ }
+  function initRadicalTabs(root) { /* ... */ }
+  function applySavedTagColors(root) { /* ... */ }
+  function initTagColorPicker(root) { /* ... */ }
+  function initAttachmentErrors(root) { /* ... */ }
+  function initActivityErrorsOnce() { /* ... */ }
+
+  // ✅ GAMBIARRA: dispara "Salvar" automaticamente ao abrir o modal
+  // - Evita loop: o POST faz swap, o boot roda de novo, e a flag impede repetir.
+  function autoRunSaveOnOpen(root) {
+    if (!root) return;
+
+    // se acabou de auto-salvar, não repete no boot do swap
+    if (sessionStorage.getItem("cmAutoSaveSkip") === "1") {
+      sessionStorage.removeItem("cmAutoSaveSkip");
+      return;
+    }
+
+    const form = root.querySelector("#cm-main-form");
+    if (!form) return;
+
+    sessionStorage.setItem("cmAutoSaveSkip", "1");
+
+    // garante que tudo já bindou antes de submitar
+    setTimeout(() => {
+      try { form.requestSubmit(); } catch (e) { form.submit(); }
+    }, 0);
+  }
+
+  function boot() {
+    syncModalThemeSafely();
+
+    const root = document.getElementById("cm-root");
+    if (!root) return;
+
+    if (!root.dataset.tagColors) {
+      root.dataset.tagColors = root.getAttribute("data-tag-colors") || "{}";
+    }
+
+    initRadicalTabs(root);
+    initAttachmentErrors(root);
+    initTagColorPicker(root);
+    applySavedTagColors(root);
+    initActivityErrorsOnce();
+
+    // ✅ aqui dispara o "Salvar" ao abrir
+    autoRunSaveOnOpen(root);
+  }
+
+  document.addEventListener("DOMContentLoaded", boot);
+
+  document.body.addEventListener("htmx:afterSwap", function (evt) {
+    const t = evt.target;
+    if (!t) return;
+
+    // ✅ melhora: sempre que o cm-root existir após um swap, reboota
+    // (isso cobre aberturas em alvos que não sejam #modal-body)
+    if (document.getElementById("cm-root")) boot();
+
+    if (t.id === "cm-tags-wrap") {
+      const root = document.getElementById("cm-root");
+      applySavedTagColors(root);
+    }
+  });
+
+})();
+
+
+
+
+
+
+
+
+
+
+
+
     function boot() {
       syncModalThemeSafely();
 
