@@ -801,17 +801,25 @@ def set_tag_color(request, card_id):
 
     data[tag] = color
     card.tag_colors = json.dumps(data, ensure_ascii=False)
-
-    # 🔥 ISSO É O QUE ESTAVA FALTANDO
     card.save(update_fields=["tag_colors"])
 
-    # ⚠️ NÃO RETORNA JSON
-    # ⚠️ RETORNA HTML, PORQUE O HTMX ESPERA HTML
-    return render(
+    modal_html = render(
         request,
         "boards/partials/card_tags_bar.html",
         {"card": card},
-    )
+    ).content.decode("utf-8")
+
+    snippet_html = render(
+        request,
+        "boards/partials/card_item.html",
+        {"card": card},
+    ).content.decode("utf-8")
+
+    return JsonResponse({
+        "modal": modal_html,
+        "snippet": snippet_html,
+        "card_id": card.id,
+    })
 
 
 
