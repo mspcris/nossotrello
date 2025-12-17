@@ -133,6 +133,44 @@ body {
   margin-bottom: 6px !important;
 }
 
+
+/* =======================================================================
+   HOTFIX: ATIVIDADE LEGÍVEL NO MODAL DARK
+   - resolve: texto claro em fundo claro (activity-panel / activity-item)
+   ======================================================================= */
+
+#card-modal-root.theme-dark .activity-panel,
+#card-modal-root.card-theme-dark .activity-panel{
+  background: rgba(0, 0, 0, 0.45) !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  color: rgba(241,245,249,0.95) !important;
+}
+
+#card-modal-root.theme-dark .activity-item,
+#card-modal-root.card-theme-dark .activity-item{
+  background: rgba(0, 0, 0, 0.60) !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  color: rgba(241,245,249,0.95) !important;
+}
+
+/* meta e conteúdo */
+#card-modal-root.theme-dark .activity-meta,
+#card-modal-root.card-theme-dark .activity-meta{
+  color: rgba(226, 232, 240, 0.75) !important;
+}
+
+#card-modal-root.theme-dark .activity-content,
+#card-modal-root.card-theme-dark .activity-content{
+  color: rgba(241,245,249,0.95) !important;
+}
+
+/* se vier estilo inline de background branco no HTML do histórico */
+#card-modal-root.theme-dark .activity-panel [style*="background"],
+#card-modal-root.card-theme-dark .activity-panel [style*="background"]{
+  background: transparent !important;
+}
+
+
 /* =======================================================================
    [3] MODAL — VIDRO (BASE)
    IMPORTANTE:
