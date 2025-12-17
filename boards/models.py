@@ -197,6 +197,9 @@ class Card(models.Model):
 
     tags = models.CharField(max_length=255, blank=True, null=True)
 
+    # NOVO: cores por etiqueta (ex: {"Etiqueta1": "#ff0000"})
+    tag_colors = models.JSONField(default=dict, blank=True)
+
     # Capa do card (última imagem colada na descrição)
     cover_image = models.ImageField(upload_to="card_covers/", null=True, blank=True)
 

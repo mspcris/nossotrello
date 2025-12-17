@@ -552,10 +552,16 @@
   <section class="cm-panel" data-cm-panel="ativ" role="tabpanel">
     <div class="cm-card space-y-3">
       <form method="post"
-            hx-post="{% url 'boards:add_activity' card.id %}"
-            hx-target="#cm-activity-panel"
-            hx-swap="innerHTML">
-        {% csrf_token %}
+      hx-post="{% url 'boards:add_activity' card.id %}"
+      hx-target="#cm-activity-panel"
+      hx-swap="innerHTML"
+      hx-on::after-request="this.reset()">
+
+  {% csrf_token %}
+
+  <div id="activity-error"
+       class="hidden mb-2 px-3 py-2 rounded-md text-sm border border-red-500/30 bg-red-500/10 text-red-200"></div>
+
         <label class="cm-label">Nova atividade</label>
         <textarea name="content" class="cm-textarea" style="min-height:140px;" placeholder="Escreva aqui..."></textarea>
 
@@ -810,6 +816,25 @@
     const t = evt.target;
     if (!t) return;
     if (t.id === "modal-body") boot();
+
+    // Erro ao incluir atividade: mostra mensagem e limpa o textarea
+document.body.addEventListener("htmx:responseError", function (evt) {
+  const elt = evt.detail && evt.detail.elt;
+  const xhr = evt.detail && evt.detail.xhr;
+
+  // Só para o form de atividade (o que chama add_activity)
+  if (!elt || !elt.matches || !elt.matches('form[hx-post*="add_activity"]')) return;
+
+  const box = document.getElementById("activity-error");
+  if (box) {
+    box.textContent = (xhr && xhr.responseText) ? xhr.responseText : "Não foi possível incluir a atividade.";
+    box.classList.remove("hidden");
+  }
+
+  // limpa mesmo em erro (requisito)
+  try { elt.reset(); } catch (e) {}
+});
+
   });
 
 })();
