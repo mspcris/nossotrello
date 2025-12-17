@@ -7,8 +7,8 @@
 
   {# handle (drag) #}
   <button type="button"
-          class="item-drag checklist-handle mt-0.5 select-none cursor-grab active:cursor-grabbing
-                 inline-flex items-center justify-center w-7 h-7 shrink-0 rounded-md
+          class="item-drag checklist-handle flex-none select-none cursor-grab active:cursor-grabbing
+                 inline-flex items-center justify-center w-7 h-7 rounded-md
                  opacity-50 group-hover:opacity-100 transition
                  text-gray-600 hover:text-gray-900
                  dark:text-gray-300 dark:hover:text-white"
@@ -18,19 +18,23 @@
     <span class="text-base leading-none">⋮⋮</span>
   </button>
 
-  {# checkbox #}
+  {# checkbox
+     - troca o LISTA inteira (para atualizar contador 3/7 e barra)
+     - hx-select garante que, mesmo se a view voltar HTML maior, só entra o #checklist-list
+  #}
   <input
     type="checkbox"
-    class="checklist-checkbox h-4 w-4 shrink-0 rounded border-gray-300
+    class="checklist-checkbox flex-none h-4 w-4 rounded border-gray-300
            text-blue-600 focus:ring-blue-500
            dark:border-white/30 dark:bg-white/10"
     hx-post="{% url 'boards:checklist_toggle_item' item.id %}"
     hx-target="#checklist-list"
+    hx-select="#checklist-list"
     hx-swap="innerHTML"
     {% if item.is_done %}checked{% endif %}
   >
 
-  {# inline edit #}
+  {# inline edit (ocupa 100% do espaço disponível) #}
   <form class="flex-1 min-w-0"
         hx-post="{% url 'boards:checklist_update_item' item.id %}"
         hx-trigger="change, keyup[key=='Enter']"
@@ -41,7 +45,7 @@
       type="text"
       name="text"
       value="{{ item.text }}"
-      class="checklist-input w-full min-w-0 text-sm rounded-md px-2 py-1.5
+      class="checklist-input block w-full min-w-0 text-sm rounded-md px-2 py-1.5
              bg-transparent border border-transparent
              placeholder:text-gray-400
              focus:outline-none focus:border-blue-400 focus:bg-white/90
@@ -55,8 +59,8 @@
   {# ações #}
   <button
     type="button"
-    class="item-del checklist-icon-btn mt-0.5 inline-flex items-center justify-center
-           w-7 h-7 shrink-0 rounded-md border border-transparent
+    class="item-del checklist-icon-btn flex-none inline-flex items-center justify-center
+           w-7 h-7 rounded-md border border-transparent
            opacity-0 group-hover:opacity-100 transition
            text-gray-500 hover:text-red-600 hover:bg-red-50
            dark:text-gray-300 dark:hover:text-red-300 dark:hover:bg-red-500/10"
@@ -64,6 +68,7 @@
     aria-label="Remover item"
     hx-post="{% url 'boards:checklist_delete_item' item.id %}"
     hx-target="#checklist-list"
+    hx-select="#checklist-list"
     hx-swap="innerHTML">
     <span class="text-base leading-none">✕</span>
   </button>
