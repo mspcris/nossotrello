@@ -1,46 +1,30 @@
-{# templates/boards/partials/checklist_item.html #}
-
-<li
-  class="checklist-item flex items-center gap-3 py-1"
-  data-item-id="{{ item.id }}"
->
+<li class="checklist-item flex items-center gap-3 py-2 px-1"
+    data-item-id="{{ item.id }}">
 
   <!-- DRAG HANDLE -->
-  <span
-    class="item-drag cursor-grab text-gray-400 select-none"
-    title="Arrastar item"
-  >
+  <span class="checklist-item-handle cursor-grab select-none text-gray-400">
     ⋮⋮
   </span>
 
   <!-- CHECKBOX -->
-  <input
-    type="checkbox"
-    class="checklist-checkbox"
-    {% if item.done %}checked{% endif %}
-    hx-post="{% url 'boards:checklist_toggle_item' item.id %}"
-    hx-trigger="change"
-    hx-target="#checklist-list"
-    hx-swap="innerHTML"
-  >
+  <input type="checkbox"
+         {% if item.done %}checked{% endif %}
+         hx-post="{% url 'boards:checklist_toggle_item' item.id %}"
+         hx-target="#checklist-list"
+         hx-swap="innerHTML"
+         class="shrink-0">
 
   <!-- TEXTO -->
-  <span
-    class="flex-1 text-sm text-gray-800 {% if item.done %}line-through text-gray-400{% endif %}"
-  >
+  <span class="flex-1 text-sm leading-snug break-words">
     {{ item.text }}
   </span>
 
   <!-- REMOVER -->
-  <button
-    type="button"
-    class="text-xs text-gray-400 hover:text-red-600"
-    hx-post="{% url 'boards:checklist_delete_item' item.id %}"
-    hx-confirm="Remover este item?"
-    hx-target="#checklist-list"
-    hx-swap="innerHTML"
-  >
+  <button type="button"
+          class="text-xs text-gray-400 hover:text-red-600"
+          hx-post="{% url 'boards:checklist_delete_item' item.id %}"
+          hx-target="#checklist-list"
+          hx-swap="innerHTML">
     Remover
   </button>
-
 </li>

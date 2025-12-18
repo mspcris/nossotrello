@@ -946,6 +946,24 @@ html.dark #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-
 }
 
 
+
+
+/* =========================
+   CHECKLIST ITEM (layout)
+   ========================= */
+#card-modal-root .checklist-item {
+  width: 100%;
+}
+
+#card-modal-root .checklist-item-handle {
+  font-size: 14px;
+  line-height: 1;
+}
+
+#card-modal-root .checklist-item input[type="checkbox"] {
+  margin-top: 1px;
+}
+
 /* =======================================================================
    FIM DO BASE.CSS CONSOLIDADO
    ======================================================================= */

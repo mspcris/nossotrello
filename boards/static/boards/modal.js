@@ -1446,7 +1446,7 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
         ghostClass: "drag-ghost",
         chosenClass: "drag-chosen",
         draggable: ".checklist-item",
-        handle: ".item-drag",
+        handle: ".checklist-item-handle",
       });
     });
   }
