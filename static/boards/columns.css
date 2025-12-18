@@ -1,0 +1,62 @@
+/* Cores reais */
+:root {
+    --gray-color: #e5e7eb;
+    --blue-color: #bfdbfe;
+    --green-color: #bbf7d0;
+    --purple-color: #e9d5ff;
+    --amber-color: #fde68a;
+    --red-color: #fecaca;
+    --pink-color: #fbcfe8;
+    --teal-color: #ccfbf1;
+    --slate-color: #cbd5e1;
+}
+
+/* Vidro fosco base */
+.column-glass {
+    backdrop-filter: blur(12px);
+}
+
+/* Fundo das colunas */
+.gray-column-bg    { background: rgba(229, 231, 235, 0.45); }
+.blue-column-bg    { background: rgba(191, 219, 254, 0.45); }
+.green-column-bg   { background: rgba(187, 247, 208, 0.45); }
+.purple-column-bg  { background: rgba(233, 213, 255, 0.45); }
+.amber-column-bg   { background: rgba(253, 230, 138, 0.45); }
+.red-column-bg     { background: rgba(254, 202, 202, 0.45); }
+.pink-column-bg    { background: rgba(251, 207, 232, 0.45); }
+.teal-column-bg    { background: rgba(204, 251, 241, 0.45); }
+.slate-column-bg   { background: rgba(203, 213, 225, 0.45); }
+
+/* Header colorido */
+.column-header {
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(6px);
+}
+
+/* ============================================================
+   DARK MODE OVERRIDES (quando <html class="dark">)
+   Objetivo: parar de “clarear” colunas e header no tema escuro
+   ============================================================ */
+
+html.dark .gray-column-bg  { background: rgba(15, 23, 42, 0.35) !important; }
+html.dark .blue-column-bg  { background: rgba(59, 130, 246, 0.18) !important; }
+html.dark .green-column-bg { background: rgba(52, 211, 153, 0.16) !important; }
+html.dark .purple-column-bg{ background: rgba(168, 85, 247, 0.16) !important; }
+html.dark .amber-column-bg { background: rgba(251, 191, 36, 0.18) !important; }
+
+html.dark .red-column-bg   { background: rgba(239, 68, 68, 0.16) !important; }
+html.dark .pink-column-bg  { background: rgba(236, 72, 153, 0.16) !important; }
+html.dark .teal-column-bg  { background: rgba(20, 184, 166, 0.14) !important; }
+html.dark .slate-column-bg { background: rgba(51, 65, 85, 0.35) !important; }
+
+/* Header das colunas */
+html.dark .column-header {
+    background: rgba(0, 0, 0, 0.45) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+/* Texto dentro do header (garantia contra classes Tailwind/hardcode) */
+html.dark .column-header,
+html.dark .column-header * {
+    color: rgba(241, 245, 249, 0.95) !important;
+}
