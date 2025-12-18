@@ -1,69 +1,21 @@
-{% load tag_helpers %}
+<li class="checklist-item flex items-center gap-2"
+    data-item-id="{{ item.id }}">
 
-<li id="card-{{ card.id }}"
-    data-card-id="{{ card.id }}"
-    data-tag-colors='{{ card.tag_colors|default_if_none:"{}"|escapejs }}'
-    class="p-3 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm mb-3 cursor-pointer relative overflow-hidden"
-    hx-get="{% url 'boards:card_modal' card.id %}"
-    hx-target="#modal-body"
-    hx-swap="innerHTML">
+  <input type="checkbox"
+         {% if item.done %}checked{% endif %}
+         hx-post="{% url 'boards:checklist_toggle_item' item.id %}"
+         hx-target="#checklist-list"
+         hx-swap="innerHTML">
 
-    {# MINIATURA PADRONIZADA (capa) #}
-    {% if card.cover_image %}
-      <div class="-mx-3 -mt-3 mb-3">
-        <img
-          src="{{ card.cover_image.url }}"
-          alt="Capa do card"
-          class="w-full h-24 object-cover block"
-          loading="lazy"
-          decoding="async"
-        >
-      </div>
-    {% endif %}
+  <span class="text-sm {% if item.done %}line-through text-gray-400{% endif %}">
+    {{ item.text }}
+  </span>
 
-    <!-- BOTÃO ... (abre modal focado no card) -->
-    <button type="button"
-        class="absolute top-1 left-1 text-gray-400 hover:text-gray-700 text-xs px-1 z-10"
-        onclick="event.stopPropagation();"
-        hx-get="{% url 'boards:card_modal' card.id %}"
-        hx-target="#modal-body"
-        hx-swap="innerHTML">
-        ⋮
-    </button>
-
-    <!-- BOTÃO DE EXCLUSÃO (aparece apenas no modo "Excluir cards") -->
-    <button type="button"
-        class="delete-card-btn hidden absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded z-10"
-        onclick="event.stopPropagation();"
-        hx-post="{% url 'boards:delete_card' card.id %}"
-        hx-target="#card-{{ card.id }}"
-        hx-swap="outerHTML">
-      X
-    </button>
-
-    <!-- TAGS -->
-    {% if card.tags %}
-      <div class="flex flex-wrap gap-1 mb-2 mt-4">
-        {% for tag in card.tags|split_tags %}
-          {% with tag|tag_color as color %}
-            <span
-              class="text-xs font-semibold px-2 py-1 rounded-md"
-              data-tag="{{ tag }}"
-              style="
-                background-color: {{ color }}20;
-                color: {{ color }};
-                border: 1px solid {{ color }};
-              ">
-              {{ tag }}
-            </span>
-          {% endwith %}
-        {% endfor %}
-      </div>
-    {% endif %}
-
-    <!-- TÍTULO -->
-    <span class="block text-sm text-gray-800">
-      {{ card.title }}
-    </span>
-
+  <button type="button"
+          class="text-xs text-red-500 ml-auto"
+          hx-post="{% url 'boards:checklist_delete_item' item.id %}"
+          hx-target="#checklist-list"
+          hx-swap="innerHTML">
+    Remover
+  </button>
 </li>
