@@ -823,7 +823,7 @@ window.initCardModal = function () {
 };
 
 // =====================================================
-// ABERTURA RADICAL DO MODAL
+// ABERTURA RADICAL DO MODAL + MOBILE 
 // =====================================================
 (function bindCardOpenRadical() {
   if (document.body.dataset.cardOpenRadicalBound === "1") return;
@@ -844,12 +844,64 @@ window.initCardModal = function () {
     return ignoreSelectors.some((sel) => ev.target.closest(sel));
   }
 
+  let touchStartY = 0;
+  let touchMoved = false;
+
+  // 👉 MOBILE
+  document.body.addEventListener(
+    "touchstart",
+    (ev) => {
+      const cardEl = ev.target.closest("li[data-card-id]");
+      if (!cardEl) return;
+
+      touchStartY = ev.touches[0].clientY;
+      touchMoved = false;
+    },
+    { passive: true }
+  );
+
+  document.body.addEventListener(
+    "touchmove",
+    (ev) => {
+      const deltaY = Math.abs(ev.touches[0].clientY - touchStartY);
+      if (deltaY > 10) {
+        touchMoved = true;
+      }
+    },
+    { passive: true }
+  );
+
+  document.body.addEventListener(
+    "touchend",
+    (ev) => {
+      const cardEl = ev.target.closest("li[data-card-id]");
+      if (!cardEl) return;
+      if (touchMoved) return;
+      if (shouldIgnoreClick(ev)) return;
+
+      const cardId = Number(cardEl.dataset.cardId || 0);
+      if (!cardId) return;
+
+      ev.preventDefault();
+      ev.stopPropagation();
+
+      window.currentCardId = cardId;
+      openModal();
+
+      htmx.ajax("GET", `/card/${cardId}/modal/`, {
+        target: "#modal-body",
+        swap: "innerHTML",
+      });
+    },
+    true
+  );
+
+  // 👉 DESKTOP (mantém como está)
   document.body.addEventListener(
     "click",
     (ev) => {
       const cardEl = ev.target.closest("li[data-card-id]");
       if (!cardEl) return;
-
       if (shouldIgnoreClick(ev)) return;
 
       const cardId = Number(cardEl.dataset.cardId || 0);
@@ -869,6 +921,7 @@ window.initCardModal = function () {
     true
   );
 })();
+
 
 // =====================================================
 // HTMX – após swap do modal-body
