@@ -1,21 +1,35 @@
-<li class="checklist-item flex items-center gap-2"
+<li class="checklist-item flex items-center gap-2 py-1"
     data-item-id="{{ item.id }}">
 
+  <!-- Drag handle -->
+  <button type="button"
+          class="item-drag text-gray-400 cursor-grab select-none"
+          title="Arrastar item"
+          aria-label="Arrastar item">
+    ⋮⋮
+  </button>
+
+  <!-- Checkbox -->
   <input type="checkbox"
+         class="checklist-checkbox"
          {% if item.done %}checked{% endif %}
          hx-post="{% url 'boards:checklist_toggle_item' item.id %}"
          hx-target="#checklist-list"
          hx-swap="innerHTML">
 
-  <span class="text-sm {% if item.done %}line-through text-gray-400{% endif %}">
+  <!-- Texto -->
+  <span class="flex-1 text-sm leading-snug
+               {% if item.done %}line-through text-gray-400{% endif %}">
     {{ item.text }}
   </span>
 
+  <!-- Remover -->
   <button type="button"
-          class="text-xs text-red-500 ml-auto"
+          class="text-xs text-red-500 hover:underline"
           hx-post="{% url 'boards:checklist_delete_item' item.id %}"
           hx-target="#checklist-list"
           hx-swap="innerHTML">
     Remover
   </button>
+
 </li>
