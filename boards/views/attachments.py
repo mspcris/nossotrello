@@ -1,0 +1,98 @@
+# boards/views/attachments.py
+
+from django.http import HttpResponse
+from django.shortcuts import render, get_object_or_404
+from django.views.decorators.http import require_POST
+from django.utils.html import escape
+
+from .helpers import (
+    _actor_label,
+    _log_card,
+    _can_edit_board,
+    Card,
+    CardAttachment,
+)
+
+
+@require_POST
+def delete_attachment(request, card_id, attachment_id):
+    card = get_object_or_404(Card, id=card_id, is_deleted=False)
+    attachment = get_object_or_404(CardAttachment, id=attachment_id, card=card)
+
+    board = card.column.board
+    if not _can_edit_board(request, board):
+        return HttpResponse("Sem permissão.", status=403)
+
+    actor = _actor_label(request)
+
+    file_name = (attachment.file.name or "")
+    pretty_name = file_name.split("/")[-1] if file_name else "arquivo"
+    desc = (attachment.description or "").strip()
+
+    should_delete_file = file_name.startswith("attachments/")
+
+    if should_delete_file:
+        try:
+            if CardAttachment.objects.filter(file=file_name).exclude(id=attachment.id).exists():
+                should_delete_file = False
+        except Exception:
+            pass
+
+    if should_delete_file:
+        try:
+            attachment.file.delete(save=False)
+        except Exception:
+            pass
+
+    attachment.delete()
+
+    if desc:
+        _log_card(
+            card,
+            request,
+            f"<p><strong>{actor}</strong> removeu o anexo <strong>{escape(pretty_name)}</strong> — {escape(desc)}.</p>",
+        )
+    else:
+        _log_card(
+            card,
+            request,
+            f"<p><strong>{actor}</strong> removeu o anexo <strong>{escape(pretty_name)}</strong>.</p>",
+        )
+
+    return HttpResponse("", status=200)
+
+
+@require_POST
+def add_attachment(request, card_id):
+    card = get_object_or_404(Card, id=card_id)
+    actor = _actor_label(request)
+
+    if "file" not in request.FILES:
+        return HttpResponse("Nenhum arquivo enviado", status=400)
+
+    uploaded = request.FILES["file"]
+    desc = (request.POST.get("description") or "").strip()
+
+    attachment = CardAttachment.objects.create(
+        card=card,
+        file=uploaded,
+        description=desc,
+    )
+
+    pretty_name = attachment.file.name.split("/")[-1]
+    if desc:
+        _log_card(
+            card,
+            request,
+            f"<p><strong>{actor}</strong> adicionou um anexo: <strong>{escape(pretty_name)}</strong> — {escape(desc)}.</p>",
+            attachment=attachment.file,
+        )
+    else:
+        _log_card(
+            card,
+            request,
+            f"<p><strong>{actor}</strong> adicionou um anexo: <strong>{escape(pretty_name)}</strong>.</p>",
+            attachment=attachment.file,
+        )
+
+    return render(request, "boards/partials/attachment_item.html", {"attachment": attachment})

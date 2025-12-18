@@ -26,6 +26,7 @@ urlpatterns = [
     # imagem principal do board
     path("board/<int:board_id>/image/", views.update_board_image, name="update_board_image"),
     path("board/<int:board_id>/image/remove/", views.remove_board_image, name="remove_board_image"),
+    path("card/<int:card_id>/cover/set/", views.set_card_cover, name="set_card_cover"),
 
     # criar board
     path("board/add/", views.add_board, name="add_board"),

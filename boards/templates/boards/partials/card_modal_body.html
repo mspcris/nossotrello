@@ -306,6 +306,40 @@
     {% include "boards/partials/card_tags_bar.html" %}
   </div>
 
+  {# ===================== CAPA DO CARD (upload + paste) ===================== #}
+  <div class="cm-card" style="margin-bottom:10px;">
+    <div class="flex items-center justify-between gap-2 flex-wrap">
+      <div>
+        <div class="cm-label" style="margin:0;">Capa do card</div>
+        <div class="cm-muted">Dica: na aba Descrição, você pode colar uma imagem (Ctrl+V) para virar capa.</div>
+      </div>
+
+      <div class="flex gap-2">
+        <button type="button" class="cm-btn" id="cm-cover-pick-btn">
+          Escolher imagem…
+        </button>
+      </div>
+    </div>
+
+    {# form separado para não conflitar com o cm-main-form #}
+    <form id="cm-cover-form"
+          class="hidden"
+          method="post"
+          enctype="multipart/form-data"
+          action="{% url 'boards:set_card_cover' card.id %}">
+      {% csrf_token %}
+      <input type="file"
+             id="cm-cover-file"
+             name="cover"
+             accept="image/*">
+    </form>
+
+    <div id="cm-cover-error"
+         class="hidden mt-2 px-3 py-2 rounded-md text-sm border border-red-500/30 bg-red-500/10 text-red-200"></div>
+  </div>
+
+
+  
   {# ✅ Form invisível + color picker invisível (para salvar cor via POST) #}
   <form id="cm-tag-color-form"
         class="hidden"

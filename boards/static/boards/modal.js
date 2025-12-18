@@ -377,6 +377,113 @@ function cmInstallActivityErrorsOnce() {
   });
 }
 
+
+function cmInstallCoverPasteAndUploadOnce() {
+  if (document.body.dataset.cmCoverBound === "1") return;
+  document.body.dataset.cmCoverBound = "1";
+
+  function showCoverErr(msg) {
+    const box = document.getElementById("cm-cover-error");
+    if (!box) return;
+    if (!msg) {
+      box.textContent = "";
+      box.classList.add("hidden");
+    } else {
+      box.textContent = msg;
+      box.classList.remove("hidden");
+    }
+  }
+
+  async function uploadCover(file) {
+    const root = document.getElementById("cm-root");
+    if (!root) return;
+
+    const form = document.getElementById("cm-cover-form");
+    if (!form) return;
+
+    showCoverErr(null);
+
+    const fd = new FormData(form);
+    // garante o arquivo mesmo se o input não foi usado
+    fd.set("cover", file);
+
+    let r;
+    try {
+      r = await fetch(form.action, {
+        method: "POST",
+        credentials: "same-origin",
+        body: fd,
+        headers: {
+          "X-CSRFToken": form.querySelector('[name=csrfmiddlewaretoken]')?.value || ""
+        }
+      });
+    } catch (e) {
+      showCoverErr("Falha de rede ao enviar a capa.");
+      return;
+    }
+
+    if (!r.ok) {
+      const t = await r.text().catch(() => "");
+      showCoverErr(t || `Não foi possível salvar a capa (HTTP ${r.status}).`);
+      return;
+    }
+
+    const html = await r.text();
+    const modalBody = document.getElementById("modal-body");
+    if (modalBody) modalBody.innerHTML = html;
+
+    // reinit modal (CM + bindings)
+    if (typeof window.initCardModal === "function") window.initCardModal();
+  }
+
+  // Botão "Escolher imagem…"
+  document.body.addEventListener("click", (e) => {
+    const btn = e.target.closest("#cm-cover-pick-btn");
+    if (!btn) return;
+
+    const inp = document.getElementById("cm-cover-file");
+    if (inp) inp.click();
+  });
+
+  // Upload via file picker
+  document.body.addEventListener("change", (e) => {
+    const inp = e.target.closest("#cm-cover-file");
+    if (!inp) return;
+
+    const file = inp.files?.[0];
+    if (!file) return;
+
+    uploadCover(file);
+    inp.value = "";
+  });
+
+  // Paste (Ctrl+V) na aba Descrição -> vira capa
+  document.body.addEventListener("paste", (e) => {
+    const root = document.getElementById("cm-root");
+    if (!root) return;
+
+    // só quando estiver na aba "desc"
+    const active = root.dataset.cmActive || "desc";
+    if (active !== "desc") return;
+
+    const cd = e.clipboardData;
+    if (!cd?.items?.length) return;
+
+    const imgItem = Array.from(cd.items).find(
+      (it) => it.kind === "file" && (it.type || "").startsWith("image/")
+    );
+    if (!imgItem) return;
+
+    const file = imgItem.getAsFile();
+    if (!file) return;
+
+    e.preventDefault();
+    uploadCover(file);
+  });
+}
+
+
+
 function cmBoot(body) {
   const root = cmGetRoot(body);
   if (!root) return;
@@ -387,7 +494,10 @@ function cmBoot(body) {
 
   cmInstallAttachmentErrorsOnce();
   cmInstallActivityErrorsOnce();
+
+  cmInstallCoverPasteAndUploadOnce();
 }
+
 
 // =====================================================
 // Abrir / Fechar modal

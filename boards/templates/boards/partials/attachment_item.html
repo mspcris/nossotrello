@@ -5,12 +5,12 @@
     <a href="{{ attachment.file.url }}"
        target="_blank"
        class="text-blue-600 font-medium hover:underline text-sm break-words">
-      {{ attachment.file.name|cut:"attachments/" }}
+      {{ attachment.file.name|cut:"attachments/"|cut:"quill/" }}
     </a>
 
     {% if attachment.description %}
       <div class="mt-1 text-xs text-gray-700 dark:text-slate-200 break-words">
-        {{ attachment.description }}
+        {{ attachment.description }}''
       </div>
     {% endif %}
 
