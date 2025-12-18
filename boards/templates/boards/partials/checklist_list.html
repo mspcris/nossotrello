@@ -57,14 +57,22 @@
           {% endif %}
         {% endwith %}
 
+
+
+
+        
         <!-- itens (draggable container) -->
-        <div class="checklist-items space-y-1" data-checklist-id="{{ checklist.id }}">
-          {% for item in checklist.items.all %}
-            {% include "boards/partials/checklist_item.html" %}
-          {% empty %}
-            <p class="checklist-empty">Nenhum item ainda.</p>
-          {% endfor %}
-        </div>
+            <ul class="checklist-items space-y-1" data-checklist-id="{{ checklist.id }}">
+
+  {% for item in checklist.items.all %}
+    {% include "boards/partials/checklist_item.html" with item=item checklist=checklist %}
+  {% empty %}
+    <li class="checklist-empty">Nenhum item ainda.</li>
+  {% endfor %}
+
+</ul>
+        <!-- fim itens -->
+        
 
         <!-- add item (UX estilo Trello) -->
         <div class="checklist-add">

@@ -964,6 +964,172 @@ html.dark #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-
   margin-top: 1px;
 }
 
+
+
+/* =======================================================================
+   CHECKLIST — UX FIX (sem mexer em JS/back)
+   Objetivos:
+   - alinhamento consistente (handle/checkbox/botão)
+   - texto quebra linha e não empurra ações
+   - container não “estoura” no modal
+   ======================================================================= */
+
+#card-modal-root #checklist-list,
+#card-modal-root .checklists-container{
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* bloco do checklist */
+#card-modal-root .checklist-block{
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+#card-modal-root .checklist-head{
+  width: 100%;
+  min-width: 0;
+  gap: 10px;
+}
+
+/* título do checklist (input) não pode estourar */
+#card-modal-root .checklist-title{
+  min-width: 0;
+  width: 100%;
+}
+
+/* lista de itens */
+#card-modal-root .checklist-items{
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  padding-left: 0;
+  margin: 0;
+  list-style: none;
+}
+
+/* item */
+#card-modal-root .checklist-item{
+  display: flex;
+  align-items: flex-start; /* importante p/ multi-linha */
+  gap: 10px;
+
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+
+  padding: 6px 4px;
+}
+
+/* handle fixo */
+#card-modal-root .checklist-item-handle{
+  flex: 0 0 18px;
+  width: 18px;
+  text-align: center;
+  line-height: 1;
+  user-select: none;
+}
+
+/* checkbox fixo */
+#card-modal-root .checklist-item input[type="checkbox"]{
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px; /* alinha com primeira linha do texto */
+}
+
+/* texto quebra e não empurra botão */
+#card-modal-root .checklist-item .checklist-item-text,
+#card-modal-root .checklist-item span,
+#card-modal-root .checklist-item input[type="text"]{
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+}
+
+/* botão remover com largura fixa */
+#card-modal-root .checklist-item .checklist-item-remove,
+#card-modal-root .checklist-item button{
+  flex: 0 0 80px;
+  width: 80px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+
+/* CHECKLIST — alinhar tudo à esquerda (override final) */
+#card-modal-root #checklist-list,
+#card-modal-root .checklists-container,
+#card-modal-root .checklist-block,
+#card-modal-root .checklist-items{
+  text-align: left !important;
+  justify-content: flex-start !important;
+}
+
+/* remove indent/padding “padrão” que costuma centralizar/afastar */
+#card-modal-root .checklist-block{
+  padding-left: 0 !important;
+}
+
+#card-modal-root .checklist-items{
+  padding-left: 0 !important;
+  margin-left: 0 !important;
+}
+
+/* garante que cada linha começa no começo */
+#card-modal-root .checklist-item{
+  justify-content: flex-start !important;
+  padding-left: 0 !important;
+}
+
+/* se algum wrapper estiver dando “respiro” extra na esquerda */
+#card-modal-root .checklist-items .checklist-item-handle{
+  margin-left: 0 !important;
+}
+
+
+
+
+/* Se o painel do tab-check estiver com padding grande */
+#card-modal-root #card-tab-check{
+  padding-left: 0 !important;
+}
+
+/* CHECKLIST — força stack à esquerda (mata centralização herdada) */
+#card-modal-root .checklist-items{
+  display: block !important;          /* se algum flex estiver herdado */
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* cada linha ocupa a largura total e não fica “mx-auto” */
+#card-modal-root .checklist-item{
+  width: 100% !important;
+  max-width: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  align-self: stretch !important;     /* se o pai for flex-column */
+  justify-content: flex-start !important;
+}
+
+/* se algum wrapper acima estiver centrando por flex, estica tudo */
+#card-modal-root .checklist-block,
+#card-modal-root #checklist-list{
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+}
+
+#card-modal-root #cm-root .cm-card{
+  align-items: stretch !important;
+}
+
+
 /* =======================================================================
    FIM DO BASE.CSS CONSOLIDADO
    ======================================================================= */
