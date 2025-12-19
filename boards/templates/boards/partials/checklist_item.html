@@ -1,5 +1,6 @@
-<li class="checklist-item flex items-center gap-3 py-2 px-1"
+<li class="checklist-item {% if item.is_done %}is-done{% endif %}"
     data-item-id="{{ item.id }}">
+
 
   <!-- DRAG HANDLE -->
   <span class="checklist-item-handle cursor-grab select-none text-gray-400">
@@ -7,12 +8,11 @@
   </span>
 
   <!-- CHECKBOX -->
-  <input type="checkbox"
-         {% if item.done %}checked{% endif %}
-         hx-post="{% url 'boards:checklist_toggle_item' item.id %}"
-         hx-target="#checklist-list"
-         hx-swap="innerHTML"
-         class="shrink-0">
+<input type="checkbox"
+       {% if item.is_done %}checked{% endif %}
+       hx-post="{% url 'boards:checklist_toggle_item' item.id %}"
+       hx-target="#checklist-list"
+       hx-swap="innerHTML">
 
   <!-- TEXTO -->
   <span class="flex-1 text-sm leading-snug break-words">

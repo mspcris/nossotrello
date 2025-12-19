@@ -2,6 +2,7 @@
 
 import json
 
+from django.db.models import Count, Q, Prefetch
 from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_POST, require_http_methods
@@ -36,9 +37,15 @@ def _card_checklists_qs(card: Card):
             total=Count("items"),
             done=Count("items", filter=Q(items__is_done=True)),
         )
-        .prefetch_related("items")
+        .prefetch_related(
+            Prefetch(
+                "items",
+                queryset=ChecklistItem.objects.order_by("is_done", "position", "id"),
+            )
+        )
         .order_by("position", "created_at")
     )
+
 
 
 # ==========================================================
@@ -157,7 +164,11 @@ def checklist_add(request, card_id):
     checklist = Checklist.objects.create(card=card, title=title, position=position)
 
     _log_card(card, request, f"<p><strong>{actor}</strong> criou a checklist <strong>{checklist.title}</strong>.</p>")
-    return render(request, "boards/partials/checklist_list.html", {"card": card})
+    return render(request, "boards/partials/checklist_list.html", {
+    "checklists": _card_checklists_qs(card),
+    "card": card,
+})
+
 
 
 @login_required
@@ -179,7 +190,12 @@ def checklist_rename(request, checklist_id):
     checklist.save(update_fields=["title"])
 
     _log_card(card, request, f"<p><strong>{actor}</strong> renomeou a checklist de <strong>{old_title}</strong> para <strong>{title}</strong>.</p>")
-    return render(request, "boards/partials/checklist_list.html", {"card": card})
+    return render(request, "boards/partials/checklist_list.html", {
+    "checklists": _card_checklists_qs(card),
+    "card": card,
+})
+
+
 
 
 @login_required
@@ -201,7 +217,12 @@ def checklist_delete(request, checklist_id):
             c.save(update_fields=["position"])
 
     _log_card(card, request, f"<p><strong>{actor}</strong> excluiu a checklist <strong>{title}</strong>.</p>")
-    return render(request, "boards/partials/checklist_list.html", {"card": card})
+    return render(request, "boards/partials/checklist_list.html", {
+    "checklists": _card_checklists_qs(card),
+    "card": card,
+})
+
+
 
 
 @login_required
@@ -222,7 +243,12 @@ def checklist_add_item(request, checklist_id):
     item = ChecklistItem.objects.create(card=card, checklist=checklist, text=text, position=position)
 
     _log_card(card, request, f"<p><strong>{actor}</strong> adicionou item na checklist <strong>{checklist.title}</strong>: {item.text}.</p>")
-    return render(request, "boards/partials/checklist_list.html", {"card": card})
+    return render(request, "boards/partials/checklist_list.html", {
+    "checklists": _card_checklists_qs(card),
+    "card": card,
+})
+
+
 
 
 @login_required
@@ -242,7 +268,12 @@ def checklist_toggle_item(request, item_id):
     status = "concluiu" if item.is_done else "reabriu"
     _log_card(card, request, f"<p><strong>{actor}</strong> {status} um item da checklist: {item.text}.</p>")
 
-    return render(request, "boards/partials/checklist_item.html", {"item": item})
+    return render(request, "boards/partials/checklist_list.html", {
+    "checklists": _card_checklists_qs(card),
+    "card": card,
+})
+
+
 
 
 @login_required
@@ -266,7 +297,12 @@ def checklist_delete_item(request, item_id):
                 it.save(update_fields=["position"])
 
     _log_card(card, request, f"<p><strong>{actor}</strong> excluiu um item da checklist: {text}.</p>")
-    return render(request, "boards/partials/checklist_list.html", {"card": card})
+    return render(request, "boards/partials/checklist_list.html", {
+    "checklists": _card_checklists_qs(card),
+    "card": card,
+})
+
+
 
 
 @login_required
@@ -288,7 +324,12 @@ def checklist_update_item(request, item_id):
     item.save(update_fields=["text"])
 
     _log_card(card, request, f"<p><strong>{actor}</strong> editou um item da checklist de {old} para {text}.</p>")
-    return render(request, "boards/partials/checklist_item.html", {"item": item})
+    return render(request, "boards/partials/checklist_list.html", {
+    "checklists": _card_checklists_qs(card),
+    "card": card,
+})
+
+
 
 
 # ==========================================================
@@ -310,7 +351,12 @@ def checklist_move(request, checklist_id):
 
     checklists = list(card.checklists.order_by("position", "created_at"))
     if not checklists:
-        return render(request, "boards/partials/checklist_list.html", {"card": card})
+        return render(request, "boards/partials/checklist_list.html", {
+    "checklists": _card_checklists_qs(card),
+    "card": card,
+})
+
+
 
     try:
         current_index = next(i for i, c in enumerate(checklists) if c.id == checklist.id)
@@ -345,7 +391,12 @@ def checklist_move(request, checklist_id):
         actor = _actor_label(request)
         _log_card(card, request, f"<p><strong>{actor}</strong> reordenou checklists (legado).</p>")
 
-    return render(request, "boards/partials/checklist_list.html", {"card": card})
+    return render(request, "boards/partials/checklist_list.html", {
+    "checklists": _card_checklists_qs(card),
+    "card": card,
+})
+
+
 
 
 @login_required
@@ -382,7 +433,12 @@ def _checklist_move_item_delta(request, item_id, delta: int):
 
     new_idx = idx + delta
     if new_idx < 0 or new_idx >= len(items):
-        return render(request, "boards/partials/checklist_list.html", {"card": card})
+        return render(request, "boards/partials/checklist_list.html", {
+    "checklists": _card_checklists_qs(card),
+    "card": card,
+})
+
+
 
     a = items[idx]
     b = items[new_idx]
@@ -398,4 +454,9 @@ def _checklist_move_item_delta(request, item_id, delta: int):
     actor = _actor_label(request)
     _log_card(card, request, f"<p><strong>{actor}</strong> reordenou item de checklist (legado).</p>")
 
-    return render(request, "boards/partials/checklist_list.html", {"card": card})
+    return render(request, "boards/partials/checklist_list.html", {
+    "checklists": _card_checklists_qs(card),
+    "card": card,
+})
+
+

@@ -964,6 +964,92 @@ html.dark #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-
   margin-top: 1px;
 }
 
+
+
+
+/* =======================================================================
+   CHECKLIST — layout robusto (GRID) / fonte única de verdade
+   ======================================================================= */
+
+#card-modal-root #checklist-list,
+#card-modal-root .checklists-container,
+#card-modal-root .checklist-block,
+#card-modal-root .checklist-head,
+#card-modal-root .checklist-items{
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+#card-modal-root .checklist-items{
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* linha do item: handle | checkbox | texto | ações */
+#card-modal-root .checklist-item{
+  display: grid;
+  grid-template-columns: 18px 16px minmax(0, 1fr) auto;
+  column-gap: 10px;
+  align-items: start;
+
+  padding: 6px 0;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* handle */
+#card-modal-root .checklist-item-handle{
+  width: 18px;
+  text-align: center;
+  line-height: 1;
+  user-select: none;
+}
+
+/* checkbox */
+#card-modal-root .checklist-item input[type="checkbox"]{
+  width: 16px;
+  height: 16px;
+  margin-top: 2px; /* alinha com a 1ª linha do texto */
+}
+
+/* texto */
+#card-modal-root .checklist-item-text{
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+}
+
+/* botão remover (não “espanca” outros botões) */
+#card-modal-root .checklist-item-remove{
+  justify-self: end;
+  white-space: nowrap;
+}
+
+
+/* =========================
+   CHECKLIST — item concluído
+   ========================= */
+
+#card-modal-root .checklist-item.is-done {
+  opacity: 0.6;
+}
+
+#card-modal-root .checklist-item.is-done .checklist-item-text {
+  text-decoration: line-through;
+}
+
+/* checkbox não “afunda” visualmente */
+#card-modal-root .checklist-item.is-done input[type="checkbox"] {
+  opacity: 1;
+}
+
+#card-modal-root .checklist-item {
+  transition: opacity .15s ease, background .15s ease;
+}
+
 /* =======================================================================
    FIM DO BASE.CSS CONSOLIDADO
    ======================================================================= */
