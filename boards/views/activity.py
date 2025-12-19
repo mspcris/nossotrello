@@ -13,6 +13,9 @@ from .helpers import (
     _log_card,
     _save_base64_images_to_media,
     _ensure_attachments_and_activity_for_images,
+    _extract_media_image_paths,
+    _ensure_attachments_and_activity_for_images,
+    _actor_label,
     Card,
     CardAttachment,
 )
@@ -52,14 +55,17 @@ def add_activity(request, card_id):
     )
 
     # BUGFIX: antes chamava ensure_attachments_and_activity_for_images (não existe)
-    if saved_paths:
+    referenced_paths = _extract_media_image_paths(html or "", folder="quill")
+    all_paths = list(dict.fromkeys((saved_paths or []) + (referenced_paths or [])))
+
+    if all_paths:
         _ensure_attachments_and_activity_for_images(
-            card=card,
-            request=request,
-            relative_paths=saved_paths,
-            actor=actor,
-            context_label="atividade",
-        )
+        card=card,
+        request=request,
+        relative_paths=all_paths,
+        actor=_actor_label(request),
+        context_label="atividade",
+    )
 
     # garante anexos também para imagens já existentes em /media/quill/
     img_urls = re.findall(r'src=(["\'])([^"\']+)\1', html, flags=re.IGNORECASE)

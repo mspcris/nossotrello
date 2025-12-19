@@ -1,5 +1,7 @@
+#/boards/urls.py
 from django.urls import path
 from . import views
+from .views import cards
 
 app_name = "boards"
 
@@ -26,7 +28,10 @@ urlpatterns = [
     # imagem principal do board
     path("board/<int:board_id>/image/", views.update_board_image, name="update_board_image"),
     path("board/<int:board_id>/image/remove/", views.remove_board_image, name="remove_board_image"),
-    path("card/<int:card_id>/cover/set/", views.set_card_cover, name="set_card_cover"),
+
+    path("card/<int:card_id>/cover/set/", cards.set_card_cover, name="set_card_cover"),
+    path("card/<int:card_id>/cover/remove/", cards.remove_card_cover, name="remove_card_cover"),
+
 
     # criar board
     path("board/add/", views.add_board, name="add_board"),
@@ -69,8 +74,6 @@ urlpatterns = [
 
     path("card/<int:card_id>/snippet/", views.card_snippet, name="card_snippet"),
     path("card/<int:card_id>/remove_tag/", views.remove_tag, name="remove_tag"),
-    path("card/<int:card_id>/cover/set/", views.set_card_cover, name="set_card_cover"),
-    path("card/<int:card_id>/cover/remove/", views.remove_card_cover, name="remove_card_cover"),
 
     # arrastar/mover card
     path("move-card/", views.move_card, name="move_card"),

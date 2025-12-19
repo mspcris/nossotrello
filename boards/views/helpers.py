@@ -19,6 +19,7 @@ from django.db import transaction
 from django.db.models import Count, Q
 from django.urls import reverse
 
+
 from ..forms import ColumnForm, CardForm, BoardForm
 from ..models import (
     Board,
@@ -229,6 +230,55 @@ def _ensure_attachments_and_activity_for_images(
     except Exception:
         pass
 
+
+
+
+# ======================================================================
+# Save e disponibilizar de imagens do HTML (quill)
+# ======================================================================
+
+
+
+def _extract_media_image_paths(html: str, folder: str = "quill") -> list[str]:
+    """
+    Extrai paths relativos (ex: 'quill/abc.png') de <img src="/media/...">.
+    Filtra apenas os que começam com '{folder}/'.
+    """
+    if not html:
+        return []
+
+    media_url = (getattr(settings, "MEDIA_URL", "/media/") or "/media/").rstrip("/") + "/"
+    # pega src="..."
+    srcs = re.findall(r'<img[^>]+src=["\']([^"\']+)["\']', html, flags=re.IGNORECASE)
+
+    rels = []
+    for src in srcs:
+        if not src:
+            continue
+
+        # normaliza: aceita "/media/..." e também "http(s)://.../media/..."
+        idx = src.find(media_url)
+        if idx == -1:
+            continue
+
+        rel = src[idx + len(media_url):].lstrip("/")
+        if not rel:
+            continue
+
+        if folder and not rel.startswith(folder.rstrip("/") + "/"):
+            continue
+
+        rels.append(rel)
+
+    # dedupe preservando ordem
+    seen = set()
+    out = []
+    for r in rels:
+        if r in seen:
+            continue
+        seen.add(r)
+        out.append(r)
+    return out
 
 # ======================================================================
 # Permissões (board)
