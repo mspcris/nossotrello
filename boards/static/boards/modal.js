@@ -62,17 +62,32 @@ function initCmModal(body) {
   const panels = Array.from(root.querySelectorAll("[data-cm-panel]"));
   if (!tabs.length || !panels.length) return;
 
+  const saveBtn = root.querySelector("#cm-save-btn");
+  const form = root.querySelector("#cm-main-form");
+
+  function setSaveVisibility(activeName) {
+    const shouldShowSave = (activeName === "desc" || activeName === "tags");
+    if (!saveBtn) return;
+
+    saveBtn.classList.toggle("hidden", !shouldShowSave);
+    saveBtn.style.display = shouldShowSave ? "" : "none";
+    saveBtn.disabled = !shouldShowSave;
+  }
+
   function activate(name) {
     root.dataset.cmActive = name;
+
     tabs.forEach((b) =>
       b.classList.toggle("is-active", b.getAttribute("data-cm-tab") === name)
     );
     panels.forEach((p) =>
       p.classList.toggle("is-active", p.getAttribute("data-cm-panel") === name)
     );
+
+    setSaveVisibility(name);
   }
 
-  // bind 1x
+  // bind tabs 1x
   tabs.forEach((b) => {
     if (b.dataset.cmBound === "1") return;
     b.dataset.cmBound = "1";
@@ -86,12 +101,13 @@ function initCmModal(body) {
   // default: último aberto, senão desc
   activate(sessionStorage.getItem("cmActiveTab") || "desc");
 
-  // botão salvar do CM (se existir)
-  const saveBtn = root.querySelector("#cm-save-btn");
-  const form = root.querySelector("#cm-main-form");
+  // botão salvar do CM (bind 1x)
   if (saveBtn && form && saveBtn.dataset.cmBound !== "1") {
     saveBtn.dataset.cmBound = "1";
     saveBtn.addEventListener("click", () => {
+      const active = root.dataset.cmActive || "desc";
+      if (active !== "desc" && active !== "tags") return;
+
       try {
         form.requestSubmit();
       } catch (e) {
@@ -100,6 +116,7 @@ function initCmModal(body) {
     });
   }
 }
+
 
 // =====================================================
 // CM modal — extras (cores de tags + erros anexos/atividade)
