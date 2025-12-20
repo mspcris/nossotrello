@@ -66,7 +66,7 @@ function initCmModal(body) {
   const form = root.querySelector("#cm-main-form");
 
   function setSaveVisibility(activeName) {
-    const shouldShowSave = (activeName === "desc" || activeName === "tags");
+    const shouldShowSave = activeName === "desc" || activeName === "tags";
     if (!saveBtn) return;
 
     saveBtn.classList.toggle("hidden", !shouldShowSave);
@@ -91,7 +91,12 @@ function initCmModal(body) {
   tabs.forEach((b) => {
     if (b.dataset.cmBound === "1") return;
     b.dataset.cmBound = "1";
-    b.addEventListener("click", () => {
+
+    b.addEventListener("click", (ev) => {
+      // ✅ evita submit / navegação / clique vazar
+      ev.preventDefault();
+      ev.stopPropagation();
+
       const name = b.getAttribute("data-cm-tab");
       sessionStorage.setItem("cmActiveTab", name);
       activate(name);
@@ -116,7 +121,6 @@ function initCmModal(body) {
     });
   }
 }
-
 
 // =====================================================
 // CM modal — extras (cores de tags + erros anexos/atividade)
@@ -177,7 +181,17 @@ function cmInitTagColorPicker(root) {
   const inpTag = root.querySelector("#cm-tag-color-tag");
   const inpCol = root.querySelector("#cm-tag-color-value");
 
-  if (!wrap || !picker || !pop || !save || !cancel || !form || !inpTag || !inpCol) return;
+  if (
+    !wrap ||
+    !picker ||
+    !pop ||
+    !save ||
+    !cancel ||
+    !form ||
+    !inpTag ||
+    !inpCol
+  )
+    return;
 
   let currentBtn = null;
 
@@ -197,15 +211,15 @@ function cmInitTagColorPicker(root) {
 
     picker.value = colors[tag] || "#3b82f6";
 
-const mb = document.getElementById("modal-body");
-const mbRect = mb?.getBoundingClientRect() || { top: 0, left: 0 };
+    const mb = document.getElementById("modal-body");
+    const mbRect = mb?.getBoundingClientRect() || { top: 0, left: 0 };
 
-const rect = btn.getBoundingClientRect();
-const top  = (rect.bottom - mbRect.top) + (mb?.scrollTop || 0);
-const left = (rect.left   - mbRect.left) + (mb?.scrollLeft || 0);
+    const rect = btn.getBoundingClientRect();
+    const top = rect.bottom - mbRect.top + (mb?.scrollTop || 0);
+    const left = rect.left - mbRect.left + (mb?.scrollLeft || 0);
 
-pop.style.top  = top  + "px";
-pop.style.left = left + "px";
+    pop.style.top = top + "px";
+    pop.style.left = left + "px";
 
     pop.classList.remove("hidden");
   });
@@ -266,7 +280,6 @@ pop.style.left = left + "px";
 
         applyBoardTagColorsNow();
 
-
         // rebind seguro (novo HTML)
         const rootNow = document.getElementById("cm-root");
         cmEnsureTagColorsState(rootNow);
@@ -281,9 +294,15 @@ function cmInstallAttachmentErrorsOnce() {
   if (document.body.dataset.cmAttachErrBound === "1") return;
   document.body.dataset.cmAttachErrBound = "1";
 
-  function getRoot() { return document.getElementById("cm-root"); }
-  function fileEl(root) { return root?.querySelector?.("#attachment-file"); }
-  function descEl(root) { return root?.querySelector?.("#attachment-desc"); }
+  function getRoot() {
+    return document.getElementById("cm-root");
+  }
+  function fileEl(root) {
+    return root?.querySelector?.("#attachment-file");
+  }
+  function descEl(root) {
+    return root?.querySelector?.("#attachment-desc");
+  }
 
   function showErr(root, msg) {
     const box = root?.querySelector?.("#attachments-error");
@@ -309,7 +328,13 @@ function cmInstallAttachmentErrorsOnce() {
   document.body.addEventListener("htmx:beforeRequest", function (evt) {
     const root = getRoot();
     const elt = evt.detail?.elt;
-    if (!root || !elt || !elt.matches?.("#attachment-file") || !root.contains(elt)) return;
+    if (
+      !root ||
+      !elt ||
+      !elt.matches?.("#attachment-file") ||
+      !root.contains(elt)
+    )
+      return;
 
     root.dataset.cmUploading = "1";
     root.dataset.cmLastAttachmentDesc = (descEl(root)?.value || "").trim();
@@ -345,10 +370,19 @@ function cmInstallAttachmentErrorsOnce() {
     const root = getRoot();
     const elt = evt.detail?.elt;
     const xhr = evt.detail?.xhr;
-    if (!root || !elt || !elt.matches?.("#attachment-file") || !root.contains(elt)) return;
+    if (
+      !root ||
+      !elt ||
+      !elt.matches?.("#attachment-file") ||
+      !root.contains(elt)
+    )
+      return;
 
     if (xhr && xhr.status === 413) {
-      showErr(root, "Arquivo acima de 50MB. O limite de anexo é 50MB. Comprima o arquivo ou envie um link (Drive/Dropbox) e tente novamente.");
+      showErr(
+        root,
+        "Arquivo acima de 50MB. O limite de anexo é 50MB. Comprima o arquivo ou envie um link (Drive/Dropbox) e tente novamente."
+      );
     } else {
       showErr(root, "Não foi possível enviar o anexo agora. Tente novamente.");
     }
@@ -362,7 +396,13 @@ function cmInstallAttachmentErrorsOnce() {
     const root = getRoot();
     const elt = evt.detail?.elt;
     const xhr = evt.detail?.xhr;
-    if (!root || !elt || !elt.matches?.("#attachment-file") || !root.contains(elt)) return;
+    if (
+      !root ||
+      !elt ||
+      !elt.matches?.("#attachment-file") ||
+      !root.contains(elt)
+    )
+      return;
 
     if (xhr && xhr.status >= 200 && xhr.status < 300) {
       resetFields(root);
@@ -386,14 +426,17 @@ function cmInstallActivityErrorsOnce() {
     const box = document.getElementById("activity-error");
     if (box) {
       box.textContent =
-        (xhr && xhr.responseText) ? xhr.responseText : "Não foi possível incluir a atividade.";
+        xhr && xhr.responseText
+          ? xhr.responseText
+          : "Não foi possível incluir a atividade.";
       box.classList.remove("hidden");
     }
 
-    try { elt.reset(); } catch (e) {}
+    try {
+      elt.reset();
+    } catch (e) {}
   });
 }
-
 
 function cmInstallCoverPasteAndUploadOnce() {
   if (document.body.dataset.cmCoverBound === "1") return;
@@ -411,17 +454,82 @@ function cmInstallCoverPasteAndUploadOnce() {
     }
   }
 
+  function getRoot() {
+    return document.getElementById("cm-root");
+  }
+
+  function getCoverForm(root) {
+    if (!root) return null;
+    return (
+      root.querySelector("#cm-cover-form") ||
+      root.querySelector('form[data-cm-cover-form]') ||
+      root.querySelector('form[action*="cover"]') ||
+      null
+    );
+  }
+
+  function getCoverInput(root) {
+    if (!root) return null;
+    // tenta pelo id primeiro, depois por name, depois por tipo
+    return (
+      root.querySelector("#cm-cover-file") ||
+      root.querySelector('input[name="cover"][type="file"]') ||
+      root.querySelector('input[type="file"][accept*="image"]') ||
+      root.querySelector('input[type="file"]') ||
+      null
+    );
+  }
+
+  function isPastingInsideQuill(e) {
+    const ae = document.activeElement;
+    if (
+      ae &&
+      ae.closest &&
+      ae.closest(".ql-editor, .ql-container, #quill-editor, #quill-editor-ativ, #cm-quill-editor-ativ")
+    ) {
+      return true;
+    }
+
+    const t = e.target;
+    if (
+      t &&
+      t.closest &&
+      t.closest(".ql-editor, .ql-container, #quill-editor, #quill-editor-ativ")
+    ) {
+      return true;
+    }
+
+    const path = typeof e.composedPath === "function" ? e.composedPath() : [];
+    if (
+      path &&
+      path.some(
+        (n) =>
+          n &&
+          n.classList &&
+          (n.classList.contains("ql-editor") ||
+            n.classList.contains("ql-container"))
+      )
+    ) {
+      return true;
+    }
+
+    return false;
+  }
+
   async function uploadCover(file) {
-    const root = document.getElementById("cm-root");
+    const root = getRoot();
     if (!root) return;
 
-    const form = document.getElementById("cm-cover-form");
-    if (!form) return;
+    const form = getCoverForm(root);
+    if (!form) {
+      console.warn("[cover] form não encontrado dentro de #cm-root");
+      return;
+    }
 
     showCoverErr(null);
 
     const fd = new FormData(form);
-    // garante o arquivo mesmo se o input não foi usado
+    // garante que o campo vai junto mesmo se o input tiver outro name
     fd.set("cover", file);
 
     let r;
@@ -431,8 +539,9 @@ function cmInstallCoverPasteAndUploadOnce() {
         credentials: "same-origin",
         body: fd,
         headers: {
-          "X-CSRFToken": form.querySelector('[name=csrfmiddlewaretoken]')?.value || ""
-        }
+          "X-CSRFToken":
+            form.querySelector('[name=csrfmiddlewaretoken]')?.value || "",
+        },
       });
     } catch (e) {
       showCoverErr("Falha de rede ao enviar a capa.");
@@ -449,57 +558,100 @@ function cmInstallCoverPasteAndUploadOnce() {
     const modalBody = document.getElementById("modal-body");
     if (modalBody) modalBody.innerHTML = html;
 
-    // reinit modal (CM + bindings)
     if (typeof window.initCardModal === "function") window.initCardModal();
   }
 
-  // Botão "Escolher imagem…"
-  document.body.addEventListener("click", (e) => {
-    const btn = e.target.closest("#cm-cover-pick-btn");
-    if (!btn) return;
+  // 1) Clique no botão/label “Escolher imagem…”
+  // - capture=true pra pegar mesmo se alguém parar a propagação
+  document.body.addEventListener(
+    "click",
+    (e) => {
+      const root = getRoot();
+      if (!root) return;
 
-    const inp = document.getElementById("cm-cover-file");
-    if (inp) inp.click();
-  });
+      // pega por id OU por atributos mais genéricos
+      const pick =
+        e.target.closest("#cm-cover-pick-btn") ||
+        e.target.closest("[data-cm-cover-pick]") ||
+        e.target.closest(".cm-cover-pick");
 
-  // Upload via file picker
-  document.body.addEventListener("change", (e) => {
-    const inp = e.target.closest("#cm-cover-file");
-    if (!inp) return;
+      if (!pick) return;
 
-    const file = inp.files?.[0];
-    if (!file) return;
+      console.log("[cover] clique em escolher imagem detectado");
 
-    uploadCover(file);
-    inp.value = "";
-  });
+      const inp = getCoverInput(root);
+      if (!inp) {
+        console.warn("[cover] input file não encontrado");
+        return;
+      }
 
-  // Paste (Ctrl+V) na aba Descrição -> vira capa
-  document.body.addEventListener("paste", (e) => {
-    const root = document.getElementById("cm-root");
-    if (!root) return;
+      // alguns browsers exigem que o click aconteça no mesmo callstack do gesto do usuário
+      inp.click();
+    },
+    true
+  );
 
-    // só quando estiver na aba "desc"
-    const active = root.dataset.cmActive || "desc";
-    if (active !== "desc") return;
+  // 2) Selecionou no file picker
+  document.body.addEventListener(
+    "change",
+    (e) => {
+      const root = getRoot();
+      if (!root) return;
 
-    const cd = e.clipboardData;
-    if (!cd?.items?.length) return;
+      const inp = e.target;
+      if (!inp) return;
 
-    const imgItem = Array.from(cd.items).find(
-      (it) => it.kind === "file" && (it.type || "").startsWith("image/")
-    );
-    if (!imgItem) return;
+      const isCoverInput =
+        inp.matches?.("#cm-cover-file") ||
+        inp.matches?.('input[name="cover"][type="file"]') ||
+        (inp.type === "file" && root.contains(inp));
 
-    const file = imgItem.getAsFile();
-    if (!file) return;
+      if (!isCoverInput) return;
 
-    e.preventDefault();
-    uploadCover(file);
-  });
+      const file = inp.files?.[0];
+      console.log("[cover] change file detectado", file?.name, file?.type);
+
+      if (!file) return;
+
+      uploadCover(file);
+      try {
+        inp.value = "";
+      } catch (err) {}
+    },
+    true
+  );
+
+  // 3) Ctrl+V (fora do Quill) na aba desc: vira capa
+  document.body.addEventListener(
+    "paste",
+    (e) => {
+      const root = getRoot();
+      if (!root) return;
+
+      const active = root.dataset.cmActive || "desc";
+      if (active !== "desc") return;
+
+      if (isPastingInsideQuill(e)) return;
+
+      const cd = e.clipboardData;
+      if (!cd?.items?.length) return;
+
+      const imgItem = Array.from(cd.items).find(
+        (it) => it.kind === "file" && (it.type || "").startsWith("image/")
+      );
+      if (!imgItem) return;
+
+      const file = imgItem.getAsFile();
+      console.log("[cover] paste imagem detectado", file?.name, file?.type);
+
+      if (!file) return;
+
+      e.preventDefault();
+      uploadCover(file);
+    },
+    true
+  );
 }
-
-
 
 function cmBoot(body) {
   const root = cmGetRoot(body);
@@ -514,7 +666,6 @@ function cmBoot(body) {
 
   cmInstallCoverPasteAndUploadOnce();
 }
-
 
 // =====================================================
 // Abrir / Fechar modal
@@ -565,8 +716,6 @@ window.refreshCardSnippet = function (cardId) {
     swap: "outerHTML",
   });
 };
-
-
 
 // =====================================================
 // Savebar helpers
@@ -719,18 +868,40 @@ function bindDelegatedDirtyTracking() {
 }
 
 // =====================================================
-// Inicializa Quill da descrição
+// ✅ CORREÇÃO: Inicializa Quill da descrição (evita initQuillDesc is not defined)
+// - tenta IDs comuns (#quill-editor / #quill-editor-desc) e hidden comuns
+// - sincroniza HTML -> hidden; marca dirty ao editar; suporta paste de imagens
 // =====================================================
 function initQuillDesc(body) {
-  const hiddenDesc = qs("#description-input", body);
-  const quillDescEl = qs("#quill-editor", body);
+  if (!body) return;
 
-  if (!hiddenDesc || !quillDescEl) return;
+  const quillEl =
+    qs("#quill-editor", body) ||
+    qs("#quill-editor-desc", body) ||
+    qs("[data-quill-desc]", body);
 
-  if (quillDescEl.dataset.quillReady === "1") return;
-  quillDescEl.dataset.quillReady = "1";
+  if (!quillEl) return;
 
-  quillDesc = new Quill("#quill-editor", {
+  if (quillEl.dataset.quillReady === "1") return;
+  quillEl.dataset.quillReady = "1";
+
+  const hidden =
+    qs("#desc-input", body) ||
+    qs("#description-input", body) ||
+    qs('input[name="description"]', body) ||
+    qs('textarea[name="description"]', body) ||
+    qs('textarea[name="desc"]', body) ||
+    qs('input[name="desc"]', body);
+
+  const selector =
+    quillEl.id
+      ? `#${quillEl.id}`
+      : (() => {
+          quillEl.id = "quill-editor-desc";
+          return "#quill-editor-desc";
+        })();
+
+  quillDesc = new Quill(selector, {
     theme: "snow",
     modules: {
       toolbar: {
@@ -759,34 +930,194 @@ function initQuillDesc(body) {
     },
   });
 
-  quillDesc.root.innerHTML = hiddenDesc.value || "";
+  // carrega HTML inicial (se existir)
+  const initialHtml = (hidden?.value || "").trim();
+  if (initialHtml) {
+    quillDesc.root.innerHTML = initialHtml;
+  } else {
+    quillDesc.root.innerHTML = "";
+  }
 
+  // sync + dirty
   quillDesc.on("text-change", () => {
-    hiddenDesc.value = quillDesc.root.innerHTML;
+    if (hidden) hidden.value = quillDesc.root.innerHTML;
     markDirty();
   });
 
+  // paste: permite colar imagens como base64 (mantém texto normal se não tiver imagem)
   quillDesc.root.addEventListener("paste", (e) => {
     const cd = e.clipboardData;
     if (!cd?.items?.length) return;
 
-    const item = Array.from(cd.items).find(
-      (it) => it.kind === "file" && it.type?.startsWith("image/")
+    const imgItems = Array.from(cd.items).filter(
+      (it) => it.kind === "file" && (it.type || "").startsWith("image/")
     );
-    if (!item) return;
 
-    const file = item.getAsFile();
-    if (!file) return;
+    if (!imgItems.length) return;
 
     e.preventDefault();
-    insertBase64ImageIntoQuill(quillDesc, file);
+    imgItems.forEach((it) => {
+      const file = it.getAsFile();
+      if (file) insertBase64ImageIntoQuill(quillDesc, file);
+    });
   });
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // =====================================================
-// Inicializa Quill da atividade
+// Inicializa editor da atividade
+// - LEGADO: #quill-editor-ativ + #activity-input
+// - CM: textarea[name="content"] dentro do painel ativ (vira Quill e sincroniza)
 // =====================================================
 function initQuillAtividade(body) {
+  if (!body) return;
+
+  // -----------------------------
+  // 1) CM (novo modal: #cm-root)
+  // -----------------------------
+  const cmRoot = qs("#cm-root", body);
+  if (cmRoot) {
+    const ativPanel = cmRoot.querySelector('[data-cm-panel="ativ"]');
+    if (!ativPanel) return;
+
+    const form = ativPanel.querySelector('form[hx-post*="add_activity"], form');
+    const textarea = ativPanel.querySelector('textarea[name="content"]');
+
+    // Se não tem textarea, não há o que fazer
+    if (!form || !textarea) return;
+
+    // Evita reinicializar
+    if (textarea.dataset.cmQuillReady === "1") return;
+    textarea.dataset.cmQuillReady = "1";
+
+    // Cria o container do Quill antes do textarea
+    const host = document.createElement("div");
+    host.id = "cm-quill-editor-ativ";
+    host.className = "border rounded mb-2";
+    host.style.minHeight = "140px";
+
+    textarea.parentNode.insertBefore(host, textarea);
+
+    // Esconde o textarea (mas mantém no form para HTMX enviar)
+    textarea.style.display = "none";
+
+    const q = new Quill("#" + host.id, {
+      theme: "snow",
+      modules: {
+        toolbar: {
+          container: [
+            [{ header: [1, 2, 3, false] }],
+            ["bold", "italic", "underline"],
+            ["link", "image"],
+            [{ list: "ordered" }, { list: "bullet" }],
+          ],
+          handlers: {
+            image: function () {
+              const fileInput = document.createElement("input");
+              fileInput.type = "file";
+              fileInput.accept = "image/*";
+              fileInput.onchange = () => {
+                const file = fileInput.files?.[0];
+                if (!file) return;
+                insertBase64ImageIntoQuill(q, file);
+              };
+              fileInput.click();
+            },
+          },
+        },
+      },
+    });
+
+    // Foco/click mais previsível
+    try {
+      q.root.setAttribute("tabindex", "0");
+    } catch (e) {}
+
+    // Conteúdo inicial (se houver)
+    const initial = (textarea.value || "").trim();
+    q.root.innerHTML = initial || "";
+
+    // Sync do Quill -> textarea (para o HTMX enviar)
+    q.on("text-change", () => {
+      textarea.value = q.root.innerHTML;
+    });
+
+    // ✅ Paste de imagens (CAPTURE) no Quill do CM
+    const onPasteCmAtiv = (e) => {
+      const cd = e.clipboardData;
+      if (!cd?.items?.length) return;
+
+      const imgItems = Array.from(cd.items).filter(
+        (it) => it.kind === "file" && (it.type || "").startsWith("image/")
+      );
+      if (!imgItems.length) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      if (typeof e.stopImmediatePropagation === "function") {
+        e.stopImmediatePropagation();
+      }
+
+      imgItems.forEach((it) => {
+        const file = it.getAsFile();
+        if (file) insertBase64ImageIntoQuill(q, file);
+      });
+    };
+
+    // remove anterior, se reabrir modal
+    if (q.root.__onPasteCmAtiv) {
+      q.root.removeEventListener("paste", q.root.__onPasteCmAtiv, true);
+    }
+    q.root.__onPasteCmAtiv = onPasteCmAtiv;
+    q.root.addEventListener("paste", onPasteCmAtiv, true);
+
+    // Limpar: se o form for resetado pelo hx-on::after-request, também limpa o Quill
+    // (o seu form tem hx-on::after-request="this.reset()")
+    if (form.dataset.cmQuillResetBound !== "1") {
+      form.dataset.cmQuillResetBound = "1";
+      form.addEventListener("reset", () => {
+        try {
+          q.setText("");
+        } catch (e) {}
+        textarea.value = "";
+      });
+    }
+
+    return; // CM tratado; não continuar pro legado
+  }
+
+  // -----------------------------
+  // 2) LEGADO
+  // -----------------------------
   const activityHidden = qs("#activity-input", body);
   const quillAtivEl = qs("#quill-editor-ativ", body);
 
@@ -807,12 +1138,6 @@ function initQuillAtividade(body) {
         ],
         handlers: {
           image: function () {
-            const currentCount = htmlImageCount(quillAtiv?.root?.innerHTML || "");
-            if (currentCount >= 1) {
-              toastError("No momento, cada atividade aceita no máximo 1 imagem.");
-              return;
-            }
-
             const fileInput = document.createElement("input");
             fileInput.type = "file";
             fileInput.accept = "image/*";
@@ -837,28 +1162,49 @@ function initQuillAtividade(body) {
     activityHidden.value = quillAtiv.root.innerHTML;
   });
 
-  quillAtiv.root.addEventListener("paste", (e) => {
+  const onPasteAtiv = (e) => {
     const cd = e.clipboardData;
     if (!cd?.items?.length) return;
 
     const imgItems = Array.from(cd.items).filter(
-      (it) => it.kind === "file" && it.type?.startsWith("image/")
+      (it) => it.kind === "file" && (it.type || "").startsWith("image/")
     );
-
     if (!imgItems.length) return;
 
-    const currentCount = htmlImageCount(quillAtiv.root.innerHTML);
-    if (currentCount + imgItems.length > 1) {
-      e.preventDefault();
-      toastError("No momento, cada atividade aceita no máximo 1 imagem. Cole apenas uma.");
-      return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (typeof e.stopImmediatePropagation === "function") {
+      e.stopImmediatePropagation();
     }
 
-    e.preventDefault();
-    const file = imgItems[0].getAsFile();
-    if (file) insertBase64ImageIntoQuill(quillAtiv, file);
-  });
+    imgItems.forEach((it) => {
+      const file = it.getAsFile();
+      if (file) insertBase64ImageIntoQuill(quillAtiv, file);
+    });
+  };
+
+  if (quillAtiv.root.__onPasteAtiv) {
+    quillAtiv.root.removeEventListener(
+      "paste",
+      quillAtiv.root.__onPasteAtiv,
+      true
+    );
+  }
+  quillAtiv.root.__onPasteAtiv = onPasteAtiv;
+  quillAtiv.root.addEventListener("paste", onPasteAtiv, true);
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 // =====================================================
 // Atividade (sub-tabs): Nova atividade / Histórico / Mover Card
@@ -913,9 +1259,18 @@ function initAtivSubtabs3(body) {
   if (wrap.dataset.ativ3Ready === "1") return;
   wrap.dataset.ativ3Ready = "1";
 
-  if (rNew) rNew.addEventListener("change", () => { if (rNew.checked) show("new"); });
-  if (rHist) rHist.addEventListener("change", () => { if (rHist.checked) show("hist"); });
-  if (rMove) rMove.addEventListener("change", () => { if (rMove.checked) show("move"); });
+  if (rNew)
+    rNew.addEventListener("change", () => {
+      if (rNew.checked) show("new");
+    });
+  if (rHist)
+    rHist.addEventListener("change", () => {
+      if (rHist.checked) show("hist");
+    });
+  if (rMove)
+    rMove.addEventListener("change", () => {
+      if (rMove.checked) show("move");
+    });
 
   qsa(".ativ-subtab-btn", wrap).forEach((lbl) => {
     lbl.addEventListener("click", () => setTimeout(showFromChecked, 0));
@@ -931,14 +1286,17 @@ window.initCardModal = function () {
 
   const cmRoot = qs("#cm-root", body);
   const legacyRoot = qs("#card-modal-root", body) || qs("#card-modal-root");
-  const cid = cmRoot?.getAttribute?.("data-card-id") || legacyRoot?.getAttribute?.("data-card-id");
+  const cid =
+    cmRoot?.getAttribute?.("data-card-id") ||
+    legacyRoot?.getAttribute?.("data-card-id");
   if (cid) window.currentCardId = Number(cid);
-
 
   bindDelegatedDirtyTracking();
   clearDirty();
 
+  // ✅ agora existe (corrige o ReferenceError do console)
   initQuillDesc(body);
+
   initQuillAtividade(body);
   initAtivSubtabs3(body);
 
@@ -950,7 +1308,7 @@ window.initCardModal = function () {
 };
 
 // =====================================================
-// ABERTURA RADICAL DO MODAL + MOBILE 
+// ABERTURA RADICAL DO MODAL + MOBILE
 // =====================================================
 (function bindCardOpenRadical() {
   if (document.body.dataset.cardOpenRadicalBound === "1") return;
@@ -1048,7 +1406,6 @@ window.initCardModal = function () {
     true
   );
 })();
-
 
 // =====================================================
 // HTMX – após swap do modal-body
@@ -1157,7 +1514,9 @@ window.submitActivity = async function (cardId) {
 
   const imgCount = htmlImageCount(content);
   if (imgCount > 1) {
-    toastError("No momento, cada atividade aceita no máximo 1 imagem. Remova uma das imagens e tente novamente.");
+    toastError(
+      "No momento, cada atividade aceita no máximo 1 imagem. Remova uma das imagens e tente novamente."
+    );
     return;
   }
 
@@ -1243,7 +1602,9 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
   if (!target) return false;
 
   const items = Array.from(
-    target.querySelectorAll("[data-card-id], li[id^='card-'], #card-" + cardId + ", .card")
+    target.querySelectorAll(
+      "[data-card-id], li[id^='card-'], #card-" + cardId + ", .card"
+    )
   );
 
   const idx = Math.max(0, Number(newPosition0 || 0));
@@ -1331,13 +1692,17 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
       try {
         data = JSON.parse(raw);
       } catch (e) {
-        throw new Error(`Resposta não é JSON (HTTP ${status}). Início: ${raw.slice(0, 120)}`);
+        throw new Error(
+          `Resposta não é JSON (HTTP ${status}). Início: ${raw.slice(0, 120)}`
+        );
       }
     } catch (e) {
       console.error("[move/options] erro:", e);
       setCurrentLocationText("—");
       setMoveError(
-        `Falha ao carregar opções de mover. ${status ? `HTTP ${status}. ` : ""}${String(e?.message || "").slice(0, 180)}`
+        `Falha ao carregar opções de mover. ${
+          status ? `HTTP ${status}. ` : ""
+        }${String(e?.message || "").slice(0, 180)}`
       );
       fillSelect(boardSel, `<option value="">Erro ao carregar</option>`);
       return;
@@ -1348,7 +1713,9 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
     const columnsByBoard = data.columns_by_board || {};
 
     setCurrentLocationText(
-      `${cur.board_name || "—"} > ${cur.column_name || "—"} > Posição ${cur.position || "—"}`
+      `${cur.board_name || "—"} > ${cur.column_name || "—"} > Posição ${
+        cur.position || "—"
+      }`
     );
 
     fillSelect(
@@ -1359,7 +1726,9 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
 
     boardSel.onchange = () => {
       const bid = String(boardSel.value || "");
-      const cols = Array.isArray(columnsByBoard[bid]) ? columnsByBoard[bid] : [];
+      const cols = Array.isArray(columnsByBoard[bid])
+        ? columnsByBoard[bid]
+        : [];
 
       colSel.disabled = !bid;
       posSel.disabled = true;
@@ -1587,7 +1956,11 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
     const t = evt.target;
     if (!t) return;
 
-    if (t.id === "checklist-list" || t.id === "modal-body" || t.closest?.("#modal-body")) {
+    if (
+      t.id === "checklist-list" ||
+      t.id === "modal-body" ||
+      t.closest?.("#modal-body")
+    ) {
       initChecklistUX(t);
       initChecklistDnD();
     }
