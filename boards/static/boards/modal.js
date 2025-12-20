@@ -63,15 +63,43 @@ function initCmModal(body) {
   if (!tabs.length || !panels.length) return;
 
   const saveBtn = root.querySelector("#cm-save-btn");
+  const moveBtn = root.querySelector("#cm-move-btn");
   const form = root.querySelector("#cm-main-form");
 
-  function setSaveVisibility(activeName) {
-    const shouldShowSave = activeName === "desc" || activeName === "tags";
-    if (!saveBtn) return;
+  function setActionVisibility(activeName) {
+    const showSave = activeName === "desc" || activeName === "tags";
+    const showMove = activeName === "ativ";
 
-    saveBtn.classList.toggle("hidden", !shouldShowSave);
-    saveBtn.style.display = shouldShowSave ? "" : "none";
-    saveBtn.disabled = !shouldShowSave;
+    if (saveBtn) {
+      saveBtn.classList.toggle("hidden", !showSave);
+      saveBtn.style.display = showSave ? "" : "none";
+      saveBtn.disabled = !showSave;
+    }
+
+    if (moveBtn) {
+      moveBtn.classList.toggle("hidden", !showMove);
+      moveBtn.style.display = showMove ? "" : "none";
+      moveBtn.disabled = !showMove;
+    }
+  }
+
+  function setAtivMoveMode(isMove) {
+    const panelMove = root.querySelector("#cm-move-panel");
+    const panelHist = root.querySelector("#cm-activity-history");
+    const formAtiv = root.querySelector('[data-cm-panel="ativ"] form');
+
+    if (panelMove) panelMove.classList.toggle("hidden", !isMove);
+    if (panelHist) panelHist.classList.toggle("hidden", isMove);
+    if (formAtiv) formAtiv.classList.toggle("hidden", isMove);
+
+    // carrega opções quando entra no modo mover
+    if (
+      isMove &&
+      window.currentCardId &&
+      typeof window.loadMoveCardOptions === "function"
+    ) {
+      window.loadMoveCardOptions(window.currentCardId);
+    }
   }
 
   function activate(name) {
@@ -81,10 +109,18 @@ function initCmModal(body) {
       b.classList.toggle("is-active", b.getAttribute("data-cm-tab") === name)
     );
     panels.forEach((p) =>
-      p.classList.toggle("is-active", p.getAttribute("data-cm-panel") === name)
+      p.classList.toggle(
+        "is-active",
+        p.getAttribute("data-cm-panel") === name
+      )
     );
 
-    setSaveVisibility(name);
+    setActionVisibility(name);
+
+    // se sair de "Atividade", garante que o modo mover fecha
+    if (name !== "ativ") {
+      setAtivMoveMode(false);
+    }
   }
 
   // bind tabs 1x
@@ -118,6 +154,47 @@ function initCmModal(body) {
       } catch (e) {
         form.submit();
       }
+    });
+  }
+
+  // ✅ botão "Transferir/Mover" (só na aba Atividade) — bind 1x
+  if (moveBtn && moveBtn.dataset.cmBound !== "1") {
+    moveBtn.dataset.cmBound = "1";
+
+    moveBtn.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+
+      const active = root.dataset.cmActive || "desc";
+      if (active !== "ativ") return;
+
+      setAtivMoveMode(true);
+    });
+  }
+
+  // ✅ botões do painel mover — bind 1x
+  const moveConfirm = root.querySelector("#cm-move-confirm-btn");
+  const moveCancel = root.querySelector("#cm-move-cancel-btn");
+
+  if (moveConfirm && moveConfirm.dataset.cmBound !== "1") {
+    moveConfirm.dataset.cmBound = "1";
+    moveConfirm.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+
+      if (!window.currentCardId) return;
+      if (typeof window.submitMoveCard === "function") {
+        window.submitMoveCard(window.currentCardId);
+      }
+    });
+  }
+
+  if (moveCancel && moveCancel.dataset.cmBound !== "1") {
+    moveCancel.dataset.cmBound = "1";
+    moveCancel.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      setAtivMoveMode(false);
     });
   }
 }
@@ -328,12 +405,7 @@ function cmInstallAttachmentErrorsOnce() {
   document.body.addEventListener("htmx:beforeRequest", function (evt) {
     const root = getRoot();
     const elt = evt.detail?.elt;
-    if (
-      !root ||
-      !elt ||
-      !elt.matches?.("#attachment-file") ||
-      !root.contains(elt)
-    )
+    if (!root || !elt || !elt.matches?.("#attachment-file") || !root.contains(elt))
       return;
 
     root.dataset.cmUploading = "1";
@@ -370,12 +442,7 @@ function cmInstallAttachmentErrorsOnce() {
     const root = getRoot();
     const elt = evt.detail?.elt;
     const xhr = evt.detail?.xhr;
-    if (
-      !root ||
-      !elt ||
-      !elt.matches?.("#attachment-file") ||
-      !root.contains(elt)
-    )
+    if (!root || !elt || !elt.matches?.("#attachment-file") || !root.contains(elt))
       return;
 
     if (xhr && xhr.status === 413) {
@@ -396,12 +463,7 @@ function cmInstallAttachmentErrorsOnce() {
     const root = getRoot();
     const elt = evt.detail?.elt;
     const xhr = evt.detail?.xhr;
-    if (
-      !root ||
-      !elt ||
-      !elt.matches?.("#attachment-file") ||
-      !root.contains(elt)
-    )
+    if (!root || !elt || !elt.matches?.("#attachment-file") || !root.contains(elt))
       return;
 
     if (xhr && xhr.status >= 200 && xhr.status < 300) {
@@ -462,7 +524,7 @@ function cmInstallCoverPasteAndUploadOnce() {
     if (!root) return null;
     return (
       root.querySelector("#cm-cover-form") ||
-      root.querySelector('form[data-cm-cover-form]') ||
+      root.querySelector("form[data-cm-cover-form]") ||
       root.querySelector('form[action*="cover"]') ||
       null
     );
@@ -470,7 +532,6 @@ function cmInstallCoverPasteAndUploadOnce() {
 
   function getCoverInput(root) {
     if (!root) return null;
-    // tenta pelo id primeiro, depois por name, depois por tipo
     return (
       root.querySelector("#cm-cover-file") ||
       root.querySelector('input[name="cover"][type="file"]') ||
@@ -485,7 +546,9 @@ function cmInstallCoverPasteAndUploadOnce() {
     if (
       ae &&
       ae.closest &&
-      ae.closest(".ql-editor, .ql-container, #quill-editor, #quill-editor-ativ, #cm-quill-editor-ativ")
+      ae.closest(
+        ".ql-editor, .ql-container, #quill-editor, #quill-editor-ativ, #cm-quill-editor-ativ"
+      )
     ) {
       return true;
     }
@@ -529,7 +592,6 @@ function cmInstallCoverPasteAndUploadOnce() {
     showCoverErr(null);
 
     const fd = new FormData(form);
-    // garante que o campo vai junto mesmo se o input tiver outro name
     fd.set("cover", file);
 
     let r;
@@ -562,14 +624,12 @@ function cmInstallCoverPasteAndUploadOnce() {
   }
 
   // 1) Clique no botão/label “Escolher imagem…”
-  // - capture=true pra pegar mesmo se alguém parar a propagação
   document.body.addEventListener(
     "click",
     (e) => {
       const root = getRoot();
       if (!root) return;
 
-      // pega por id OU por atributos mais genéricos
       const pick =
         e.target.closest("#cm-cover-pick-btn") ||
         e.target.closest("[data-cm-cover-pick]") ||
@@ -577,15 +637,12 @@ function cmInstallCoverPasteAndUploadOnce() {
 
       if (!pick) return;
 
-      console.log("[cover] clique em escolher imagem detectado");
-
       const inp = getCoverInput(root);
       if (!inp) {
         console.warn("[cover] input file não encontrado");
         return;
       }
 
-      // alguns browsers exigem que o click aconteça no mesmo callstack do gesto do usuário
       inp.click();
     },
     true
@@ -609,8 +666,6 @@ function cmInstallCoverPasteAndUploadOnce() {
       if (!isCoverInput) return;
 
       const file = inp.files?.[0];
-      console.log("[cover] change file detectado", file?.name, file?.type);
-
       if (!file) return;
 
       uploadCover(file);
@@ -642,8 +697,6 @@ function cmInstallCoverPasteAndUploadOnce() {
       if (!imgItem) return;
 
       const file = imgItem.getAsFile();
-      console.log("[cover] paste imagem detectado", file?.name, file?.type);
-
       if (!file) return;
 
       e.preventDefault();
@@ -868,16 +921,12 @@ function bindDelegatedDirtyTracking() {
 }
 
 // =====================================================
-// ✅ CORREÇÃO: Inicializa Quill da descrição (evita initQuillDesc is not defined)
-// - tenta IDs comuns (#quill-editor / #quill-editor-desc) e hidden comuns
-// - sincroniza HTML -> hidden; marca dirty ao editar; suporta paste de imagens
+// ✅ Inicializa Quill da descrição
 // =====================================================
 function initQuillDesc(body) {
   if (!body) return;
 
-  // =========================
-  // 1) LEGADO (já existente)
-  // =========================
+  // 1) LEGADO
   const legacyHost =
     qs("#quill-editor", body) ||
     qs("#quill-editor-desc", body) ||
@@ -957,9 +1006,7 @@ function initQuillDesc(body) {
     return;
   }
 
-  // =========================
   // 2) CM (textarea -> Quill)
-  // =========================
   const cmRoot = qs("#cm-root", body);
   if (!cmRoot) return;
 
@@ -972,14 +1019,12 @@ function initQuillDesc(body) {
   if (textarea.dataset.cmQuillReady === "1") return;
   textarea.dataset.cmQuillReady = "1";
 
-  // cria host do quill logo antes do textarea
   const host = document.createElement("div");
   host.id = "cm-quill-editor-desc";
   host.className = "border rounded mb-2";
   host.style.minHeight = "220px";
   textarea.parentNode.insertBefore(host, textarea);
 
-  // esconde textarea (mas mantém para o POST)
   textarea.style.display = "none";
 
   const q = new Quill("#" + host.id, {
@@ -1009,16 +1054,13 @@ function initQuillDesc(body) {
     },
   });
 
-  // conteúdo inicial
   q.root.innerHTML = (textarea.value || "").trim() || "";
 
-  // sync Quill -> textarea + dirty
   q.on("text-change", () => {
     textarea.value = q.root.innerHTML;
     markDirty();
   });
 
-  // paste de imagem (capture)
   const onPaste = (e) => {
     const cd = e.clipboardData;
     if (!cd?.items?.length) return;
@@ -1030,7 +1072,8 @@ function initQuillDesc(body) {
 
     e.preventDefault();
     e.stopPropagation();
-    if (typeof e.stopImmediatePropagation === "function") e.stopImmediatePropagation();
+    if (typeof e.stopImmediatePropagation === "function")
+      e.stopImmediatePropagation();
 
     imgItems.forEach((it) => {
       const file = it.getAsFile();
@@ -1044,39 +1087,8 @@ function initQuillDesc(body) {
   q.root.__onPasteCmDesc = onPaste;
   q.root.addEventListener("paste", onPaste, true);
 
-  // guarda referência global, se quiser reutilizar (opcional)
   quillDesc = q;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // =====================================================
 // Inicializa editor da atividade
@@ -1086,9 +1098,7 @@ function initQuillDesc(body) {
 function initQuillAtividade(body) {
   if (!body) return;
 
-  // -----------------------------
-  // 1) CM (novo modal: #cm-root)
-  // -----------------------------
+  // 1) CM
   const cmRoot = qs("#cm-root", body);
   if (cmRoot) {
     const ativPanel = cmRoot.querySelector('[data-cm-panel="ativ"]');
@@ -1096,23 +1106,17 @@ function initQuillAtividade(body) {
 
     const form = ativPanel.querySelector('form[hx-post*="add_activity"], form');
     const textarea = ativPanel.querySelector('textarea[name="content"]');
-
-    // Se não tem textarea, não há o que fazer
     if (!form || !textarea) return;
 
-    // Evita reinicializar
     if (textarea.dataset.cmQuillReady === "1") return;
     textarea.dataset.cmQuillReady = "1";
 
-    // Cria o container do Quill antes do textarea
     const host = document.createElement("div");
     host.id = "cm-quill-editor-ativ";
     host.className = "border rounded mb-2";
     host.style.minHeight = "140px";
-
     textarea.parentNode.insertBefore(host, textarea);
 
-    // Esconde o textarea (mas mantém no form para HTMX enviar)
     textarea.style.display = "none";
 
     const q = new Quill("#" + host.id, {
@@ -1142,21 +1146,17 @@ function initQuillAtividade(body) {
       },
     });
 
-    // Foco/click mais previsível
     try {
       q.root.setAttribute("tabindex", "0");
     } catch (e) {}
 
-    // Conteúdo inicial (se houver)
     const initial = (textarea.value || "").trim();
     q.root.innerHTML = initial || "";
 
-    // Sync do Quill -> textarea (para o HTMX enviar)
     q.on("text-change", () => {
       textarea.value = q.root.innerHTML;
     });
 
-    // ✅ Paste de imagens (CAPTURE) no Quill do CM
     const onPasteCmAtiv = (e) => {
       const cd = e.clipboardData;
       if (!cd?.items?.length) return;
@@ -1178,15 +1178,12 @@ function initQuillAtividade(body) {
       });
     };
 
-    // remove anterior, se reabrir modal
     if (q.root.__onPasteCmAtiv) {
       q.root.removeEventListener("paste", q.root.__onPasteCmAtiv, true);
     }
     q.root.__onPasteCmAtiv = onPasteCmAtiv;
     q.root.addEventListener("paste", onPasteCmAtiv, true);
 
-    // Limpar: se o form for resetado pelo hx-on::after-request, também limpa o Quill
-    // (o seu form tem hx-on::after-request="this.reset()")
     if (form.dataset.cmQuillResetBound !== "1") {
       form.dataset.cmQuillResetBound = "1";
       form.addEventListener("reset", () => {
@@ -1197,15 +1194,12 @@ function initQuillAtividade(body) {
       });
     }
 
-    return; // CM tratado; não continuar pro legado
+    return;
   }
 
-  // -----------------------------
   // 2) LEGADO
-  // -----------------------------
   const activityHidden = qs("#activity-input", body);
   const quillAtivEl = qs("#quill-editor-ativ", body);
-
   if (!activityHidden || !quillAtivEl) return;
 
   if (quillAtivEl.dataset.quillReady === "1") return;
@@ -1278,18 +1272,6 @@ function initQuillAtividade(body) {
   quillAtiv.root.__onPasteAtiv = onPasteAtiv;
   quillAtiv.root.addEventListener("paste", onPasteAtiv, true);
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 // =====================================================
 // Atividade (sub-tabs): Nova atividade / Histórico / Mover Card
@@ -1379,9 +1361,7 @@ window.initCardModal = function () {
   bindDelegatedDirtyTracking();
   clearDirty();
 
-  // ✅ agora existe (corrige o ReferenceError do console)
   initQuillDesc(body);
-
   initQuillAtividade(body);
   initAtivSubtabs3(body);
 
@@ -1389,6 +1369,7 @@ window.initCardModal = function () {
 
   // CM
   initCmModal(body);
+
   cmBoot(body);
 };
 
@@ -1466,7 +1447,7 @@ window.initCardModal = function () {
     true
   );
 
-  // 👉 DESKTOP (mantém como está)
+  // 👉 DESKTOP
   document.body.addEventListener(
     "click",
     (ev) => {
@@ -1534,10 +1515,8 @@ window.removeTagInstant = async function (cardId, tag) {
 
   applyBoardTagColorsNow();
 
-  // reativa JS do modal (CM/legado)
   initCardModal();
 
-  // se for modal legado (não-CM), mantém a aba atual
   if (!document.querySelector("#cm-root")) {
     const active = sessionStorage.getItem("modalActiveTab") || "card-tab-desc";
     window.cardOpenTab(active);
