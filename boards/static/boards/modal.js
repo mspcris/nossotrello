@@ -875,33 +875,114 @@ function bindDelegatedDirtyTracking() {
 function initQuillDesc(body) {
   if (!body) return;
 
-  const quillEl =
+  // =========================
+  // 1) LEGADO (já existente)
+  // =========================
+  const legacyHost =
     qs("#quill-editor", body) ||
     qs("#quill-editor-desc", body) ||
     qs("[data-quill-desc]", body);
 
-  if (!quillEl) return;
+  if (legacyHost) {
+    if (legacyHost.dataset.quillReady === "1") return;
+    legacyHost.dataset.quillReady = "1";
 
-  if (quillEl.dataset.quillReady === "1") return;
-  quillEl.dataset.quillReady = "1";
+    const hidden =
+      qs("#desc-input", body) ||
+      qs("#description-input", body) ||
+      qs('input[name="description"]', body) ||
+      qs('textarea[name="description"]', body) ||
+      qs('textarea[name="desc"]', body) ||
+      qs('input[name="desc"]', body);
 
-  const hidden =
-    qs("#desc-input", body) ||
-    qs("#description-input", body) ||
-    qs('input[name="description"]', body) ||
-    qs('textarea[name="description"]', body) ||
-    qs('textarea[name="desc"]', body) ||
-    qs('input[name="desc"]', body);
+    const selector =
+      legacyHost.id
+        ? `#${legacyHost.id}`
+        : (() => {
+            legacyHost.id = "quill-editor-desc";
+            return "#quill-editor-desc";
+          })();
 
-  const selector =
-    quillEl.id
-      ? `#${quillEl.id}`
-      : (() => {
-          quillEl.id = "quill-editor-desc";
-          return "#quill-editor-desc";
-        })();
+    quillDesc = new Quill(selector, {
+      theme: "snow",
+      modules: {
+        toolbar: {
+          container: [
+            [{ header: [1, 2, 3, false] }],
+            ["bold", "italic", "underline"],
+            ["link", "image"],
+            [{ list: "ordered" }, { list: "bullet" }],
+          ],
+          handlers: {
+            image: function () {
+              const fileInput = document.createElement("input");
+              fileInput.type = "file";
+              fileInput.accept = "image/*";
+              fileInput.onchange = () => {
+                const file = fileInput.files?.[0];
+                if (!file) return;
+                insertBase64ImageIntoQuill(quillDesc, file);
+              };
+              fileInput.click();
+            },
+          },
+        },
+      },
+    });
 
-  quillDesc = new Quill(selector, {
+    const initialHtml = (hidden?.value || "").trim();
+    quillDesc.root.innerHTML = initialHtml || "";
+
+    quillDesc.on("text-change", () => {
+      if (hidden) hidden.value = quillDesc.root.innerHTML;
+      markDirty();
+    });
+
+    quillDesc.root.addEventListener("paste", (e) => {
+      const cd = e.clipboardData;
+      if (!cd?.items?.length) return;
+
+      const imgItems = Array.from(cd.items).filter(
+        (it) => it.kind === "file" && (it.type || "").startsWith("image/")
+      );
+      if (!imgItems.length) return;
+
+      e.preventDefault();
+      imgItems.forEach((it) => {
+        const file = it.getAsFile();
+        if (file) insertBase64ImageIntoQuill(quillDesc, file);
+      });
+    });
+
+    return;
+  }
+
+  // =========================
+  // 2) CM (textarea -> Quill)
+  // =========================
+  const cmRoot = qs("#cm-root", body);
+  if (!cmRoot) return;
+
+  const descPanel = cmRoot.querySelector('[data-cm-panel="desc"]');
+  if (!descPanel) return;
+
+  const textarea = descPanel.querySelector('textarea[name="description"]');
+  if (!textarea) return;
+
+  if (textarea.dataset.cmQuillReady === "1") return;
+  textarea.dataset.cmQuillReady = "1";
+
+  // cria host do quill logo antes do textarea
+  const host = document.createElement("div");
+  host.id = "cm-quill-editor-desc";
+  host.className = "border rounded mb-2";
+  host.style.minHeight = "220px";
+  textarea.parentNode.insertBefore(host, textarea);
+
+  // esconde textarea (mas mantém para o POST)
+  textarea.style.display = "none";
+
+  const q = new Quill("#" + host.id, {
     theme: "snow",
     modules: {
       toolbar: {
@@ -916,13 +997,11 @@ function initQuillDesc(body) {
             const fileInput = document.createElement("input");
             fileInput.type = "file";
             fileInput.accept = "image/*";
-
             fileInput.onchange = () => {
               const file = fileInput.files?.[0];
               if (!file) return;
-              insertBase64ImageIntoQuill(quillDesc, file);
+              insertBase64ImageIntoQuill(q, file);
             };
-
             fileInput.click();
           },
         },
@@ -930,37 +1009,43 @@ function initQuillDesc(body) {
     },
   });
 
-  // carrega HTML inicial (se existir)
-  const initialHtml = (hidden?.value || "").trim();
-  if (initialHtml) {
-    quillDesc.root.innerHTML = initialHtml;
-  } else {
-    quillDesc.root.innerHTML = "";
-  }
+  // conteúdo inicial
+  q.root.innerHTML = (textarea.value || "").trim() || "";
 
-  // sync + dirty
-  quillDesc.on("text-change", () => {
-    if (hidden) hidden.value = quillDesc.root.innerHTML;
+  // sync Quill -> textarea + dirty
+  q.on("text-change", () => {
+    textarea.value = q.root.innerHTML;
     markDirty();
   });
 
-  // paste: permite colar imagens como base64 (mantém texto normal se não tiver imagem)
-  quillDesc.root.addEventListener("paste", (e) => {
+  // paste de imagem (capture)
+  const onPaste = (e) => {
     const cd = e.clipboardData;
     if (!cd?.items?.length) return;
 
     const imgItems = Array.from(cd.items).filter(
       (it) => it.kind === "file" && (it.type || "").startsWith("image/")
     );
-
     if (!imgItems.length) return;
 
     e.preventDefault();
+    e.stopPropagation();
+    if (typeof e.stopImmediatePropagation === "function") e.stopImmediatePropagation();
+
     imgItems.forEach((it) => {
       const file = it.getAsFile();
-      if (file) insertBase64ImageIntoQuill(quillDesc, file);
+      if (file) insertBase64ImageIntoQuill(q, file);
     });
-  });
+  };
+
+  if (q.root.__onPasteCmDesc) {
+    q.root.removeEventListener("paste", q.root.__onPasteCmDesc, true);
+  }
+  q.root.__onPasteCmDesc = onPaste;
+  q.root.addEventListener("paste", onPaste, true);
+
+  // guarda referência global, se quiser reutilizar (opcional)
+  quillDesc = q;
 }
 
 
