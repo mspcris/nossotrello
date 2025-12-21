@@ -99,7 +99,7 @@ def add_card(request, column_id):
     )
 
 
-
+@login_required
 @require_POST
 def update_card(request, card_id):
     card = get_object_or_404(Card, id=card_id)
@@ -180,7 +180,7 @@ def edit_card(request, card_id):
 
     return render(request, "boards/partials/card_edit_form.html", {"card": card, "form": form})
 
-
+@login_required
 @require_POST
 def delete_card(request, card_id):
     card = get_object_or_404(Card.all_objects, id=card_id)
@@ -361,7 +361,7 @@ def card_snippet(request, card_id):
 # ============================================================
 # TAGS
 # ============================================================
-
+@login_required
 @require_POST
 def remove_tag(request, card_id):
     card = get_object_or_404(Card, id=card_id)
@@ -387,7 +387,7 @@ def remove_tag(request, card_id):
 
     return JsonResponse({"modal": modal_html, "snippet": snippet_html, "card_id": card.id})
 
-
+@login_required
 @require_POST
 def set_tag_color(request, card_id):
     card = get_object_or_404(Card, id=card_id)
@@ -461,6 +461,7 @@ def set_tag_color(request, card_id):
 # CAPA DO CARD (modal)
 # - garante que a capa também vira anexo e aparece na atividade com thumbnail/link
 # ============================================================
+@login_required
 @require_POST
 def set_card_cover(request, card_id):
     """
@@ -575,10 +576,13 @@ def set_card_cover(request, card_id):
                 "</div>"
             )
 
-        # ✅ DEPOIS: capa anterior
-        if old_rel:
-            old_url = default_storage.url(old_rel)
-            old_name = escape(old_rel.split("/")[-1])
+                # ✅ DEPOIS: capa anterior (anti-404)
+        # Preferência: usar a cópia imutável em attachments/cover_history (old_hist_rel)
+        # Fallback: usar o caminho antigo original (old_rel) se a cópia falhar
+        old_log_rel = (old_hist_rel or old_rel or "").strip()
+        if old_log_rel:
+            old_url = default_storage.url(old_log_rel)
+            old_name = escape(old_log_rel.split("/")[-1])
             parts.append(
                 "<div style='margin:8px 0'>"
                 "<div><em>Capa anterior:</em> "
@@ -586,6 +590,7 @@ def set_card_cover(request, card_id):
                 f"<div style='margin-top:6px'><img src='{escape(old_url)}' style='max-width:100%; border-radius:8px'/></div>"
                 "</div>"
             )
+
 
         _log_card(card, request, "".join(parts))
     except Exception:
@@ -595,7 +600,7 @@ def set_card_cover(request, card_id):
     return render(request, "boards/partials/card_modal_body.html", _card_modal_context(card))
 
 
-
+@login_required
 @require_POST
 def remove_card_cover(request, card_id):
     """
