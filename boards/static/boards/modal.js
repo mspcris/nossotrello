@@ -2051,3 +2051,41 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
     }
   });
 })();
+
+// =====================================================
+// Deep link: /board/X/?card=ID -> abre modal automaticamente
+// =====================================================
+(function bindDeepLinkOpenOnce() {
+  if (document.body.dataset.deepLinkOpenBound === "1") return;
+  document.body.dataset.deepLinkOpenBound = "1";
+
+  function openFromUrlIfAny() {
+    // só tenta se o modal não estiver aberto
+    const modal = document.getElementById("modal");
+    const modalIsOpen = modal && modal.classList.contains("modal-open");
+    if (modalIsOpen) return;
+
+    const params = new URLSearchParams(window.location.search || "");
+    const cardParam = params.get("card");
+    const cardId = Number(cardParam || 0);
+    if (!cardId) return;
+
+    // abre com o mesmo fluxo do clique
+    window.currentCardId = cardId;
+    if (typeof window.openModal === "function") window.openModal();
+
+    htmx.ajax("GET", `/card/${cardId}/modal/`, {
+      target: "#modal-body",
+      swap: "innerHTML",
+    });
+
+    // opcional (recomendado): evita reabrir no refresh acidental
+    // Se você quiser manter o ?card= na URL, comente estas 3 linhas.
+    try {
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, "", cleanUrl);
+    } catch (e) {}
+  }
+
+  document.addEventListener("DOMContentLoaded", openFromUrlIfAny);
+})();

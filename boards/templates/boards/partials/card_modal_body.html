@@ -274,6 +274,159 @@
   box-shadow: var(--cm-shadow);
 }
 
+/* ============================================================
+   CM — BARRA FLUTUANTE DE AÇÕES (Salvar / Fechar)
+   ============================================================ */
+.cm-floatbar{
+  position: sticky;
+  bottom: 12px;
+  z-index: 25;
+
+  margin-top: 12px;
+
+  border-radius: 999px;
+  border: 1px solid var(--cm-border);
+  background: var(--cm-bg);
+  box-shadow: var(--cm-shadow);
+
+  padding: 10px;
+}
+
+.cm-floatbar-inner{
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  width: 100%;
+}
+
+.cm-floatbar.hidden{ display:none !important; }
+
+/* ============================================================
+   CM — ACTION DOCK (Mover / Duplicar / Copiar link)
+   ============================================================ */
+#cm-action-dock{
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 9999;
+
+  display: flex;
+  justify-content: flex-end;
+
+  margin-top: 0;
+  pointer-events: none; /* só o dock captura clique */
+}
+
+#cm-action-dock .dock-wrap{
+  pointer-events: auto;
+
+  border-radius: 999px;
+  border: 1px solid var(--cm-border);
+  background: var(--cm-bg);
+  box-shadow: var(--cm-shadow);
+
+  padding: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* botão principal */
+#cm-action-dock .dock-toggle{
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  border: 1px solid var(--cm-border-2);
+  background: var(--cm-surface-2);
+  color: var(--cm-text);
+  cursor: pointer;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  opacity: .88;
+  transition: transform .12s ease, opacity .12s ease, border-color .12s ease;
+}
+#cm-action-dock .dock-toggle:hover{
+  opacity: 1;
+  transform: translateY(-1px);
+  border-color: var(--cm-border);
+}
+
+/* ações */
+#cm-action-dock .dock-actions{
+  display: none;
+  gap: 8px;
+  align-items: center;
+}
+
+#cm-action-dock.is-open .dock-actions{
+  display: inline-flex;
+}
+
+
+#cm-action-dock.is-open .dock-actions{
+  display: inline-flex;
+}
+
+#cm-action-dock .dock-action{
+  border-radius: 999px;
+  border: 1px solid var(--cm-border-2);
+  background: var(--cm-surface-2);
+  color: var(--cm-text);
+  cursor: pointer;
+
+  padding: 10px 12px;
+  font-size: 13px;
+
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+
+  transition: transform .12s ease, border-color .12s ease;
+}
+#cm-action-dock .dock-action:hover{
+  transform: translateY(-1px);
+  border-color: var(--cm-border);
+}
+
+#cm-action-dock .dock-action .label{
+  display: none;
+  white-space: nowrap;
+}
+
+#cm-action-dock.is-open .dock-action .label{
+  display: inline;
+}
+
+/* painel ancorado */
+#cm-action-dock-panel{
+  position: absolute;
+  right: 0;
+  bottom: 58px;
+
+  width: min(520px, calc(100vw - 48px));
+  border-radius: 14px;
+  border: 1px solid var(--cm-border);
+  background: var(--cm-surface);
+  box-shadow: var(--cm-shadow);
+
+  padding: 12px;
+  display: none;
+}
+
+#cm-action-dock-panel.is-open{ display:block; }
+
+@keyframes cmBoing {
+  0%   { transform: translateY(8px) scale(0.98); opacity: 0.0; }
+  70%  { transform: translateY(-2px) scale(1.01); opacity: 1.0; }
+  100% { transform: translateY(0) scale(1.00); opacity: 1.0; }
+}
+#cm-action-dock-panel.boing{
+  animation: cmBoing 220ms ease-out;
+}
+
 
 </style>
 
@@ -418,6 +571,15 @@
     </section>
   </form>
 
+  {# ===================== BARRA FLUTUANTE (dirty) ===================== #}
+  <div id="cm-floatbar" class="cm-floatbar hidden" aria-live="polite">
+    <div class="cm-floatbar-inner">
+      <button type="button" class="cm-btn" id="cm-close-btn">Fechar</button>
+      <button type="button" class="cm-btn primary" id="cm-float-save-btn">Salvar</button>
+    </div>
+  </div>
+
+
   {# ===================== CHECKLISTS ===================== #}
   <section class="cm-panel" data-cm-panel="check" role="tabpanel">
     <div class="cm-card space-y-3">
@@ -517,4 +679,360 @@
     </div>
   </section>
 
+{# ===================== ACTION DOCK (sempre visível) ===================== #}
+<div id="cm-action-dock" aria-label="Ações do card">
+  <div class="dock-wrap relative">
+    <button type="button" class="dock-toggle" id="cm-dock-toggle" title="Ações">
+      ⋮
+    </button>
+
+    <div class="dock-actions" id="cm-dock-actions">
+      <button type="button" class="dock-action" id="cm-dock-move">
+        <span>↔️</span> <span class="label">Mover</span>
+      </button>
+
+      <button type="button" class="dock-action" id="cm-dock-duplicate">
+        <span>📄</span> <span class="label">Duplicar</span>
+      </button>
+
+      <button type="button" class="dock-action" id="cm-dock-copylink">
+        <span>🔗</span> <span class="label">Copiar link</span>
+      </button>
+    </div>
+
+    <div id="cm-action-dock-panel" role="dialog" aria-label="Painel de ação">
+      <div id="cm-dock-panel-body">
+        {# conteúdo lazy-loaded (Mover) entra aqui #}
+      </div>
+    </div>
+  </div>
 </div>
+
+
+
+</div>
+
+
+<script>
+(function(){
+  const root = document.getElementById("cm-root");
+  if (!root) return;
+
+  const cardId = root.getAttribute("data-card-id");
+
+  // ============================================================
+  // 1) FLOATBAR (dirty) — seu comportamento atual
+  // ============================================================
+  function initFloatbarDirty(){
+    const form = document.getElementById("cm-main-form");
+    const floatbar = document.getElementById("cm-floatbar");
+    const topSave = document.getElementById("cm-save-btn");
+    const floatSave = document.getElementById("cm-float-save-btn");
+    const closeBtn = document.getElementById("cm-close-btn");
+
+    if (!form || !floatbar) return;
+
+    const watched = form.querySelectorAll('input[name="title"], textarea[name="description"], input[name="tags"]');
+    const initial = {};
+    watched.forEach(el => { initial[el.name] = (el.value || "").trim(); });
+
+    function isDirty(){
+      for (const el of watched){
+        const now = (el.value || "").trim();
+        const before = (initial[el.name] ?? "");
+        if (now !== before) return true;
+      }
+      return false;
+    }
+
+    function isActionsTabActive(){
+      const active = (root.getAttribute("data-cm-active") || "").trim();
+      return (active === "desc" || active === "tags");
+    }
+
+    function syncBars(){
+      const dirty = isDirty();
+      const show = dirty && isActionsTabActive();
+      floatbar.classList.toggle("hidden", !show);
+    }
+
+    watched.forEach(el => {
+      el.addEventListener("input", syncBars);
+      el.addEventListener("change", syncBars);
+    });
+
+    function submitForm(){
+      form.requestSubmit ? form.requestSubmit() : form.submit();
+    }
+
+    if (topSave) topSave.addEventListener("click", submitForm);
+    if (floatSave) floatSave.addEventListener("click", submitForm);
+
+    if (closeBtn){
+      closeBtn.addEventListener("click", function(){
+        if (typeof window.closeModal === "function") return window.closeModal();
+        const x = document.querySelector("#modal .modal-top-x");
+        if (x) x.click();
+      });
+    }
+
+    syncBars();
+  }
+
+  // ============================================================
+  // 2) ACTION DOCK — mover/duplicar/copiar link
+  // ============================================================
+  function initActionDock(){
+    const dock = document.getElementById("cm-action-dock");
+    const toggle = document.getElementById("cm-dock-toggle");
+    const btnMove = document.getElementById("cm-dock-move");
+    const btnDup = document.getElementById("cm-dock-duplicate");
+    const btnCopy = document.getElementById("cm-dock-copylink");
+
+    const panel = document.getElementById("cm-action-dock-panel");
+    const panelBody = document.getElementById("cm-dock-panel-body");
+
+    if (!dock || !toggle || !panel || !panelBody) return;
+
+    function openDock(){
+      dock.classList.add("is-open");
+    }
+    function toggleDock(){
+      dock.classList.toggle("is-open");
+    }
+
+    function openPanel(html){
+      panelBody.innerHTML = html || "";
+      panel.classList.add("is-open");
+      panel.classList.remove("boing");
+      void panel.offsetWidth; // reflow
+      panel.classList.add("boing");
+    }
+
+    function closePanel(){
+      panel.classList.remove("is-open");
+      panelBody.innerHTML = "";
+    }
+
+    function clickOutsideClose(e){
+      const wrap = dock.querySelector(".dock-wrap");
+      if (!wrap) return;
+      if (!wrap.contains(e.target)) closePanel();
+    }
+
+    function escClose(e){
+      if (e.key === "Escape") closePanel();
+    }
+
+    toggle.addEventListener("click", function(){
+      toggleDock();
+      closePanel();
+    });
+
+    // Hover abre (premium feel) sem travar mobile
+    dock.addEventListener("mouseenter", openDock);
+
+    // MOVER — lazy load do backend existente
+    if (btnMove){
+      btnMove.addEventListener("click", async function(){
+        try{
+          const url = `/boards/cards/${cardId}/move-options/`; // ajuste se sua rota for diferente
+          const res = await fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" }});
+          if (!res.ok) throw new Error("Falha ao carregar opções.");
+          const data = await res.json();
+
+          // Render inline (painel compacto)
+          const current = data.current || {};
+          const boards = data.boards || [];
+          const columnsByBoard = data.columns_by_board || {};
+
+          const boardOptions = boards.map(b => `<option value="${b.id}">${escapeHtml(b.name)}</option>`).join("");
+
+          openPanel(`
+            <div class="cm-card" style="box-shadow:none; border:none; background:transparent; padding:0;">
+              <div class="cm-muted" style="margin-bottom:8px;">
+                <div><strong>Local atual:</strong> ${escapeHtml(current.board_name || "")} → ${escapeHtml(current.column_name || "")} (#${current.position || ""})</div>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <label class="block">
+                  <span class="cm-label">Quadro</span>
+                  <select id="cm-move-board" class="cm-select">
+                    <option value="">Selecione…</option>
+                    ${boardOptions}
+                  </select>
+                </label>
+
+                <label class="block">
+                  <span class="cm-label">Coluna</span>
+                  <select id="cm-move-column" class="cm-select" disabled>
+                    <option value="">Selecione um quadro</option>
+                  </select>
+                </label>
+
+                <label class="block">
+                  <span class="cm-label">Posição</span>
+                  <select id="cm-move-position" class="cm-select" disabled>
+                    <option value="">Selecione uma coluna</option>
+                  </select>
+                </label>
+              </div>
+
+              <div class="flex items-center justify-end gap-2 pt-3">
+                <button type="button" class="cm-btn" id="cm-move-cancel">Cancelar</button>
+                <button type="button" class="cm-btn primary" id="cm-move-confirm">Mover</button>
+              </div>
+
+              <p id="cm-move-error" class="hidden" style="margin-top:10px; color: var(--cm-danger); font-size: 12px;"></p>
+            </div>
+          `);
+
+          // bind do painel
+          const selBoard = document.getElementById("cm-move-board");
+          const selCol = document.getElementById("cm-move-column");
+          const selPos = document.getElementById("cm-move-position");
+          const btnCancel = document.getElementById("cm-move-cancel");
+          const btnConfirm = document.getElementById("cm-move-confirm");
+          const err = document.getElementById("cm-move-error");
+
+          function setError(msg){
+            if (!err) return;
+            err.textContent = msg || "";
+            err.classList.toggle("hidden", !msg);
+          }
+
+          function fillColumns(boardId){
+            const cols = columnsByBoard[String(boardId)] || [];
+            selCol.innerHTML = cols.length
+              ? `<option value="">Selecione…</option>` + cols.map(c => `<option value="${c.id}" data-total="${c.positions_total_plus_one}">${escapeHtml(c.name)}</option>`).join("")
+              : `<option value="">Sem colunas</option>`;
+            selCol.disabled = cols.length === 0;
+            selPos.innerHTML = `<option value="">Selecione uma coluna</option>`;
+            selPos.disabled = true;
+          }
+
+          function fillPositions(total){
+            const n = parseInt(total || "0", 10) || 0;
+            const opts = [];
+            for (let i=1; i<=n; i++){
+              opts.push(`<option value="${i-1}">${i}</option>`);
+            }
+            selPos.innerHTML = opts.length ? opts.join("") : `<option value="">—</option>`;
+            selPos.disabled = opts.length === 0;
+          }
+
+          selBoard.addEventListener("change", function(){
+            setError("");
+            if (!this.value) return;
+            fillColumns(this.value);
+          });
+
+          selCol.addEventListener("change", function(){
+            setError("");
+            const opt = this.options[this.selectedIndex];
+            const total = opt ? opt.getAttribute("data-total") : "0";
+            if (!this.value) return;
+            fillPositions(total);
+          });
+
+          btnCancel.addEventListener("click", closePanel);
+
+          btnConfirm.addEventListener("click", async function(){
+            try{
+              setError("");
+              const boardId = selBoard.value;
+              const colId = selCol.value;
+              const pos = selPos.value;
+
+              if (!boardId || !colId || pos === "") return setError("Selecione quadro, coluna e posição.");
+
+              const csrf = getCSRFToken();
+              const payload = {
+                card_id: parseInt(cardId, 10),
+                new_column_id: parseInt(colId, 10),
+                new_position: parseInt(pos, 10),
+              };
+
+              const res2 = await fetch(`/boards/cards/move/`, {  // ajuste se sua rota for diferente
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-CSRFToken": csrf,
+                  "X-Requested-With": "XMLHttpRequest",
+                },
+                body: JSON.stringify(payload),
+              });
+
+              if (!res2.ok){
+                const t = await res2.text();
+                throw new Error(t || "Falha ao mover.");
+              }
+
+              // estratégia simples: fecha modal e recarrega board
+              if (typeof window.closeModal === "function") window.closeModal();
+              else location.reload();
+            }catch(ex){
+              setError(ex.message || "Erro ao mover.");
+            }
+          });
+
+        }catch(ex){
+          openPanel(`<div class="cm-muted">Erro: ${escapeHtml(ex.message || "Falha ao carregar mover.")}</div>`);
+        }
+      });
+    }
+
+    // DUPLICAR (stub sprint) — aqui fica só o gancho, backend depois
+    if (btnDup){
+      btnDup.addEventListener("click", function(){
+        openPanel(`<div class="cm-muted">Duplicar: pendente de endpoint (próximo commit).</div>`);
+      });
+    }
+
+    // COPIAR LINK (frontend-only)
+    if (btnCopy){
+      btnCopy.addEventListener("click", async function(){
+        const url = `${location.origin}${location.pathname}?card=${cardId}`;
+        try{
+          await navigator.clipboard.writeText(url);
+          openPanel(`<div class="cm-muted">Link copiado.</div>`);
+          setTimeout(closePanel, 900);
+        }catch(e){
+          openPanel(`
+            <div class="cm-muted" style="margin-bottom:6px;">Copie manualmente:</div>
+            <input class="cm-input" value="${escapeAttr(url)}" onclick="this.select()" readonly />
+          `);
+        }
+      });
+    }
+
+    document.addEventListener("click", clickOutsideClose);
+    document.addEventListener("keydown", escClose);
+  }
+
+  // ============================================================
+  // helpers
+  // ============================================================
+  function getCSRFToken(){
+    const el = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    return el ? el.value : "";
+  }
+
+  function escapeHtml(s){
+    return String(s || "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function escapeAttr(s){
+    return escapeHtml(s).replaceAll("`", "&#096;");
+  }
+
+  // init
+  initFloatbarDirty();
+  initActionDock();
+})();
+</script>
