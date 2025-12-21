@@ -18,6 +18,7 @@ from django.utils.html import escape
 from django.core.files.uploadedfile import UploadedFile
 from django.core.files.storage import default_storage
 from django.db.models import F
+from django.template.loader import render_to_string
 
 from .helpers import (
     _actor_label,
@@ -382,6 +383,116 @@ def card_modal(request, card_id):
 def card_snippet(request, card_id):
     card = get_object_or_404(Card, id=card_id)
     return render(request, "boards/partials/card_item.html", {"card": card})
+
+
+
+
+# ============================================================
+# DUPLICAR CARD
+# ============================================================
+@login_required
+@require_POST
+@transaction.atomic
+def duplicate_card(request, card_id):
+    card = get_object_or_404(Card, id=card_id, is_deleted=False)
+    column = card.column
+    board = column.board
+
+    def can_edit_in_board(b: Board) -> bool:
+        if not request.user.is_authenticated:
+            return False
+        if request.user.is_staff:
+            return True
+
+        memberships_qs = b.memberships.all()
+        if memberships_qs.exists():
+            return memberships_qs.filter(
+                user=request.user,
+                role__in=[BoardMembership.Role.OWNER, BoardMembership.Role.EDITOR],
+            ).exists()
+
+        return bool(b.created_by_id == request.user.id)
+
+    if not can_edit_in_board(board):
+        return JsonResponse({"error": "Sem permissão para duplicar card neste quadro."}, status=403)
+
+    actor = _actor_label(request)
+
+    # posição: duplicata entra logo abaixo do card atual
+    new_position = int(card.position or 0) + 1
+
+    # empurra pra baixo quem está >= new_position
+    Card.objects.filter(
+        column=column,
+        is_deleted=False,
+        position__gte=new_position,
+    ).update(position=F("position") + 1)
+
+    # cria a cópia (mantém campos importantes)
+    base_title = (card.title or "").strip()
+
+# evita duplicar sufixo
+    if base_title.endswith("(Novo)") or base_title.endswith("+ (Novo)"):
+        new_title = base_title
+    else:
+        new_title = f"{base_title} + (Novo)" if base_title else "(Novo)"
+
+    new_card = Card.objects.create(
+    column=column,
+    position=new_position,
+    title=new_title,
+    description=(card.description or ""),
+    tags=(card.tags or ""),
+    tag_colors=(card.tag_colors or ""),
+    cover_image=card.cover_image,
+)
+
+
+    # copia anexos (referenciam os mesmos arquivos)
+    try:
+        atts = list(card.attachments.all())
+        if atts:
+            CardAttachment.objects.bulk_create(
+                [
+                    CardAttachment(
+                        card=new_card,
+                        file=a.file,
+                        description=(a.description or ""),
+                    )
+                    for a in atts
+                ]
+            )
+    except Exception:
+        # anexos não podem derrubar o fluxo
+        pass
+
+    _log_card(
+        new_card,
+        request,
+        (
+            f"<p><strong>{actor}</strong> duplicou este card a partir de "
+            f"<strong>{escape(card.title or 'sem título')}</strong>.</p>"
+        ),
+    )
+
+    # devolve snippet pronto pro front inserir no DOM
+    snippet_html = render_to_string(
+        "boards/partials/card_item.html",
+        {"card": new_card},
+        request=request,
+    )
+
+    return JsonResponse(
+        {
+            "status": "ok",
+            "card_id": new_card.id,
+            "column_id": column.id,
+            "position": int(new_position),
+            "snippet": snippet_html,
+        }
+    )
+
+
 
 
 # ============================================================

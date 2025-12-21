@@ -1055,19 +1055,151 @@ function initActionDock() {
     });
   }
 
-  // ============================================================
-  // DUPLICAR — não existe endpoint no URLconf (feature flag)
-  // ============================================================
-  if (btnDup) {
-    btnDup.addEventListener("click", function (e) {
-      e.preventDefault();
-      e.stopPropagation();
-      openPanel(
-        `<div class="cm-muted">Duplicar ainda não está disponível (sem endpoint no backend).</div>`
-      );
-      setTimeout(closePanel, 1200);
-    });
-  }
+// ============================================================
+// DUPLICAR — chama backend, injeta o novo card no DOM e fecha modal
+// ============================================================
+// ============================================================
+// DUPLICAR — backend existe + fecha modal + atualiza DOM
+// ============================================================
+if (btnDup) {
+  btnDup.addEventListener("click", async function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    function getFlexIsReverse(el) {
+      try {
+        const st = window.getComputedStyle(el);
+        return String(st.flexDirection || "").includes("reverse");
+      } catch (_e) {
+        return false;
+      }
+    }
+
+    // Insere respeitando ordem visual vs DOM (column-reverse etc.)
+    function insertAtVisualIndex(listEl, nodeEl, visualIndex) {
+      const children = Array.from(listEl.children).filter((n) => n.nodeType === 1);
+      const isReverse = getFlexIsReverse(listEl);
+
+      const idx = Math.max(0, Math.min(parseInt(visualIndex, 10) || 0, children.length));
+
+      // Se reverse, o índice visual precisa ser convertido para índice DOM
+      // Ex.: visual "fim" (children.length) vira DOM 0.
+      const domIndex = isReverse ? (children.length - idx) : idx;
+
+      if (children[domIndex]) listEl.insertBefore(nodeEl, children[domIndex]);
+      else listEl.appendChild(nodeEl);
+    }
+
+    try {
+      const csrf = getCSRFToken();
+
+      // ✅ use aqui o endpoint REAL que você já fez funcionar
+      // exemplo: const endpoint = `/card/${cardId}/duplicate/`;
+      const endpoint = `/card/${cardId}/duplicate/`;
+
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrf,
+          "X-Requested-With": "XMLHttpRequest",
+        },
+        body: JSON.stringify({ card_id: parseInt(cardId, 10) }),
+      });
+
+      if (!res.ok) {
+        const t = await res.text().catch(() => "");
+        throw new Error(t || "Falha ao duplicar.");
+      }
+
+      const data = await res.json().catch(() => ({}));
+
+      // tenta extrair infos do retorno (tolerante)
+      const newId =
+        parseInt(data.new_card_id ?? data.card_id ?? data.id ?? data.newId ?? "", 10);
+
+      const newColumnId =
+        parseInt(data.column_id ?? data.new_column_id ?? data.newColumnId ?? "", 10);
+
+      // posição 0-based (igual seu move_card espera)
+      const newPos =
+        parseInt(data.position ?? data.new_position ?? data.newPos ?? "", 10);
+
+      // 1) fecha painel/dock (se estiver aberto)
+      try { closePanel(); } catch (_e) {}
+      try { closeDock(); } catch (_e) {}
+
+      // 2) fecha modal
+      if (typeof window.closeModal === "function") {
+        window.closeModal();
+      } else {
+        const x = document.querySelector("#modal .modal-top-x");
+        if (x) x.click();
+      }
+
+      // sem id novo? não dá pra atualizar DOM com segurança -> reload
+      if (!newId) {
+        location.reload();
+        return;
+      }
+
+      // 3) busca snippet do NOVO card
+      let newCardHTML = "";
+      try {
+        const sn = await fetch(`/card/${newId}/snippet/`, {
+          headers: { "X-Requested-With": "XMLHttpRequest" },
+        });
+        if (sn.ok) newCardHTML = await sn.text();
+      } catch (_e) {}
+
+      if (!newCardHTML) {
+        location.reload();
+        return;
+      }
+
+      // 4) encontra coluna destino
+      // Se o backend não retornou column_id, assume mesma coluna do card original (melhor esforço)
+      const targetColId = newColumnId || parseInt(data.current_column_id ?? "", 10) || null;
+
+      const targetCol =
+        (targetColId && (
+          document.querySelector(`[data-column-id="${targetColId}"]`) ||
+          document.getElementById(`column-${targetColId}`)
+        )) ||
+        // fallback: tenta mesma coluna do card original (se o card estiver na tela)
+        (document.querySelector(`[data-card-id="${cardId}"]`)?.closest(`[data-column-id]`) || null);
+
+      if (!targetCol) {
+        location.reload();
+        return;
+      }
+
+      const list =
+        targetCol.querySelector(`[data-cards-list]`) ||
+        targetCol.querySelector(`.cards`) ||
+        targetCol;
+
+      // cria nó
+      const tmp = document.createElement("div");
+      tmp.innerHTML = newCardHTML.trim();
+      const node = tmp.firstElementChild;
+
+      if (!node) {
+        location.reload();
+        return;
+      }
+
+      // 5) insere respeitando posição
+      // se backend retornou posição, usa; senão joga no fim (visual)
+      const visualIndex = Number.isFinite(newPos) ? newPos : Array.from(list.children).length;
+      insertAtVisualIndex(list, node, visualIndex);
+
+    } catch (ex) {
+      openPanel(`<div class="cm-muted">Erro ao duplicar: ${escapeHtml(ex.message || "Falha")}</div>`);
+    }
+  });
+}
+
 
   // ============================================================
   // COPIAR LINK (frontend-only)
