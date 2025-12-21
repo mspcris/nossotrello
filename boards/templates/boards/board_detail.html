@@ -185,19 +185,33 @@ document.addEventListener("click", (ev) => {
         <h3 class="font-semibold mb-2">Adicionar nova coluna</h3>
 
         <form method="post"
-            hx-post="{% url 'boards:add_column' board.id %}"
-            hx-target="#columns-list"
-            hx-swap="beforeend"
-            hx-on="htmx:afterRequest: if (event.detail.successful) this.reset()">
+      id="add-column-form"
+      hx-post="{% url 'boards:add_column' board.id %}"
+      hx-target="#columns-list"
+      hx-swap="beforeend"
+      hx-on="submit: if(!validateAddColumnForm(this,event)) return false;
+             htmx:afterRequest: if (event.detail.successful) { this.reset(); hideAddColumnError(); }">
 
-            {% csrf_token %}
-            <label class="block text-sm font-medium mb-1">Nome:</label>
-            <input type="text" name="name" class="w-full border rounded px-3 py-2 mb-3" placeholder="Nome da coluna">
+  {% csrf_token %}
 
-            <button class="px-3 py-2 bg-blue-600 text-white rounded w-full">
-                Adicionar Coluna
-            </button>
-        </form>
+  <label class="block text-sm font-medium mb-1">Nome:</label>
+
+  <input type="text"
+         name="name"
+         id="add-column-name"
+         class="w-full border rounded px-3 py-2 mb-2"
+         placeholder="Nome da coluna">
+
+  <div id="add-column-error"
+       class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2 mb-3">
+    Digite o nome da coluna antes.
+  </div>
+
+  <button class="px-3 py-2 bg-blue-600 text-white rounded w-full" type="submit">
+    Adicionar Coluna
+  </button>
+</form>
+
     </div>
 </div>
 
@@ -565,6 +579,44 @@ document.addEventListener("click", (ev) => {
 
 
 
+<script>
+  // ============================================================
+  // ADD COLUMN (client-side validation)
+  // ============================================================
+  function showAddColumnError(msg) {
+    const el = document.getElementById("add-column-error");
+    if (!el) return;
+    el.textContent = msg || "Digite o nome da coluna antes.";
+    el.classList.remove("hidden");
+  }
+
+  function hideAddColumnError() {
+    const el = document.getElementById("add-column-error");
+    if (!el) return;
+    el.classList.add("hidden");
+  }
+
+  function validateAddColumnForm(form, ev) {
+    const input = form.querySelector('input[name="name"]');
+    const value = (input?.value || "").trim();
+
+    if (!value) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      showAddColumnError("Digite o nome da coluna antes.");
+      input?.focus();
+      return false;
+    }
+
+    hideAddColumnError();
+    return true;
+  }
+
+  // limpa o erro ao digitar
+  document.addEventListener("input", (e) => {
+    if (e.target && e.target.id === "add-column-name") hideAddColumnError();
+  });
+</script>
 
 
 
