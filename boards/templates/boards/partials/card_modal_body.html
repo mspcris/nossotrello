@@ -779,181 +779,245 @@
     syncBars();
   }
 
+  
+
+
+
+
+
+
+
+// ============================================================
+// 2) ACTION DOCK — mover/duplicar/copiar link
+// ============================================================
+function initActionDock() {
+  const dock = document.getElementById("cm-action-dock");
+  const toggle = document.getElementById("cm-dock-toggle");
+  const btnMove = document.getElementById("cm-dock-move");
+  const btnDup = document.getElementById("cm-dock-duplicate");
+  const btnCopy = document.getElementById("cm-dock-copylink");
+
+  const panel = document.getElementById("cm-action-dock-panel");
+  const panelBody = document.getElementById("cm-dock-panel-body");
+
+  if (!dock || !toggle || !panel || !panelBody) return;
+
+  function openDock() {
+    dock.classList.add("is-open");
+  }
+
+  function closeDock() {
+    dock.classList.remove("is-open");
+    closePanel();
+  }
+
+  function toggleDock() {
+    dock.classList.toggle("is-open");
+  }
+
+  function openPanel(html) {
+    panelBody.innerHTML = html || "";
+    panel.classList.add("is-open");
+    panel.classList.remove("boing");
+    void panel.offsetWidth;
+    panel.classList.add("boing");
+  }
+
+  function closePanel() {
+    panel.classList.remove("is-open");
+    panelBody.innerHTML = "";
+  }
+
+  function clickOutsideClose(e) {
+    const wrap = dock.querySelector(".dock-wrap");
+    if (!wrap) return;
+    if (!wrap.contains(e.target)) closeDock();
+  }
+
+  function escClose(e) {
+    if (e.key === "Escape") closeDock();
+  }
+
+  // Clique no ⋮ abre/fecha dock e sempre fecha o painel
+  toggle.addEventListener("click", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleDock();
+    closePanel();
+  });
+
+  // Hover abre (como você gostou)
+  dock.addEventListener("mouseenter", openDock);
+
   // ============================================================
-  // 2) ACTION DOCK — mover/duplicar/copiar link
+  // MOVER — GET opções no endpoint REAL + POST no move-card REAL
   // ============================================================
-  function initActionDock(){
-    const dock = document.getElementById("cm-action-dock");
-    const toggle = document.getElementById("cm-dock-toggle");
-    const btnMove = document.getElementById("cm-dock-move");
-    const btnDup = document.getElementById("cm-dock-duplicate");
-    const btnCopy = document.getElementById("cm-dock-copylink");
+  if (btnMove) {
+    btnMove.addEventListener("click", async function (e) {
+      e.preventDefault();
+      e.stopPropagation();
 
-    const panel = document.getElementById("cm-action-dock-panel");
-    const panelBody = document.getElementById("cm-dock-panel-body");
+      try {
+        // ✅ URLconf: path("card/<int:card_id>/move/options/", views.card_move_options, ...)
+        const url = `/card/${cardId}/move/options/`;
+        const res = await fetch(url, {
+          headers: { "X-Requested-With": "XMLHttpRequest" },
+        });
 
-    if (!dock || !toggle || !panel || !panelBody) return;
+        if (!res.ok) {
+          const t = await res.text().catch(() => "");
+          throw new Error(t || "Falha ao carregar opções.");
+        }
 
-    function openDock(){
-      dock.classList.add("is-open");
-    }
-    function toggleDock(){
-      dock.classList.toggle("is-open");
-    }
+        const data = await res.json();
 
-    function openPanel(html){
-      panelBody.innerHTML = html || "";
-      panel.classList.add("is-open");
-      panel.classList.remove("boing");
-      void panel.offsetWidth; // reflow
-      panel.classList.add("boing");
-    }
+        const current = data.current || {};
+        const boards = data.boards || [];
+        const columnsByBoard = data.columns_by_board || {};
 
-    function closePanel(){
-      panel.classList.remove("is-open");
-      panelBody.innerHTML = "";
-    }
+        const boardOptions = boards
+          .map((b) => `<option value="${b.id}">${escapeHtml(b.name)}</option>`)
+          .join("");
 
-    function clickOutsideClose(e){
-      const wrap = dock.querySelector(".dock-wrap");
-      if (!wrap) return;
-      if (!wrap.contains(e.target)) closePanel();
-    }
-
-    function escClose(e){
-      if (e.key === "Escape") closePanel();
-    }
-
-    toggle.addEventListener("click", function(){
-      toggleDock();
-      closePanel();
-    });
-
-    // Hover abre (premium feel) sem travar mobile
-    dock.addEventListener("mouseenter", openDock);
-
-    // MOVER — lazy load do backend existente
-    if (btnMove){
-      btnMove.addEventListener("click", async function(){
-        try{
-          const url = `/boards/cards/${cardId}/move-options/`; // ajuste se sua rota for diferente
-          const res = await fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" }});
-          if (!res.ok) throw new Error("Falha ao carregar opções.");
-          const data = await res.json();
-
-          // Render inline (painel compacto)
-          const current = data.current || {};
-          const boards = data.boards || [];
-          const columnsByBoard = data.columns_by_board || {};
-
-          const boardOptions = boards.map(b => `<option value="${b.id}">${escapeHtml(b.name)}</option>`).join("");
-
-          openPanel(`
-            <div class="cm-card" style="box-shadow:none; border:none; background:transparent; padding:0;">
-              <div class="cm-muted" style="margin-bottom:8px;">
-                <div><strong>Local atual:</strong> ${escapeHtml(current.board_name || "")} → ${escapeHtml(current.column_name || "")} (#${current.position || ""})</div>
+        openPanel(`
+          <div class="cm-card" style="box-shadow:none; border:none; background:transparent; padding:0;">
+            <div class="cm-muted" style="margin-bottom:8px;">
+              <div>
+                <strong>Local atual:</strong>
+                ${escapeHtml(current.board_name || "")} → ${escapeHtml(current.column_name || "")} (#${escapeHtml(current.position ?? "")})
               </div>
-
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <label class="block">
-                  <span class="cm-label">Quadro</span>
-                  <select id="cm-move-board" class="cm-select">
-                    <option value="">Selecione…</option>
-                    ${boardOptions}
-                  </select>
-                </label>
-
-                <label class="block">
-                  <span class="cm-label">Coluna</span>
-                  <select id="cm-move-column" class="cm-select" disabled>
-                    <option value="">Selecione um quadro</option>
-                  </select>
-                </label>
-
-                <label class="block">
-                  <span class="cm-label">Posição</span>
-                  <select id="cm-move-position" class="cm-select" disabled>
-                    <option value="">Selecione uma coluna</option>
-                  </select>
-                </label>
-              </div>
-
-              <div class="flex items-center justify-end gap-2 pt-3">
-                <button type="button" class="cm-btn" id="cm-move-cancel">Cancelar</button>
-                <button type="button" class="cm-btn primary" id="cm-move-confirm">Mover</button>
-              </div>
-
-              <p id="cm-move-error" class="hidden" style="margin-top:10px; color: var(--cm-danger); font-size: 12px;"></p>
             </div>
-          `);
 
-          // bind do painel
-          const selBoard = document.getElementById("cm-move-board");
-          const selCol = document.getElementById("cm-move-column");
-          const selPos = document.getElementById("cm-move-position");
-          const btnCancel = document.getElementById("cm-move-cancel");
-          const btnConfirm = document.getElementById("cm-move-confirm");
-          const err = document.getElementById("cm-move-error");
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <label class="block">
+                <span class="cm-label">Quadro</span>
+                <select id="cm-move-board" class="cm-select">
+                  <option value="">Selecione…</option>
+                  ${boardOptions}
+                </select>
+              </label>
 
-          function setError(msg){
-            if (!err) return;
-            err.textContent = msg || "";
-            err.classList.toggle("hidden", !msg);
+              <label class="block">
+                <span class="cm-label">Coluna</span>
+                <select id="cm-move-column" class="cm-select" disabled>
+                  <option value="">Selecione um quadro</option>
+                </select>
+              </label>
+
+              <label class="block">
+                <span class="cm-label">Posição</span>
+                <select id="cm-move-position" class="cm-select" disabled>
+                  <option value="">Selecione uma coluna</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="flex items-center justify-end gap-2 pt-3">
+              <button type="button" class="cm-btn" id="cm-move-cancel">Cancelar</button>
+              <button type="button" class="cm-btn primary" id="cm-move-confirm">Mover</button>
+            </div>
+
+            <p id="cm-move-error" class="hidden" style="margin-top:10px; color: var(--cm-danger); font-size: 12px;"></p>
+          </div>
+        `);
+
+        const selBoard = document.getElementById("cm-move-board");
+        const selCol = document.getElementById("cm-move-column");
+        const selPos = document.getElementById("cm-move-position");
+        const btnCancel = document.getElementById("cm-move-cancel");
+        const btnConfirm = document.getElementById("cm-move-confirm");
+        const err = document.getElementById("cm-move-error");
+
+        function setError(msg) {
+          if (!err) return;
+          err.textContent = msg || "";
+          err.classList.toggle("hidden", !msg);
+        }
+
+        function fillColumns(boardId) {
+          const cols = columnsByBoard[String(boardId)] || [];
+
+          selCol.innerHTML = cols.length
+            ? `<option value="">Selecione…</option>` +
+              cols
+                .map(
+                  (c) =>
+                    `<option value="${c.id}" data-total="${c.positions_total_plus_one}">${escapeHtml(
+                      c.name
+                    )}</option>`
+                )
+                .join("")
+            : `<option value="">Sem colunas</option>`;
+
+          selCol.disabled = cols.length === 0;
+          selPos.innerHTML = `<option value="">Selecione uma coluna</option>`;
+          selPos.disabled = true;
+        }
+
+        function fillPositions(total) {
+          const n = parseInt(total || "0", 10) || 0;
+          const opts = [];
+          for (let i = 1; i <= n; i++) {
+            opts.push(`<option value="${i - 1}">${i}</option>`);
           }
+          selPos.innerHTML = opts.length ? opts.join("") : `<option value="">—</option>`;
+          selPos.disabled = opts.length === 0;
+        }
 
-          function fillColumns(boardId){
-            const cols = columnsByBoard[String(boardId)] || [];
-            selCol.innerHTML = cols.length
-              ? `<option value="">Selecione…</option>` + cols.map(c => `<option value="${c.id}" data-total="${c.positions_total_plus_one}">${escapeHtml(c.name)}</option>`).join("")
-              : `<option value="">Sem colunas</option>`;
-            selCol.disabled = cols.length === 0;
-            selPos.innerHTML = `<option value="">Selecione uma coluna</option>`;
-            selPos.disabled = true;
-          }
+        selBoard.addEventListener("change", function () {
+          setError("");
+          if (!this.value) return;
+          fillColumns(this.value);
+        });
 
-          function fillPositions(total){
-            const n = parseInt(total || "0", 10) || 0;
-            const opts = [];
-            for (let i=1; i<=n; i++){
-              opts.push(`<option value="${i-1}">${i}</option>`);
-            }
-            selPos.innerHTML = opts.length ? opts.join("") : `<option value="">—</option>`;
-            selPos.disabled = opts.length === 0;
-          }
+        selCol.addEventListener("change", function () {
+          setError("");
+          if (!this.value) return;
+          const opt = this.options[this.selectedIndex];
+          const total = opt ? opt.getAttribute("data-total") : "0";
+          fillPositions(total);
+        });
 
-          selBoard.addEventListener("change", function(){
-            setError("");
-            if (!this.value) return;
-            fillColumns(this.value);
-          });
+        if (btnCancel) btnCancel.addEventListener("click", closePanel);
 
-          selCol.addEventListener("change", function(){
-            setError("");
-            const opt = this.options[this.selectedIndex];
-            const total = opt ? opt.getAttribute("data-total") : "0";
-            if (!this.value) return;
-            fillPositions(total);
-          });
+        
 
-          btnCancel.addEventListener("click", closePanel);
 
-          btnConfirm.addEventListener("click", async function(){
-            try{
+
+
+                if (btnConfirm) {
+          btnConfirm.addEventListener("click", async function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            try {
               setError("");
-              const boardId = selBoard.value;
+
+              const boardId = selBoard.value; // valida UX; backend não usa aqui
               const colId = selCol.value;
+
+              // UI mostra 1..N, mas o backend espera 0..N-1
+              // (value do option já é 0-based)
               const pos = selPos.value;
 
-              if (!boardId || !colId || pos === "") return setError("Selecione quadro, coluna e posição.");
+              if (!boardId || !colId || pos === "") {
+                setError("Selecione quadro, coluna e posição.");
+                return;
+              }
 
               const csrf = getCSRFToken();
+
+              // ✅ endpoint real do urls.py: path("move-card/", views.move_card, name="move_card")
+              const endpoint = `/move-card/`;
+
+              // ✅ payload EXATO do backend atual (boards/views/cards.py -> move_card)
               const payload = {
                 card_id: parseInt(cardId, 10),
                 new_column_id: parseInt(colId, 10),
                 new_position: parseInt(pos, 10),
               };
 
-              const res2 = await fetch(`/boards/cards/move/`, {  // ajuste se sua rota for diferente
+              const res = await fetch(endpoint, {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
@@ -963,52 +1027,86 @@
                 body: JSON.stringify(payload),
               });
 
-              if (!res2.ok){
-                const t = await res2.text();
+              if (!res.ok) {
+                const t = await res.text().catch(() => "");
                 throw new Error(t || "Falha ao mover.");
               }
 
-              // estratégia simples: fecha modal e recarrega board
-              if (typeof window.closeModal === "function") window.closeModal();
-              else location.reload();
-            }catch(ex){
+              // 1) Fecha painel/dock (UX)
+              closePanel();
+              closeDock();
+
+              // 2) Sem adivinhar seletor de coluna/lista:
+              //    o backend já reindexa e garante posição correta.
+              //    então garantimos consistência visual com reload.
+              location.reload();
+            } catch (ex) {
               setError(ex.message || "Erro ao mover.");
             }
           });
-
-        }catch(ex){
-          openPanel(`<div class="cm-muted">Erro: ${escapeHtml(ex.message || "Falha ao carregar mover.")}</div>`);
         }
-      });
-    }
-
-    // DUPLICAR (stub sprint) — aqui fica só o gancho, backend depois
-    if (btnDup){
-      btnDup.addEventListener("click", function(){
-        openPanel(`<div class="cm-muted">Duplicar: pendente de endpoint (próximo commit).</div>`);
-      });
-    }
-
-    // COPIAR LINK (frontend-only)
-    if (btnCopy){
-      btnCopy.addEventListener("click", async function(){
-        const url = `${location.origin}${location.pathname}?card=${cardId}`;
-        try{
-          await navigator.clipboard.writeText(url);
-          openPanel(`<div class="cm-muted">Link copiado.</div>`);
-          setTimeout(closePanel, 900);
-        }catch(e){
-          openPanel(`
-            <div class="cm-muted" style="margin-bottom:6px;">Copie manualmente:</div>
-            <input class="cm-input" value="${escapeAttr(url)}" onclick="this.select()" readonly />
-          `);
-        }
-      });
-    }
-
-    document.addEventListener("click", clickOutsideClose);
-    document.addEventListener("keydown", escClose);
+      } catch (ex) {
+        openPanel(
+          `<div class="cm-muted">Erro: ${escapeHtml(
+            ex.message || "Falha ao carregar mover."
+          )}</div>`
+        );
+      }
+    });
   }
+
+  // ============================================================
+  // DUPLICAR — não existe endpoint no URLconf (feature flag)
+  // ============================================================
+  if (btnDup) {
+    btnDup.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      openPanel(
+        `<div class="cm-muted">Duplicar ainda não está disponível (sem endpoint no backend).</div>`
+      );
+      setTimeout(closePanel, 1200);
+    });
+  }
+
+  // ============================================================
+  // COPIAR LINK (frontend-only)
+  // ============================================================
+  if (btnCopy) {
+    btnCopy.addEventListener("click", async function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const url = `${location.origin}${location.pathname}?card=${cardId}`;
+
+      try {
+        await navigator.clipboard.writeText(url);
+        openPanel(`<div class="cm-muted">Link copiado.</div>`);
+        setTimeout(closePanel, 900);
+      } catch (_e) {
+        openPanel(`
+          <div class="cm-muted" style="margin-bottom:6px;">Copie manualmente:</div>
+          <input class="cm-input" value="${escapeAttr(
+            url
+          )}" onclick="this.select()" readonly />
+        `);
+      }
+    });
+  }
+
+  document.addEventListener("click", clickOutsideClose);
+  document.addEventListener("keydown", escClose);
+}
+
+
+
+
+
+
+
+
+
+
 
   // ============================================================
   // helpers

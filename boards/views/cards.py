@@ -231,15 +231,27 @@ def move_card(request):
         return JsonResponse({"error": "Sem permissão para mover card neste quadro."}, status=403)
 
     actor = _actor_label(request)
-    old_pos = card.position
+    old_pos = int(card.position or 0)
 
+    # ----------------------------
+    # 1) Mover dentro da mesma coluna
+    # ----------------------------
     if old_column.id == new_column.id:
         cards = list(old_column.cards.order_by("position"))
-        cards.remove(card)
+
+        # remove o card atual (garante que só aparece 1x)
+        cards = [c for c in cards if c.id != card.id]
+
+        # clamp
+        if new_position < 0:
+            new_position = 0
+        if new_position > len(cards):
+            new_position = len(cards)
+
         cards.insert(new_position, card)
 
         for index, c in enumerate(cards):
-            if c.position != index:
+            if int(c.position or 0) != index:
                 c.position = index
                 c.save(update_fields=["position"])
 
@@ -250,20 +262,34 @@ def move_card(request):
         )
         return JsonResponse({"status": "ok"})
 
+    # ----------------------------
+    # 2) Mover para outra coluna
+    # ----------------------------
+
+    # reindex da coluna antiga (sem o card)
     old_cards = list(old_column.cards.exclude(id=card.id).order_by("position"))
     for index, c in enumerate(old_cards):
-        if c.position != index:
+        if int(c.position or 0) != index:
             c.position = index
             c.save(update_fields=["position"])
 
+    # troca a coluna do card (sem “vazar” position antigo)
     card.column = new_column
     card.save(update_fields=["column"])
 
-    new_cards = list(new_column.cards.order_by("position"))
+    # monta a lista da nova coluna SEM o card (evita duplicação)
+    new_cards = list(new_column.cards.exclude(id=card.id).order_by("position"))
+
+    # clamp
+    if new_position < 0:
+        new_position = 0
+    if new_position > len(new_cards):
+        new_position = len(new_cards)
+
     new_cards.insert(new_position, card)
 
     for index, c in enumerate(new_cards):
-        if c.position != index:
+        if int(c.position or 0) != index:
             c.position = index
             c.save(update_fields=["position"])
 

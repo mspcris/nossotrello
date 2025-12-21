@@ -17,6 +17,8 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 from django.urls import reverse
+from django.db.models import Prefetch
+
 
 from .helpers import (
     DEFAULT_WALLPAPER_FILENAME,
@@ -128,7 +130,17 @@ def board_detail(request, board_id):
         if request.user.is_authenticated and (board.created_by_id == request.user.id or request.user.is_staff):
             can_share_board = True
 
-    columns = board.columns.filter(is_deleted=False).order_by("position")
+    columns = (
+    board.columns.filter(is_deleted=False)
+    .order_by("position")
+    .prefetch_related(
+        Prefetch(
+            "cards",
+            queryset=Card.objects.filter(is_deleted=False).order_by("position"),
+        )
+    )
+)
+
     return render(
         request,
         "boards/board_detail.html",
