@@ -111,10 +111,39 @@
 
 {% block header_right_under_logo %}
 <div class="w-64">
-    <span class="text-sm font-semibold text-gray-600 board-label">Filtrar por etiquetas:</span>
-    <input type="text" id="tag-filter" placeholder="Ex: urgente"
-           class="border rounded px-3 py-2 text-sm w-full mt-2"
-           oninput="filterByTag(this.value)">
+  <div class="flex items-center justify-between">
+    <span id="filter-label" class="text-sm font-semibold text-gray-600 board-label">
+      Filtrar por:
+    </span>
+
+    <!-- Segmented control: Tags | Texto -->
+    <div class="inline-flex rounded-md border border-gray-300 bg-white/80 overflow-hidden">
+      <button
+        type="button"
+        id="filter-mode-tags"
+        class="px-3 py-1 text-xs font-semibold bg-gray-900 text-white"
+        onclick="setFilterMode('tags')"
+      >
+        Tags
+      </button>
+      <button
+        type="button"
+        id="filter-mode-text"
+        class="px-3 py-1 text-xs font-semibold text-gray-700"
+        onclick="setFilterMode('text')"
+      >
+        Texto
+      </button>
+    </div>
+  </div>
+
+  <input
+    type="text"
+    id="board-filter"
+    placeholder="Ex: urgente"
+    class="border rounded px-3 py-2 text-sm w-full mt-2"
+    oninput="applyBoardFilter(this.value)"
+  >
 </div>
 {% endblock %}
 
@@ -126,18 +155,15 @@
 
 
 <script>
-    const menuBtn = document.getElementById("board-menu-btn");
-    const menu = document.getElementById("board-menu");
+const menuBtn = document.getElementById("board-menu-btn");
+const menu = document.getElementById("board-menu");
 
-    menuBtn.addEventListener("click", () => {
-        menu.classList.toggle("hidden");
-    });
+menuBtn?.addEventListener("click", () => menu.classList.toggle("hidden"));
 
-    document.addEventListener("click", (ev) => {
-        if (!menu.contains(ev.target) && !menuBtn.contains(ev.target)) {
-            menu.classList.add("hidden");
-        }
-    });
+document.addEventListener("click", (ev) => {
+  if (!menu || !menuBtn) return;
+  if (!menu.contains(ev.target) && !menuBtn.contains(ev.target)) menu.classList.add("hidden");
+});
 </script>
 
 
@@ -178,22 +204,99 @@
 
 
 <!-- ======================== SCRIPTS ======================== -->
+
 <script>
-    function filterByTag(text) {
-        text = text.trim().toLowerCase();
-        document.querySelectorAll('[id^="cards-col-"] li[data-card-id]').forEach(card => {
-            const tags = card.querySelectorAll('span.text-xs');
-            let match = false;
+  // state
+  window.__boardFilterMode = "tags"; // "tags" | "text"
 
-            tags.forEach(t => {
-                if (t.innerText.toLowerCase().includes(text))
-                    match = true;
-            });
+  function setFilterMode(mode) {
+    window.__boardFilterMode = (mode === "text") ? "text" : "tags";
 
-            card.style.display = (text === "" || match) ? "" : "none";
-        });
+    const btnTags = document.getElementById("filter-mode-tags");
+    const btnText = document.getElementById("filter-mode-text");
+    const input = document.getElementById("board-filter");
+
+    // UI states
+    if (btnTags && btnText) {
+      btnTags.classList.toggle("bg-gray-900", window.__boardFilterMode === "tags");
+      btnTags.classList.toggle("text-white", window.__boardFilterMode === "tags");
+      btnTags.classList.toggle("text-gray-700", window.__boardFilterMode !== "tags");
+
+      btnText.classList.toggle("bg-gray-900", window.__boardFilterMode === "text");
+      btnText.classList.toggle("text-white", window.__boardFilterMode === "text");
+      btnText.classList.toggle("text-gray-700", window.__boardFilterMode !== "text");
     }
+
+    // placeholder
+    if (input) {
+      input.placeholder = (window.__boardFilterMode === "text")
+        ? "Buscar em cards…"
+        : "Ex: urgente";
+
+      // reaplica o filtro com o valor atual
+      applyBoardFilter(input.value || "");
+        if (!window.matchMedia || !window.matchMedia("(pointer: coarse)").matches) input.focus();
+    }
+  }
+
+
+  function applyBoardFilter(raw) {
+    const q = (raw || "").trim().toLowerCase();
+
+    // 1) filtra cards
+    const cards = document.querySelectorAll('[id^="cards-col-"] li[data-card-id]');
+    cards.forEach((card) => {
+      if (!q) {
+        card.style.display = "";
+        return;
+      }
+
+      if (window.__boardFilterMode === "tags") {
+        const tags = Array.from(card.querySelectorAll("[data-tag]"))
+          .map(t => (t.textContent || "").toLowerCase());
+        const match = tags.some(t => t.includes(q));
+        card.style.display = match ? "" : "none";
+        return;
+      }
+
+      // TEXT MODE
+      // prioridade: data-search (se existir) -> senão, cai no texto do próprio card (título/tags/etc)
+      const dataSearch = (card.getAttribute("data-search") || "").toLowerCase();
+
+      const titleEl = card.querySelector("[data-card-title]");
+      const title = (titleEl?.textContent || "").toLowerCase();
+
+      const tagsText = Array.from(card.querySelectorAll("[data-tag]"))
+        .map(t => (t.textContent || "").toLowerCase())
+        .join(" ");
+
+      // fallback: o que existe no DOM do card
+      const domText = (card.textContent || "").toLowerCase();
+
+      const hay = (dataSearch || (title + " " + tagsText + " " + domText)).trim();
+      card.style.display = hay.includes(q) ? "" : "none";
+    });
+
+    // 2) oculta/mostra colunas (somente quando há busca)
+    // Ajuste o seletor se seu wrapper de coluna for diferente, mas você já usa ".column-item" no Sortable
+    const columns = document.querySelectorAll(".column-item");
+    columns.forEach((col) => {
+      if (!q) {
+        col.style.display = "";
+        return;
+      }
+      const list = col.querySelector('[id^="cards-col-"]');
+      if (!list) {
+        col.style.display = "";
+        return;
+      }
+      const hasVisible = Array.from(list.querySelectorAll('li[data-card-id]'))
+        .some(li => li.style.display !== "none");
+      col.style.display = hasVisible ? "" : "none";
+    });
+  }
 </script>
+
 
 <script>
     function initSortable() {
@@ -203,27 +306,40 @@
             listEl.dataset.sortableApplied = "1";
 
             new Sortable(listEl, {
-                group: "cards",
-                animation: 150,
-                ghostClass: "drag-ghost",
+  group: "cards",
+  animation: 150,
+  ghostClass: "drag-ghost",
 
-                onEnd: evt => {
-                    const csrftoken = document.querySelector("[name=csrfmiddlewaretoken]")?.value;
+  // MOBILE UX: só inicia drag após "press and hold"
+  delay: 280,
+  delayOnTouchOnly: true,
 
-                    fetch("{% url 'boards:move_card' %}", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "X-CSRFToken": csrftoken
-                        },
-                        body: JSON.stringify({
-                            card_id: Number(evt.item.dataset.cardId),
-                            new_column_id: Number(evt.to.id.replace("cards-col-", "")),
-                            new_position: Number(evt.newIndex)
-                        })
-                    });
-                }
-            });
+  // tolerância: movimento pequeno vira scroll, não drag
+  touchStartThreshold: 10,
+
+  // evita disparar drag ao tocar em botões/inputs dentro do card
+  filter: "button, a, input, textarea, select, label",
+  preventOnFilter: false,
+
+  onEnd: (evt) => {
+  const csrftoken = document.querySelector("[name=csrfmiddlewaretoken]")?.value || "";
+
+  fetch("{% url 'boards:move_card' %}", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": csrftoken
+    },
+    body: JSON.stringify({
+      card_id: Number(evt.item.dataset.cardId),
+      new_column_id: Number(evt.to.id.replace("cards-col-", "")),
+      new_position: Number(evt.newIndex)
+    })
+  });
+}
+
+});
         });
     }
 
@@ -264,11 +380,11 @@
 
         fetch("{% url 'boards:reorder_columns' board.id %}", {
           method: "POST",
+          credentials: "same-origin",
           headers: {
             "Content-Type": "application/json",
             "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]")?.value || ""
-        },
-
+          },
           body: JSON.stringify({ order })
         });
       }
@@ -278,6 +394,7 @@
   document.addEventListener("DOMContentLoaded", initSortableColumns);
   document.body.addEventListener("htmx:afterSwap", initSortableColumns);
 </script>
+
 
 
 
