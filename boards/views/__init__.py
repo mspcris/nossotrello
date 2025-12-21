@@ -9,3 +9,5 @@ from .attachments import *
 from .activity import *
 from .checklists import *
 from .legacy import *
+from .search import board_search
+

@@ -46,6 +46,9 @@ urlpatterns = [
     path("board/<int:board_id>/wallpaper/", views.update_board_wallpaper, name="update_board_wallpaper"),
     path("board/<int:board_id>/wallpaper/remove/", views.remove_board_wallpaper, name="remove_board_wallpaper"),
     path("board/<int:board_id>/wallpaper.css", views.board_wallpaper_css, name="board_wallpaper_css"),
+    
+    # search do board
+    path("board/<int:board_id>/search/", views.board_search, name="board_search"),
 
     # ---------------------- HOME WALLPAPER ----------------------
     path("home/wallpaper/", views.update_home_wallpaper, name="update_home_wallpaper"),

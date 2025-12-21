@@ -206,8 +206,69 @@ document.addEventListener("click", (ev) => {
 <!-- ======================== SCRIPTS ======================== -->
 
 <script>
+  // ============================================================
+  // FILTER (Tags = frontend | Texto = backend)
+  // ============================================================
+
   // state
   window.__boardFilterMode = "tags"; // "tags" | "text"
+
+  function debounce(fn, wait) {
+    let t;
+    return function (...args) {
+      clearTimeout(t);
+      t = setTimeout(() => fn.apply(this, args), wait);
+    };
+  }
+
+  function resetSearchUI() {
+    // volta tudo (cards + colunas)
+    document.querySelectorAll('li[data-card-id]').forEach((card) => (card.style.display = ""));
+    document.querySelectorAll(".column-item[data-column-id]").forEach((col) => (col.style.display = ""));
+  }
+
+  function applySearchResult(cardIds, columnIds) {
+    const cardSet = new Set((cardIds || []).map((x) => Number(x)));
+    const colSet = new Set((columnIds || []).map((x) => Number(x)));
+
+    // cards
+    document.querySelectorAll('li[data-card-id]').forEach((card) => {
+      const id = Number(card.dataset.cardId);
+      card.style.display = cardSet.has(id) ? "" : "none";
+    });
+
+    // colunas
+    document.querySelectorAll(".column-item[data-column-id]").forEach((col) => {
+      const id = Number(col.getAttribute("data-column-id"));
+      col.style.display = colSet.has(id) ? "" : "none";
+    });
+  }
+
+  const runBackendSearch = debounce(async function (raw) {
+    const q = (raw || "").trim();
+    if (!q) {
+      resetSearchUI();
+      return;
+    }
+
+    try {
+      const resp = await fetch(`/board/{{ board.id }}/search/?q=${encodeURIComponent(q)}`, {
+        method: "GET",
+        credentials: "same-origin",
+        headers: { "Accept": "application/json" }
+      });
+
+      if (!resp.ok) {
+        resetSearchUI();
+        return;
+      }
+
+      const data = await resp.json();
+      applySearchResult(data.card_ids || [], data.column_ids || []);
+    } catch (e) {
+      resetSearchUI();
+    }
+  }, 250);
 
   function setFilterMode(mode) {
     window.__boardFilterMode = (mode === "text") ? "text" : "tags";
@@ -235,122 +296,103 @@ document.addEventListener("click", (ev) => {
 
       // reaplica o filtro com o valor atual
       applyBoardFilter(input.value || "");
-        if (!window.matchMedia || !window.matchMedia("(pointer: coarse)").matches) input.focus();
+      if (!window.matchMedia || !window.matchMedia("(pointer: coarse)").matches) input.focus();
     }
   }
-
 
   function applyBoardFilter(raw) {
     const q = (raw || "").trim().toLowerCase();
 
-    // 1) filtra cards
-    const cards = document.querySelectorAll('[id^="cards-col-"] li[data-card-id]');
-    cards.forEach((card) => {
-      if (!q) {
-        card.style.display = "";
-        return;
-      }
-
-      if (window.__boardFilterMode === "tags") {
-        const tags = Array.from(card.querySelectorAll("[data-tag]"))
-          .map(t => (t.textContent || "").toLowerCase());
-        const match = tags.some(t => t.includes(q));
-        card.style.display = match ? "" : "none";
-        return;
-      }
-
-      // TEXT MODE
-      // prioridade: data-search (se existir) -> senão, cai no texto do próprio card (título/tags/etc)
-      const dataSearch = (card.getAttribute("data-search") || "").toLowerCase();
-
-      const titleEl = card.querySelector("[data-card-title]");
-      const title = (titleEl?.textContent || "").toLowerCase();
-
-      const tagsText = Array.from(card.querySelectorAll("[data-tag]"))
-        .map(t => (t.textContent || "").toLowerCase())
-        .join(" ");
-
-      // fallback: o que existe no DOM do card
-      const domText = (card.textContent || "").toLowerCase();
-
-      const hay = (dataSearch || (title + " " + tagsText + " " + domText)).trim();
-      card.style.display = hay.includes(q) ? "" : "none";
-    });
-
-    // 2) oculta/mostra colunas (somente quando há busca)
-    // Ajuste o seletor se seu wrapper de coluna for diferente, mas você já usa ".column-item" no Sortable
-    const columns = document.querySelectorAll(".column-item");
-    columns.forEach((col) => {
-      if (!q) {
-        col.style.display = "";
-        return;
-      }
-      const list = col.querySelector('[id^="cards-col-"]');
-      if (!list) {
-        col.style.display = "";
-        return;
-      }
-      const hasVisible = Array.from(list.querySelectorAll('li[data-card-id]'))
-        .some(li => li.style.display !== "none");
-      col.style.display = hasVisible ? "" : "none";
-    });
-  }
-</script>
-
-
-<script>
-    function initSortable() {
-        document.querySelectorAll("[id^='cards-col-']").forEach(listEl => {
-
-            if (listEl.dataset.sortableApplied === "1") return;
-            listEl.dataset.sortableApplied = "1";
-
-            new Sortable(listEl, {
-  group: "cards",
-  animation: 150,
-  ghostClass: "drag-ghost",
-
-  // MOBILE UX: só inicia drag após "press and hold"
-  delay: 280,
-  delayOnTouchOnly: true,
-
-  // tolerância: movimento pequeno vira scroll, não drag
-  touchStartThreshold: 10,
-
-  // evita disparar drag ao tocar em botões/inputs dentro do card
-  filter: "button, a, input, textarea, select, label",
-  preventOnFilter: false,
-
-  onEnd: (evt) => {
-  const csrftoken = document.querySelector("[name=csrfmiddlewaretoken]")?.value || "";
-
-  fetch("{% url 'boards:move_card' %}", {
-    method: "POST",
-    credentials: "same-origin",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRFToken": csrftoken
-    },
-    body: JSON.stringify({
-      card_id: Number(evt.item.dataset.cardId),
-      new_column_id: Number(evt.to.id.replace("cards-col-", "")),
-      new_position: Number(evt.newIndex)
-    })
-  });
-}
-
-});
-        });
+    // sem query: reset total (cards + colunas)
+    if (!q) {
+      resetSearchUI();
+      return;
     }
 
-    document.addEventListener("DOMContentLoaded", initSortable);
-    document.body.addEventListener("htmx:afterSwap", initSortable);
+    // TAGS MODE (frontend)
+    if (window.__boardFilterMode === "tags") {
+      const cards = document.querySelectorAll('[id^="cards-col-"] li[data-card-id]');
+      cards.forEach((card) => {
+        const tags = Array.from(card.querySelectorAll("[data-tag]"))
+          .map(t => (t.textContent || "").toLowerCase());
+
+        const match = tags.some(t => t.includes(q));
+        card.style.display = match ? "" : "none";
+      });
+
+      // oculta colunas que ficaram sem cards visíveis
+      document.querySelectorAll(".column-item[data-column-id]").forEach((col) => {
+        const anyVisible = col.querySelector('li[data-card-id]:not([style*="display: none"])');
+        col.style.display = anyVisible ? "" : "none";
+      });
+
+      return;
+    }
+
+    // TEXT MODE (backend)
+    runBackendSearch(raw);
+  }
+
+  // default
+  document.addEventListener("DOMContentLoaded", () => setFilterMode("tags"));
 </script>
 
 
+<script>
+  // ============================================================
+  // SORTABLE (cards)
+  // ============================================================
+  function initSortable() {
+    document.querySelectorAll("[id^='cards-col-']").forEach(listEl => {
+      if (listEl.dataset.sortableApplied === "1") return;
+      listEl.dataset.sortableApplied = "1";
+
+      new Sortable(listEl, {
+        group: "cards",
+        animation: 150,
+        ghostClass: "drag-ghost",
+
+        // MOBILE UX: só inicia drag após "press and hold"
+        delay: 280,
+        delayOnTouchOnly: true,
+
+        // tolerância: movimento pequeno vira scroll, não drag
+        touchStartThreshold: 10,
+
+        // evita disparar drag ao tocar em botões/inputs dentro do card
+        filter: "button, a, input, textarea, select, label",
+        preventOnFilter: false,
+
+        onEnd: (evt) => {
+          const csrftoken = document.querySelector("[name=csrfmiddlewaretoken]")?.value || "";
+
+          fetch("{% url 'boards:move_card' %}", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": csrftoken
+            },
+            body: JSON.stringify({
+              card_id: Number(evt.item.dataset.cardId),
+              new_column_id: Number(evt.to.id.replace("cards-col-", "")),
+              new_position: Number(evt.newIndex)
+            })
+          });
+        }
+      });
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", initSortable);
+  document.body.addEventListener("htmx:afterSwap", initSortable);
+</script>
 
 
 <script>
+  // ============================================================
+  // SORTABLE (columns)
+  // ============================================================
   function initSortableColumns() {
     const columnsList = document.getElementById("columns-list");
     if (!columnsList) return;
@@ -396,96 +438,98 @@ document.addEventListener("click", (ev) => {
 </script>
 
 
+<script>
+  // ============================================================
+  // BOARD TITLE
+  // ============================================================
+  function updateBoardTitle(boardId) {
+    const titleEl = document.getElementById("board-title");
+    const newTitle = (titleEl?.innerText || "").trim();
 
+    const formData = new FormData();
+    formData.append("name", newTitle);
+
+    fetch(`/board/${boardId}/rename/`, {
+      method: "POST",
+      headers: {
+        "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]")?.value || ""
+      },
+      body: formData
+    });
+  }
+</script>
 
 
 <script>
-    function updateBoardTitle(boardId) {
-        const titleEl = document.getElementById("board-title");
-        const newTitle = titleEl.innerText.trim();
+  // ============================================================
+  // DELETE CARDS MODE
+  // ============================================================
+  let deleteCardsMode = false;
+  const toggleDeleteCardsBtn = document.getElementById("toggle-delete-cards");
 
-        const formData = new FormData();
-        formData.append("name", newTitle);
+  toggleDeleteCardsBtn?.addEventListener("click", () => {
+    deleteCardsMode = !deleteCardsMode;
 
-        fetch(`/board/${boardId}/rename/`, {
-            method: "POST",
-            headers: {
-                "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]")?.value || ""
-            },
-            body: formData
-        });
+    document.querySelectorAll(".delete-card-btn").forEach(btn => {
+      btn.classList.toggle("hidden", !deleteCardsMode);
+    });
+
+    toggleDeleteCardsBtn.innerText = deleteCardsMode
+      ? "Sair do modo de exclusão"
+      : "Excluir cards";
+  });
+
+  document.body.addEventListener("htmx:afterRequest", function () {
+    if (deleteCardsMode) {
+      deleteCardsMode = false;
+
+      document.querySelectorAll(".delete-card-btn").forEach(btn => {
+        btn.classList.add("hidden");
+      });
+
+      toggleDeleteCardsBtn.innerText = "Excluir cards";
     }
+  });
 </script>
 
 
 <script>
-    let deleteCardsMode = false;
+  // ============================================================
+  // DELETE COLUMNS MODE
+  // ============================================================
+  let deleteColumnsMode = false;
+  const toggleDeleteColumnsBtn = document.getElementById("toggle-delete-columns");
 
-    const toggleDeleteCardsBtn = document.getElementById("toggle-delete-cards");
+  toggleDeleteColumnsBtn?.addEventListener("click", () => {
+    deleteColumnsMode = !deleteColumnsMode;
 
-    toggleDeleteCardsBtn?.addEventListener("click", () => {
-        deleteCardsMode = !deleteCardsMode;
-
-        document.querySelectorAll(".delete-card-btn").forEach(btn => {
-            btn.classList.toggle("hidden", !deleteCardsMode);
-        });
-
-        toggleDeleteCardsBtn.innerText = deleteCardsMode
-            ? "Sair do modo de exclusão"
-            : "Excluir cards";
+    document.querySelectorAll(".delete-column-btn").forEach(btn => {
+      btn.classList.toggle("hidden", !deleteColumnsMode);
     });
 
-    // ao excluir um card → desligar modo delete
-    document.body.addEventListener("htmx:afterRequest", function () {
-        if (deleteCardsMode) {
-            deleteCardsMode = false;
+    toggleDeleteColumnsBtn.innerText = deleteColumnsMode
+      ? "Sair do modo de exclusão"
+      : "Excluir colunas";
+  });
 
-            document.querySelectorAll(".delete-card-btn").forEach(btn => {
-                btn.classList.add("hidden");
-            });
+  document.body.addEventListener("htmx:afterRequest", function () {
+    if (deleteColumnsMode) {
+      deleteColumnsMode = false;
 
-            toggleDeleteCardsBtn.innerText = "Excluir cards";
-        }
-    });
-</script>
+      document.querySelectorAll(".delete-column-btn").forEach(btn => {
+        btn.classList.add("hidden");
+      });
 
-<script>
-    let deleteColumnsMode = false;
-
-    const toggleDeleteColumnsBtn = document.getElementById("toggle-delete-columns");
-
-    toggleDeleteColumnsBtn?.addEventListener("click", () => {
-        deleteColumnsMode = !deleteColumnsMode;
-
-        document.querySelectorAll(".delete-column-btn").forEach(btn => {
-            btn.classList.toggle("hidden", !deleteColumnsMode);
-        });
-
-        toggleDeleteColumnsBtn.innerText = deleteColumnsMode
-            ? "Sair do modo de exclusão"
-            : "Excluir colunas";
-    });
-
-    // ao excluir uma coluna → desliga o modo
-    document.body.addEventListener("htmx:afterRequest", function () {
-        if (deleteColumnsMode) {
-            deleteColumnsMode = false;
-
-            document.querySelectorAll(".delete-column-btn").forEach(btn => {
-                btn.classList.add("hidden");
-            });
-
-            toggleDeleteColumnsBtn.innerText = "Excluir colunas";
-        }
-    });
+      toggleDeleteColumnsBtn.innerText = "Excluir colunas";
+    }
+  });
 </script>
 
 
-
-
-
 <script>
-  // Aplica as cores salvas (card.tag_colors) nas tags renderizadas na board
+  // ============================================================
+  // TAG COLORS (saved)
+  // ============================================================
   window.applySavedTagColorsToBoard = function (scope) {
     const root = scope || document;
 
