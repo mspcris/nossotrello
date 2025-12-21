@@ -206,3 +206,173 @@
   document.body.addEventListener("htmx:afterSwap", scanAndBind);
   document.body.addEventListener("htmx:afterSettle", scanAndBind);
 })();
+
+//ALTERAR NOME DA COLUNA
+
+(function () {
+  function getCsrfToken() {
+    const el = document.querySelector("meta[name='csrf-token']");
+    return el ? el.content : "";
+  }
+
+  async function persistColumnName(columnId, name) {
+    const csrf = getCsrfToken();
+    const resp = await fetch(`/column/${columnId}/rename/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+        "X-CSRFToken": csrf,
+      },
+      body: new URLSearchParams({ name }),
+      credentials: "same-origin",
+    });
+
+    if (!resp.ok) {
+      // para debugar rápido no console
+      const text = await resp.text().catch(() => "");
+      console.error("rename_column failed", resp.status, text);
+      throw new Error(`rename_column failed: ${resp.status}`);
+    }
+  }
+
+  // Event delegation: funciona mesmo com HTMX swaps
+  document.addEventListener("keydown", function (e) {
+    const el = e.target;
+    if (!el || !el.matches?.("[data-column-title]")) return;
+
+    if (e.key === "Enter") {
+      e.preventDefault();
+      el.blur(); // dispara o fluxo de salvar no blur
+    }
+  }, true);
+
+  document.addEventListener("blur", async function (e) {
+    const el = e.target;
+    if (!el || !el.matches?.("[data-column-title]")) return;
+
+    const columnId = el.getAttribute("data-column-id");
+    const name = (el.innerText || "")
+    .replace(/\u00A0/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+
+    if (!columnId) return;
+
+    // Regras mínimas de qualidade
+    if (!name) {
+      // se ficar vazio, volta pro title antigo sem salvar
+      el.innerText = el.getAttribute("title") || "";
+      return;
+    }
+
+    // Evita POST inútil se nada mudou
+    const prev = (el.getAttribute("title") || "").trim();
+    if (name === prev) return;
+
+    try {
+      await persistColumnName(columnId, name);
+      // atualiza o "source of truth" local para F5 não depender do DOM
+      el.setAttribute("title", name);
+    } catch (err) {
+      // rollback visual
+      el.innerText = el.getAttribute("title") || "";
+    }
+  }, true);
+})();
+
+
+// Impede colar HTML dentro do título (cola só texto)
+document.addEventListener("paste", function (e) {
+  const el = e.target;
+  if (!el || !el.matches?.("[data-column-title]")) return;
+
+  e.preventDefault();
+  const text = (e.clipboardData || window.clipboardData).getData("text/plain");
+  // insere texto puro no cursor
+  document.execCommand("insertText", false, text);
+}, true);
+
+// Mantém o título SEMPRE como texto puro (remove tags caso entrem)
+document.addEventListener("input", function (e) {
+  const el = e.target;
+  if (!el || !el.matches?.("[data-column-title]")) return;
+
+  // se por algum motivo ensure que não fica HTML
+  const plain = (el.innerText || "").replace(/\u00A0/g, " "); // NBSP -> espaço normal
+  if (el.innerHTML !== plain) {
+    const sel = window.getSelection();
+    const range = sel && sel.rangeCount ? sel.getRangeAt(0) : null;
+
+    el.textContent = plain;
+
+    // tenta preservar cursor no fim (simples e suficiente)
+    if (sel) {
+      sel.removeAllRanges();
+      const r = document.createRange();
+      r.selectNodeContents(el);
+      r.collapse(false);
+      sel.addRange(r);
+    }
+  }
+}, true);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Column menu (3 dots) — global, 1x
+window.toggleMenu = function (colId) {
+  const el = document.getElementById("col-menu-" + colId);
+  if (!el) return;
+
+  const btn = el.closest("[data-color-popover-scope]")?.querySelector("[data-color-popover-trigger]");
+  const isHidden = el.classList.contains("hidden");
+
+  // fecha todos
+  document.querySelectorAll("[data-color-popover]").forEach((p) => p.classList.add("hidden"));
+
+  if (isHidden) {
+    el.classList.remove("hidden");
+    btn?.setAttribute("aria-expanded", "true");
+  } else {
+    el.classList.add("hidden");
+    btn?.setAttribute("aria-expanded", "false");
+  }
+};
+
+// fecha popover ao clicar fora + ESC — global, 1x
+if (!window.__colorPopoverOutsideInstalled) {
+  window.__colorPopoverOutsideInstalled = true;
+
+  document.addEventListener("click", function (e) {
+    document.querySelectorAll("[data-color-popover-scope]").forEach((scope) => {
+      const pop = scope.querySelector("[data-color-popover]");
+      if (!pop || pop.classList.contains("hidden")) return;
+
+      const btn = scope.querySelector("[data-color-popover-trigger]");
+      const clickedInside = pop.contains(e.target) || (btn && btn.contains(e.target));
+      if (!clickedInside) {
+        pop.classList.add("hidden");
+        if (btn) btn.setAttribute("aria-expanded", "false");
+      }
+    });
+  }, true);
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Escape") return;
+    document.querySelectorAll("[data-color-popover]").forEach((p) => p.classList.add("hidden"));
+    document.querySelectorAll("[data-color-popover-trigger]").forEach((b) => b.setAttribute("aria-expanded", "false"));
+  });
+}
+
+// Fim alterar nome da coluna
