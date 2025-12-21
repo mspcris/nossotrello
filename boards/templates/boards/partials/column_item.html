@@ -1,3 +1,4 @@
+<!-- /boards/templates/boards/partials/column_item.html -->
 <div class="column-item relative w-72 flex-shrink-0 rounded-xl shadow-lg overflow-hidden
             column-glass {{ column.theme|default:'gray'|add:'-column-bg' }}
             flex flex-col max-h-[calc(100vh-180px)]"
@@ -21,15 +22,17 @@
         {{ column.cards.count }} card{% if column.cards.count != 1 %}s{% endif %}
       </span>
 
+      <!-- + Card (TOPO) -->
       <button type="button"
               class="text-gray-700 hover:text-gray-900 px-2 py-1 rounded-lg
                      bg-white/20 backdrop-blur-sm border border-white/40 transition"
-              hx-get="{% url 'boards:add_card' column.id %}"
-              hx-target="#form-col-{{ column.id }}"
+              hx-get="{% url 'boards:add_card' column.id %}?where=top"
+              hx-target="#form-top-col-{{ column.id }}"
               hx-swap="innerHTML">
         + Card
       </button>
 
+      <!-- menu 3 dots -->
       <div class="relative" data-color-popover-scope>
         <button type="button"
                 class="px-2 py-1 rounded-lg bg-white/20 border border-white/40
@@ -67,23 +70,26 @@
 
     <!-- Linha 2: título -->
     <div class="mt-2">
-  <span id="column-title-{{ column.id }}"
-        data-column-title
-        data-column-id="{{ column.id }}"
-        contenteditable="plaintext-only"
-        spellcheck="false"
-        title="{{ column.name }}"
-        class="block text-gray-800 font-semibold outline-none cursor-text leading-tight break-words max-w-full"
-        style="
-          display: -webkit-box;
-          -webkit-box-orient: vertical;
-          -webkit-line-clamp: 2;
-          overflow: hidden;
-          white-space: normal;
-        ">{{ column.name }}</span>
-</div>
+      <span id="column-title-{{ column.id }}"
+            data-column-title
+            data-column-id="{{ column.id }}"
+            contenteditable="plaintext-only"
+            spellcheck="false"
+            title="{{ column.name }}"
+            class="block text-gray-800 font-semibold outline-none cursor-text leading-tight break-words max-w-full"
+            style="
+              display: -webkit-box;
+              -webkit-box-orient: vertical;
+              -webkit-line-clamp: 2;
+              overflow: hidden;
+              white-space: normal;
+            ">{{ column.name }}</span>
+    </div>
+  </div>
 
-
+  <!-- Form add card (TOPO) -->
+  <div id="form-top-col-{{ column.id }}"
+       class="shrink-0 px-4 pt-2 pb-2">
   </div>
 
   <!-- ===================== LISTA DE CARDS (SCROLL AQUI) ===================== -->
@@ -101,66 +107,16 @@
             class="w-full text-left text-sm text-gray-700 hover:text-gray-900
                    px-3 py-2 rounded-lg bg-white/10 backdrop-blur-sm
                    border border-white/30 hover:bg-white/20 transition"
-            hx-get="{% url 'boards:add_card' column.id %}"
+            hx-get="{% url 'boards:add_card' column.id %}?where=bottom"
             hx-target="#form-col-{{ column.id }}"
             hx-swap="innerHTML">
       + Card
     </button>
   </div>
 
-  <!-- Form add card -->
+  <!-- Form add card (RODAPÉ) -->
   <div id="form-col-{{ column.id }}"
-       class="shrink-0 p-4"
-       hx-on="htmx:afterRequest:
-                if (event.detail.successful
-                    && event.detail.elt
-                    && event.detail.elt.tagName === 'FORM'
-                    && event.detail.elt.closest('#form-col-{{ column.id }}')) {
-                      this.innerHTML = '';
-                }">
+       class="shrink-0 p-4">
   </div>
 
 </div>
-
-<!--
-<script>
-  function toggleMenu(colId) {
-    const el = document.getElementById("col-menu-" + colId);
-    if (!el) return;
-
-    const btn = el.closest("[data-color-popover-scope]")?.querySelector("[data-color-popover-trigger]");
-    const isHidden = el.classList.contains("hidden");
-
-    document.querySelectorAll("[data-color-popover]").forEach((p) => p.classList.add("hidden"));
-
-    if (isHidden) {
-      el.classList.remove("hidden");
-      btn?.setAttribute("aria-expanded", "true");
-    } else {
-      el.classList.add("hidden");
-      btn?.setAttribute("aria-expanded", "false");
-    }
-  }
-
-  if (!window.__colorPopoverOutsideInstalled) {
-    window.__colorPopoverOutsideInstalled = true;
-
-    document.addEventListener("click", function (e) {
-      document.querySelectorAll("[data-color-popover-scope]").forEach((scope) => {
-        const pop = scope.querySelector("[data-color-popover]");
-        if (!pop || pop.classList.contains("hidden")) return;
-
-        const btn = scope.querySelector("[data-color-popover-trigger]");
-        const clickedInside = pop.contains(e.target) || (btn && btn.contains(e.target));
-        if (!clickedInside) {
-          pop.classList.add("hidden");
-          if (btn) btn.setAttribute("aria-expanded", "false");
-        }
-      });
-    }, true);
-
-    document.addEventListener("keydown", function (e) {
-      if (e.key !== "Escape") return;
-      document.querySelectorAll("[data-color-popover]").forEach((p) => p.classList.add("hidden"));
-    </script>
-  -->

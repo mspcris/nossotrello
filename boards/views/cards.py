@@ -17,6 +17,7 @@ from django.utils import timezone
 from django.utils.html import escape
 from django.core.files.uploadedfile import UploadedFile
 from django.core.files.storage import default_storage
+from django.db.models import F
 
 from .helpers import (
     _actor_label,
@@ -38,21 +39,36 @@ from ..models import Board, Column, Card, CardAttachment, BoardMembership
 def add_card(request, column_id):
     column = get_object_or_404(Column, id=column_id)
 
+    # where vem do GET (abrir form) e do POST (criar card)
+    where = (request.GET.get("where") or request.POST.get("where") or "bottom").strip().lower()
+    if where not in ("top", "bottom"):
+        where = "bottom"
+
     if request.method == "POST":
         form = CardForm(request.POST)
         if not form.is_valid():
             return HttpResponse("Erro ao criar card.", status=400)
 
-        card = form.save(commit=False)
         actor = _actor_label(request)
 
-        raw_desc = (request.POST.get("description") or card.description or "").strip()
-        desc_html, saved_paths = _save_base64_images_to_media(raw_desc, folder="quill")
-        card.description = desc_html
+        with transaction.atomic():
+            card = form.save(commit=False)
 
-        card.column = column
-        card.position = column.cards.count()
-        card.save()
+            raw_desc = (request.POST.get("description") or card.description or "").strip()
+            desc_html, saved_paths = _save_base64_images_to_media(raw_desc, folder="quill")
+            card.description = desc_html
+
+            card.column = column
+
+            if where == "top":
+                # empurra todos +1 e coloca novo em 0
+                Card.objects.filter(column=column).update(position=F("position") + 1)
+                card.position = 0
+            else:
+                # fim da fila
+                card.position = column.cards.count()
+
+            card.save()
 
         _log_card(
             card,
@@ -75,11 +91,13 @@ def add_card(request, column_id):
 
         return render(request, "boards/partials/card_item.html", {"card": card})
 
+    # GET: abre o form
     return render(
         request,
         "boards/partials/add_card_form.html",
-        {"column": column, "form": CardForm()},
+        {"column": column, "form": CardForm(), "where": where},
     )
+
 
 
 @require_POST

@@ -60,3 +60,23 @@
 .delete-card-btn {
     z-index: 30;
 }
+
+
+/* ============================================================
+   BOING DO ADD CARD
+=============================================================== */
+
+.boing-run.boing-down { animation: boingDown 200ms ease-out; }
+.boing-run.boing-up   { animation: boingUp 200ms ease-out; }
+
+@keyframes boingDown {
+  0%   { transform: translateY(-6px) scaleY(0.98); opacity: 0.6; }
+  70%  { transform: translateY(2px)  scaleY(1.01); opacity: 1; }
+  100% { transform: translateY(0)    scaleY(1); }
+}
+
+@keyframes boingUp {
+  0%   { transform: translateY(6px) scaleY(0.98); opacity: 0.6; }
+  70%  { transform: translateY(-2px) scaleY(1.01); opacity: 1; }
+  100% { transform: translateY(0)    scaleY(1); }
+}

@@ -1,14 +1,34 @@
-<form hx-post="{% url 'boards:add_card' column.id %}
-" hx-target="#cards-col-{{ column.id }}" hx-swap="beforeend" class="mt-4">
+{# boards/templates/boards/partials/add_card_form.html #}
 
-    {% csrf_token %}
+<form
+  data-add-card-form
+  data-column-id="{{ column.id }}"
+  data-where="{{ where|default:'bottom' }}"
 
-    <label class="text-sm font-semibold block mb-1">Título:</label>
+  hx-post="{% url 'boards:add_card' column.id %}"
+  hx-target="#cards-col-{{ column.id }}"
+  hx-swap="{% if where == 'top' %}afterbegin{% else %}beforeend{% endif %}"
 
-    <input type="text" name="title" placeholder="Título do card" class="w-full border rounded-md p-2 mb-3">
+  class="mt-2 bg-white/20 backdrop-blur-sm border border-white/40 rounded-xl p-3"
+>
+  {% csrf_token %}
 
-    <button type="submit" class="bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700">
-        Adicionar Card
-    </button>
+  <input type="hidden" name="where" value="{{ where|default:'bottom' }}">
 
+  <label class="text-sm font-semibold block mb-1 text-gray-800">Título:</label>
+
+  <input
+    type="text"
+    name="title"
+    placeholder="Título do card"
+    class="w-full border rounded-md p-2 mb-3"
+    autocomplete="off"
+  >
+
+  <button
+    type="submit"
+    class="bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700"
+  >
+    Adicionar Card
+  </button>
 </form>
