@@ -59,7 +59,7 @@
       Excluir quadros
     </button>
 
-    <form method="post" action="{% url 'logout' %}" class="mt-1">
+    <form method="post" action="{% url 'boards:logout' %}" class="mt-1">
       {% csrf_token %}
       <button
         type="submit"

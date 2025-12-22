@@ -1,40 +1,41 @@
-<!doctype html>
-<html lang="pt-br">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Login - NossoTrello</title>
-</head>
-<body style="font-family: system-ui; max-width: 420px; margin: 48px auto; padding: 0 16px;">
-  <h1 style="margin-bottom: 8px;">Entrar</h1>
-  <p style="margin-top: 0; color: #444;">Acesse com seu usuário e senha.</p>
+<!-- login.html -->
+{% extends "base_auth.html" %}
+{% block title %}Login - NossoTrello{% endblock %}
 
-  {% if form.errors %}
-    <div style="padding: 12px; background: #ffecec; border: 1px solid #ffb3b3; margin: 16px 0;">
-      Usuário ou senha inválidos.
-    </div>
-  {% endif %}
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card">
+    <h1 class="auth-title">Entrar</h1>
+    <p class="auth-sub">Acesse com seu usuário e senha.</p>
 
-  <form method="post" action="{% url 'login' %}">
-    {% csrf_token %}
-
-    <div style="margin-bottom: 12px;">
-      <label for="id_username">Usuário</label><br>
-      <input id="id_username" name="username" type="text" required
-             style="width: 100%; padding: 10px; box-sizing: border-box;">
-    </div>
-
-    <div style="margin-bottom: 12px;">
-      <label for="id_password">Senha</label><br>
-      <input id="id_password" name="password" type="password" required
-             style="width: 100%; padding: 10px; box-sizing: border-box;">
-    </div>
-
-    {% if next %}
-      <input type="hidden" name="next" value="{{ next }}">
+    {% if form.errors %}
+      <div class="auth-alert">Email ou senha inválidos.</div>
     {% endif %}
 
-    <button type="submit" style="padding: 10px 14px; cursor: pointer;">Entrar</button>
-  </form>
-</body>
-</html>
+    <form method="post" class="auth-form" action="{% url 'boards:login' %}" novalidate>
+      {% csrf_token %}
+
+      <div class="auth-field">
+        <label class="auth-label" for="id_username">Email Institucional</label>
+        <input class="auth-input" id="id_username" name="username" type="text" required autocomplete="username">
+      </div>
+
+      <div class="auth-field">
+        <label class="auth-label" for="id_password">Senha</label>
+        <input class="auth-input" id="id_password" name="password" type="password" required autocomplete="current-password">
+      </div>
+
+      {% if next %}
+        <input type="hidden" name="next" value="{{ next }}">
+      {% endif %}
+
+      <button type="submit" class="auth-btn">Entrar</button>
+
+      <div class="auth-links">
+        <a href="{% url 'boards:first_login' %}">Primeiro login? Clique Aqui!</a>
+        <a href="{% url 'boards:password_reset' %}">Esqueci minha senha</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

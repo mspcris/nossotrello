@@ -4,8 +4,14 @@ Django settings for nossotrello project.
 
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Carrega variáveis do .env do projeto e sobrescreve ambiente (VSCode/export)
+load_dotenv(dotenv_path=BASE_DIR / ".env", override=True)
+
 
 # ============================================================
 # BÁSICO (via ENV, com fallback no PROD)
@@ -62,6 +68,9 @@ DATABASES = {
 # ============================================================
 
 INSTALLED_APPS = [
+    # apps do projeto
+    'boards',
+
     # apps nativos
     'django.contrib.admin',
     'django.contrib.auth',
@@ -69,9 +78,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-
-    # apps do projeto
-    'boards',
 
     # integrações
     'django_htmx',
@@ -195,3 +201,42 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_URL = "/accounts/login/"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/accounts/login/"
+
+
+# ============================================================
+# EMAIL (SMTP) — necessário para "Primeiro login" e "Esqueci senha"
+# ============================================================
+
+EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
+
+EMAIL_HOST = (os.getenv("EMAIL_HOST") or "").strip()
+EMAIL_PORT = int(os.getenv("EMAIL_PORT") or 587)
+
+EMAIL_HOST_USER = (os.getenv("EMAIL_HOST_USER") or "").strip()
+EMAIL_HOST_PASSWORD = (os.getenv("EMAIL_HOST_PASSWORD") or "").strip()
+
+# defaults seguros: não liga nada “por padrão”
+EMAIL_USE_TLS = _env_bool("EMAIL_USE_TLS", default=False)
+EMAIL_USE_SSL = _env_bool("EMAIL_USE_SSL", default=False)
+
+# TLS e SSL são mutuamente exclusivos (evita crash)
+if EMAIL_USE_TLS and EMAIL_USE_SSL:
+    if EMAIL_PORT == 465:
+        EMAIL_USE_TLS = False
+    else:
+        EMAIL_USE_SSL = False
+
+DEFAULT_FROM_EMAIL = (os.getenv("DEFAULT_FROM_EMAIL") or "no-reply@clinicacamim.com.br").strip()
+
+# ============================================================
+# Domínios institucionais permitidos
+# ============================================================
+
+INSTITUTIONAL_EMAIL_DOMAINS = _env_csv(
+    "INSTITUTIONAL_EMAIL_DOMAINS",
+    default_list=[
+        "clinicacamim.com.br",
+        "camim.com.br",
+        "egidesaude.com.br",
+    ],
+)

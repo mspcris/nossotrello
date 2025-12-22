@@ -65,7 +65,7 @@
                 Excluir cards
             </button>
 
-            <form method="post" action="{% url 'logout' %}" style="display:inline;">
+            <form method="post" action="{% url 'boards:logout' %}" style="display:inline;">
                 {% csrf_token %}
                 <button type="submit" class="px-4 py-2 w-full text-left hover:bg-gray-100 rounded">
                     Sair
