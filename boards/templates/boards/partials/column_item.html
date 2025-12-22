@@ -1,168 +1,122 @@
+<!-- /boards/templates/boards/partials/column_item.html -->
 <div class="column-item relative w-72 flex-shrink-0 rounded-xl shadow-lg overflow-hidden
             column-glass {{ column.theme|default:'gray'|add:'-column-bg' }}
             flex flex-col max-h-[calc(100vh-180px)]"
      data-column-id="{{ column.id }}">
 
-    <button type="button"
-            class="delete-column-btn hidden absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded z-30"
-            onclick="event.stopPropagation();"
-            hx-post="{% url 'boards:delete_column' column.id %}"
-            hx-target="closest .column-glass"
-            hx-swap="outerHTML">
-        X
-    </button>
+  <button type="button"
+          class="delete-column-btn hidden absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded z-30"
+          onclick="event.stopPropagation();"
+          hx-post="{% url 'boards:delete_column' column.id %}"
+          hx-target="closest .column-glass"
+          hx-swap="outerHTML">
+    X
+  </button>
 
-    <!-- ===================== HEADER ===================== -->
-    <div class="column-header shrink-0 flex items-center justify-between
-                px-4 py-2 h-12 min-h-[48px]
-                border-b border-white/40 z-10 gap-3">
+  <!-- ===================== HEADER ===================== -->
+  <div class="column-header shrink-0 px-4 py-2 border-b border-white/40 z-10 min-h-[72px]">
 
-        <!-- Nome + Contador -->
-        <div class="flex flex-col leading-tight max-w-[130px] truncate">
-            <span id="column-title-{{ column.id }}" contenteditable="true"
-                  class="text-gray-800 font-semibold truncate outline-none cursor-text"
-                  onblur="renameColumn({{ column.id }})"
-                  onkeypress="if(event.key==='Enter'){ event.preventDefault(); this.blur(); }">
-                {{ column.name }}
-            </span>
+    <!-- Linha 1: ações -->
+    <div class="flex items-center justify-end gap-2">
+      <span class="mr-auto text-xs text-gray-600">
+        {{ column.cards.count }} card{% if column.cards.count != 1 %}s{% endif %}
+      </span>
 
-            <!-- CONTADOR DE CARDS -->
-            <span class="text-xs text-gray-600 mt-0.5">
-                {{ column.cards.count }} card{% if column.cards.count != 1 %}s{% endif %}
-            </span>
-        </div>
+      <!-- + Card (TOPO) -->
+      <button type="button"
+              class="text-gray-700 hover:text-gray-900 px-2 py-1 rounded-lg
+                     bg-white/20 backdrop-blur-sm border border-white/40 transition"
+              hx-get="{% url 'boards:add_card' column.id %}?where=top"
+              hx-target="#form-top-col-{{ column.id }}"
+              hx-swap="innerHTML">
+        + Card
+      </button>
 
-        <!-- Botões -->
-        <div class="flex items-center gap-2 shrink-0">
-
-            <!-- + Card (topo) -->
-            <button type="button"
-                    class="text-gray-700 hover:text-gray-900 px-2 py-1 rounded-lg
-                           bg-white/20 backdrop-blur-sm border border-white/40 transition"
-                    hx-get="{% url 'boards:add_card' column.id %}"
-                    hx-target="#form-col-{{ column.id }}"
-                    hx-swap="innerHTML">
-                + Card
-            </button>
-
-            <!-- Menu -->
-            <div class="relative" data-color-popover-scope>
-                <button type="button"
+      <!-- menu 3 dots -->
+      <div class="relative" data-color-popover-scope>
+        <button type="button"
                 class="px-2 py-1 rounded-lg bg-white/20 border border-white/40
-                text-gray-700 hover:text-gray-900 backdrop-blur-sm transition"
+                       text-gray-700 hover:text-gray-900 backdrop-blur-sm transition"
                 data-color-popover-trigger
                 aria-expanded="false"
                 onclick="toggleMenu('{{ column.id }}')">
-                ⋮
-                </button>
-
-
-                <!-- Dropdown -->
-                <div id="col-menu-{{ column.id }}"
-                    data-color-popover
-                        class="hidden absolute right-0 mt-2 w-48 rounded-lg shadow-lg
-                            bg-white/90 backdrop-blur-md border border-gray-300 p-3 z-20">
-
-
-                    <p class="text-xs text-gray-600 mb-2">Cor da coluna:</p>
-
-                    <div class="grid grid-cols-5 gap-2">
-                        {% for value, label in column.THEME_CHOICES %}
-                            <div class="w-7 h-7 rounded-full cursor-pointer border border-gray-300
-                                        hover:scale-110 transition"
-                                 style="background-color: var(--{{ value }}-color);"
-                                 hx-post="{% url 'boards:set_column_theme' column.id %}"
-                                 hx-vals='{"theme": "{{ value }}"}'
-                                 hx-target="closest .column-glass"
-                                 hx-swap="outerHTML">
-                            </div>
-                        {% endfor %}
-                    </div>
-
-                    <hr class="my-2">
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ===================== LISTA DE CARDS (SCROLL AQUI) ===================== -->
-    <ul id="cards-col-{{ column.id }}"
-        class="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
-
-        {% for card in column.cards.all %}
-            {% include "boards/partials/card_item.html" %}
-        {% endfor %}
-    </ul>
-
-    <!-- + Card (fim da coluna) -->
-    <div class="shrink-0 px-4 pb-2">
-        <button type="button"
-                class="w-full text-left text-sm text-gray-700 hover:text-gray-900
-                       px-3 py-2 rounded-lg bg-white/10 backdrop-blur-sm
-                       border border-white/30 hover:bg-white/20 transition"
-                hx-get="{% url 'boards:add_card' column.id %}"
-                hx-target="#form-col-{{ column.id }}"
-                hx-swap="innerHTML">
-            + Card
+          ⋮
         </button>
+
+        <div id="col-menu-{{ column.id }}"
+             data-color-popover
+             class="hidden absolute right-0 mt-2 w-48 rounded-lg shadow-lg
+                    bg-white/90 backdrop-blur-md border border-gray-300 p-3 z-20">
+
+          <p class="text-xs text-gray-600 mb-2">Cor da coluna:</p>
+
+          <div class="grid grid-cols-5 gap-2">
+            {% for value, label in column.THEME_CHOICES %}
+              <div class="w-7 h-7 rounded-full cursor-pointer border border-gray-300
+                          hover:scale-110 transition"
+                   style="background-color: var(--{{ value }}-color);"
+                   hx-post="{% url 'boards:set_column_theme' column.id %}"
+                   hx-vals='{"theme": "{{ value }}"}'
+                   hx-target="closest .column-glass"
+                   hx-swap="outerHTML">
+              </div>
+            {% endfor %}
+          </div>
+
+          <hr class="my-2">
+        </div>
+      </div>
     </div>
 
-    <!-- Form add card (some após criar) -->
-    <div id="form-col-{{ column.id }}"
-         class="shrink-0 p-4"
-         hx-on="htmx:afterRequest:
-                  if (event.detail.successful
-                      && event.detail.elt
-                      && event.detail.elt.tagName === 'FORM'
-                      && event.detail.elt.closest('#form-col-{{ column.id }}')) {
-                        this.innerHTML = '';
-                  }">
+    <!-- Linha 2: título -->
+    <div class="mt-2">
+      <span id="column-title-{{ column.id }}"
+            data-column-title
+            data-column-id="{{ column.id }}"
+            contenteditable="plaintext-only"
+            spellcheck="false"
+            title="{{ column.name }}"
+            class="block text-gray-800 font-semibold outline-none cursor-text leading-tight break-words max-w-full"
+            style="
+              display: -webkit-box;
+              -webkit-box-orient: vertical;
+              -webkit-line-clamp: 2;
+              overflow: hidden;
+              white-space: normal;
+            ">{{ column.name }}</span>
     </div>
+  </div>
+
+  <!-- Form add card (TOPO) -->
+  <div id="form-top-col-{{ column.id }}"
+       class="shrink-0 px-4 pt-2 pb-2">
+  </div>
+
+  <!-- ===================== LISTA DE CARDS (SCROLL AQUI) ===================== -->
+  <ul id="cards-col-{{ column.id }}"
+      class="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
+
+    {% for card in column.cards.all %}
+      {% include "boards/partials/card_item.html" %}
+    {% endfor %}
+  </ul>
+
+  <!-- + Card (fim) -->
+  <div class="shrink-0 px-4 pb-2">
+    <button type="button"
+            class="w-full text-left text-sm text-gray-700 hover:text-gray-900
+                   px-3 py-2 rounded-lg bg-white/10 backdrop-blur-sm
+                   border border-white/30 hover:bg-white/20 transition"
+            hx-get="{% url 'boards:add_card' column.id %}?where=bottom"
+            hx-target="#form-col-{{ column.id }}"
+            hx-swap="innerHTML">
+      + Card
+    </button>
+  </div>
+
+  <!-- Form add card (RODAPÉ) -->
+  <div id="form-col-{{ column.id }}"
+       class="shrink-0 p-4">
+  </div>
 
 </div>
-
-<script>
-    function toggleMenu(colId) {
-        const el = document.getElementById("col-menu-" + colId);
-        const btn = el?.closest("[data-color-popover-scope]")?.querySelector("[data-color-popover-trigger]");
-        const isHidden = el.classList.contains("hidden");
-
-        // fecha todos antes (evita ficar mais de um aberto)
-        document.querySelectorAll("[data-color-popover]").forEach((p) => p.classList.add("hidden"));
-
-        // abre/fecha o atual
-        if (isHidden) {
-            el.classList.remove("hidden");
-            if (btn) btn.setAttribute("aria-expanded", "true");
-        } else {
-            el.classList.add("hidden");
-            if (btn) btn.setAttribute("aria-expanded", "false");
-        }
-    }
-
-    // instala 1x (mesmo com HTMX trocando HTML)
-    if (!window.__colorPopoverOutsideInstalled) {
-        window.__colorPopoverOutsideInstalled = true;
-
-        document.addEventListener("click", function (e) {
-            document.querySelectorAll("[data-color-popover-scope]").forEach((scope) => {
-                const pop = scope.querySelector("[data-color-popover]");
-                if (!pop || pop.classList.contains("hidden")) return;
-
-                const btn = scope.querySelector("[data-color-popover-trigger]");
-                const clickedInside = pop.contains(e.target) || (btn && btn.contains(e.target));
-                if (!clickedInside) {
-                    pop.classList.add("hidden");
-                    if (btn) btn.setAttribute("aria-expanded", "false");
-                }
-            });
-        }, true);
-
-        document.addEventListener("keydown", function (e) {
-            if (e.key !== "Escape") return;
-            document.querySelectorAll("[data-color-popover]").forEach((p) => p.classList.add("hidden"));
-            document.querySelectorAll("[data-color-popover-trigger]").forEach((b) => b.setAttribute("aria-expanded", "false"));
-        });
-    }
-</script>
-

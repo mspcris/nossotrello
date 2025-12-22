@@ -1,3 +1,4 @@
+<!-- base.html -->
 {% load static %}
 
 <!DOCTYPE html>
@@ -36,8 +37,11 @@
 
 
     <!-- CSS Global -->
+    {% load static %}
     <link rel="stylesheet" href="{% static 'boards/base.css' %}">
     <link rel="stylesheet" href="{% static 'boards/columns.css' %}">
+    <link rel="stylesheet" href="{% static 'boards/auth.css' %}">
+
 
     <!-- QUILL -->
     <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
@@ -128,7 +132,7 @@
           {{ request.user.email|default:request.user.get_username }}
         </span>
 
-        <form method="post" action="{% url 'logout' %}" class="inline">
+        <form method="post" action="{% url 'boards:logout' %}" class="inline">
           {% csrf_token %}
           <button type="submit"
                   class="text-sm bg-white/80 border border-gray-300 rounded px-3 py-1 hover:bg-white">

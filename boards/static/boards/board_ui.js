@@ -206,3 +206,364 @@
   document.body.addEventListener("htmx:afterSwap", scanAndBind);
   document.body.addEventListener("htmx:afterSettle", scanAndBind);
 })();
+
+//ALTERAR NOME DA COLUNA
+
+(function () {
+  function getCsrfToken() {
+    const el = document.querySelector("meta[name='csrf-token']");
+    return el ? el.content : "";
+  }
+
+  async function persistColumnName(columnId, name) {
+    const csrf = getCsrfToken();
+    const resp = await fetch(`/column/${columnId}/rename/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+        "X-CSRFToken": csrf,
+      },
+      body: new URLSearchParams({ name }),
+      credentials: "same-origin",
+    });
+
+    if (!resp.ok) {
+      // para debugar rápido no console
+      const text = await resp.text().catch(() => "");
+      console.error("rename_column failed", resp.status, text);
+      throw new Error(`rename_column failed: ${resp.status}`);
+    }
+  }
+
+  // Event delegation: funciona mesmo com HTMX swaps
+  document.addEventListener("keydown", function (e) {
+    const el = e.target;
+    if (!el || !el.matches?.("[data-column-title]")) return;
+
+    if (e.key === "Enter") {
+      e.preventDefault();
+      el.blur(); // dispara o fluxo de salvar no blur
+    }
+  }, true);
+
+  document.addEventListener("blur", async function (e) {
+    const el = e.target;
+    if (!el || !el.matches?.("[data-column-title]")) return;
+
+    const columnId = el.getAttribute("data-column-id");
+    const name = (el.innerText || "")
+    .replace(/\u00A0/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+
+    if (!columnId) return;
+
+    // Regras mínimas de qualidade
+    if (!name) {
+      // se ficar vazio, volta pro title antigo sem salvar
+      el.innerText = el.getAttribute("title") || "";
+      return;
+    }
+
+    // Evita POST inútil se nada mudou
+    const prev = (el.getAttribute("title") || "").trim();
+    if (name === prev) return;
+
+    try {
+      await persistColumnName(columnId, name);
+      // atualiza o "source of truth" local para F5 não depender do DOM
+      el.setAttribute("title", name);
+    } catch (err) {
+      // rollback visual
+      el.innerText = el.getAttribute("title") || "";
+    }
+  }, true);
+})();
+
+
+// Impede colar HTML dentro do título (cola só texto)
+document.addEventListener("paste", function (e) {
+  const el = e.target;
+  if (!el || !el.matches?.("[data-column-title]")) return;
+
+  e.preventDefault();
+  const text = (e.clipboardData || window.clipboardData).getData("text/plain");
+  // insere texto puro no cursor
+  document.execCommand("insertText", false, text);
+}, true);
+
+// Mantém o título SEMPRE como texto puro (remove tags caso entrem)
+document.addEventListener("input", function (e) {
+  const el = e.target;
+  if (!el || !el.matches?.("[data-column-title]")) return;
+
+  // se por algum motivo ensure que não fica HTML
+  const plain = (el.innerText || "").replace(/\u00A0/g, " "); // NBSP -> espaço normal
+  if (el.innerHTML !== plain) {
+    const sel = window.getSelection();
+    const range = sel && sel.rangeCount ? sel.getRangeAt(0) : null;
+
+    el.textContent = plain;
+
+    // tenta preservar cursor no fim (simples e suficiente)
+    if (sel) {
+      sel.removeAllRanges();
+      const r = document.createRange();
+      r.selectNodeContents(el);
+      r.collapse(false);
+      sel.addRange(r);
+    }
+  }
+}, true);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Column menu (3 dots) — global, 1x
+window.toggleMenu = function (colId) {
+  const el = document.getElementById("col-menu-" + colId);
+  if (!el) return;
+
+  const btn = el.closest("[data-color-popover-scope]")?.querySelector("[data-color-popover-trigger]");
+  const isHidden = el.classList.contains("hidden");
+
+  // fecha todos
+  document.querySelectorAll("[data-color-popover]").forEach((p) => p.classList.add("hidden"));
+
+  if (isHidden) {
+    el.classList.remove("hidden");
+    btn?.setAttribute("aria-expanded", "true");
+  } else {
+    el.classList.add("hidden");
+    btn?.setAttribute("aria-expanded", "false");
+  }
+};
+
+// fecha popover ao clicar fora + ESC — global, 1x
+if (!window.__colorPopoverOutsideInstalled) {
+  window.__colorPopoverOutsideInstalled = true;
+
+  document.addEventListener("click", function (e) {
+    document.querySelectorAll("[data-color-popover-scope]").forEach((scope) => {
+      const pop = scope.querySelector("[data-color-popover]");
+      if (!pop || pop.classList.contains("hidden")) return;
+
+      const btn = scope.querySelector("[data-color-popover-trigger]");
+      const clickedInside = pop.contains(e.target) || (btn && btn.contains(e.target));
+      if (!clickedInside) {
+        pop.classList.add("hidden");
+        if (btn) btn.setAttribute("aria-expanded", "false");
+      }
+    });
+  }, true);
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Escape") return;
+    document.querySelectorAll("[data-color-popover]").forEach((p) => p.classList.add("hidden"));
+    document.querySelectorAll("[data-color-popover-trigger]").forEach((b) => b.setAttribute("aria-expanded", "false"));
+  });
+}
+
+// Fim alterar nome da coluna
+
+// ============================================================
+// ADD CARD UX: boing + autofocus + click-outside cancel
+// ============================================================
+(function () {
+  function qs(sel, root = document) { return root.querySelector(sel); }
+
+  function closeAllAddCardForms(exceptForm = null) {
+    document.querySelectorAll("[id^='form-top-col-'], [id^='form-col-']").forEach((wrap) => {
+      // se tiver um form e não for o except, limpa
+      const form = wrap.querySelector("form[data-add-card-form]");
+      if (!form) return;
+      if (exceptForm && form === exceptForm) return;
+      wrap.innerHTML = "";
+    });
+  }
+
+  function focusAddCardInput(scope) {
+    const root = scope || document;
+    const input = root.querySelector("form[data-add-card-form] input[name='title']");
+    if (input) {
+      input.focus();
+      input.select?.();
+    }
+  }
+
+  function boing(wrapper, where) {
+    if (!wrapper) return;
+    wrapper.classList.remove("boing-down", "boing-up");
+    wrapper.classList.add(where === "top" ? "boing-down" : "boing-up");
+    // reinicia animação
+    void wrapper.offsetWidth;
+    wrapper.classList.add("boing-run");
+    setTimeout(() => wrapper.classList.remove("boing-run"), 220);
+  }
+
+  // 1) Quando HTMX inserir o form, fecha os outros + foca + boing
+  document.body.addEventListener("htmx:afterSwap", (evt) => {
+    const target = evt.target;
+    if (!target) return;
+
+    // top wrapper ou bottom wrapper
+    const isAddCardWrap =
+      (target.id && (target.id.startsWith("form-top-col-") || target.id.startsWith("form-col-")));
+
+    if (!isAddCardWrap) return;
+
+    const form = target.querySelector("form[data-add-card-form]");
+    if (!form) return;
+
+    const where = form.getAttribute("data-where") || "bottom";
+
+    closeAllAddCardForms(form);   // só deixa 1 aberto
+    boing(target, where);
+    focusAddCardInput(target);
+  });
+
+  // 2) Após submit bem-sucedido: fecha o form
+  document.body.addEventListener("htmx:afterRequest", (evt) => {
+    const elt = evt.detail?.elt;
+    if (!elt) return;
+
+    const form = elt.closest?.("form[data-add-card-form]");
+    if (!form) return;
+
+    if (evt.detail?.successful) {
+      const wrap =
+        form.closest("[id^='form-top-col-']") ||
+        form.closest("[id^='form-col-']");
+      if (wrap) wrap.innerHTML = "";
+    }
+  });
+
+  // 3) Click outside cancela
+  document.addEventListener("click", (e) => {
+    const clickedForm = e.target.closest?.("form[data-add-card-form]");
+    const clickedAddBtn = e.target.closest?.("button[hx-get*='add_card']");
+
+    if (clickedForm || clickedAddBtn) return;
+
+    closeAllAddCardForms(null);
+  }, true);
+})();
+
+// =========================
+// ADD CARD UX (top/bottom)
+// =========================
+(function () {
+  function qs(sel, root = document) { return root.querySelector(sel); }
+  function qsa(sel, root = document) { return Array.from(root.querySelectorAll(sel)); }
+
+  function closeFormsInColumn(columnId) {
+    const top = document.getElementById(`form-top-col-${columnId}`);
+    const bottom = document.getElementById(`form-col-${columnId}`);
+    if (top) top.innerHTML = "";
+    if (bottom) bottom.innerHTML = "";
+  }
+
+  function focusTitleInput(scopeEl) {
+    const inp = scopeEl ? qs("input[name='title']", scopeEl) : null;
+    if (!inp) return;
+    // micro delay para garantir layout pronto
+    requestAnimationFrame(() => {
+      inp.focus();
+      inp.select?.();
+    });
+  }
+
+  function boing(columnEl, where) {
+    if (!columnEl) return;
+    columnEl.classList.remove("boing-top", "boing-bottom");
+
+    // dispara animação
+    if (where === "top") columnEl.classList.add("boing-top");
+    else columnEl.classList.add("boing-bottom");
+
+    // remove classe depois (permite retrigger)
+    window.setTimeout(() => {
+      columnEl.classList.remove("boing-top", "boing-bottom");
+    }, 260);
+  }
+
+  // Quando o HTMX inserir o FORM (GET do +Card)
+  document.body.addEventListener("htmx:afterSwap", function (e) {
+    const target = e.target;
+
+    // form foi inserido em algum container?
+    const form = target?.querySelector?.("[data-add-card-form]") || (target?.matches?.("[data-add-card-form]") ? target : null);
+    if (!form) return;
+
+    const colId = form.getAttribute("data-column-id");
+    const where = (form.getAttribute("data-where") || "bottom").toLowerCase();
+
+    // garante 1 form por coluna: fecha ambos e recoloca o atual (já está na DOM, então só fecha o "outro")
+    // aqui a gente fecha o container oposto
+    if (colId) {
+      if (where === "top") {
+        const bottom = document.getElementById(`form-col-${colId}`);
+        if (bottom) bottom.innerHTML = "";
+      } else {
+        const top = document.getElementById(`form-top-col-${colId}`);
+        if (top) top.innerHTML = "";
+      }
+    }
+
+    // boing na coluna inteira
+    const columnEl = form.closest("[data-column-id]");
+    boing(columnEl, where);
+
+    // focus no title
+    focusTitleInput(form);
+  });
+
+  // Quando o HTMX adicionar o CARD (POST do form)
+  document.body.addEventListener("htmx:afterRequest", function (e) {
+    const elt = e.detail?.elt;
+    if (!elt || elt.tagName !== "FORM") return;
+    if (!elt.matches("[data-add-card-form]")) return;
+
+    // depois de criar, o seu column_item já limpa o container via hx-on
+    // aqui só garantimos um "boing" final e foco removido
+    const where = (elt.getAttribute("data-where") || "bottom").toLowerCase();
+    const columnEl = elt.closest("[data-column-id]");
+    boing(columnEl, where);
+  });
+
+  // Clique fora cancela (capture)
+  document.addEventListener("click", function (e) {
+    // se clicou dentro de um form, não cancela
+    const insideForm = e.target.closest?.("[data-add-card-form]");
+    if (insideForm) return;
+
+    // se clicou num botão + Card, não cancela (evita “piscar”)
+    const isAddBtn = e.target.closest?.("button") && (e.target.closest("button")?.textContent || "").includes("+ Card");
+    if (isAddBtn) return;
+
+    // fecha todos os forms abertos
+    qsa("#form-top-col-[id], [id^='form-top-col-'], [id^='form-col-']").forEach(() => {});
+    qsa("[id^='form-top-col-'], [id^='form-col-']").forEach((c) => {
+      if (c && c.innerHTML.trim()) c.innerHTML = "";
+    });
+  }, true);
+
+  // ESC cancela
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Escape") return;
+    qsa("[id^='form-top-col-'], [id^='form-col-']").forEach((c) => {
+      if (c && c.innerHTML.trim()) c.innerHTML = "";
+    });
+  }, true);
+})();

@@ -1,3 +1,4 @@
+{# templates/boards/partials/card_item.html (arquivo completo) #}
 {% load tag_helpers %}
 
 <li id="card-{{ card.id }}"
@@ -62,8 +63,9 @@
     {% endif %}
 
     <!-- TÍTULO -->
-    <span class="block text-sm text-gray-800">
-      {{ card.title }}
-    </span>
+  <span class="block text-sm text-gray-800" data-card-title="1">
+  {{ card.title }}
+  </span>
+
 
 </li>

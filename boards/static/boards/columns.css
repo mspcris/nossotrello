@@ -1,3 +1,4 @@
+/* columns.css */
 /* Cores reais */
 :root {
     --gray-color: #e5e7eb;
@@ -59,4 +60,25 @@ html.dark .column-header {
 html.dark .column-header,
 html.dark .column-header * {
     color: rgba(241, 245, 249, 0.95) !important;
+}
+
+/* Boing: micro feedback de layout */
+@keyframes boingDown {
+  0%   { transform: translateY(-6px); }
+  60%  { transform: translateY(3px); }
+  100% { transform: translateY(0); }
+}
+
+@keyframes boingUp {
+  0%   { transform: translateY(6px); }
+  60%  { transform: translateY(-3px); }
+  100% { transform: translateY(0); }
+}
+
+[data-column-id].boing-top {
+  animation: boingDown 240ms ease-out;
+}
+
+[data-column-id].boing-bottom {
+  animation: boingUp 240ms ease-out;
 }

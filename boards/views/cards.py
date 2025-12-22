@@ -2,6 +2,11 @@
 
 import json
 import re
+import os
+import uuid
+
+from django.core.files.base import ContentFile
+
 
 from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest
 from django.shortcuts import render, get_object_or_404
@@ -10,41 +15,61 @@ from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.utils import timezone
 from django.utils.html import escape
+from django.core.files.uploadedfile import UploadedFile
+from django.core.files.storage import default_storage
+from django.db.models import F
+from django.template.loader import render_to_string
 
 from .helpers import (
     _actor_label,
     _log_card,
-    _log_board,
     _save_base64_images_to_media,
     _ensure_attachments_and_activity_for_images,
     _card_modal_context,
-    CardForm,
-    Board,
-    Column,
-    Card,
-    CardAttachment,
-    BoardMembership,
+    _extract_media_image_paths,
 )
 
+from ..forms import CardForm
+from ..models import Board, Column, Card, CardAttachment, BoardMembership
+
+
+# ============================================================
+# CARD: CRUD básico + modal
+# ============================================================
 
 def add_card(request, column_id):
     column = get_object_or_404(Column, id=column_id)
+
+    # where vem do GET (abrir form) e do POST (criar card)
+    where = (request.GET.get("where") or request.POST.get("where") or "bottom").strip().lower()
+    if where not in ("top", "bottom"):
+        where = "bottom"
 
     if request.method == "POST":
         form = CardForm(request.POST)
         if not form.is_valid():
             return HttpResponse("Erro ao criar card.", status=400)
 
-        card = form.save(commit=False)
         actor = _actor_label(request)
 
-        raw_desc = (request.POST.get("description") or card.description or "").strip()
-        desc_html, saved_paths = _save_base64_images_to_media(raw_desc, folder="quill")
-        card.description = desc_html
+        with transaction.atomic():
+            card = form.save(commit=False)
 
-        card.column = column
-        card.position = column.cards.count()
-        card.save()
+            raw_desc = (request.POST.get("description") or card.description or "").strip()
+            desc_html, saved_paths = _save_base64_images_to_media(raw_desc, folder="quill")
+            card.description = desc_html
+
+            card.column = column
+
+            if where == "top":
+                # empurra todos +1 e coloca novo em 0
+                Card.objects.filter(column=column).update(position=F("position") + 1)
+                card.position = 0
+            else:
+                # fim da fila
+                card.position = column.cards.count()
+
+            card.save()
 
         _log_card(
             card,
@@ -52,33 +77,33 @@ def add_card(request, column_id):
             f"<p><strong>{actor}</strong> criou este card na coluna <strong>{escape(column.name)}</strong>.</p>",
         )
 
-        if saved_paths:
+        # Garante anexos + atividade para imagens salvas (base64) e também imagens já referenciadas /media/
+        referenced_paths = _extract_media_image_paths(card.description or "", folder="quill")
+        all_paths = list(dict.fromkeys((saved_paths or []) + (referenced_paths or [])))
+
+        if all_paths:
             _ensure_attachments_and_activity_for_images(
                 card=card,
                 request=request,
-                relative_paths=saved_paths,
+                relative_paths=all_paths,
                 actor=actor,
                 context_label="descrição",
             )
 
-        # Mantido como estava no seu arquivo original: se existirem essas funções em outro lugar, ok.
-        # Se NÃO existirem no projeto, remova esse bloco ou me envie onde elas estão.
-        if " _card_has_cover_image" in globals():
-            pass
-
         return render(request, "boards/partials/card_item.html", {"card": card})
 
+    # GET: abre o form
     return render(
         request,
         "boards/partials/add_card_form.html",
-        {"column": column, "form": CardForm()},
+        {"column": column, "form": CardForm(), "where": where},
     )
 
 
+@login_required
 @require_POST
 def update_card(request, card_id):
     card = get_object_or_404(Card, id=card_id)
-
     actor = _actor_label(request)
 
     old_title = card.title or ""
@@ -93,8 +118,8 @@ def update_card(request, card_id):
 
     new_tags_raw = request.POST.get("tags", old_tags_raw) or ""
 
-    old_tags = [t.strip() for t in old_tags_raw.split(",") if t.strip()]
-    new_tags = [t.strip() for t in new_tags_raw.split(",") if t.strip()]
+    old_tags = [t.strip() for t in (old_tags_raw or "").split(",") if t.strip()]
+    new_tags = [t.strip() for t in (new_tags_raw or "").split(",") if t.strip()]
 
     card.tags = new_tags_raw
     removed = [t for t in old_tags if t not in new_tags]
@@ -102,11 +127,15 @@ def update_card(request, card_id):
 
     card.save()
 
-    if saved_paths:
+    # Garante anexos + atividade para imagens (base64 e/ou já persistidas em /media/)
+    referenced_paths = _extract_media_image_paths(card.description or "", folder="quill")
+    all_paths = list(dict.fromkeys((saved_paths or []) + (referenced_paths or [])))
+
+    if all_paths:
         _ensure_attachments_and_activity_for_images(
             card=card,
             request=request,
-            relative_paths=saved_paths,
+            relative_paths=all_paths,
             actor=actor,
             context_label="descrição",
         )
@@ -129,7 +158,7 @@ def update_card(request, card_id):
             f"<p><strong>{actor}</strong> alterou o título de <strong>{escape(old_title)}</strong> para <strong>{escape(card.title)}</strong>.</p>",
         )
 
-    if not (removed or added or ((old_desc or "").strip() != (card.description or "").strip()) or ((old_title or "").strip() != (card.title or "").strip()) or saved_paths):
+    if not (removed or added or ((old_desc or "").strip() != (card.description or "").strip()) or ((old_title or "").strip() != (card.title or "").strip()) or all_paths):
         _log_card(card, request, f"<p><strong>{actor}</strong> atualizou o card.</p>")
 
     return render(request, "boards/partials/card_modal_body.html", _card_modal_context(card))
@@ -146,13 +175,13 @@ def edit_card(request, card_id):
             actor = _actor_label(request)
             _log_card(card, request, f"<p><strong>{actor}</strong> editou o card (modal antigo).</p>")
 
-            return render(request, "boards/partials/card_modal_body.html", {"card": card})
+            return render(request, "boards/partials/card_modal_body.html", _card_modal_context(card))
     else:
         form = CardForm(instance=card)
 
     return render(request, "boards/partials/card_edit_form.html", {"card": card, "form": form})
 
-
+@login_required
 @require_POST
 def delete_card(request, card_id):
     card = get_object_or_404(Card.all_objects, id=card_id)
@@ -203,15 +232,27 @@ def move_card(request):
         return JsonResponse({"error": "Sem permissão para mover card neste quadro."}, status=403)
 
     actor = _actor_label(request)
-    old_pos = card.position
+    old_pos = int(card.position or 0)
 
+    # ----------------------------
+    # 1) Mover dentro da mesma coluna
+    # ----------------------------
     if old_column.id == new_column.id:
         cards = list(old_column.cards.order_by("position"))
-        cards.remove(card)
+
+        # remove o card atual (garante que só aparece 1x)
+        cards = [c for c in cards if c.id != card.id]
+
+        # clamp
+        if new_position < 0:
+            new_position = 0
+        if new_position > len(cards):
+            new_position = len(cards)
+
         cards.insert(new_position, card)
 
         for index, c in enumerate(cards):
-            if c.position != index:
+            if int(c.position or 0) != index:
                 c.position = index
                 c.save(update_fields=["position"])
 
@@ -222,20 +263,34 @@ def move_card(request):
         )
         return JsonResponse({"status": "ok"})
 
+    # ----------------------------
+    # 2) Mover para outra coluna
+    # ----------------------------
+
+    # reindex da coluna antiga (sem o card)
     old_cards = list(old_column.cards.exclude(id=card.id).order_by("position"))
     for index, c in enumerate(old_cards):
-        if c.position != index:
+        if int(c.position or 0) != index:
             c.position = index
             c.save(update_fields=["position"])
 
+    # troca a coluna do card (sem “vazar” position antigo)
     card.column = new_column
     card.save(update_fields=["column"])
 
-    new_cards = list(new_column.cards.order_by("position"))
+    # monta a lista da nova coluna SEM o card (evita duplicação)
+    new_cards = list(new_column.cards.exclude(id=card.id).order_by("position"))
+
+    # clamp
+    if new_position < 0:
+        new_position = 0
+    if new_position > len(new_cards):
+        new_position = len(new_cards)
+
     new_cards.insert(new_position, card)
 
     for index, c in enumerate(new_cards):
-        if c.position != index:
+        if int(c.position or 0) != index:
             c.position = index
             c.save(update_fields=["position"])
 
@@ -302,11 +357,7 @@ def card_move_options(request, card_id):
     for b in uniq:
         cols = b.columns.filter(is_deleted=False).order_by("position")
         columns_by_board[str(b.id)] = [
-            {
-                "id": c.id,
-                "name": c.name,
-                "positions_total_plus_one": (c.cards.count() + 1),
-            }
+            {"id": c.id, "name": c.name, "positions_total_plus_one": (c.cards.count() + 1)}
             for c in cols
         ]
 
@@ -334,6 +385,120 @@ def card_snippet(request, card_id):
     return render(request, "boards/partials/card_item.html", {"card": card})
 
 
+
+
+# ============================================================
+# DUPLICAR CARD
+# ============================================================
+@login_required
+@require_POST
+@transaction.atomic
+def duplicate_card(request, card_id):
+    card = get_object_or_404(Card, id=card_id, is_deleted=False)
+    column = card.column
+    board = column.board
+
+    def can_edit_in_board(b: Board) -> bool:
+        if not request.user.is_authenticated:
+            return False
+        if request.user.is_staff:
+            return True
+
+        memberships_qs = b.memberships.all()
+        if memberships_qs.exists():
+            return memberships_qs.filter(
+                user=request.user,
+                role__in=[BoardMembership.Role.OWNER, BoardMembership.Role.EDITOR],
+            ).exists()
+
+        return bool(b.created_by_id == request.user.id)
+
+    if not can_edit_in_board(board):
+        return JsonResponse({"error": "Sem permissão para duplicar card neste quadro."}, status=403)
+
+    actor = _actor_label(request)
+
+    # posição: duplicata entra logo abaixo do card atual
+    new_position = int(card.position or 0) + 1
+
+    # empurra pra baixo quem está >= new_position
+    Card.objects.filter(
+        column=column,
+        is_deleted=False,
+        position__gte=new_position,
+    ).update(position=F("position") + 1)
+
+    # cria a cópia (mantém campos importantes)
+    base_title = (card.title or "").strip()
+
+# evita duplicar sufixo
+    if base_title.endswith("(Novo)") or base_title.endswith("+ (Novo)"):
+        new_title = base_title
+    else:
+        new_title = f"{base_title} + (Novo)" if base_title else "(Novo)"
+
+    new_card = Card.objects.create(
+    column=column,
+    position=new_position,
+    title=new_title,
+    description=(card.description or ""),
+    tags=(card.tags or ""),
+    tag_colors=(card.tag_colors or ""),
+    cover_image=card.cover_image,
+)
+
+
+    # copia anexos (referenciam os mesmos arquivos)
+    try:
+        atts = list(card.attachments.all())
+        if atts:
+            CardAttachment.objects.bulk_create(
+                [
+                    CardAttachment(
+                        card=new_card,
+                        file=a.file,
+                        description=(a.description or ""),
+                    )
+                    for a in atts
+                ]
+            )
+    except Exception:
+        # anexos não podem derrubar o fluxo
+        pass
+
+    _log_card(
+        new_card,
+        request,
+        (
+            f"<p><strong>{actor}</strong> duplicou este card a partir de "
+            f"<strong>{escape(card.title or 'sem título')}</strong>.</p>"
+        ),
+    )
+
+    # devolve snippet pronto pro front inserir no DOM
+    snippet_html = render_to_string(
+        "boards/partials/card_item.html",
+        {"card": new_card},
+        request=request,
+    )
+
+    return JsonResponse(
+        {
+            "status": "ok",
+            "card_id": new_card.id,
+            "column_id": column.id,
+            "position": int(new_position),
+            "snippet": snippet_html,
+        }
+    )
+
+
+
+
+# ============================================================
+# TAGS
+# ============================================================
+@login_required
 @require_POST
 def remove_tag(request, card_id):
     card = get_object_or_404(Card, id=card_id)
@@ -354,11 +519,12 @@ def remove_tag(request, card_id):
 
     _log_card(card, request, f"<p><strong>{actor}</strong> removeu a etiqueta <strong>{escape(tag)}</strong>.</p>")
 
-    modal_html = render(request, "boards/partials/card_modal_body.html", {"card": card}).content.decode("utf-8")
+    modal_html = render(request, "boards/partials/card_modal_body.html", _card_modal_context(card)).content.decode("utf-8")
     snippet_html = render(request, "boards/partials/card_item.html", {"card": card}).content.decode("utf-8")
 
     return JsonResponse({"modal": modal_html, "snippet": snippet_html, "card_id": card.id})
 
+@login_required
 @require_POST
 def set_tag_color(request, card_id):
     card = get_object_or_404(Card, id=card_id)
@@ -395,8 +561,223 @@ def set_tag_color(request, card_id):
         {"card": card},
     ).content.decode("utf-8")
 
-    return JsonResponse({
-        "modal": modal_html,
-        "snippet": snippet_html,
-        "card_id": card.id,
-    })
+    return JsonResponse({"modal": modal_html, "snippet": snippet_html, "card_id": card.id})
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ============================================================
+# CAPA DO CARD (modal)
+# - garante que a capa também vira anexo e aparece na atividade com thumbnail/link
+# ============================================================
+@login_required
+@require_POST
+def set_card_cover(request, card_id):
+    """
+    Define/atualiza a capa do card.
+
+    Regra do histórico (anti-404):
+      - se havia capa anterior, COPIA fisicamente o arquivo antigo para attachments/
+        e registra esse arquivo como "Capa do card (anterior)".
+      - depois atualiza cover_image normalmente.
+      - registra a capa atual (new_rel) como "Capa do card".
+    """
+    card = get_object_or_404(Card, id=card_id, is_deleted=False)
+    actor = _actor_label(request)
+
+    f: UploadedFile | None = request.FILES.get("cover")
+    if not f:
+        return HttpResponseBadRequest("Envie uma imagem no campo 'cover'.")
+
+    ctype = (getattr(f, "content_type", "") or "").lower()
+    if not ctype.startswith("image/"):
+        return HttpResponseBadRequest("Arquivo inválido: envie uma imagem.")
+
+    max_bytes = 15 * 1024 * 1024  # 15MB
+    if getattr(f, "size", 0) and f.size > max_bytes:
+        return HttpResponseBadRequest("Imagem muito grande. Tente uma menor (até 15MB).")
+
+    # ============================================================
+    # 1) Captura a capa anterior (RELATIVA) e copia para attachments/
+    # ============================================================
+    old_rel = ""
+    old_hist_rel = ""  # <-- cópia física em attachments/ (é isso que vai pro histórico)
+    try:
+        if getattr(card, "cover_image", None) and card.cover_image:
+            old_rel = (card.cover_image.name or "").strip()  # ex: card_covers/old.png
+    except Exception:
+        old_rel = ""
+
+    if old_rel:
+        try:
+            # tenta preservar extensão
+            ext = os.path.splitext(old_rel)[1].lower()  # ".png"
+            if not ext:
+                ext = ".png"
+
+            # caminho novo imutável dentro de attachments/
+            old_hist_rel = f"attachments/cover_history/{uuid.uuid4().hex}{ext}"
+
+            # lê bytes do storage e salva a cópia
+            with default_storage.open(old_rel, "rb") as fp:
+                data = fp.read()
+
+            if data:
+                default_storage.save(old_hist_rel, ContentFile(data))
+            else:
+                old_hist_rel = ""  # sem bytes => não registra
+        except Exception:
+            old_hist_rel = ""  # se falhar a cópia, não quebra o fluxo
+
+    # ============================================================
+    # 2) Atualiza a capa (isso pode disparar cleanup do arquivo antigo)
+    # ============================================================
+    card.cover_image = f
+    card.save(update_fields=["cover_image"])
+
+    # pega rel da nova
+    new_rel = ""
+    try:
+        if getattr(card, "cover_image", None) and card.cover_image:
+            new_rel = (card.cover_image.name or "").strip()
+    except Exception:
+        new_rel = ""
+
+    # ============================================================
+    # 3) Garante attachments (histórico usa a CÓPIA, não o old_rel)
+    # ============================================================
+    try:
+        if old_hist_rel and not card.attachments.filter(file=old_hist_rel).exists():
+            CardAttachment.objects.create(
+                card=card,
+                file=old_hist_rel,
+                description="Capa do card (anterior)",
+            )
+    except Exception:
+        pass
+
+    try:
+        if new_rel and not card.attachments.filter(file=new_rel).exists():
+            CardAttachment.objects.create(
+                card=card,
+                file=new_rel,
+                description="Capa do card",
+            )
+    except Exception:
+        pass
+
+    # ============================================================
+    # 4) Log com thumbnail + link (histórico aponta para old_hist_rel)
+    # ============================================================
+        # log com thumbnail + link
+    try:
+        parts = [f"<p><strong>{actor}</strong> definiu/atualizou a capa do card.</p>"]
+
+        # ✅ PRIMEIRO: capa atual
+        if new_rel:
+            new_url = default_storage.url(new_rel)
+            new_name = escape(new_rel.split("/")[-1])
+            parts.append(
+                "<div style='margin:8px 0'>"
+                "<div><em>Capa atual:</em> "
+                f"<a href='{escape(new_url)}' target='_blank' rel='noopener'>{new_name}</a></div>"
+                f"<div style='margin-top:6px'><img src='{escape(new_url)}' style='max-width:100%; border-radius:8px'/></div>"
+                "</div>"
+            )
+
+                # ✅ DEPOIS: capa anterior (anti-404)
+        # Preferência: usar a cópia imutável em attachments/cover_history (old_hist_rel)
+        # Fallback: usar o caminho antigo original (old_rel) se a cópia falhar
+        old_log_rel = (old_hist_rel or old_rel or "").strip()
+        if old_log_rel:
+            old_url = default_storage.url(old_log_rel)
+            old_name = escape(old_log_rel.split("/")[-1])
+            parts.append(
+                "<div style='margin:8px 0'>"
+                "<div><em>Capa anterior:</em> "
+                f"<a href='{escape(old_url)}' target='_blank' rel='noopener'>{old_name}</a></div>"
+                f"<div style='margin-top:6px'><img src='{escape(old_url)}' style='max-width:100%; border-radius:8px'/></div>"
+                "</div>"
+            )
+
+
+        _log_card(card, request, "".join(parts))
+    except Exception:
+        pass
+
+
+    return render(request, "boards/partials/card_modal_body.html", _card_modal_context(card))
+
+
+@login_required
+@require_POST
+def remove_card_cover(request, card_id):
+    """
+    Remove a capa do card (só desassocia do card).
+    NÃO apaga arquivo físico automaticamente (usuário apaga via Anexos).
+    """
+    card = get_object_or_404(Card, id=card_id, is_deleted=False)
+    actor = _actor_label(request)
+
+    # guarda a rel atual para log
+    old_rel = ""
+    try:
+        if getattr(card, "cover_image", None) and card.cover_image:
+            old_rel = (card.cover_image.name or "").strip()
+    except Exception:
+        old_rel = ""
+
+    # só zera o campo (sem deletar arquivo)
+    card.cover_image = None
+    card.save(update_fields=["cover_image"])
+
+    try:
+        if old_rel:
+            old_url = default_storage.url(old_rel)
+            old_name = escape(old_rel.split("/")[-1])
+            _log_card(
+                card,
+                request,
+                (
+                    f"<p><strong>{actor}</strong> removeu a capa do card.</p>"
+                    "<div style='margin:8px 0'>"
+                    "<div><em>Capa removida:</em> "
+                    f"<a href='{escape(old_url)}' target='_blank' rel='noopener'>{old_name}</a></div>"
+                    f"<div style='margin-top:6px'><img src='{escape(old_url)}' style='max-width:100%; border-radius:8px'/></div>"
+                    "</div>"
+                ),
+            )
+        else:
+            _log_card(card, request, f"<p><strong>{actor}</strong> removeu a capa do card.</p>")
+    except Exception:
+        pass
+
+    return render(request, "boards/partials/card_modal_body.html", _card_modal_context(card))

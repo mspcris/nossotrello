@@ -274,6 +274,159 @@
   box-shadow: var(--cm-shadow);
 }
 
+/* ============================================================
+   CM — BARRA FLUTUANTE DE AÇÕES (Salvar / Fechar)
+   ============================================================ */
+.cm-floatbar{
+  position: sticky;
+  bottom: 12px;
+  z-index: 25;
+
+  margin-top: 12px;
+
+  border-radius: 999px;
+  border: 1px solid var(--cm-border);
+  background: var(--cm-bg);
+  box-shadow: var(--cm-shadow);
+
+  padding: 10px;
+}
+
+.cm-floatbar-inner{
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  width: 100%;
+}
+
+.cm-floatbar.hidden{ display:none !important; }
+
+/* ============================================================
+   CM — ACTION DOCK (Mover / Duplicar / Copiar link)
+   ============================================================ */
+#cm-action-dock{
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 9999;
+
+  display: flex;
+  justify-content: flex-end;
+
+  margin-top: 0;
+  pointer-events: none; /* só o dock captura clique */
+}
+
+#cm-action-dock .dock-wrap{
+  pointer-events: auto;
+
+  border-radius: 999px;
+  border: 1px solid var(--cm-border);
+  background: var(--cm-bg);
+  box-shadow: var(--cm-shadow);
+
+  padding: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* botão principal */
+#cm-action-dock .dock-toggle{
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  border: 1px solid var(--cm-border-2);
+  background: var(--cm-surface-2);
+  color: var(--cm-text);
+  cursor: pointer;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  opacity: .88;
+  transition: transform .12s ease, opacity .12s ease, border-color .12s ease;
+}
+#cm-action-dock .dock-toggle:hover{
+  opacity: 1;
+  transform: translateY(-1px);
+  border-color: var(--cm-border);
+}
+
+/* ações */
+#cm-action-dock .dock-actions{
+  display: none;
+  gap: 8px;
+  align-items: center;
+}
+
+#cm-action-dock.is-open .dock-actions{
+  display: inline-flex;
+}
+
+
+#cm-action-dock.is-open .dock-actions{
+  display: inline-flex;
+}
+
+#cm-action-dock .dock-action{
+  border-radius: 999px;
+  border: 1px solid var(--cm-border-2);
+  background: var(--cm-surface-2);
+  color: var(--cm-text);
+  cursor: pointer;
+
+  padding: 10px 12px;
+  font-size: 13px;
+
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+
+  transition: transform .12s ease, border-color .12s ease;
+}
+#cm-action-dock .dock-action:hover{
+  transform: translateY(-1px);
+  border-color: var(--cm-border);
+}
+
+#cm-action-dock .dock-action .label{
+  display: none;
+  white-space: nowrap;
+}
+
+#cm-action-dock.is-open .dock-action .label{
+  display: inline;
+}
+
+/* painel ancorado */
+#cm-action-dock-panel{
+  position: absolute;
+  right: 0;
+  bottom: 58px;
+
+  width: min(520px, calc(100vw - 48px));
+  border-radius: 14px;
+  border: 1px solid var(--cm-border);
+  background: var(--cm-surface);
+  box-shadow: var(--cm-shadow);
+
+  padding: 12px;
+  display: none;
+}
+
+#cm-action-dock-panel.is-open{ display:block; }
+
+@keyframes cmBoing {
+  0%   { transform: translateY(8px) scale(0.98); opacity: 0.0; }
+  70%  { transform: translateY(-2px) scale(1.01); opacity: 1.0; }
+  100% { transform: translateY(0) scale(1.00); opacity: 1.0; }
+}
+#cm-action-dock-panel.boing{
+  animation: cmBoing 220ms ease-out;
+}
+
 
 </style>
 
@@ -398,7 +551,7 @@
           <label class="cm-label">Descrição</label>
           <textarea name="description" class="cm-textarea">{{ card.description|default_if_none:"" }}</textarea>
           <div class="cm-muted" style="margin-top:8px;">
-            Observação: aqui vai texto/HTML simples. Se quiser voltar com Quill depois, dá pra plugar em cima disso.
+            Observação: aqui vai texto/HTML simples. O objetivo é ter o máximo de compatibilidade possível com colagens de diferentes fontes. Para colar uma imagem na capa do card, use Ctrl+V (Cmd+V no Mac) enquanto o foco estiver na aba, porém, não neste campo de descrição.
           </div>
         </div>
       </div>
@@ -417,6 +570,15 @@
       </div>
     </section>
   </form>
+
+  {# ===================== BARRA FLUTUANTE (dirty) ===================== #}
+  <div id="cm-floatbar" class="cm-floatbar hidden" aria-live="polite">
+    <div class="cm-floatbar-inner">
+      <button type="button" class="cm-btn" id="cm-close-btn">Fechar</button>
+      <button type="button" class="cm-btn primary" id="cm-float-save-btn">Salvar</button>
+    </div>
+  </div>
+
 
   {# ===================== CHECKLISTS ===================== #}
   <section class="cm-panel" data-cm-panel="check" role="tabpanel">
@@ -517,4 +679,590 @@
     </div>
   </section>
 
+{# ===================== ACTION DOCK (sempre visível) ===================== #}
+<div id="cm-action-dock" aria-label="Ações do card">
+  <div class="dock-wrap relative">
+    <button type="button" class="dock-toggle" id="cm-dock-toggle" title="Ações">
+      ⋮
+    </button>
+
+    <div class="dock-actions" id="cm-dock-actions">
+      <button type="button" class="dock-action" id="cm-dock-move">
+        <span>↔️</span> <span class="label">Mover</span>
+      </button>
+
+      <button type="button" class="dock-action" id="cm-dock-duplicate">
+        <span>📄</span> <span class="label">Duplicar</span>
+      </button>
+
+      <button type="button" class="dock-action" id="cm-dock-copylink">
+        <span>🔗</span> <span class="label">Copiar link</span>
+      </button>
+    </div>
+
+    <div id="cm-action-dock-panel" role="dialog" aria-label="Painel de ação">
+      <div id="cm-dock-panel-body">
+        {# conteúdo lazy-loaded (Mover) entra aqui #}
+      </div>
+    </div>
+  </div>
 </div>
+
+
+
+</div>
+
+
+<script>
+(function(){
+  const root = document.getElementById("cm-root");
+  if (!root) return;
+
+  const cardId = root.getAttribute("data-card-id");
+
+  // ============================================================
+  // 1) FLOATBAR (dirty) — seu comportamento atual
+  // ============================================================
+  function initFloatbarDirty(){
+    const form = document.getElementById("cm-main-form");
+    const floatbar = document.getElementById("cm-floatbar");
+    const topSave = document.getElementById("cm-save-btn");
+    const floatSave = document.getElementById("cm-float-save-btn");
+    const closeBtn = document.getElementById("cm-close-btn");
+
+    if (!form || !floatbar) return;
+
+    const watched = form.querySelectorAll('input[name="title"], textarea[name="description"], input[name="tags"]');
+    const initial = {};
+    watched.forEach(el => { initial[el.name] = (el.value || "").trim(); });
+
+    function isDirty(){
+      for (const el of watched){
+        const now = (el.value || "").trim();
+        const before = (initial[el.name] ?? "");
+        if (now !== before) return true;
+      }
+      return false;
+    }
+
+    function isActionsTabActive(){
+      const active = (root.getAttribute("data-cm-active") || "").trim();
+      return (active === "desc" || active === "tags");
+    }
+
+    function syncBars(){
+      const dirty = isDirty();
+      const show = dirty && isActionsTabActive();
+      floatbar.classList.toggle("hidden", !show);
+    }
+
+    watched.forEach(el => {
+      el.addEventListener("input", syncBars);
+      el.addEventListener("change", syncBars);
+    });
+
+    function submitForm(){
+      form.requestSubmit ? form.requestSubmit() : form.submit();
+    }
+
+    if (topSave) topSave.addEventListener("click", submitForm);
+    if (floatSave) floatSave.addEventListener("click", submitForm);
+
+    if (closeBtn){
+      closeBtn.addEventListener("click", function(){
+        if (typeof window.closeModal === "function") return window.closeModal();
+        const x = document.querySelector("#modal .modal-top-x");
+        if (x) x.click();
+      });
+    }
+
+    syncBars();
+  }
+
+  
+
+
+
+
+
+
+
+// ============================================================
+// 2) ACTION DOCK — mover/duplicar/copiar link
+// ============================================================
+function initActionDock() {
+  const dock = document.getElementById("cm-action-dock");
+  const toggle = document.getElementById("cm-dock-toggle");
+  const btnMove = document.getElementById("cm-dock-move");
+  const btnDup = document.getElementById("cm-dock-duplicate");
+  const btnCopy = document.getElementById("cm-dock-copylink");
+
+  const panel = document.getElementById("cm-action-dock-panel");
+  const panelBody = document.getElementById("cm-dock-panel-body");
+
+  if (!dock || !toggle || !panel || !panelBody) return;
+
+  function openDock() {
+    dock.classList.add("is-open");
+  }
+
+  function closeDock() {
+    dock.classList.remove("is-open");
+    closePanel();
+  }
+
+  function toggleDock() {
+    dock.classList.toggle("is-open");
+  }
+
+  function openPanel(html) {
+    panelBody.innerHTML = html || "";
+    panel.classList.add("is-open");
+    panel.classList.remove("boing");
+    void panel.offsetWidth;
+    panel.classList.add("boing");
+  }
+
+  function closePanel() {
+    panel.classList.remove("is-open");
+    panelBody.innerHTML = "";
+  }
+
+  function clickOutsideClose(e) {
+    const wrap = dock.querySelector(".dock-wrap");
+    if (!wrap) return;
+    if (!wrap.contains(e.target)) closeDock();
+  }
+
+  function escClose(e) {
+    if (e.key === "Escape") closeDock();
+  }
+
+  // Clique no ⋮ abre/fecha dock e sempre fecha o painel
+  toggle.addEventListener("click", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleDock();
+    closePanel();
+  });
+
+  // Hover abre (como você gostou)
+  dock.addEventListener("mouseenter", openDock);
+
+  // ============================================================
+  // MOVER — GET opções no endpoint REAL + POST no move-card REAL
+  // ============================================================
+  if (btnMove) {
+    btnMove.addEventListener("click", async function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      try {
+        // ✅ URLconf: path("card/<int:card_id>/move/options/", views.card_move_options, ...)
+        const url = `/card/${cardId}/move/options/`;
+        const res = await fetch(url, {
+          headers: { "X-Requested-With": "XMLHttpRequest" },
+        });
+
+        if (!res.ok) {
+          const t = await res.text().catch(() => "");
+          throw new Error(t || "Falha ao carregar opções.");
+        }
+
+        const data = await res.json();
+
+        const current = data.current || {};
+        const boards = data.boards || [];
+        const columnsByBoard = data.columns_by_board || {};
+
+        const boardOptions = boards
+          .map((b) => `<option value="${b.id}">${escapeHtml(b.name)}</option>`)
+          .join("");
+
+        openPanel(`
+          <div class="cm-card" style="box-shadow:none; border:none; background:transparent; padding:0;">
+            <div class="cm-muted" style="margin-bottom:8px;">
+              <div>
+                <strong>Local atual:</strong>
+                ${escapeHtml(current.board_name || "")} → ${escapeHtml(current.column_name || "")} (#${escapeHtml(current.position ?? "")})
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <label class="block">
+                <span class="cm-label">Quadro</span>
+                <select id="cm-move-board" class="cm-select">
+                  <option value="">Selecione…</option>
+                  ${boardOptions}
+                </select>
+              </label>
+
+              <label class="block">
+                <span class="cm-label">Coluna</span>
+                <select id="cm-move-column" class="cm-select" disabled>
+                  <option value="">Selecione um quadro</option>
+                </select>
+              </label>
+
+              <label class="block">
+                <span class="cm-label">Posição</span>
+                <select id="cm-move-position" class="cm-select" disabled>
+                  <option value="">Selecione uma coluna</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="flex items-center justify-end gap-2 pt-3">
+              <button type="button" class="cm-btn" id="cm-move-cancel">Cancelar</button>
+              <button type="button" class="cm-btn primary" id="cm-move-confirm">Mover</button>
+            </div>
+
+            <p id="cm-move-error" class="hidden" style="margin-top:10px; color: var(--cm-danger); font-size: 12px;"></p>
+          </div>
+        `);
+
+        const selBoard = document.getElementById("cm-move-board");
+        const selCol = document.getElementById("cm-move-column");
+        const selPos = document.getElementById("cm-move-position");
+        const btnCancel = document.getElementById("cm-move-cancel");
+        const btnConfirm = document.getElementById("cm-move-confirm");
+        const err = document.getElementById("cm-move-error");
+
+        function setError(msg) {
+          if (!err) return;
+          err.textContent = msg || "";
+          err.classList.toggle("hidden", !msg);
+        }
+
+        function fillColumns(boardId) {
+          const cols = columnsByBoard[String(boardId)] || [];
+
+          selCol.innerHTML = cols.length
+            ? `<option value="">Selecione…</option>` +
+              cols
+                .map(
+                  (c) =>
+                    `<option value="${c.id}" data-total="${c.positions_total_plus_one}">${escapeHtml(
+                      c.name
+                    )}</option>`
+                )
+                .join("")
+            : `<option value="">Sem colunas</option>`;
+
+          selCol.disabled = cols.length === 0;
+          selPos.innerHTML = `<option value="">Selecione uma coluna</option>`;
+          selPos.disabled = true;
+        }
+
+        function fillPositions(total) {
+          const n = parseInt(total || "0", 10) || 0;
+          const opts = [];
+          for (let i = 1; i <= n; i++) {
+            opts.push(`<option value="${i - 1}">${i}</option>`);
+          }
+          selPos.innerHTML = opts.length ? opts.join("") : `<option value="">—</option>`;
+          selPos.disabled = opts.length === 0;
+        }
+
+        selBoard.addEventListener("change", function () {
+          setError("");
+          if (!this.value) return;
+          fillColumns(this.value);
+        });
+
+        selCol.addEventListener("change", function () {
+          setError("");
+          if (!this.value) return;
+          const opt = this.options[this.selectedIndex];
+          const total = opt ? opt.getAttribute("data-total") : "0";
+          fillPositions(total);
+        });
+
+        if (btnCancel) btnCancel.addEventListener("click", closePanel);
+
+        
+
+
+
+
+                if (btnConfirm) {
+          btnConfirm.addEventListener("click", async function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            try {
+              setError("");
+
+              const boardId = selBoard.value; // valida UX; backend não usa aqui
+              const colId = selCol.value;
+
+              // UI mostra 1..N, mas o backend espera 0..N-1
+              // (value do option já é 0-based)
+              const pos = selPos.value;
+
+              if (!boardId || !colId || pos === "") {
+                setError("Selecione quadro, coluna e posição.");
+                return;
+              }
+
+              const csrf = getCSRFToken();
+
+              // ✅ endpoint real do urls.py: path("move-card/", views.move_card, name="move_card")
+              const endpoint = `/move-card/`;
+
+              // ✅ payload EXATO do backend atual (boards/views/cards.py -> move_card)
+              const payload = {
+                card_id: parseInt(cardId, 10),
+                new_column_id: parseInt(colId, 10),
+                new_position: parseInt(pos, 10),
+              };
+
+              const res = await fetch(endpoint, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-CSRFToken": csrf,
+                  "X-Requested-With": "XMLHttpRequest",
+                },
+                body: JSON.stringify(payload),
+              });
+
+              if (!res.ok) {
+                const t = await res.text().catch(() => "");
+                throw new Error(t || "Falha ao mover.");
+              }
+
+              // 1) Fecha painel/dock (UX)
+              closePanel();
+              closeDock();
+
+              // 2) Sem adivinhar seletor de coluna/lista:
+              //    o backend já reindexa e garante posição correta.
+              //    então garantimos consistência visual com reload.
+              location.reload();
+            } catch (ex) {
+              setError(ex.message || "Erro ao mover.");
+            }
+          });
+        }
+      } catch (ex) {
+        openPanel(
+          `<div class="cm-muted">Erro: ${escapeHtml(
+            ex.message || "Falha ao carregar mover."
+          )}</div>`
+        );
+      }
+    });
+  }
+
+// ============================================================
+// DUPLICAR — chama backend, injeta o novo card no DOM e fecha modal
+// ============================================================
+// ============================================================
+// DUPLICAR — backend existe + fecha modal + atualiza DOM
+// ============================================================
+if (btnDup) {
+  btnDup.addEventListener("click", async function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    function getFlexIsReverse(el) {
+      try {
+        const st = window.getComputedStyle(el);
+        return String(st.flexDirection || "").includes("reverse");
+      } catch (_e) {
+        return false;
+      }
+    }
+
+    // Insere respeitando ordem visual vs DOM (column-reverse etc.)
+    function insertAtVisualIndex(listEl, nodeEl, visualIndex) {
+      const children = Array.from(listEl.children).filter((n) => n.nodeType === 1);
+      const isReverse = getFlexIsReverse(listEl);
+
+      const idx = Math.max(0, Math.min(parseInt(visualIndex, 10) || 0, children.length));
+
+      // Se reverse, o índice visual precisa ser convertido para índice DOM
+      // Ex.: visual "fim" (children.length) vira DOM 0.
+      const domIndex = isReverse ? (children.length - idx) : idx;
+
+      if (children[domIndex]) listEl.insertBefore(nodeEl, children[domIndex]);
+      else listEl.appendChild(nodeEl);
+    }
+
+    try {
+      const csrf = getCSRFToken();
+
+      // ✅ use aqui o endpoint REAL que você já fez funcionar
+      // exemplo: const endpoint = `/card/${cardId}/duplicate/`;
+      const endpoint = `/card/${cardId}/duplicate/`;
+
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrf,
+          "X-Requested-With": "XMLHttpRequest",
+        },
+        body: JSON.stringify({ card_id: parseInt(cardId, 10) }),
+      });
+
+      if (!res.ok) {
+        const t = await res.text().catch(() => "");
+        throw new Error(t || "Falha ao duplicar.");
+      }
+
+      const data = await res.json().catch(() => ({}));
+
+      // tenta extrair infos do retorno (tolerante)
+      const newId =
+        parseInt(data.new_card_id ?? data.card_id ?? data.id ?? data.newId ?? "", 10);
+
+      const newColumnId =
+        parseInt(data.column_id ?? data.new_column_id ?? data.newColumnId ?? "", 10);
+
+      // posição 0-based (igual seu move_card espera)
+      const newPos =
+        parseInt(data.position ?? data.new_position ?? data.newPos ?? "", 10);
+
+      // 1) fecha painel/dock (se estiver aberto)
+      try { closePanel(); } catch (_e) {}
+      try { closeDock(); } catch (_e) {}
+
+      // 2) fecha modal
+      if (typeof window.closeModal === "function") {
+        window.closeModal();
+      } else {
+        const x = document.querySelector("#modal .modal-top-x");
+        if (x) x.click();
+      }
+
+      // sem id novo? não dá pra atualizar DOM com segurança -> reload
+      if (!newId) {
+        location.reload();
+        return;
+      }
+
+      // 3) busca snippet do NOVO card
+      let newCardHTML = "";
+      try {
+        const sn = await fetch(`/card/${newId}/snippet/`, {
+          headers: { "X-Requested-With": "XMLHttpRequest" },
+        });
+        if (sn.ok) newCardHTML = await sn.text();
+      } catch (_e) {}
+
+      if (!newCardHTML) {
+        location.reload();
+        return;
+      }
+
+      // 4) encontra coluna destino
+      // Se o backend não retornou column_id, assume mesma coluna do card original (melhor esforço)
+      const targetColId = newColumnId || parseInt(data.current_column_id ?? "", 10) || null;
+
+      const targetCol =
+        (targetColId && (
+          document.querySelector(`[data-column-id="${targetColId}"]`) ||
+          document.getElementById(`column-${targetColId}`)
+        )) ||
+        // fallback: tenta mesma coluna do card original (se o card estiver na tela)
+        (document.querySelector(`[data-card-id="${cardId}"]`)?.closest(`[data-column-id]`) || null);
+
+      if (!targetCol) {
+        location.reload();
+        return;
+      }
+
+      const list =
+        targetCol.querySelector(`[data-cards-list]`) ||
+        targetCol.querySelector(`.cards`) ||
+        targetCol;
+
+      // cria nó
+      const tmp = document.createElement("div");
+      tmp.innerHTML = newCardHTML.trim();
+      const node = tmp.firstElementChild;
+
+      if (!node) {
+        location.reload();
+        return;
+      }
+
+      // 5) insere respeitando posição
+      // se backend retornou posição, usa; senão joga no fim (visual)
+      const visualIndex = Number.isFinite(newPos) ? newPos : Array.from(list.children).length;
+      insertAtVisualIndex(list, node, visualIndex);
+
+    } catch (ex) {
+      openPanel(`<div class="cm-muted">Erro ao duplicar: ${escapeHtml(ex.message || "Falha")}</div>`);
+    }
+  });
+}
+
+
+  // ============================================================
+  // COPIAR LINK (frontend-only)
+  // ============================================================
+  if (btnCopy) {
+    btnCopy.addEventListener("click", async function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const url = `${location.origin}${location.pathname}?card=${cardId}`;
+
+      try {
+        await navigator.clipboard.writeText(url);
+        openPanel(`<div class="cm-muted">Link copiado.</div>`);
+        setTimeout(closePanel, 900);
+      } catch (_e) {
+        openPanel(`
+          <div class="cm-muted" style="margin-bottom:6px;">Copie manualmente:</div>
+          <input class="cm-input" value="${escapeAttr(
+            url
+          )}" onclick="this.select()" readonly />
+        `);
+      }
+    });
+  }
+
+  document.addEventListener("click", clickOutsideClose);
+  document.addEventListener("keydown", escClose);
+}
+
+
+
+
+
+
+
+
+
+
+
+  // ============================================================
+  // helpers
+  // ============================================================
+  function getCSRFToken(){
+    const el = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    return el ? el.value : "";
+  }
+
+  function escapeHtml(s){
+    return String(s || "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function escapeAttr(s){
+    return escapeHtml(s).replaceAll("`", "&#096;");
+  }
+
+  // init
+  initFloatbarDirty();
+  initActionDock();
+})();
+</script>
