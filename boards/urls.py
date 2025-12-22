@@ -99,6 +99,7 @@ urlpatterns = [
     # ============================================================
     path("board/add/", views.add_board, name="add_board"),
     path("board/<int:board_id>/", views.board_detail, name="board_detail"),
+    path("board/<int:board_id>/search/", views.board_search, name="board_search"),
     path("board/<int:board_id>/rename/", views.rename_board, name="rename_board"),
     path("board/<int:board_id>/delete/", views.delete_board, name="delete_board"),
 
@@ -125,7 +126,6 @@ urlpatterns = [
     path("board/<int:board_id>/image/remove/", views.remove_board_image, name="remove_board_image"),
 
     # Search do board (se existir no seu views/__init__.py)
-    path("board/<int:board_id>/search/", views.board_search, name="board_search"),
 
     # ============================================================
     # HOME WALLPAPER

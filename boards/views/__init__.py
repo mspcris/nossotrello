@@ -118,3 +118,5 @@ def first_login(request):
 
     messages.info(request, neutral_msg)
     return redirect("boards:login")
+
+from .search import board_search  # noqa
