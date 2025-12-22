@@ -1,3 +1,4 @@
+#nossotrello/middleware.py
 from django.conf import settings
 from django.shortcuts import redirect
 from django.utils.http import urlencode

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+  <div style="max-width:520px;margin:40px auto;padding:20px;">
+    <h2>Primeiro login</h2>
+
+    <p>
+      Para acessar, é necessário usar um e-mail institucional.
+      Domínios aceitos:
+      <strong>
+        {% for d in allowed_domains %}
+          @{{ d }}{% if not forloop.last %}, {% endif %}
+        {% endfor %}
+      </strong>
+    </p>
+
+    <form method="post">
+      {% csrf_token %}
+      <label for="email">Seu e-mail institucional</label><br/>
+      <input id="email" name="email" type="email" required style="width:100%;padding:10px;margin:8px 0;" />
+      <button type="submit" style="padding:10px 14px;">Enviar link para definir senha</button>
+    </form>
+
+    <p style="margin-top:12px;">
+      <a href="{% url 'login' %}">Voltar para login</a>
+    </p>
+  </div>
+{% endblock %}

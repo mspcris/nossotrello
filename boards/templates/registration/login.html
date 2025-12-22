@@ -1,3 +1,4 @@
+<!--login.html-->
 <!doctype html>
 <html lang="pt-br">
 <head>
@@ -11,7 +12,7 @@
 
   {% if form.errors %}
     <div style="padding: 12px; background: #ffecec; border: 1px solid #ffb3b3; margin: 16px 0;">
-      Usuário ou senha inválidos.
+      Email ou senha inválidos.
     </div>
   {% endif %}
 
@@ -19,7 +20,7 @@
     {% csrf_token %}
 
     <div style="margin-bottom: 12px;">
-      <label for="id_username">Usuário</label><br>
+      <label for="id_username">Email Institucional</label><br>
       <input id="id_username" name="username" type="text" required
              style="width: 100%; padding: 10px; box-sizing: border-box;">
     </div>
@@ -34,7 +35,23 @@
       <input type="hidden" name="next" value="{{ next }}">
     {% endif %}
 
+
+
+
     <button type="submit" style="padding: 10px 14px; cursor: pointer;">Entrar</button>
+
+    <p>
+
+    <a href="{% url 'first_login' %}">Primeiro login? Clique Aqui!</a>
+  </p>
+
+  <p style="margin-top: 12px;">
+  <a href="{% url 'password_reset' %}">Esqueci minha senha</a>
+</p>
+
+
+
+
   </form>
 </body>
 </html>

@@ -21,11 +21,19 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
+from boards import views as boards_views
+
 urlpatterns = [
-    path("accounts/", include("django.contrib.auth.urls")),  # /accounts/login/ /accounts/logout/ etc
+    # PRIMEIRO LOGIN (auto-provisionamento + email de definir senha)
+    path("accounts/first-login/", boards_views.first_login, name="first_login"),
+
+    # AUTH padrão do Django: login/logout/password_reset/...
+    path("accounts/", include("django.contrib.auth.urls")),
+
     path("admin/", admin.site.urls),
     path("", include("boards.urls")),
 ]
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
