@@ -117,4 +117,5 @@ def first_login(request):
             )
 
     messages.info(request, neutral_msg)
-    return redirect("login")
+    return redirect("boards:login")
+

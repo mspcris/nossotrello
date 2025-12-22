@@ -1,0 +1,21 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}NossoTrello{% endblock %}</title>
+
+  <link rel="shortcut icon"
+        href="https://d9hhrg4mnvzow.cloudfront.net/lp.camim.com.br/7c264685-logo-topo_101x01x000000000000000.png"
+        type="image/png">
+
+  <!-- CSS apenas o necessário para auth -->
+  <link rel="stylesheet" href="{% static 'boards/auth.css' %}">
+  {% block extra_css %}{% endblock %}
+</head>
+
+<body class="auth-body">
+  {% block content %}{% endblock %}
+</body>
+</html>
