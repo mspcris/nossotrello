@@ -131,7 +131,7 @@
           {{ request.user.email|default:request.user.get_username }}
         </span>
 
-        <form method="post" action="{% url 'auth:logout' %}" class="inline">
+        <form method="post" action="{% url 'boards:logout' %}" class="inline">
           {% csrf_token %}
           <button type="submit"
                   class="text-sm bg-white/80 border border-gray-300 rounded px-3 py-1 hover:bg-white">
