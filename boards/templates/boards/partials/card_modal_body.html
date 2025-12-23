@@ -445,6 +445,33 @@
 }
 
 
+@media (max-width: 767px) {
+  /* dock visível acima da barra do sistema */
+  #cm-action-dock{
+    right: 12px !important;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+    max-width: calc(100vw - 24px) !important;
+  }
+
+  #cm-action-dock-panel{
+    right: 0 !important;
+    bottom: calc(58px + env(safe-area-inset-bottom, 0px)) !important;
+    width: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px) !important;
+  }
+
+  /* evita qualquer “vazamento” horizontal */
+  #modal-body, #cm-root { overflow-x: hidden !important; }
+}
+
+@media (max-width: 767px) {
+  #modal-body{
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+
+
 </style>
 
 {# ✅ IMPORTANTE: data-tag-colors aqui para o JS aplicar as cores salvas #}
