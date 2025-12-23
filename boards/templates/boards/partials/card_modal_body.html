@@ -361,10 +361,6 @@
   align-items: center;
 }
 
-#cm-action-dock.is-open .dock-actions{
-  display: inline-flex;
-}
-
 
 #cm-action-dock.is-open .dock-actions{
   display: inline-flex;
@@ -653,15 +649,16 @@
                  placeholder="Descrição do anexo (opcional)">
 
           <input type="file" name="file"
-                 id="attachment-file"
-                 class="cm-input"
-                 style="max-width: 520px;"
-                 hx-post="{% url 'boards:add_attachment' card.id %}"
-                 hx-target="#attachments-list"
-                 hx-swap="beforeend"
-                 hx-trigger="change"
-                 hx-encoding="multipart/form-data"
-                 hx-include="#attachment-desc" />
+       id="attachment-file"
+       class="cm-input"
+       style="max-width: 520px;"
+       hx-post="{% url 'boards:add_attachment' card.id %}"
+       hx-target="#attachments-list"
+       hx-swap="beforeend"
+       hx-trigger="change"
+       hx-encoding="multipart/form-data"
+       hx-include="#attachment-desc, input[name='csrfmiddlewaretoken']" />
+
         </div>
 
         <div class="cm-muted" style="margin-top:6px;">
@@ -1055,10 +1052,7 @@ function initActionDock() {
     });
   }
 
-// ============================================================
-// DUPLICAR — chama backend, injeta o novo card no DOM e fecha modal
-// ============================================================
-// ============================================================
+  // ============================================================
 // DUPLICAR — backend existe + fecha modal + atualiza DOM
 // ============================================================
 if (btnDup) {
@@ -1226,9 +1220,22 @@ if (btnDup) {
     });
   }
 
+    // ============================================================
+  // Evita duplicar listeners globais a cada re-render do modal (HTMX swap)
+  // ============================================================
+  try {
+    if (window.__cmDockHandlers) {
+      document.removeEventListener("click", window.__cmDockHandlers.clickOutsideClose);
+      document.removeEventListener("keydown", window.__cmDockHandlers.escClose);
+    }
+  } catch (_e) {}
+
+  window.__cmDockHandlers = { clickOutsideClose, escClose };
+
   document.addEventListener("click", clickOutsideClose);
   document.addEventListener("keydown", escClose);
 }
+
 
 
 

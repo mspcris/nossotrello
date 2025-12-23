@@ -591,35 +591,42 @@ function cmInstallCoverPasteAndUploadOnce() {
     true
   );
 
-  // 2) Selecionou no file picker
-  document.body.addEventListener(
-    "change",
-    (e) => {
-      const root = getRoot();
-      if (!root) return;
+// 2) Selecionou no file picker (SÓ CAPA)
+document.body.addEventListener(
+  "change",
+  (e) => {
+    const root = getRoot();
+    if (!root) return;
 
-      const inp = e.target;
-      if (!inp) return;
+    const inp = e.target;
+    if (!inp || inp.type !== "file") return;
 
-      const isCoverInput =
-        inp.matches?.("#cm-cover-file") ||
-        inp.matches?.('input[name="cover"][type="file"]') ||
-        (inp.type === "file" && root.contains(inp));
+    // ✅ Só trata como CAPA se for o input correto
+    const isCoverInput =
+      inp.matches?.("#cm-cover-file") ||
+      inp.matches?.('input[name="cover"][type="file"]') ||
+      !!inp.closest?.("#cm-cover-form");
 
-      if (!isCoverInput) return;
+    if (!isCoverInput) return;
 
-      const file = inp.files?.[0];
-      console.log("[cover] change file detectado", file?.name, file?.type);
+    const file = inp.files?.[0];
+    console.log("[cover] change file detectado", file?.name, file?.type);
 
-      if (!file) return;
+    if (!file) return;
 
-      uploadCover(file);
-      try {
-        inp.value = "";
-      } catch (err) {}
-    },
-    true
-  );
+    // validação defensiva (evita DOC cair aqui)
+    if (!(file.type || "").startsWith("image/")) {
+      showCoverErr("Arquivo inválido: envie uma imagem.");
+      try { inp.value = ""; } catch (_e) {}
+      return;
+    }
+
+    uploadCover(file);
+    try { inp.value = ""; } catch (_e) {}
+  },
+  true
+);
+
 
   // 3) Ctrl+V (fora do Quill) na aba desc: vira capa
   document.body.addEventListener(
