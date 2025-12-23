@@ -6,3 +6,4 @@ django-cleanup==8.0.0
 requests==2.32.0
 gunicorn==22.0.0
 whitenoise==6.5.0
+sqlalchemy>=2,<3
