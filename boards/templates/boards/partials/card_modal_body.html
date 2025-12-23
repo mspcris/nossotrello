@@ -424,6 +424,27 @@
 }
 
 
+@media (max-width: 767px) {
+  /* reduz folga e impede estourar a viewport */
+  #cm-action-dock{
+    right: 12px !important;
+    bottom: 12px !important;
+    max-width: calc(100vw - 24px) !important;
+  }
+
+  #cm-action-dock-panel{
+    right: 0 !important;
+    width: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px) !important;
+  }
+}
+
+@media (max-width: 767px) {
+  #modal-body { overflow-x: hidden !important; }
+  #cm-root { overflow-x: hidden !important; }
+}
+
+
 </style>
 
 {# ✅ IMPORTANTE: data-tag-colors aqui para o JS aplicar as cores salvas #}
