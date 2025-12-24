@@ -215,3 +215,4 @@ urlpatterns = [
     path("checklist/item/<int:item_id>/delete/", views.checklist_delete_item, name="checklist_delete_item"),
     path("checklist/item/<int:item_id>/update/", views.checklist_update_item, name="checklist_update_item"),
 ]
+#END file boards/urls.py

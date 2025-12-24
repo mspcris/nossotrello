@@ -396,7 +396,8 @@ def card_move_options(request, card_id):
             "board_name": board_current.name,
             "column_id": card.column.id,
             "column_name": card.column.name,
-            "position": int(card.position) + 1,
+            "position": int(card.position or 0),         # 0-based (para o select)
+            "position_display": int(card.position or 0) + 1,  # 1-based (para mostrar na UI)
         },
         "boards": [{"id": b.id, "name": b.name} for b in uniq],
         "columns_by_board": columns_by_board,
@@ -810,6 +811,7 @@ def remove_card_cover(request, card_id):
         pass
 
     return render(request, "boards/partials/card_modal_body.html", _card_modal_context(card))
+#end file boards/views/cards.py
 
 
 

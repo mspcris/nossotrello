@@ -423,7 +423,6 @@
   animation: cmBoing 220ms ease-out;
 }
 
-
 @media (max-width: 767px) {
   /* reduz folga e impede estourar a viewport */
   #cm-action-dock{
@@ -443,7 +442,6 @@
   #modal-body { overflow-x: hidden !important; }
   #cm-root { overflow-x: hidden !important; }
 }
-
 
 @media (max-width: 767px) {
   /* dock visível acima da barra do sistema */
@@ -469,9 +467,6 @@
     padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
   }
 }
-
-
-
 </style>
 
 {# ✅ IMPORTANTE: data-tag-colors aqui para o JS aplicar as cores salvas #}
@@ -535,8 +530,7 @@
          class="hidden mt-2 px-3 py-2 rounded-md text-sm border border-red-500/30 bg-red-500/10 text-red-200"></div>
   </div>
 
-
-  
+  {# ===================== TAG COLOR PICKER POPOVER ===================== #}
   {# ✅ Form invisível + color picker invisível (para salvar cor via POST) #}
   <form id="cm-tag-color-form"
         class="hidden"
@@ -679,12 +673,10 @@
   {# ===================== ANEXOS ===================== #}
   <section class="cm-panel" data-cm-panel="files" role="tabpanel">
     <div class="cm-card space-y-3">
-
       <div id="attachments-error"
            class="hidden mb-2 px-3 py-2 rounded-md text-sm border
                   border-red-500/30 bg-red-500/10 text-red-200">
       </div>
-
       <div>
         <label class="cm-label">Enviar novo anexo</label>
 
@@ -708,12 +700,10 @@
        hx-include="#attachment-desc, input[name='csrfmiddlewaretoken']" />
 
         </div>
-
         <div class="cm-muted" style="margin-top:6px;">
           Limite: 50MB por arquivo.
         </div>
       </div>
-
       <div id="attachments-list" class="space-y-3">
         {% for attachment in card.attachments.all %}
           {% include "boards/partials/attachment_item.html" %}
@@ -730,21 +720,17 @@
     <button type="button" class="dock-toggle" id="cm-dock-toggle" title="Ações">
       ⋮
     </button>
-
     <div class="dock-actions" id="cm-dock-actions">
       <button type="button" class="dock-action" id="cm-dock-move">
         <span>↔️</span> <span class="label">Mover</span>
       </button>
-
       <button type="button" class="dock-action" id="cm-dock-duplicate">
         <span>📄</span> <span class="label">Duplicar</span>
       </button>
-
       <button type="button" class="dock-action" id="cm-dock-copylink">
         <span>🔗</span> <span class="label">Copiar link</span>
       </button>
     </div>
-
     <div id="cm-action-dock-panel" role="dialog" aria-label="Painel de ação">
       <div id="cm-dock-panel-body">
         {# conteúdo lazy-loaded (Mover) entra aqui #}
@@ -752,11 +738,7 @@
     </div>
   </div>
 </div>
-
-
-
 </div>
-
 
 <script>
 (function(){
@@ -824,14 +806,6 @@
     syncBars();
   }
 
-  
-
-
-
-
-
-
-
 // ============================================================
 // 2) ACTION DOCK — mover/duplicar/copiar link
 // ============================================================
@@ -874,10 +848,11 @@ function initActionDock() {
   }
 
   function clickOutsideClose(e) {
-    const wrap = dock.querySelector(".dock-wrap");
-    if (!wrap) return;
-    if (!wrap.contains(e.target)) closeDock();
-  }
+  // se clicou dentro do dock, não fecha
+  if (e.target && e.target.closest && e.target.closest("#cm-action-dock")) return;
+  closeDock();
+}
+
 
   function escClose(e) {
     if (e.key === "Escape") closeDock();
@@ -894,213 +869,220 @@ function initActionDock() {
   // Hover abre ao apontar o mouse (hover)
   //dock.addEventListener("mouseenter", openDock);
 
-  // ============================================================
-  // MOVER — GET opções no endpoint REAL + POST no move-card REAL
-  // ============================================================
-  if (btnMove) {
-    btnMove.addEventListener("click", async function (e) {
-      e.preventDefault();
-      e.stopPropagation();
-
-      try {
-        // ✅ URLconf: path("card/<int:card_id>/move/options/", views.card_move_options, ...)
-        const url = `/card/${cardId}/move/options/`;
-        const res = await fetch(url, {
-          headers: { "X-Requested-With": "XMLHttpRequest" },
-        });
-
-        if (!res.ok) {
-          const t = await res.text().catch(() => "");
-          throw new Error(t || "Falha ao carregar opções.");
-        }
-
-        const data = await res.json();
-
-        const current = data.current || {};
-        const boards = data.boards || [];
-        const columnsByBoard = data.columns_by_board || {};
-
-        const boardOptions = boards
-          .map((b) => `<option value="${b.id}">${escapeHtml(b.name)}</option>`)
-          .join("");
-
-        openPanel(`
-          <div class="cm-card" style="box-shadow:none; border:none; background:transparent; padding:0;">
-            <div class="cm-muted" style="margin-bottom:8px;">
-              <div>
-                <strong>Local atual:</strong>
-                ${escapeHtml(current.board_name || "")} → ${escapeHtml(current.column_name || "")} (#${escapeHtml(current.position ?? "")})
-              </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <label class="block">
-                <span class="cm-label">Quadro</span>
-                <select id="cm-move-board" class="cm-select">
-                  <option value="">Selecione…</option>
-                  ${boardOptions}
-                </select>
-              </label>
-
-              <label class="block">
-                <span class="cm-label">Coluna</span>
-                <select id="cm-move-column" class="cm-select" disabled>
-                  <option value="">Selecione um quadro</option>
-                </select>
-              </label>
-
-              <label class="block">
-                <span class="cm-label">Posição</span>
-                <select id="cm-move-position" class="cm-select" disabled>
-                  <option value="">Selecione uma coluna</option>
-                </select>
-              </label>
-            </div>
-
-            <div class="flex items-center justify-end gap-2 pt-3">
-              <button type="button" class="cm-btn" id="cm-move-cancel">Cancelar</button>
-              <button type="button" class="cm-btn primary" id="cm-move-confirm">Mover</button>
-            </div>
-
-            <p id="cm-move-error" class="hidden" style="margin-top:10px; color: var(--cm-danger); font-size: 12px;"></p>
-          </div>
-        `);
-
-        const selBoard = document.getElementById("cm-move-board");
-        const selCol = document.getElementById("cm-move-column");
-        const selPos = document.getElementById("cm-move-position");
-        const btnCancel = document.getElementById("cm-move-cancel");
-        const btnConfirm = document.getElementById("cm-move-confirm");
-        const err = document.getElementById("cm-move-error");
-
-        function setError(msg) {
-          if (!err) return;
-          err.textContent = msg || "";
-          err.classList.toggle("hidden", !msg);
-        }
-
-        function fillColumns(boardId) {
-          const cols = columnsByBoard[String(boardId)] || [];
-
-          selCol.innerHTML = cols.length
-            ? `<option value="">Selecione…</option>` +
-              cols
-                .map(
-                  (c) =>
-                    `<option value="${c.id}" data-total="${c.positions_total_plus_one}">${escapeHtml(
-                      c.name
-                    )}</option>`
-                )
-                .join("")
-            : `<option value="">Sem colunas</option>`;
-
-          selCol.disabled = cols.length === 0;
-          selPos.innerHTML = `<option value="">Selecione uma coluna</option>`;
-          selPos.disabled = true;
-        }
-
-        function fillPositions(total) {
-          const n = parseInt(total || "0", 10) || 0;
-          const opts = [];
-          for (let i = 1; i <= n; i++) {
-            opts.push(`<option value="${i - 1}">${i}</option>`);
-          }
-          selPos.innerHTML = opts.length ? opts.join("") : `<option value="">—</option>`;
-          selPos.disabled = opts.length === 0;
-        }
-
-        selBoard.addEventListener("change", function () {
-          setError("");
-          if (!this.value) return;
-          fillColumns(this.value);
-        });
-
-        selCol.addEventListener("change", function () {
-          setError("");
-          if (!this.value) return;
-          const opt = this.options[this.selectedIndex];
-          const total = opt ? opt.getAttribute("data-total") : "0";
-          fillPositions(total);
-        });
-
-        if (btnCancel) btnCancel.addEventListener("click", closePanel);
-
-        
 
 
 
+   // ============================================================
+// MOVER — GET opções no endpoint REAL + POST no move-card REAL
+// ============================================================
+if (btnMove) {
+  btnMove.addEventListener("click", async function (e) {
+    e.preventDefault();
+    e.stopPropagation();
 
-                if (btnConfirm) {
-          btnConfirm.addEventListener("click", async function (e) {
-            e.preventDefault();
-            e.stopPropagation();
+    try {
+      const url = `/card/${cardId}/move/options/`;
+      const res = await fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } });
 
-            try {
-              setError("");
-
-              const boardId = selBoard.value; // valida UX; backend não usa aqui
-              const colId = selCol.value;
-
-              // UI mostra 1..N, mas o backend espera 0..N-1
-              // (value do option já é 0-based)
-              const pos = selPos.value;
-
-              if (!boardId || !colId || pos === "") {
-                setError("Selecione quadro, coluna e posição.");
-                return;
-              }
-
-              const csrf = getCSRFToken();
-
-              // ✅ endpoint real do urls.py: path("move-card/", views.move_card, name="move_card")
-              const endpoint = `/move-card/`;
-
-              // ✅ payload EXATO do backend atual (boards/views/cards.py -> move_card)
-              const payload = {
-                card_id: parseInt(cardId, 10),
-                new_column_id: parseInt(colId, 10),
-                new_position: parseInt(pos, 10),
-              };
-
-              const res = await fetch(endpoint, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  "X-CSRFToken": csrf,
-                  "X-Requested-With": "XMLHttpRequest",
-                },
-                body: JSON.stringify(payload),
-              });
-
-              if (!res.ok) {
-                const t = await res.text().catch(() => "");
-                throw new Error(t || "Falha ao mover.");
-              }
-
-              // 1) Fecha painel/dock (UX)
-              closePanel();
-              closeDock();
-
-              // 2) Sem adivinhar seletor de coluna/lista:
-              //    o backend já reindexa e garante posição correta.
-              //    então garantimos consistência visual com reload.
-              location.reload();
-            } catch (ex) {
-              setError(ex.message || "Erro ao mover.");
-            }
-          });
-        }
-      } catch (ex) {
-        openPanel(
-          `<div class="cm-muted">Erro: ${escapeHtml(
-            ex.message || "Falha ao carregar mover."
-          )}</div>`
-        );
+      if (!res.ok) {
+        const t = await res.text().catch(() => "");
+        throw new Error(t || "Falha ao carregar opções.");
       }
-    });
-  }
 
-  // ============================================================
+      const data = await res.json();
+
+      const current = data.current || {};
+      const boards = data.boards || [];
+      const columnsByBoard = data.columns_by_board || {};
+
+      const boardOptions = boards
+        .map((b) => `<option value="${b.id}">${escapeHtml(b.name)}</option>`)
+        .join("");
+
+      openPanel(`
+        <div class="cm-card" style="box-shadow:none; border:none; background:transparent; padding:0;">
+          <div class="cm-muted" style="margin-bottom:8px;">
+            <div>
+              <strong>Local atual:</strong>
+              ${escapeHtml(current.board_name || "")} → ${escapeHtml(current.column_name || "")}
+              (#${escapeHtml(current.position_display ?? (current.position != null ? (current.position + 1) : ""))})
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <label class="block">
+              <span class="cm-label">Quadro</span>
+              <select id="cm-move-board" class="cm-select">
+                <option value="">Selecione…</option>
+                ${boardOptions}
+              </select>
+            </label>
+
+            <label class="block">
+              <span class="cm-label">Coluna</span>
+              <select id="cm-move-column" class="cm-select" disabled>
+                <option value="">Selecione um quadro</option>
+              </select>
+            </label>
+
+            <label class="block">
+              <span class="cm-label">Posição</span>
+              <select id="cm-move-position" class="cm-select" disabled>
+                <option value="">Selecione uma coluna</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="flex items-center justify-end gap-2 pt-3">
+            <button type="button" class="cm-btn" id="cm-move-cancel">Cancelar</button>
+            <button type="button" class="cm-btn primary" id="cm-move-confirm">Mover</button>
+          </div>
+
+          <p id="cm-move-error" class="hidden" style="margin-top:10px; color: var(--cm-danger); font-size: 12px;"></p>
+        </div>
+      `);
+
+      const selBoard = document.getElementById("cm-move-board");
+      const selCol = document.getElementById("cm-move-column");
+      const selPos = document.getElementById("cm-move-position");
+      const btnCancel = document.getElementById("cm-move-cancel");
+      const btnConfirm = document.getElementById("cm-move-confirm");
+      const err = document.getElementById("cm-move-error");
+
+      function setError(msg) {
+        if (!err) return;
+        err.textContent = msg || "";
+        err.classList.toggle("hidden", !msg);
+      }
+
+      function fillColumns(boardId) {
+        const cols = columnsByBoard[String(boardId)] || [];
+
+        selCol.innerHTML = cols.length
+          ? `<option value="">Selecione…</option>` +
+            cols
+              .map((c) =>
+                `<option value="${c.id}" data-total="${c.positions_total_plus_one}">${escapeHtml(c.name)}</option>`
+              )
+              .join("")
+          : `<option value="">Sem colunas</option>`;
+
+        selCol.disabled = cols.length === 0;
+        selPos.innerHTML = `<option value="">Selecione uma coluna</option>`;
+        selPos.disabled = true;
+      }
+
+      function fillPositions(total) {
+        const n = parseInt(total || "0", 10) || 0;
+        const opts = [];
+        for (let i = 1; i <= n; i++) opts.push(`<option value="${i - 1}">${i}</option>`);
+        selPos.innerHTML = opts.length ? opts.join("") : `<option value="">—</option>`;
+        selPos.disabled = opts.length === 0;
+      }
+
+      selBoard.addEventListener("change", function () {
+        setError("");
+        if (!this.value) return;
+        fillColumns(this.value);
+      });
+
+      selCol.addEventListener("change", function () {
+        setError("");
+        if (!this.value) return;
+        const opt = this.options[this.selectedIndex];
+        const total = opt ? opt.getAttribute("data-total") : "0";
+        fillPositions(total);
+      });
+
+      if (btnCancel) btnCancel.addEventListener("click", closePanel);
+
+      // ✅ PREFILL: agora com tudo definido
+      (function prefillMove() {
+        try {
+          const curBoardId = current.board_id;
+          const curColId = current.column_id;
+          const curPos0 = current.position; // 0-based
+
+          if (!curBoardId) return;
+
+          selBoard.value = String(curBoardId);
+          fillColumns(curBoardId);
+
+          if (curColId) {
+            selCol.value = String(curColId);
+
+            const opt = selCol.options[selCol.selectedIndex];
+            const total = opt ? opt.getAttribute("data-total") : "0";
+            fillPositions(total);
+
+            if (curPos0 != null && curPos0 !== "") selPos.value = String(curPos0);
+
+            selCol.disabled = false;
+            selPos.disabled = false;
+          }
+        } catch (_e) {}
+      })();
+
+      if (btnConfirm) {
+        btnConfirm.addEventListener("click", async function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+
+          try {
+            setError("");
+
+            const boardId = selBoard.value; // valida UX; backend não usa
+            const colId = selCol.value;
+            const pos = selPos.value; // 0-based
+
+            if (!boardId || !colId || pos === "") {
+              setError("Selecione quadro, coluna e posição.");
+              return;
+            }
+
+            const csrf = getCSRFToken();
+            const endpoint = `/move-card/`;
+
+            const payload = {
+              card_id: parseInt(cardId, 10),
+              new_column_id: parseInt(colId, 10),
+              new_position: parseInt(pos, 10),
+            };
+
+            const res = await fetch(endpoint, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrf,
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify(payload),
+            });
+
+            if (!res.ok) {
+              const t = await res.text().catch(() => "");
+              throw new Error(t || "Falha ao mover.");
+            }
+
+            closePanel();
+            closeDock();
+            location.reload();
+          } catch (ex) {
+            setError(ex.message || "Erro ao mover.");
+          }
+        });
+      }
+    } catch (ex) {
+      openPanel(`<div class="cm-muted">Erro: ${escapeHtml(ex.message || "Falha ao carregar mover.")}</div>`);
+    }
+  });
+}
+
+
+
+
+
+// ============================================================
 // DUPLICAR — backend existe + fecha modal + atualiza DOM
 // ============================================================
 if (btnDup) {
@@ -1242,7 +1224,6 @@ if (btnDup) {
   });
 }
 
-
   // ============================================================
   // COPIAR LINK (frontend-only)
   // ============================================================
@@ -1271,29 +1252,20 @@ if (btnDup) {
     // ============================================================
   // Evita duplicar listeners globais a cada re-render do modal (HTMX swap)
   // ============================================================
-  try {
-    if (window.__cmDockHandlers) {
-      document.removeEventListener("click", window.__cmDockHandlers.clickOutsideClose);
-      document.removeEventListener("keydown", window.__cmDockHandlers.escClose);
-    }
-  } catch (_e) {}
+try {
+  if (window.__cmDockHandlers) {
+    document.removeEventListener("click", window.__cmDockHandlers.clickOutsideClose, true);
+    document.removeEventListener("keydown", window.__cmDockHandlers.escClose);
+  }
+} catch (_e) {}
 
-  window.__cmDockHandlers = { clickOutsideClose, escClose };
+window.__cmDockHandlers = { clickOutsideClose, escClose };
 
-  document.addEventListener("click", clickOutsideClose);
-  document.addEventListener("keydown", escClose);
+document.addEventListener("click", clickOutsideClose, true);
+document.addEventListener("keydown", escClose);
+
+// ✅ fecha a função initActionDock aqui
 }
-
-
-
-
-
-
-
-
-
-
-
 
   // ============================================================
   // helpers
