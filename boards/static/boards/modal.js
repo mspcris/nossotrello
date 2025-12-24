@@ -27,6 +27,19 @@ function qs(sel, root = document) {
 function qsa(sel, root = document) {
   return Array.from(root.querySelectorAll(sel));
 }
+function escapeHtml(s) {
+  return String(s || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function getBoardIdFromUrl() {
+  const m = (window.location.pathname || "").match(/\/board\/(\d+)\//);
+  return m?.[1] ? Number(m[1]) : null;
+}
 
 function getModalEl() {
   return document.getElementById("modal");
@@ -989,32 +1002,93 @@ function initQuillDesc(body) {
   // esconde textarea (mas mantém para o POST)
   textarea.style.display = "none";
 
-  const q = new Quill("#" + host.id, {
-    theme: "snow",
-    modules: {
-      toolbar: {
-        container: [
-          [{ header: [1, 2, 3, false] }],
-          ["bold", "italic", "underline"],
-          ["link", "image"],
-          [{ list: "ordered" }, { list: "bullet" }],
-        ],
-        handlers: {
-          image: function () {
-            const fileInput = document.createElement("input");
-            fileInput.type = "file";
-            fileInput.accept = "image/*";
-            fileInput.onchange = () => {
-              const file = fileInput.files?.[0];
-              if (!file) return;
-              insertBase64ImageIntoQuill(q, file);
-            };
-            fileInput.click();
-          },
+  const boardId = getBoardIdFromUrl();
+
+const q = new Quill("#" + host.id, {
+  theme: "snow",
+  modules: {
+    toolbar: {
+      container: [
+        [{ header: [1, 2, 3, false] }],
+        ["bold", "italic", "underline"],
+        ["link", "image"],
+        [{ list: "ordered" }, { list: "bullet" }],
+      ],
+      handlers: {
+        image: function () {
+          const fileInput = document.createElement("input");
+          fileInput.type = "file";
+          fileInput.accept = "image/*";
+          fileInput.onchange = () => {
+            const file = fileInput.files?.[0];
+            if (!file) return;
+            insertBase64ImageIntoQuill(q, file);
+          };
+          fileInput.click();
         },
       },
     },
-  });
+
+    mention: {
+      allowedChars: /^[A-Za-zÀ-ÖØ-öø-ÿ0-9_ .-]*$/,
+      mentionDenotationChars: ["@"],
+      showDenotationChar: true,
+      spaceAfterInsert: true,
+
+      renderItem: function (item) {
+        const div = document.createElement("div");
+        div.className = "mention-item";
+        div.innerHTML = `<strong>@${escapeHtml(item.value)}</strong>
+          <div style="font-size:12px;opacity:.7">${escapeHtml(item.email || "")}</div>`;
+        return div;
+      },
+
+      onSelect: function (item, insertItem) {
+        const range = q.getSelection(true);
+        if (!range) return;
+
+        insertItem(item);
+
+        setTimeout(() => {
+          const root = q.root;
+          const mentions = root.querySelectorAll("span.mention");
+          const last = mentions[mentions.length - 1];
+          if (!last) return;
+
+          last.setAttribute("data-id", String(item.id));
+          last.setAttribute("data-value", String(item.value));
+          if (!last.textContent?.startsWith("@")) last.textContent = "@" + item.value;
+
+          // mantém seu sync
+          textarea.value = q.root.innerHTML;
+        }, 0);
+      },
+
+      source: async function (searchTerm, renderList) {
+        try {
+          const qtxt = (searchTerm || "").trim();
+          if (!boardId) return renderList([], searchTerm);
+
+          const res = await fetch(
+            `/board/${boardId}/mentions/?q=${encodeURIComponent(qtxt)}`,
+            {
+              method: "GET",
+              credentials: "same-origin",
+              headers: { Accept: "application/json" },
+            }
+          );
+
+          if (!res.ok) return renderList([], searchTerm);
+
+          const data = await res.json();
+          renderList(Array.isArray(data) ? data : (data.results || []), searchTerm);
+        } catch (e) {
+          renderList([], searchTerm);
+        }
+      },
+    },
+  },
+});
 
   // conteúdo inicial
   q.root.innerHTML = (textarea.value || "").trim() || "";
@@ -1122,32 +1196,94 @@ function initQuillAtividade(body) {
     // Esconde o textarea (mas mantém no form para HTMX enviar)
     textarea.style.display = "none";
 
-    const q = new Quill("#" + host.id, {
-      theme: "snow",
-      modules: {
-        toolbar: {
-          container: [
-            [{ header: [1, 2, 3, false] }],
-            ["bold", "italic", "underline"],
-            ["link", "image"],
-            [{ list: "ordered" }, { list: "bullet" }],
-          ],
-          handlers: {
-            image: function () {
-              const fileInput = document.createElement("input");
-              fileInput.type = "file";
-              fileInput.accept = "image/*";
-              fileInput.onchange = () => {
-                const file = fileInput.files?.[0];
-                if (!file) return;
-                insertBase64ImageIntoQuill(q, file);
-              };
-              fileInput.click();
-            },
-          },
+    const boardId = getBoardIdFromUrl();
+
+const q = new Quill("#" + host.id, {
+  theme: "snow",
+  modules: {
+    toolbar: {
+      container: [
+        [{ header: [1, 2, 3, false] }],
+        ["bold", "italic", "underline"],
+        ["link", "image"],
+        [{ list: "ordered" }, { list: "bullet" }],
+      ],
+      handlers: {
+        image: function () {
+          const fileInput = document.createElement("input");
+          fileInput.type = "file";
+          fileInput.accept = "image/*";
+          fileInput.onchange = () => {
+            const file = fileInput.files?.[0];
+            if (!file) return;
+            insertBase64ImageIntoQuill(q, file);
+          };
+          fileInput.click();
         },
       },
-    });
+    },
+
+    mention: {
+      allowedChars: /^[A-Za-zÀ-ÖØ-öø-ÿ0-9_ .-]*$/,
+      mentionDenotationChars: ["@"],
+      showDenotationChar: true,
+      spaceAfterInsert: true,
+
+      renderItem: function (item) {
+        const div = document.createElement("div");
+        div.className = "mention-item";
+        div.innerHTML = `<strong>@${escapeHtml(item.value)}</strong>
+          <div style="font-size:12px;opacity:.7">${escapeHtml(item.email || "")}</div>`;
+        return div;
+      },
+
+      onSelect: function (item, insertItem) {
+        const range = q.getSelection(true);
+        if (!range) return;
+
+        insertItem(item);
+
+        setTimeout(() => {
+          const root = q.root;
+          const mentions = root.querySelectorAll("span.mention");
+          const last = mentions[mentions.length - 1];
+          if (!last) return;
+
+          last.setAttribute("data-id", String(item.id));
+          last.setAttribute("data-value", String(item.value));
+          if (!last.textContent?.startsWith("@")) last.textContent = "@" + item.value;
+
+          // mantém seu sync
+          textarea.value = q.root.innerHTML;
+        }, 0);
+      },
+
+      source: async function (searchTerm, renderList) {
+        try {
+          const qtxt = (searchTerm || "").trim();
+          if (!boardId) return renderList([], searchTerm);
+
+          const res = await fetch(
+            `/board/${boardId}/mentions/?q=${encodeURIComponent(qtxt)}`,
+            {
+              method: "GET",
+              credentials: "same-origin",
+              headers: { Accept: "application/json" },
+            }
+          );
+
+          if (!res.ok) return renderList([], searchTerm);
+
+          const data = await res.json();
+          renderList(Array.isArray(data) ? data : (data.results || []), searchTerm);
+        } catch (e) {
+          renderList([], searchTerm);
+        }
+      },
+    },
+  },
+});
+
 
     // Foco/click mais previsível
     try {

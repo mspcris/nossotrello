@@ -1,10 +1,44 @@
 /*<!--quill.css-->*/
 
+/* deixa o dropdown do mention "escapar" sem cortar */
 .ql-container {
-    height: 150px !important;
-    overflow-y: auto !important;
+  height: auto !important;
+  overflow: visible !important;
 }
 
+/* o scroll fica aqui */
 .ql-editor {
-    min-height: 140px !important;
+  min-height: 140px !important;
+  max-height: 150px !important;
+  overflow-y: auto !important;
 }
+
+/* garante que o menu fique por cima do modal */
+.ql-mention-list-container,
+.mention-list-container {
+  z-index: 99999 !important;
+}
+
+
+/* Mention token */
+.mention {
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  padding: 1px 6px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* Mention dropdown (quill-mention) */
+.ql-mention-list-container {
+  z-index: 99999;
+}
+
+.mention-item {
+  padding: 6px 10px;
+}
+.mention-item:hover {
+  background-color: #f3f4f6;
+  cursor: pointer;
+}
+

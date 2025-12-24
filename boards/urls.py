@@ -20,6 +20,7 @@ from django.urls import path, reverse_lazy
 
 from . import views
 from .views import cards
+from .views.mentions import board_mentions
 
 app_name = "boards"
 
@@ -170,6 +171,9 @@ urlpatterns = [
     path("card/<int:card_id>/activity/panel/", views.activity_panel, name="activity_panel"),
     path("card/<int:card_id>/activity/add/", views.add_activity, name="add_activity"),
     path("quill/upload/", views.quill_upload, name="quill_upload"),
+
+    # Menções do board
+    path("board/<int:board_id>/mentions/", board_mentions, name="board_mentions"),
 
     # Anexos (múltiplos)
     path("card/<int:card_id>/attachments/add/", views.add_attachment, name="add_attachment"),
