@@ -567,3 +567,4 @@ if (!window.__colorPopoverOutsideInstalled) {
     });
   }, true);
 })();
+//END boards/static/boards/board_ui.js

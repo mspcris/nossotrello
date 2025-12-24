@@ -2308,3 +2308,4 @@ function closeCardModalAndUrl({ replaceUrl = false } = {}) {
     if (img) img.src = url;
   });
 })();
+//END modal.js — Modal do Card (HTMX + Quill)
