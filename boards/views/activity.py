@@ -39,6 +39,7 @@ def activity_panel(request, card_id):
     return render(request, "boards/partials/card_activity_panel.html", {"card": card})
 
 
+@login_required
 @require_POST
 def add_activity(request, card_id):
     card = get_object_or_404(Card, id=card_id)

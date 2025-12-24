@@ -72,24 +72,24 @@ def add_card(request, column_id):
 
             card.save()
 
-                # menções na descrição (texto bruto do textarea)
-    try:
-        process_mentions_and_notify(
-            request=request,
-            board=card.column.board,
-            card=card,
-            source="description",
-            raw_text=raw_desc,
-        )
-    except Exception:
-        pass
+            # menções na descrição (texto bruto do textarea)
+            try:
+                process_mentions_and_notify(
+                    request=request,
+                    board=card.column.board,
+                    card=card,
+                    source="description",
+                    raw_text=raw_desc,
+                )
+            except Exception:
+                pass
 
+            _log_card(
+                card,
+                request,
+                f"<p><strong>{actor}</strong> criou este card na coluna <strong>{escape(column.name)}</strong>.</p>",
+            )
 
-        _log_card(
-            card,
-            request,
-            f"<p><strong>{actor}</strong> criou este card na coluna <strong>{escape(column.name)}</strong>.</p>",
-        )
 
         # Garante anexos + atividade para imagens salvas (base64) e também imagens já referenciadas /media/
         referenced_paths = _extract_media_image_paths(card.description or "", folder="quill")
@@ -140,6 +140,21 @@ def update_card(request, card_id):
     added = [t for t in new_tags if t not in old_tags]
 
     card.save()
+
+    # ✅ menções na descrição (texto bruto do POST)
+    import logging
+    logger = logging.getLogger(__name__)
+    try:
+        process_mentions_and_notify(
+            request=request,
+            board=card.column.board,
+            card=card,
+            source="description",
+            raw_text=raw_desc,
+        )
+    except Exception:
+        logger.exception("Erro ao processar menções na atualização de card.")
+
 
     # Garante anexos + atividade para imagens (base64 e/ou já persistidas em /media/)
     referenced_paths = _extract_media_image_paths(card.description or "", folder="quill")
@@ -795,3 +810,8 @@ def remove_card_cover(request, card_id):
         pass
 
     return render(request, "boards/partials/card_modal_body.html", _card_modal_context(card))
+
+
+
+
+

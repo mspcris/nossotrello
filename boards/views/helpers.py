@@ -371,10 +371,13 @@ def _send_mention_email(request, mentioned_user, actor_user, board: Board, card:
             message=body,
             from_email=getattr(settings, "DEFAULT_FROM_EMAIL", None),
             recipient_list=[to_email],
-            fail_silently=True,
+            fail_silently=False,
         )
     except Exception:
         return
+
+
+
 
 
 def process_mentions_and_notify(
@@ -385,20 +388,34 @@ def process_mentions_and_notify(
     source: str,
     raw_text: str,
 ):
-    """
-    1) resolve usuários
-    2) cria Mention (idempotente por card+user+source)
-    3) envia e-mail (somente quando criou)
-    """
+    import logging
+    logger = logging.getLogger(__name__)
+
+    logger.info(
+        "MENTIONS: enter source=%s card_id=%s actor_id=%s raw=%r",
+        source, getattr(card, "id", None), getattr(getattr(request, "user", None), "id", None),
+        (raw_text or "")[:200],
+    )
+
     if not getattr(request, "user", None) or not request.user.is_authenticated:
+        logger.info("MENTIONS: abort not_authenticated")
         return
 
     mentioned_users = _resolve_users_from_mentions(raw_text or "")
+    logger.info(
+        "MENTIONS: resolved count=%s ids=%s emails=%s",
+        len(mentioned_users),
+        [u.id for u in mentioned_users],
+        [getattr(u, "email", "") for u in mentioned_users],
+    )
+
     if not mentioned_users:
+        logger.info("MENTIONS: abort none_resolved")
         return
 
     for u in mentioned_users:
         if not u or u.id == request.user.id:
+            logger.info("MENTIONS: skip user_id=%s (self/invalid)", getattr(u, "id", None))
             continue
 
         try:
@@ -412,10 +429,13 @@ def process_mentions_and_notify(
                     "raw_text": (raw_text or "")[:5000],
                 },
             )
+            logger.info("MENTIONS: get_or_create user_id=%s created=%s", u.id, created)
             if created:
                 _send_mention_email(request, u, request.user, board, card, mention)
         except Exception:
+            logger.exception("MENTIONS: error processing user_id=%s", getattr(u, "id", None))
             continue
+
 
 
 
@@ -517,3 +537,5 @@ def _card_checklists_qs(card: Card):
 
 def _card_modal_context(card: Card) -> dict:
     return {"card": card, "checklists": _card_checklists_qs(card)}
+
+

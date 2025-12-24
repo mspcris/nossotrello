@@ -15,6 +15,8 @@ from .checklists import *  # noqa
 from .columns import *  # noqa
 from .helpers import *  # noqa
 from .legacy import *  # noqa
+from .mentions import *  # noqa
+
 
 
 class FirstLoginPasswordResetForm(PasswordResetForm):
