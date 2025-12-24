@@ -15,11 +15,14 @@ from django.utils.html import escape
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import Count, Q
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
+from typing import List
+from django.db.models import Q
 
 from ..models import (
     Board,
@@ -35,6 +38,8 @@ from ..models import (
     UserProfile,
     Mention,
 )
+
+
 
 
 # ======================================================================
@@ -276,20 +281,40 @@ def _extract_emails(text: str) -> list[str]:
 
 
 
+
+# boards/views/helpers.py
+
+import re
+from typing import List
+from django.contrib.auth import get_user_model
+from django.db.models import Q
+
+# Se você já tem esses helpers no arquivo, NÃO duplique.
+# Use os que já existem:
+# - _extract_handles(text)
+# - _extract_emails(text)
+# - UserProfile model (se existir)
+# Se não existirem, deixe a parte do fallback (handles/emails) como está no seu arquivo atual.
+
 def _resolve_users_from_mentions(text: str):
     """
-    Resolve usuários a partir de:
-      0) data-id do span do Quill mention (prioridade máxima)
-      1) @handle (UserProfile.handle)
-      2) emails no texto
-    Mantém ordem do texto e dedupe no final.
+    Resolve usuários a partir de menções no HTML/Texto do Quill.
+
+    Ordem de resolução (mantém ordem do texto e dedupe):
+      1) data-id="123" / data-id='123' (prioridade máxima)
+      2) @handle (UserProfile.handle)  [fallback]
+      3) emails no texto              [fallback]
     """
     UserModel = get_user_model()
     raw = text or ""
 
-    # 0) Prioridade máxima: data-id do span gerado pelo Quill mention
-    # Aceita aspas duplas ou simples: data-id="4" ou data-id='4'
-    ids = [int(x) for x in re.findall(r'data-id=["\'](\d+)["\']', raw)]
+    users: List[UserModel] = []
+
+    # ------------------------------------------------------------
+    # 1) PRIORIDADE MÁXIMA: data-id do span do Quill mention
+    # ------------------------------------------------------------
+    # Aceita aspas duplas ou simples
+    ids = [int(x) for x in re.findall(r"data-id=['\"](\d+)['\"]", raw)]
     if ids:
         qs = (
             UserModel._default_manager
@@ -298,36 +323,46 @@ def _resolve_users_from_mentions(text: str):
             .exclude(email__exact="")
         )
 
-        # preserva ordem do texto e dedupe
         by_id = {u.id: u for u in qs}
-        out = []
-        seen_ids = set()
-        for _id in ids:
-            u = by_id.get(_id)
-            if not u or u.id in seen_ids:
-                continue
-            seen_ids.add(u.id)
-            out.append(u)
-        return out
-
-    # 1) Fallback: @handle (UserProfile.handle)
-    handles = _extract_handles(raw)
-    emails = _extract_emails(raw)
-
-    users = []
-
-    if handles:
-        profs = (
-            UserProfile.objects.select_related("user")
-            .filter(handle__in=[h.lower() for h in handles])
-        )
-        by_handle = {((p.handle or "").lower()): p.user for p in profs}
-        for h in handles:
-            u = by_handle.get((h or "").lower())
+        for i in ids:  # mantém ordem do HTML
+            u = by_id.get(i)
             if u:
                 users.append(u)
 
-    # 2) Fallback: emails (email ou USERNAME_FIELD)
+    # ------------------------------------------------------------
+    # 2) FALLBACK: @handle (UserProfile.handle)
+    # ------------------------------------------------------------
+    # Mantém sua lógica atual por handle, MAS sem quebrar se UserProfile não existir/estiver vazio
+    try:
+        handles = _extract_handles(raw)  # usa o helper que você já tinha
+    except Exception:
+        handles = []
+
+    if handles:
+        try:
+            profs = (
+                UserProfile.objects.select_related("user")
+                .filter(handle__in=[h.lower() for h in handles])
+            )
+            by_handle = {((p.handle or "").lower()): p.user for p in profs}
+            for h in handles:
+                u = by_handle.get((h or "").lower())
+                if u and getattr(u, "is_active", True):
+                    # se tiver email, ok; se não tiver, ignora
+                    if getattr(u, "email", ""):
+                        users.append(u)
+        except Exception:
+            # Se UserProfile não estiver migrado/criado/não existir, não derruba o fluxo
+            pass
+
+    # ------------------------------------------------------------
+    # 3) FALLBACK: emails no texto
+    # ------------------------------------------------------------
+    try:
+        emails = _extract_emails(raw)  # usa o helper que você já tinha
+    except Exception:
+        emails = []
+
     if emails:
         username_field = getattr(UserModel, "USERNAME_FIELD", "username")
 
@@ -336,7 +371,7 @@ def _resolve_users_from_mentions(text: str):
             q |= Q(email__in=emails)
         q |= Q(**{f"{username_field}__in": emails})
 
-        qs = UserModel._default_manager.filter(q).distinct()
+        qs = UserModel._default_manager.filter(q, is_active=True).distinct()
 
         by_key = {}
         for u in qs:
@@ -346,10 +381,12 @@ def _resolve_users_from_mentions(text: str):
 
         for e in emails:
             u = by_key.get((e or "").strip().lower())
-            if u:
+            if u and getattr(u, "email", ""):
                 users.append(u)
 
-    # dedupe preservando ordem
+    # ------------------------------------------------------------
+    # DEDUPE preservando ordem
+    # ------------------------------------------------------------
     seen_ids = set()
     out = []
     for u in users:
@@ -357,6 +394,7 @@ def _resolve_users_from_mentions(text: str):
             continue
         seen_ids.add(u.id)
         out.append(u)
+
     return out
 
 
