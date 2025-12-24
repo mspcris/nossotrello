@@ -706,6 +706,14 @@ window.openModal = function () {
 window.closeModal = function () {
   const modal = getModalEl();
   const modalBody = getModalBody();
+  
+  try {
+  // só limpa se tiver ?card na URL
+  const cardId = getCardIdFromUrl();
+  if (cardId) clearUrlCard({ replace: false });
+} catch (e) {}
+
+  
   if (!modal) return;
 
   // inicia animação de saída
@@ -1598,13 +1606,7 @@ window.initCardModal = function () {
       ev.preventDefault();
       ev.stopPropagation();
 
-      window.currentCardId = cardId;
-      openModal();
-
-      htmx.ajax("GET", `/card/${cardId}/modal/`, {
-        target: "#modal-body",
-        swap: "innerHTML",
-      });
+      openCardModalAndLoad(cardId, { replaceUrl: false });
     },
     true
   );
@@ -1623,13 +1625,7 @@ window.initCardModal = function () {
       ev.preventDefault();
       ev.stopPropagation();
 
-      window.currentCardId = cardId;
-      openModal();
-
-      htmx.ajax("GET", `/card/${cardId}/modal/`, {
-        target: "#modal-body",
-        swap: "innerHTML",
-      });
+      openCardModalAndLoad(cardId, { replaceUrl: false });
     },
     true
   );
@@ -2195,40 +2191,83 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
   });
 })();
 
-// =====================================================
-// Deep link: /board/X/?card=ID -> abre modal automaticamente
-// =====================================================
-(function bindDeepLinkOpenOnce() {
-  if (document.body.dataset.deepLinkOpenBound === "1") return;
-  document.body.dataset.deepLinkOpenBound = "1";
 
-  function openFromUrlIfAny() {
-    // só tenta se o modal não estiver aberto
+// =====================================================
+// URL do Card no board: /board/X/?card=ID
+// - ao abrir modal por clique: pushState (?card=ID)
+// - ao abrir por URL (load/popstate): replaceState (mantém URL)
+// - ao fechar modal: remove ?card
+// - back/forward: abre/fecha modal conforme URL
+// =====================================================
+function getCardIdFromUrl() {
+  const u = new URL(window.location.href);
+  const v = u.searchParams.get("card");
+  const id = v ? parseInt(v, 10) : null;
+  return Number.isFinite(id) ? id : null;
+}
+
+function setUrlCard(cardId, { replace = false } = {}) {
+  const u = new URL(window.location.href);
+  u.searchParams.set("card", String(cardId));
+  if (replace) history.replaceState({ cardId }, "", u.toString());
+  else history.pushState({ cardId }, "", u.toString());
+}
+
+function clearUrlCard({ replace = false } = {}) {
+  const u = new URL(window.location.href);
+  u.searchParams.delete("card");
+  if (replace) history.replaceState({}, "", u.toString());
+  else history.pushState({}, "", u.toString());
+}
+
+// abre modal + carrega HTML (mesmo fluxo do clique)
+function openCardModalAndLoad(cardId, { replaceUrl = false } = {}) {
+  if (!cardId) return;
+
+  // 1) URL
+  setUrlCard(cardId, { replace: !!replaceUrl });
+
+  // 2) modal + HTMX
+  window.currentCardId = cardId;
+  if (typeof window.openModal === "function") window.openModal();
+
+  htmx.ajax("GET", `/card/${cardId}/modal/`, {
+    target: "#modal-body",
+    swap: "innerHTML",
+  });
+}
+
+// fecha modal + limpa URL
+function closeCardModalAndUrl({ replaceUrl = false } = {}) {
+  if (typeof window.closeModal === "function") window.closeModal();
+  clearUrlCard({ replace: !!replaceUrl });
+}
+
+// Auto-open ao carregar /board/X/?card=ID
+(function bindCardUrlBootOnce() {
+  if (document.body.dataset.cardUrlBootBound === "1") return;
+  document.body.dataset.cardUrlBootBound = "1";
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const cardId = getCardIdFromUrl();
+    if (cardId) {
+      // replace pra não criar histórico extra no load
+      openCardModalAndLoad(cardId, { replaceUrl: true });
+    }
+  });
+
+  // Back/Forward
+  window.addEventListener("popstate", () => {
+    const cardId = getCardIdFromUrl();
     const modal = document.getElementById("modal");
     const modalIsOpen = modal && modal.classList.contains("modal-open");
-    if (modalIsOpen) return;
 
-    const params = new URLSearchParams(window.location.search || "");
-    const cardParam = params.get("card");
-    const cardId = Number(cardParam || 0);
-    if (!cardId) return;
-
-    // abre com o mesmo fluxo do clique
-    window.currentCardId = cardId;
-    if (typeof window.openModal === "function") window.openModal();
-
-    htmx.ajax("GET", `/card/${cardId}/modal/`, {
-      target: "#modal-body",
-      swap: "innerHTML",
-    });
-
-    // opcional (recomendado): evita reabrir no refresh acidental
-    // Se você quiser manter o ?card= na URL, comente estas 3 linhas.
-    try {
-      const cleanUrl = window.location.pathname;
-      window.history.replaceState({}, "", cleanUrl);
-    } catch (e) {}
-  }
-
-  document.addEventListener("DOMContentLoaded", openFromUrlIfAny);
+    if (cardId) {
+      openCardModalAndLoad(cardId, { replaceUrl: true });
+    } else if (modalIsOpen) {
+      // fecha sem empurrar nova history
+      if (typeof window.closeModal === "function") window.closeModal();
+    }
+  });
 })();
+
