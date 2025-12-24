@@ -36,6 +36,45 @@ function escapeHtml(s) {
     .replace(/'/g, "&#039;");
 }
 
+function initialsFrom(item) {
+  const name = (item.display_name || item.value || item.email || "").trim();
+  const parts = name.split(/\s+/).filter(Boolean);
+  const a = (parts[0] || "")[0] || "";
+  const b = (parts[1] || "")[0] || "";
+  const out = (a + b).toUpperCase();
+  return out || "@";
+}
+
+function renderMentionCard(item) {
+  const name =
+    (item.display_name || "").trim() ||
+    (item.value || "").replace(/^@/, "").trim() ||
+    (item.email || "").trim() ||
+    `user${item.id}`;
+
+  const handle = (item.handle || "").trim();
+  const email = (item.email || "").trim();
+  const avatar = (item.avatar_url || "").trim();
+
+  const wrap = document.createElement("div");
+  wrap.className = "mention-item mention-card";
+
+  const avatarHtml = avatar
+    ? `<img class="mention-avatar" src="${escapeHtml(avatar)}" alt="" loading="lazy">`
+    : `<div class="mention-avatar mention-avatar-fallback">${escapeHtml(initialsFrom(item))}</div>`;
+
+  wrap.innerHTML = `
+    ${avatarHtml}
+    <div class="mention-meta">
+      <div class="mention-name">${escapeHtml(name)}</div>
+      <div class="mention-handle">${handle ? "@" + escapeHtml(handle) : ""}</div>
+      <div class="mention-email">${email ? escapeHtml(email) : ""}</div>
+    </div>
+  `.trim();
+
+  return wrap;
+}
+
 function getBoardIdFromUrl() {
   const m = (window.location.pathname || "").match(/\/board\/(\d+)\//);
   return m?.[1] ? Number(m[1]) : null;
@@ -1044,12 +1083,9 @@ const q = new Quill("#" + host.id, {
       spaceAfterInsert: true,
 
       renderItem: function (item) {
-        const div = document.createElement("div");
-        div.className = "mention-item";
-        div.innerHTML = `<strong>@${escapeHtml(item.value)}</strong>
-          <div style="font-size:12px;opacity:.7">${escapeHtml(item.email || "")}</div>`;
-        return div;
+        return renderMentionCard(item);
       },
+
 
       onSelect: function (item, insertItem) {
         const range = q.getSelection(true);
@@ -1238,12 +1274,9 @@ const q = new Quill("#" + host.id, {
       spaceAfterInsert: true,
 
       renderItem: function (item) {
-        const div = document.createElement("div");
-        div.className = "mention-item";
-        div.innerHTML = `<strong>@${escapeHtml(item.value)}</strong>
-          <div style="font-size:12px;opacity:.7">${escapeHtml(item.email || "")}</div>`;
-        return div;
-      },
+        return renderMentionCard(item);
+    },
+
 
       onSelect: function (item, insertItem) {
         const range = q.getSelection(true);

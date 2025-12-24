@@ -1071,6 +1071,68 @@ html.dark #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-
   }
 }
 
+
+
+
+
+/* =========================
+   Card/carteirinha do compartilhar '@'
+   ========================= */
+
+
+.mention-card{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  padding:10px 12px;
+  border-radius:10px;
+}
+
+.mention-card:hover{
+  filter:brightness(0.98);
+}
+
+.mention-avatar{
+  width:38px;
+  height:38px;
+  border-radius:999px;
+  object-fit:cover;
+  flex:0 0 38px;
+}
+
+.mention-avatar-fallback{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:700;
+  font-size:12px;
+  border:1px solid rgba(0,0,0,.08);
+}
+
+.mention-meta{
+  display:flex;
+  flex-direction:column;
+  line-height:1.15;
+}
+
+.mention-name{
+  font-weight:700;
+  font-size:14px;
+}
+
+.mention-handle{
+  font-size:12px;
+  opacity:.75;
+  margin-top:2px;
+}
+
+.mention-email{
+  font-size:12px;
+  opacity:.65;
+  margin-top:2px;
+}
+
+
 /* =======================================================================
    FIM DO BASE.CSS CONSOLIDADO
    ======================================================================= */
