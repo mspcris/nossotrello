@@ -198,7 +198,7 @@ def board_leave(request, board_id):
 # ======================================================================
 
 def add_board(request):
-    from .helpers import BoardForm  # evita circular
+    from ..forms import BoardForm  # evita circular
 
     if request.method == "POST":
         form = BoardForm(request.POST)
