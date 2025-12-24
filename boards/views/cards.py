@@ -27,6 +27,7 @@ from .helpers import (
     _ensure_attachments_and_activity_for_images,
     _card_modal_context,
     _extract_media_image_paths,
+    process_mentions_and_notify,
 )
 
 from ..forms import CardForm
@@ -70,6 +71,19 @@ def add_card(request, column_id):
                 card.position = column.cards.count()
 
             card.save()
+
+                # menções na descrição (texto bruto do textarea)
+    try:
+        process_mentions_and_notify(
+            request=request,
+            board=card.column.board,
+            card=card,
+            source="description",
+            raw_text=raw_desc,
+        )
+    except Exception:
+        pass
+
 
         _log_card(
             card,

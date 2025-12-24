@@ -620,4 +620,118 @@ document.addEventListener("click", (ev) => {
 
 
 
+<script>
+  // ============================================================
+  // OPEN CARD FROM URL: ?card=ID&tab=ativ&mention=123
+  // ============================================================
+  (function () {
+    function getParam(name) {
+      try {
+        return new URLSearchParams(window.location.search).get(name);
+      } catch (_e) {
+        return null;
+      }
+    }
+
+    const cardId = parseInt(getParam("card") || "", 10);
+    const tab = (getParam("tab") || "").trim(); // ex: "ativ"
+    const mentionId = (getParam("mention") || "").trim();
+
+    if (!cardId) return;
+
+    // Ajuste estes 2 pontos se necessário
+    const MODAL_ROOT_SELECTOR = "#modal";       // container do modal
+    const MODAL_BODY_SELECTOR = "#modal-body";  // onde entra o HTML do card modal
+
+    function ensureModalOpen() {
+      // 1) se existir função global, usa
+      if (typeof window.openModal === "function") {
+        try { window.openModal(); return; } catch (_e) {}
+      }
+
+      // 2) fallback: se já existe modal no DOM, apenas garante visibilidade
+      const modal = document.querySelector(MODAL_ROOT_SELECTOR);
+      if (modal) {
+        modal.classList.remove("hidden");
+        modal.style.display = "";
+      }
+    }
+
+    function setActiveTab(tabName) {
+      if (!tabName) return;
+
+      // seu modal CM usa botões com data-cm-tab e painéis via data-cm-active no #cm-root
+      const cmRoot = document.getElementById("cm-root");
+      if (!cmRoot) return;
+
+      const btn = cmRoot.querySelector(`[data-cm-tab="${tabName}"]`);
+      if (btn) btn.click();
+    }
+
+    function highlightMention() {
+      if (!mentionId) return;
+
+      // MVP: tenta achar o mention id no HTML (se você futuramente renderizar),
+      // por enquanto só faz scroll pro topo da atividade.
+      const panel = document.querySelector("#cm-activity-panel") || document.querySelector("#activity-panel-wrapper");
+      if (panel && typeof panel.scrollIntoView === "function") {
+        panel.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+
+    async function loadModalHtml() {
+      // endpoint já existe no backend: card_modal(request, card_id)
+      const url = `/card/${cardId}/modal/`;
+
+      const res = await fetch(url, {
+        method: "GET",
+        credentials: "same-origin",
+        headers: { "X-Requested-With": "XMLHttpRequest" }
+      });
+
+      if (!res.ok) throw new Error("Falha ao abrir card.");
+      return await res.text();
+    }
+
+    async function openCardFromUrl() {
+      try {
+        const html = await loadModalHtml();
+
+        // 1) injeta HTML no body do modal
+        const body = document.querySelector(MODAL_BODY_SELECTOR);
+        if (!body) {
+          // fallback: tenta anexar no <body> (se seu modal é criado dinamicamente)
+          const tmp = document.createElement("div");
+          tmp.innerHTML = html;
+          document.body.appendChild(tmp);
+        } else {
+          body.innerHTML = html;
+        }
+
+        // 2) abre modal
+        ensureModalOpen();
+
+        // 3) seleciona aba
+        if (tab) {
+          // aguarda um tick pro JS do modal inicializar
+          setTimeout(() => {
+            setActiveTab(tab);
+            highlightMention();
+          }, 50);
+        }
+      } catch (_e) {
+        // silencioso (não derruba UX do board)
+      }
+    }
+
+    // abre após o DOM estar pronto
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", openCardFromUrl);
+    } else {
+      openCardFromUrl();
+    }
+  })();
+</script>
+
+
 {% endblock %}

@@ -10,16 +10,19 @@ from django.db import transaction
 from django.utils import timezone
 from django.utils.html import escape
 
+from ..forms import ColumnForm
 from .helpers import (
+    # mantém só helpers/models que realmente estão em helpers.py
+    # exemplo:
     _actor_label,
     _log_board,
     _log_card,
-    ColumnForm,
     Board,
     Column,
     Card,
     BoardMembership,
 )
+
 
 
 def add_column(request, board_id):

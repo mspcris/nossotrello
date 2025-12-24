@@ -18,6 +18,7 @@ from .helpers import (
     _extract_media_image_paths,
     _ensure_attachments_and_activity_for_images,
     _actor_label,
+    process_mentions_and_notify,
     Card,
     CardAttachment,
 )
@@ -55,6 +56,19 @@ def add_activity(request, card_id):
         f"<p><strong>{actor}</strong> adicionou uma atividade:</p>{html}",
         attachment=None,
     )
+
+    # menções: @handle e emails dentro do texto bruto (antes do save_base64 já “bagunçar”)
+    try:
+        process_mentions_and_notify(
+            request=request,
+            board=card.column.board,
+            card=card,
+            source="activity",
+            raw_text=raw,
+        )
+    except Exception:
+        pass
+
 
     # BUGFIX: antes chamava ensure_attachments_and_activity_for_images (não existe)
     referenced_paths = _extract_media_image_paths(html or "", folder="quill")

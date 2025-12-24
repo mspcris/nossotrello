@@ -318,3 +318,182 @@ class ChecklistItem(models.Model):
 
     def __str__(self):
         return self.text
+
+
+
+
+# ============================================================
+# USER PROFILE (nome amigável + handle para @mentions)
+# ============================================================
+from django.contrib.auth import get_user_model
+from django.core.validators import RegexValidator
+
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        related_name="profile",
+        on_delete=models.CASCADE,
+    )
+
+    display_name = models.CharField(max_length=120, blank=True, default="")
+
+    # handle único para marcar: @cristiano
+    handle = models.CharField(
+        max_length=40,
+        unique=True,
+        validators=[
+            RegexValidator(
+                regex=r"^[a-z0-9_\.]+$",
+                message="Use apenas letras minúsculas, números, _ ou .",
+            )
+        ],
+        blank=True,
+        null=True,
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["handle"]),
+        ]
+
+    def __str__(self):
+        return self.handle or self.display_name or str(self.user)
+
+
+# ============================================================
+# MENTIONS (registro + idempotência + origem)
+# ============================================================
+class Mention(models.Model):
+    class Source(models.TextChoices):
+        ACTIVITY = "activity", "Atividade"
+        DESCRIPTION = "description", "Descrição"
+
+    board = models.ForeignKey(Board, related_name="mentions", on_delete=models.CASCADE)
+    card = models.ForeignKey(Card, related_name="mentions", on_delete=models.CASCADE)
+
+    source = models.CharField(max_length=20, choices=Source.choices)
+
+    # quem marcou / quem foi marcado
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="mentions_made",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    mentioned_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="mentions_received",
+        on_delete=models.CASCADE,
+    )
+
+    # texto bruto onde ocorreu (para auditoria)
+    raw_text = models.TextField(blank=True, default="")
+
+    # se veio de um log específico
+    card_log = models.ForeignKey(
+        CardLog,
+        related_name="mentions",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        # idempotência: mesmo usuário marcado no mesmo card/source/log não duplica
+        constraints = [
+            models.UniqueConstraint(
+                fields=["card", "mentioned_user", "source", "card_log"],
+                name="uniq_mention_per_card_user_source_log",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["card", "mentioned_user"]),
+            models.Index(fields=["board", "mentioned_user"]),
+        ]
+
+    def __str__(self):
+        return f"{self.mentioned_user} mencionado em {self.card} ({self.source})"
+
+
+
+from django.conf import settings
+from django.core.validators import RegexValidator
+
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        related_name="profile",
+        on_delete=models.CASCADE,
+    )
+    display_name = models.CharField(max_length=120, blank=True, default="")
+
+    # @handle (único)
+    handle = models.CharField(
+        max_length=40,
+        unique=True,
+        validators=[
+            RegexValidator(
+                regex=r"^[a-z0-9_\.]+$",
+                message="Use apenas letras minúsculas, números, _ ou .",
+            )
+        ],
+        blank=True,
+        null=True,
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["handle"])]
+
+    def __str__(self):
+        return self.handle or self.display_name or str(self.user)
+
+
+class Mention(models.Model):
+    class Source(models.TextChoices):
+        ACTIVITY = "activity", "Atividade"
+        DESCRIPTION = "description", "Descrição"
+
+    board = models.ForeignKey("Board", related_name="mentions", on_delete=models.CASCADE)
+    card = models.ForeignKey("Card", related_name="mentions", on_delete=models.CASCADE)
+
+    source = models.CharField(max_length=20, choices=Source.choices)
+
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="mentions_made",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    mentioned_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="mentions_received",
+        on_delete=models.CASCADE,
+    )
+
+    raw_text = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["card", "mentioned_user", "source"],
+                name="uniq_mention_per_card_user_source",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["card", "mentioned_user"]),
+            models.Index(fields=["board", "mentioned_user"]),
+        ]
+
+    def __str__(self):
+        return f"{self.mentioned_user} mencionado em {self.card} ({self.source})"
