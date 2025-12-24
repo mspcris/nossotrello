@@ -274,15 +274,45 @@ def _extract_emails(text: str) -> list[str]:
     return out
 
 
+
+
 def _resolve_users_from_mentions(text: str):
     """
-    Resolve usuários a partir de @handle (UserProfile.handle) e emails.
+    Resolve usuários a partir de:
+      0) data-id do span do Quill mention (prioridade máxima)
+      1) @handle (UserProfile.handle)
+      2) emails no texto
     Mantém ordem do texto e dedupe no final.
     """
     UserModel = get_user_model()
+    raw = text or ""
 
-    handles = _extract_handles(text)
-    emails = _extract_emails(text)
+    # 0) Prioridade máxima: data-id do span gerado pelo Quill mention
+    # Aceita aspas duplas ou simples: data-id="4" ou data-id='4'
+    ids = [int(x) for x in re.findall(r'data-id=["\'](\d+)["\']', raw)]
+    if ids:
+        qs = (
+            UserModel._default_manager
+            .filter(id__in=ids, is_active=True)
+            .exclude(email__isnull=True)
+            .exclude(email__exact="")
+        )
+
+        # preserva ordem do texto e dedupe
+        by_id = {u.id: u for u in qs}
+        out = []
+        seen_ids = set()
+        for _id in ids:
+            u = by_id.get(_id)
+            if not u or u.id in seen_ids:
+                continue
+            seen_ids.add(u.id)
+            out.append(u)
+        return out
+
+    # 1) Fallback: @handle (UserProfile.handle)
+    handles = _extract_handles(raw)
+    emails = _extract_emails(raw)
 
     users = []
 
@@ -297,6 +327,7 @@ def _resolve_users_from_mentions(text: str):
             if u:
                 users.append(u)
 
+    # 2) Fallback: emails (email ou USERNAME_FIELD)
     if emails:
         username_field = getattr(UserModel, "USERNAME_FIELD", "username")
 
@@ -314,7 +345,7 @@ def _resolve_users_from_mentions(text: str):
             by_key[(u.get_username() or "").strip().lower()] = u
 
         for e in emails:
-            u = by_key.get(e)
+            u = by_key.get((e or "").strip().lower())
             if u:
                 users.append(u)
 
@@ -327,6 +358,15 @@ def _resolve_users_from_mentions(text: str):
         seen_ids.add(u.id)
         out.append(u)
     return out
+
+
+
+
+
+
+
+
+
 
 
 def _send_mention_email(request, mentioned_user, actor_user, board: Board, card: Card, mention: Mention):
