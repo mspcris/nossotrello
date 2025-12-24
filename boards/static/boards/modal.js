@@ -2271,3 +2271,40 @@ function closeCardModalAndUrl({ replaceUrl = false } = {}) {
   });
 })();
 
+
+
+
+
+// =====================================================
+// User Settings Modal (Conta) — abre no mesmo modal global
+// =====================================================
+(function bindUserSettingsModalOnce() {
+  if (document.body.dataset.userSettingsBound === "1") return;
+  document.body.dataset.userSettingsBound = "1";
+
+  // clique no avatar (base.html)
+  document.body.addEventListener("click", function (ev) {
+    const btn = ev.target.closest("#open-user-settings");
+    if (!btn) return;
+
+    ev.preventDefault();
+    ev.stopPropagation();
+
+    if (typeof window.openModal === "function") window.openModal();
+
+    htmx.ajax("GET", "/account/modal/", {
+      target: "#modal-body",
+      swap: "innerHTML",
+    });
+  }, true);
+
+  // evento disparado pelo backend via HX-Trigger (avatar atualizado)
+  document.body.addEventListener("userAvatarUpdated", function (ev) {
+    const url = ev.detail && ev.detail.url ? String(ev.detail.url) : "";
+    if (!url) return;
+
+    // se você colocou id no <img> do header, atualiza aqui:
+    const img = document.querySelector("#open-user-settings img");
+    if (img) img.src = url;
+  });
+})();

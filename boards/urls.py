@@ -183,6 +183,16 @@ urlpatterns = [
         name="delete_attachment",
     ),
 
+
+    # ============================================================
+    # CONTA / PERFIL (MODAL)
+    # ============================================================
+    path("account/modal/", views.account_modal, name="account_modal"),
+    path("account/profile/update/", views.account_profile_update, name="account_profile_update"),
+    path("account/password/change/", views.account_password_change, name="account_password_change"),
+    path("account/avatar/update/", views.account_avatar_update, name="account_avatar_update"),
+        
+
     # ============================================================
     # CHECKLISTS (múltiplos por card)
     # ============================================================

@@ -217,9 +217,13 @@
     </div>
 
     <!-- Logo no topo direito -->
-    <img src="{% static 'images/logo-camim.png' %}"
-         alt="Logo Camim"
-         class="h-16 w-auto object-contain">
+    <a href="#" id="open-user-settings" class="block">
+  <img
+    src="{% if user_avatar_url %}{{ user_avatar_url }}{% else %}{% static 'images/logo-camim.png' %}{% endif %}"
+    alt="Perfil"
+    class="h-16 w-16 rounded-full object-cover border border-white/50 shadow">
+</a>
+
   </div>
 </header>
 

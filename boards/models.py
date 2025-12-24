@@ -322,10 +322,12 @@ class ChecklistItem(models.Model):
 
 
 
+
 # ============================================================
-# USER PROFILE (nome amigável + handle para @mentions)
+# USER PROFILE (nome amigável + handle para @mentions + avatar)
 # ============================================================
-from django.contrib.auth import get_user_model
+from django.conf import settings
+from django.db import models
 from django.core.validators import RegexValidator
 
 
@@ -338,7 +340,7 @@ class UserProfile(models.Model):
 
     display_name = models.CharField(max_length=120, blank=True, default="")
 
-    # handle único para marcar: @cristiano
+    # @handle (único) — ex: @cristiano
     handle = models.CharField(
         max_length=40,
         unique=True,
@@ -352,6 +354,9 @@ class UserProfile(models.Model):
         null=True,
     )
 
+    # ✅ foto de perfil (fallback é a logo no template)
+    avatar = models.ImageField(upload_to="avatars/", blank=True, null=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -361,6 +366,13 @@ class UserProfile(models.Model):
 
     def __str__(self):
         return self.handle or self.display_name or str(self.user)
+
+
+
+
+
+
+
 
 
 # ============================================================
@@ -420,42 +432,9 @@ class Mention(models.Model):
     def __str__(self):
         return f"{self.mentioned_user} mencionado em {self.card} ({self.source})"
 
-
-
-from django.conf import settings
-from django.core.validators import RegexValidator
-
-
-class UserProfile(models.Model):
-    user = models.OneToOneField(
-        settings.AUTH_USER_MODEL,
-        related_name="profile",
-        on_delete=models.CASCADE,
-    )
-    display_name = models.CharField(max_length=120, blank=True, default="")
-
-    # @handle (único)
-    handle = models.CharField(
-        max_length=40,
-        unique=True,
-        validators=[
-            RegexValidator(
-                regex=r"^[a-z0-9_\.]+$",
-                message="Use apenas letras minúsculas, números, _ ou .",
-            )
-        ],
-        blank=True,
-        null=True,
-    )
-
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        indexes = [models.Index(fields=["handle"])]
-
-    def __str__(self):
-        return self.handle or self.display_name or str(self.user)
-
+# ============================================================
+# MENTIONS (registro + idempotência + origem)
+# ============================================================
 
 class Mention(models.Model):
     class Source(models.TextChoices):
