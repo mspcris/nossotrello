@@ -807,6 +807,61 @@
   const cardId = root.getAttribute("data-card-id");
 
   // ============================================================
+  // 0) TABS — estado determinístico + reset na abertura
+  // ============================================================
+  function getUrlParam(name){
+    try { return new URLSearchParams(window.location.search).get(name); }
+    catch (_e) { return null; }
+  }
+
+  function setActiveTab(tabName){
+    const tab = (tabName || "").trim();
+    if (!tab) return;
+
+    // buttons
+    root.querySelectorAll(".cm-tabbtn[data-cm-tab]").forEach((b) => {
+      b.classList.toggle("is-active", b.getAttribute("data-cm-tab") === tab);
+    });
+
+    // panels
+    root.querySelectorAll(".cm-panel[data-cm-panel]").forEach((p) => {
+      p.classList.toggle("is-active", p.getAttribute("data-cm-panel") === tab);
+    });
+
+    // state
+    root.setAttribute("data-cm-active", tab);
+
+    // notifica outros módulos (ex.: floatbar)
+    try { root.dispatchEvent(new CustomEvent("cm:tabchange", { detail: { tab } })); } catch (_e) {}
+  }
+
+  function initTabs(){
+    // bind clicks (idempotente por swap)
+    root.querySelectorAll(".cm-tabbtn[data-cm-tab]").forEach((btn) => {
+      if (btn.dataset.cmBound === "1") return;
+      btn.dataset.cmBound = "1";
+
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        const t = btn.getAttribute("data-cm-tab");
+        setActiveTab(t);
+      });
+    });
+
+    // regra: sempre abre em Descrição, a menos que exista deep-link explícito ?tab=
+    const deepTab = (getUrlParam("tab") || "").trim();
+    const allowed = new Set(["desc", "tags", "check", "ativ", "files"]);
+    const initial = (deepTab && allowed.has(deepTab)) ? deepTab : "desc";
+
+    // força o estado (mesmo se algum resíduo tentar setar outra aba)
+    setActiveTab(initial);
+
+    // reforço pós-render (HTMX/exec de scripts pode variar timing)
+    setTimeout(() => setActiveTab(initial), 0);
+    setTimeout(() => setActiveTab(initial), 50);
+  }
+
+  // ============================================================
   // 1) FLOATBAR (dirty) — seu comportamento atual
   // ============================================================
   function initFloatbarDirty(){
@@ -846,6 +901,9 @@
       el.addEventListener("input", syncBars);
       el.addEventListener("change", syncBars);
     });
+
+    // quando muda de aba, reavalia visibilidade da floatbar
+    root.addEventListener("cm:tabchange", syncBars);
 
     function submitForm(){
       form.requestSubmit ? form.requestSubmit() : form.submit();
@@ -1348,7 +1406,10 @@ document.addEventListener("keydown", escClose);
   }
 
   // init
+  // init
+  initTabs();
   initFloatbarDirty();
   initActionDock();
 })();
+
 </script>
