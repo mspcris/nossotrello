@@ -487,16 +487,31 @@ html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !import
   min-width: 0;
 }
 
-/* Quill contido */
+/* Quill contido (sem cortar dropdowns) */
 #card-modal-root #quill-editor,
 #card-modal-root #quill-editor-ativ,
-#card-modal-root .ql-toolbar,
 #card-modal-root .ql-container{
   width: 100%;
   max-width: 100%;
   min-width: 0;
   overflow-x: hidden;
 }
+
+/* Toolbar precisa deixar o dropdown aparecer */
+#card-modal-root .ql-toolbar{
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: visible !important;
+  position: relative;
+  z-index: 30;
+}
+
+/* Garante o menu do "Normal" acima do resto */
+#card-modal-root .ql-toolbar .ql-picker-options{
+  z-index: 9999;
+}
+
 
 #card-modal-root .ql-toolbar.ql-snow{
   display: flex !important;
