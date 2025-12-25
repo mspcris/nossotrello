@@ -1,32 +1,61 @@
 // =====================================================
 // modal.js — Modal do Card (HTMX + Quill)
-// - Form único (Descrição + Etiquetas)
-// - Savebar sticky só quando houver mudanças
-// - Modal com scroll único em #modal-body.card-modal-scroll (base.html)
-// - Atividade: "Incluir" atualiza histórico e limpa Quill
-// - Abas internas Atividade: Nova atividade / Histórico / Mover Card
-// - Mover: atualiza DOM sem F5 e fecha modal
+// Objetivo deste arquivo:
+// 1) Abrir modal do card sem “cliques vazando” (toggle/menus não quebram)
+// 2) Evitar “reabrir chato” do modal quando você clica em ações dentro do card
+// 3) Manter compatibilidade LEGADO + CM (#cm-root)
+// 4) Ter comentários didáticos em TUDO (arquivo-escola)
+//
+// ✅ PATCH DEFINITIVO (reabre ao mover):
+// - Quando você ARRASTA um card (Sortable / drag & drop), o browser quase sempre dispara um "click"
+//   no mouseup/touchend. Como o open do modal está em CAPTURE, ele pegava esse click e reabria.
+// - Solução: detector global de "drag recente" (mouse/pointer/touch) + heurística de classes do Sortable.
+//   Se houve movimento acima do threshold, ignoramos o click por ~800ms.
 // =====================================================
 
-window.currentCardId = null;
+// =====================================================
+// Estado global do modal / editores
+// =====================================================
+window.currentCardId = null; // card atualmente aberto no modal (se houver)
 
+// Referências globais do Quill (legado e/ou CM). Em CM usamos variáveis locais,
+// mas manter referências pode ajudar para debug / limpeza.
 let quillDesc = null;
 let quillAtiv = null;
 
-// Abas que suportam “savebar”
+// Abas do modal LEGADO que suportam “savebar”
 const tabsWithSave = new Set(["card-tab-desc", "card-tab-tags"]);
 
+// =====================================================
+// Helpers básicos (DOM, segurança, CSRF)
+// =====================================================
+
+/**
+ * Lê CSRF token do <meta name="csrf-token" ...>
+ * Obs: em Django geralmente o CSRF vai no cookie + hidden input;
+ * aqui você usa meta, então mantemos.
+ */
 function getCsrfToken() {
   return document.querySelector("meta[name='csrf-token']")?.content || "";
 }
 
+/**
+ * querySelector curto
+ */
 function qs(sel, root = document) {
   return root.querySelector(sel);
 }
 
+/**
+ * querySelectorAll curto (array)
+ */
 function qsa(sel, root = document) {
   return Array.from(root.querySelectorAll(sel));
 }
+
+/**
+ * Escapa HTML para evitar injeção ao montar strings com dados do backend
+ */
 function escapeHtml(s) {
   return String(s || "")
     .replace(/&/g, "&amp;")
@@ -36,6 +65,13 @@ function escapeHtml(s) {
     .replace(/'/g, "&#039;");
 }
 
+// =====================================================
+// Mention UI (Quill mention)
+// =====================================================
+
+/**
+ * Gera iniciais para fallback de avatar (ex: "Cristiano Souza" => "CS")
+ */
 function initialsFrom(item) {
   const name = (item.display_name || item.value || item.email || "").trim();
   const parts = name.split(/\s+/).filter(Boolean);
@@ -45,6 +81,9 @@ function initialsFrom(item) {
   return out || "@";
 }
 
+/**
+ * Renderiza o “cardzinho” do mention na lista do autocomplete
+ */
 function renderMentionCard(item) {
   const name =
     (item.display_name || "").trim() ||
@@ -60,8 +99,12 @@ function renderMentionCard(item) {
   wrap.className = "mention-item mention-card";
 
   const avatarHtml = avatar
-    ? `<img class="mention-avatar" src="${escapeHtml(avatar)}" alt="" loading="lazy">`
-    : `<div class="mention-avatar mention-avatar-fallback">${escapeHtml(initialsFrom(item))}</div>`;
+    ? `<img class="mention-avatar" src="${escapeHtml(
+        avatar
+      )}" alt="" loading="lazy">`
+    : `<div class="mention-avatar mention-avatar-fallback">${escapeHtml(
+        initialsFrom(item)
+      )}</div>`;
 
   wrap.innerHTML = `
     ${avatarHtml}
@@ -75,25 +118,45 @@ function renderMentionCard(item) {
   return wrap;
 }
 
+// =====================================================
+// URL / contexto (board, modal)
+// =====================================================
+
+/**
+ * Extrai boardId do path: /board/123/...
+ */
 function getBoardIdFromUrl() {
   const m = (window.location.pathname || "").match(/\/board\/(\d+)\//);
   return m?.[1] ? Number(m[1]) : null;
 }
 
+/**
+ * Elemento raiz do modal global
+ */
 function getModalEl() {
   return document.getElementById("modal");
 }
 
+/**
+ * Body do modal (onde o HTMX injeta o HTML)
+ */
 function getModalBody() {
   return document.getElementById("modal-body");
 }
 
+/**
+ * Form “principal” (LEGADO) — usado no savebar/dirtiness
+ * Obs: Em CM o form é outro (#cm-main-form) e o save é por botão #cm-save-btn.
+ */
 function getMainForm() {
   const body = getModalBody();
   if (!body) return null;
   return qs("#card-desc-form", body);
 }
 
+/**
+ * Elementos do savebar do LEGADO
+ */
 function getSavebarElements() {
   const form = getMainForm();
   if (!form) return { bar: null, saveBtn: null };
@@ -104,8 +167,161 @@ function getSavebarElements() {
 }
 
 // =====================================================
+// ✅ Anti-reopen por DRAG (Sortable / DnD)
+// =====================================================
+
+/**
+ * Quando você arrasta um card, no mouseup/touchend vem um CLICK "fantasma".
+ * Como o binder de abrir modal está em CAPTURE, ele pegava esse click e reabria.
+ *
+ * Solução:
+ * - Capturar pointer/mouse/touch e marcar "dragDetected" se mover mais que um threshold.
+ * - Após detectar, criar um "cooldown" (window.__cardDragCooldownUntil).
+ * - shouldIgnoreClick respeita esse cooldown.
+ */
+(function installDragClickShieldOnce() {
+  if (document.body.dataset.dragClickShieldBound === "1") return;
+  document.body.dataset.dragClickShieldBound = "1";
+
+  // Estado
+  let startX = 0;
+  let startY = 0;
+  let moved = false;
+  let tracking = false;
+
+  // Threshold bem pequeno (drag real) e cooldown suficiente pro Sortable finalizar
+  const MOVE_PX = 6;
+  const COOLDOWN_MS = 900;
+
+  function markCooldown() {
+    try {
+      window.__cardDragCooldownUntil = Date.now() + COOLDOWN_MS;
+    } catch (_e) {}
+  }
+
+  function onStart(clientX, clientY, target) {
+    // Só nos interessa se começou dentro de um card
+    const cardEl = target?.closest?.("li[data-card-id]");
+    if (!cardEl) return;
+
+    tracking = true;
+    moved = false;
+    startX = Number(clientX || 0);
+    startY = Number(clientY || 0);
+  }
+
+  function onMove(clientX, clientY) {
+    if (!tracking) return;
+    const dx = Math.abs(Number(clientX || 0) - startX);
+    const dy = Math.abs(Number(clientY || 0) - startY);
+    if (dx > MOVE_PX || dy > MOVE_PX) moved = true;
+  }
+
+  function onEnd() {
+    if (!tracking) return;
+    tracking = false;
+
+    // Se moveu acima do threshold, considera drag e ativa cooldown
+    if (moved) markCooldown();
+
+    moved = false;
+  }
+
+  // Pointer events (melhor suporte moderno)
+  document.body.addEventListener(
+    "pointerdown",
+    (e) => {
+      // Se é clique no modal, ignora (modal não abre card)
+      if (e.target?.closest?.("#modal")) return;
+      onStart(e.clientX, e.clientY, e.target);
+    },
+    { passive: true, capture: true }
+  );
+
+  document.body.addEventListener(
+    "pointermove",
+    (e) => onMove(e.clientX, e.clientY),
+    { passive: true, capture: true }
+  );
+
+  document.body.addEventListener(
+    "pointerup",
+    () => onEnd(),
+    { passive: true, capture: true }
+  );
+
+  document.body.addEventListener(
+    "pointercancel",
+    () => onEnd(),
+    { passive: true, capture: true }
+  );
+
+  // Fallbacks (alguns browsers/embeds ainda geram mouse/touch separados)
+  document.body.addEventListener(
+    "mousedown",
+    (e) => {
+      if (e.target?.closest?.("#modal")) return;
+      onStart(e.clientX, e.clientY, e.target);
+    },
+    { passive: true, capture: true }
+  );
+
+  document.body.addEventListener(
+    "mousemove",
+    (e) => onMove(e.clientX, e.clientY),
+    { passive: true, capture: true }
+  );
+
+  document.body.addEventListener(
+    "mouseup",
+    () => onEnd(),
+    { passive: true, capture: true }
+  );
+
+  document.body.addEventListener(
+    "touchstart",
+    (e) => {
+      if (e.target?.closest?.("#modal")) return;
+      const t = e.touches?.[0];
+      if (!t) return;
+      onStart(t.clientX, t.clientY, e.target);
+    },
+    { passive: true, capture: true }
+  );
+
+  document.body.addEventListener(
+    "touchmove",
+    (e) => {
+      const t = e.touches?.[0];
+      if (!t) return;
+      onMove(t.clientX, t.clientY);
+    },
+    { passive: true, capture: true }
+  );
+
+  document.body.addEventListener(
+    "touchend",
+    () => onEnd(),
+    { passive: true, capture: true }
+  );
+
+  document.body.addEventListener(
+    "touchcancel",
+    () => onEnd(),
+    { passive: true, capture: true }
+  );
+})();
+
+// =====================================================
 // CM modal (tabs) — funciona após HTMX swap (sem script inline)
 // =====================================================
+
+/**
+ * Inicializa tabs internas do modal CM (#cm-root).
+ * - Alterna painéis por data-cm-tab/data-cm-panel
+ * - Mostra/oculta botão “Salvar” dependendo da aba
+ * - Salva última aba em sessionStorage (cmActiveTab)
+ */
 function initCmModal(body) {
   const root = body?.querySelector?.("#cm-root");
   if (!root) return;
@@ -117,6 +333,7 @@ function initCmModal(body) {
   const saveBtn = root.querySelector("#cm-save-btn");
   const form = root.querySelector("#cm-main-form");
 
+  // Decide se o botão salvar fica visível ou não (CM)
   function setSaveVisibility(activeName) {
     const shouldShowSave = activeName === "desc" || activeName === "tags";
     if (!saveBtn) return;
@@ -126,6 +343,7 @@ function initCmModal(body) {
     saveBtn.disabled = !shouldShowSave;
   }
 
+  // Ativa aba/painel por “name”
   function activate(name) {
     root.dataset.cmActive = name;
 
@@ -139,13 +357,13 @@ function initCmModal(body) {
     setSaveVisibility(name);
   }
 
-  // bind tabs 1x
+  // Binda cliques nas tabs apenas 1x por elemento
   tabs.forEach((b) => {
     if (b.dataset.cmBound === "1") return;
     b.dataset.cmBound = "1";
 
     b.addEventListener("click", (ev) => {
-      // ✅ evita submit / navegação / clique vazar
+      // Evita submit/navegação e evita click “vazar”
       ev.preventDefault();
       ev.stopPropagation();
 
@@ -155,19 +373,22 @@ function initCmModal(body) {
     });
   });
 
-  // default: último aberto, senão desc
+  // Aba padrão: última usada ou desc
   activate(sessionStorage.getItem("cmActiveTab") || "desc");
 
-  // botão salvar do CM (bind 1x)
+  // Botão salvar do CM: pede submit do form (sem depender de <button type="submit"> dentro do form)
   if (saveBtn && form && saveBtn.dataset.cmBound !== "1") {
     saveBtn.dataset.cmBound = "1";
-    saveBtn.addEventListener("click", () => {
+    saveBtn.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+
       const active = root.dataset.cmActive || "desc";
       if (active !== "desc" && active !== "tags") return;
 
       try {
         form.requestSubmit();
-      } catch (e) {
+      } catch (_e) {
         form.submit();
       }
     });
@@ -175,14 +396,19 @@ function initCmModal(body) {
 }
 
 // =====================================================
-// CM modal — extras (cores de tags + erros anexos/atividade)
-// - roda a cada abertura do modal CM via initCardModal()
-// - listeners globais instalados 1x
+// CM modal — extras (cores de tags + erros anexos/atividade + capa)
 // =====================================================
+
+/**
+ * Pega root CM atual. O root muda a cada HTMX swap.
+ */
 function cmGetRoot(body) {
   return body?.querySelector?.("#cm-root") || document.getElementById("cm-root");
 }
 
+/**
+ * Garante que o dataset.tagColors exista (estado local da UI)
+ */
 function cmEnsureTagColorsState(root) {
   if (!root) return;
   if (!root.dataset.tagColors) {
@@ -190,6 +416,9 @@ function cmEnsureTagColorsState(root) {
   }
 }
 
+/**
+ * Aplica as cores salvas nas tags do modal (UI)
+ */
 function cmApplySavedTagColors(root) {
   if (!root) return;
 
@@ -199,7 +428,7 @@ function cmApplySavedTagColors(root) {
       root.dataset.tagColors || root.getAttribute("data-tag-colors") || "{}";
     colors = JSON.parse(raw);
     if (!colors || typeof colors !== "object") colors = {};
-  } catch (e) {
+  } catch (_e) {
     colors = {};
   }
 
@@ -217,10 +446,13 @@ function cmApplySavedTagColors(root) {
   });
 }
 
+/**
+ * Inicia popover de cor das tags no CM
+ */
 function cmInitTagColorPicker(root) {
   if (!root) return;
 
-  // bind 1x por root (root troca a cada HTMX swap)
+  // Binda 1x por root (como o root troca, vai rebinding seguro)
   if (root.dataset.cmTagColorBound === "1") return;
   root.dataset.cmTagColorBound = "1";
 
@@ -247,6 +479,7 @@ function cmInitTagColorPicker(root) {
 
   let currentBtn = null;
 
+  // Clique em uma tag => abre popover junto do botão
   wrap.addEventListener("click", function (e) {
     const btn = e.target.closest(".cm-tag-btn");
     if (!btn) return;
@@ -259,10 +492,11 @@ function cmInitTagColorPicker(root) {
       colors = JSON.parse(
         root.dataset.tagColors || root.getAttribute("data-tag-colors") || "{}"
       );
-    } catch {}
+    } catch (_e) {}
 
     picker.value = colors[tag] || "#3b82f6";
 
+    // Posiciona popover relativo ao modal-body (para scroll funcionar)
     const mb = document.getElementById("modal-body");
     const mbRect = mb?.getBoundingClientRect() || { top: 0, left: 0 };
 
@@ -276,12 +510,18 @@ function cmInitTagColorPicker(root) {
     pop.classList.remove("hidden");
   });
 
-  cancel.addEventListener("click", function () {
+  cancel.addEventListener("click", function (ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
     pop.classList.add("hidden");
     currentBtn = null;
   });
 
-  save.addEventListener("click", function () {
+  // Salva a cor: atualiza UI + faz POST no endpoint do form
+  save.addEventListener("click", function (ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+
     if (!currentBtn) return;
 
     const tag = currentBtn.dataset.tag;
@@ -292,23 +532,23 @@ function cmInitTagColorPicker(root) {
     currentBtn.style.color = color;
     currentBtn.style.borderColor = color;
 
-    // estado local
+    // Estado local
     let colors = {};
     try {
       colors = JSON.parse(
         root.dataset.tagColors || root.getAttribute("data-tag-colors") || "{}"
       );
-    } catch {}
+    } catch (_e) {}
     colors[tag] = color;
     root.dataset.tagColors = JSON.stringify(colors);
 
-    // payload
+    // Payload para o form
     inpTag.value = tag;
     inpCol.value = color;
 
     pop.classList.add("hidden");
 
-    // persistência via endpoint do form
+    // Persistência
     fetch(form.action, {
       method: "POST",
       credentials: "same-origin",
@@ -322,17 +562,17 @@ function cmInitTagColorPicker(root) {
         return r.json();
       })
       .then((data) => {
-        // atualiza tags no modal
+        // Atualiza tags no modal
         const wrapEl = document.getElementById("cm-tags-wrap");
         if (wrapEl && data.modal) wrapEl.innerHTML = data.modal;
 
-        // atualiza card na board
+        // Atualiza snippet do card na board
         const cardEl = document.getElementById("card-" + data.card_id);
         if (cardEl && data.snippet) cardEl.outerHTML = data.snippet;
 
         applyBoardTagColorsNow();
 
-        // rebind seguro (novo HTML)
+        // Rebind seguro (novo HTML)
         const rootNow = document.getElementById("cm-root");
         cmEnsureTagColorsState(rootNow);
         cmApplySavedTagColors(rootNow);
@@ -342,6 +582,9 @@ function cmInitTagColorPicker(root) {
   });
 }
 
+/**
+ * Instala listeners globais 1x para erros de anexos do CM
+ */
 function cmInstallAttachmentErrorsOnce() {
   if (document.body.dataset.cmAttachErrBound === "1") return;
   document.body.dataset.cmAttachErrBound = "1";
@@ -377,6 +620,7 @@ function cmInstallAttachmentErrorsOnce() {
     if (d) d.value = "";
   }
 
+  // Antes do upload: marca estado “uploading” e guarda descrição
   document.body.addEventListener("htmx:beforeRequest", function (evt) {
     const root = getRoot();
     const elt = evt.detail?.elt;
@@ -393,6 +637,7 @@ function cmInstallAttachmentErrorsOnce() {
     clearErr(root);
   });
 
+  // Após o swap do attachments-list: limpa inputs e cola a desc no último item
   document.body.addEventListener("htmx:afterSwap", function (evt) {
     const root = getRoot();
     const target = evt.target;
@@ -418,6 +663,7 @@ function cmInstallAttachmentErrorsOnce() {
     root.dataset.cmLastAttachmentDesc = "";
   });
 
+  // Erros HTMX (ex: 413)
   document.body.addEventListener("htmx:responseError", function (evt) {
     const root = getRoot();
     const elt = evt.detail?.elt;
@@ -444,6 +690,7 @@ function cmInstallAttachmentErrorsOnce() {
     root.dataset.cmLastAttachmentDesc = "";
   });
 
+  // Pós-request: se OK, limpa também
   document.body.addEventListener("htmx:afterRequest", function (evt) {
     const root = getRoot();
     const elt = evt.detail?.elt;
@@ -465,6 +712,9 @@ function cmInstallAttachmentErrorsOnce() {
   });
 }
 
+/**
+ * Instala listener global 1x para erro de atividade (CM)
+ */
 function cmInstallActivityErrorsOnce() {
   if (document.body.dataset.cmActivityErrBound === "1") return;
   document.body.dataset.cmActivityErrBound = "1";
@@ -486,10 +736,22 @@ function cmInstallActivityErrorsOnce() {
 
     try {
       elt.reset();
-    } catch (e) {}
+    } catch (_e) {}
   });
 }
 
+/**
+ * Instala listeners globais 1x para:
+ * - selecionar capa via click (trigger)
+ * - upload via change no input file
+ * - upload via paste (fora do Quill)
+ *
+ * ✅ IMPORTANTE: Este bloco é onde frequentemente “toggle para de abrir”
+ * se o listener de abrir card capturar o clique.
+ * Aqui, a solução é marcar trigger/menu com [data-no-modal] no HTML.
+ * Como nem sempre isso existe, também tratamos atributos comuns (aria-haspopup etc)
+ * no shouldIgnoreClick.
+ */
 function cmInstallCoverPasteAndUploadOnce() {
   if (document.body.dataset.cmCoverBound === "1") return;
   document.body.dataset.cmCoverBound = "1";
@@ -514,7 +776,7 @@ function cmInstallCoverPasteAndUploadOnce() {
     if (!root) return null;
     return (
       root.querySelector("#cm-cover-form") ||
-      root.querySelector('form[data-cm-cover-form]') ||
+      root.querySelector("form[data-cm-cover-form]") ||
       root.querySelector('form[action*="cover"]') ||
       null
     );
@@ -522,7 +784,6 @@ function cmInstallCoverPasteAndUploadOnce() {
 
   function getCoverInput(root) {
     if (!root) return null;
-    // tenta pelo id primeiro, depois por name, depois por tipo
     return (
       root.querySelector("#cm-cover-file") ||
       root.querySelector('input[name="cover"][type="file"]') ||
@@ -532,12 +793,15 @@ function cmInstallCoverPasteAndUploadOnce() {
     );
   }
 
+  // Detecta se o paste aconteceu “dentro do Quill”
   function isPastingInsideQuill(e) {
     const ae = document.activeElement;
     if (
       ae &&
       ae.closest &&
-      ae.closest(".ql-editor, .ql-container, #quill-editor, #quill-editor-ativ, #cm-quill-editor-ativ")
+      ae.closest(
+        ".ql-editor, .ql-container, #quill-editor, #quill-editor-ativ, #cm-quill-editor-ativ, #cm-quill-editor-desc"
+      )
     ) {
       return true;
     }
@@ -568,6 +832,7 @@ function cmInstallCoverPasteAndUploadOnce() {
     return false;
   }
 
+  // Faz POST da capa e re-renderiza modal-body
   async function uploadCover(file) {
     const root = getRoot();
     if (!root) return;
@@ -581,8 +846,7 @@ function cmInstallCoverPasteAndUploadOnce() {
     showCoverErr(null);
 
     const fd = new FormData(form);
-    // garante que o campo vai junto mesmo se o input tiver outro name
-    fd.set("cover", file);
+    fd.set("cover", file); // garante name esperado no backend
 
     let r;
     try {
@@ -595,7 +859,7 @@ function cmInstallCoverPasteAndUploadOnce() {
             form.querySelector('[name=csrfmiddlewaretoken]')?.value || "",
         },
       });
-    } catch (e) {
+    } catch (_e) {
       showCoverErr("Falha de rede ao enviar a capa.");
       return;
     }
@@ -610,18 +874,18 @@ function cmInstallCoverPasteAndUploadOnce() {
     const modalBody = document.getElementById("modal-body");
     if (modalBody) modalBody.innerHTML = html;
 
+    // Após trocar HTML do modal, precisa reinicializar JS
     if (typeof window.initCardModal === "function") window.initCardModal();
   }
 
-  // 1) Clique no botão/label “Escolher imagem…”
-  // - capture=true pra pegar mesmo se alguém parar a propagação
+  // 1) Clique no trigger “Escolher imagem…”
+  // capture=true para pegar mesmo se alguém tentar parar propagação antes
   document.body.addEventListener(
     "click",
     (e) => {
       const root = getRoot();
       if (!root) return;
 
-      // pega por id OU por atributos mais genéricos
       const pick =
         e.target.closest("#cm-cover-pick-btn") ||
         e.target.closest("[data-cm-cover-pick]") ||
@@ -629,58 +893,55 @@ function cmInstallCoverPasteAndUploadOnce() {
 
       if (!pick) return;
 
-      console.log("[cover] clique em escolher imagem detectado");
-
+      // Dica didática: se esse trigger estiver dentro do card na board,
+      // você DEVE ter data-no-modal nele para não disparar o open do card.
+      // Ex: <button data-no-modal ...>
       const inp = getCoverInput(root);
-      if (!inp) {
-        console.warn("[cover] input file não encontrado");
-        return;
-      }
+      if (!inp) return;
 
-      // alguns browsers exigem que o click aconteça no mesmo callstack do gesto do usuário
-      inp.click();
+      inp.click(); // abre file picker
     },
     true
   );
 
-// 2) Selecionou no file picker (SÓ CAPA)
-document.body.addEventListener(
-  "change",
-  (e) => {
-    const root = getRoot();
-    if (!root) return;
+  // 2) Change no input file (somente capa)
+  document.body.addEventListener(
+    "change",
+    (e) => {
+      const root = getRoot();
+      if (!root) return;
 
-    const inp = e.target;
-    if (!inp || inp.type !== "file") return;
+      const inp = e.target;
+      if (!inp || inp.type !== "file") return;
 
-    // ✅ Só trata como CAPA se for o input correto
-    const isCoverInput =
-      inp.matches?.("#cm-cover-file") ||
-      inp.matches?.('input[name="cover"][type="file"]') ||
-      !!inp.closest?.("#cm-cover-form");
+      const isCoverInput =
+        inp.matches?.("#cm-cover-file") ||
+        inp.matches?.('input[name="cover"][type="file"]') ||
+        !!inp.closest?.("#cm-cover-form");
 
-    if (!isCoverInput) return;
+      if (!isCoverInput) return;
 
-    const file = inp.files?.[0];
-    console.log("[cover] change file detectado", file?.name, file?.type);
+      const file = inp.files?.[0];
+      if (!file) return;
 
-    if (!file) return;
+      // Validação defensiva: só imagem
+      if (!(file.type || "").startsWith("image/")) {
+        showCoverErr("Arquivo inválido: envie uma imagem.");
+        try {
+          inp.value = "";
+        } catch (_e) {}
+        return;
+      }
 
-    // validação defensiva (evita DOC cair aqui)
-    if (!(file.type || "").startsWith("image/")) {
-      showCoverErr("Arquivo inválido: envie uma imagem.");
-      try { inp.value = ""; } catch (_e) {}
-      return;
-    }
+      uploadCover(file);
+      try {
+        inp.value = "";
+      } catch (_e) {}
+    },
+    true
+  );
 
-    uploadCover(file);
-    try { inp.value = ""; } catch (_e) {}
-  },
-  true
-);
-
-
-  // 3) Ctrl+V (fora do Quill) na aba desc: vira capa
+  // 3) Ctrl+V (fora do Quill) na aba desc => vira capa
   document.body.addEventListener(
     "paste",
     (e) => {
@@ -701,8 +962,6 @@ document.body.addEventListener(
       if (!imgItem) return;
 
       const file = imgItem.getAsFile();
-      console.log("[cover] paste imagem detectado", file?.name, file?.type);
-
       if (!file) return;
 
       e.preventDefault();
@@ -712,6 +971,9 @@ document.body.addEventListener(
   );
 }
 
+/**
+ * Boot do CM: roda a cada initCardModal (pois HTML troca)
+ */
 function cmBoot(body) {
   const root = cmGetRoot(body);
   if (!root) return;
@@ -722,13 +984,16 @@ function cmBoot(body) {
 
   cmInstallAttachmentErrorsOnce();
   cmInstallActivityErrorsOnce();
-
   cmInstallCoverPasteAndUploadOnce();
 }
 
 // =====================================================
-// Abrir / Fechar modal
+// Abrir / Fechar modal (visual + limpeza)
 // =====================================================
+
+/**
+ * Abre modal (aplica classes de animação)
+ */
 window.openModal = function () {
   const modal = getModalEl();
   if (!modal) return;
@@ -736,30 +1001,33 @@ window.openModal = function () {
   modal.classList.remove("hidden");
   modal.classList.remove("modal-closing");
 
-  // força o browser a aplicar o estado inicial antes do transition
+  // Força layout para o browser “ver” o estado inicial antes do transition
   void modal.offsetHeight;
 
   modal.classList.add("modal-open");
 };
 
+/**
+ * Fecha modal com animação, limpa HTML e estado global
+ */
 window.closeModal = function () {
   const modal = getModalEl();
   const modalBody = getModalBody();
-  
-  try {
-  // só limpa se tiver ?card na URL
-  const cardId = getCardIdFromUrl();
-  if (cardId) clearUrlCard({ replace: false });
-} catch (e) {}
 
-  
+  // Se tiver ?card, remove da URL ao fechar
+  // Remove ?card= da URL ao fechar (SEM criar histórico)
+  // + marca um “cooldown” para evitar re-open por clique capturado
+  try {
+    window.__modalCloseCooldownUntil = Date.now() + 350; // ligeiramente > sua animação
+    clearUrlCard({ replace: true });
+  } catch (_e) {}
+
   if (!modal) return;
 
-  // inicia animação de saída
   modal.classList.remove("modal-open");
   modal.classList.add("modal-closing");
 
-  // tempo alinhado com o CSS (220ms)
+  // Tempo alinhado com CSS (220ms)
   setTimeout(() => {
     modal.classList.add("hidden");
     modal.classList.remove("modal-closing");
@@ -775,6 +1043,10 @@ window.closeModal = function () {
 // =====================================================
 // Atualiza snippet do card na board
 // =====================================================
+
+/**
+ * Pede snippet atualizado do card e troca o HTML do card na board
+ */
 window.refreshCardSnippet = function (cardId) {
   if (!cardId) return;
 
@@ -785,8 +1057,9 @@ window.refreshCardSnippet = function (cardId) {
 };
 
 // =====================================================
-// Savebar helpers
+// Savebar helpers (LEGADO)
 // =====================================================
+
 function hideSavebar() {
   const { bar, saveBtn } = getSavebarElements();
   if (!bar) return;
@@ -794,12 +1067,6 @@ function hideSavebar() {
   bar.classList.add("hidden");
   bar.style.display = "none";
   if (saveBtn) saveBtn.disabled = true;
-}
-
-function applyBoardTagColorsNow() {
-  if (typeof window.applySavedTagColorsToBoard === "function") {
-    window.applySavedTagColorsToBoard(document);
-  }
 }
 
 function showSavebar() {
@@ -811,6 +1078,18 @@ function showSavebar() {
   if (saveBtn) saveBtn.disabled = false;
 }
 
+/**
+ * Aplica cores das tags na board (se você tem essa função global no projeto)
+ */
+function applyBoardTagColorsNow() {
+  if (typeof window.applySavedTagColorsToBoard === "function") {
+    window.applySavedTagColorsToBoard(document);
+  }
+}
+
+/**
+ * Marca o form como “sujo” e decide se o savebar aparece
+ */
 function markDirty() {
   const form = getMainForm();
   if (!form) return;
@@ -840,6 +1119,11 @@ function maybeShowSavebar() {
 // =====================================================
 // Helpers gerais
 // =====================================================
+
+/**
+ * Conta quantas <img> tem dentro de um HTML
+ * (usado para limitar imagens em atividade)
+ */
 function htmlImageCount(html) {
   const tmp = document.createElement("div");
   tmp.innerHTML = html || "";
@@ -851,12 +1135,17 @@ function toastError(msg) {
 }
 
 // =====================================================
-// Alternar abas do modal (escopo: dentro do #modal)
+// Alternar abas do modal LEGADO
 // =====================================================
+
+/**
+ * Ativa painel do modal LEGADO pelo id (ex: card-tab-desc)
+ */
 window.cardOpenTab = function (panelId) {
   const modal = getModalEl();
   if (!modal) return;
 
+  // Botões de abas
   qsa(".card-tab-btn", modal).forEach((btn) => {
     btn.classList.toggle(
       "card-tab-active",
@@ -867,6 +1156,7 @@ window.cardOpenTab = function (panelId) {
   const body = getModalBody();
   if (!body) return;
 
+  // Painéis
   qsa(".card-tab-panel", body).forEach((panel) => {
     const isTarget = panel.id === panelId;
     panel.classList.toggle("block", isTarget);
@@ -878,7 +1168,7 @@ window.cardOpenTab = function (panelId) {
   if (!tabsWithSave.has(panelId)) hideSavebar();
   else maybeShowSavebar();
 
-  // ao entrar na aba "Atividade", reaplica a sub-aba correta
+  // Ao entrar na aba atividade, re-aplica sub-aba correta
   if (panelId === "card-tab-ativ") {
     const wrap = qs(".ativ-subtab-wrap", body);
     if (wrap?.__ativShowFromChecked) wrap.__ativShowFromChecked();
@@ -886,8 +1176,12 @@ window.cardOpenTab = function (panelId) {
 };
 
 // =====================================================
-// Inserir imagem no Quill como base64
+// Quill helpers (inserir imagem base64)
 // =====================================================
+
+/**
+ * Insere imagem base64 no Quill, e marca dirty
+ */
 function insertBase64ImageIntoQuill(quill, file) {
   if (!quill || !file) return;
 
@@ -906,6 +1200,11 @@ function insertBase64ImageIntoQuill(quill, file) {
 // =====================================================
 // Dirty tracking por delegação (1x por modal-body)
 // =====================================================
+
+/**
+ * Binda listeners de input/change/submit no modal-body.
+ * - Isso evita ter que bindar em cada campo individual.
+ */
 function bindDelegatedDirtyTracking() {
   const body = getModalBody();
   if (!body || body.dataset.dirtyDelegationBound) return;
@@ -935,16 +1234,18 @@ function bindDelegatedDirtyTracking() {
 }
 
 // =====================================================
-// ✅ CORREÇÃO: Inicializa Quill da descrição (evita initQuillDesc is not defined)
-// - tenta IDs comuns (#quill-editor / #quill-editor-desc) e hidden comuns
-// - sincroniza HTML -> hidden; marca dirty ao editar; suporta paste de imagens
+// Quill: descrição (LEGADO + CM)
 // =====================================================
+
+/**
+ * Inicializa editor de descrição:
+ * 1) Se existir host legado (#quill-editor / #quill-editor-desc / [data-quill-desc]) => usa Quill ali
+ * 2) Senão, se existir CM (#cm-root) e textarea[name=description] => cria Quill e sincroniza no textarea escondido
+ */
 function initQuillDesc(body) {
   if (!body) return;
 
-  // =========================
-  // 1) LEGADO (já existente)
-  // =========================
+  // 1) LEGADO
   const legacyHost =
     qs("#quill-editor", body) ||
     qs("#quill-editor-desc", body) ||
@@ -954,6 +1255,7 @@ function initQuillDesc(body) {
     if (legacyHost.dataset.quillReady === "1") return;
     legacyHost.dataset.quillReady = "1";
 
+    // Campo hidden/textarea que recebe HTML
     const hidden =
       qs("#desc-input", body) ||
       qs("#description-input", body) ||
@@ -962,6 +1264,7 @@ function initQuillDesc(body) {
       qs('textarea[name="desc"]', body) ||
       qs('input[name="desc"]', body);
 
+    // Se host não tem id, cria para o Quill conseguir selecionar
     const selector =
       legacyHost.id
         ? `#${legacyHost.id}`
@@ -970,6 +1273,7 @@ function initQuillDesc(body) {
             return "#quill-editor-desc";
           })();
 
+    // Cria Quill
     quillDesc = new Quill(selector, {
       theme: "snow",
       modules: {
@@ -997,14 +1301,17 @@ function initQuillDesc(body) {
       },
     });
 
+    // Conteúdo inicial
     const initialHtml = (hidden?.value || "").trim();
     quillDesc.root.innerHTML = initialHtml || "";
 
+    // Sync Quill => hidden + dirty
     quillDesc.on("text-change", () => {
       if (hidden) hidden.value = quillDesc.root.innerHTML;
       markDirty();
     });
 
+    // Paste de imagens
     quillDesc.root.addEventListener("paste", (e) => {
       const cd = e.clipboardData;
       if (!cd?.items?.length) return;
@@ -1024,9 +1331,7 @@ function initQuillDesc(body) {
     return;
   }
 
-  // =========================
-  // 2) CM (textarea -> Quill)
-  // =========================
+  // 2) CM
   const cmRoot = qs("#cm-root", body);
   if (!cmRoot) return;
 
@@ -1039,111 +1344,117 @@ function initQuillDesc(body) {
   if (textarea.dataset.cmQuillReady === "1") return;
   textarea.dataset.cmQuillReady = "1";
 
-  // cria host do quill logo antes do textarea
+  // Cria host do Quill antes do textarea
   const host = document.createElement("div");
   host.id = "cm-quill-editor-desc";
   host.className = "border rounded mb-2";
   host.style.minHeight = "220px";
   textarea.parentNode.insertBefore(host, textarea);
 
-  // esconde textarea (mas mantém para o POST)
+  // Esconde textarea (mas mantém para POST)
   textarea.style.display = "none";
 
   const boardId = getBoardIdFromUrl();
 
-const q = new Quill("#" + host.id, {
-  theme: "snow",
-  modules: {
-    toolbar: {
-      container: [
-        [{ header: [1, 2, 3, false] }],
-        ["bold", "italic", "underline"],
-        ["link", "image"],
-        [{ list: "ordered" }, { list: "bullet" }],
-      ],
-      handlers: {
-        image: function () {
-          const fileInput = document.createElement("input");
-          fileInput.type = "file";
-          fileInput.accept = "image/*";
-          fileInput.onchange = () => {
-            const file = fileInput.files?.[0];
-            if (!file) return;
-            insertBase64ImageIntoQuill(q, file);
-          };
-          fileInput.click();
+  // Cria Quill CM
+  const q = new Quill("#" + host.id, {
+    theme: "snow",
+    modules: {
+      toolbar: {
+        container: [
+          [{ header: [1, 2, 3, false] }],
+          ["bold", "italic", "underline"],
+          ["link", "image"],
+          [{ list: "ordered" }, { list: "bullet" }],
+        ],
+        handlers: {
+          image: function () {
+            const fileInput = document.createElement("input");
+            fileInput.type = "file";
+            fileInput.accept = "image/*";
+            fileInput.onchange = () => {
+              const file = fileInput.files?.[0];
+              if (!file) return;
+              insertBase64ImageIntoQuill(q, file);
+            };
+            fileInput.click();
+          },
+        },
+      },
+
+      // Mention no CM
+      mention: {
+        allowedChars: /^[A-Za-zÀ-ÖØ-öø-ÿ0-9_ .-]*$/,
+        mentionDenotationChars: ["@"],
+        showDenotationChar: true,
+        spaceAfterInsert: true,
+
+        renderItem: function (item) {
+          return renderMentionCard(item);
+        },
+
+        // Quando seleciona, garante atributos data-id/data-value no span.mention
+        onSelect: function (item, insertItem) {
+          const range = q.getSelection(true);
+          if (!range) return;
+
+          insertItem(item);
+
+          setTimeout(() => {
+            const root = q.root;
+            const mentions = root.querySelectorAll("span.mention");
+            const last = mentions[mentions.length - 1];
+            if (!last) return;
+
+            last.setAttribute("data-id", String(item.id));
+            last.setAttribute("data-value", String(item.value));
+            if (!last.textContent?.startsWith("@"))
+              last.textContent = "@" + item.value;
+
+            textarea.value = q.root.innerHTML;
+          }, 0);
+        },
+
+        // Busca mentions no backend
+        source: async function (searchTerm, renderList) {
+          try {
+            const qtxt = (searchTerm || "").trim();
+            if (!boardId) return renderList([], searchTerm);
+
+            const res = await fetch(
+              `/board/${boardId}/mentions/?q=${encodeURIComponent(qtxt)}`,
+              {
+                method: "GET",
+                credentials: "same-origin",
+                headers: { Accept: "application/json" },
+              }
+            );
+
+            if (!res.ok) return renderList([], searchTerm);
+
+            const data = await res.json();
+            renderList(
+              Array.isArray(data) ? data : data.results || [],
+              searchTerm
+            );
+          } catch (_e) {
+            renderList([], searchTerm);
+          }
         },
       },
     },
+  });
 
-    mention: {
-      allowedChars: /^[A-Za-zÀ-ÖØ-öø-ÿ0-9_ .-]*$/,
-      mentionDenotationChars: ["@"],
-      showDenotationChar: true,
-      spaceAfterInsert: true,
-
-      renderItem: function (item) {
-        return renderMentionCard(item);
-      },
-
-
-      onSelect: function (item, insertItem) {
-        const range = q.getSelection(true);
-        if (!range) return;
-
-        insertItem(item);
-
-        setTimeout(() => {
-          const root = q.root;
-          const mentions = root.querySelectorAll("span.mention");
-          const last = mentions[mentions.length - 1];
-          if (!last) return;
-
-          last.setAttribute("data-id", String(item.id));
-          last.setAttribute("data-value", String(item.value));
-          if (!last.textContent?.startsWith("@")) last.textContent = "@" + item.value;
-
-          // mantém seu sync
-          textarea.value = q.root.innerHTML;
-        }, 0);
-      },
-
-      source: async function (searchTerm, renderList) {
-        try {
-          const qtxt = (searchTerm || "").trim();
-          if (!boardId) return renderList([], searchTerm);
-
-          const res = await fetch(
-            `/board/${boardId}/mentions/?q=${encodeURIComponent(qtxt)}`,
-            {
-              method: "GET",
-              credentials: "same-origin",
-              headers: { Accept: "application/json" },
-            }
-          );
-
-          if (!res.ok) return renderList([], searchTerm);
-
-          const data = await res.json();
-          renderList(Array.isArray(data) ? data : (data.results || []), searchTerm);
-        } catch (e) {
-          renderList([], searchTerm);
-        }
-      },
-    },
-  },
-});
-
-  // conteúdo inicial
+  // Conteúdo inicial
   q.root.innerHTML = (textarea.value || "").trim() || "";
 
-  // sync Quill -> textarea + dirty
+  // Sync Quill => textarea + dirty
   q.on("text-change", () => {
     textarea.value = q.root.innerHTML;
     markDirty();
   });
 
-  // paste de imagem (capture)
+  // Paste de imagem (capture) — impede conflito com outros handlers de paste
   const onPaste = (e) => {
     const cd = e.clipboardData;
     if (!cd?.items?.length) return;
@@ -1155,7 +1466,8 @@ const q = new Quill("#" + host.id, {
 
     e.preventDefault();
     e.stopPropagation();
-    if (typeof e.stopImmediatePropagation === "function") e.stopImmediatePropagation();
+    if (typeof e.stopImmediatePropagation === "function")
+      e.stopImmediatePropagation();
 
     imgItems.forEach((it) => {
       const file = it.getAsFile();
@@ -1163,57 +1475,29 @@ const q = new Quill("#" + host.id, {
     });
   };
 
+  // Rebind seguro caso reabra modal e o elemento exista por algum motivo
   if (q.root.__onPasteCmDesc) {
     q.root.removeEventListener("paste", q.root.__onPasteCmDesc, true);
   }
   q.root.__onPasteCmDesc = onPaste;
   q.root.addEventListener("paste", onPaste, true);
 
-  // guarda referência global, se quiser reutilizar (opcional)
   quillDesc = q;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // =====================================================
-// Inicializa editor da atividade
-// - LEGADO: #quill-editor-ativ + #activity-input
-// - CM: textarea[name="content"] dentro do painel ativ (vira Quill e sincroniza)
+// Quill: atividade (LEGADO + CM)
 // =====================================================
+
+/**
+ * Inicializa editor de atividade:
+ * - CM: textarea[name="content"] vira Quill e sincroniza
+ * - LEGADO: #quill-editor-ativ + #activity-input
+ */
 function initQuillAtividade(body) {
   if (!body) return;
 
-  // -----------------------------
-  // 1) CM (novo modal: #cm-root)
-  // -----------------------------
+  // 1) CM
   const cmRoot = qs("#cm-root", body);
   if (cmRoot) {
     const ativPanel = cmRoot.querySelector('[data-cm-panel="ativ"]');
@@ -1221,126 +1505,119 @@ function initQuillAtividade(body) {
 
     const form = ativPanel.querySelector('form[hx-post*="add_activity"], form');
     const textarea = ativPanel.querySelector('textarea[name="content"]');
-
-    // Se não tem textarea, não há o que fazer
     if (!form || !textarea) return;
 
-    // Evita reinicializar
     if (textarea.dataset.cmQuillReady === "1") return;
     textarea.dataset.cmQuillReady = "1";
 
-    // Cria o container do Quill antes do textarea
     const host = document.createElement("div");
     host.id = "cm-quill-editor-ativ";
     host.className = "border rounded mb-2";
     host.style.minHeight = "140px";
-
     textarea.parentNode.insertBefore(host, textarea);
 
-    // Esconde o textarea (mas mantém no form para HTMX enviar)
     textarea.style.display = "none";
 
     const boardId = getBoardIdFromUrl();
 
-const q = new Quill("#" + host.id, {
-  theme: "snow",
-  modules: {
-    toolbar: {
-      container: [
-        [{ header: [1, 2, 3, false] }],
-        ["bold", "italic", "underline"],
-        ["link", "image"],
-        [{ list: "ordered" }, { list: "bullet" }],
-      ],
-      handlers: {
-        image: function () {
-          const fileInput = document.createElement("input");
-          fileInput.type = "file";
-          fileInput.accept = "image/*";
-          fileInput.onchange = () => {
-            const file = fileInput.files?.[0];
-            if (!file) return;
-            insertBase64ImageIntoQuill(q, file);
-          };
-          fileInput.click();
+    const q = new Quill("#" + host.id, {
+      theme: "snow",
+      modules: {
+        toolbar: {
+          container: [
+            [{ header: [1, 2, 3, false] }],
+            ["bold", "italic", "underline"],
+            ["link", "image"],
+            [{ list: "ordered" }, { list: "bullet" }],
+          ],
+          handlers: {
+            image: function () {
+              const fileInput = document.createElement("input");
+              fileInput.type = "file";
+              fileInput.accept = "image/*";
+              fileInput.onchange = () => {
+                const file = fileInput.files?.[0];
+                if (!file) return;
+                insertBase64ImageIntoQuill(q, file);
+              };
+              fileInput.click();
+            },
+          },
+        },
+
+        mention: {
+          allowedChars: /^[A-Za-zÀ-ÖØ-öø-ÿ0-9_ .-]*$/,
+          mentionDenotationChars: ["@"],
+          showDenotationChar: true,
+          spaceAfterInsert: true,
+
+          renderItem: function (item) {
+            return renderMentionCard(item);
+          },
+
+          onSelect: function (item, insertItem) {
+            const range = q.getSelection(true);
+            if (!range) return;
+
+            insertItem(item);
+
+            setTimeout(() => {
+              const root = q.root;
+              const mentions = root.querySelectorAll("span.mention");
+              const last = mentions[mentions.length - 1];
+              if (!last) return;
+
+              last.setAttribute("data-id", String(item.id));
+              last.setAttribute("data-value", String(item.value));
+              if (!last.textContent?.startsWith("@"))
+                last.textContent = "@" + item.value;
+
+              textarea.value = q.root.innerHTML;
+            }, 0);
+          },
+
+          source: async function (searchTerm, renderList) {
+            try {
+              const qtxt = (searchTerm || "").trim();
+              if (!boardId) return renderList([], searchTerm);
+
+              const res = await fetch(
+                `/board/${boardId}/mentions/?q=${encodeURIComponent(qtxt)}`,
+                {
+                  method: "GET",
+                  credentials: "same-origin",
+                  headers: { Accept: "application/json" },
+                }
+              );
+
+              if (!res.ok) return renderList([], searchTerm);
+
+              const data = await res.json();
+              renderList(
+                Array.isArray(data) ? data : data.results || [],
+                searchTerm
+              );
+            } catch (_e) {
+              renderList([], searchTerm);
+            }
+          },
         },
       },
-    },
+    });
 
-    mention: {
-      allowedChars: /^[A-Za-zÀ-ÖØ-öø-ÿ0-9_ .-]*$/,
-      mentionDenotationChars: ["@"],
-      showDenotationChar: true,
-      spaceAfterInsert: true,
-
-      renderItem: function (item) {
-        return renderMentionCard(item);
-    },
-
-
-      onSelect: function (item, insertItem) {
-        const range = q.getSelection(true);
-        if (!range) return;
-
-        insertItem(item);
-
-        setTimeout(() => {
-          const root = q.root;
-          const mentions = root.querySelectorAll("span.mention");
-          const last = mentions[mentions.length - 1];
-          if (!last) return;
-
-          last.setAttribute("data-id", String(item.id));
-          last.setAttribute("data-value", String(item.value));
-          if (!last.textContent?.startsWith("@")) last.textContent = "@" + item.value;
-
-          // mantém seu sync
-          textarea.value = q.root.innerHTML;
-        }, 0);
-      },
-
-      source: async function (searchTerm, renderList) {
-        try {
-          const qtxt = (searchTerm || "").trim();
-          if (!boardId) return renderList([], searchTerm);
-
-          const res = await fetch(
-            `/board/${boardId}/mentions/?q=${encodeURIComponent(qtxt)}`,
-            {
-              method: "GET",
-              credentials: "same-origin",
-              headers: { Accept: "application/json" },
-            }
-          );
-
-          if (!res.ok) return renderList([], searchTerm);
-
-          const data = await res.json();
-          renderList(Array.isArray(data) ? data : (data.results || []), searchTerm);
-        } catch (e) {
-          renderList([], searchTerm);
-        }
-      },
-    },
-  },
-});
-
-
-    // Foco/click mais previsível
+    // Ajuda a garantir foco/click estáveis
     try {
       q.root.setAttribute("tabindex", "0");
-    } catch (e) {}
+    } catch (_e) {}
 
-    // Conteúdo inicial (se houver)
-    const initial = (textarea.value || "").trim();
-    q.root.innerHTML = initial || "";
+    q.root.innerHTML = (textarea.value || "").trim() || "";
 
-    // Sync do Quill -> textarea (para o HTMX enviar)
+    // Sync Quill => textarea
     q.on("text-change", () => {
       textarea.value = q.root.innerHTML;
     });
 
-    // ✅ Paste de imagens (CAPTURE) no Quill do CM
+    // Paste de imagens (capture)
     const onPasteCmAtiv = (e) => {
       const cd = e.clipboardData;
       if (!cd?.items?.length) return;
@@ -1352,9 +1629,8 @@ const q = new Quill("#" + host.id, {
 
       e.preventDefault();
       e.stopPropagation();
-      if (typeof e.stopImmediatePropagation === "function") {
+      if (typeof e.stopImmediatePropagation === "function")
         e.stopImmediatePropagation();
-      }
 
       imgItems.forEach((it) => {
         const file = it.getAsFile();
@@ -1362,34 +1638,29 @@ const q = new Quill("#" + host.id, {
       });
     };
 
-    // remove anterior, se reabrir modal
     if (q.root.__onPasteCmAtiv) {
       q.root.removeEventListener("paste", q.root.__onPasteCmAtiv, true);
     }
     q.root.__onPasteCmAtiv = onPasteCmAtiv;
     q.root.addEventListener("paste", onPasteCmAtiv, true);
 
-    // Limpar: se o form for resetado pelo hx-on::after-request, também limpa o Quill
-    // (o seu form tem hx-on::after-request="this.reset()")
+    // Se o form for resetado (ex: hx-on::after-request="this.reset()"), limpa o Quill
     if (form.dataset.cmQuillResetBound !== "1") {
       form.dataset.cmQuillResetBound = "1";
       form.addEventListener("reset", () => {
         try {
           q.setText("");
-        } catch (e) {}
+        } catch (_e) {}
         textarea.value = "";
       });
     }
 
-    return; // CM tratado; não continuar pro legado
+    return; // CM tratado
   }
 
-  // -----------------------------
   // 2) LEGADO
-  // -----------------------------
   const activityHidden = qs("#activity-input", body);
   const quillAtivEl = qs("#quill-editor-ativ", body);
-
   if (!activityHidden || !quillAtivEl) return;
 
   if (quillAtivEl.dataset.quillReady === "1") return;
@@ -1442,9 +1713,8 @@ const q = new Quill("#" + host.id, {
 
     e.preventDefault();
     e.stopPropagation();
-    if (typeof e.stopImmediatePropagation === "function") {
+    if (typeof e.stopImmediatePropagation === "function")
       e.stopImmediatePropagation();
-    }
 
     imgItems.forEach((it) => {
       const file = it.getAsFile();
@@ -1463,22 +1733,14 @@ const q = new Quill("#" + host.id, {
   quillAtiv.root.addEventListener("paste", onPasteAtiv, true);
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
 // =====================================================
 // Atividade (sub-tabs): Nova atividade / Histórico / Mover Card
-// - Força show/hide via JS (não depende de Tailwind/CSS antigo)
 // =====================================================
+
+/**
+ * Controla as sub-abas de atividade (new/hist/move) via radio + show/hide.
+ * Nota: isso evita depender de CSS antigo (Tailwind etc).
+ */
 function initAtivSubtabs3(body) {
   const wrap = qs(".ativ-subtab-wrap", body);
   if (!wrap) return;
@@ -1505,6 +1767,7 @@ function initAtivSubtabs3(body) {
       vMove.classList.toggle("hidden", which !== "move");
     }
 
+    // Ao entrar em “move”, carregar opções (se existir)
     if (
       which === "move" &&
       window.currentCardId &&
@@ -1520,26 +1783,19 @@ function initAtivSubtabs3(body) {
     else show("new");
   }
 
+  // Expondo helpers no wrapper (usado por cardOpenTab)
   wrap.__ativShow = show;
   wrap.__ativShowFromChecked = showFromChecked;
 
   showFromChecked();
 
+  // Bind 1x
   if (wrap.dataset.ativ3Ready === "1") return;
   wrap.dataset.ativ3Ready = "1";
 
-  if (rNew)
-    rNew.addEventListener("change", () => {
-      if (rNew.checked) show("new");
-    });
-  if (rHist)
-    rHist.addEventListener("change", () => {
-      if (rHist.checked) show("hist");
-    });
-  if (rMove)
-    rMove.addEventListener("change", () => {
-      if (rMove.checked) show("move");
-    });
+  rNew?.addEventListener("change", () => rNew.checked && show("new"));
+  rHist?.addEventListener("change", () => rHist.checked && show("hist"));
+  rMove?.addEventListener("change", () => rMove.checked && show("move"));
 
   qsa(".ativ-subtab-btn", wrap).forEach((lbl) => {
     lbl.addEventListener("click", () => setTimeout(showFromChecked, 0));
@@ -1547,61 +1803,224 @@ function initAtivSubtabs3(body) {
 }
 
 // =====================================================
-// Inicializa modal (pós-swap)
+// Inicializa modal (pós HTMX swap)
 // =====================================================
+
+/**
+ * Inicializa tudo que depende do HTML atual do modal-body:
+ * - currentCardId
+ * - delegated dirty tracking
+ * - Quill desc + atividade
+ * - subtabs atividade
+ * - Prism (se existir)
+ * - CM tabs + boot
+ */
 window.initCardModal = function () {
   const body = getModalBody();
   if (!body) return;
 
   const cmRoot = qs("#cm-root", body);
   const legacyRoot = qs("#card-modal-root", body) || qs("#card-modal-root");
+
   const cid =
     cmRoot?.getAttribute?.("data-card-id") ||
     legacyRoot?.getAttribute?.("data-card-id");
+
   if (cid) window.currentCardId = Number(cid);
 
   bindDelegatedDirtyTracking();
   clearDirty();
 
-  // ✅ agora existe (corrige o ReferenceError do console)
   initQuillDesc(body);
-
   initQuillAtividade(body);
   initAtivSubtabs3(body);
 
   if (window.Prism) Prism.highlightAll();
 
-  // CM
   initCmModal(body);
   cmBoot(body);
 };
 
 // =====================================================
-// ABERTURA RADICAL DO MODAL + MOBILE
+// ✅ Abertura do modal pelo clique no card (RADICAL + MOBILE)
+// Aqui fica o “toggle e reabrir chato”.
 // =====================================================
+
+/**
+ * Regra de ouro:
+ * - O listener abaixo roda em CAPTURE (true) para garantir consistência
+ * - Logo, ele NÃO pode interceptar cliques de menus/toggles
+ *
+ * Solução robusta:
+ * - shouldIgnoreClick cobre:
+ *   - elementos interativos (button, input, etc.)
+ *   - qualquer coisa marcada com data-no-modal (recomendado no HTML)
+ *   - toggles de menu comuns (aria-haspopup, aria-expanded, role=menu, etc.)
+ *   - containers de menu/popover (dropdown-menu, menu, popover, etc.)
+ *   - heurística “kebab/ellipsis/more”
+ *   - ✅ DRAG COOLDOWN (Sortable / DnD)
+ */
 (function bindCardOpenRadical() {
+  // Garante que esse binder roda uma única vez
   if (document.body.dataset.cardOpenRadicalBound === "1") return;
   document.body.dataset.cardOpenRadicalBound = "1";
 
+  /**
+   * Decide se um clique deve ser ignorado (não abrir modal).
+   * Se retornar true => a gente NÃO chama preventDefault/stopPropagation,
+   * e deixa o clique seguir normal (toggle/menu abre).
+   */
   function shouldIgnoreClick(ev) {
-    const ignoreSelectors = [
-      ".delete-card-btn",
-      "[data-no-modal]",
+    const t = ev.target;
+
+    // ✅ Se acabou de ARRASTAR card, ignorar clique "fantasma"
+    if (window.__cardDragCooldownUntil && Date.now() < window.__cardDragCooldownUntil) {
+      return true;
+    }
+
+    // Cooldown: acabou de fechar modal, não reabrir por clique “atravessado”
+    if (
+      window.__modalCloseCooldownUntil &&
+      Date.now() < window.__modalCloseCooldownUntil
+    ) {
+      return true;
+    }
+
+    // Clique dentro do modal NUNCA pode abrir card da board
+    if (ev.target?.closest?.("#modal")) return true;
+
+    // 1) Escape hatch: marcações explícitas no HTML
+    if (t?.closest?.("[data-no-modal]")) return true;
+
+    // 2) Caminho completo do clique (melhor que só closest)
+    const path =
+      typeof ev.composedPath === "function"
+        ? ev.composedPath()
+        : (function () {
+            const out = [];
+            let n = t;
+            while (n) {
+              out.push(n);
+              n = n.parentNode;
+            }
+            return out;
+          })();
+
+    const nodes = (path || []).filter((n) => n && n.nodeType === 1);
+
+    // ✅ Heurística Sortable (quando classes aparecem no drag)
+    for (const n of nodes) {
+      const cls = (n.className || "").toString();
+      if (
+        cls.includes("sortable-ghost") ||
+        cls.includes("drag-ghost") ||
+        cls.includes("drag-chosen") ||
+        cls.includes("sortable-chosen") ||
+        cls.includes("sortable-drag")
+      ) {
+        return true;
+      }
+    }
+
+    // 3) Interativos padrão (clique é ação, não abrir card)
+    // IMPORTANTE: NÃO ignorar <a> e <label> aqui, porque em muitos layouts
+    // o card inteiro ou grandes áreas ficam dentro de um <a> (ou label) — e aí
+    // o modal nunca abre. Ações de menu/toggle continuam cobertas por:
+    // - [data-no-modal]
+    // - aria-haspopup/aria-expanded
+    // - containers .dropdown/.menu/.card-actions etc
+    const interactiveSelectors = [
       "button",
-      "a[href]",
       "input",
       "textarea",
       "select",
-      "label",
       "form",
+      "[role='menuitem']",
+      "[contenteditable='true']",
     ];
-    return ignoreSelectors.some((sel) => ev.target.closest(sel));
+
+    for (const n of nodes) {
+      if (interactiveSelectors.some((sel) => n.matches?.(sel))) return true;
+    }
+
+    // 4) Toggles/menus semânticos comuns
+    const menuToggleSelectors = [
+      "[aria-haspopup='menu']",
+      "[aria-haspopup='true']",
+      "[aria-expanded]",
+      "[data-bs-toggle]",
+      "[data-toggle]",
+      "[data-dropdown]",
+      "[data-menu]",
+      "[data-action='menu']",
+      "[data-action='toggle']",
+    ];
+    for (const n of nodes) {
+      if (menuToggleSelectors.some((sel) => n.matches?.(sel))) return true;
+    }
+
+    // 5) Clique dentro de menu/popover não pode abrir card
+    const menuContainerSelectors = [
+      "[role='menu']",
+      ".dropdown-menu",
+      ".dropdown",
+      ".menu",
+      ".popover",
+      ".popper",
+      ".tooltip",
+      ".card-actions",
+      ".card-actions-menu",
+      ".card-more",
+      ".ellipsis",
+    ];
+    for (const n of nodes) {
+      if (menuContainerSelectors.some((sel) => n.matches?.(sel))) return true;
+    }
+
+    // 6) Heurística: “kebab/ellipsis/more/toggle”
+    // (resolve quando o toggle é um <div>/<span> sem aria/role)
+    for (const n of nodes) {
+      const cls = (n.className || "").toString().toLowerCase();
+      if (
+        cls.includes("ellipsis") ||
+        cls.includes("kebab") ||
+        cls.includes("dots") ||
+        cls.includes("more") ||
+        cls.includes("menu") ||
+        cls.includes("toggle") ||
+        cls.includes("actions")
+      ) {
+        return true;
+      }
+
+      const ariaLabel = (n.getAttribute?.("aria-label") || "").toLowerCase();
+      const title = (n.getAttribute?.("title") || "").toLowerCase();
+      if (
+        ariaLabel.includes("more") ||
+        ariaLabel.includes("menu") ||
+        ariaLabel.includes("opç") ||
+        ariaLabel.includes("opc") ||
+        ariaLabel.includes("acao") ||
+        ariaLabel.includes("ação") ||
+        title.includes("more") ||
+        title.includes("menu") ||
+        title.includes("opç") ||
+        title.includes("opc")
+      ) {
+        return true;
+      }
+    }
+
+    // 7) Caso específico defensivo
+    if (t?.closest?.(".delete-card-btn")) return true;
+
+    return false;
   }
 
+  // ----- MOBILE (touch) -----
   let touchStartY = 0;
   let touchMoved = false;
 
-  // 👉 MOBILE
   document.body.addEventListener(
     "touchstart",
     (ev) => {
@@ -1618,9 +2037,7 @@ window.initCardModal = function () {
     "touchmove",
     (ev) => {
       const deltaY = Math.abs(ev.touches[0].clientY - touchStartY);
-      if (deltaY > 10) {
-        touchMoved = true;
-      }
+      if (deltaY > 10) touchMoved = true;
     },
     { passive: true }
   );
@@ -1630,12 +2047,17 @@ window.initCardModal = function () {
     (ev) => {
       const cardEl = ev.target.closest("li[data-card-id]");
       if (!cardEl) return;
+
+      // Se virou scroll, não é “tap”
       if (touchMoved) return;
+
+      // Se é clique em toggle/menu/ação, NÃO intercepta
       if (shouldIgnoreClick(ev)) return;
 
       const cardId = Number(cardEl.dataset.cardId || 0);
       if (!cardId) return;
 
+      // Só bloqueia quando vamos abrir o modal
       ev.preventDefault();
       ev.stopPropagation();
 
@@ -1644,17 +2066,20 @@ window.initCardModal = function () {
     true
   );
 
-  // 👉 DESKTOP (mantém como está)
+  // ----- DESKTOP (click) -----
   document.body.addEventListener(
     "click",
     (ev) => {
       const cardEl = ev.target.closest("li[data-card-id]");
       if (!cardEl) return;
+
+      // Toggle/menu/ação/drag: deixa o clique passar
       if (shouldIgnoreClick(ev)) return;
 
       const cardId = Number(cardEl.dataset.cardId || 0);
       if (!cardId) return;
 
+      // Só bloqueia quando vamos abrir o modal (evita “reabrir chato”)
       ev.preventDefault();
       ev.stopPropagation();
 
@@ -1667,6 +2092,10 @@ window.initCardModal = function () {
 // =====================================================
 // HTMX – após swap do modal-body
 // =====================================================
+
+/**
+ * Quando o HTMX termina de trocar #modal-body, abrimos o modal e iniciamos scripts.
+ */
 document.body.addEventListener("htmx:afterSwap", function (e) {
   if (!e.detail?.target || e.detail.target.id !== "modal-body") return;
 
@@ -1681,8 +2110,9 @@ document.body.addEventListener("htmx:afterSwap", function (e) {
 });
 
 // =====================================================
-// Remover TAG
+// Remover TAG (instantâneo)
 // =====================================================
+
 window.removeTagInstant = async function (cardId, tag) {
   const formData = new FormData();
   formData.append("tag", tag);
@@ -1706,10 +2136,8 @@ window.removeTagInstant = async function (cardId, tag) {
 
   applyBoardTagColorsNow();
 
-  // reativa JS do modal (CM/legado)
   initCardModal();
 
-  // se for modal legado (não-CM), mantém a aba atual
   if (!document.querySelector("#cm-root")) {
     const active = sessionStorage.getItem("modalActiveTab") || "card-tab-desc";
     window.cardOpenTab(active);
@@ -1719,6 +2147,7 @@ window.removeTagInstant = async function (cardId, tag) {
 // =====================================================
 // ALTERAR COR DA TAG (instantâneo)
 // =====================================================
+
 window.setTagColorInstant = async function (cardId, tag, color) {
   const formData = new FormData();
   formData.append("tag", tag);
@@ -1748,8 +2177,9 @@ window.setTagColorInstant = async function (cardId, tag, color) {
 };
 
 // =====================================================
-// Atividade helpers
+// Atividade helpers (LEGADO)
 // =====================================================
+
 window.clearActivityEditor = function () {
   const body = getModalBody();
   if (!body) return;
@@ -1788,7 +2218,7 @@ window.submitActivity = async function (cardId) {
       body: formData,
       credentials: "same-origin",
     });
-  } catch (err) {
+  } catch (_err) {
     toastError("Falha de rede ao incluir atividade.");
     return;
   }
@@ -1824,8 +2254,9 @@ window.submitActivity = async function (cardId) {
 };
 
 // =====================================================
-// Mover Card
+// Mover Card (DOM + backend)
 // =====================================================
+
 function getCurrentBoardIdFromUrl() {
   const m = (window.location.pathname || "").match(/\/board\/(\d+)\//);
   return m?.[1] ? Number(m[1]) : null;
@@ -1914,6 +2345,67 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
     };
   }
 
+  // =====================================================
+  // ✅ URL scrub forte: remove ?card= e reaplica por alguns frames
+  // Motivo: algum handler pode recolocar o ?card= logo após o move.
+  // =====================================================
+  function removeCardParamOnce() {
+    try {
+      const u = new URL(window.location.href);
+      if (u.searchParams.has("card")) {
+        u.searchParams.delete("card");
+        history.replaceState({}, "", u.toString()); // não dispara popstate
+      }
+    } catch (_e) {}
+  }
+
+  function scrubCardParamFor(ms = 700) {
+    const until = Date.now() + ms;
+
+    const tick = () => {
+      removeCardParamOnce();
+      if (Date.now() < until) {
+        // requestAnimationFrame pega a “janela” onde outros handlers re-setam URL
+        window.requestAnimationFrame(tick);
+      }
+    };
+
+    tick();
+  }
+
+  // =====================================================
+  // ✅ Fechamento consistente do modal + limpeza de URL
+  // =====================================================
+  function closeModalHardAndCleanUrl() {
+    // 1) já inicia scrub (garantia)
+    scrubCardParamFor(700);
+
+    // 2) fecha modal
+    try {
+      if (typeof window.closeModal === "function") window.closeModal();
+      else {
+        const modal = document.getElementById("modal");
+        if (modal) {
+          modal.classList.remove("modal-open");
+          modal.classList.add("hidden");
+        }
+      }
+    } catch (_e) {}
+
+    window.closeModalHardAndCleanUrl = closeModalHardAndCleanUrl;
+
+    // 3) hard reset do body (evita swap residual disparar coisas)
+    try {
+      const mb = document.getElementById("modal-body");
+      if (mb) mb.innerHTML = "";
+    } catch (_e) {}
+
+    // 4) estado
+    try {
+      window.currentCardId = null;
+    } catch (_e) {}
+  }
+
   window.loadMoveCardOptions = async function (cardId) {
     const { boardSel, colSel, posSel } = getMoveEls();
     if (!boardSel || !colSel || !posSel) return;
@@ -1948,7 +2440,7 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
 
       try {
         data = JSON.parse(raw);
-      } catch (e) {
+      } catch (_e) {
         throw new Error(
           `Resposta não é JSON (HTTP ${status}). Início: ${raw.slice(0, 120)}`
         );
@@ -1983,9 +2475,7 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
 
     boardSel.onchange = () => {
       const bid = String(boardSel.value || "");
-      const cols = Array.isArray(columnsByBoard[bid])
-        ? columnsByBoard[bid]
-        : [];
+      const cols = Array.isArray(columnsByBoard[bid]) ? columnsByBoard[bid] : [];
 
       colSel.disabled = !bid;
       posSel.disabled = true;
@@ -2021,7 +2511,7 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
         return;
       }
 
-      const opts = Array.from({ length: max }, (_, i) => {
+      const opts = Array.from({ length: max }, (_x, i) => {
         const v = i + 1; // UX 1-based
         return `<option value="${v}">${v}</option>`;
       }).join("");
@@ -2042,11 +2532,20 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
     }
   };
 
-  window.submitMoveCard = async function (cardId) {
-    const { boardSel, colSel, posSel } = getMoveEls();
-    if (!boardSel || !colSel || !posSel) return;
+  window.submitMoveCard = async function (cardId, ev) {
+    // corta o clique na origem (importantíssimo com CAPTURE global)
+    try {
+      ev?.preventDefault?.();
+      ev?.stopPropagation?.();
+      ev?.stopImmediatePropagation?.();
+    } catch (_e) {}
 
     setMoveError(null);
+    const { boardSel, colSel, posSel } = getMoveEls();
+    if (!boardSel || !colSel || !posSel) {
+      setMoveError("UI de mover não encontrada no modal.");
+      return;
+    }
 
     const boardId = (boardSel.value || "").trim();
     const columnId = (colSel.value || "").trim();
@@ -2075,7 +2574,7 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
         body: JSON.stringify(payload),
         credentials: "same-origin",
       });
-    } catch (e) {
+    } catch (_e) {
       setMoveError("Falha de rede ao mover.");
       return;
     }
@@ -2089,27 +2588,49 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
     const currentBoardId = getCurrentBoardIdFromUrl();
     const targetBoardId = Number(boardId);
 
+    // =================================================
+    // ✅ CASO 1: moveu para outro board
+    // - fecha + limpa ?card=
+    // - vai para o board destino (colunas)
+    // =================================================
     if (currentBoardId && targetBoardId && currentBoardId !== targetBoardId) {
-      closeModal();
-      window.location.reload();
+      closeModalHardAndCleanUrl();
+      window.location.href = `/board/${targetBoardId}/`;
       return;
     }
 
+    try {
+      window.__modalCloseCooldownUntil = Date.now() + 800;
+    } catch (_e) {}
+
+    // =================================================
+    // ✅ CASO 2: moveu dentro do mesmo board
+    // - move DOM
+    // - atualiza snippet
+    // - fecha + limpa ?card= (sem reabrir)
+    // =================================================
     const moved = moveCardDom(cardId, Number(columnId), payload.new_position);
 
     if (moved) {
+      // Faz scrub ANTES e DEPOIS do refresh (porque HTMX pode disparar algo)
+      scrubCardParamFor(700);
       window.refreshCardSnippet(cardId);
-    } else {
-      closeModal();
-      window.location.reload();
+      closeModalHardAndCleanUrl();
+      // scrub final defensivo (garante URL limpa após swaps)
+      scrubCardParamFor(700);
       return;
     }
 
-    closeModal();
+    // Fallback: estado consistente
+    closeModalHardAndCleanUrl();
+    window.location.reload();
   };
 })();
 
-// ===== Modal Theme: glass | dark (persistente) =====
+// =====================================================
+// Modal Theme: glass | dark (persistente)
+// =====================================================
+
 (function () {
   function apply(theme) {
     const modal = document.getElementById("modal");
@@ -2148,7 +2669,10 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
   });
 })();
 
-// ===== Checklist UX + DnD =====
+// =====================================================
+// Checklist UX + DnD (Sortable)
+// =====================================================
+
 (function () {
   function initChecklistUX(root) {
     const scope = root || document;
@@ -2224,14 +2748,10 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
   });
 })();
 
-
 // =====================================================
 // URL do Card no board: /board/X/?card=ID
-// - ao abrir modal por clique: pushState (?card=ID)
-// - ao abrir por URL (load/popstate): replaceState (mantém URL)
-// - ao fechar modal: remove ?card
-// - back/forward: abre/fecha modal conforme URL
 // =====================================================
+
 function getCardIdFromUrl() {
   const u = new URL(window.location.href);
   const v = u.searchParams.get("card");
@@ -2253,14 +2773,14 @@ function clearUrlCard({ replace = false } = {}) {
   else history.pushState({}, "", u.toString());
 }
 
-// abre modal + carrega HTML (mesmo fluxo do clique)
+/**
+ * Abre modal + carrega HTML via HTMX
+ */
 function openCardModalAndLoad(cardId, { replaceUrl = false } = {}) {
   if (!cardId) return;
 
-  // 1) URL
   setUrlCard(cardId, { replace: !!replaceUrl });
 
-  // 2) modal + HTMX
   window.currentCardId = cardId;
   if (typeof window.openModal === "function") window.openModal();
 
@@ -2270,7 +2790,9 @@ function openCardModalAndLoad(cardId, { replaceUrl = false } = {}) {
   });
 }
 
-// fecha modal + limpa URL
+/**
+ * Fecha modal e limpa URL
+ */
 function closeCardModalAndUrl({ replaceUrl = false } = {}) {
   if (typeof window.closeModal === "function") window.closeModal();
   clearUrlCard({ replace: !!replaceUrl });
@@ -2284,12 +2806,11 @@ function closeCardModalAndUrl({ replaceUrl = false } = {}) {
   document.addEventListener("DOMContentLoaded", () => {
     const cardId = getCardIdFromUrl();
     if (cardId) {
-      // replace pra não criar histórico extra no load
       openCardModalAndLoad(cardId, { replaceUrl: true });
     }
   });
 
-  // Back/Forward
+  // Back/Forward: abre/fecha conforme URL
   window.addEventListener("popstate", () => {
     const cardId = getCardIdFromUrl();
     const modal = document.getElementById("modal");
@@ -2298,47 +2819,47 @@ function closeCardModalAndUrl({ replaceUrl = false } = {}) {
     if (cardId) {
       openCardModalAndLoad(cardId, { replaceUrl: true });
     } else if (modalIsOpen) {
-      // fecha sem empurrar nova history
       if (typeof window.closeModal === "function") window.closeModal();
     }
   });
 })();
 
-
-
-
-
 // =====================================================
 // User Settings Modal (Conta) — abre no mesmo modal global
 // =====================================================
+
 (function bindUserSettingsModalOnce() {
   if (document.body.dataset.userSettingsBound === "1") return;
   document.body.dataset.userSettingsBound = "1";
 
-  // clique no avatar (base.html)
-  document.body.addEventListener("click", function (ev) {
-    const btn = ev.target.closest("#open-user-settings");
-    if (!btn) return;
+  // Clique no avatar
+  document.body.addEventListener(
+    "click",
+    function (ev) {
+      const btn = ev.target.closest("#open-user-settings");
+      if (!btn) return;
 
-    ev.preventDefault();
-    ev.stopPropagation();
+      ev.preventDefault();
+      ev.stopPropagation();
 
-    if (typeof window.openModal === "function") window.openModal();
+      if (typeof window.openModal === "function") window.openModal();
 
-    htmx.ajax("GET", "/account/modal/", {
-      target: "#modal-body",
-      swap: "innerHTML",
-    });
-  }, true);
+      htmx.ajax("GET", "/account/modal/", {
+        target: "#modal-body",
+        swap: "innerHTML",
+      });
+    },
+    true
+  );
 
-  // evento disparado pelo backend via HX-Trigger (avatar atualizado)
+  // Evento disparado via HX-Trigger (avatar atualizado)
   document.body.addEventListener("userAvatarUpdated", function (ev) {
     const url = ev.detail && ev.detail.url ? String(ev.detail.url) : "";
     if (!url) return;
 
-    // se você colocou id no <img> do header, atualiza aqui:
     const img = document.querySelector("#open-user-settings img");
     if (img) img.src = url;
   });
 })();
-//END modal.js — Modal do Card (HTMX + Quill)
+
+// END modal.js

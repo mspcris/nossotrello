@@ -4,10 +4,7 @@
 <li id="card-{{ card.id }}"
     data-card-id="{{ card.id }}"
     data-tag-colors='{{ card.tag_colors|default_if_none:"{}"|escape }}'
-    class="p-3 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm mb-3 cursor-pointer relative overflow-hidden"
-    hx-get="{% url 'boards:card_modal' card.id %}"
-    hx-target="#modal-body"
-    hx-swap="innerHTML">
+    class="p-3 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm mb-3 cursor-pointer relative overflow-hidden">
 
     {# MINIATURA PADRONIZADA (capa) #}
     {% if card.cover_image %}
@@ -25,22 +22,26 @@
     <!-- BOTÃO ... (abre modal focado no card) -->
     <button type="button"
         class="absolute top-1 left-1 text-gray-400 hover:text-gray-700 text-xs px-1 z-10"
-        onclick="event.stopPropagation();"
+        onpointerdown="event.preventDefault(); event.stopPropagation(); event.stopImmediatePropagation();"
+        onclick="event.preventDefault(); event.stopPropagation(); event.stopImmediatePropagation();"
         hx-get="{% url 'boards:card_modal' card.id %}"
         hx-target="#modal-body"
         hx-swap="innerHTML">
-        ⋮
+      ⋮
     </button>
+
 
     <!-- BOTÃO DE EXCLUSÃO (aparece apenas no modo "Excluir cards") -->
     <button type="button"
-        class="delete-card-btn hidden absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded z-10"
-        onclick="event.stopPropagation();"
+       class="delete-card-btn hidden absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded z-10"
+        onpointerdown="event.preventDefault(); event.stopPropagation(); event.stopImmediatePropagation();"
+        onclick="event.preventDefault(); event.stopPropagation(); event.stopImmediatePropagation();"
         hx-post="{% url 'boards:delete_card' card.id %}"
         hx-target="#card-{{ card.id }}"
         hx-swap="outerHTML">
       X
     </button>
+
 
     <!-- TAGS -->
     {% if card.tags %}
@@ -69,3 +70,4 @@
 
 
 </li>
+{#END templates/boards/partials/card_item.html (arquivo completo) #}

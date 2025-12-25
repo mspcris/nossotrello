@@ -162,19 +162,24 @@
               </label>
             </div>
 
-            <div class="flex items-center justify-end gap-2 pt-2">
-              <button type="button"
-                      class="px-3 py-2 rounded border border-gray-200 text-sm"
-                      onclick="document.getElementById('ativ-tab-hist')?.click();">
-                Cancelar
-              </button>
+            <button type="button"
+              data-no-modal
+              class="px-3 py-2 rounded border border-gray-200 text-sm"
+              onpointerdown="event.preventDefault(); event.stopPropagation(); event.stopImmediatePropagation();"
+              onclick="event.preventDefault(); event.stopPropagation(); event.stopImmediatePropagation(); document.getElementById('ativ-tab-hist')?.click();">
+            Cancelar      
+            </button>
 
-              <button type="button"
-                      class="px-4 py-2 rounded bg-blue-600 text-white text-sm"
-                      id="btn-move-card"
-                      onclick="window.submitMoveCard?.({{ card.id }});">
+              <button
+                type="button"
+                data-no-modal
+                onpointerdown="event.preventDefault(); event.stopPropagation(); event.stopImmediatePropagation();"
+                onclick="submitMoveCard({{ card.id }}, event);"
+                class="px-3 py-2 rounded bg-blue-600 text-white text-sm"
+              >
                 Mover
               </button>
+
             </div>
 
             <p id="move-error" class="text-sm text-red-600 hidden"></p>
@@ -216,3 +221,4 @@
   </div>
 
 </div>
+{#END boards/templates/boards/partials/card_modal_content.html #}

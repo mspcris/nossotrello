@@ -170,6 +170,8 @@
   #modal, #modal * { box-sizing: border-box; }
 }
 
+#modal { pointer-events: auto; }
+#card-modal-root { pointer-events: auto; }
 
     </style>
 </head>
@@ -244,9 +246,14 @@
 
 
 <!-- Modal Global -->
-<div id="modal" class="fixed inset-0 z-50 flex items-center justify-center hidden">
+<div id="modal"
+     class="fixed inset-0 z-50 hidden bg-black/40 backdrop-blur-sm"
+     onclick="if(event.target===this){ refreshCardSnippet(window.currentCardId); closeModal(); }">
+
   <div id="card-modal-root"
-     class="card-modal modal-glass card-theme-aero rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+       class="card-modal modal-glass card-theme-aero rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+       onclick="event.stopPropagation();">
+
     <div class="flex items-center justify-between p-2 gap-3 border-b border-white/20">
       <!-- ABAS NA BARRA SUPERIOR (lado esquerdo) -->
       <div id="card-tabs" class="flex flex-wrap items-end gap-2">
@@ -403,3 +410,4 @@
     }
   });
 </script>
+<!--END base.html -->
