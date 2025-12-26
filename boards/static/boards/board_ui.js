@@ -84,7 +84,7 @@ function startViewerPolling() {
 
   async function tick() {
     // se agora virou editor/owner, não precisa mais
-    if (boardCanEditNow()) return;
+    //if (boardCanEditNow()) return;
 
     // evita briga visual se o editor estiver arrastando
     if (window.__isDraggingCard) return;
@@ -96,11 +96,13 @@ function startViewerPolling() {
       const res = await fetch(window.location.pathname, {
         method: "GET",
         credentials: "same-origin",
+        cache: "no-store",
         headers: {
           "X-Requested-With": "XMLHttpRequest",
           "X-Board-Poll": "1"
         }
       });
+
 
       if (!res.ok) return;
 
@@ -145,10 +147,9 @@ function startViewerPolling() {
   });
 }
 
-// só roda polling para viewer
-if (!boardCanEditNow()) {
-  startViewerPolling();
-}
+// roda polling para qualquer usuário (viewer/editor/owner)
+// pausa durante drag via window.__isDraggingCard
+startViewerPolling();
 
 
   // =========================
