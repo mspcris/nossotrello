@@ -356,22 +356,11 @@ document.addEventListener("click", (ev) => {
 
 <script>
   // ============================================================
-  // SORTABLE (cards) — guard + rollback em 403
+  // SORTABLE (cards)
   // ============================================================
-  function boardCanEdit() {
-    const root = document.getElementById("board-root");
-    return root && root.dataset.canEdit === "1";
-  }
-
-  function rollbackCardMove(itemEl, fromEl, oldIndex) {
-    if (!itemEl || !fromEl) return;
-    const ref = fromEl.children[oldIndex] || null;
-    fromEl.insertBefore(itemEl, ref);
-  }
-
   function initSortable() {
-    // viewer: não inicia drag
-    if (!boardCanEdit()) return;
+    const canEdit = document.getElementById("board-root")?.dataset?.canEdit === "1";
+    if (!canEdit) return; // viewer não inicializa DnD
 
     document.querySelectorAll("[id^='cards-col-']").forEach(listEl => {
       if (listEl.dataset.sortableApplied === "1") return;
@@ -389,28 +378,10 @@ document.addEventListener("click", (ev) => {
         filter: "button, a, input, textarea, select, label",
         preventOnFilter: false,
 
-        onStart: (evt) => {
-          // snapshot p/ rollback
-          evt.item.__dnd = {
-            from: evt.from,
-            oldIndex: evt.oldIndex,
-            oldColumnId: (evt.from?.id || "").replace("cards-col-", "")
-          };
-        },
+        onStart: () => { window.__isDraggingCard = true; },
 
         onEnd: async (evt) => {
           const csrftoken = document.querySelector("[name=csrfmiddlewaretoken]")?.value || "";
-
-          const snap = evt.item.__dnd || { from: evt.from, oldIndex: evt.oldIndex };
-          const fromEl = snap.from;
-          const oldIndex = snap.oldIndex;
-
-          const cardId = Number(evt.item.dataset.cardId);
-          const newColumnId = Number((evt.to?.id || "").replace("cards-col-", ""));
-          const newPos = Number(evt.newIndex);
-
-          // se não mudou nada, não chama backend
-          if (evt.from === evt.to && evt.oldIndex === evt.newIndex) return;
 
           try {
             const resp = await fetch("{% url 'boards:move_card' %}", {
@@ -421,21 +392,19 @@ document.addEventListener("click", (ev) => {
                 "X-CSRFToken": csrftoken
               },
               body: JSON.stringify({
-                card_id: cardId,
-                new_column_id: newColumnId,
-                new_position: newPos
+                card_id: Number(evt.item.dataset.cardId),
+                new_column_id: Number(evt.to.id.replace("cards-col-", "")),
+                new_position: Number(evt.newIndex)
               })
             });
 
+            // Se deu 403/erro: desfaz na hora (sem precisar de F5)
             if (!resp.ok) {
-              // 403/400/etc => volta visual na hora
-              rollbackCardMove(evt.item, fromEl, oldIndex);
+              const ref = evt.from.children[evt.oldIndex] || null;
+              evt.from.insertBefore(evt.item, ref);
             }
-          } catch (_e) {
-            // erro de rede => volta visual na hora
-            rollbackCardMove(evt.item, fromEl, oldIndex);
           } finally {
-            try { delete evt.item.__dnd; } catch (_e) {}
+            window.__isDraggingCard = false;
           }
         }
       });

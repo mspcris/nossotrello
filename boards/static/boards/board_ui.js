@@ -14,6 +14,13 @@
 
   function qs(sel, root = document) { return root.querySelector(sel); }
   function qsa(sel, root = document) { return Array.from(root.querySelectorAll(sel)); }
+  
+  
+  
+  
+  
+  
+  
   const boardRoot = document.getElementById("board-root");
   const canEdit = boardRoot && boardRoot.dataset.canEdit === "1";
 
@@ -58,6 +65,90 @@ if (!window.__dragstartGuardInstalled) {
 document.addEventListener("DOMContentLoaded", applyReadonlyUI);
 document.body.addEventListener("htmx:afterSwap", applyReadonlyUI);
 document.body.addEventListener("htmx:afterSettle", applyReadonlyUI);
+
+
+// ============================================================
+// VIEWER LIVE REFRESH (sem websocket): atualiza columns-list sem F5
+// ============================================================
+
+// flag global usada pelo editor (initSortable) pra pausar o polling durante drag
+window.__isDraggingCard = window.__isDraggingCard || false;
+
+function startViewerPolling() {
+  if (window.__boardPollInstalled) return;
+  window.__boardPollInstalled = true;
+
+  const getColumnsList = () => document.getElementById("columns-list");
+
+  let lastHtml = (getColumnsList()?.innerHTML || "");
+
+  async function tick() {
+    // se agora virou editor/owner, não precisa mais
+    if (boardCanEditNow()) return;
+
+    // evita briga visual se o editor estiver arrastando
+    if (window.__isDraggingCard) return;
+
+    const columnsList = getColumnsList();
+    if (!columnsList) return;
+
+    try {
+      const res = await fetch(window.location.pathname, {
+        method: "GET",
+        credentials: "same-origin",
+        headers: {
+          "X-Requested-With": "XMLHttpRequest",
+          "X-Board-Poll": "1"
+        }
+      });
+
+      if (!res.ok) return;
+
+      const html = await res.text();
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      const fresh = doc.getElementById("columns-list");
+      if (!fresh) return;
+
+      const nextHtml = fresh.innerHTML;
+      if (nextHtml === lastHtml) return;
+
+      // troca só o miolo das colunas/cards
+      columnsList.innerHTML = nextHtml;
+      lastHtml = nextHtml;
+
+      // re-aplica comportamentos que dependem do DOM novo
+      applyReadonlyUI();     // mantém readonly coerente
+      scanAndBind();         // reata MutationObserver/contador/empty state
+
+      if (window.applySavedTagColorsToBoard) {
+        window.applySavedTagColorsToBoard(columnsList);
+      }
+
+      // se existirem no global, reinit de sortable (p/ owner em outra sessão)
+      if (typeof window.initSortable === "function") window.initSortable();
+      if (typeof window.initSortableColumns === "function") window.initSortableColumns();
+    } catch (_e) {
+      // silencioso
+    }
+  }
+
+  // ritmo: bom custo/benefício
+  tick();
+  setInterval(tick, 1200);
+
+  // se algum swap acontecer localmente, atualiza o baseline
+  document.body.addEventListener("htmx:afterSwap", () => {
+    lastHtml = (getColumnsList()?.innerHTML || lastHtml);
+  });
+  document.body.addEventListener("htmx:afterSettle", () => {
+    lastHtml = (getColumnsList()?.innerHTML || lastHtml);
+  });
+}
+
+// só roda polling para viewer
+if (!boardCanEditNow()) {
+  startViewerPolling();
+}
 
 
   // =========================
