@@ -36,6 +36,8 @@ urlpatterns = [
     # ============================================================
     # AUTH / CONTAS (LOGIN / PRIMEIRO LOGIN / RECUPERAÇÃO SENHA)
     # ============================================================
+    # perfil clicável
+    path("u/<str:handle>/", views.public_profile, name="public_profile"),
 
     # Login / Logout (usa templates em templates/registration/)
     path(

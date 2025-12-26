@@ -357,6 +357,12 @@ class UserProfile(models.Model):
     # ✅ foto de perfil (fallback é a logo no template)
     avatar = models.ImageField(upload_to="avatars/", blank=True, null=True)
 
+    # NOVOS CAMPOS (cadastro/contato)
+    posto = models.CharField(max_length=120, blank=True, default="")
+    setor = models.CharField(max_length=120, blank=True, default="")
+    ramal = models.CharField(max_length=20, blank=True, default="")
+    telefone = models.CharField(max_length=30, blank=True, default="")
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

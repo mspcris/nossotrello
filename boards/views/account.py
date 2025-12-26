@@ -152,3 +152,16 @@ def account_avatar_update(request):
         pass
 
     return resp
+
+
+from django.shortcuts import get_object_or_404, render
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_GET
+
+@require_GET
+@login_required
+def public_profile(request, handle):
+    profile = get_object_or_404(UserProfile, handle=handle)
+    return render(request, "boards/public_profile.html", {"profile": profile})
+
+#END boards/views/account.py

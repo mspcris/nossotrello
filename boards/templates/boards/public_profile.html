@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-md mx-auto bg-white rounded-xl shadow p-6">
+  <h2 class="text-xl font-semibold mb-2">{{ profile.nome_exibicao }}</h2>
+  <p class="text-gray-600">@{{ profile.handle }}</p>
+
+  <dl class="mt-4 space-y-1 text-sm">
+    {% if profile.posto %}<div><dt class="font-medium">Posto:</dt><dd>{{ profile.posto }}</dd></div>{% endif %}
+    {% if profile.setor %}<div><dt class="font-medium">Setor:</dt><dd>{{ profile.setor }}</dd></div>{% endif %}
+    {% if profile.ramal %}<div><dt class="font-medium">Ramal:</dt><dd>{{ profile.ramal }}</dd></div>{% endif %}
+    {% if profile.telefone %}<div><dt class="font-medium">Telefone:</dt><dd>{{ profile.telefone }}</dd></div>{% endif %}
+  </dl>
+
+  <p class="mt-4 text-gray-500 text-xs">Informações visíveis apenas para usuários autenticados.</p>
+</div>
+{% endblock %}

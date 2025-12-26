@@ -58,9 +58,31 @@ HOME_WALLPAPER_FOLDER = os.path.join(settings.MEDIA_ROOT, "home_wallpapers")
 
 def _actor_label(request) -> str:
     if getattr(request, "user", None) and request.user.is_authenticated:
-        return escape(request.user.email or request.user.get_username() or "usuário")
-    return "Sistema"
+        label = None
 
+        # tenta usar profile (handle/display_name)
+        try:
+            prof = getattr(request.user, "profile", None)
+        except Exception:
+            prof = None
+
+        if prof:
+            if getattr(prof, "handle", None):
+                label = "@" + (prof.handle or "").strip()
+            elif getattr(prof, "display_name", None):
+                label = (prof.display_name or "").strip()
+
+        # fallback
+        if not label:
+            label = (
+                (request.user.get_username() if hasattr(request.user, "get_username") else None)
+                or (request.user.email or "").strip()
+                or "usuário"
+            )
+
+        return escape(label)
+
+    return "Sistema"
 
 def _log_card(card: Card, request, message_html: str, attachment=None):
     """
