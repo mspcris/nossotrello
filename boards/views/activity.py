@@ -1,5 +1,4 @@
 # boards/views/activity.py
-
 import re
 
 from django.http import HttpResponse
@@ -144,3 +143,4 @@ def quill_upload(request):
     # Quando quiser implementar de verdade, a gente centraliza upload aqui.
     from django.http import JsonResponse
     return JsonResponse({"error": "Not implemented"}, status=501)
+#END boards/views/activity.py

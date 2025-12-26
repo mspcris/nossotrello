@@ -476,3 +476,4 @@ class Mention(models.Model):
 
     def __str__(self):
         return f"{self.mentioned_user} mencionado em {self.card} ({self.source})"
+#END boards/models.py

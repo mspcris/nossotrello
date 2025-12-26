@@ -1,5 +1,4 @@
 # boards/views/attachments.py
-
 from django.http import HttpResponse
 from django.shortcuts import render, get_object_or_404
 from django.views.decorators.http import require_POST
@@ -96,3 +95,4 @@ def add_attachment(request, card_id):
         )
 
     return render(request, "boards/partials/attachment_item.html", {"attachment": attachment})
+#END boards/views/attachments.py

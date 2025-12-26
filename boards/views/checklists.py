@@ -458,5 +458,4 @@ def _checklist_move_item_delta(request, item_id, delta: int):
     "checklists": _card_checklists_qs(card),
     "card": card,
 })
-
-
+#END boards/views/checklists.py

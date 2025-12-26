@@ -7,7 +7,6 @@ import uuid
 
 from django.core.files.base import ContentFile
 
-
 from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest
 from django.shortcuts import render, get_object_or_404
 from django.views.decorators.http import require_POST, require_http_methods
@@ -30,16 +29,69 @@ from .helpers import (
     process_mentions_and_notify,
 )
 
+# Mantido por compatibilidade com o projeto (pode existir uso em outros lugares),
+# mas este arquivo NÃO depende mais dele para controle de escrita.
+from ..permissions import can_edit_board  # noqa: F401
+
 from ..forms import CardForm
 from ..models import Board, Column, Card, CardAttachment, BoardMembership
+
+
+# ============================================================
+# PERMISSÕES (FONTE ÚNICA DA VERDADE PARA ESCRITA NESTE ARQUIVO)
+# ============================================================
+def _user_can_edit_board(user, board: Board) -> bool:
+    """
+    Regra de negócio (backend):
+      - staff: pode tudo
+      - se o board usa memberships:
+          - só OWNER/EDITOR pode escrever
+          - VIEWER (ou sem membership): somente leitura
+      - se o board NÃO usa memberships (legado):
+          - created_by pode escrever
+    """
+    if not getattr(user, "is_authenticated", False):
+        return False
+
+    if getattr(user, "is_staff", False):
+        return True
+
+    memberships_qs = getattr(board, "memberships", None)
+    if memberships_qs is not None and memberships_qs.exists():
+        bm = memberships_qs.filter(user=user).first()
+        if not bm:
+            return False
+        return bm.role in {BoardMembership.Role.OWNER, BoardMembership.Role.EDITOR}
+
+    # Legado: sem memberships
+    return bool(getattr(board, "created_by_id", None) == getattr(user, "id", None))
+
+
+def _deny_read_only(request, *, as_json: bool = False):
+    """
+    Resposta padronizada.
+    - as_json=True: ideal para endpoints chamados por JS (drag/drop, ações no modal via fetch)
+    - as_json=False: mantém compatibilidade com fluxos antigos baseados em HTML
+    """
+    if as_json:
+        return JsonResponse({"error": "Somente leitura."}, status=403)
+    return HttpResponse("Somente leitura.", status=403)
 
 
 # ============================================================
 # CARD: CRUD básico + modal
 # ============================================================
 
+@login_required
 def add_card(request, column_id):
     column = get_object_or_404(Column, id=column_id)
+
+    # ✅ Segurança/Regra de negócio:
+    # Se o usuário está em modo "somente leitura" no board, não pode abrir nem executar criação.
+    # (Bloqueia GET do form e POST de criação)
+    board = column.board
+    if not _user_can_edit_board(request.user, board):
+        return _deny_read_only(request)
 
     # where vem do GET (abrir form) e do POST (criar card)
     where = (request.GET.get("where") or request.POST.get("where") or "bottom").strip().lower()
@@ -90,7 +142,6 @@ def add_card(request, column_id):
                 f"<p><strong>{actor}</strong> criou este card na coluna <strong>{escape(column.name)}</strong>.</p>",
             )
 
-
         # Garante anexos + atividade para imagens salvas (base64) e também imagens já referenciadas /media/
         referenced_paths = _extract_media_image_paths(card.description or "", folder="quill")
         all_paths = list(dict.fromkeys((saved_paths or []) + (referenced_paths or [])))
@@ -119,6 +170,10 @@ def add_card(request, column_id):
 def update_card(request, card_id):
     card = get_object_or_404(Card, id=card_id)
     actor = _actor_label(request)
+
+    # ✅ Escrita: bloqueio forte para VIEWER
+    if not _user_can_edit_board(request.user, card.column.board):
+        return _deny_read_only(request, as_json=True)
 
     old_title = card.title or ""
     old_desc = card.description or ""
@@ -155,7 +210,6 @@ def update_card(request, card_id):
     except Exception:
         logger.exception("Erro ao processar menções na atualização de card.")
 
-
     # Garante anexos + atividade para imagens (base64 e/ou já persistidas em /media/)
     referenced_paths = _extract_media_image_paths(card.description or "", folder="quill")
     all_paths = list(dict.fromkeys((saved_paths or []) + (referenced_paths or [])))
@@ -187,14 +241,28 @@ def update_card(request, card_id):
             f"<p><strong>{actor}</strong> alterou o título de <strong>{escape(old_title)}</strong> para <strong>{escape(card.title)}</strong>.</p>",
         )
 
-    if not (removed or added or ((old_desc or "").strip() != (card.description or "").strip()) or ((old_title or "").strip() != (card.title or "").strip()) or all_paths):
+    if not (
+        removed
+        or added
+        or ((old_desc or "").strip() != (card.description or "").strip())
+        or ((old_title or "").strip() != (card.title or "").strip())
+        or all_paths
+    ):
         _log_card(card, request, f"<p><strong>{actor}</strong> atualizou o card.</p>")
 
     return render(request, "boards/partials/card_modal_body.html", _card_modal_context(card))
 
 
+@login_required
 def edit_card(request, card_id):
+    """
+    Modal antigo.
+    Também é ESCRITA (salva via form), então precisa respeitar somente leitura.
+    """
     card = get_object_or_404(Card, id=card_id)
+
+    if not _user_can_edit_board(request.user, card.column.board):
+        return _deny_read_only(request)
 
     if request.method == "POST":
         form = CardForm(request.POST, request.FILES, instance=card)
@@ -210,11 +278,16 @@ def edit_card(request, card_id):
 
     return render(request, "boards/partials/card_edit_form.html", {"card": card, "form": form})
 
+
 @login_required
 @require_POST
 def delete_card(request, card_id):
     card = get_object_or_404(Card.all_objects, id=card_id)
     actor = _actor_label(request)
+
+    # ✅ Escrita: bloquear VIEWER
+    if not _user_can_edit_board(request.user, card.column.board):
+        return _deny_read_only(request)
 
     if not card.is_deleted:
         _log_card(card, request, f"<p><strong>{actor}</strong> excluiu (soft delete) este card.</p>")
@@ -229,6 +302,13 @@ def delete_card(request, card_id):
 @require_POST
 @transaction.atomic
 def move_card(request):
+    """
+    Mover é ESCRITA.
+    Observação UX:
+      - se o front “mover no DOM” antes da resposta, vai parecer que moveu,
+        mas ao dar F5 volta (porque o backend negou e não persistiu).
+      - por isso aqui devolvemos JSON 403 para o front conseguir reverter/avisar.
+    """
     data = json.loads(request.body.decode("utf-8"))
 
     card_id = int(data.get("card_id"))
@@ -242,23 +322,9 @@ def move_card(request):
     old_board = old_column.board
     new_board = new_column.board
 
-    def can_move_in_board(board: Board) -> bool:
-        if not request.user.is_authenticated:
-            return False
-        if request.user.is_staff:
-            return True
-
-        memberships_qs = board.memberships.all()
-        if memberships_qs.exists():
-            return memberships_qs.filter(
-                user=request.user,
-                role__in=[BoardMembership.Role.OWNER, BoardMembership.Role.EDITOR],
-            ).exists()
-
-        return bool(board.created_by_id == request.user.id)
-
-    if not can_move_in_board(old_board) or not can_move_in_board(new_board):
-        return JsonResponse({"error": "Sem permissão para mover card neste quadro."}, status=403)
+    # ✅ Escrita: bloquear VIEWER (origem e destino)
+    if not _user_can_edit_board(request.user, old_board) or not _user_can_edit_board(request.user, new_board):
+        return _deny_read_only(request, as_json=True)
 
     actor = _actor_label(request)
     old_pos = int(card.position or 0)
@@ -335,26 +401,15 @@ def move_card(request):
 @login_required
 @require_http_methods(["GET"])
 def card_move_options(request, card_id):
+    """
+    Tela/opções de mover é ESCRITA (porque habilita operação de mover).
+    Então VIEWER não deve nem carregar isso.
+    """
     card = get_object_or_404(Card, id=card_id, is_deleted=False)
     board_current = card.column.board
 
-    def can_move_in_board(board: Board) -> bool:
-        if not request.user.is_authenticated:
-            return False
-        if request.user.is_staff:
-            return True
-
-        memberships_qs = board.memberships.all()
-        if memberships_qs.exists():
-            return memberships_qs.filter(
-                user=request.user,
-                role__in=[BoardMembership.Role.OWNER, BoardMembership.Role.EDITOR],
-            ).exists()
-
-        return bool(board.created_by_id == request.user.id)
-
-    if not can_move_in_board(board_current):
-        return JsonResponse({"error": "Sem permissão para mover card neste quadro."}, status=403)
+    if not _user_can_edit_board(request.user, board_current):
+        return _deny_read_only(request)
 
     boards = []
 
@@ -406,11 +461,13 @@ def card_move_options(request, card_id):
 
 
 def card_modal(request, card_id):
+    # ✅ leitura do modal é permitida (somente leitura continua vendo)
     card = get_object_or_404(Card, id=card_id, is_deleted=False)
     return render(request, "boards/partials/card_modal_body.html", _card_modal_context(card))
 
 
 def card_snippet(request, card_id):
+    # ✅ snippet é leitura
     card = get_object_or_404(Card, id=card_id)
     return render(request, "boards/partials/card_item.html", {"card": card})
 
@@ -428,23 +485,9 @@ def duplicate_card(request, card_id):
     column = card.column
     board = column.board
 
-    def can_edit_in_board(b: Board) -> bool:
-        if not request.user.is_authenticated:
-            return False
-        if request.user.is_staff:
-            return True
-
-        memberships_qs = b.memberships.all()
-        if memberships_qs.exists():
-            return memberships_qs.filter(
-                user=request.user,
-                role__in=[BoardMembership.Role.OWNER, BoardMembership.Role.EDITOR],
-            ).exists()
-
-        return bool(b.created_by_id == request.user.id)
-
-    if not can_edit_in_board(board):
-        return JsonResponse({"error": "Sem permissão para duplicar card neste quadro."}, status=403)
+    # ✅ Escrita: bloquear VIEWER
+    if not _user_can_edit_board(request.user, board):
+        return JsonResponse({"error": "Somente leitura."}, status=403)
 
     actor = _actor_label(request)
 
@@ -461,22 +504,21 @@ def duplicate_card(request, card_id):
     # cria a cópia (mantém campos importantes)
     base_title = (card.title or "").strip()
 
-# evita duplicar sufixo
+    # evita duplicar sufixo
     if base_title.endswith("(Novo)") or base_title.endswith("+ (Novo)"):
         new_title = base_title
     else:
         new_title = f"{base_title} + (Novo)" if base_title else "(Novo)"
 
     new_card = Card.objects.create(
-    column=column,
-    position=new_position,
-    title=new_title,
-    description=(card.description or ""),
-    tags=(card.tags or ""),
-    tag_colors=(card.tag_colors or ""),
-    cover_image=card.cover_image,
-)
-
+        column=column,
+        position=new_position,
+        title=new_title,
+        description=(card.description or ""),
+        tags=(card.tags or ""),
+        tag_colors=(card.tag_colors or ""),
+        cover_image=card.cover_image,
+    )
 
     # copia anexos (referenciam os mesmos arquivos)
     try:
@@ -534,6 +576,10 @@ def remove_tag(request, card_id):
     card = get_object_or_404(Card, id=card_id)
     actor = _actor_label(request)
 
+    # ✅ Escrita: bloquear VIEWER
+    if not _user_can_edit_board(request.user, card.column.board):
+        return _deny_read_only(request, as_json=True)
+
     tag = request.POST.get("tag", "").strip()
     if not tag:
         return HttpResponse("Tag inválida", status=400)
@@ -554,10 +600,15 @@ def remove_tag(request, card_id):
 
     return JsonResponse({"modal": modal_html, "snippet": snippet_html, "card_id": card.id})
 
+
 @login_required
 @require_POST
 def set_tag_color(request, card_id):
     card = get_object_or_404(Card, id=card_id)
+
+    # ✅ Escrita: bloquear VIEWER
+    if not _user_can_edit_board(request.user, card.column.board):
+        return _deny_read_only(request, as_json=True)
 
     tag = (request.POST.get("tag") or "").strip()
     color = (request.POST.get("color") or "").strip()
@@ -643,6 +694,10 @@ def set_card_cover(request, card_id):
     card = get_object_or_404(Card, id=card_id, is_deleted=False)
     actor = _actor_label(request)
 
+    # ✅ Escrita: bloquear VIEWER
+    if not _user_can_edit_board(request.user, card.column.board):
+        return _deny_read_only(request)
+
     f: UploadedFile | None = request.FILES.get("cover")
     if not f:
         return HttpResponseBadRequest("Envie uma imagem no campo 'cover'.")
@@ -727,7 +782,6 @@ def set_card_cover(request, card_id):
     # ============================================================
     # 4) Log com thumbnail + link (histórico aponta para old_hist_rel)
     # ============================================================
-        # log com thumbnail + link
     try:
         parts = [f"<p><strong>{actor}</strong> definiu/atualizou a capa do card.</p>"]
 
@@ -743,7 +797,7 @@ def set_card_cover(request, card_id):
                 "</div>"
             )
 
-                # ✅ DEPOIS: capa anterior (anti-404)
+        # ✅ DEPOIS: capa anterior (anti-404)
         # Preferência: usar a cópia imutável em attachments/cover_history (old_hist_rel)
         # Fallback: usar o caminho antigo original (old_rel) se a cópia falhar
         old_log_rel = (old_hist_rel or old_rel or "").strip()
@@ -758,11 +812,9 @@ def set_card_cover(request, card_id):
                 "</div>"
             )
 
-
         _log_card(card, request, "".join(parts))
     except Exception:
         pass
-
 
     return render(request, "boards/partials/card_modal_body.html", _card_modal_context(card))
 
@@ -776,6 +828,10 @@ def remove_card_cover(request, card_id):
     """
     card = get_object_or_404(Card, id=card_id, is_deleted=False)
     actor = _actor_label(request)
+
+    # ✅ Escrita: bloquear VIEWER
+    if not _user_can_edit_board(request.user, card.column.board):
+        return _deny_read_only(request)
 
     # guarda a rel atual para log
     old_rel = ""
@@ -811,9 +867,4 @@ def remove_card_cover(request, card_id):
         pass
 
     return render(request, "boards/partials/card_modal_body.html", _card_modal_context(card))
-#end file boards/views/cards.py
-
-
-
-
-
+# end file boards/views/cards.py
