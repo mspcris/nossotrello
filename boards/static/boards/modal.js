@@ -264,7 +264,9 @@
       }
     })();
 
-    // 4) fallback final: bloqueia fetch do endpoint do modal
+    // 4) fallback final: intercepta fetch
+    //    - bloqueia /card/<id>/modal/ quando gate/cooldowns estão ativos
+    //    - correção crítica: quando /move-card/ der OK, remove ?card=... da URL antes do reload
     if (typeof window.fetch === "function" && !window.fetch.__ULTRA_WRAPPED__) {
       const originalFetch = window.fetch;
 
@@ -272,9 +274,35 @@
         const url =
           typeof input === "string" ? input : input && input.url ? input.url : "";
 
-        const u = String(url || "");
-        const isCardModal = /\/card\/\d+\/modal\/?/.test(u);
+        const method = String(
+          (init && init.method) ||
+            (input && typeof input === "object" && input.method) ||
+            "GET"
+        ).toUpperCase();
 
+        const u = String(url || "");
+
+        const isCardModal = /\/card\/\d+\/modal\/?/.test(u);
+        const isMoveCard =
+          method === "POST" && /\/move-card\/?(?:\?.*)?$/.test(u);
+
+        // move-card: garante que qualquer reload posterior NÃO volte com ?card=...
+        if (isMoveCard) {
+          return originalFetch.call(this, input, init).then((res) => {
+            try {
+              if (res && res.ok) {
+                window.clearUrlCard?.({ replace: true });
+
+                // defensivo: corta clique fantasma imediatamente após mover
+                const prev = Number(window.__modalCloseCooldownUntil || 0);
+                window.__modalCloseCooldownUntil = Math.max(prev, Date.now() + 2000);
+              }
+            } catch (_e) {}
+            return res;
+          });
+        }
+
+        // card modal: bloqueia reabertura quando gate/cooldowns ativos
         if (isCardModal && isBlockedNow()) {
           hardCloseAndScrub();
           try {
