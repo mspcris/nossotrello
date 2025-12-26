@@ -3,24 +3,26 @@ from django.http import HttpResponse
 from django.shortcuts import render, get_object_or_404
 from django.views.decorators.http import require_POST
 from django.utils.html import escape
+from django.contrib.auth.decorators import login_required
 
+from ..permissions import can_edit_board
+from ..models import Card, CardAttachment
 from .helpers import (
     _actor_label,
     _log_card,
-    _can_edit_board,
-    Card,
-    CardAttachment,
 )
 
 
+@login_required
 @require_POST
 def delete_attachment(request, card_id, attachment_id):
     card = get_object_or_404(Card, id=card_id, is_deleted=False)
     attachment = get_object_or_404(CardAttachment, id=attachment_id, card=card)
 
     board = card.column.board
-    if not _can_edit_board(request, board):
-        return HttpResponse("Sem permissão.", status=403)
+    # ✅ ESCRITA
+    if not can_edit_board(request.user, board):
+        return HttpResponse("Somente leitura.", status=403)
 
     actor = _actor_label(request)
 
@@ -61,9 +63,16 @@ def delete_attachment(request, card_id, attachment_id):
     return HttpResponse("", status=200)
 
 
+@login_required
 @require_POST
 def add_attachment(request, card_id):
-    card = get_object_or_404(Card, id=card_id)
+    card = get_object_or_404(Card, id=card_id, is_deleted=False)
+    board = card.column.board
+
+    # ✅ ESCRITA: viewer não pode anexar
+    if not can_edit_board(request.user, board):
+        return HttpResponse("Somente leitura.", status=403)
+
     actor = _actor_label(request)
 
     if "file" not in request.FILES:
@@ -95,4 +104,4 @@ def add_attachment(request, card_id):
         )
 
     return render(request, "boards/partials/attachment_item.html", {"attachment": attachment})
-#END boards/views/attachments.py
+# END boards/views/attachments.py

@@ -1,5 +1,4 @@
 # boards/views/checklists.py
-
 import json
 
 from django.db.models import Count, Q, Prefetch
@@ -8,26 +7,10 @@ from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_POST, require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
-from django.db.models import Count, Q
 
 from .helpers import _actor_label, _log_card
+from ..permissions import can_edit_board
 from ..models import Card, Checklist, ChecklistItem
-
-
-def _can_edit_board(request, board) -> bool:
-    if not request.user.is_authenticated:
-        return False
-    if request.user.is_staff:
-        return True
-
-    memberships_qs = board.memberships.all()
-    if memberships_qs.exists():
-        return memberships_qs.filter(
-            user=request.user,
-            role__in=["owner", "editor"],
-        ).exists()
-
-    return bool(board.created_by_id == request.user.id)
 
 
 def _card_checklists_qs(card: Card):
@@ -47,7 +30,6 @@ def _card_checklists_qs(card: Card):
     )
 
 
-
 # ==========================================================
 # CHECKLISTS — REORDER (Drag and Drop) + AUDITORIA
 # ==========================================================
@@ -58,8 +40,8 @@ def checklists_reorder(request, card_id):
     card = get_object_or_404(Card, id=card_id, is_deleted=False)
     board = card.column.board
 
-    if not _can_edit_board(request, board):
-        return JsonResponse({"ok": False, "error": "Sem permissão."}, status=403)
+    if not can_edit_board(request.user, board):
+        return JsonResponse({"ok": False, "error": "Somente leitura."}, status=403)
 
     try:
         payload = json.loads(request.body.decode("utf-8"))
@@ -90,8 +72,8 @@ def checklist_items_reorder(request, card_id):
     card = get_object_or_404(Card, id=card_id, is_deleted=False)
     board = card.column.board
 
-    if not _can_edit_board(request, board):
-        return JsonResponse({"ok": False, "error": "Sem permissão."}, status=403)
+    if not can_edit_board(request.user, board):
+        return JsonResponse({"ok": False, "error": "Somente leitura."}, status=403)
 
     try:
         payload = json.loads(request.body.decode("utf-8"))
@@ -154,8 +136,8 @@ def checklist_items_reorder(request, card_id):
 def checklist_add(request, card_id):
     card = get_object_or_404(Card, id=card_id, is_deleted=False)
     board = card.column.board
-    if not _can_edit_board(request, board):
-        return HttpResponse("Sem permissão.", status=403)
+    if not can_edit_board(request.user, board):
+        return HttpResponse("Somente leitura.", status=403)
 
     actor = _actor_label(request)
     title = (request.POST.get("title") or "").strip() or "Checklist"
@@ -165,10 +147,9 @@ def checklist_add(request, card_id):
 
     _log_card(card, request, f"<p><strong>{actor}</strong> criou a checklist <strong>{checklist.title}</strong>.</p>")
     return render(request, "boards/partials/checklist_list.html", {
-    "checklists": _card_checklists_qs(card),
-    "card": card,
-})
-
+        "checklists": _card_checklists_qs(card),
+        "card": card,
+    })
 
 
 @login_required
@@ -177,8 +158,8 @@ def checklist_rename(request, checklist_id):
     checklist = get_object_or_404(Checklist, id=checklist_id)
     card = checklist.card
     board = card.column.board
-    if not _can_edit_board(request, board):
-        return HttpResponse("Sem permissão.", status=403)
+    if not can_edit_board(request.user, board):
+        return HttpResponse("Somente leitura.", status=403)
 
     actor = _actor_label(request)
     old_title = checklist.title
@@ -191,11 +172,9 @@ def checklist_rename(request, checklist_id):
 
     _log_card(card, request, f"<p><strong>{actor}</strong> renomeou a checklist de <strong>{old_title}</strong> para <strong>{title}</strong>.</p>")
     return render(request, "boards/partials/checklist_list.html", {
-    "checklists": _card_checklists_qs(card),
-    "card": card,
-})
-
-
+        "checklists": _card_checklists_qs(card),
+        "card": card,
+    })
 
 
 @login_required
@@ -204,8 +183,8 @@ def checklist_delete(request, checklist_id):
     checklist = get_object_or_404(Checklist, id=checklist_id)
     card = checklist.card
     board = card.column.board
-    if not _can_edit_board(request, board):
-        return HttpResponse("Sem permissão.", status=403)
+    if not can_edit_board(request.user, board):
+        return HttpResponse("Somente leitura.", status=403)
 
     actor = _actor_label(request)
     title = checklist.title
@@ -218,11 +197,9 @@ def checklist_delete(request, checklist_id):
 
     _log_card(card, request, f"<p><strong>{actor}</strong> excluiu a checklist <strong>{title}</strong>.</p>")
     return render(request, "boards/partials/checklist_list.html", {
-    "checklists": _card_checklists_qs(card),
-    "card": card,
-})
-
-
+        "checklists": _card_checklists_qs(card),
+        "card": card,
+    })
 
 
 @login_required
@@ -231,8 +208,8 @@ def checklist_add_item(request, checklist_id):
     checklist = get_object_or_404(Checklist, id=checklist_id)
     card = checklist.card
     board = card.column.board
-    if not _can_edit_board(request, board):
-        return HttpResponse("Sem permissão.", status=403)
+    if not can_edit_board(request.user, board):
+        return HttpResponse("Somente leitura.", status=403)
 
     actor = _actor_label(request)
     text = (request.POST.get("text") or "").strip()
@@ -244,11 +221,9 @@ def checklist_add_item(request, checklist_id):
 
     _log_card(card, request, f"<p><strong>{actor}</strong> adicionou item na checklist <strong>{checklist.title}</strong>: {item.text}.</p>")
     return render(request, "boards/partials/checklist_list.html", {
-    "checklists": _card_checklists_qs(card),
-    "card": card,
-})
-
-
+        "checklists": _card_checklists_qs(card),
+        "card": card,
+    })
 
 
 @login_required
@@ -257,8 +232,8 @@ def checklist_toggle_item(request, item_id):
     item = get_object_or_404(ChecklistItem, id=item_id)
     card = item.card
     board = card.column.board
-    if not _can_edit_board(request, board):
-        return HttpResponse("Sem permissão.", status=403)
+    if not can_edit_board(request.user, board):
+        return HttpResponse("Somente leitura.", status=403)
 
     actor = _actor_label(request)
 
@@ -269,11 +244,9 @@ def checklist_toggle_item(request, item_id):
     _log_card(card, request, f"<p><strong>{actor}</strong> {status} um item da checklist: {item.text}.</p>")
 
     return render(request, "boards/partials/checklist_list.html", {
-    "checklists": _card_checklists_qs(card),
-    "card": card,
-})
-
-
+        "checklists": _card_checklists_qs(card),
+        "card": card,
+    })
 
 
 @login_required
@@ -282,8 +255,8 @@ def checklist_delete_item(request, item_id):
     item = get_object_or_404(ChecklistItem, id=item_id)
     card = item.card
     board = card.column.board
-    if not _can_edit_board(request, board):
-        return HttpResponse("Sem permissão.", status=403)
+    if not can_edit_board(request.user, board):
+        return HttpResponse("Somente leitura.", status=403)
 
     actor = _actor_label(request)
     text = item.text
@@ -298,11 +271,9 @@ def checklist_delete_item(request, item_id):
 
     _log_card(card, request, f"<p><strong>{actor}</strong> excluiu um item da checklist: {text}.</p>")
     return render(request, "boards/partials/checklist_list.html", {
-    "checklists": _card_checklists_qs(card),
-    "card": card,
-})
-
-
+        "checklists": _card_checklists_qs(card),
+        "card": card,
+    })
 
 
 @login_required
@@ -311,8 +282,8 @@ def checklist_update_item(request, item_id):
     item = get_object_or_404(ChecklistItem, id=item_id)
     card = item.card
     board = card.column.board
-    if not _can_edit_board(request, board):
-        return HttpResponse("Sem permissão.", status=403)
+    if not can_edit_board(request.user, board):
+        return HttpResponse("Somente leitura.", status=403)
 
     actor = _actor_label(request)
     old = item.text
@@ -325,11 +296,9 @@ def checklist_update_item(request, item_id):
 
     _log_card(card, request, f"<p><strong>{actor}</strong> editou um item da checklist de {old} para {text}.</p>")
     return render(request, "boards/partials/checklist_list.html", {
-    "checklists": _card_checklists_qs(card),
-    "card": card,
-})
-
-
+        "checklists": _card_checklists_qs(card),
+        "card": card,
+    })
 
 
 # ==========================================================
@@ -343,8 +312,8 @@ def checklist_move(request, checklist_id):
     card = checklist.card
     board = card.column.board
 
-    if not _can_edit_board(request, board):
-        return HttpResponse("Sem permissão.", status=403)
+    if not can_edit_board(request.user, board):
+        return HttpResponse("Somente leitura.", status=403)
 
     direction = (request.POST.get("direction") or "").strip().lower()
     new_position_raw = (request.POST.get("position") or request.POST.get("new_position") or "").strip()
@@ -352,11 +321,9 @@ def checklist_move(request, checklist_id):
     checklists = list(card.checklists.order_by("position", "created_at"))
     if not checklists:
         return render(request, "boards/partials/checklist_list.html", {
-    "checklists": _card_checklists_qs(card),
-    "card": card,
-})
-
-
+            "checklists": _card_checklists_qs(card),
+            "card": card,
+        })
 
     try:
         current_index = next(i for i, c in enumerate(checklists) if c.id == checklist.id)
@@ -392,11 +359,9 @@ def checklist_move(request, checklist_id):
         _log_card(card, request, f"<p><strong>{actor}</strong> reordenou checklists (legado).</p>")
 
     return render(request, "boards/partials/checklist_list.html", {
-    "checklists": _card_checklists_qs(card),
-    "card": card,
-})
-
-
+        "checklists": _card_checklists_qs(card),
+        "card": card,
+    })
 
 
 @login_required
@@ -416,8 +381,8 @@ def _checklist_move_item_delta(request, item_id, delta: int):
     card = item.card
     board = card.column.board
 
-    if not _can_edit_board(request, board):
-        return HttpResponse("Sem permissão.", status=403)
+    if not can_edit_board(request.user, board):
+        return HttpResponse("Somente leitura.", status=403)
 
     if not item.checklist_id:
         return HttpResponseBadRequest("Item não está associado a um checklist.")
@@ -434,11 +399,9 @@ def _checklist_move_item_delta(request, item_id, delta: int):
     new_idx = idx + delta
     if new_idx < 0 or new_idx >= len(items):
         return render(request, "boards/partials/checklist_list.html", {
-    "checklists": _card_checklists_qs(card),
-    "card": card,
-})
-
-
+            "checklists": _card_checklists_qs(card),
+            "card": card,
+        })
 
     a = items[idx]
     b = items[new_idx]
@@ -455,7 +418,7 @@ def _checklist_move_item_delta(request, item_id, delta: int):
     _log_card(card, request, f"<p><strong>{actor}</strong> reordenou item de checklist (legado).</p>")
 
     return render(request, "boards/partials/checklist_list.html", {
-    "checklists": _card_checklists_qs(card),
-    "card": card,
-})
-#END boards/views/checklists.py
+        "checklists": _card_checklists_qs(card),
+        "card": card,
+    })
+# END boards/views/checklists.py

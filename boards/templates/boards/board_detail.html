@@ -169,7 +169,9 @@ document.addEventListener("click", (ev) => {
 
 
 <!-- ======================== LISTA DE COLUNAS ======================== -->
-<div id="columns-wrapper" class="flex gap-6 overflow-x-auto overflow-y-hidden pb-6 pr-4 h-[calc(100vh-140px)]">
+<!-- ======================== LISTA DE COLUNAS ======================== -->
+<div id="board-root" data-can-edit="{{ can_edit|yesno:'1,0' }}">
+  <div id="columns-wrapper" class="flex gap-6 overflow-x-auto overflow-y-hidden pb-6 pr-4 h-[calc(100vh-140px)]">
 
 
     <div id="columns-list" class="flex gap-6">
@@ -210,11 +212,11 @@ document.addEventListener("click", (ev) => {
   <button class="px-3 py-2 bg-blue-600 text-white rounded w-full" type="submit">
     Adicionar Coluna
   </button>
-</form>
+    </form>
 
     </div>
+  </div>
 </div>
-
 
 
 <!-- ======================== SCRIPTS ======================== -->
@@ -354,9 +356,23 @@ document.addEventListener("click", (ev) => {
 
 <script>
   // ============================================================
-  // SORTABLE (cards)
+  // SORTABLE (cards) — guard + rollback em 403
   // ============================================================
+  function boardCanEdit() {
+    const root = document.getElementById("board-root");
+    return root && root.dataset.canEdit === "1";
+  }
+
+  function rollbackCardMove(itemEl, fromEl, oldIndex) {
+    if (!itemEl || !fromEl) return;
+    const ref = fromEl.children[oldIndex] || null;
+    fromEl.insertBefore(itemEl, ref);
+  }
+
   function initSortable() {
+    // viewer: não inicia drag
+    if (!boardCanEdit()) return;
+
     document.querySelectorAll("[id^='cards-col-']").forEach(listEl => {
       if (listEl.dataset.sortableApplied === "1") return;
       listEl.dataset.sortableApplied = "1";
@@ -366,33 +382,61 @@ document.addEventListener("click", (ev) => {
         animation: 150,
         ghostClass: "drag-ghost",
 
-        // MOBILE UX: só inicia drag após "press and hold"
         delay: 280,
         delayOnTouchOnly: true,
-
-        // tolerância: movimento pequeno vira scroll, não drag
         touchStartThreshold: 10,
 
-        // evita disparar drag ao tocar em botões/inputs dentro do card
         filter: "button, a, input, textarea, select, label",
         preventOnFilter: false,
 
-        onEnd: (evt) => {
+        onStart: (evt) => {
+          // snapshot p/ rollback
+          evt.item.__dnd = {
+            from: evt.from,
+            oldIndex: evt.oldIndex,
+            oldColumnId: (evt.from?.id || "").replace("cards-col-", "")
+          };
+        },
+
+        onEnd: async (evt) => {
           const csrftoken = document.querySelector("[name=csrfmiddlewaretoken]")?.value || "";
 
-          fetch("{% url 'boards:move_card' %}", {
-            method: "POST",
-            credentials: "same-origin",
-            headers: {
-              "Content-Type": "application/json",
-              "X-CSRFToken": csrftoken
-            },
-            body: JSON.stringify({
-              card_id: Number(evt.item.dataset.cardId),
-              new_column_id: Number(evt.to.id.replace("cards-col-", "")),
-              new_position: Number(evt.newIndex)
-            })
-          });
+          const snap = evt.item.__dnd || { from: evt.from, oldIndex: evt.oldIndex };
+          const fromEl = snap.from;
+          const oldIndex = snap.oldIndex;
+
+          const cardId = Number(evt.item.dataset.cardId);
+          const newColumnId = Number((evt.to?.id || "").replace("cards-col-", ""));
+          const newPos = Number(evt.newIndex);
+
+          // se não mudou nada, não chama backend
+          if (evt.from === evt.to && evt.oldIndex === evt.newIndex) return;
+
+          try {
+            const resp = await fetch("{% url 'boards:move_card' %}", {
+              method: "POST",
+              credentials: "same-origin",
+              headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrftoken
+              },
+              body: JSON.stringify({
+                card_id: cardId,
+                new_column_id: newColumnId,
+                new_position: newPos
+              })
+            });
+
+            if (!resp.ok) {
+              // 403/400/etc => volta visual na hora
+              rollbackCardMove(evt.item, fromEl, oldIndex);
+            }
+          } catch (_e) {
+            // erro de rede => volta visual na hora
+            rollbackCardMove(evt.item, fromEl, oldIndex);
+          } finally {
+            try { delete evt.item.__dnd; } catch (_e) {}
+          }
         }
       });
     });
@@ -401,6 +445,7 @@ document.addEventListener("click", (ev) => {
   document.addEventListener("DOMContentLoaded", initSortable);
   document.body.addEventListener("htmx:afterSwap", initSortable);
 </script>
+
 
 
 <script>

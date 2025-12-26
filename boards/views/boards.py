@@ -109,6 +109,7 @@ def board_detail(request, board_id):
     my_membership = None
     can_leave_board = False
     can_share_board = False
+    can_edit = False
 
     if memberships_qs.exists():
         if not request.user.is_authenticated:
@@ -119,27 +120,28 @@ def board_detail(request, board_id):
             return HttpResponse("Você não tem acesso a este quadro.", status=403)
 
         can_share_board = (my_membership.role == BoardMembership.Role.OWNER)
+        can_edit = my_membership.role in {
+            BoardMembership.Role.OWNER,
+            BoardMembership.Role.EDITOR,
+        }
 
         if my_membership.role != BoardMembership.Role.OWNER:
             can_leave_board = True
         else:
             owners_count = memberships_qs.filter(role=BoardMembership.Role.OWNER).count()
             can_leave_board = owners_count > 1
-
     else:
         if request.user.is_authenticated and (board.created_by_id == request.user.id or request.user.is_staff):
             can_share_board = True
+            can_edit = True  # legado: criador/staff edita
 
     columns = (
-    board.columns.filter(is_deleted=False)
-    .order_by("position")
-    .prefetch_related(
-        Prefetch(
-            "cards",
-            queryset=Card.objects.filter(is_deleted=False).order_by("position"),
+        board.columns.filter(is_deleted=False)
+        .order_by("position")
+        .prefetch_related(
+            Prefetch("cards", queryset=Card.objects.filter(is_deleted=False).order_by("position"))
         )
     )
-)
 
     return render(
         request,
@@ -150,8 +152,10 @@ def board_detail(request, board_id):
             "my_membership": my_membership,
             "can_leave_board": can_leave_board,
             "can_share_board": can_share_board,
+            "can_edit": can_edit,
         },
     )
+
 
 
 # ======================================================================

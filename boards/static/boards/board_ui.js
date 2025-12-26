@@ -14,6 +14,51 @@
 
   function qs(sel, root = document) { return root.querySelector(sel); }
   function qsa(sel, root = document) { return Array.from(root.querySelectorAll(sel)); }
+  const boardRoot = document.getElementById("board-root");
+  const canEdit = boardRoot && boardRoot.dataset.canEdit === "1";
+
+
+function boardCanEditNow() {
+  const root = document.getElementById("board-root");
+  return !!(root && root.dataset.canEdit === "1");
+}
+
+// estado global (útil pra outros scripts)
+window.__boardCanEdit = boardCanEditNow();
+
+// aplica “readonly UI” quando o DOM estiver pronto (e reavalia em swaps)
+function applyReadonlyUI() {
+  window.__boardCanEdit = boardCanEditNow();
+
+  if (!window.__boardCanEdit) {
+    // marque cards como readonly (ajuste o seletor se necessário)
+    document.querySelectorAll("li[data-card-id], .card-item").forEach((el) => {
+      el.setAttribute("draggable", "false");
+      el.classList.add("is-readonly");
+    });
+  } else {
+    // se for editor/owner, remove marcas readonly
+    document.querySelectorAll("li[data-card-id].is-readonly, .card-item.is-readonly").forEach((el) => {
+      el.removeAttribute("draggable");
+      el.classList.remove("is-readonly");
+    });
+  }
+}
+
+// hard-stop: só bloqueia se NA HORA for readonly
+if (!window.__dragstartGuardInstalled) {
+  window.__dragstartGuardInstalled = true;
+
+  document.addEventListener("dragstart", (e) => {
+    if (boardCanEditNow()) return; // editor/owner: deixa passar
+    if (e.target.closest("li[data-card-id], .card-item")) e.preventDefault();
+  }, true);
+}
+
+document.addEventListener("DOMContentLoaded", applyReadonlyUI);
+document.body.addEventListener("htmx:afterSwap", applyReadonlyUI);
+document.body.addEventListener("htmx:afterSettle", applyReadonlyUI);
+
 
   // =========================
   // Popover "Cor da coluna"
