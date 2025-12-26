@@ -1086,6 +1086,41 @@ html.dark #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-
   }
 }
 
+/* =======================================================================
+   FIX: <code>/<pre> legível no MODAL DARK
+   - cobre inline styles vindos do HTML da descrição
+   ======================================================================= */
+#card-modal-root.theme-dark :where(code, pre),
+#card-modal-root.card-theme-dark :where(code, pre){
+  color: rgba(241,245,249,0.95) !important;
+}
+
+/* inline code */
+#card-modal-root.theme-dark code,
+#card-modal-root.card-theme-dark code{
+  background: rgba(255,255,255,0.10) !important;
+  border: 1px solid rgba(255,255,255,0.14) !important;
+  border-radius: 6px;
+  padding: 0.12em 0.35em;
+}
+
+/* code block */
+#card-modal-root.theme-dark pre,
+#card-modal-root.card-theme-dark pre{
+  background: rgba(0,0,0,0.35) !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  border-radius: 10px;
+  padding: 10px 12px;
+  overflow-x: auto;
+}
+
+/* evita “double background” dentro do pre */
+#card-modal-root.theme-dark pre code,
+#card-modal-root.card-theme-dark pre code{
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0;
+}
 
 
 

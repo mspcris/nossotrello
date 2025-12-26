@@ -21,25 +21,25 @@
 
     <!-- BOTÃO ... (abre modal focado no card) -->
     <button type="button"
-        class="absolute top-1 left-1 text-gray-400 hover:text-gray-700 text-xs px-1 z-10"
-        onpointerdown="event.preventDefault(); event.stopPropagation(); event.stopImmediatePropagation();"
-        onclick="event.preventDefault(); event.stopPropagation(); event.stopImmediatePropagation();"
-        hx-get="{% url 'boards:card_modal' card.id %}"
-        hx-target="#modal-body"
-        hx-swap="innerHTML">
-      ⋮
+      class="absolute top-1 left-1 text-gray-400 hover:text-gray-700 text-xs px-1 z-10"
+       onpointerdown="event.stopPropagation();"
+       onclick="event.stopPropagation();"
+       hx-get="{% url 'boards:card_modal' card.id %}"
+       hx-target="#modal-body"
+       hx-swap="innerHTML">
+       ⋮
     </button>
 
 
     <!-- BOTÃO DE EXCLUSÃO (aparece apenas no modo "Excluir cards") -->
     <button type="button"
-       class="delete-card-btn hidden absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded z-10"
-        onpointerdown="event.preventDefault(); event.stopPropagation(); event.stopImmediatePropagation();"
-        onclick="event.preventDefault(); event.stopPropagation(); event.stopImmediatePropagation();"
+      class="delete-card-btn hidden absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded z-10"
+        onpointerdown="event.stopPropagation();"
+        onclick="event.stopPropagation();"
         hx-post="{% url 'boards:delete_card' card.id %}"
         hx-target="#card-{{ card.id }}"
         hx-swap="outerHTML">
-      X
+        X
     </button>
 
 
