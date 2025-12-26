@@ -10,7 +10,7 @@ from django.template.loader import render_to_string
 from ..permissions import can_edit_board
 from ..models import Card, CardAttachment
 from .helpers import (
-    _actor_label,
+    _actor_html,
     _log_card,
     _save_base64_images_to_media,
     _ensure_attachments_and_activity_for_images,
@@ -45,7 +45,7 @@ def add_activity(request, card_id):
     if not can_edit_board(request.user, board):
         return HttpResponse("Somente leitura.", status=403)
 
-    actor = _actor_label(request)
+    actor = _actor_html(request)
 
     raw = (request.POST.get("content") or "").strip()
     if not raw:

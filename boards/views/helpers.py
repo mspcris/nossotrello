@@ -84,6 +84,36 @@ def _actor_label(request) -> str:
 
     return "Sistema"
 
+
+
+from django.urls import reverse
+from django.utils.html import escape
+
+def _actor_html(request) -> str:
+    if getattr(request, "user", None) and request.user.is_authenticated:
+        u = request.user
+        prof = getattr(u, "profile", None)
+
+        handle = (getattr(prof, "handle", "") or "").strip()
+        display = (getattr(prof, "display_name", "") or "").strip()
+
+        if handle:
+            url = reverse("boards:public_profile", kwargs={"handle": handle})
+            title = display or u.get_full_name() or u.get_username() or u.email or ""
+            return (
+                f"<a class='user-link' href='{escape(url)}' "
+                f"title='{escape(title)}'>@{escape(handle)}</a>"
+            )
+
+        # sem handle: mantém fallback atual (texto)
+        label = display or u.get_username() or u.email or "usuário"
+        return escape(label)
+
+    return "Sistema"
+
+
+
+
 def _log_card(card: Card, request, message_html: str, attachment=None):
     """
     Registra no histórico do card (CardLog).

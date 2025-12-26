@@ -196,6 +196,12 @@ urlpatterns = [
         
 
     # ============================================================
+    # CONTA / PERFIL (SOCIAL)
+    # ============================================================
+    path("u/<str:handle>/", views.public_profile, name="public_profile"),
+
+
+    # ============================================================
     # CHECKLISTS (múltiplos por card)
     # ============================================================
     path("card/<int:card_id>/checklist/add/", views.checklist_add, name="checklist_add"),
