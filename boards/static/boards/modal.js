@@ -77,247 +77,59 @@
     return { bar, saveBtn };
   }
 
-  // =====================================================
-  // ULTRA HARD STOP (nível máximo)
-  // - engole eventos em capture quando gate/cooldowns ativos
-  // - impede swaps no #modal-body
-  // - late-bind: intercepta openCardModalAndLoad / htmx.ajax mesmo se definidos depois
-  // - fallback: bloqueia fetch do endpoint /card/<id>/modal/
-  // =====================================================
-  (function installUltraHardStopOnce() {
-    if (window.__ULTRA_HARD_STOP_INSTALLED__) return;
-    window.__ULTRA_HARD_STOP_INSTALLED__ = true;
 
-    window.__movedCardJustNowUntil = window.__movedCardJustNowUntil || 0;
-    window.__cardDragCooldownUntil = window.__cardDragCooldownUntil || 0;
-    window.__modalCloseCooldownUntil = window.__modalCloseCooldownUntil || 0;
+    // =====================================================
+// Fetch guard (mínimo) — evita reopen indevido e limpa URL após move-card
+// =====================================================
+(function installFetchGuardOnce() {
+  if (window.__FETCH_GUARD_INSTALLED__) return;
+  window.__FETCH_GUARD_INSTALLED__ = true;
 
-    function isBlockedNow() {
-      return modalOpenBlockedNow();
-    }
+  if (typeof window.fetch !== "function") return;
+  if (window.fetch.__FETCH_GUARD_WRAPPED__) return;
 
-    function hardCloseAndScrub() {
+  const originalFetch = window.fetch;
+
+  window.fetch = function (input, init) {
+    const url =
+      typeof input === "string" ? input : input && input.url ? input.url : "";
+
+    const method = String(
+      (init && init.method) ||
+        (input && typeof input === "object" && input.method) ||
+        "GET"
+    ).toUpperCase();
+
+    const u = String(url || "");
+
+    const isCardModal = method === "GET" && /\/card\/\d+\/modal\/?/.test(u);
+    const isMoveCard = method === "POST" && /\/move-card\/?(?:\?.*)?$/.test(u);
+
+    // bloqueia GET do modal quando gate/cooldowns ativos (sem fechar nada, só não abre)
+    if (isCardModal && modalOpenBlockedNow()) {
       try {
-        window.clearUrlCard?.({ replace: true });
-      } catch (_e) {}
-
-      try {
-        const mb = document.getElementById("modal-body");
-        if (mb) mb.innerHTML = "";
-      } catch (_e) {}
-
-      try {
-        const modal = document.getElementById("modal");
-        if (modal) {
-          modal.classList.remove("modal-open");
-          modal.classList.add("hidden");
-        }
-      } catch (_e) {}
-
-      try {
-        window.currentCardId = null;
-      } catch (_e) {}
-    }
-
-    // 0) FIREWALL: engole gestos em cards enquanto bloqueado
-    function swallow(ev) {
-      if (!isBlockedNow()) return;
-
-      const t = ev.target;
-      const onCard = !!t?.closest?.("li[data-card-id]");
-      if (!onCard) return;
-
-      try {
-        ev.preventDefault();
-        ev.stopPropagation();
-        ev.stopImmediatePropagation?.();
-      } catch (_e) {}
-
-      hardCloseAndScrub();
-    }
-
-    document.body.addEventListener("pointerdown", swallow, true);
-    document.body.addEventListener("pointerup", swallow, true);
-    document.body.addEventListener("click", swallow, true);
-    document.body.addEventListener("mousedown", swallow, true);
-    document.body.addEventListener("mouseup", swallow, true);
-    document.body.addEventListener("touchstart", swallow, true);
-    document.body.addEventListener("touchend", swallow, true);
-
-    // 1) KILL SWAP no modal-body enquanto bloqueado
-    function killSwap(e) {
-      if (!e.detail?.target || e.detail.target.id !== "modal-body") return;
-      if (!isBlockedNow()) return;
-
-      try {
-        e.preventDefault?.();
-      } catch (_e) {}
-      try {
-        e.detail.shouldSwap = false;
-      } catch (_e) {}
-
-      hardCloseAndScrub();
-    }
-
-    document.body.addEventListener("htmx:beforeSwap", killSwap, true);
-    document.body.addEventListener("htmx:afterSwap", killSwap, true);
-
-    // 2) late-bind: intercepta openCardModalAndLoad mesmo se definido depois
-    function wrapOpenCardModalAndLoad(fn) {
-      if (typeof fn !== "function") return fn;
-      if (fn.__ULTRA_WRAPPED__) return fn;
-
-      function wrapped(cardId, opts) {
-        if (isBlockedNow()) {
-          hardCloseAndScrub();
-          return;
-        }
-        return fn.call(this, cardId, opts);
-      }
-
-      wrapped.__ULTRA_WRAPPED__ = true;
-      return wrapped;
-    }
-
-    (function hookWindowFunction(name) {
-      let _val = window[name];
-
-      if (typeof _val === "function") window[name] = wrapOpenCardModalAndLoad(_val);
-
-      try {
-        Object.defineProperty(window, name, {
-          configurable: true,
-          enumerable: true,
-          get() {
-            return _val;
-          },
-          set(v) {
-            _val = wrapOpenCardModalAndLoad(v);
-          },
-        });
+        return Promise.resolve(new Response("", { status: 204 }));
       } catch (_e) {
-        const t = setInterval(() => {
-          if (typeof window[name] === "function" && !window[name].__ULTRA_WRAPPED__) {
-            window[name] = wrapOpenCardModalAndLoad(window[name]);
-            clearInterval(t);
-          }
-        }, 50);
-        setTimeout(() => clearInterval(t), 5000);
+        return Promise.resolve(null);
       }
-    })("openCardModalAndLoad");
-
-    // 3) late-bind: intercepta window.htmx e htmx.ajax mesmo se HTMX chegar depois
-    function wrapHtmxAjax(htmxObj) {
-      if (!htmxObj || typeof htmxObj.ajax !== "function") return;
-      if (htmxObj.ajax.__ULTRA_WRAPPED__) return;
-
-      const original = htmxObj.ajax;
-
-      function wrapped(method, url, context) {
-        const u = String(url || "");
-        const m = String(method || "").toUpperCase();
-
-        const isCardModalGet = m === "GET" && /\/card\/\d+\/modal\/?/.test(u);
-        const targetsModalBody =
-          context &&
-          (context.target === "#modal-body" ||
-            context.target === "modal-body" ||
-            context.target === document.getElementById("modal-body"));
-
-        if ((isCardModalGet || targetsModalBody) && isBlockedNow()) {
-          hardCloseAndScrub();
-          return Promise.resolve(null);
-        }
-
-        return original.call(this, method, url, context);
-      }
-
-      wrapped.__ULTRA_WRAPPED__ = true;
-      htmxObj.ajax = wrapped;
     }
 
-    (function hookWindowHtmx() {
-      let _htmx = window.htmx;
-
-      if (_htmx) wrapHtmxAjax(_htmx);
-
-      try {
-        Object.defineProperty(window, "htmx", {
-          configurable: true,
-          enumerable: true,
-          get() {
-            return _htmx;
-          },
-          set(v) {
-            _htmx = v;
-            wrapHtmxAjax(_htmx);
-          },
-        });
-      } catch (_e) {
-        const t = setInterval(() => {
-          if (window.htmx) {
-            wrapHtmxAjax(window.htmx);
-            clearInterval(t);
-          }
-        }, 50);
-        setTimeout(() => clearInterval(t), 5000);
-      }
-    })();
-
-    // 4) fallback final: intercepta fetch
-    //    - bloqueia /card/<id>/modal/ quando gate/cooldowns estão ativos
-    //    - correção crítica: quando /move-card/ der OK, remove ?card=... da URL antes do reload
-    if (typeof window.fetch === "function" && !window.fetch.__ULTRA_WRAPPED__) {
-      const originalFetch = window.fetch;
-
-      window.fetch = function (input, init) {
-        const url =
-          typeof input === "string" ? input : input && input.url ? input.url : "";
-
-        const method = String(
-          (init && init.method) ||
-            (input && typeof input === "object" && input.method) ||
-            "GET"
-        ).toUpperCase();
-
-        const u = String(url || "");
-
-        const isCardModal = /\/card\/\d+\/modal\/?/.test(u);
-        const isMoveCard =
-          method === "POST" && /\/move-card\/?(?:\?.*)?$/.test(u);
-
-        // move-card: garante que qualquer reload posterior NÃO volte com ?card=...
-        if (isMoveCard) {
-          return originalFetch.call(this, input, init).then((res) => {
-            try {
-              if (res && res.ok) {
-                window.clearUrlCard?.({ replace: true });
-
-                // defensivo: corta clique fantasma imediatamente após mover
-                const prev = Number(window.__modalCloseCooldownUntil || 0);
-                window.__modalCloseCooldownUntil = Math.max(prev, Date.now() + 2000);
-              }
-            } catch (_e) {}
-            return res;
-          });
-        }
-
-        // card modal: bloqueia reabertura quando gate/cooldowns ativos
-        if (isCardModal && isBlockedNow()) {
-          hardCloseAndScrub();
-          try {
-            return Promise.resolve(new Response("", { status: 204 }));
-          } catch (_e) {
-            return Promise.resolve(null);
-          }
-        }
-
-        return originalFetch.call(this, input, init);
-      };
-
-      window.fetch.__ULTRA_WRAPPED__ = true;
+    // move-card OK: garante que não fique ?card=... na URL
+    if (isMoveCard) {
+      return originalFetch.call(this, input, init).then((res) => {
+        try {
+          if (res && res.ok) window.clearUrlCard?.({ replace: true });
+        } catch (_e) {}
+        return res;
+      });
     }
-  })();
+
+    return originalFetch.call(this, input, init);
+  };
+
+  window.fetch.__FETCH_GUARD_WRAPPED__ = true;
+})();
+
 
   // =====================================================
   // Move-reopen: marca "acabou de mover" + boing + auto-close
