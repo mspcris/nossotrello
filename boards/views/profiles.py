@@ -18,6 +18,6 @@ def public_profile(request, handle: str):
 
     return render(
         request,
-        "accounts/public_profile.html",  # usa o template que você já criou
+        "boards/public_profile.html",  # usa o template que você já criou
         {"profile": prof, "user_obj": u, "display_name": display_name},
     )
