@@ -1017,10 +1017,13 @@ window.closeModal = function () {
   // Se tiver ?card, remove da URL ao fechar
   // Remove ?card= da URL ao fechar (SEM criar histórico)
   // + marca um “cooldown” para evitar re-open por clique capturado
-  try {
-    window.__modalCloseCooldownUntil = Date.now() + 350; // ligeiramente > sua animação
+    try {
+    const until = Date.now() + 350; // ligeiramente > sua animação
+    const prev = Number(window.__modalCloseCooldownUntil || 0);
+    window.__modalCloseCooldownUntil = Math.max(prev, until);
     clearUrlCard({ replace: true });
   } catch (_e) {}
+
 
   if (!modal) return;
 
@@ -2377,6 +2380,13 @@ function moveCardDom(cardId, newColumnId, newPosition0) {
   // ✅ Fechamento consistente do modal + limpeza de URL
   // =====================================================
   function closeModalHardAndCleanUrl() {
+  //blindagem extra no fechamento “hard” do move
+    try {
+      const until = Date.now() + 900;
+      const prev = Number(window.__modalCloseCooldownUntil || 0);
+      window.__modalCloseCooldownUntil = Math.max(prev, until);
+    } catch (_e) {}
+
     // 1) já inicia scrub (garantia)
     scrubCardParamFor(700);
 
