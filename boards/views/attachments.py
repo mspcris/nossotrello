@@ -47,6 +47,9 @@ def delete_attachment(request, card_id, attachment_id):
 
     attachment.delete()
 
+    board.version += 1
+    board.save(update_fields=["version"])
+
     if desc:
         _log_card(
             card,
@@ -86,6 +89,9 @@ def add_attachment(request, card_id):
         file=uploaded,
         description=desc,
     )
+    
+    board.version += 1
+    board.save(update_fields=["version"])
 
     pretty_name = attachment.file.name.split("/")[-1]
     if desc:

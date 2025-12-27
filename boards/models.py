@@ -1,8 +1,8 @@
-#boards/models.py
+# boards/models.py
 
 from django.conf import settings
 from django.db import models
-from django.utils import timezone
+from django.core.validators import RegexValidator
 
 
 # ============================================================
@@ -18,21 +18,19 @@ class Organization(models.Model):
     )
     home_wallpaper_filename = models.CharField(max_length=255, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
     def __str__(self):
         return self.name
 
     def save(self, *args, **kwargs):
-        # slug simples a partir do nome, se não vier preenchido
         if not self.slug:
             from django.utils.text import slugify
-
             self.slug = slugify(self.name)
         super().save(*args, **kwargs)
 
 
 # ============================================================
-# ORGANIZATION MEMBERSHIP (usuário participante da organização)
+# ORGANIZATION MEMBERSHIP
 # ============================================================
 class OrganizationMembership(models.Model):
     class Role(models.TextChoices):
@@ -56,7 +54,7 @@ class OrganizationMembership(models.Model):
         default=Role.MEMBER,
     )
     created_at = models.DateTimeField(auto_now_add=True)
-   
+
     class Meta:
         unique_together = ("organization", "user")
 
@@ -65,10 +63,9 @@ class OrganizationMembership(models.Model):
 
 
 # ============================================================
-# BOARD (Quadro)
+# BOARD
 # ============================================================
 class Board(models.Model):
-    # Nova relação: organização dona do board
     organization = models.ForeignKey(
         Organization,
         related_name="boards",
@@ -77,7 +74,6 @@ class Board(models.Model):
         blank=True,
     )
 
-    # Quem criou o board
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name="created_boards",
@@ -87,6 +83,10 @@ class Board(models.Model):
     )
 
     name = models.CharField(max_length=255)
+
+    # controle de versão para polling/sync
+    version = models.PositiveIntegerField(default=0)
+
     image = models.ImageField(upload_to="board_covers/", null=True, blank=True)
 
     background_image = models.ImageField(
@@ -98,11 +98,11 @@ class Board(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
-    # SOFT DELETE
+    # soft delete
     is_deleted = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(null=True, blank=True)
 
-    # LEGADO (existe no banco e é NOT NULL)
+    # legado
     home_wallpaper_filename = models.CharField(max_length=255, blank=True, default="")
 
     def __str__(self):
@@ -110,7 +110,7 @@ class Board(models.Model):
 
 
 # ============================================================
-# BOARD MEMBERSHIP (usuário com acesso ao board)
+# BOARD MEMBERSHIP
 # ============================================================
 class BoardMembership(models.Model):
     class Role(models.TextChoices):
@@ -143,7 +143,7 @@ class BoardMembership(models.Model):
 
 
 # ============================================================
-# COLUMN (Coluna)
+# COLUMN
 # ============================================================
 class Column(models.Model):
     board = models.ForeignKey(Board, related_name="columns", on_delete=models.CASCADE)
@@ -151,7 +151,6 @@ class Column(models.Model):
     position = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
-    # Soft delete
     is_deleted = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(null=True, blank=True)
 
@@ -181,7 +180,7 @@ class Column(models.Model):
 
 
 # ============================================================
-# CARD MANAGER (apenas ativos)
+# CARD MANAGER
 # ============================================================
 class ActiveCardManager(models.Manager):
     def get_queryset(self):
@@ -193,35 +192,27 @@ class ActiveCardManager(models.Manager):
 # ============================================================
 class Card(models.Model):
     title = models.CharField(max_length=255)
-
-    # Descrição HTML (Quill). Pode conter <img src="/media/..."> após conversão no views.
     description = models.TextField(blank=True, null=True)
-
     tags = models.CharField(max_length=255, blank=True, null=True)
-
-    # mapeia cor por etiqueta (ex: {"Etiqueta1": "#ff0000"})
     tag_colors = models.JSONField(default=dict, blank=True)
 
-    # capa do card
     cover_image = models.ImageField(upload_to="card_covers/", null=True, blank=True)
 
     column = models.ForeignKey(Column, related_name="cards", on_delete=models.CASCADE)
     position = models.PositiveIntegerField(default=0)
 
-    # Lixeira
     is_deleted = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(blank=True, null=True)
 
-    # Managers
-    objects = ActiveCardManager()       # apenas ativos
-    all_objects = models.Manager()      # todos (incluindo deletados)
+    objects = ActiveCardManager()
+    all_objects = models.Manager()
 
     def __str__(self):
         return self.title
 
 
 # ============================================================
-# CARD LOG (atividades)
+# CARD LOG
 # ============================================================
 class CardLog(models.Model):
     card = models.ForeignKey(Card, related_name="logs", on_delete=models.CASCADE)
@@ -237,12 +228,12 @@ class CardLog(models.Model):
 
 
 # ============================================================
-# CARD ATTACHMENT — múltiplos anexos por card
+# CARD ATTACHMENT
 # ============================================================
 class CardAttachment(models.Model):
     card = models.ForeignKey(Card, related_name="attachments", on_delete=models.CASCADE)
     file = models.FileField(upload_to="attachments/")
-    description = models.CharField(max_length=255, blank=True, default="")  # <-- ADD
+    description = models.CharField(max_length=255, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -252,16 +243,11 @@ class CardAttachment(models.Model):
         return f"Anexo do card {self.card.id}: {self.file.name}"
 
 
-
 # ============================================================
-# CHECKLIST (grupo de itens por card)
+# CHECKLIST
 # ============================================================
 class Checklist(models.Model):
-    card = models.ForeignKey(
-        Card,
-        related_name="checklists",
-        on_delete=models.CASCADE,
-    )
+    card = models.ForeignKey(Card, related_name="checklists", on_delete=models.CASCADE)
     title = models.CharField(max_length=255)
     position = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -272,34 +258,16 @@ class Checklist(models.Model):
     def __str__(self):
         return f"Checklist '{self.title}' do card {self.card.id}"
 
-    @property
-    def total_items(self) -> int:
-        try:
-            return self.items.count()
-        except Exception:
-            return 0
-
-    @property
-    def done_items(self) -> int:
-        try:
-            return self.items.filter(is_done=True).count()
-        except Exception:
-            return 0
-
-
 
 # ============================================================
 # CHECKLIST ITEM
 # ============================================================
 class ChecklistItem(models.Model):
-    # Mantém o vínculo direto com o card (retrocompatibilidade)
     card = models.ForeignKey(
         Card,
         related_name="checklist_items",
         on_delete=models.CASCADE,
     )
-
-    # Novo: checklist pai
     checklist = models.ForeignKey(
         Checklist,
         related_name="items",
@@ -320,17 +288,9 @@ class ChecklistItem(models.Model):
         return self.text
 
 
-
-
-
 # ============================================================
-# USER PROFILE (nome amigável + handle para @mentions + avatar)
+# USER PROFILE
 # ============================================================
-from django.conf import settings
-from django.db import models
-from django.core.validators import RegexValidator
-
-
 class UserProfile(models.Model):
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
@@ -339,8 +299,6 @@ class UserProfile(models.Model):
     )
 
     display_name = models.CharField(max_length=120, blank=True, default="")
-
-    # @handle (único) — ex: @cristiano
     handle = models.CharField(
         max_length=40,
         unique=True,
@@ -354,10 +312,8 @@ class UserProfile(models.Model):
         null=True,
     )
 
-    # ✅ foto de perfil (fallback é a logo no template)
     avatar = models.ImageField(upload_to="avatars/", blank=True, null=True)
 
-    # NOVOS CAMPOS (cadastro/contato)
     posto = models.CharField(max_length=120, blank=True, default="")
     setor = models.CharField(max_length=120, blank=True, default="")
     ramal = models.CharField(max_length=20, blank=True, default="")
@@ -374,15 +330,8 @@ class UserProfile(models.Model):
         return self.handle or self.display_name or str(self.user)
 
 
-
-
-
-
-
-
-
 # ============================================================
-# MENTIONS (registro + idempotência + origem)
+# MENTIONS
 # ============================================================
 class Mention(models.Model):
     class Source(models.TextChoices):
@@ -394,7 +343,6 @@ class Mention(models.Model):
 
     source = models.CharField(max_length=20, choices=Source.choices)
 
-    # quem marcou / quem foi marcado
     actor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name="mentions_made",
@@ -408,10 +356,7 @@ class Mention(models.Model):
         on_delete=models.CASCADE,
     )
 
-    # texto bruto onde ocorreu (para auditoria)
     raw_text = models.TextField(blank=True, default="")
-
-    # se veio de um log específico
     card_log = models.ForeignKey(
         CardLog,
         related_name="mentions",
@@ -423,7 +368,6 @@ class Mention(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        # idempotência: mesmo usuário marcado no mesmo card/source/log não duplica
         constraints = [
             models.UniqueConstraint(
                 fields=["card", "mentioned_user", "source", "card_log"],
@@ -437,49 +381,3 @@ class Mention(models.Model):
 
     def __str__(self):
         return f"{self.mentioned_user} mencionado em {self.card} ({self.source})"
-
-# ============================================================
-# MENTIONS (registro + idempotência + origem)
-# ============================================================
-
-class Mention(models.Model):
-    class Source(models.TextChoices):
-        ACTIVITY = "activity", "Atividade"
-        DESCRIPTION = "description", "Descrição"
-
-    board = models.ForeignKey("Board", related_name="mentions", on_delete=models.CASCADE)
-    card = models.ForeignKey("Card", related_name="mentions", on_delete=models.CASCADE)
-
-    source = models.CharField(max_length=20, choices=Source.choices)
-
-    actor = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        related_name="mentions_made",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-    )
-    mentioned_user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        related_name="mentions_received",
-        on_delete=models.CASCADE,
-    )
-
-    raw_text = models.TextField(blank=True, default="")
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=["card", "mentioned_user", "source"],
-                name="uniq_mention_per_card_user_source",
-            )
-        ]
-        indexes = [
-            models.Index(fields=["card", "mentioned_user"]),
-            models.Index(fields=["board", "mentioned_user"]),
-        ]
-
-    def __str__(self):
-        return f"{self.mentioned_user} mencionado em {self.card} ({self.source})"
-#END boards/models.py

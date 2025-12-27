@@ -57,6 +57,9 @@ def checklists_reorder(request, card_id):
         return JsonResponse({"ok": False, "error": "Checklist fora do card."}, status=400)
 
     with transaction.atomic():
+        board.version += 1
+        board.save(update_fields=["version"])
+
         for idx, cid in enumerate(order):
             Checklist.objects.filter(id=cid, card=card).update(position=idx)
 
@@ -64,6 +67,8 @@ def checklists_reorder(request, card_id):
     _log_card(card, request, f"<p><strong>{actor}</strong> reordenou checklists (drag).</p>")
 
     return JsonResponse({"ok": True})
+
+
 
 
 @login_required
@@ -95,7 +100,8 @@ def checklist_items_reorder(request, card_id):
             return JsonResponse({"ok": False, "error": "Payload inválido (tipos)."}, status=400)
 
     valid_checklists = set(
-        Checklist.objects.filter(card=card, id__in=checklist_ids).values_list("id", flat=True)
+        Checklist.objects.filter(card=card, id__in=checklist_ids)
+        .values_list("id", flat=True)
     )
     if checklist_ids - valid_checklists:
         return JsonResponse({"ok": False, "error": "Checklist fora do card."}, status=400)
@@ -107,24 +113,35 @@ def checklist_items_reorder(request, card_id):
 
     changed = []
     for u in updates:
-        iid = int(u["item_id"])
-        cid = int(u["checklist_id"])
-        pos = int(u["position"])
-        it = items_map[iid]
+        it = items_map[int(u["item_id"])]
+        new_checklist_id = int(u["checklist_id"])
+        new_position = int(u["position"])
 
-        if it.checklist_id != cid or it.position != pos:
-            it.checklist_id = cid
-            it.position = pos
+        if it.checklist_id != new_checklist_id or it.position != new_position:
+            it.checklist_id = new_checklist_id
+            it.position = new_position
             changed.append(it)
 
-    with transaction.atomic():
-        if changed:
-            ChecklistItem.objects.bulk_update(changed, ["checklist_id", "position"])
+    if changed:
+        with transaction.atomic():
+            ChecklistItem.objects.bulk_update(
+                changed, ["checklist_id", "position"]
+            )
+            board.version += 1
+            board.save(update_fields=["version"])
 
     actor = _actor_label(request)
-    _log_card(card, request, f"<p><strong>{actor}</strong> reordenou itens de checklist (drag).</p>")
+    _log_card(
+        card,
+        request,
+        f"<p><strong>{actor}</strong> reordenou itens de checklist (drag).</p>",
+    )
 
     return JsonResponse({"ok": True})
+
+
+
+
 
 
 # ==========================================================
@@ -144,6 +161,9 @@ def checklist_add(request, card_id):
     position = card.checklists.count()
 
     checklist = Checklist.objects.create(card=card, title=title, position=position)
+    board.version += 1
+    board.save(update_fields=["version"])
+
 
     _log_card(card, request, f"<p><strong>{actor}</strong> criou a checklist <strong>{checklist.title}</strong>.</p>")
     return render(request, "boards/partials/checklist_list.html", {
@@ -169,6 +189,9 @@ def checklist_rename(request, checklist_id):
 
     checklist.title = title
     checklist.save(update_fields=["title"])
+    board.version += 1
+    board.save(update_fields=["version"])
+
 
     _log_card(card, request, f"<p><strong>{actor}</strong> renomeou a checklist de <strong>{old_title}</strong> para <strong>{title}</strong>.</p>")
     return render(request, "boards/partials/checklist_list.html", {
@@ -189,6 +212,9 @@ def checklist_delete(request, checklist_id):
     actor = _actor_label(request)
     title = checklist.title
     checklist.delete()
+    board.version += 1
+    board.save(update_fields=["version"])
+
 
     for idx, c in enumerate(card.checklists.order_by("position", "created_at")):
         if c.position != idx:
@@ -218,6 +244,9 @@ def checklist_add_item(request, checklist_id):
 
     position = checklist.items.count()
     item = ChecklistItem.objects.create(card=card, checklist=checklist, text=text, position=position)
+    board.version += 1
+    board.save(update_fields=["version"])
+
 
     _log_card(card, request, f"<p><strong>{actor}</strong> adicionou item na checklist <strong>{checklist.title}</strong>: {item.text}.</p>")
     return render(request, "boards/partials/checklist_list.html", {
@@ -239,6 +268,9 @@ def checklist_toggle_item(request, item_id):
 
     item.is_done = not item.is_done
     item.save(update_fields=["is_done"])
+    board.version += 1
+    board.save(update_fields=["version"])
+
 
     status = "concluiu" if item.is_done else "reabriu"
     _log_card(card, request, f"<p><strong>{actor}</strong> {status} um item da checklist: {item.text}.</p>")
@@ -262,6 +294,9 @@ def checklist_delete_item(request, item_id):
     text = item.text
     checklist = item.checklist
     item.delete()
+    board.version += 1
+    board.save(update_fields=["version"])
+
 
     if checklist:
         for idx, it in enumerate(checklist.items.order_by("position", "created_at")):
@@ -293,6 +328,9 @@ def checklist_update_item(request, item_id):
 
     item.text = text
     item.save(update_fields=["text"])
+    board.version += 1
+    board.save(update_fields=["version"])
+
 
     _log_card(card, request, f"<p><strong>{actor}</strong> editou um item da checklist de {old} para {text}.</p>")
     return render(request, "boards/partials/checklist_list.html", {
@@ -350,6 +388,9 @@ def checklist_move(request, checklist_id):
         checklists.insert(new_index, moved)
 
         with transaction.atomic():
+            board.version += 1
+            board.save(update_fields=["version"])
+
             for idx, c in enumerate(checklists):
                 if c.position != idx:
                     c.position = idx
@@ -407,6 +448,9 @@ def _checklist_move_item_delta(request, item_id, delta: int):
     b = items[new_idx]
 
     with transaction.atomic():
+        board.version += 1
+        board.save(update_fields=["version"])
+
         a_pos = a.position
         b_pos = b.position
         a.position = b_pos

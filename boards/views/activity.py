@@ -59,6 +59,8 @@ def add_activity(request, card_id):
         f"<p><strong>{actor}</strong> adicionou uma atividade:</p>{html}",
         attachment=None,
     )
+    board.version += 1
+    board.save(update_fields=["version"])
 
     # menções: @handle e emails no texto bruto
     try:
