@@ -302,6 +302,7 @@ def move_card(request):
     new_position = int(data.get("new_position"))
 
     card = get_object_or_404(Card, id=card_id)
+
     old_column = card.column
     new_column = get_object_or_404(Column, id=new_column_id)
 
@@ -315,58 +316,115 @@ def move_card(request):
     actor = _actor_label(request)
     old_pos = int(card.position or 0)
 
-    # ----------------------------
-    # 1) Mover dentro da mesma coluna
-    # ----------------------------
-    if old_column.id == new_column.id:
-        cards = list(old_column.cards.order_by("position"))
+    # ✅ DEFINE BOARD UMA ÚNICA VEZ (FIX DO 500)
+    board = old_board
 
-        # remove o card atual (garante que só aparece 1x)
-        cards = [c for c in cards if c.id != card.id]
+
+
+
+@login_required
+@require_POST
+@transaction.atomic
+def move_card(request):
+    """
+    Move um card dentro da mesma coluna ou entre colunas.
+    Implementação determinística para evitar rollback visual via polling.
+    """
+    data = json.loads(request.body.decode("utf-8"))
+
+    card_id = int(data.get("card_id"))
+    new_column_id = int(data.get("new_column_id"))
+    new_position = int(data.get("new_position"))
+
+    card = get_object_or_404(Card, id=card_id)
+
+    old_column = card.column
+    new_column = get_object_or_404(Column, id=new_column_id)
+
+    old_board = old_column.board
+    new_board = new_column.board
+
+    # permissão (origem e destino)
+    if (
+        not _user_can_edit_board(request.user, old_board)
+        or not _user_can_edit_board(request.user, new_board)
+    ):
+        return _deny_read_only(request, as_json=True)
+
+    actor = _actor_label(request)
+    old_pos = int(card.position or 0)
+
+    # ============================================================
+    # 1) MOVER DENTRO DA MESMA COLUNA (CORRIGIDO)
+    # ============================================================
+    if old_column.id == new_column.id:
+        # cards exceto o movido
+        siblings = list(
+            old_column.cards
+            .exclude(id=card.id)
+            .order_by("position")
+        )
 
         # clamp
         if new_position < 0:
             new_position = 0
-        if new_position > len(cards):
-            new_position = len(cards)
+        if new_position > len(siblings):
+            new_position = len(siblings)
 
-        cards.insert(new_position, card)
-
-        for index, c in enumerate(cards):
-            if int(c.position or 0) != index:
+        # reindexa os outros cards
+        for index, c in enumerate(siblings):
+            if index >= new_position:
+                c.position = index + 1
+            else:
                 c.position = index
-                c.save(update_fields=["position"])
-        
-        board.version += 1
-        board.save(update_fields=["version"])
+            c.save(update_fields=["position"])
+
+        # salva o card movido isoladamente
+        card.position = new_position
+        card.save(update_fields=["position"])
+
+        # versão do board
+        old_board.version += 1
+        old_board.save(update_fields=["version"])
 
         _log_card(
             card,
             request,
-            f"<p><strong>{actor}</strong> reordenou este card dentro da coluna <strong>{escape(old_column.name)}</strong> (de {old_pos} para {new_position}).</p>",
+            (
+                f"<p><strong>{actor}</strong> reordenou este card dentro da coluna "
+                f"<strong>{escape(old_column.name)}</strong> "
+                f"(de {old_pos} para {new_position}).</p>"
+            ),
         )
+
         return JsonResponse({"status": "ok"})
 
-    # ----------------------------
-    # 2) Mover para outra coluna
-    # ----------------------------
+    # ============================================================
+    # 2) MOVER PARA OUTRA COLUNA (ESTÁVEL)
+    # ============================================================
 
-    # reindex da coluna antiga (sem o card)
-    old_cards = list(old_column.cards.exclude(id=card.id).order_by("position"))
+    # reindexa coluna antiga
+    old_cards = list(
+        old_column.cards
+        .exclude(id=card.id)
+        .order_by("position")
+    )
+
     for index, c in enumerate(old_cards):
         if int(c.position or 0) != index:
             c.position = index
             c.save(update_fields=["position"])
 
-    # troca a coluna do card (sem “vazar” position antigo)
+    # move card para nova coluna
     card.column = new_column
     card.save(update_fields=["column"])
-    board = card.column.board
-    board.version += 1
-    board.save(update_fields=["version"])
-    
-    # monta a lista da nova coluna SEM o card (evita duplicação)
-    new_cards = list(new_column.cards.exclude(id=card.id).order_by("position"))
+
+    # cards da nova coluna (sem o card)
+    new_cards = list(
+        new_column.cards
+        .exclude(id=card.id)
+        .order_by("position")
+    )
 
     # clamp
     if new_position < 0:
@@ -374,20 +432,36 @@ def move_card(request):
     if new_position > len(new_cards):
         new_position = len(new_cards)
 
-    new_cards.insert(new_position, card)
-
+    # reindexa nova coluna
     for index, c in enumerate(new_cards):
-        if int(c.position or 0) != index:
+        if index >= new_position:
+            c.position = index + 1
+        else:
             c.position = index
-            c.save(update_fields=["position"])
+        c.save(update_fields=["position"])
+
+    # posiciona o card
+    card.position = new_position
+    card.save(update_fields=["position"])
+
+    # versão do board destino
+    new_board.version += 1
+    new_board.save(update_fields=["version"])
 
     _log_card(
         card,
         request,
-        f"<p><strong>{actor}</strong> moveu este card de <strong>{escape(old_column.name)}</strong> para <strong>{escape(new_column.name)}</strong>.</p>",
+        (
+            f"<p><strong>{actor}</strong> moveu este card de "
+            f"<strong>{escape(old_column.name)}</strong> para "
+            f"<strong>{escape(new_column.name)}</strong>.</p>"
+        ),
     )
 
     return JsonResponse({"status": "ok"})
+
+
+
 
 
 @login_required

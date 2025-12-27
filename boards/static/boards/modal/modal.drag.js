@@ -1,70 +1,90 @@
-// modal.drag.js — mover card
-(() => {
-  if (!window.Modal) {
-    console.error("modal.core.js não carregado");
-    return;
+// boards/static/boards/modal/modal.drag.js
+// RESPONSABILIDADE ÚNICA:
+// - Diferenciar CLICK de DRAG
+// - Abrir modal SOMENTE se for click
+// - NUNCA interferir no SortableJS
+
+(function () {
+  console.log("[modal.drag] loaded");
+
+  const DRAG_THRESHOLD = 6;
+
+  let startX = 0;
+  let startY = 0;
+  let moved = false;
+  let activeCard = null;
+
+  window.__isDraggingCard = false;
+
+  function getCard(el) {
+    return el && el.closest && el.closest(".card-item, li[data-card-id]");
   }
 
-  if (window.Modal.moveCard) return;
+  // ============================
+  // POINTER DOWN
+  // ============================
+  document.addEventListener(
+    "pointerdown",
+    function (e) {
+      const card = getCard(e.target);
+      if (!card) return;
 
-  function getCsrf() {
-    return document.querySelector("[name=csrfmiddlewaretoken]")?.value || "";
-  }
+      // ignora botões internos
+      if (e.target.closest("button, a, [hx-get], [hx-post]")) return;
 
-  function moveCardDom(cardId, columnId, position) {
-    const card = document.getElementById(`card-${cardId}`);
-    if (!card) return false;
+      startX = e.clientX;
+      startY = e.clientY;
+      moved = false;
+      activeCard = card;
+      window.__isDraggingCard = false;
+    },
+    true
+  );
 
-    const col =
-      document.querySelector(`#cards-col-${columnId}`) ||
-      document.querySelector(`[data-column-id="${columnId}"] ul`);
+  // ============================
+  // POINTER MOVE
+  // ============================
+  document.addEventListener(
+    "pointermove",
+    function (e) {
+      if (!activeCard) return;
 
-    if (!col) return false;
+      const dx = Math.abs(e.clientX - startX);
+      const dy = Math.abs(e.clientY - startY);
 
-    const children = Array.from(col.children);
-    const ref = children[position] || null;
-    col.insertBefore(card, ref);
-    return true;
-  }
+      if (dx > DRAG_THRESHOLD || dy > DRAG_THRESHOLD) {
+        moved = true;
+        window.__isDraggingCard = true;
+      }
+    },
+    true
+  );
 
-  window.Modal.moveCard = async function (payload) {
-    if (!payload?.card_id) return;
+  // ============================
+  // POINTER UP
+  // ============================
+  document.addEventListener(
+    "pointerup",
+    function () {
+      if (!activeCard) return;
 
-    // bloqueia reabertura
-    window.Modal.gate.block(4000, "move-card");
+      const card = activeCard;
+      activeCard = null;
 
-    let resp;
-    try {
-      resp = await fetch("/move-card/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRFToken": getCsrf(),
-        },
-        credentials: "same-origin",
-        body: JSON.stringify(payload),
-      });
-    } catch (_e) {
-      window.Modal.close();
-      return;
-    }
+      // CLICK REAL → abre modal
+      if (!moved) {
+        const url = card.dataset.cardOpenUrl;
+        if (url && window.htmx) {
+          window.htmx.ajax("GET", url, "#modal-body");
+        }
+      }
 
-    if (!resp.ok) {
-      window.Modal.close();
-      return;
-    }
+      moved = false;
 
-    const moved = moveCardDom(
-      payload.card_id,
-      payload.new_column_id,
-      payload.new_position
-    );
-
-    window.Modal.url.clear({ replace: true });
-    window.Modal.close();
-
-    if (!moved) {
-      window.location.reload();
-    }
-  };
+      setTimeout(() => {
+        window.__isDraggingCard = false;
+      }, 0);
+    },
+    true
+  );
 })();

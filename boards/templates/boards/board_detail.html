@@ -127,7 +127,8 @@
 
     <!-- 🔑 CONTAINER QUE SERÁ ATUALIZADO PELO POLLING -->
     <div id="columns-container">
-      <div id="columns-list" class="flex gap-6">
+        <div id="columns-container" class="flex gap-6">
+
         {% for column in columns %}
           {% include "boards/partials/column_item.html" %}
         {% endfor %}
@@ -188,14 +189,18 @@
   data-board-version="{{ board.version }}"
 {% endblock %}
 
+
+<!-- ======================== SCRIPTS ======================== -->
 <!-- ======================== POLLING ======================== -->
 <script>
   window.BOARD_ID = {{ board.id }};
   window.BOARD_VERSION = {{ board.version }};
+  window.__isDraggingCard = false;
 </script>
 
 <script>
 (function () {
+
   function pollBoard() {
     fetch(`/board/${window.BOARD_ID}/poll/?v=${window.BOARD_VERSION}`, {
       credentials: "same-origin",
@@ -203,28 +208,51 @@
     })
     .then(r => r.ok ? r.json() : null)
     .then(data => {
-  if (!data || !data.changed) return;
 
-  // 🔴 BLOQUEIA POLLING DURANTE DRAG
-  if (window.__isDraggingCard) return;
+      // 1️⃣ resposta inválida ou sem mudança
+      if (!data || !data.changed) return;
 
-  window.BOARD_VERSION = data.version;
+      // 2️⃣ nunca atualiza durante drag
+      if (window.__isDraggingCard) return;
 
-  const container = document.getElementById("columns-container");
-  if (container && data.html) {
-    container.innerHTML = data.html;
-  }
-})
+      // 3️⃣ segurança: sem HTML válido → não toca no DOM
+      if (!data.html || data.html.trim() === "") return;
 
+      // 4️⃣ atualiza versão
+      window.BOARD_VERSION = data.version;
+
+      // 5️⃣ swap de DOM
+      const container = document.getElementById("columns-container");
+      if (!container) return;
+
+      container.innerHTML = data.html;
+
+      // 6️⃣ reativa comportamentos JS
+      if (typeof initSortable === "function") {
+        initSortable();
+      }
+
+      if (typeof initSortableColumns === "function") {
+        initSortableColumns();
+      }
+    })
     .catch(() => {});
   }
 
+  // watchdog: nunca deixar drag travado
+  setInterval(() => {
+    if (window.__isDraggingCard) {
+      window.__isDraggingCard = false;
+    }
+  }, 3000);
+
   setInterval(pollBoard, 1500);
+
 })();
 </script>
 
 
-<!-- ======================== SCRIPTS ======================== -->
+
 <script>
   // ============================================================
   // FILTER (Tags = frontend | Texto = backend)
