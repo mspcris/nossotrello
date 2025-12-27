@@ -121,8 +121,6 @@ def reorder_columns(request, board_id):
 
     return JsonResponse({"ok": True})
 
-
-@require_POST
 @require_POST
 def rename_column(request, column_id):
     column = get_object_or_404(Column, id=column_id)
