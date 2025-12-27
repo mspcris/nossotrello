@@ -1,16 +1,16 @@
+
 <!-- BOARD_DETAIL.HTML -->
 {% extends "base.html" %}
 {% load static %}
 {% load tag_helpers %}
+
 {% block extra_css %}
 <link rel="stylesheet" href="{% url 'boards:board_wallpaper_css' board.id %}">
 <link rel="stylesheet" href="{% static 'boards/board_detail.css' %}">
 {% endblock %}
 
-
 {% block title %}{{ board.name }}{% endblock %}
 {% block header_left %}{% endblock %}
-
 
 {% block header_right_under_logo %}
 <div class="w-64">
@@ -19,7 +19,6 @@
       Filtrar por:
     </span>
 
-    <!-- Segmented control: Tags | Texto -->
     <div class="inline-flex rounded-md border border-gray-300 bg-white/80 overflow-hidden">
       <button
         type="button"
@@ -51,66 +50,66 @@
 {% endblock %}
 
 {% block drawer_items %}
-  <li>
-    <a class="nt-link" href="{% url 'boards:boards_index' %}">← Voltar aos Quadros</a>
-  </li>
+<li>
+  <a class="nt-link" href="{% url 'boards:boards_index' %}">← Voltar aos Quadros</a>
+</li>
 
-  {% if can_share_board %}
-  <li>
-    <button class="nt-link" type="button"
-            hx-get="{% url 'boards:board_share' board.id %}"
-            hx-target="body" hx-swap="beforeend">
-      Compartilhar quadro
+{% if can_share_board %}
+<li>
+  <button class="nt-link" type="button"
+          hx-get="{% url 'boards:board_share' board.id %}"
+          hx-target="body" hx-swap="beforeend">
+    Compartilhar quadro
+  </button>
+</li>
+{% elif can_leave_board %}
+<li>
+  <form method="post" action="{% url 'boards:board_leave' board.id %}">
+    {% csrf_token %}
+    <button type="submit" class="nt-link"
+            onclick="return confirm('Sair deste quadro? Ele vai sumir da sua lista.')">
+      Sair do quadro
     </button>
-  </li>
-  {% elif can_leave_board %}
-  <li>
-    <form method="post" action="{% url 'boards:board_leave' board.id %}">
-      {% csrf_token %}
-      <button type="submit" class="nt-link"
-              onclick="return confirm('Sair deste quadro? Ele vai sumir da sua lista.')">
-        Sair do quadro
-      </button>
-    </form>
-  </li>
-  {% endif %}
+  </form>
+</li>
+{% endif %}
 
-  <li>
-    <button class="nt-link" type="button"
-            hx-get="{% url 'boards:update_board_wallpaper' board.id %}"
-            hx-target="body" hx-swap="beforeend">
-      Trocar Wallpaper
-    </button>
-  </li>
+<li>
+  <button class="nt-link" type="button"
+          hx-get="{% url 'boards:update_board_wallpaper' board.id %}"
+          hx-target="body" hx-swap="beforeend">
+    Trocar Wallpaper
+  </button>
+</li>
 
-  <li>
-    <button class="nt-link" type="button"
-            hx-post="{% url 'boards:remove_board_wallpaper' board.id %}"
-            hx-target="body" hx-swap="beforeend">
-      Remover papel de parede
-    </button>
-  </li>
+<li>
+  <button class="nt-link" type="button"
+          hx-post="{% url 'boards:remove_board_wallpaper' board.id %}"
+          hx-target="body" hx-swap="beforeend">
+    Remover papel de parede
+  </button>
+</li>
 
-  <li>
-    <button id="toggle-delete-columns" type="button" class="nt-link">
-      Excluir colunas
-    </button>
-  </li>
+<li>
+  <button id="toggle-delete-columns" type="button" class="nt-link">
+    Excluir colunas
+  </button>
+</li>
 
-  <li>
-    <button id="toggle-delete-cards" type="button" class="nt-link">
-      Excluir cards
-    </button>
-  </li>
+<li>
+  <button id="toggle-delete-cards" type="button" class="nt-link">
+    Excluir cards
+  </button>
+</li>
 {% endblock %}
-
-
 
 {% block content %}
 
 <div class="mt-2 mb-4">
   <div class="text-sm font-semibold text-white/90 drop-shadow">
-    <a href="{% url 'boards:boards_index' %}" class="underline underline-offset-2">Todos os Quadros</a>
+    <a href="{% url 'boards:boards_index' %}" class="underline underline-offset-2">
+      Todos os Quadros
+    </a>
     <span class="opacity-70">→</span>
     <span>{{ board.name }}</span>
   </div>
@@ -121,55 +120,66 @@
   </h1>
 </div>
 
-
 <!-- ======================== LISTA DE COLUNAS ======================== -->
 <div id="board-root" data-can-edit="{{ can_edit|yesno:'1,0' }}">
-  <div id="columns-wrapper" class="flex gap-6 overflow-x-auto overflow-y-hidden pb-6 pr-4 h-[calc(100vh-140px)]">
+  <div id="columns-wrapper"
+       class="flex gap-6 overflow-x-auto overflow-y-hidden pb-6 pr-4 h-[calc(100vh-140px)]">
 
-
-    <div id="columns-list" class="flex gap-6">
+    <!-- 🔑 CONTAINER QUE SERÁ ATUALIZADO PELO POLLING -->
+    <div id="columns-container">
+      <div id="columns-list" class="flex gap-6">
         {% for column in columns %}
-            {% include "boards/partials/column_item.html" %}
+          {% include "boards/partials/column_item.html" %}
         {% endfor %}
-
+      </div>
     </div>
 
     <div id="add-column-box"
-        class="w-64 bg-white/60 backdrop-blur-md border border-gray-300 rounded-xl p-4 h-fit shrink-0 shadow-md">
+         class="w-64 bg-white/60 backdrop-blur-md border border-gray-300 rounded-xl p-4 h-fit shrink-0 shadow-md">
 
-        <h3 class="font-semibold mb-2">Adicionar nova coluna</h3>
+      <h3 class="font-semibold mb-2">Adicionar nova coluna</h3>
 
-        <form method="post"
-      id="add-column-form"
-      hx-post="{% url 'boards:add_column' board.id %}"
-      hx-target="#columns-list"
-      hx-swap="beforeend"
-      hx-on="submit: if(!validateAddColumnForm(this,event)) return false;
-             htmx:afterRequest: if (event.detail.successful) { this.reset(); hideAddColumnError(); }">
+      <form method="post"
+            id="add-column-form"
+            hx-post="{% url 'boards:add_column' board.id %}"
+            hx-target="#columns-list"
+            hx-swap="beforeend"
+            hx-on="
+              submit: if(!validateAddColumnForm(this,event)) return false;
+              htmx:afterRequest: if (event.detail.successful) {
+                this.reset();
+                hideAddColumnError();
+              }
+            ">
+        {% csrf_token %}
 
-  {% csrf_token %}
+        <label class="block text-sm font-medium mb-1">Nome:</label>
 
-  <label class="block text-sm font-medium mb-1">Nome:</label>
+        <input type="text"
+               name="name"
+               id="add-column-name"
+               class="w-full border rounded px-3 py-2 mb-2"
+               placeholder="Nome da coluna">
 
-  <input type="text"
-         name="name"
-         id="add-column-name"
-         class="w-full border rounded px-3 py-2 mb-2"
-         placeholder="Nome da coluna">
+        <div id="add-column-error"
+             class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2 mb-3">
+          Digite o nome da coluna antes.
+        </div>
 
-  <div id="add-column-error"
-       class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2 mb-3">
-    Digite o nome da coluna antes.
-  </div>
-
-  <button class="px-3 py-2 bg-blue-600 text-white rounded w-full" type="submit">
-    Adicionar Coluna
-  </button>
-    </form>
-
+        <button class="px-3 py-2 bg-blue-600 text-white rounded w-full" type="submit">
+          Adicionar Coluna
+        </button>
+      </form>
     </div>
+
   </div>
 </div>
+
+
+<h1 id="board-title"
+    class="text-3xl font-extrabold text-white drop-shadow"
+    contenteditable="true"
+    onblur="updateBoardTitle({{ board.id }})">
 
 
 
@@ -178,12 +188,40 @@
   data-board-version="{{ board.version }}"
 {% endblock %}
 
+<!-- ======================== POLLING ======================== -->
 <script>
   window.BOARD_ID = {{ board.id }};
+  window.BOARD_VERSION = {{ board.version }};
 </script>
 
+<script>
+(function () {
+  function pollBoard() {
+    fetch(`/board/${window.BOARD_ID}/poll/?v=${window.BOARD_VERSION}`, {
+      credentials: "same-origin",
+      headers: { "Accept": "application/json" }
+    })
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+  if (!data || !data.changed) return;
 
+  // 🔴 BLOQUEIA POLLING DURANTE DRAG
+  if (window.__isDraggingCard) return;
 
+  window.BOARD_VERSION = data.version;
+
+  const container = document.getElementById("columns-container");
+  if (container && data.html) {
+    container.innerHTML = data.html;
+  }
+})
+
+    .catch(() => {});
+  }
+
+  setInterval(pollBoard, 1500);
+})();
+</script>
 
 
 <!-- ======================== SCRIPTS ======================== -->
