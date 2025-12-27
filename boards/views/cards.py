@@ -6,7 +6,6 @@ import os
 import uuid
 
 from django.core.files.base import ContentFile
-
 from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest
 from django.shortcuts import render, get_object_or_404
 from django.views.decorators.http import require_POST, require_http_methods
@@ -29,8 +28,7 @@ from .helpers import (
     process_mentions_and_notify,
 )
 
-# Mantido por compatibilidade com o projeto (pode existir uso em outros lugares),
-# mas este arquivo NÃO depende mais dele para controle de escrita.
+# Mantido por compatibilidade com o projeto
 from ..permissions import can_edit_board  # noqa: F401
 
 from ..forms import CardForm
@@ -38,18 +36,9 @@ from ..models import Board, Column, Card, CardAttachment, BoardMembership
 
 
 # ============================================================
-# PERMISSÕES (FONTE ÚNICA DA VERDADE PARA ESCRITA NESTE ARQUIVO)
+# PERMISSÕES
 # ============================================================
 def _user_can_edit_board(user, board: Board) -> bool:
-    """
-    Regra de negócio (backend):
-      - staff: pode tudo
-      - se o board usa memberships:
-          - só OWNER/EDITOR pode escrever
-          - VIEWER (ou sem membership): somente leitura
-      - se o board NÃO usa memberships (legado):
-          - created_by pode escrever
-    """
     if not getattr(user, "is_authenticated", False):
         return False
 
@@ -61,39 +50,31 @@ def _user_can_edit_board(user, board: Board) -> bool:
         bm = memberships_qs.filter(user=user).first()
         if not bm:
             return False
-        return bm.role in {BoardMembership.Role.OWNER, BoardMembership.Role.EDITOR}
+        return bm.role in {
+            BoardMembership.Role.OWNER,
+            BoardMembership.Role.EDITOR,
+        }
 
-    # Legado: sem memberships
     return bool(getattr(board, "created_by_id", None) == getattr(user, "id", None))
 
 
 def _deny_read_only(request, *, as_json: bool = False):
-    """
-    Resposta padronizada.
-    - as_json=True: ideal para endpoints chamados por JS (drag/drop, ações no modal via fetch)
-    - as_json=False: mantém compatibilidade com fluxos antigos baseados em HTML
-    """
     if as_json:
         return JsonResponse({"error": "Somente leitura."}, status=403)
     return HttpResponse("Somente leitura.", status=403)
 
 
 # ============================================================
-# CARD: CRUD básico + modal
+# CARD: CRUD
 # ============================================================
-
 @login_required
 def add_card(request, column_id):
     column = get_object_or_404(Column, id=column_id)
-
-    # ✅ Segurança/Regra de negócio:
-    # Se o usuário está em modo "somente leitura" no board, não pode abrir nem executar criação.
-    # (Bloqueia GET do form e POST de criação)
     board = column.board
+
     if not _user_can_edit_board(request.user, board):
         return _deny_read_only(request)
 
-    # where vem do GET (abrir form) e do POST (criar card)
     where = (request.GET.get("where") or request.POST.get("where") or "bottom").strip().lower()
     if where not in ("top", "bottom"):
         where = "bottom"
@@ -111,24 +92,24 @@ def add_card(request, column_id):
             raw_desc = (request.POST.get("description") or card.description or "").strip()
             desc_html, saved_paths = _save_base64_images_to_media(raw_desc, folder="quill")
             card.description = desc_html
-
             card.column = column
 
             if where == "top":
-                # empurra todos +1 e coloca novo em 0
                 Card.objects.filter(column=column).update(position=F("position") + 1)
                 card.position = 0
             else:
-                # fim da fila
                 card.position = column.cards.count()
 
             card.save()
 
-            # menções na descrição (texto bruto do textarea)
+            board = card.column.board
+            board.version += 1
+            board.save(update_fields=["version"])
+
             try:
                 process_mentions_and_notify(
                     request=request,
-                    board=card.column.board,
+                    board=board,
                     card=card,
                     source="description",
                     raw_text=raw_desc,
@@ -139,10 +120,12 @@ def add_card(request, column_id):
             _log_card(
                 card,
                 request,
-                f"<p><strong>{actor}</strong> criou este card na coluna <strong>{escape(column.name)}</strong>.</p>",
+                (
+                    f"<p><strong>{actor}</strong> criou este card na coluna "
+                    f"<strong>{escape(column.name)}</strong>.</p>"
+                ),
             )
 
-        # Garante anexos + atividade para imagens salvas (base64) e também imagens já referenciadas /media/
         referenced_paths = _extract_media_image_paths(card.description or "", folder="quill")
         all_paths = list(dict.fromkeys((saved_paths or []) + (referenced_paths or [])))
 
@@ -157,13 +140,11 @@ def add_card(request, column_id):
 
         return render(request, "boards/partials/card_item.html", {"card": card})
 
-    # GET: abre o form
     return render(
         request,
         "boards/partials/add_card_form.html",
         {"column": column, "form": CardForm(), "where": where},
     )
-
 
 @login_required
 @require_POST
@@ -195,6 +176,9 @@ def update_card(request, card_id):
     added = [t for t in new_tags if t not in old_tags]
 
     card.save()
+    board = card.column.board
+    board.version += 1
+    board.save(update_fields=["version"])
 
     # ✅ menções na descrição (texto bruto do POST)
     import logging
@@ -294,7 +278,9 @@ def delete_card(request, card_id):
         card.is_deleted = True
         card.deleted_at = timezone.now()
         card.save(update_fields=["is_deleted", "deleted_at"])
-
+        board = card.column.board
+        board.version += 1
+        board.save(update_fields=["version"])
     return HttpResponse("", status=200)
 
 
@@ -372,7 +358,10 @@ def move_card(request):
     # troca a coluna do card (sem “vazar” position antigo)
     card.column = new_column
     card.save(update_fields=["column"])
-
+    board = card.column.board
+    board.version += 1
+    board.save(update_fields=["version"])
+    
     # monta a lista da nova coluna SEM o card (evita duplicação)
     new_cards = list(new_column.cards.exclude(id=card.id).order_by("position"))
 
@@ -592,7 +581,9 @@ def remove_tag(request, card_id):
 
     card.tags = ", ".join(new_tags)
     card.save(update_fields=["tags"])
-
+    board = card.column.board
+    board.version += 1
+    board.save(update_fields=["version"])
     _log_card(card, request, f"<p><strong>{actor}</strong> removeu a etiqueta <strong>{escape(tag)}</strong>.</p>")
 
     modal_html = render(request, "boards/partials/card_modal_body.html", _card_modal_context(card)).content.decode("utf-8")
@@ -629,7 +620,9 @@ def set_tag_color(request, card_id):
     data[tag] = color
     card.tag_colors = json.dumps(data, ensure_ascii=False)
     card.save(update_fields=["tag_colors"])
-
+    board = card.column.board
+    board.version += 1
+    board.save(update_fields=["version"])
     modal_html = render(
         request,
         "boards/partials/card_tags_bar.html",
@@ -747,7 +740,9 @@ def set_card_cover(request, card_id):
     # ============================================================
     card.cover_image = f
     card.save(update_fields=["cover_image"])
-
+    board = card.column.board
+    board.version += 1
+    board.save(update_fields=["version"])
     # pega rel da nova
     new_rel = ""
     try:
@@ -844,7 +839,9 @@ def remove_card_cover(request, card_id):
     # só zera o campo (sem deletar arquivo)
     card.cover_image = None
     card.save(update_fields=["cover_image"])
-
+    board = card.column.board
+    board.version += 1
+    board.save(update_fields=["version"])
     try:
         if old_rel:
             old_url = default_storage.url(old_rel)
