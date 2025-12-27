@@ -71,20 +71,28 @@ document.body.addEventListener("htmx:afterSettle", applyReadonlyUI);
 // VIEWER LIVE REFRESH (sem websocket): atualiza columns-list sem F5
 // ============================================================
 
-// flag global usada pelo editor (initSortable) pra pausar o polling durante drag
-window.__isDraggingCard = window.__isDraggingCard || false;
-
 function startViewerPolling() {
   if (window.__boardPollInstalled) return;
   window.__boardPollInstalled = true;
 
   const getColumnsList = () => document.getElementById("columns-list");
-
   let lastHtml = (getColumnsList()?.innerHTML || "");
+
+  function hasOpenInlineForms(rootEl) {
+    // evita “apagar” o form do +Card / criar condição de corrida
+    return !!rootEl.querySelector(
+      "[id^='form-col-'] form, [id^='form-top-col-'] form"
+    );
+  }
+
+  function hasHtmxRequestInFlight(rootEl) {
+    // HTMX marca elementos envolvidos com .htmx-request
+    return !!rootEl.querySelector(".htmx-request");
+  }
 
   async function tick() {
     // se agora virou editor/owner, não precisa mais
-    //if (boardCanEditNow()) return;
+    if (boardCanEditNow()) return;
 
     // evita briga visual se o editor estiver arrastando
     if (window.__isDraggingCard) return;
@@ -92,17 +100,19 @@ function startViewerPolling() {
     const columnsList = getColumnsList();
     if (!columnsList) return;
 
+    // não “atropela” interação do usuário
+    if (hasHtmxRequestInFlight(columnsList)) return;
+    if (hasOpenInlineForms(columnsList)) return;
+
     try {
       const res = await fetch(window.location.pathname, {
         method: "GET",
         credentials: "same-origin",
-        cache: "no-store",
         headers: {
           "X-Requested-With": "XMLHttpRequest",
-          "X-Board-Poll": "1"
-        }
+          "X-Board-Poll": "1",
+        },
       });
-
 
       if (!res.ok) return;
 
@@ -118,9 +128,14 @@ function startViewerPolling() {
       columnsList.innerHTML = nextHtml;
       lastHtml = nextHtml;
 
+      // >>> PONTO-CHAVE: reprocessa HTMX nos nós inseridos via innerHTML
+      if (window.htmx && typeof window.htmx.process === "function") {
+        window.htmx.process(columnsList);
+      }
+
       // re-aplica comportamentos que dependem do DOM novo
-      applyReadonlyUI();     // mantém readonly coerente
-      scanAndBind();         // reata MutationObserver/contador/empty state
+      applyReadonlyUI();
+      scanAndBind();
 
       if (window.applySavedTagColorsToBoard) {
         window.applySavedTagColorsToBoard(columnsList);
@@ -134,9 +149,10 @@ function startViewerPolling() {
     }
   }
 
-  // ritmo: bom custo/benefício
   tick();
-  setInterval(tick, 1200);
+
+  // seu relato é “10s”; aqui está 10s (ajuste se quiser outro ritmo)
+  setInterval(tick, 10000);
 
   // se algum swap acontecer localmente, atualiza o baseline
   document.body.addEventListener("htmx:afterSwap", () => {
@@ -147,9 +163,6 @@ function startViewerPolling() {
   });
 }
 
-// roda polling para qualquer usuário (viewer/editor/owner)
-// pausa durante drag via window.__isDraggingCard
-startViewerPolling();
 
 
   // =========================

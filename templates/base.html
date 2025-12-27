@@ -2,21 +2,18 @@
 {% load static %}
 
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-br" class="{% if request.COOKIES.theme == 'dark' %}dark{% endif %}">
 
 <head>
-
+    <meta charset="UTF-8">
+    <title>{% block title %}NossoTrello{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
     <link href="https://cdn.jsdelivr.net/npm/prismjs/themes/prism.min.css" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/prismjs/prism.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-python.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-markup.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-javascript.min.js"></script>
-
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-
-    <title>{% block title %}NossoTrello{% endblock %}</title>
 
     <!-- Favicon -->
     <link rel="shortcut icon"
@@ -29,12 +26,17 @@
     <!-- SortableJS -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
-    <!-- Tailwind -->
+    <!-- Tailwind (build do projeto) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = { darkMode: 'class' }
     </script>
+    <!-- Estilos do drawer -->
+    <link rel="stylesheet" href="{% static 'boards/nossotrello_drawer.css' %}">
 
+    <!-- Fonte/ícones (se existirem no projeto) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
     <!-- CSS Global -->
     {% load static %}
@@ -55,9 +57,9 @@
     <!-- CSRF -->
     <meta name="csrf-token" content="{{ csrf_token }}">
     <script>
-        document.addEventListener("htmx:configRequest", (event) => {
-            const csrfToken = document.querySelector("meta[name='csrf-token']").content;
-            event.detail.headers['X-CSRFToken'] = csrfToken;
+      document.addEventListener("htmx:configRequest", (event) => {
+        const csrfToken = document.querySelector("meta[name='csrf-token']").content;
+        event.detail.headers['X-CSRFToken'] = csrfToken;
         });
     </script>
 
@@ -174,6 +176,60 @@
 #modal { pointer-events: auto; }
 #card-modal-root { pointer-events: auto; }
 
+
+/* =========================================================
+         Ajustes gerais do layout / UX
+         ========================================================= */
+      .home-background {
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+      }
+
+      /* Modal root base (mantém) */
+      .card-modal {
+        width: min(1000px, 96vw);
+        max-height: min(86vh, 860px);
+      }
+
+      /* Scroll único do modal */
+      .card-modal-scroll {
+        overflow: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      /* =========================================================
+         Header / Busca: centralizada, larga, input arredondado + lupa
+         (sem mexer no HTML injetado em header_right_under_logo)
+         ========================================================= */
+      #header-search-slot .w-64 {
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+
+      #header-search-slot input#board-filter {
+        width: 100% !important;
+        border-radius: 9999px !important;
+        padding-right: 2.75rem !important; /* espaço da lupa */
+        background-color: rgba(255, 255, 255, 0.75) !important;
+        border: 1px solid rgba(0, 0, 0, 0.18) !important;
+
+        /* lupa dentro do input (direita) */
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M21 21l-4.35-4.35m1.1-5.15a7 7 0 11-14 0 7 7 0 0114 0z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 0.85rem center;
+        background-size: 18px 18px;
+      }
+
+      #header-search-slot input#board-filter::placeholder {
+        color: rgba(107, 114, 128, 0.85);
+      }
+
+      #header-search-slot input#board-filter:focus {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.35);
+      }
+
     </style>
 </head>
 
@@ -185,11 +241,7 @@
         <div class="fixed inset-0 pointer-events-none z-0 bg-white/60 dark:bg-black/50"></div>
     {% endif %}
 
-
     <div class="relative z-10">
-
-
-
 
     <!-- Header -->
 <header class="w-full flex items-center justify-between gap-4 px-4 py-3 rounded-xl bg-emerald-200/70 backdrop-blur-md border border-white/30 shadow">
@@ -210,10 +262,12 @@
     {% block header_left %}{% endblock %}
   </div>
 
-  <!-- CENTRO: busca/filtros (já existe hoje; cada tela injeta) -->
+  <!-- CENTRO: busca/filtros (cada tela injeta) -->
   <div class="flex-1 flex justify-center">
-    <div class="w-full max-w-[720px]">
-      {% block header_right_under_logo %}{% endblock %}
+    <div id="header-search-slot" class="w-full max-w-[920px]">
+      <div class="w-full rounded-2xl bg-white/35 backdrop-blur-md border border-white/30 shadow px-4 py-2">
+        {% block header_right_under_logo %}{% endblock %}
+      </div>
     </div>
   </div>
 
@@ -285,21 +339,7 @@
   </nav>
 </aside>
 
-
-
-
-
-
-
-
-
-
     {% block content %}{% endblock %}
-
-
-
-
-
 
 <!-- Modal Global -->
 <div id="modal"
@@ -334,29 +374,25 @@
                 onclick="cardOpenTab('card-tab-files')">Anexos</button>
       </div>
 
-<!-- Theme toggle (lado direito, antes do X) -->
-<div class="flex items-center gap-2 mr-2">
-  <button type="button" class="theme-dot"
-          style="background: rgba(255,255,255,0.90); border-color: rgba(0,0,0,0.20);"
-          title="Glass"
-          onclick="window.setModalTheme?.('glass')"></button>
+      <!-- Theme toggle (lado direito, antes do X) -->
+      <div class="flex items-center gap-2 mr-2">
+        <button type="button" class="theme-dot"
+                style="background: rgba(255,255,255,0.90); border-color: rgba(0,0,0,0.20);"
+                title="Glass"
+                onclick="window.setModalTheme?.('glass')"></button>
 
-  <button type="button" class="theme-dot"
-          style="background: #0b0b0b;"
-          title="Dark"
-          onclick="window.setModalTheme?.('dark')"></button>
-</div>
+        <button type="button" class="theme-dot"
+                style="background: #0b0b0b;"
+                title="Dark"
+                onclick="window.setModalTheme?.('dark')"></button>
+      </div>
 
-<!-- X (lado direito) -->
-<button class="modal-top-x"
-        onclick="refreshCardSnippet(window.currentCardId); closeModal();"
-        aria-label="Fechar"
-        title="Fechar">X</button>
-
+      <!-- X (lado direito) -->
+      <button class="modal-top-x"
+              onclick="refreshCardSnippet(window.currentCardId); closeModal();"
+              aria-label="Fechar"
+              title="Fechar">X</button>
     </div>
-
-
-
 
     <!-- Conteúdo dinâmico do card (SCROLL ÚNICO AQUI) -->
     <div id="modal-body" class="card-modal-scroll w-full min-w-0"></div>
@@ -364,9 +400,12 @@
   </div>
 </div>
 
+</div> <!-- /relative z-10 -->
 
+<!-- Scripts globais do projeto -->
+<script src="{% static 'boards/menu.js' %}"></script>
 
-
+{% block extra_js %}{% endblock %}
 
 
 
