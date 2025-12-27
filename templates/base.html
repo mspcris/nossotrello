@@ -62,7 +62,46 @@
         event.detail.headers['X-CSRFToken'] = csrfToken;
         });
     </script>
+    
+    <!-- Scripts globais -->
+<!-- Base -->
+<script src="{% static 'boards/base.js' %}"></script>
+<script src="{% static 'boards/menu.js' %}"></script>
+<script src="{% static 'boards/board_ui.js' %}"></script>
 
+<!-- Modal core -->
+<script src="{% static 'boards/modal/modal.core.js' %}"></script>
+
+<!-- Gate + URL -->
+<script src="{% static 'boards/modal/modal.gate.js' %}"></script>
+<script src="{% static 'boards/modal/modal.url.js' %}"></script>
+
+<!-- Open + Drag -->
+<script src="{% static 'boards/modal/modal.open.js' %}"></script>
+<script src="{% static 'boards/modal/modal.drag.js' %}"></script>
+
+<!-- Guards + HTMX -->
+<script src="{% static 'boards/modal/modal.fetch-guard.js' %}"></script>
+<script src="{% static 'boards/modal/modal.htmx.js' %}"></script>
+
+<!-- Modal features -->
+<script src="{% static 'boards/modal/modal.quill.js' %}"></script>
+<script src="{% static 'boards/modal/modal.tags.js' %}"></script>
+<script src="{% static 'boards/modal/modal.theme.js' %}"></script>
+<script src="{% static 'boards/modal/modal.user.js' %}"></script>
+<script src="{% static 'boards/modal/modal.breadcrumb.js' %}"></script>
+
+<!-- Modal bootstrap -->
+<script src="{% static 'boards/modal/modal.index.js' %}"></script>
+
+<!-- BOARD POLLING sync cols -->
+<script src="{% static 'boards/modal/board.poll.js' %}"></script>
+
+
+
+
+    
+    
     <!-- CSS dinamico: home_wallpaper_css OU board_wallpaper_css -->
     {% block extra_css %}{% endblock %}
 
@@ -234,7 +273,11 @@
 </head>
 
 
-<body class="min-h-screen p-6 text-slate-900 dark:text-slate-100 {% if home_bg %} home-background {% endif %}">
+
+<body
+  class="min-h-screen p-6 text-slate-900 dark:text-slate-100 {% if home_bg %} home-background {% endif %}"
+  {% block body_attrs %}{% endblock %}
+>
 
     {% if home_bg and home_bg_image %}
         <!-- Camada de contraste para estabilizar legibilidade sobre wallpaper -->
@@ -374,6 +417,7 @@
                 onclick="cardOpenTab('card-tab-files')">Anexos</button>
       </div>
 
+
       <!-- Theme toggle (lado direito, antes do X) -->
       <div class="flex items-center gap-2 mr-2">
         <button type="button" class="theme-dot"
@@ -386,6 +430,9 @@
                 title="Dark"
                 onclick="window.setModalTheme?.('dark')"></button>
       </div>
+
+            <div id="modal-breadcrumb" class="text-sm opacity-90 truncate mr-2"></div>
+
 
       <!-- X (lado direito) -->
       <button class="modal-top-x"
@@ -404,13 +451,6 @@
 
 <!-- Scripts globais do projeto -->
 {% block extra_js %}{% endblock %}
-
-<!-- Scripts globais -->
-<script src="{% static 'boards/board_ui.js' %}"></script>
-<script src="{% static 'boards/modal.js' %}"></script>
-<script src="{% static 'boards/menu.js' %}"></script>
-
-
 
 <script>
 (function () {

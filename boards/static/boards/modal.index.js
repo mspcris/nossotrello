@@ -1,0 +1,12 @@
+// modal.index.js
+import "./modal/modal.core.js";
+import "./modal.gate.js";
+import "./modal.url.js";
+import "./modal.htmx.js";
+import "./modal.drag.js";
+import "./modal.quill.js";
+import "./modal.tags.js";
+import "./modal.breadcrumb.js";
+import "./modal.theme.js";
+import "./modal.user.js";
+import "./modal.fetch-guard.js";

@@ -21,6 +21,8 @@ from django.urls import path, reverse_lazy
 from . import views
 from .views import cards
 from .views.mentions import board_mentions
+from .views.polling import board_poll
+
 
 app_name = "boards"
 
@@ -129,6 +131,11 @@ urlpatterns = [
     path("board/<int:board_id>/image/remove/", views.remove_board_image, name="remove_board_image"),
 
     # Search do board (se existir no seu views/__init__.py)
+
+    # board polling
+    path("board/<int:board_id>/poll/", board_poll, name="board_poll"),
+
+
 
     # ============================================================
     # HOME WALLPAPER

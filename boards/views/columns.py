@@ -35,6 +35,9 @@ def add_column(request, board_id):
             column.board = board
             column.position = board.columns.count()
             column.save()
+            board.version += 1
+            board.save(update_fields=["version"])
+
 
             actor = _actor_label(request)
             _log_board(
@@ -66,6 +69,10 @@ def set_column_theme(request, column_id):
     old_theme = getattr(column, "theme", "")
     column.theme = theme
     column.save(update_fields=["theme"])
+
+    board = column.board
+    board.version += 1
+    board.save(update_fields=["version"])
 
     actor = _actor_label(request)
     _log_board(
@@ -101,6 +108,10 @@ def reorder_columns(request, board_id):
         for idx, cid in enumerate(order):
             Column.objects.filter(id=cid, board=board).update(position=idx)
 
+        board.version += 1
+        board.save(update_fields=["version"])
+
+
     actor = _actor_label(request)
     _log_board(
         board,
@@ -112,18 +123,22 @@ def reorder_columns(request, board_id):
 
 
 @require_POST
+@require_POST
 def rename_column(request, column_id):
     column = get_object_or_404(Column, id=column_id)
+    board = column.board
     actor = _actor_label(request)
 
     old_name = column.name
     name = request.POST.get("name", "").strip()
     if not name:
         return HttpResponse("Nome inválido", status=400)
-
+    
     column.name = name
     column.save(update_fields=["name"])
-
+    board.version += 1
+    board.save(update_fields=["version"])
+    
     for c in Card.objects.filter(column=column, is_deleted=False):
         _log_card(
             c,
@@ -136,8 +151,9 @@ def rename_column(request, column_id):
         request,
         f"<p><strong>{actor}</strong> renomeou a coluna de <strong>{escape(old_name)}</strong> para <strong>{escape(name)}</strong>.</p>",
     )
-
+        
     return render(request, "boards/partials/column_item.html", {"column": column})
+    
 
 
 def delete_column(request, column_id):
@@ -149,6 +165,8 @@ def delete_column(request, column_id):
     except Column.DoesNotExist:
         return HttpResponseBadRequest("Coluna não encontrada.")
 
+
+    board = column.board
     actor = _actor_label(request)
 
     cards_in_col = Card.objects.filter(column=column, is_deleted=False)
@@ -169,6 +187,8 @@ def delete_column(request, column_id):
     column.is_deleted = True
     column.deleted_at = now
     column.save(update_fields=["is_deleted", "deleted_at"])
+    board.version += 1
+    board.save(update_fields=["version"])
 
     Card.objects.filter(column=column, is_deleted=False).update(is_deleted=True, deleted_at=now)
     return HttpResponse("")

@@ -109,6 +109,12 @@
 {% block content %}
 
 <div class="mt-2 mb-4">
+  <div class="text-sm font-semibold text-white/90 drop-shadow">
+    <a href="{% url 'boards:boards_index' %}" class="underline underline-offset-2">Todos os Quadros</a>
+    <span class="opacity-70">→</span>
+    <span>{{ board.name }}</span>
+  </div>
+
   <h1 class="text-3xl font-extrabold text-white drop-shadow"
       ondragstart="event.preventDefault(); this.blur();">
     {{ board.name }}
@@ -116,11 +122,6 @@
 </div>
 
 
-
-
-
-
-<!-- ======================== LISTA DE COLUNAS ======================== -->
 <!-- ======================== LISTA DE COLUNAS ======================== -->
 <div id="board-root" data-can-edit="{{ can_edit|yesno:'1,0' }}">
   <div id="columns-wrapper" class="flex gap-6 overflow-x-auto overflow-y-hidden pb-6 pr-4 h-[calc(100vh-140px)]">
@@ -171,8 +172,21 @@
 </div>
 
 
-<!-- ======================== SCRIPTS ======================== -->
 
+{% block body_attrs %}
+  data-board-id="{{ board.id }}"
+  data-board-version="{{ board.version }}"
+{% endblock %}
+
+<script>
+  window.BOARD_ID = {{ board.id }};
+</script>
+
+
+
+
+
+<!-- ======================== SCRIPTS ======================== -->
 <script>
   // ============================================================
   // FILTER (Tags = frontend | Texto = backend)
