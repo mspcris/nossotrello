@@ -39,6 +39,7 @@
     <!-- CSS Global -->
     {% load static %}
     <link rel="stylesheet" href="{% static 'boards/base.css' %}">
+    <link rel="stylesheet" href="{% static 'boards/nossotrello_drawer.css' %}">
     <link rel="stylesheet" href="{% static 'boards/columns.css' %}">
     <link rel="stylesheet" href="{% static 'boards/auth.css' %}">
 
@@ -49,7 +50,7 @@
     <link href="{% static 'boards/quill.css' %}" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/quill-mention@4.1.0/dist/quill.mention.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/quill-mention@4.1.0/dist/quill.mention.min.js"></script>
-    
+
 
     <!-- CSRF -->
     <meta name="csrf-token" content="{{ csrf_token }}">
@@ -191,43 +192,98 @@
 
 
     <!-- Header -->
-<header class="w-full flex items-start justify-between mb-3 gap-4">
-  <!-- Slot esquerdo (cada tela injeta o que quiser aqui) -->
-  <div class="flex items-start gap-3">
+<header class="w-full flex items-center justify-between gap-4 px-4 py-3 rounded-xl bg-emerald-200/70 backdrop-blur-md border border-white/30 shadow">
+  <!-- ESQUERDA: hamburguer + marca + slot -->
+  <div class="flex items-center gap-3 min-w-[220px]">
+    <button id="menuToggle"
+            type="button"
+            class="text-gray-900 bg-white/80 border border-gray-400 rounded-md px-3 py-2 shadow hover:bg-white transition"
+            aria-label="Abrir menu">
+      ☰
+    </button>
+
+    <a href="{% url 'boards:boards_index' %}" class="flex items-center gap-2 select-none">
+      <img src="{% static 'images/logo-camim.png' %}" alt="CAMIM" class="h-10 w-10 rounded-full object-cover border border-white/40 shadow">
+      <span class="text-2xl font-extrabold tracking-wide text-white drop-shadow">CAMIM</span>
+    </a>
+
     {% block header_left %}{% endblock %}
   </div>
 
-  <div class="flex items-start gap-3">
-    <!-- Coluna: Email -> Sair -> (Filtro/slot) -->
-    <div class="flex flex-col items-end gap-2 pt-1">
-      {% if request.user.is_authenticated %}
-        <span class="text-sm bg-white/70 px-2 py-1 rounded">
-          {{ request.user.email|default:request.user.get_username }}
-        </span>
-
-        <form method="post" action="{% url 'boards:logout' %}" class="inline">
-          {% csrf_token %}
-          <button type="submit"
-                  class="text-sm bg-white/80 border border-gray-300 rounded px-3 py-1 hover:bg-white">
-            Sair
-          </button>
-        </form>
-      {% endif %}
-
-      <!-- aqui fica “Filtrar por etiquetas” (ou qualquer coisa que a tela injete) -->
+  <!-- CENTRO: busca/filtros (já existe hoje; cada tela injeta) -->
+  <div class="flex-1 flex justify-center">
+    <div class="w-full max-w-[720px]">
       {% block header_right_under_logo %}{% endblock %}
     </div>
+  </div>
 
-    <!-- Logo no topo direito -->
+  <!-- DIREITA: usuário + sair + avatar -->
+  <div class="flex items-center justify-end gap-3 min-w-[220px]">
+    {% if request.user.is_authenticated %}
+      <span class="text-sm bg-white/70 px-2 py-1 rounded">
+        {{ request.user.get_full_name|default:request.user.get_username }}
+      </span>
+
+      <form method="post" action="{% url 'boards:logout' %}" class="inline">
+        {% csrf_token %}
+        <button type="submit"
+                class="text-sm px-3 py-1 rounded bg-emerald-600 text-white shadow hover:bg-emerald-700 transition">
+          Sair
+        </button>
+      </form>
+    {% endif %}
+
+    <!-- Avatar/Perfil (abre modal de conta) -->
     <a href="#" id="open-user-settings" class="block">
-  <img
-    src="{% if user_avatar_url %}{{ user_avatar_url }}{% else %}{% static 'images/logo-camim.png' %}{% endif %}"
-    alt="Perfil"
-    class="h-16 w-16 rounded-full object-cover border border-white/50 shadow">
-</a>
-
+      <img
+        src="{% if user_avatar_url %}{{ user_avatar_url }}{% else %}{% static 'images/logo-camim.png' %}{% endif %}"
+        alt="Perfil"
+        class="h-12 w-12 rounded-full object-cover border border-white/50 shadow">
+    </a>
   </div>
 </header>
+
+<!-- Drawer (menu lateral vidro fosco) -->
+<div id="drawerOverlay" class="nt-overlay" aria-hidden="true" hidden></div>
+
+<aside id="app-drawer" class="nt-drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle" data-open="false" hidden>
+  <header class="nt-drawer-header">
+    <h2 id="drawerTitle">Menu</h2>
+    <button id="drawerClose" class="nt-icon-btn" aria-label="Fechar menu">✖</button>
+  </header>
+
+  <nav class="nt-nav" aria-label="Menu lateral">
+    <ul class="nt-list">
+      <li>
+        <button type="button" class="nt-link"
+                onclick="document.getElementById('open-user-settings')?.click();">
+          Minha conta
+        </button>
+      </li>
+
+      <li>
+        <a class="nt-link" href="#">
+          Intranet CAMIM
+        </a>
+      </li>
+
+      <li><div class="nt-divider"></div></li>
+
+      {% block drawer_items %}{% endblock %}
+
+      <li><div class="nt-divider"></div></li>
+
+      {% if request.user.is_authenticated %}
+      <li>
+        <form method="post" action="{% url 'boards:logout' %}">
+          {% csrf_token %}
+          <button type="submit" class="nt-link">Sair</button>
+        </form>
+      </li>
+      {% endif %}
+    </ul>
+  </nav>
+</aside>
 
 
 
@@ -299,7 +355,7 @@
 
     </div>
 
-    
+
 
 
     <!-- Conteúdo dinâmico do card (SCROLL ÚNICO AQUI) -->
@@ -317,6 +373,7 @@
     <!-- Scripts globais -->
 <script src="{% static 'boards/board_ui.js' %}"></script>
 <script src="{% static 'boards/modal.js' %}"></script>
+<script src="{% static 'boards/menu.js' %}"></script>
 
 
 <script>
