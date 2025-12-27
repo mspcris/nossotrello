@@ -756,3 +756,36 @@ def create_user(request):
         form = UserCreationForm()
 
     return render(request, "boards/create_user.html", {"form": form})
+
+
+
+@login_required
+def board_poll(request, board_id):
+    board = get_object_or_404(Board, id=board_id, is_deleted=False)
+
+    client_version = int(request.GET.get("v", 0))
+
+    if board.version == client_version:
+        return JsonResponse({"changed": False})
+
+    # 🔴 ISSO É O QUE FALTAVA
+    columns = (
+        board.columns
+        .filter(is_deleted=False)
+        .order_by("position")
+        .prefetch_related(
+            "cards",
+        )
+    )
+
+    html = render_to_string(
+        "boards/partials/columns_block.html",  # ⬅️ veja abaixo
+        {"columns": columns},
+        request=request,
+    )
+
+    return JsonResponse({
+        "changed": True,
+        "version": board.version,
+        "html": html,
+    })

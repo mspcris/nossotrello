@@ -336,6 +336,9 @@ def move_card(request):
             if int(c.position or 0) != index:
                 c.position = index
                 c.save(update_fields=["position"])
+        
+        board.version += 1
+        board.save(update_fields=["version"])
 
         _log_card(
             card,
