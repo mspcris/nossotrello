@@ -207,8 +207,12 @@ class Card(models.Model):
     objects = ActiveCardManager()
     all_objects = models.Manager()
 
+    class Meta:
+        ordering = ["position", "id"]
+
     def __str__(self):
         return self.title
+
 
 
 # ============================================================
