@@ -1,546 +1,501 @@
-<!-- base.html -->
+{# templates/base.html #}
 {% load static %}
 
 <!DOCTYPE html>
 <html lang="pt-br" class="{% if request.COOKIES.theme == 'dark' %}dark{% endif %}">
-
 <head>
-    <meta charset="UTF-8">
-    <title>{% block title %}NossoTrello{% endblock %}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta charset="UTF-8">
+  <title>{% block title %}NossoTrello{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
-    <link href="https://cdn.jsdelivr.net/npm/prismjs/themes/prism.min.css" rel="stylesheet" />
-    <script src="https://cdn.jsdelivr.net/npm/prismjs/prism.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-python.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-markup.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-javascript.min.js"></script>
+  <!-- Prism -->
+  <link href="https://cdn.jsdelivr.net/npm/prismjs/themes/prism.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/prismjs/prism.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-python.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-markup.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-javascript.min.js"></script>
 
-    <!-- Favicon -->
-    <link rel="shortcut icon"
+  <!-- Favicon -->
+  <link rel="shortcut icon"
         href="https://d9hhrg4mnvzow.cloudfront.net/lp.camim.com.br/7c264685-logo-topo_101x01x000000000000000.png"
         type="image/png">
 
-    <!-- HTMX -->
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+  <!-- HTMX -->
+  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 
-    <!-- SortableJS -->
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <!-- SortableJS -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
-    <!-- Tailwind (build do projeto) -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = { darkMode: 'class' }
-    </script>
-    <!-- Estilos do drawer -->
-    <link rel="stylesheet" href="{% static 'boards/nossotrello_drawer.css' %}">
+  <!-- Tailwind (dev) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config = { darkMode: 'class' }</script>
 
-    <!-- Fonte/ícones (se existirem no projeto) -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- CSS Global -->
+  <link rel="stylesheet" href="{% static 'boards/base.css' %}">
+  <link rel="stylesheet" href="{% static 'boards/nossotrello_drawer.css' %}">
+  <link rel="stylesheet" href="{% static 'boards/columns.css' %}">
+  <link rel="stylesheet" href="{% static 'boards/auth.css' %}">
 
-    <!-- CSS Global -->
-    {% load static %}
-    <link rel="stylesheet" href="{% static 'boards/base.css' %}">
-    <link rel="stylesheet" href="{% static 'boards/nossotrello_drawer.css' %}">
-    <link rel="stylesheet" href="{% static 'boards/columns.css' %}">
-    <link rel="stylesheet" href="{% static 'boards/auth.css' %}">
+  <!-- QUILL -->
+  <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+  <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+  <link href="{% static 'boards/quill.css' %}" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/quill-mention@4.1.0/dist/quill.mention.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/quill-mention@4.1.0/dist/quill.mention.min.js"></script>
 
+  <!-- CSRF -->
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <script>
+    document.addEventListener("htmx:configRequest", (event) => {
+      const csrfToken = document.querySelector("meta[name='csrf-token']")?.content;
+      if (csrfToken) event.detail.headers['X-CSRFToken'] = csrfToken;
+    });
+  </script>
 
-    <!-- QUILL -->
-    <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
-    <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
-    <link href="{% static 'boards/quill.css' %}" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/quill-mention@4.1.0/dist/quill.mention.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/quill-mention@4.1.0/dist/quill.mention.min.js"></script>
+  <!-- ============================================================
+       Scripts globais (ordem IMPORTA)
+       - Removido boards/base.js (não existe)
+       - Mantido apenas 1 modal no DOM
+       ============================================================ -->
 
+  <!-- Base -->
+  <script defer src="{% static 'boards/menu.js' %}"></script>
+  <script defer src="{% static 'boards/board_ui.js' %}"></script>
 
-    <!-- CSRF -->
-    <meta name="csrf-token" content="{{ csrf_token }}">
-    <script>
-      document.addEventListener("htmx:configRequest", (event) => {
-        const csrfToken = document.querySelector("meta[name='csrf-token']").content;
-        event.detail.headers['X-CSRFToken'] = csrfToken;
-        });
-    </script>
-    
-    <!-- Scripts globais -->
-<!-- Base -->
-<script src="{% static 'boards/base.js' %}"></script>
-<script src="{% static 'boards/menu.js' %}"></script>
-<script src="{% static 'boards/board_ui.js' %}"></script>
+  <!-- Modal core -->
+  <script defer src="{% static 'boards/modal/modal.core.js' %}"></script>
 
-<!-- Modal core -->
-<script src="{% static 'boards/modal/modal.core.js' %}"></script>
+  <!-- Gate + URL -->
+  <script defer src="{% static 'boards/modal/modal.gate.js' %}"></script>
+  <script defer src="{% static 'boards/modal/modal.url.js' %}"></script>
 
-<!-- Gate + URL -->
-<script src="{% static 'boards/modal/modal.gate.js' %}"></script>
-<script src="{% static 'boards/modal/modal.url.js' %}"></script>
+  <!-- Open + Drag -->
+  <script defer src="{% static 'boards/modal/modal.open.js' %}"></script>
+  <script defer src="{% static 'boards/modal/modal.drag.js' %}"></script>
 
-<!-- Open + Drag -->
-<script src="{% static 'boards/modal/modal.open.js' %}"></script>
-<script src="{% static 'boards/modal/modal.drag.js' %}"></script>
+  <!-- Guards + HTMX -->
+  <script defer src="{% static 'boards/modal/modal.fetch-guard.js' %}"></script>
+  <script defer src="{% static 'boards/modal/modal.htmx.js' %}"></script>
 
-<!-- Guards + HTMX -->
-<script src="{% static 'boards/modal/modal.fetch-guard.js' %}"></script>
-<script src="{% static 'boards/modal/modal.htmx.js' %}"></script>
+  <!-- Modal features -->
+  <script defer src="{% static 'boards/modal/modal.quill.js' %}"></script>
+  <script defer src="{% static 'boards/modal/modal.tags.js' %}"></script>
+  <script defer src="{% static 'boards/modal/modal.theme.js' %}"></script>
+  <script defer src="{% static 'boards/modal/modal.user.js' %}"></script>
+  <script defer src="{% static 'boards/modal/modal.breadcrumb.js' %}"></script>
 
-<!-- Modal features -->
-<script src="{% static 'boards/modal/modal.quill.js' %}"></script>
-<script src="{% static 'boards/modal/modal.tags.js' %}"></script>
-<script src="{% static 'boards/modal/modal.theme.js' %}"></script>
-<script src="{% static 'boards/modal/modal.user.js' %}"></script>
-<script src="{% static 'boards/modal/modal.breadcrumb.js' %}"></script>
+  <!-- Modal bootstrap -->
+  <script defer src="{% static 'boards/modal/modal.index.js' %}"></script>
 
-<!-- Modal bootstrap -->
-<script src="{% static 'boards/modal/modal.index.js' %}"></script>
+  <!-- BOARD POLLING sync cols (se você realmente usa isso globalmente) -->
+  <script defer src="{% static 'boards/modal/board.poll.js' %}"></script>
 
-<!-- BOARD POLLING sync cols -->
-<script src="{% static 'boards/modal/board.poll.js' %}"></script>
+  <!-- CSS dinâmico -->
+  {% block extra_css %}{% endblock %}
 
+  <!-- ============================================================
+       CSS utilitário + ajustes modal
+       ============================================================ -->
+  <style>
+    pre {
+      background: transparent !important;
+      padding: 0 !important;
+      margin: 0 0 1rem 0 !important;
+      border-radius: 0 !important;
+      color: inherit !important;
+      box-shadow: none !important;
+      border: none !important;
+      position: relative;
+      white-space: pre-wrap !important;
+      word-break: break-word !important;
+    }
 
+    .code-wrapper { position: relative; }
 
+    .copy-code-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: #444;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+      opacity: 0.8;
+      transition: 0.2s;
+    }
+    .copy-code-btn:hover { opacity: 1; }
 
-    
-    
-    <!-- CSS dinamico: home_wallpaper_css OU board_wallpaper_css -->
-    {% block extra_css %}{% endblock %}
-
-    <!-- ============================================================== -->
-    <!--  CSS para blocos de código + botão copiar                     -->
-    <!-- ============================================================== -->
-    <style>
-        pre {
-            background: transparent !important;
-            padding: 0 !important;
-            margin: 0 0 1rem 0 !important;
-            /* espaço entre blocos */
-            border-radius: 0 !important;
-            color: inherit !important;
-            box-shadow: none !important;
-            border: none !important;
-            position: relative;
-            white-space: pre-wrap !important;
-            word-break: break-word !important;
-        }
-
-
-        .code-wrapper {
-            position: relative;
-        }
-
-        .copy-code-btn {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            background: #444;
-            color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            cursor: pointer;
-            opacity: 0.8;
-            transition: 0.2s;
-        }
-
-        .copy-code-btn:hover {
-            opacity: 1;
-        }
-
-        /* MOBILE: modal em tela cheia (<768px) */
-@media (max-width: 767px) {
-  /* overlay */
-  #modal {
-    padding: 0 !important;
-    align-items: stretch !important;
-    justify-content: stretch !important;
-  }
-
-  /* wrapper do conteúdo do modal (ajuste o seletor se o seu for diferente) */
-  #modal .modal-content,
-  #modal .modal-card,
-  #modal .modal-panel {
-    width: 100vw !important;
-    max-width: 100vw !important;
-    height: 100dvh !important;
-    max-height: 100dvh !important;
-    border-radius: 0 !important;
-  }
-
-  /* seu body do modal */
-  #modal-body.card-modal-scroll,
-  #modal-body {
-    height: 100dvh !important;
-    max-height: 100dvh !important;
-    border-radius: 0 !important;
-    overflow: auto !important;
-    -webkit-overflow-scrolling: touch;
-  }
-}
-
-@media (max-width: 767px) {
-  /* overlay ocupa tudo */
-  #modal {
-    padding: 0 !important;
-    align-items: stretch !important;
-    justify-content: stretch !important;
-  }
-
-  /* ESTE É O PONTO: o container do modal precisa virar fullscreen */
-  #modal .modal-content,
-  #modal .modal-card,
-  #modal .modal-panel,
-  #modal .modal-inner {
-    width: 100vw !important;
-    max-width: 100vw !important;
-    height: 100dvh !important;
-    max-height: 100dvh !important;
-    border-radius: 0 !important;
-    margin: 0 !important;
-  }
-
-  /* e o body acompanha */
-  #modal-body {
-    height: 100dvh !important;
-    max-height: 100dvh !important;
-    border-radius: 0 !important;
-    overflow: auto !important;
-    -webkit-overflow-scrolling: touch;
-  }
-}
-@media (max-width: 767px) {
-  html, body { overflow-x: hidden !important; }
-  #modal, #modal * { box-sizing: border-box; }
-}
-
-#modal { pointer-events: auto; }
-#card-modal-root { pointer-events: auto; }
-
-
-/* =========================================================
-         Ajustes gerais do layout / UX
-         ========================================================= */
-      .home-background {
-        background-size: cover;
-        background-position: center;
-        background-repeat: no-repeat;
+    /* MOBILE: modal fullscreen */
+    @media (max-width: 767px) {
+      #modal {
+        padding: 0 !important;
+        align-items: stretch !important;
+        justify-content: stretch !important;
       }
 
-      /* Modal root base (mantém) */
-      .card-modal {
-        width: min(1000px, 96vw);
-        max-height: min(86vh, 860px);
+      #card-modal-root {
+        width: 100vw !important;
+        max-width: 100vw !important;
+        height: 100dvh !important;
+        max-height: 100dvh !important;
+        border-radius: 0 !important;
+        margin: 0 !important;
       }
 
-      /* Scroll único do modal */
-      .card-modal-scroll {
-        overflow: auto;
+      #modal-body {
+        height: 100dvh !important;
+        max-height: 100dvh !important;
+        border-radius: 0 !important;
+        overflow: auto !important;
         -webkit-overflow-scrolling: touch;
       }
 
-      /* =========================================================
-         Header / Busca: centralizada, larga, input arredondado + lupa
-         (sem mexer no HTML injetado em header_right_under_logo)
-         ========================================================= */
-      #header-search-slot .w-64 {
-        width: 100% !important;
-        max-width: 100% !important;
-      }
+      html, body { overflow-x: hidden !important; }
+      #modal, #modal * { box-sizing: border-box; }
+    }
 
-      #header-search-slot input#board-filter {
-        width: 100% !important;
-        border-radius: 9999px !important;
-        padding-right: 2.75rem !important; /* espaço da lupa */
-        background-color: rgba(255, 255, 255, 0.75) !important;
-        border: 1px solid rgba(0, 0, 0, 0.18) !important;
+    #modal { pointer-events: auto; }
+    #card-modal-root { pointer-events: auto; }
 
-        /* lupa dentro do input (direita) */
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M21 21l-4.35-4.35m1.1-5.15a7 7 0 11-14 0 7 7 0 0114 0z'/%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-position: right 0.85rem center;
-        background-size: 18px 18px;
-      }
+    /* Wallpaper helper */
+    .home-background {
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
 
-      #header-search-slot input#board-filter::placeholder {
-        color: rgba(107, 114, 128, 0.85);
-      }
+    /* Modal root base */
+    .card-modal {
+      width: min(1000px, 96vw);
+      max-height: min(86vh, 860px);
+    }
 
-      #header-search-slot input#board-filter:focus {
-        outline: none;
-        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.35);
-      }
+    /* Scroll único */
+    .card-modal-scroll {
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+    }
 
-    </style>
+    /* Header search */
+    #header-search-slot .w-64 {
+      width: 100% !important;
+      max-width: 100% !important;
+    }
+
+    #header-search-slot input#board-filter {
+      width: 100% !important;
+      border-radius: 9999px !important;
+      padding-right: 2.75rem !important;
+      background-color: rgba(255, 255, 255, 0.75) !important;
+      border: 1px solid rgba(0, 0, 0, 0.18) !important;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M21 21l-4.35-4.35m1.1-5.15a7 7 0 11-14 0 7 7 0 0114 0z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.85rem center;
+      background-size: 18px 18px;
+    }
+
+    #header-search-slot input#board-filter::placeholder {
+      color: rgba(107, 114, 128, 0.85);
+    }
+
+    #header-search-slot input#board-filter:focus {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.35);
+    }
+  </style>
 </head>
-
-
 
 <body
   class="min-h-screen p-6 text-slate-900 dark:text-slate-100 {% if home_bg %} home-background {% endif %}"
   {% block body_attrs %}{% endblock %}
 >
+  {% if home_bg and home_bg_image %}
+    <div class="fixed inset-0 pointer-events-none z-0 bg-white/60 dark:bg-black/50"></div>
+  {% endif %}
 
-    {% if home_bg and home_bg_image %}
-        <!-- Camada de contraste para estabilizar legibilidade sobre wallpaper -->
-        <div class="fixed inset-0 pointer-events-none z-0 bg-white/60 dark:bg-black/50"></div>
-    {% endif %}
-
-    <div class="relative z-10">
+  <div class="relative z-10">
 
     <!-- Header -->
-<header class="w-full flex items-center justify-between gap-4 px-4 py-3 rounded-xl bg-emerald-200/70 backdrop-blur-md border border-white/30 shadow">
-  <!-- ESQUERDA: hamburguer + marca + slot -->
-  <div class="flex items-center gap-3 min-w-[220px]">
-    <button id="menuToggle"
-            type="button"
-            class="text-gray-900 bg-white/80 border border-gray-400 rounded-md px-3 py-2 shadow hover:bg-white transition"
-            aria-label="Abrir menu">
-      ☰
-    </button>
-
-    <a href="{% url 'boards:boards_index' %}" class="flex items-center gap-2 select-none">
-      <img src="{% static 'images/logo-camim.png' %}" alt="CAMIM" class="h-10 w-10 rounded-full object-cover border border-white/40 shadow">
-      <span class="text-2xl font-extrabold tracking-wide text-white drop-shadow">CAMIM</span>
-    </a>
-
-    {% block header_left %}{% endblock %}
-  </div>
-
-  <!-- CENTRO: busca/filtros (cada tela injeta) -->
-  <div class="flex-1 flex justify-center">
-    <div id="header-search-slot" class="w-full max-w-[920px]">
-      <div class="w-full rounded-2xl bg-white/35 backdrop-blur-md border border-white/30 shadow px-4 py-2">
-        {% block header_right_under_logo %}{% endblock %}
-      </div>
-    </div>
-  </div>
-
-  <!-- DIREITA: usuário + sair + avatar -->
-  <div class="flex items-center justify-end gap-3 min-w-[220px]">
-    {% if request.user.is_authenticated %}
-      <span class="text-sm bg-white/70 px-2 py-1 rounded">
-        {{ request.user.get_full_name|default:request.user.get_username }}
-      </span>
-
-      <form method="post" action="{% url 'boards:logout' %}" class="inline">
-        {% csrf_token %}
-        <button type="submit"
-                class="text-sm px-3 py-1 rounded bg-emerald-600 text-white shadow hover:bg-emerald-700 transition">
-          Sair
+    <header class="w-full flex items-center justify-between gap-4 px-4 py-3 rounded-xl bg-emerald-200/70 backdrop-blur-md border border-white/30 shadow">
+      <!-- ESQUERDA -->
+      <div class="flex items-center gap-3 min-w-[220px]">
+        <button id="menuToggle"
+                type="button"
+                class="text-gray-900 bg-white/80 border border-gray-400 rounded-md px-3 py-2 shadow hover:bg-white transition"
+                aria-label="Abrir menu">
+          ☰
         </button>
-      </form>
-    {% endif %}
 
-    <!-- Avatar/Perfil (abre modal de conta) -->
-    <a href="#" id="open-user-settings" class="block">
-      <img
-        src="{% if user_avatar_url %}{{ user_avatar_url }}{% else %}{% static 'images/logo-camim.png' %}{% endif %}"
-        alt="Perfil"
-        class="h-12 w-12 rounded-full object-cover border border-white/50 shadow">
-    </a>
-  </div>
-</header>
-
-<!-- Drawer (menu lateral vidro fosco) -->
-<div id="drawerOverlay" class="nt-overlay" aria-hidden="true" hidden></div>
-
-<aside id="app-drawer" class="nt-drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle" data-open="false" hidden>
-  <header class="nt-drawer-header">
-    <h2 id="drawerTitle">Menu</h2>
-    <button id="drawerClose" class="nt-icon-btn" aria-label="Fechar menu">✖</button>
-  </header>
-
-  <nav class="nt-nav" aria-label="Menu lateral">
-    <ul class="nt-list">
-      <li>
-        <button type="button" class="nt-link"
-                onclick="document.getElementById('open-user-settings')?.click();">
-          Minha conta
-        </button>
-      </li>
-
-      <li>
-        <a class="nt-link" href="#">
-          Intranet CAMIM
+        <a href="{% url 'boards:boards_index' %}" class="flex items-center gap-2 select-none">
+          <img src="{% static 'images/logo-camim.png' %}" alt="CAMIM" class="h-10 w-10 rounded-full object-cover border border-white/40 shadow">
+          <span class="text-2xl font-extrabold tracking-wide text-white drop-shadow">CAMIM</span>
         </a>
-      </li>
 
-      <li><div class="nt-divider"></div></li>
+        {% block header_left %}{% endblock %}
+      </div>
 
-      {% block drawer_items %}{% endblock %}
+      <!-- CENTRO -->
+      <div class="flex-1 flex justify-center">
+        <div id="header-search-slot" class="w-full max-w-[920px]">
+          <div class="w-full rounded-2xl bg-white/35 backdrop-blur-md border border-white/30 shadow px-4 py-2">
+            {% block header_right_under_logo %}{% endblock %}
+          </div>
+        </div>
+      </div>
 
-      <li><div class="nt-divider"></div></li>
+      <!-- DIREITA -->
+      <div class="flex items-center justify-end gap-3 min-w-[220px]">
+        {% if request.user.is_authenticated %}
+          <span class="text-sm bg-white/70 px-2 py-1 rounded">
+            {{ request.user.get_full_name|default:request.user.get_username }}
+          </span>
 
-      {% if request.user.is_authenticated %}
-      <li>
-        <form method="post" action="{% url 'boards:logout' %}">
-          {% csrf_token %}
-          <button type="submit" class="nt-link">Sair</button>
-        </form>
-      </li>
-      {% endif %}
-    </ul>
-  </nav>
-</aside>
+          <form method="post" action="{% url 'boards:logout' %}" class="inline">
+            {% csrf_token %}
+            <button type="submit"
+                    class="text-sm px-3 py-1 rounded bg-emerald-600 text-white shadow hover:bg-emerald-700 transition">
+              Sair
+            </button>
+          </form>
+        {% endif %}
+
+        <a href="#" id="open-user-settings" class="block">
+          <img
+            src="{% if user_avatar_url %}{{ user_avatar_url }}{% else %}{% static 'images/logo-camim.png' %}{% endif %}"
+            alt="Perfil"
+            class="h-12 w-12 rounded-full object-cover border border-white/50 shadow">
+        </a>
+      </div>
+    </header>
+
+    <!-- Drawer -->
+    <div id="drawerOverlay" class="nt-overlay" aria-hidden="true" hidden></div>
+
+    <aside id="app-drawer" class="nt-drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle" data-open="false" hidden>
+      <header class="nt-drawer-header">
+        <h2 id="drawerTitle">Menu</h2>
+        <button id="drawerClose" class="nt-icon-btn" aria-label="Fechar menu">✖</button>
+      </header>
+
+      <nav class="nt-nav" aria-label="Menu lateral">
+        <ul class="nt-list">
+          <li>
+            <button type="button" class="nt-link"
+                    onclick="document.getElementById('open-user-settings')?.click();">
+              Minha conta
+            </button>
+          </li>
+
+          <li>
+            <a class="nt-link" href="#">
+              Intranet CAMIM
+            </a>
+          </li>
+
+          <li><div class="nt-divider"></div></li>
+
+          {% block drawer_items %}{% endblock %}
+
+          <li><div class="nt-divider"></div></li>
+
+          {% if request.user.is_authenticated %}
+          <li>
+            <form method="post" action="{% url 'boards:logout' %}">
+              {% csrf_token %}
+              <button type="submit" class="nt-link">Sair</button>
+            </form>
+          </li>
+          {% endif %}
+        </ul>
+      </nav>
+    </aside>
 
     {% block content %}{% endblock %}
 
-<!-- Modal Global -->
-<div id="modal"
-     class="fixed inset-0 z-50 hidden bg-black/40 backdrop-blur-sm"
-     onclick="if(event.target===this){ refreshCardSnippet(window.currentCardId); closeModal(); }">
+    <!-- ============================================================
+         Modal Global (único)
+         - Removeu dependência de closeModal()/refreshCardSnippet()/cardOpenTab()
+           porque isso quebra o clique e impede fechar/abrir em runtime.
+         - Usa Modal.open()/Modal.close() quando existir.
+         ============================================================ -->
+    <div id="modal"
+         class="fixed inset-0 z-50 hidden bg-black/40 backdrop-blur-sm"
+         role="dialog"
+         aria-modal="true"
+         aria-hidden="true"
+         data-modal-root>
 
-  <div id="card-modal-root"
-       class="card-modal modal-glass card-theme-aero rounded-2xl shadow-2xl flex flex-col overflow-hidden"
-       onclick="event.stopPropagation();">
+      <div id="card-modal-root"
+           class="card-modal modal-glass card-theme-aero rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+           onclick="event.stopPropagation();">
 
-    <div class="flex items-center justify-between p-2 gap-3 border-b border-white/20">
-      <!-- ABAS NA BARRA SUPERIOR (lado esquerdo) -->
-      <div id="card-tabs" class="flex flex-wrap items-end gap-2">
-        <button type="button" class="card-tab-btn card-tab-active"
-                data-tab-target="card-tab-desc"
-                onclick="cardOpenTab('card-tab-desc')">Descrição</button>
+        <div class="flex items-center justify-between p-2 gap-3 border-b border-white/20">
+          <!-- Tabs (se o seu HTML injetado usar isso, ok; senão, fica neutro) -->
+          <div id="card-tabs" class="flex flex-wrap items-end gap-2">
+            <button type="button" class="card-tab-btn card-tab-active"
+                    data-tab-target="card-tab-desc"
+                    onclick="window.cardOpenTab?.('card-tab-desc')">Descrição</button>
 
-        <button type="button" class="card-tab-btn"
-                data-tab-target="card-tab-tags"
-                onclick="cardOpenTab('card-tab-tags')">Etiquetas</button>
+            <button type="button" class="card-tab-btn"
+                    data-tab-target="card-tab-tags"
+                    onclick="window.cardOpenTab?.('card-tab-tags')">Etiquetas</button>
 
-        <button type="button" class="card-tab-btn"
-                data-tab-target="card-tab-check"
-                onclick="cardOpenTab('card-tab-check')">Checklists</button>
+            <button type="button" class="card-tab-btn"
+                    data-tab-target="card-tab-check"
+                    onclick="window.cardOpenTab?.('card-tab-check')">Checklists</button>
 
-        <button type="button" class="card-tab-btn"
-                data-tab-target="card-tab-ativ"
-                onclick="cardOpenTab('card-tab-ativ')">Atividade</button>
+            <button type="button" class="card-tab-btn"
+                    data-tab-target="card-tab-ativ"
+                    onclick="window.cardOpenTab?.('card-tab-ativ')">Atividade</button>
 
-        <button type="button" class="card-tab-btn"
-                data-tab-target="card-tab-files"
-                onclick="cardOpenTab('card-tab-files')">Anexos</button>
+            <button type="button" class="card-tab-btn"
+                    data-tab-target="card-tab-files"
+                    onclick="window.cardOpenTab?.('card-tab-files')">Anexos</button>
+          </div>
+
+          <!-- Theme dots -->
+          <div class="flex items-center gap-2 mr-2">
+            <button type="button" class="theme-dot"
+                    style="background: rgba(255,255,255,0.90); border-color: rgba(0,0,0,0.20);"
+                    title="Glass"
+                    onclick="window.setModalTheme?.('glass')"></button>
+
+            <button type="button" class="theme-dot"
+                    style="background: #0b0b0b;"
+                    title="Dark"
+                    onclick="window.setModalTheme?.('dark')"></button>
+          </div>
+
+          <div id="modal-breadcrumb" class="text-sm opacity-90 truncate mr-2"></div>
+
+          <!-- Fechar -->
+          <button type="button"
+                  class="modal-top-x"
+                  aria-label="Fechar"
+                  title="Fechar"
+                  onclick="window.Modal?.close?.();">
+            X
+          </button>
+        </div>
+
+        <!-- Conteúdo do card -->
+        <div id="modal-body" class="card-modal-scroll w-full min-w-0"></div>
       </div>
-
-
-      <!-- Theme toggle (lado direito, antes do X) -->
-      <div class="flex items-center gap-2 mr-2">
-        <button type="button" class="theme-dot"
-                style="background: rgba(255,255,255,0.90); border-color: rgba(0,0,0,0.20);"
-                title="Glass"
-                onclick="window.setModalTheme?.('glass')"></button>
-
-        <button type="button" class="theme-dot"
-                style="background: #0b0b0b;"
-                title="Dark"
-                onclick="window.setModalTheme?.('dark')"></button>
-      </div>
-
-            <div id="modal-breadcrumb" class="text-sm opacity-90 truncate mr-2"></div>
-
-
-      <!-- X (lado direito) -->
-      <button class="modal-top-x"
-              onclick="refreshCardSnippet(window.currentCardId); closeModal();"
-              aria-label="Fechar"
-              title="Fechar">X</button>
     </div>
 
-    <!-- Conteúdo dinâmico do card (SCROLL ÚNICO AQUI) -->
-    <div id="modal-body" class="card-modal-scroll w-full min-w-0"></div>
+  </div> <!-- /relative z-10 -->
 
-  </div>
-</div>
+  <!-- Scripts do projeto -->
+  {% block extra_js %}{% endblock %}
 
-</div> <!-- /relative z-10 -->
+  <!-- ============================================================
+       FIX: click no overlay fecha modal SEM depender de funções soltas
+       ============================================================ -->
+  <script>
+    (function () {
+      const modal = document.getElementById("modal");
+      if (!modal) return;
 
-<!-- Scripts globais do projeto -->
-{% block extra_js %}{% endblock %}
-
-<script>
-(function () {
-  function syncCardModalMode(){
-    const root = document.getElementById("card-modal-root");
-    const body = document.getElementById("modal-body");
-    if (!root || !body) return;
-
-    const hasRadical = !!body.querySelector("#cm-root");
-    root.classList.toggle("cm-mode", hasRadical);
-  }
-
-  document.addEventListener("DOMContentLoaded", syncCardModalMode);
-
-  document.body.addEventListener("htmx:afterSwap", function (evt) {
-    const t = evt.target;
-    if (t && (t.id === "modal-body" || t.closest?.("#modal-body"))) {
-      syncCardModalMode();
-    }
-  });
-
-  document.body.addEventListener("htmx:afterSettle", function (evt) {
-    const t = evt.target;
-    if (t && (t.id === "modal-body" || t.closest?.("#modal-body"))) {
-      syncCardModalMode();
-    }
-  });
-})();
-</script>
-
-
-
-    <!-- ============================================================== -->
-    <!--  JS: aplicar Prism + envelopar blocos de código                -->
-    <!-- ============================================================== -->
-    <script>
-        function enhanceCodeBlocks() {
-            document.querySelectorAll("pre:not(.enhanced)").forEach(pre => {
-                pre.classList.add("enhanced");
-
-                const wrapper = document.createElement("div");
-                wrapper.className = "code-wrapper";
-
-                const button = document.createElement("button");
-                button.className = "copy-code-btn";
-                button.innerText = "Copiar";
-
-                const parent = pre.parentNode;
-                parent.insertBefore(wrapper, pre);
-                wrapper.appendChild(pre);
-                wrapper.appendChild(button);
-            });
-
-            if (window.Prism) {
-                Prism.highlightAll();
-            }
+      modal.addEventListener("click", (ev) => {
+        if (ev.target !== modal) return; // só overlay
+        // fecha pelo core se existir
+        if (window.Modal && typeof window.Modal.close === "function") {
+          window.Modal.close();
+          return;
         }
+        // fallback: esconde
+        modal.classList.add("hidden");
+        modal.setAttribute("aria-hidden", "true");
+      });
+    })();
+  </script>
 
-        document.addEventListener("click", function (e) {
-            if (!e.target.matches(".copy-code-btn")) return;
+  <!-- ============================================================
+       Modal: sync cm-mode após HTMX swap
+       ============================================================ -->
+  <script>
+    (function () {
+      function syncCardModalMode() {
+        const root = document.getElementById("card-modal-root");
+        const body = document.getElementById("modal-body");
+        if (!root || !body) return;
 
-            const codeBlock = e.target.closest(".code-wrapper").querySelector("code");
-            navigator.clipboard.writeText(codeBlock.innerText);
+        const hasRadical = !!body.querySelector("#cm-root");
+        root.classList.toggle("cm-mode", hasRadical);
+      }
 
-            e.target.innerText = "Copiado!";
-            setTimeout(() => e.target.innerText = "Copiar", 1300);
-        });
+      document.addEventListener("DOMContentLoaded", syncCardModalMode);
 
-        document.addEventListener("DOMContentLoaded", enhanceCodeBlocks);
-        document.addEventListener("htmx:afterSwap", enhanceCodeBlocks);
-    </script>
-</div>
-</body>
+      document.body.addEventListener("htmx:afterSwap", function (evt) {
+        const t = evt.target;
+        if (t && (t.id === "modal-body" || t.closest?.("#modal-body"))) syncCardModalMode();
+      });
 
-</html>
+      document.body.addEventListener("htmx:afterSettle", function (evt) {
+        const t = evt.target;
+        if (t && (t.id === "modal-body" || t.closest?.("#modal-body"))) syncCardModalMode();
+      });
+    })();
+  </script>
 
+  <!-- ============================================================
+       Prism + botão copiar
+       ============================================================ -->
+  <script>
+    function enhanceCodeBlocks() {
+      document.querySelectorAll("pre:not(.enhanced)").forEach(pre => {
+        pre.classList.add("enhanced");
 
+        const wrapper = document.createElement("div");
+        wrapper.className = "code-wrapper";
 
+        const button = document.createElement("button");
+        button.className = "copy-code-btn";
+        button.type = "button";
+        button.innerText = "Copiar";
 
+        const parent = pre.parentNode;
+        parent.insertBefore(wrapper, pre);
+        wrapper.appendChild(pre);
+        wrapper.appendChild(button);
+      });
 
-<script>
-  document.body.addEventListener("htmx:responseError", function (evt) {
-    const xhr = evt.detail.xhr;
-    const target = evt.detail.target;
-    if (target && target.id === "modal-body") {
-      target.innerHTML =
-        "<div class='p-4 text-red-600 bg-white/80 rounded'>Erro ao carregar o card (" +
-        xhr.status +
-        "). Veja o log do servidor.</div>";
+      if (window.Prism) Prism.highlightAll();
     }
-  });
-</script>
-<!--END base.html -->
+
+    document.addEventListener("click", function (e) {
+      if (!e.target.matches(".copy-code-btn")) return;
+
+      const codeBlock = e.target.closest(".code-wrapper")?.querySelector("code");
+      if (!codeBlock) return;
+
+      navigator.clipboard.writeText(codeBlock.innerText);
+
+      e.target.innerText = "Copiado!";
+      setTimeout(() => e.target.innerText = "Copiar", 1300);
+    });
+
+    document.addEventListener("DOMContentLoaded", enhanceCodeBlocks);
+    document.addEventListener("htmx:afterSwap", enhanceCodeBlocks);
+  </script>
+
+  <!-- ============================================================
+       HTMX error handler: modal-body
+       ============================================================ -->
+  <script>
+    document.body.addEventListener("htmx:responseError", function (evt) {
+      const xhr = evt.detail.xhr;
+      const target = evt.detail.target;
+      if (target && target.id === "modal-body") {
+        target.innerHTML =
+          "<div class='p-4 text-red-600 bg-white/80 rounded'>Erro ao carregar o card (" +
+          xhr.status +
+          "). Veja o log do servidor.</div>";
+      }
+    });
+  </script>
+
+</body>
+</html>

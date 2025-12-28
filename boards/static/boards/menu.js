@@ -1,4 +1,5 @@
-// Menu lateral (drawer) - padrão NossoTrello
+//boards/static/menu.js
+// Menu lateral (drawer) - padrão NossoTrello 
 document.addEventListener("DOMContentLoaded", () => {
   const drawer = document.getElementById("app-drawer");
   const overlay = document.getElementById("drawerOverlay");
@@ -62,3 +63,4 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 });
+//END boards/static/menu.js

@@ -10,3 +10,4 @@
     window.Modal.breadcrumb?.bind();
   };
 })();
+//END modal.index.js

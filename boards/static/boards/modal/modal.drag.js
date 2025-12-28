@@ -71,13 +71,29 @@
       const card = activeCard;
       activeCard = null;
 
-      // CLICK REAL → abre modal
+      // CLICK REAL → abre modal (via Facade)
       if (!moved) {
-        const url = card.dataset.cardOpenUrl;
-        if (url && window.htmx) {
-          window.htmx.ajax("GET", url, "#modal-body");
+        const cardId = Number(card.dataset.cardId);
+
+        // evita "double fire" (click + pointerup)
+        if (cardId) {
+          try {
+            // delega para o fluxo oficial (modal.open.js)
+            if (window.Modal?.openCard) {
+              window.Modal.openCard(cardId, false);
+            } else if (window.htmx) {
+              // fallback mínimo (não ideal, mas seguro)
+              window.htmx.ajax("GET", `/card/${cardId}/modal/`, {
+                target: "#modal-body",
+                swap: "innerHTML",
+              });
+            }
+          } catch (_e) {
+          // silencioso: não derruba UX do board
+          }
         }
       }
+
 
       moved = false;
 
@@ -88,3 +104,4 @@
     true
   );
 })();
+//END boards/static/boards/modal/modal.drag.js

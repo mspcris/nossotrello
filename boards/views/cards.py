@@ -289,44 +289,6 @@ def delete_card(request, card_id):
 @transaction.atomic
 def move_card(request):
     """
-    Mover é ESCRITA.
-    Observação UX:
-      - se o front “mover no DOM” antes da resposta, vai parecer que moveu,
-        mas ao dar F5 volta (porque o backend negou e não persistiu).
-      - por isso aqui devolvemos JSON 403 para o front conseguir reverter/avisar.
-    """
-    data = json.loads(request.body.decode("utf-8"))
-
-    card_id = int(data.get("card_id"))
-    new_column_id = int(data.get("new_column_id"))
-    new_position = int(data.get("new_position"))
-
-    card = get_object_or_404(Card, id=card_id)
-
-    old_column = card.column
-    new_column = get_object_or_404(Column, id=new_column_id)
-
-    old_board = old_column.board
-    new_board = new_column.board
-
-    # ✅ Escrita: bloquear VIEWER (origem e destino)
-    if not _user_can_edit_board(request.user, old_board) or not _user_can_edit_board(request.user, new_board):
-        return _deny_read_only(request, as_json=True)
-
-    actor = _actor_label(request)
-    old_pos = int(card.position or 0)
-
-    # ✅ DEFINE BOARD UMA ÚNICA VEZ (FIX DO 500)
-    board = old_board
-
-
-
-
-@login_required
-@require_POST
-@transaction.atomic
-def move_card(request):
-    """
     Move um card dentro da mesma coluna ou entre colunas.
     Implementação determinística para evitar rollback visual via polling.
     """
