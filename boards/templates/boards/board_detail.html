@@ -121,6 +121,37 @@
       onblur="updateBoardTitle({{ board.id }})">{{ board.name }}</h1>
 </div>
 
+
+<!-- BOARD MEMBERS (READ-ONLY) -->
+<div id="board-members-bar"
+     class="board-members-bar"
+     aria-label="Usuários do quadro">
+
+  {% for member in board_members %}
+    <button
+      type="button"
+      class="board-member-avatar"
+      title="{{ member.get_full_name|default:member.email }}"
+      aria-label="Ver perfil de {{ member.get_full_name|default:member.email }}"
+      data-user-id="{{ member.id }}"
+      onclick="openReadonlyUserProfile({{ member.id }})">
+
+      {% if member.profile.avatar %}
+        <img
+          src="{{ member.profile.avatar.url }}"
+          alt="{{ member.get_full_name }}"
+          loading="lazy">
+      {% else %}
+        <span class="avatar-fallback">
+          {{ member.get_full_name|default:member.email|first|upper }}
+        </span>
+      {% endif %}
+    </button>
+  {% endfor %}
+
+</div>
+
+
 {# ======================== LISTA DE COLUNAS ======================== #}
 <div id="board-root" data-can-edit="{{ can_edit|yesno:'1,0' }}">
   <div id="columns-wrapper"
@@ -621,5 +652,29 @@
   })();
 </script>
 
+
+<script>
+function openReadonlyUserProfile(userId) {
+  if (!window.htmx) return;
+
+  const modalBody = document.getElementById("modal-body");
+  if (!modalBody) return;
+
+  // Fecha qualquer card aberto antes (segurança)
+  if (window.Modal?.close) {
+    window.Modal.close({ clearBody: true, clearUrl: false });
+  }
+  
+  // Abre modal vazio
+  if (window.Modal?.open) {
+    window.Modal.open();
+  }
+
+  htmx.ajax("GET", `/users/${userId}/profile/readonly/`, {
+    target: modalBody,
+    swap: "innerHTML"
+  });
+}
+</script>
 
 {% endblock %}

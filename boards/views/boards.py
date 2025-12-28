@@ -4,6 +4,7 @@ import os
 import uuid
 import requests
 
+
 from django.http import HttpResponse, HttpResponseBadRequest
 from django.shortcuts import render, get_object_or_404, redirect
 from django.utils import timezone
@@ -18,7 +19,6 @@ from django.contrib.auth import get_user_model
 from django.db.models import Q
 from django.urls import reverse
 from django.db.models import Prefetch
-
 
 from .helpers import (
     DEFAULT_WALLPAPER_FILENAME,
@@ -135,13 +135,24 @@ def board_detail(request, board_id):
             can_share_board = True
             can_edit = True  # legado: criador/staff edita
 
+    # ✅ SEMPRE definir columns (fora do if/else)
     columns = (
         board.columns.filter(is_deleted=False)
         .order_by("position")
         .prefetch_related(
-            Prefetch("cards", queryset=Card.objects.filter(is_deleted=False).order_by("position"))
+            Prefetch(
+                "cards",
+                queryset=Card.objects.filter(is_deleted=False).order_by("position"),
+            )
         )
     )
+
+    # =========================
+    # BOARD MEMBERS (para a barra de avatares)
+    # =========================
+    memberships = board.memberships.select_related("user").order_by("role", "user__username")
+
+    board_members = [m.user for m in memberships]
 
     return render(
         request,
@@ -149,14 +160,13 @@ def board_detail(request, board_id):
         {
             "board": board,
             "columns": columns,
+            "board_members": board_members,
             "my_membership": my_membership,
             "can_leave_board": can_leave_board,
             "can_share_board": can_share_board,
             "can_edit": can_edit,
         },
     )
-
-
 
 # ======================================================================
 # SAIR DA BOARD
