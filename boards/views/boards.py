@@ -5,8 +5,9 @@ import uuid
 import requests
 
 
-from django.http import HttpResponse, HttpResponseBadRequest
+from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
+from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils.html import escape
 from django.core.files.base import ContentFile
@@ -19,6 +20,8 @@ from django.contrib.auth import get_user_model
 from django.db.models import Q
 from django.urls import reverse
 from django.db.models import Prefetch
+from types import SimpleNamespace
+
 
 from .helpers import (
     DEFAULT_WALLPAPER_FILENAME,
@@ -152,7 +155,16 @@ def board_detail(request, board_id):
     # =========================
     memberships = board.memberships.select_related("user").order_by("role", "user__username")
 
-    board_members = [m.user for m in memberships]
+    board_members = []
+    for m in memberships:
+        u = m.user
+        try:
+            _ = u.profile  # tenta acessar
+        except Exception:
+            # fallback seguro só para o template
+            u._state.fields_cache["profile"] = SimpleNamespace(avatar=None)
+
+        board_members.append(u)
 
     return render(
         request,
@@ -167,6 +179,7 @@ def board_detail(request, board_id):
             "can_edit": can_edit,
         },
     )
+
 
 # ======================================================================
 # SAIR DA BOARD

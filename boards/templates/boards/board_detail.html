@@ -136,10 +136,10 @@
       data-user-id="{{ member.id }}"
       onclick="openReadonlyUserProfile({{ member.id }})">
 
-      {% if member.profile.avatar %}
+      {% if member.profile and member.profile.avatar %}
         <img
           src="{{ member.profile.avatar.url }}"
-          alt="{{ member.get_full_name }}"
+          alt="{{ member.get_full_name|default:member.email }}"
           loading="lazy">
       {% else %}
         <span class="avatar-fallback">
@@ -150,6 +150,7 @@
   {% endfor %}
 
 </div>
+
 
 
 {# ======================== LISTA DE COLUNAS ======================== #}
@@ -664,7 +665,7 @@ function openReadonlyUserProfile(userId) {
   if (window.Modal?.close) {
     window.Modal.close({ clearBody: true, clearUrl: false });
   }
-  
+
   // Abre modal vazio
   if (window.Modal?.open) {
     window.Modal.open();
