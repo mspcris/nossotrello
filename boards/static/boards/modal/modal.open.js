@@ -1,9 +1,7 @@
 // boards/static/boards/modal/modal.open.js
 (() => {
-  console.log("[modal.open] loaded");
-
   if (!window.Modal) {
-    console.error("[modal.open] modal.core.js não carregado (window.Modal ausente)");
+    console.error("[modal.open] modal.core.js não carregado");
     return;
   }
 
@@ -13,98 +11,92 @@
     return document.getElementById("modal-body");
   }
 
-  function safeOpenModal() {
-    if (typeof window.Modal.open === "function") {
-      window.Modal.open();
-      const modal = document.getElementById("modal");
-      if (modal) modal.setAttribute("aria-hidden", "false");
-    }
-  }
-
   function buildCardModalUrl(cardId) {
-    // padrão do seu server log: GET /card/135/modal/
     return `/card/${cardId}/modal/`;
   }
 
-  function loadCard(cardId, replaceUrl = false) {
+  function loadCard(cardId, replaceUrl = false, cardEl = null) {
     const id = Number(cardId);
     if (!id) return;
 
-    if (typeof window.Modal.canOpen === "function" && !window.Modal.canOpen()) return;
+    if (typeof window.Modal.canOpen === "function" &&
+        !window.Modal.canOpen()) return;
 
     const target = getModalBody();
     if (!target) {
-      console.error("[modal.open] #modal-body não existe no DOM");
+      console.error("[modal.open] #modal-body não encontrado");
       return;
     }
 
     const now = Date.now();
-    if (window.Modal?.state?.lastOpenedAt && now - window.Modal.state.lastOpenedAt < 250) {
-      // evita dupla chamada na mesma interação
+    if (window.Modal.state.lastOpenedAt &&
+        now - window.Modal.state.lastOpenedAt < 250) {
       return;
     }
 
-    // marca estado antes do request
+    // 🔑 captura geometria do card (base do Genie)
+    if (cardEl?.getBoundingClientRect) {
+      window.Modal.state.lastCardRect = cardEl.getBoundingClientRect();
+    } else {
+      window.Modal.state.lastCardRect = null;
+    }
+
     window.Modal.state.currentCardId = id;
 
-    // URL helper (se existir)
-    if (window.Modal.url && typeof window.Modal.url.set === "function") {
+    if (window.Modal.url?.set) {
       window.Modal.url.set(id, { replace: !!replaceUrl });
     }
 
-    // abre visual imediatamente
-    safeOpenModal();
+    // abre imediatamente (animação no core)
+    window.Modal.open();
 
-    const hx = window.htmx;
-    if (!hx || typeof hx.ajax !== "function") {
-      console.error("[modal.open] HTMX não carregado (window.htmx ausente).");
+    if (!window.htmx?.ajax) {
+      console.error("[modal.open] HTMX não disponível");
       return;
     }
 
-    const url = buildCardModalUrl(id);
-
-    hx.ajax("GET", url, {
-      target: target,
+    window.htmx.ajax("GET", buildCardModalUrl(id), {
+      target,
       swap: "innerHTML",
     });
   }
 
+  // ============================================================
+  // CLICK GLOBAL NOS CARDS
+  // ============================================================
   document.addEventListener(
     "click",
     (ev) => {
-      const card = ev.target.closest("li[data-card-id], .card-item[data-card-id]");
+      const card = ev.target.closest(
+        "li[data-card-id], .card-item[data-card-id]"
+      );
       if (!card) return;
 
-      if (ev.target.closest("button, a, input, textarea, select, [contenteditable='true'], [hx-get], [hx-post]")) {
-        return;
-      }
+      if (ev.target.closest(
+        "button, a, input, textarea, select, [contenteditable], [hx-get], [hx-post]"
+      )) return;
 
       if (window.__isDraggingCard) return;
-
-      if (typeof window.Modal.canOpen === "function" && !window.Modal.canOpen()) return;
-
+      if (typeof window.Modal.canOpen === "function" &&
+          !window.Modal.canOpen()) return;
       if (ev.defaultPrevented || ev.__modalHandled) return;
 
       ev.preventDefault();
       ev.stopPropagation();
       ev.__modalHandled = true;
 
-      const cardId = Number(card.dataset.cardId);
-      loadCard(cardId, false);
+      loadCard(card.dataset.cardId, false, card);
     },
     true
   );
 
-  document.addEventListener("htmx:afterSwap", (e) => {
-    const target = e.detail?.target || e.target;
-    if (!target || target.id !== "modal-body") return;
-    safeOpenModal();
-  });
-
+  // ============================================================
+  // URL DIRECT LOAD
+  // ============================================================
   document.addEventListener("DOMContentLoaded", () => {
-    if (window.Modal.url && typeof window.Modal.url.getCardIdFromUrl === "function") {
+    if (window.Modal.url?.getCardIdFromUrl) {
       const cardId = window.Modal.url.getCardIdFromUrl();
-      if (cardId) loadCard(cardId, true);
+      if (cardId) loadCard(cardId, true, null);
     }
   });
 

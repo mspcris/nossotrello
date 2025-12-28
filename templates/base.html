@@ -204,6 +204,8 @@
       outline: none;
       box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.35);
     }
+
+
   </style>
 </head>
 
@@ -320,12 +322,16 @@
            porque isso quebra o clique e impede fechar/abrir em runtime.
          - Usa Modal.open()/Modal.close() quando existir.
          ============================================================ -->
-    <div id="modal"
-         class="fixed inset-0 hidden bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-[2000]"
-         role="dialog"
-         aria-modal="true"
-         aria-hidden="true"
-         data-modal-root>
+    <div
+      id="modal"
+      class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-[2000]
+         opacity-0 pointer-events-none invisible transition-opacity duration-200"
+      role="dialog"
+      aria-modal="true"
+      aria-hidden="true"
+      data-modal-root
+>
+
 
 
       <div id="card-modal-root"

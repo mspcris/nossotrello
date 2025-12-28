@@ -1,0 +1,14 @@
+/* Estado inicial (antes de abrir) */
+#card-modal-root {
+  transform-origin: top left;
+  will-change: transform, opacity, border-radius;
+  transition:
+    transform 420ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 220ms ease,
+    border-radius 300ms ease;
+}
+
+/* Durante animação */
+#card-modal-root.genie-animating {
+  pointer-events: none;
+}

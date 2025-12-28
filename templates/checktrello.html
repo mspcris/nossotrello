@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>CheckTrello — QA NossoTrello</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #020617;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --accent: #10b981;
+      --border: #1e293b;
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 32px;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    h1, h2, h3 {
+      margin-top: 0;
+    }
+
+    h1 {
+      font-size: 32px;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      margin-bottom: 32px;
+    }
+
+    .section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .section h2 {
+      margin-bottom: 16px;
+      font-size: 22px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+
+    .item {
+      display: flex;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px dashed var(--border);
+    }
+
+    .item:last-child {
+      border-bottom: none;
+    }
+
+    .item input {
+      margin-top: 4px;
+      transform: scale(1.2);
+    }
+
+    .item div {
+      flex: 1;
+    }
+
+    .hint {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    footer {
+      margin-top: 48px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    button {
+      background: var(--accent);
+      color: #022c22;
+      border: none;
+      padding: 14px 22px;
+      border-radius: 999px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 32px;
+    }
+
+    @media print {
+      button {
+        display: none;
+      }
+      body {
+        background: white;
+        color: black;
+      }
+      .section {
+        border: 1px solid #ccc;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>CheckTrello</h1>
+  <div class="subtitle">
+    Checklist manual de QA — NossoTrello<br />
+    Documento interno | Não persistente | Gerável em PDF
+  </div>
+
+  <!-- ======================================================= -->
+  <div class="section">
+    <h2>1️⃣ Usuário & Autenticação</h2>
+
+    <div class="item">
+      <input type="checkbox" />
+      <div>
+        Criar usuário com email válido
+        <div class="hint">Valida fluxo de cadastro e persistência.</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <input type="checkbox" />
+      <div>
+        Receber email de primeiro login
+        <div class="hint">Email contém link funcional.</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <input type="checkbox" />
+      <div>
+        Primeiro login obriga definição de senha
+      </div>
+    </div>
+
+    <div class="item">
+      <input type="checkbox" />
+      <div>
+        Logout encerra sessão corretamente
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================= -->
+  <div class="section">
+    <h2>2️⃣ Quadro (Board)</h2>
+
+    <div class="item"><input type="checkbox" /><div>Criar quadro</div></div>
+    <div class="item"><input type="checkbox" /><div>Renomear quadro (inline)</div></div>
+    <div class="item"><input type="checkbox" /><div>Remover quadro</div></div>
+
+    <div class="item">
+      <input type="checkbox" />
+      <div>
+        Compartilhar quadro com outro usuário
+        <div class="hint">Permissões corretas (editor / viewer).</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================= -->
+  <div class="section">
+    <h2>3️⃣ Colunas</h2>
+
+    <div class="item"><input type="checkbox" /><div>Criar coluna</div></div>
+    <div class="item"><input type="checkbox" /><div>Renomear coluna</div></div>
+    <div class="item"><input type="checkbox" /><div>Excluir coluna</div></div>
+
+    <div class="item">
+      <input type="checkbox" />
+      <div>
+        Arrastar coluna
+        <div class="hint">Ordem persiste após reload.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================= -->
+  <div class="section">
+    <h2>4️⃣ Cards</h2>
+
+    <div class="item"><input type="checkbox" /><div>Criar card</div></div>
+    <div class="item"><input type="checkbox" /><div>Renomear card</div></div>
+    <div class="item"><input type="checkbox" /><div>Excluir card</div></div>
+
+    <div class="item">
+      <input type="checkbox" />
+      <div>
+        Arrastar card na mesma coluna
+      </div>
+    </div>
+
+    <div class="item">
+      <input type="checkbox" />
+      <div>
+        Arrastar card entre colunas
+      </div>
+    </div>
+
+    <div class="item">
+      <input type="checkbox" />
+      <div>
+        Sincronização em tempo real (2 navegadores)
+        <div class="hint">Polling ativo e consistente.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================= -->
+  <div class="section">
+    <h2>5️⃣ Modal do Card</h2>
+
+    <div class="item"><input type="checkbox" /><div>Abrir modal</div></div>
+    <div class="item"><input type="checkbox" /><div>Fechar modal (X)</div></div>
+    <div class="item"><input type="checkbox" /><div>Fechar modal (overlay)</div></div>
+
+    <div class="item">
+      <input type="checkbox" />
+      <div>
+        URL reflete card aberto
+        <div class="hint">URL limpa ao fechar modal.</div>
+      </div>
+    </div>
+
+    <div class="item"><input type="checkbox" /><div>Descrição (Quill)</div></div>
+    <div class="item"><input type="checkbox" /><div>Etiquetas</div></div>
+    <div class="item"><input type="checkbox" /><div>Checklists</div></div>
+    <div class="item"><input type="checkbox" /><div>Anexos</div></div>
+    <div class="item"><input type="checkbox" /><div>Atividade</div></div>
+  </div>
+
+  <!-- ======================================================= -->
+  <div class="section">
+    <h2>6️⃣ Menu do Card (⋮)</h2>
+
+    <div class="item"><input type="checkbox" /><div>Duplicar card</div></div>
+    <div class="item"><input type="checkbox" /><div>Mover card</div></div>
+    <div class="item"><input type="checkbox" /><div>Copiar link do card</div></div>
+  </div>
+
+  <!-- ======================================================= -->
+  <div class="section">
+    <h2>7️⃣ Busca & Filtros</h2>
+
+    <div class="item"><input type="checkbox" /><div>Busca por texto</div></div>
+    <div class="item"><input type="checkbox" /><div>Busca por tags</div></div>
+    <div class="item"><input type="checkbox" /><div>Reset automático</div></div>
+  </div>
+
+  <!-- ======================================================= -->
+  <div class="section">
+    <h2>8️⃣ Usuário & Preferências</h2>
+
+    <div class="item"><input type="checkbox" /><div>Abrir menu do usuário</div></div>
+    <div class="item"><input type="checkbox" /><div>Editar nome amigável</div></div>
+    <div class="item"><input type="checkbox" /><div>Avatar</div></div>
+  </div>
+
+  <!-- ======================================================= -->
+  <div class="section">
+    <h2>9️⃣ Aparência</h2>
+
+    <div class="item"><input type="checkbox" /><div>Tema do modal (dark / glass)</div></div>
+    <div class="item"><input type="checkbox" /><div>Wallpaper do board</div></div>
+  </div>
+
+  <!-- ======================================================= -->
+  <div class="section">
+    <h2>🔟 Robustez</h2>
+
+    <div class="item">
+      <input type="checkbox" />
+      <div>
+        Ctrl+F5 não quebra sincronização
+        <div class="hint">BoardRuntime reidrata corretamente.</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <input type="checkbox" />
+      <div>
+        Modal bloqueia polling
+      </div>
+    </div>
+
+    <div class="item">
+      <input type="checkbox" />
+      <div>
+        Fechar modal reativa polling
+      </div>
+    </div>
+  </div>
+
+  <button onclick="window.print()">Gerar PDF do Checklist</button>
+
+  <footer>
+    Documento interno de QA — NossoTrello<br />
+    Checklist manual | Sem persistência de dados
+  </footer>
+
+</body>
+</html>

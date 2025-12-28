@@ -724,39 +724,6 @@ html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !import
 }
 
 /* =======================================================================
-   [15] ANIMAÇÃO estilo macOS (open/close) + fallback
-   ======================================================================= */
-#modal{
-  opacity: 0;
-  transition: opacity 180ms ease;
-}
-#card-modal-root{
-  transform: translateY(10px) scale(0.98);
-  opacity: 0;
-  transition: transform 220ms cubic-bezier(0.2, 0.9, 0.2, 1), opacity 180ms ease;
-  will-change: transform, opacity;
-}
-#modal.modal-open{ opacity: 1; }
-#modal.modal-open #card-modal-root{
-  transform: translateY(0) scale(1);
-  opacity: 1;
-}
-#modal.modal-closing{ opacity: 0; }
-#modal.modal-closing #card-modal-root{
-  transform: translateY(8px) scale(0.985);
-  opacity: 0;
-}
-
-/* fallback: overlay visível não pode ficar transparente */
-#modal:not(.hidden){
-  opacity: 1 !important;
-}
-#modal:not(.hidden) #card-modal-root{
-  opacity: 1 !important;
-  transform: translateY(0) scale(1) !important;
-}
-
-/* =======================================================================
    [16] CONTRASTE — FIX (robusto)
    - Se NÃO estiver em dark global (html.dark), força claro.
    - Se estiver em dark global (html.dark) e o root não tiver theme-dark,
@@ -1122,6 +1089,28 @@ html.dark #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-
   padding: 0;
 }
 
+/* ============================================================
+   MODAL — VISIBILIDADE APENAS (GENIE É JS)
+   ============================================================ */
+
+#modal{
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transition: opacity 160ms ease;
+}
+
+#modal.modal-open{
+  opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
+}
+
+/* IMPORTANTE:
+   - NÃO definir transform no #card-modal-root
+   - NÃO definir opacity no #card-modal-root
+   - Genie (JS) controla tudo
+*/
 
 
 

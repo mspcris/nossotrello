@@ -4,29 +4,28 @@
     (window.Modal && typeof window.Modal === "object") ? window.Modal : {};
   window.Modal = Modal;
 
-  const DEBUG = (() => {
-    try {
-      if (typeof window.DEBUG !== "undefined") return !!window.DEBUG;
-      if (location.hostname === "localhost" || location.hostname === "127.0.0.1") return true;
-      return localStorage.getItem("DEBUG") === "1";
-    } catch {
-      return false;
-    }
-  })();
+  const DEBUG =
+    location.hostname === "localhost" ||
+    localStorage.getItem("DEBUG") === "1";
 
-  const log = (...args) => { if (DEBUG) console.log("[modal.core]", ...args); };
-  const warn = (...args) => { if (DEBUG) console.warn("[modal.core]", ...args); };
+  const log = (...a) => DEBUG && console.log("[modal.core]", ...a);
+  const warn = (...a) => DEBUG && console.warn("[modal.core]", ...a);
 
   const state =
     (Modal.state && typeof Modal.state === "object") ? Modal.state : {};
   Modal.state = state;
 
-  if (!("isOpen" in state)) state.isOpen = false;
-  if (!("currentCardId" in state)) state.currentCardId = null;
-  if (!("lastOpenedAt" in state)) state.lastOpenedAt = 0;
+  state.isOpen ??= false;
+  state.currentCardId ??= null;
+  state.lastOpenedAt ??= 0;
+  state.lastCardRect ??= null;
 
   function getModalEl() {
     return document.getElementById("modal");
+  }
+
+  function getRootEl() {
+    return document.getElementById("card-modal-root");
   }
 
   function getBodyEl() {
@@ -36,78 +35,123 @@
   function clearCardFromUrl() {
     try {
       const url = new URL(window.location.href);
-
-      // remove ?card=...
       url.searchParams.delete("card");
-
-      // mantém o hash se existir
-      // não dá reload: apenas “normaliza” a barra
-      window.history.replaceState(window.history.state || {}, "", url.toString());
-    } catch (e) {
-      // silencioso
-    }
+      history.replaceState(history.state || {}, "", url.toString());
+    } catch {}
   }
 
-  Modal.open = function open() {
+  // ============================================================
+  // OPEN — GENIE EFFECT (SAFE)
+  // ============================================================
+  Modal.open = function () {
     const modal = getModalEl();
-    if (!modal) {
-      warn("open(): #modal não encontrado no DOM");
+    const root = getRootEl();
+    if (!modal || !root) {
+      warn("open(): modal/root não encontrado");
       return false;
     }
 
-    modal.classList.remove("hidden");
+    // garante presença visual sem display:none
     modal.classList.add("modal-open");
     modal.setAttribute("aria-hidden", "false");
 
+    const rect = state.lastCardRect;
+
+    if (rect) {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+
+      const scaleX = rect.width / root.offsetWidth;
+      const scaleY = rect.height / root.offsetHeight;
+
+      const translateX = rect.left + rect.width / 2 - vw / 2;
+      const translateY = rect.top + rect.height / 2 - vh / 2;
+
+      // 1️⃣ estado inicial (sem transição)
+      root.style.transition = "none";
+      root.style.transformOrigin = "center center";
+      root.style.transform =
+        `translate(${translateX}px, ${translateY}px) scale(${scaleX}, ${scaleY})`;
+      root.style.opacity = "0";
+
+      // 🔑 força layout (IMPRESCINDÍVEL)
+      root.getBoundingClientRect();
+
+      // 2️⃣ estado final (com transição)
+      requestAnimationFrame(() => {
+        root.style.transition =
+          "transform 420ms cubic-bezier(0.22, 1, 0.36, 1), opacity 200ms ease";
+        root.style.transform = "translate(0,0) scale(1)";
+        root.style.opacity = "1";
+      });
+    }
+
     state.isOpen = true;
     state.lastOpenedAt = Date.now();
-
-    log("open()", { isOpen: state.isOpen, currentCardId: state.currentCardId });
+    log("open()");
     return true;
   };
 
-  Modal.close = function close(opts = {}) {
-    const { clearBody = true, clearUrl = true } = opts;
+  // ============================================================
+  // CLOSE — GENIE EFFECT (SAFE)
+  // ============================================================
+  Modal.close = function ({ clearBody = true, clearUrl = true } = {}) {
+    const modal = getModalEl();
+    const root = getRootEl();
+    const body = getBodyEl();
 
-    // 1) Estado primeiro (para destravar polling imediatamente)
+    const rect = state.lastCardRect;
+
     state.isOpen = false;
     state.currentCardId = null;
 
-    const modal = getModalEl();
-    const body = getBodyEl();
+    if (rect && root) {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
 
-    if (modal) {
-      modal.classList.remove("modal-open");
-      modal.classList.add("hidden");
-      modal.setAttribute("aria-hidden", "true");
+      const scaleX = rect.width / root.offsetWidth;
+      const scaleY = rect.height / root.offsetHeight;
+
+      const translateX = rect.left + rect.width / 2 - vw / 2;
+      const translateY = rect.top + rect.height / 2 - vh / 2;
+
+      root.style.transition =
+        "transform 220ms ease, opacity 180ms ease";
+      root.style.transform =
+        `translate(${translateX}px, ${translateY}px) scale(${scaleX}, ${scaleY})`;
+      root.style.opacity = "0";
+
+      setTimeout(() => {
+        modal.classList.remove("modal-open");
+        modal.setAttribute("aria-hidden", "true");
+
+        // limpa resíduos para o próximo open
+        root.style.transition = "";
+        root.style.transform = "";
+        root.style.opacity = "";
+
+        if (clearBody && body) body.innerHTML = "";
+        if (clearUrl) clearCardFromUrl();
+
+        document.dispatchEvent(new Event("modal:closed"));
+      }, 240);
     } else {
-      warn("close(): #modal não encontrado no DOM");
+      modal?.classList.remove("modal-open");
+      modal?.setAttribute("aria-hidden", "true");
+
+      if (clearBody && body) body.innerHTML = "";
+      if (clearUrl) clearCardFromUrl();
+
+      document.dispatchEvent(new Event("modal:closed"));
     }
 
-    if (clearBody && body) {
-      body.innerHTML = "";
-    }
-
-    // 2) URL por último (sem reload)
-    if (clearUrl) clearCardFromUrl();
-    
-    try {
-      document.dispatchEvent(new CustomEvent("modal:closed"));
-    } catch (_) {}
-
-    log("close()", { isOpen: state.isOpen });
+    log("close()");
     return true;
   };
 
-  if (!Modal.__coreLoaded) {
-    Modal.__coreLoaded = true;
-
-    Modal.getElements = Modal.getElements || function () {
-      return { modal: getModalEl(), body: getBodyEl() };
-    };
-
-    log("core loaded");
-  } else {
-    log("core already loaded (methods/state ensured)");
-  }
+  Modal.getElements = () => ({
+    modal: getModalEl(),
+    body: getBodyEl(),
+    root: getRootEl(),
+  });
 })();
