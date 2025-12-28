@@ -1,16 +1,15 @@
-
-<!-- BOARD_DETAIL.HTML -->
+{# templates/boards/board_detail.html #}
 {% extends "base.html" %}
 {% load static %}
 {% load tag_helpers %}
+
+{% block title %}{{ board.name }}{% endblock %}
+{% block header_left %}{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% url 'boards:board_wallpaper_css' board.id %}">
 <link rel="stylesheet" href="{% static 'boards/board_detail.css' %}">
 {% endblock %}
-
-{% block title %}{{ board.name }}{% endblock %}
-{% block header_left %}{% endblock %}
 
 {% block header_right_under_logo %}
 <div class="w-64">
@@ -114,24 +113,24 @@
     <span>{{ board.name }}</span>
   </div>
 
-  <h1 class="text-3xl font-extrabold text-white drop-shadow"
-      ondragstart="event.preventDefault(); this.blur();">
-    {{ board.name }}
-  </h1>
+  {# ✅ UM ÚNICO H1 (editável). Fechado corretamente. #}
+  <h1 id="board-title"
+      class="text-3xl font-extrabold text-white drop-shadow"
+      contenteditable="true"
+      ondragstart="event.preventDefault(); this.blur();"
+      onblur="updateBoardTitle({{ board.id }})">{{ board.name }}</h1>
 </div>
 
-<!-- ======================== LISTA DE COLUNAS ======================== -->
+{# ======================== LISTA DE COLUNAS ======================== #}
 <div id="board-root" data-can-edit="{{ can_edit|yesno:'1,0' }}">
   <div id="columns-wrapper"
        class="flex gap-6 overflow-x-auto overflow-y-hidden pb-6 pr-4 h-[calc(100vh-140px)]">
 
-    <!-- 🔑 CONTAINER QUE SERÁ ATUALIZADO PELO POLLING -->
-      <div id="columns-container" class="flex gap-6">
-
-        {% for column in columns %}
-          {% include "boards/partials/column_item.html" %}
-        {% endfor %}
-      </div>
+    {# 🔑 CONTAINER QUE SERÁ ATUALIZADO PELO POLLING (use o id que o seu polling usa: columns-list) #}
+    <div id="columns-list" class="flex gap-6">
+      {% for column in columns %}
+        {% include "boards/partials/column_item.html" %}
+      {% endfor %}
     </div>
 
     <div id="add-column-box"
@@ -166,31 +165,15 @@
           Digite o nome da coluna antes.
         </div>
 
-        <button class="px-3 py-2 bg-blue-600 text-white rounded w-full" type="submit">
+        <button class="px-3 py-2 bg-blue-600 text-white rounded w-full hover:bg-blue-700 transition">
           Adicionar Coluna
         </button>
       </form>
     </div>
-
   </div>
 </div>
 
-
-<h1 id="board-title"
-    class="text-3xl font-extrabold text-white drop-shadow"
-    contenteditable="true"
-    onblur="updateBoardTitle({{ board.id }})">
-
-
-
-{% block body_attrs %}
-  data-board-id="{{ board.id }}"
-  data-board-version="{{ board.version }}"
-{% endblock %}
-
-
-<!-- ======================== SCRIPTS ======================== -->
-<!-- ======================== POLLING ======================== -->
+{# ======================== BOOT GLOBAL ======================== #}
 <script>
   window.BOARD_ID = {{ board.id }};
   window.BOARD_VERSION = {{ board.version }};
@@ -198,70 +181,10 @@
 </script>
 
 <script>
-(function () {
-
-  function pollBoard() {
-    fetch(`/board/${window.BOARD_ID}/poll/?v=${window.BOARD_VERSION}`, {
-      credentials: "same-origin",
-      headers: { "Accept": "application/json" }
-    })
-    .then(r => r.ok ? r.json() : null)
-    .then(data => {
-
-      // 1️⃣ resposta inválida ou sem mudança
-      if (!data || !data.changed) return;
-
-      // 2️⃣ nunca atualiza durante drag
-      if (window.__isDraggingCard) return;
-
-      // 3️⃣ segurança: sem HTML válido → não toca no DOM
-      if (!data.html || data.html.trim() === "") return;
-
-      // 4️⃣ atualiza versão
-      window.BOARD_VERSION = data.version;
-
-      // 5️⃣ swap de DOM
-      const container = document.getElementById("columns-container");
-      if (!container) return;
-
-      container.innerHTML = data.html;
-      if (window.htmx && typeof window.htmx.process === "function") {
-      window.htmx.process(container);
-      }
-
-
-      // 6️⃣ reativa comportamentos JS
-      if (typeof initSortable === "function") {
-        initSortable();
-      }
-
-      if (typeof initSortableColumns === "function") {
-        initSortableColumns();
-      }
-    })
-    .catch(() => {});
-  }
-
-  // watchdog: nunca deixar drag travado
-  setInterval(() => {
-    if (window.__isDraggingCard) {
-      window.__isDraggingCard = false;
-    }
-  }, 3000);
-
-  setInterval(pollBoard, 1500);
-
-})();
-</script>
-
-
-
-<script>
   // ============================================================
   // FILTER (Tags = frontend | Texto = backend)
   // ============================================================
 
-  // state
   window.__boardFilterMode = "tags"; // "tags" | "text"
 
   function debounce(fn, wait) {
@@ -273,7 +196,6 @@
   }
 
   function resetSearchUI() {
-    // volta tudo (cards + colunas)
     document.querySelectorAll('li[data-card-id]').forEach((card) => (card.style.display = ""));
     document.querySelectorAll(".column-item[data-column-id]").forEach((col) => (col.style.display = ""));
   }
@@ -282,13 +204,11 @@
     const cardSet = new Set((cardIds || []).map((x) => Number(x)));
     const colSet = new Set((columnIds || []).map((x) => Number(x)));
 
-    // cards
     document.querySelectorAll('li[data-card-id]').forEach((card) => {
       const id = Number(card.dataset.cardId);
       card.style.display = cardSet.has(id) ? "" : "none";
     });
 
-    // colunas
     document.querySelectorAll(".column-item[data-column-id]").forEach((col) => {
       const id = Number(col.getAttribute("data-column-id"));
       col.style.display = colSet.has(id) ? "" : "none";
@@ -316,7 +236,7 @@
 
       const data = await resp.json();
       applySearchResult(data.card_ids || [], data.column_ids || []);
-    } catch (e) {
+    } catch (_e) {
       resetSearchUI();
     }
   }, 250);
@@ -328,7 +248,6 @@
     const btnText = document.getElementById("filter-mode-text");
     const input = document.getElementById("board-filter");
 
-    // UI states
     if (btnTags && btnText) {
       btnTags.classList.toggle("bg-gray-900", window.__boardFilterMode === "tags");
       btnTags.classList.toggle("text-white", window.__boardFilterMode === "tags");
@@ -339,13 +258,11 @@
       btnText.classList.toggle("text-gray-700", window.__boardFilterMode !== "text");
     }
 
-    // placeholder
     if (input) {
       input.placeholder = (window.__boardFilterMode === "text")
         ? "Buscar em cards…"
         : "Ex: urgente";
 
-      // reaplica o filtro com o valor atual
       applyBoardFilter(input.value || "");
       if (!window.matchMedia || !window.matchMedia("(pointer: coarse)").matches) input.focus();
     }
@@ -354,13 +271,11 @@
   function applyBoardFilter(raw) {
     const q = (raw || "").trim().toLowerCase();
 
-    // sem query: reset total (cards + colunas)
     if (!q) {
       resetSearchUI();
       return;
     }
 
-    // TAGS MODE (frontend)
     if (window.__boardFilterMode === "tags") {
       const cards = document.querySelectorAll('[id^="cards-col-"] li[data-card-id]');
       cards.forEach((card) => {
@@ -371,7 +286,6 @@
         card.style.display = match ? "" : "none";
       });
 
-      // oculta colunas que ficaram sem cards visíveis
       document.querySelectorAll(".column-item[data-column-id]").forEach((col) => {
         const anyVisible = col.querySelector('li[data-card-id]:not([style*="display: none"])');
         col.style.display = anyVisible ? "" : "none";
@@ -380,22 +294,19 @@
       return;
     }
 
-    // TEXT MODE (backend)
     runBackendSearch(raw);
   }
 
-  // default
   document.addEventListener("DOMContentLoaded", () => setFilterMode("tags"));
 </script>
-
 
 <script>
   // ============================================================
   // SORTABLE (cards)
   // ============================================================
-  function initSortable() {
+  window.initSortable = function initSortable() {
     const canEdit = document.getElementById("board-root")?.dataset?.canEdit === "1";
-    if (!canEdit) return; // viewer não inicializa DnD
+    if (!canEdit) return;
 
     document.querySelectorAll("[id^='cards-col-']").forEach(listEl => {
       if (listEl.dataset.sortableApplied === "1") return;
@@ -433,7 +344,6 @@
               })
             });
 
-            // Se deu 403/erro: desfaz na hora (sem precisar de F5)
             if (!resp.ok) {
               const ref = evt.from.children[evt.oldIndex] || null;
               evt.from.insertBefore(evt.item, ref);
@@ -446,17 +356,15 @@
     });
   }
 
-  document.addEventListener("DOMContentLoaded", initSortable);
-  document.body.addEventListener("htmx:afterSwap", initSortable);
+  document.addEventListener("DOMContentLoaded", window.initSortable);
+  document.body.addEventListener("htmx:afterSwap", window.initSortable);
 </script>
-
-
 
 <script>
   // ============================================================
   // SORTABLE (columns)
   // ============================================================
-  function initSortableColumns() {
+  window.initSortableColumns = function initSortableColumns() {
     const columnsList = document.getElementById("columns-list");
     if (!columnsList) return;
 
@@ -467,13 +375,9 @@
       animation: 150,
       ghostClass: "drag-ghost",
 
-      // arrasta SOMENTE pelo header
       handle: ".column-header",
-
-      // garante que só os wrappers de coluna são “draggables”
       draggable: ".column-item",
 
-      // evita treta ao clicar em botões/inputs
       filter: "button, a, input, textarea, select, [contenteditable='true']",
       preventOnFilter: false,
 
@@ -496,10 +400,9 @@
     });
   }
 
-  document.addEventListener("DOMContentLoaded", initSortableColumns);
-  document.body.addEventListener("htmx:afterSwap", initSortableColumns);
+  document.addEventListener("DOMContentLoaded", window.initSortableColumns);
+  document.body.addEventListener("htmx:afterSwap", window.initSortableColumns);
 </script>
-
 
 <script>
   // ============================================================
@@ -521,7 +424,6 @@
     });
   }
 </script>
-
 
 <script>
   // ============================================================
@@ -555,7 +457,6 @@
   });
 </script>
 
-
 <script>
   // ============================================================
   // DELETE COLUMNS MODE
@@ -588,7 +489,6 @@
   });
 </script>
 
-
 <script>
   // ============================================================
   // TAG COLORS (saved)
@@ -601,7 +501,7 @@
       try {
         colors = JSON.parse(cardEl.getAttribute("data-tag-colors") || "{}");
         if (!colors || typeof colors !== "object") colors = {};
-      } catch (e) {
+      } catch (_e) {
         colors = {};
       }
 
@@ -625,8 +525,6 @@
     window.applySavedTagColorsToBoard(evt.target);
   });
 </script>
-
-
 
 <script>
   // ============================================================
@@ -661,11 +559,67 @@
     return true;
   }
 
-  // limpa o erro ao digitar
   document.addEventListener("input", (e) => {
     if (e.target && e.target.id === "add-column-name") hideAddColumnError();
   });
 </script>
 
+<script>
+  // ============================================================
+  // BoardRuntime — rehidratação determinística (load/poll/modal close)
+  // ============================================================
+  (function () {
+    if (window.BoardRuntime) return;
+
+    function safe(fn) { try { fn && fn(); } catch(_) {} }
+
+    function ensureSortable() {
+      safe(() => window.initSortable && window.initSortable());
+      safe(() => window.initSortableColumns && window.initSortableColumns());
+    }
+
+    function ensureTagColors(scope) {
+      safe(() => window.applySavedTagColorsToBoard && window.applySavedTagColorsToBoard(scope || document));
+    }
+
+    function ensureHtmxProcess(scopeEl) {
+      const el = scopeEl || document;
+      if (window.htmx && typeof window.htmx.process === "function") {
+        safe(() => window.htmx.process(el));
+      }
+    }
+
+    function ensureAll(scopeEl) {
+      // ordem importa: primeiro processa HTMX, depois rebind Sortable, depois styles
+      ensureHtmxProcess(scopeEl);
+      ensureSortable();
+      ensureTagColors(scopeEl || document);
+    }
+
+    window.BoardRuntime = {
+      ensure: ensureAll
+    };
+
+    // 1) hard reload / normal load
+    document.addEventListener("DOMContentLoaded", () => {
+      window.BoardRuntime.ensure(document);
+    });
+
+    // 2) qualquer swap HTMX relevante
+    document.body.addEventListener("htmx:afterSwap", (e) => {
+      window.BoardRuntime.ensure(e.target || document);
+    });
+
+    document.body.addEventListener("htmx:afterSettle", (e) => {
+      window.BoardRuntime.ensure(e.target || document);
+    });
+
+    // 3) quando o modal fechar, rehidrata board (isso elimina o “só funciona depois que abre e fecha”)
+    document.addEventListener("modal:closed", () => {
+      window.BoardRuntime.ensure(document);
+    });
+  })();
+</script>
+
+
 {% endblock %}
-<!-- END BOARD_DETAIL.HTML -->

@@ -321,11 +321,12 @@
          - Usa Modal.open()/Modal.close() quando existir.
          ============================================================ -->
     <div id="modal"
-         class="fixed inset-0 z-50 hidden bg-black/40 backdrop-blur-sm"
+         class="fixed inset-0 hidden bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-[2000]"
          role="dialog"
          aria-modal="true"
          aria-hidden="true"
          data-modal-root>
+
 
       <div id="card-modal-root"
            class="card-modal modal-glass card-theme-aero rounded-2xl shadow-2xl flex flex-col overflow-hidden"
@@ -398,16 +399,21 @@
       const modal = document.getElementById("modal");
       if (!modal) return;
 
-      modal.addEventListener("click", (ev) => {
-        if (ev.target !== modal) return; // só overlay
-        // fecha pelo core se existir
+      modal.addEventListener("click", function (ev) {
+        // Fecha só se clicar no backdrop (fora do conteúdo)
+        if (ev.target !== modal) return;
+
+        // Não fecha no mesmo "tap" que abriu (click pós-pointerup)
+        const openedAt = Number(window.Modal?.state?.lastOpenedAt || 0);
+        if (openedAt && Date.now() - openedAt < 250) return;
+
+        console.log("[overlay] closing modal from overlay click");
         if (window.Modal && typeof window.Modal.close === "function") {
           window.Modal.close();
-          return;
+        } else {
+          modal.classList.add("hidden");
+          modal.classList.remove("modal-open");
         }
-        // fallback: esconde
-        modal.classList.add("hidden");
-        modal.setAttribute("aria-hidden", "true");
       });
     })();
   </script>

@@ -20,20 +20,18 @@
     return el && el.closest && el.closest(".card-item, li[data-card-id]");
   }
 
-  // ============================
-  // POINTER DOWN
-  // ============================
   document.addEventListener(
     "pointerdown",
-    function (e) {
-      const card = getCard(e.target);
+    function (ev) {
+      const card = getCard(ev.target);
       if (!card) return;
 
-      // ignora botões internos
-      if (e.target.closest("button, a, [hx-get], [hx-post]")) return;
+      if (ev.target.closest("button, a, input, textarea, select, [contenteditable='true'], [hx-get], [hx-post]")) {
+        return;
+      }
 
-      startX = e.clientX;
-      startY = e.clientY;
+      startX = ev.clientX;
+      startY = ev.clientY;
       moved = false;
       activeCard = card;
       window.__isDraggingCard = false;
@@ -41,16 +39,13 @@
     true
   );
 
-  // ============================
-  // POINTER MOVE
-  // ============================
   document.addEventListener(
     "pointermove",
-    function (e) {
+    function (ev) {
       if (!activeCard) return;
 
-      const dx = Math.abs(e.clientX - startX);
-      const dy = Math.abs(e.clientY - startY);
+      const dx = Math.abs(ev.clientX - startX);
+      const dy = Math.abs(ev.clientY - startY);
 
       if (dx > DRAG_THRESHOLD || dy > DRAG_THRESHOLD) {
         moved = true;
@@ -60,48 +55,38 @@
     true
   );
 
-  // ============================
-  // POINTER UP
-  // ============================
   document.addEventListener(
     "pointerup",
-    function () {
+    function (ev) {
       if (!activeCard) return;
+
+      if (ev.defaultPrevented || ev.__modalHandled) {
+        activeCard = null;
+        moved = false;
+        window.__isDraggingCard = false;
+        return;
+      }
 
       const card = activeCard;
       activeCard = null;
 
-      // CLICK REAL → abre modal (via Facade)
       if (!moved) {
         const cardId = Number(card.dataset.cardId);
-
-        // evita "double fire" (click + pointerup)
         if (cardId) {
           try {
-            // delega para o fluxo oficial (modal.open.js)
-            if (window.Modal?.openCard) {
+            if (window.Modal && typeof window.Modal.openCard === "function") {
               window.Modal.openCard(cardId, false);
-            } else if (window.htmx) {
-              // fallback mínimo (não ideal, mas seguro)
-              window.htmx.ajax("GET", `/card/${cardId}/modal/`, {
-                target: "#modal-body",
-                swap: "innerHTML",
-              });
+              ev.__modalHandled = true;
             }
           } catch (_e) {
-          // silencioso: não derruba UX do board
+            // silencioso
           }
         }
       }
 
-
       moved = false;
-
-      setTimeout(() => {
-        window.__isDraggingCard = false;
-      }, 0);
+      setTimeout(() => { window.__isDraggingCard = false; }, 0);
     },
     true
   );
 })();
-//END boards/static/boards/modal/modal.drag.js

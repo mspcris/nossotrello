@@ -1,62 +1,112 @@
-// modal.open.js — abertura do modal + HTMX
+// boards/static/boards/modal/modal.open.js
 (() => {
+  console.log("[modal.open] loaded");
+
   if (!window.Modal) {
-    console.error("modal.core.js não carregado");
+    console.error("[modal.open] modal.core.js não carregado (window.Modal ausente)");
     return;
   }
 
-  if (window.Modal.openCard) return;
+  if (typeof window.Modal.openCard === "function") return;
+
+  function getModalBody() {
+    return document.getElementById("modal-body");
+  }
+
+  function safeOpenModal() {
+    if (typeof window.Modal.open === "function") {
+      window.Modal.open();
+      const modal = document.getElementById("modal");
+      if (modal) modal.setAttribute("aria-hidden", "false");
+    }
+  }
+
+  function buildCardModalUrl(cardId) {
+    // padrão do seu server log: GET /card/135/modal/
+    return `/card/${cardId}/modal/`;
+  }
 
   function loadCard(cardId, replaceUrl = false) {
-    if (!cardId) return;
-    if (!window.Modal.canOpen()) return;
+    const id = Number(cardId);
+    if (!id) return;
 
-    window.Modal.state.currentCardId = cardId;
-    window.Modal.url.set(cardId, { replace: replaceUrl });
+    if (typeof window.Modal.canOpen === "function" && !window.Modal.canOpen()) return;
 
-    const hx = window.htmx;
-    if (!hx || typeof hx.ajax !== "function") {
-      console.error("HTMX não carregado (window.htmx ausente).");
+    const target = getModalBody();
+    if (!target) {
+      console.error("[modal.open] #modal-body não existe no DOM");
       return;
     }
 
-    hx.ajax("GET", `/card/${cardId}/modal/`, {
-      target: "#modal-body",
+    const now = Date.now();
+    if (window.Modal?.state?.lastOpenedAt && now - window.Modal.state.lastOpenedAt < 250) {
+      // evita dupla chamada na mesma interação
+      return;
+    }
+
+    // marca estado antes do request
+    window.Modal.state.currentCardId = id;
+
+    // URL helper (se existir)
+    if (window.Modal.url && typeof window.Modal.url.set === "function") {
+      window.Modal.url.set(id, { replace: !!replaceUrl });
+    }
+
+    // abre visual imediatamente
+    safeOpenModal();
+
+    const hx = window.htmx;
+    if (!hx || typeof hx.ajax !== "function") {
+      console.error("[modal.open] HTMX não carregado (window.htmx ausente).");
+      return;
+    }
+
+    const url = buildCardModalUrl(id);
+
+    hx.ajax("GET", url, {
+      target: target,
       swap: "innerHTML",
     });
   }
 
-  // Clique no card
   document.addEventListener(
-  "click",
-  (ev) => {
-    const card = ev.target.closest("li[data-card-id]");
-    if (!card) return;
-    if (!window.Modal.canOpen()) return;
+    "click",
+    (ev) => {
+      const card = ev.target.closest("li[data-card-id], .card-item[data-card-id]");
+      if (!card) return;
 
-    ev.preventDefault();
-    ev.stopPropagation();
+      if (ev.target.closest("button, a, input, textarea, select, [contenteditable='true'], [hx-get], [hx-post]")) {
+        return;
+      }
 
-    const cardId = Number(card.dataset.cardId);
-    loadCard(cardId, false);
-  },
-  true
-);
+      if (window.__isDraggingCard) return;
 
-    // HTMX: modal carregou conteúdo
+      if (typeof window.Modal.canOpen === "function" && !window.Modal.canOpen()) return;
+
+      if (ev.defaultPrevented || ev.__modalHandled) return;
+
+      ev.preventDefault();
+      ev.stopPropagation();
+      ev.__modalHandled = true;
+
+      const cardId = Number(card.dataset.cardId);
+      loadCard(cardId, false);
+    },
+    true
+  );
+
   document.addEventListener("htmx:afterSwap", (e) => {
     const target = e.detail?.target || e.target;
     if (!target || target.id !== "modal-body") return;
-    if (!window.Modal.canOpen()) return;
+    safeOpenModal();
+  });
 
-    window.Modal.open();
-});
-  // Boot por URL (?card=)
   document.addEventListener("DOMContentLoaded", () => {
-    const cardId = window.Modal.url.getCardIdFromUrl();
-    if (cardId) loadCard(cardId, true);
+    if (window.Modal.url && typeof window.Modal.url.getCardIdFromUrl === "function") {
+      const cardId = window.Modal.url.getCardIdFromUrl();
+      if (cardId) loadCard(cardId, true);
+    }
   });
 
   window.Modal.openCard = loadCard;
 })();
-//END modal.open.js — abertura do modal + HTMX
