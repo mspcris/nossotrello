@@ -123,52 +123,62 @@
     if (window.Modal.cover.__BOUND__) return;
     window.Modal.cover.__BOUND__ = true;
 
-    // CLICK: botão "Escolher imagem…" -> abre input file
-    // IMPORTANTE: usar CAPTURE (true) para não ser “engolido” por handlers globais do modal
-    document.addEventListener(
-      "click",
-      (e) => {
-        const root = getRoot();
-        if (!root) return;
+// ABRIR PICKER: usar pointerdown em capture (mais confiável que click)
+document.addEventListener(
+  "pointerdown",
+  (e) => {
+    const root = getRoot();
+    if (!root) return;
 
-        const pick = e.target?.closest?.("#cm-cover-pick-btn");
-        if (!pick) return;
+    const pick = e.target?.closest?.("#cm-cover-pick-btn");
+    if (!pick) return;
 
-        // pegar pelo document evita depender de estrutura interna do root
-        const inp = document.getElementById("cm-cover-file");
-        if (!(inp instanceof HTMLInputElement)) {
-          showErr("Input de capa não encontrado (cm-cover-file).");
-          return;
-        }
+    // trava o gesto aqui, antes de outros handlers do modal
+    e.preventDefault();
+    e.stopPropagation();
 
-        // precisa ser sync e derivado do clique do usuário
-        inp.click();
-      },
-      true
-    );
+    const inp = document.getElementById("cm-cover-file");
+    if (!(inp instanceof HTMLInputElement)) {
+      showErr("Input de capa não encontrado (cm-cover-file).");
+      return;
+    }
 
-    // CHANGE: selecionou arquivo -> upload
-    document.addEventListener(
-      "change",
-      (e) => {
-        const root = getRoot();
-        if (!root) return;
+    // garante que escolher o mesmo arquivo dispare eventos
+    try { inp.value = ""; } catch (_e) {}
 
-        const inp = e.target;
-        if (!(inp instanceof HTMLInputElement)) return;
-        if (inp.id !== "cm-cover-file") return;
+    // abre o picker (precisa ser síncrono e dentro do gesto)
+    inp.click();
+  },
+  true
+);
 
-        const file = inp.files?.[0];
-        if (!file) return;
+// PROCESSAR ARQUIVO: change + input (alguns browsers disparam um ou outro primeiro)
+function handleFilePicked(target) {
+  const root = getRoot();
+  if (!root) return;
 
-        uploadCover(file).finally(() => {
-          try {
-            inp.value = "";
-          } catch (_e) {}
-        });
-      },
-      true
-    );
+  if (!(target instanceof HTMLInputElement)) return;
+  if (target.id !== "cm-cover-file") return;
+
+  const file = target.files?.[0];
+  if (!file) return;
+
+  uploadCover(file).finally(() => {
+    try { target.value = ""; } catch (_e) {}
+  });
+}
+
+document.addEventListener(
+  "change",
+  (e) => handleFilePicked(e.target),
+  true
+);
+
+document.addEventListener(
+  "input",
+  (e) => handleFilePicked(e.target),
+  true
+);
 
     // PASTE (Ctrl+V) na aba Descrição -> upload
     document.addEventListener(
