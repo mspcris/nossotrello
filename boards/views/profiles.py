@@ -2,6 +2,8 @@
 from django.contrib.auth.decorators import login_required
 from django.http import Http404
 from django.shortcuts import get_object_or_404, render
+from types import SimpleNamespace
+from django.contrib.auth.models import User  # se estiver usando o User padrão
 
 from ..models import BoardMembership, UserProfile
 
@@ -24,37 +26,43 @@ def public_profile(request, handle: str):
     )
 
 
+
 @login_required
 def user_profile_readonly_modal(request, user_id: int):
-    """
-    Renderiza um modal SOMENTE-LEITURA com dados do perfil de outro usuário.
+    target_user = get_object_or_404(User, id=user_id)
 
-    Regras de acesso (defensivas):
-    - sempre requer login
-    - só permite ver perfis de usuários que compartilham pelo menos 1 board
-      com o usuário atual (evita enumerar usuários por ID)
-    """
-    target = get_object_or_404(
-        UserProfile.objects.select_related("user"),
-        user_id=user_id,
-    )
-
+    # evita enumerar usuários por ID: só vê quem compartilha board
     shared = BoardMembership.objects.filter(
         user=request.user,
-        board__memberships__user_id=target.user_id,
+        board__memberships__user_id=target_user.id,
     ).exists()
 
-    if not shared and request.user.id != target.user_id and not request.user.is_staff:
+    if not shared and request.user.id != target_user.id and not request.user.is_staff:
         raise Http404("Perfil não encontrado")
 
-    u = target.user
-    display_name = (target.display_name or u.get_full_name() or u.get_username() or "").strip()
+    profile = UserProfile.objects.filter(user=target_user).first()
+    if not profile:
+        profile = SimpleNamespace(
+            avatar=None,
+            display_name="",
+            handle="",
+            posto="",
+            setor="",
+            ramal="",
+            telefone="",
+        )
+
+    display_name = (getattr(profile, "display_name", "") or target_user.get_full_name() or "").strip()
+    if not display_name:
+        # fallback forte: username > email
+        display_name = (target_user.get_username() or target_user.email or "").strip()
 
     ctx = {
-        "profile": target,
-        "user_obj": u,
+        "profile": profile,
+        "user_obj": target_user,
         "display_name": display_name,
-        "is_me": request.user.id == target.user_id,
+        "email": (target_user.email or "").strip(),
+        "username": (target_user.get_username() or "").strip(),
+        "is_me": request.user.id == target_user.id,
     }
-
     return render(request, "boards/user_profile_readonly_modal.html", ctx)
