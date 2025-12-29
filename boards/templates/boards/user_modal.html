@@ -1,7 +1,7 @@
 {# templates/boards/user_modal.html #}
 {% load static %}
 
-<div id="um-root" class="p-4">
+<div id="um-root" class="p-4" data-active-tab="{{ active_tab|default:'profile' }}">
 
   <div class="flex items-start justify-between gap-4 mb-4">
     <div class="flex items-center gap-3">
@@ -38,17 +38,26 @@
 
   <!-- Tabs -->
   <div class="flex flex-wrap gap-2 mb-4">
-    <button type="button"
+    <button
+      type="button"
+      data-um-tab="profile"
       class="px-3 py-1 rounded border bg-white/70 hover:bg-white {% if active_tab == 'profile' %} font-semibold {% endif %}"
-      onclick="window.umOpenTab('profile')">Perfil</button>
+      onclick="window.umOpenTab('profile')"
+    >Perfil</button>
 
-    <button type="button"
+    <button
+      type="button"
+      data-um-tab="password"
       class="px-3 py-1 rounded border bg-white/70 hover:bg-white {% if active_tab == 'password' %} font-semibold {% endif %}"
-      onclick="window.umOpenTab('password')">Senha</button>
+      onclick="window.umOpenTab('password')"
+    >Senha</button>
 
-    <button type="button"
+    <button
+      type="button"
+      data-um-tab="avatar"
       class="px-3 py-1 rounded border bg-white/70 hover:bg-white {% if active_tab == 'avatar' %} font-semibold {% endif %}"
-      onclick="window.umOpenTab('avatar')">Foto</button>
+      onclick="window.umOpenTab('avatar')"
+    >Foto</button>
   </div>
 
   <!-- Alerts -->
@@ -176,7 +185,6 @@
     <!-- Foto -->
     <div id="um-panel-avatar" style="{% if active_tab != 'avatar' %}display:none{% endif %}">
 
-      {# (Opcional) Se você já estiver passando `avatar_presets` no contexto, habilita escolha de preset #}
       {% if avatar_presets %}
         <form
           hx-post="{% url 'boards:account_avatar_choice_update' %}"
@@ -185,13 +193,26 @@
           class="bg-white/60 border border-gray-200 rounded-xl p-4 mb-3"
         >
           {% csrf_token %}
+
           <div class="text-sm font-semibold mb-2">Escolher um avatar</div>
 
           <div class="grid grid-cols-4 sm:grid-cols-6 gap-2">
             {% for f in avatar_presets %}
-              <label class="cursor-pointer">
-                <input type="radio" name="avatar_choice" value="{{ f }}" class="hidden" {% if profile.avatar_choice == f %}checked{% endif %}>
-                <img src="{% static 'images/avatar/' %}{{ f }}" class="h-14 w-14 rounded-xl object-cover border border-white/40">
+              <label for="av-{{ forloop.counter }}" class="cursor-pointer inline-block">
+                <input
+  id="av-{{ forloop.counter }}"
+  type="radio"
+  name="avatar_choice"
+  value="{{ f }}"
+  class="sr-only"
+  {% if profile.avatar_choice == f %}checked{% endif %}
+>
+
+                <img
+                  src="{% static 'images/avatar/' %}{{ f }}"
+                  class="h-14 w-14 rounded-xl object-cover border {% if profile.avatar_choice == f %}border-blue-600{% else %}border-white/40{% endif %}"
+                  alt="{{ f }}"
+                >
               </label>
             {% endfor %}
           </div>
@@ -200,7 +221,9 @@
             <div class="mt-2 text-sm text-red-700">{{ errors.avatar_choice }}</div>
           {% endif %}
 
-          <button type="submit" class="mt-3 px-4 py-2 bg-blue-600 text-white rounded w-fit">Usar este avatar</button>
+          <button type="submit" class="mt-3 px-4 py-2 bg-blue-600 text-white rounded w-fit">
+            Usar este avatar
+          </button>
         </form>
       {% endif %}
 
@@ -230,16 +253,3 @@
 
   </div>
 </div>
-
-<script>
-  window.umOpenTab = function(tab) {
-    const panels = {
-      profile: document.getElementById("um-panel-profile"),
-      password: document.getElementById("um-panel-password"),
-      avatar: document.getElementById("um-panel-avatar")
-    };
-    Object.keys(panels).forEach(k => {
-      if (panels[k]) panels[k].style.display = (k === tab) ? "block" : "none";
-    });
-  };
-</script>

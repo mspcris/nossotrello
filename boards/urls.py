@@ -200,6 +200,7 @@ urlpatterns = [
     path("account/profile/update/", views.account_profile_update, name="account_profile_update"),
     path("account/password/change/", views.account_password_change, name="account_password_change"),
     path("account/avatar/update/", views.account_avatar_update, name="account_avatar_update"),
+    path("account/avatar/choose/", views.account_avatar_choice_update, name="account_avatar_choice_update"),
 
 
     # ============================================================

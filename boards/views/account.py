@@ -27,6 +27,19 @@ def _render_account_modal(request, errors=None, ok=None, active_tab="profile"):
         "active_tab": active_tab,
         "errors": errors or {},
         "ok": ok or {},
+        "avatar_presets": [
+            "avatar1.jpeg",
+            "avatar2.png",
+            "avatar3.png",
+            "avatar4.png",
+            "avatar5.png",
+            "avatar6.png",
+            "avatar7.png",
+            "avatar8.png",
+            "avatar9.png",
+            "avatar10.png",
+            "avatar11.png",
+        ],
     }
     return render(request, "boards/user_modal.html", ctx)
 
@@ -46,30 +59,26 @@ def account_profile_update(request):
     display_name = (request.POST.get("display_name") or "").strip()
     handle = (request.POST.get("handle") or "").strip().lower()
 
+    posto = (request.POST.get("posto") or "").strip()
+    setor = (request.POST.get("setor") or "").strip()
+    ramal = (request.POST.get("ramal") or "").strip()
+    telefone = (request.POST.get("telefone") or "").strip()
+
     errors = {}
 
-    # display_name é livre (só tamanho)
     if len(display_name) > 120:
         errors["display_name"] = "Nome muito longo (máx 120)."
 
-    # handle: opcional, mas se vier tem que ser válido e único
     if handle:
         if len(handle) > 40:
             errors["handle"] = "Handle muito longo (máx 40)."
         elif not HANDLE_RE.match(handle):
             errors["handle"] = "Use apenas letras minúsculas, números, _ ou ."
         else:
-            # único (exclui o próprio profile)
             qs = UserProfile.objects.filter(handle=handle).exclude(pk=prof.pk)
             if qs.exists():
                 errors["handle"] = "Este handle já está em uso."
 
-        posto = (request.POST.get("posto") or "").strip()
-    setor = (request.POST.get("setor") or "").strip()
-    ramal = (request.POST.get("ramal") or "").strip()
-    telefone = (request.POST.get("telefone") or "").strip()
-
-    # validações simples (coerentes com o model)
     if len(posto) > 120:
         errors["posto"] = "Posto muito longo (máx 120)."
     if len(setor) > 120:
@@ -90,7 +99,6 @@ def account_profile_update(request):
     prof.telefone = telefone
 
     prof.save(update_fields=["display_name", "handle", "posto", "setor", "ramal", "telefone"])
-
 
     return _render_account_modal(
         request,
@@ -184,5 +192,45 @@ from django.views.decorators.http import require_GET
 def public_profile(request, handle):
     profile = get_object_or_404(UserProfile, handle=handle)
     return render(request, "boards/public_profile.html", {"profile": profile})
+
+
+from django.views.decorators.http import require_POST
+from django.contrib.auth.decorators import login_required
+
+@require_POST
+@login_required
+def account_avatar_choice_update(request):
+    prof = _get_or_create_profile(request.user)
+
+    choice = (request.POST.get("avatar_choice") or "").strip()
+    if not choice:
+        return _render_account_modal(
+            request,
+            errors={"avatar_choice": "Selecione um avatar."},
+            active_tab="avatar",
+        )
+
+    # whitelist simples 1.0 (evita salvar lixo)
+    allowed = {
+        "avatar1.jpeg","avatar2.png","avatar3.png","avatar4.png","avatar5.png",
+        "avatar6.png","avatar7.png","avatar8.png","avatar9.png","avatar10.png","avatar11.png",
+    }
+    if choice not in allowed:
+        return _render_account_modal(
+            request,
+            errors={"avatar_choice": "Avatar inválido."},
+            active_tab="avatar",
+        )
+
+    prof.avatar_choice = choice
+
+    # se escolheu preset, opcionalmente limpa upload para padronizar o render
+    if prof.avatar:
+        prof.avatar = None
+
+    prof.save(update_fields=["avatar_choice", "avatar"])
+    return _render_account_modal(request, ok={"avatar": "Avatar atualizado."}, active_tab="avatar")
+
+
 
 #END boards/views/account.py
