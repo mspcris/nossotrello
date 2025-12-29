@@ -188,6 +188,8 @@ from django.templatetags.static import static as static_url
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 
+from django.templatetags.static import static as static_url
+
 @require_POST
 @login_required
 def account_avatar_choice_update(request):
@@ -214,7 +216,7 @@ def account_avatar_choice_update(request):
 
     prof.avatar_choice = choice
 
-    # se escolheu preset, limpa upload para padronizar render (1.0 simples)
+    # se escolheu preset, limpa upload para padronizar o render
     if prof.avatar:
         prof.avatar = None
 
@@ -226,7 +228,7 @@ def account_avatar_choice_update(request):
         active_tab="avatar",
     )
 
-    # Atualiza o ícone do header (canto direito) sem reload
+    # DISPARA EVENTO (mesmo padrão do upload), mas com URL do static
     try:
         url = static_url(f"images/avatar/{choice}")
         resp["HX-Trigger"] = f'{{"userAvatarUpdated": {{"url": "{url}"}}}}'

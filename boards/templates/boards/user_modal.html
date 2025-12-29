@@ -77,6 +77,8 @@
     <!-- Perfil -->
     <div id="um-panel-profile" style="{% if active_tab != 'profile' %}display:none{% endif %}">
       <form
+        method="post"
+        action="{% url 'boards:account_profile_update' %}"
         hx-post="{% url 'boards:account_profile_update' %}"
         hx-target="#modal-body"
         hx-swap="innerHTML"
@@ -146,6 +148,8 @@
     <!-- Senha -->
     <div id="um-panel-password" style="{% if active_tab != 'password' %}display:none{% endif %}">
       <form
+        method="post"
+        action="{% url 'boards:account_password_change' %}"
         hx-post="{% url 'boards:account_password_change' %}"
         hx-target="#modal-body"
         hx-swap="innerHTML"
@@ -201,7 +205,7 @@
           <div class="text-sm font-semibold mb-2">Escolher um avatar</div>
           <div class="text-xs opacity-70 mb-3">Clique em um avatar e depois confirme.</div>
 
-          <div id="um-avatar-grid" class="grid grid-cols-6 sm:grid-cols-8 gap-2">
+    <div id="um-avatar-grid" class="flex flex-wrap gap-2">
             {% for f in avatar_presets %}
               {% with rid="um-avatar-"|add:forloop.counter|stringformat:"s" %}
                 <label for="{{ rid }}" class="cursor-pointer block">
@@ -213,10 +217,10 @@
                     class="sr-only"
                     {% if profile.avatar_choice == f %}checked{% endif %}
                   >
-                  <img
+            <img
                     src="{% static 'images/avatar/' %}{{ f }}"
                     alt="{{ f }}"
-                    class="um-avatar-item h-14 w-14 rounded-xl object-cover border border-white/40"
+              class="um-avatar-item h-14 w-14 rounded-xl object-cover border border-white/40"
                     data-avatar="{{ f }}"
                   >
                 </label>

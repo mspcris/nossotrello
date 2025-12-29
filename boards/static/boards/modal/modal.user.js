@@ -2,56 +2,12 @@
 (() => {
   if (!window.Modal || window.Modal.user) return;
 
-  function processHtmx(el) {
+  function htmxProcess(scopeEl) {
     try {
-      if (window.htmx && typeof window.htmx.process === "function") {
-        window.htmx.process(el);
+      if (window.htmx && typeof window.htmx.process === "function" && scopeEl) {
+        window.htmx.process(scopeEl);
       }
     } catch (_e) {}
-  }
-
-  function refreshAvatarSelection(modalBody) {
-    if (!modalBody) return;
-
-    const checked = modalBody.querySelector(
-      "#um-avatar-grid input[name='avatar_choice']:checked"
-    );
-    const chosen = checked ? checked.value : null;
-
-    modalBody.querySelectorAll("#um-avatar-grid .um-avatar-item").forEach((img) => {
-      const isOn = !!(chosen && img.getAttribute("data-avatar") === chosen);
-
-      // Não depende de Tailwind (garante feedback visual mesmo sem utilitários)
-      if (isOn) {
-        img.style.outline = "3px solid #2563eb";
-        img.style.outlineOffset = "2px";
-        img.style.borderColor = "#2563eb";
-      } else {
-        img.style.outline = "";
-        img.style.outlineOffset = "";
-        img.style.borderColor = "";
-      }
-    });
-  }
-
-  function wireAvatarPresetClicks() {
-    const modalBody = document.getElementById("modal-body");
-    if (!modalBody) return;
-
-    // Delegação: funciona mesmo após HTMX swap do modal
-    modalBody.addEventListener("click", (e) => {
-      const img = e.target.closest("#um-avatar-grid .um-avatar-item");
-      if (!img) return;
-
-      const label = img.closest("label");
-      const inputId = label ? label.getAttribute("for") : null;
-      const radio = inputId ? document.getElementById(inputId) : null;
-
-      if (radio && radio.type === "radio") {
-        radio.checked = true;
-        refreshAvatarSelection(modalBody);
-      }
-    });
   }
 
   function umOpenTab(tab) {
@@ -65,11 +21,14 @@
       if (panels[k]) panels[k].style.display = (k === tab) ? "block" : "none";
     });
 
-    // marca botão ativo (opcional, mas ajuda a não confundir)
     document.querySelectorAll("[data-um-tab]").forEach((btn) => {
       const isActive = btn.getAttribute("data-um-tab") === tab;
       btn.classList.toggle("font-semibold", isActive);
     });
+
+    // mantém o estado (pra quando der swap)
+    const root = document.getElementById("um-root");
+    if (root) root.setAttribute("data-active-tab", tab);
   }
 
   function umInitFromDom() {
@@ -80,9 +39,47 @@
     umOpenTab(tab);
   }
 
+  // ============================================================
+  // Avatar presets (seleção visual)
+  // ============================================================
+  function umRefreshAvatarSelection(scope) {
+    const root = scope || document;
+    const grid = root.querySelector?.("#um-avatar-grid");
+    if (!grid) return;
+
+    const checked = grid.querySelector("input[name='avatar_choice']:checked");
+    const chosen = checked ? checked.value : "";
+
+    grid.querySelectorAll(".um-avatar-item").forEach((img) => {
+      const isOn = chosen && img.getAttribute("data-avatar") === chosen;
+      img.classList.toggle("ring-2", !!isOn);
+      img.classList.toggle("ring-blue-600", !!isOn);
+      img.classList.toggle("border-blue-600", !!isOn);
+    });
+  }
+
+  function wireAvatarPresetClicks() {
+    const modalBody = document.getElementById("modal-body");
+    if (!modalBody) return;
+
+    modalBody.addEventListener("click", (e) => {
+      const img = e.target.closest(".um-avatar-item");
+      if (!img) return;
+
+      const label = img.closest("label");
+      const radio = label ? label.querySelector("input[name='avatar_choice']") : null;
+      if (radio) {
+        radio.checked = true;
+        umRefreshAvatarSelection(document);
+      }
+    });
+  }
+
   function wireTabClicks() {
-    // Delegação: funciona mesmo com conteúdo trocado
-    document.getElementById("modal-body")?.addEventListener("click", (e) => {
+    const modalBody = document.getElementById("modal-body");
+    if (!modalBody) return;
+
+    modalBody.addEventListener("click", (e) => {
       const btn = e.target.closest("[data-um-tab]");
       if (!btn) return;
 
@@ -92,46 +89,43 @@
     });
   }
 
+  function afterModalHtmlInjected() {
+    const body = document.getElementById("modal-body");
+    if (!body) return;
+
+    // 🔑 ativa hx-* dentro do HTML injetado (evita navegar para /account/avatar/choose/)
+    htmxProcess(body);
+
+    // garante abas e seleção sempre ok
+    umInitFromDom();
+    umRefreshAvatarSelection(document);
+  }
+
   window.Modal.user = {
     _wired: false,
-    _wiredAvatar: false,
 
     open() {
-      fetch("/account/modal/")
+      fetch("/account/modal/", { credentials: "same-origin" })
         .then((r) => r.text())
         .then((html) => {
           const body = document.getElementById("modal-body");
           if (!body) return;
 
           body.innerHTML = html;
-
-          // IMPORTANTe: como carregamos via fetch + innerHTML, precisamos reprocessar HTMX
-          // para ativar hx-post/hx-target/hx-swap dentro do modal.
-          processHtmx(body);
-
           window.Modal.open();
 
-          // garante que a aba certa aparece ao abrir
-          umInitFromDom();
+          afterModalHtmlInjected();
 
-          // garante que clique nas tabs sempre funcione
           if (!window.Modal.user._wired) {
             wireTabClicks();
+            wireAvatarPresetClicks();
             window.Modal.user._wired = true;
           }
-
-          // habilita seleção visual dos avatares (preset)
-          if (!window.Modal.user._wiredAvatar) {
-            wireAvatarPresetClicks();
-            window.Modal.user._wiredAvatar = true;
-          }
-
-          refreshAvatarSelection(body);
         });
     },
   };
 
-  // API global caso você ainda tenha onclick="window.umOpenTab('...')" no template
+  // compat com onclick="window.umOpenTab('...')" do template
   window.umOpenTab = umOpenTab;
 
   document.body.addEventListener("click", (e) => {
@@ -141,16 +135,59 @@
     }
   });
 
-  // Se o seu modal do usuário usa HTMX dentro (hx-post nos forms),
-  // o swap do #modal-body acontece e precisamos re-inicializar a aba ativa.
+  // quando o #modal-body é trocado por HTMX (hx-post dos forms), reprocessa e reinit
   document.body.addEventListener("htmx:afterSwap", (evt) => {
     const target = evt.detail && evt.detail.target;
     if (!target || target.id !== "modal-body") return;
 
-    // só reinicializa se o conteúdo do user modal estiver presente
     if (document.getElementById("um-root")) {
-      umInitFromDom();
-      refreshAvatarSelection(target);
+      afterModalHtmlInjected();
     }
   });
+
+    // ============================================================
+  // Avatar runtime update (header + modal + board) via HX-Trigger
+  // ============================================================
+  function applyAvatarEverywhere(url) {
+    if (!url) return;
+
+    // 1) Header (base.html) — botão do usuário no topo
+    const headerImg = document.querySelector("#open-user-settings img");
+    if (headerImg) {
+      headerImg.src = url;
+    }
+
+    // 2) Modal — avatar grande no topo do modal
+    const modalTopImg = document.querySelector("#um-root .h-14.w-14 img");
+    if (modalTopImg) {
+      modalTopImg.src = url;
+    }
+
+    // 3) Board — bolinha do próprio usuário na barra de membros
+    try {
+      const me = Number(window.CURRENT_USER_ID || 0);
+      if (me) {
+        const btn = document.querySelector(`.board-member-avatar[data-user-id="${me}"]`);
+        if (btn) {
+          let img = btn.querySelector("img");
+          if (!img) {
+            // se estava fallback (letra), troca por img
+            btn.innerHTML = "";
+            img = document.createElement("img");
+            img.loading = "lazy";
+            btn.appendChild(img);
+          }
+          img.src = url;
+        }
+      }
+    } catch (_e) {}
+  }
+
+  document.body.addEventListener("userAvatarUpdated", (e) => {
+    const url = e && e.detail && e.detail.url;
+    applyAvatarEverywhere(url);
+  });
+
+
+
 })();
