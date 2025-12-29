@@ -81,3 +81,61 @@ estilos fixos do board, não do wallpaper */
   70%  { transform: translateY(-2px) scaleY(1.01); opacity: 1; }
   100% { transform: translateY(0)    scaleY(1); }
 }
+
+.member-tooltip {
+    position: fixed;
+    z-index: 9999;
+    max-width: 320px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.member-tooltip.hidden { display: none; }
+
+.member-tooltip__row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.member-tooltip__avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    object-fit: cover;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.member-tooltip__fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 18px;
+    background: rgba(0, 0, 0, 0.06);
+}
+
+.member-tooltip__name {
+    font-weight: 800;
+    font-size: 14px;
+    line-height: 1.15;
+}
+
+.member-tooltip__sub {
+    margin-top: 2px;
+    font-size: 12px;
+    opacity: 0.75;
+    line-height: 1.15;
+}
+/* mantém "Todos os Quadros" pequeno e destaca o nome do quadro */
+.board-breadcrumb-name{
+  font-size: 18px;      /* ajuste fino aqui */
+  font-weight: 800;
+  line-height: 1.1;
+}
+

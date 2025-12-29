@@ -412,10 +412,6 @@ html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !import
 #card-modal-root,
 #card-modal-root * { box-sizing: border-box; }
 
-#modal{
-  padding: var(--modal-edge-gap);
-}
-
 /* Modal ocupa viewport; scroll único no body do modal */
 #card-modal-root.card-modal{
   width: calc(100vw - (var(--modal-edge-gap) * 2)) !important;
@@ -930,25 +926,6 @@ html.dark #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-
 
 
 
-/* =========================
-   CHECKLIST ITEM (layout)
-   ========================= */
-#card-modal-root .checklist-item {
-  width: 100%;
-}
-
-#card-modal-root .checklist-item-handle {
-  font-size: 14px;
-  line-height: 1;
-}
-
-#card-modal-root .checklist-item input[type="checkbox"] {
-  margin-top: 1px;
-}
-
-
-
-
 /* =======================================================================
    CHECKLIST — layout robusto (GRID) / fonte única de verdade
    ======================================================================= */
@@ -956,33 +933,24 @@ html.dark #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-
 #card-modal-root #checklist-list,
 #card-modal-root .checklists-container,
 #card-modal-root .checklist-block,
-#card-modal-root .checklist-head,
-#card-modal-root .checklist-items{
+#card-modal-root .checklist-head{
   width: 100%;
   max-width: 100%;
   min-width: 0;
 }
 
 #card-modal-root .checklist-items{
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   list-style: none;
   padding: 0;
   margin: 0;
 }
 
-/* linha do item: handle | checkbox | texto | ações */
-#card-modal-root .checklist-item{
-  display: grid;
-  grid-template-columns: 18px 16px minmax(0, 1fr) auto;
-  column-gap: 10px;
-  align-items: start;
-
-  padding: 6px 0;
-  width: 100%;
-  max-width: 100%;
-}
-
 /* handle */
 #card-modal-root .checklist-item-handle{
+  font-size: 14px;
   width: 18px;
   text-align: center;
   line-height: 1;
@@ -1028,7 +996,16 @@ html.dark #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-
   opacity: 1;
 }
 
+/* linha do item: handle | checkbox | texto | ações */
 #card-modal-root .checklist-item {
+  display: grid;
+  grid-template-columns: 18px 16px minmax(0, 1fr) auto;
+  column-gap: 10px;
+  align-items: start;
+
+  padding: 6px 0;
+  width: 100%;
+  max-width: 100%;
   transition: opacity .15s ease, background .15s ease;
 }
 
@@ -1094,6 +1071,7 @@ html.dark #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-
    ============================================================ */
 
 #modal{
+  padding: var(--modal-edge-gap);
   opacity: 0;
   pointer-events: none;
   visibility: hidden;
@@ -1161,11 +1139,23 @@ html.dark #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-
 }
 
 .board-member-avatar .avatar-fallback {
-  font-weight: 700;
+  font-weight: 500;
   font-size: 14px;
   color: #111;
 }
 
+.board-members-bar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
+
+  /* Alinhado com o breadcrumb (header do board) */
+  margin: 0;
+  padding: 0;
+
+  flex-wrap: wrap;
+}
 
 
 /* =======================================================================

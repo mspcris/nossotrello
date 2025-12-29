@@ -200,7 +200,17 @@ urlpatterns = [
     path("account/profile/update/", views.account_profile_update, name="account_profile_update"),
     path("account/password/change/", views.account_password_change, name="account_password_change"),
     path("account/avatar/update/", views.account_avatar_update, name="account_avatar_update"),
-        
+
+
+    # ============================================================
+    # PERFIL (READ-ONLY NO MODAL)
+    # ============================================================
+    path(
+    "users/<int:user_id>/profile/readonly/",
+    views.user_profile_readonly_modal,
+    name="user_profile_readonly_modal",
+    ),
+    
 
     # ============================================================
     # CONTA / PERFIL (SOCIAL)

@@ -103,53 +103,61 @@
 {% endblock %}
 
 {% block content %}
-
 <div class="mt-2 mb-4">
-  <div class="text-sm font-semibold text-white/90 drop-shadow">
-    <a href="{% url 'boards:boards_index' %}" class="underline underline-offset-2">
-      Todos os Quadros
-    </a>
-    <span class="opacity-70">→</span>
-    <span>{{ board.name }}</span>
+  <div class="flex items-center justify-between gap-4">
+    <div class="text-sm font-semibold text-white/90 drop-shadow truncate min-w-0">
+      <a href="{% url 'boards:boards_index' %}" class="underline underline-offset-2">
+        Todos os Quadros
+      </a>
+      <span class="opacity-70">→</span>
+      <span class="board-breadcrumb-name">{{ board.name }}</span>
+    </div>
+
+    <div id="board-members-bar"
+         class="board-members-bar"
+         aria-label="Usuários do quadro">
+
+      {% for member in board_members %}
+        {% with p=member.profile %}
+          <button
+            type="button"
+            class="board-member-avatar"
+            title="{{ p.display_name|default:member.get_full_name|default:member.email }}"
+            aria-label="Ver perfil de {{ p.display_name|default:member.get_full_name|default:member.email }}"
+            data-user-id="{{ member.id }}"
+            data-display-name="{{ p.display_name|default:member.get_full_name|default:member.email }}"
+            data-handle="{{ p.handle|default:'' }}"
+            data-email="{{ member.email|default:'' }}"
+            data-avatar-url="{% if p and p.avatar %}{{ p.avatar.url }}{% endif %}"
+            onclick="openReadonlyUserProfile({{ member.id }})">
+
+            {% if p and p.avatar %}
+              <img
+                src="{{ p.avatar.url }}"
+                alt="{{ p.display_name|default:member.get_full_name|default:member.email }}"
+                loading="lazy">
+            {% else %}
+              <span class="avatar-fallback">
+                {{ p.display_name|default:member.get_full_name|default:member.email|first|upper }}
+              </span>
+            {% endif %}
+          </button>
+        {% endwith %}
+      {% endfor %}
+
+    </div>
   </div>
 
-  {# ✅ UM ÚNICO H1 (editável). Fechado corretamente. #}
-  <h1 id="board-title"
-      class="text-3xl font-extrabold text-white drop-shadow"
-      contenteditable="true"
-      ondragstart="event.preventDefault(); this.blur();"
-      onblur="updateBoardTitle({{ board.id }})">{{ board.name }}</h1>
-</div>
 
 
-<!-- BOARD MEMBERS (READ-ONLY) -->
-<div id="board-members-bar"
-     class="board-members-bar"
-     aria-label="Usuários do quadro">
 
-  {% for member in board_members %}
-    <button
-      type="button"
-      class="board-member-avatar"
-      title="{{ member.get_full_name|default:member.email }}"
-      aria-label="Ver perfil de {{ member.get_full_name|default:member.email }}"
-      data-user-id="{{ member.id }}"
-      onclick="openReadonlyUserProfile({{ member.id }})">
 
-      {% if member.profile and member.profile.avatar %}
-        <img
-          src="{{ member.profile.avatar.url }}"
-          alt="{{ member.get_full_name|default:member.email }}"
-          loading="lazy">
-      {% else %}
-        <span class="avatar-fallback">
-          {{ member.get_full_name|default:member.email|first|upper }}
-        </span>
-      {% endif %}
-    </button>
-  {% endfor %}
 
-</div>
+
+
+
+
+
 
 
 
@@ -209,8 +217,10 @@
 <script>
   window.BOARD_ID = {{ board.id }};
   window.BOARD_VERSION = {{ board.version }};
+  window.CURRENT_USER_ID = {{ request.user.id }};
   window.__isDraggingCard = false;
 </script>
+
 
 <script>
   // ============================================================
@@ -656,17 +666,24 @@
 
 <script>
 function openReadonlyUserProfile(userId) {
+  // Se for o próprio usuário: abre o modal editável padrão
+  try {
+    const me = Number(window.CURRENT_USER_ID || 0);
+    if (me && Number(userId) === me) {
+      document.getElementById("open-user-settings")?.click?.();
+      return;
+    }
+  } catch (e) {}
+
   if (!window.htmx) return;
 
   const modalBody = document.getElementById("modal-body");
   if (!modalBody) return;
 
-  // Fecha qualquer card aberto antes (segurança)
   if (window.Modal?.close) {
     window.Modal.close({ clearBody: true, clearUrl: false });
   }
 
-  // Abre modal vazio
   if (window.Modal?.open) {
     window.Modal.open();
   }
@@ -677,5 +694,6 @@ function openReadonlyUserProfile(userId) {
   });
 }
 </script>
+
 
 {% endblock %}

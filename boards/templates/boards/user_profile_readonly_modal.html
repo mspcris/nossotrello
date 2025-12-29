@@ -1,0 +1,67 @@
+{# templates/boards/user_profile_readonly_modal.html #}
+
+<div class="p-4 sm:p-6">
+  <div class="flex items-start gap-4">
+    <div class="shrink-0">
+      {% if profile.avatar %}
+        <img
+          src="{{ profile.avatar.url }}"
+          alt="{{ display_name|default:user_obj.email }}"
+          class="w-20 h-20 rounded-2xl object-cover border border-white/30 shadow-sm">
+      {% else %}
+        <div class="w-20 h-20 rounded-2xl bg-white/70 border border-white/30 flex items-center justify-center text-xl font-extrabold">
+          {{ display_name|default:user_obj.email|first|upper }}
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="min-w-0">
+      <div class="text-2xl font-extrabold leading-tight">
+        {{ display_name|default:user_obj.email }}
+      </div>
+
+      <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm opacity-90">
+        {% if profile.handle %}
+          <span class="font-semibold">@{{ profile.handle }}</span>
+        {% endif %}
+        {% if user_obj.email %}
+          <span class="opacity-80">{{ user_obj.email }}</span>
+        {% endif %}
+      </div>
+
+      {% if profile.handle %}
+        <div class="mt-2">
+          <a class="text-sm underline underline-offset-2" href="{% url 'boards:public_profile' profile.handle %}">
+            Abrir perfil público
+          </a>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div class="bg-white/70 border border-white/25 rounded-xl p-4">
+      <div class="text-xs font-semibold opacity-70">Posto</div>
+      <div class="mt-1 text-sm font-semibold">{{ profile.posto|default:"-" }}</div>
+    </div>
+
+    <div class="bg-white/70 border border-white/25 rounded-xl p-4">
+      <div class="text-xs font-semibold opacity-70">Setor</div>
+      <div class="mt-1 text-sm font-semibold">{{ profile.setor|default:"-" }}</div>
+    </div>
+
+    <div class="bg-white/70 border border-white/25 rounded-xl p-4">
+      <div class="text-xs font-semibold opacity-70">Ramal</div>
+      <div class="mt-1 text-sm font-semibold">{{ profile.ramal|default:"-" }}</div>
+    </div>
+
+    <div class="bg-white/70 border border-white/25 rounded-xl p-4">
+      <div class="text-xs font-semibold opacity-70">Telefone</div>
+      <div class="mt-1 text-sm font-semibold">{{ profile.telefone|default:"-" }}</div>
+    </div>
+  </div>
+
+  <div class="mt-6 text-xs opacity-70">
+    Somente visualização.
+  </div>
+</div>
