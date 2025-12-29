@@ -189,6 +189,8 @@
       {% if avatar_presets %}
         <form
           id="um-avatar-presets-form"
+          method="post"
+          action="{% url 'boards:account_avatar_choice_update' %}"
           hx-post="{% url 'boards:account_avatar_choice_update' %}"
           hx-target="#modal-body"
           hx-swap="innerHTML"
@@ -268,6 +270,8 @@
       {% endif %}
 
       <form
+        method="post"
+        action="{% url 'boards:account_avatar_update' %}"
         hx-post="{% url 'boards:account_avatar_update' %}"
         hx-target="#modal-body"
         hx-swap="innerHTML"

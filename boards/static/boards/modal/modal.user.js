@@ -2,6 +2,58 @@
 (() => {
   if (!window.Modal || window.Modal.user) return;
 
+  function processHtmx(el) {
+    try {
+      if (window.htmx && typeof window.htmx.process === "function") {
+        window.htmx.process(el);
+      }
+    } catch (_e) {}
+  }
+
+  function refreshAvatarSelection(modalBody) {
+    if (!modalBody) return;
+
+    const checked = modalBody.querySelector(
+      "#um-avatar-grid input[name='avatar_choice']:checked"
+    );
+    const chosen = checked ? checked.value : null;
+
+    modalBody.querySelectorAll("#um-avatar-grid .um-avatar-item").forEach((img) => {
+      const isOn = !!(chosen && img.getAttribute("data-avatar") === chosen);
+
+      // Não depende de Tailwind (garante feedback visual mesmo sem utilitários)
+      if (isOn) {
+        img.style.outline = "3px solid #2563eb";
+        img.style.outlineOffset = "2px";
+        img.style.borderColor = "#2563eb";
+      } else {
+        img.style.outline = "";
+        img.style.outlineOffset = "";
+        img.style.borderColor = "";
+      }
+    });
+  }
+
+  function wireAvatarPresetClicks() {
+    const modalBody = document.getElementById("modal-body");
+    if (!modalBody) return;
+
+    // Delegação: funciona mesmo após HTMX swap do modal
+    modalBody.addEventListener("click", (e) => {
+      const img = e.target.closest("#um-avatar-grid .um-avatar-item");
+      if (!img) return;
+
+      const label = img.closest("label");
+      const inputId = label ? label.getAttribute("for") : null;
+      const radio = inputId ? document.getElementById(inputId) : null;
+
+      if (radio && radio.type === "radio") {
+        radio.checked = true;
+        refreshAvatarSelection(modalBody);
+      }
+    });
+  }
+
   function umOpenTab(tab) {
     const panels = {
       profile: document.getElementById("um-panel-profile"),
@@ -42,6 +94,7 @@
 
   window.Modal.user = {
     _wired: false,
+    _wiredAvatar: false,
 
     open() {
       fetch("/account/modal/")
@@ -51,6 +104,11 @@
           if (!body) return;
 
           body.innerHTML = html;
+
+          // IMPORTANTe: como carregamos via fetch + innerHTML, precisamos reprocessar HTMX
+          // para ativar hx-post/hx-target/hx-swap dentro do modal.
+          processHtmx(body);
+
           window.Modal.open();
 
           // garante que a aba certa aparece ao abrir
@@ -61,6 +119,14 @@
             wireTabClicks();
             window.Modal.user._wired = true;
           }
+
+          // habilita seleção visual dos avatares (preset)
+          if (!window.Modal.user._wiredAvatar) {
+            wireAvatarPresetClicks();
+            window.Modal.user._wiredAvatar = true;
+          }
+
+          refreshAvatarSelection(body);
         });
     },
   };
@@ -84,6 +150,7 @@
     // só reinicializa se o conteúdo do user modal estiver presente
     if (document.getElementById("um-root")) {
       umInitFromDom();
+      refreshAvatarSelection(target);
     }
   });
 })();
