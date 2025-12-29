@@ -69,7 +69,7 @@ DATABASES = {
 
 INSTALLED_APPS = [
     # apps do projeto
-    'boards',
+    'boards.apps.BoardsConfig',
 
     # apps nativos
     'django.contrib.admin',

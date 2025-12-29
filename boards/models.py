@@ -296,6 +296,7 @@ class ChecklistItem(models.Model):
 # USER PROFILE
 # ============================================================
 class UserProfile(models.Model):
+    avatar_choice = models.CharField(max_length=60, blank=True, default="")
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         related_name="profile",

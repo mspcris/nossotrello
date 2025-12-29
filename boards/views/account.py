@@ -64,12 +64,33 @@ def account_profile_update(request):
             if qs.exists():
                 errors["handle"] = "Este handle já está em uso."
 
+        posto = (request.POST.get("posto") or "").strip()
+    setor = (request.POST.get("setor") or "").strip()
+    ramal = (request.POST.get("ramal") or "").strip()
+    telefone = (request.POST.get("telefone") or "").strip()
+
+    # validações simples (coerentes com o model)
+    if len(posto) > 120:
+        errors["posto"] = "Posto muito longo (máx 120)."
+    if len(setor) > 120:
+        errors["setor"] = "Setor muito longo (máx 120)."
+    if len(ramal) > 20:
+        errors["ramal"] = "Ramal muito longo (máx 20)."
+    if len(telefone) > 30:
+        errors["telefone"] = "Telefone muito longo (máx 30)."
+
     if errors:
         return _render_account_modal(request, errors=errors, active_tab="profile")
 
     prof.display_name = display_name
     prof.handle = handle or None
-    prof.save(update_fields=["display_name", "handle"])
+    prof.posto = posto
+    prof.setor = setor
+    prof.ramal = ramal
+    prof.telefone = telefone
+
+    prof.save(update_fields=["display_name", "handle", "posto", "setor", "ramal", "telefone"])
+
 
     return _render_account_modal(
         request,
