@@ -4,8 +4,11 @@ import re
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views.decorators.http import require_GET, require_POST
-
 from boards.models import UserProfile
+from pathlib import Path
+from django.conf import settings
+from django.templatetags.static import static as static_url
+
 
 
 HANDLE_RE = re.compile(r"^[a-z0-9_\.]+$")
@@ -16,6 +19,34 @@ def _get_or_create_profile(user):
     return prof
 
 
+def _list_avatar_presets():
+    # Preferência: pasta do projeto (onde você edita os arquivos)
+    # Ajuste esse path se a sua estrutura for diferente.
+    base_dir = Path(getattr(settings, "BASE_DIR", Path.cwd()))
+    avatar_dir = base_dir / "boards" / "static" / "images" / "avatar"
+
+    if not avatar_dir.exists():
+        # fallback: tenta STATICFILES_DIRS (comum em dev)
+        for d in getattr(settings, "STATICFILES_DIRS", []):
+            p = Path(d) / "images" / "avatar"
+            if p.exists():
+                avatar_dir = p
+                break
+
+    if not avatar_dir.exists():
+        return []
+
+    allowed_ext = {".png", ".jpg", ".jpeg", ".webp"}
+    files = []
+    for f in avatar_dir.iterdir():
+        if f.is_file() and f.suffix.lower() in allowed_ext:
+            files.append(f.name)
+
+    # ordena para ficar previsível
+    files.sort(key=lambda x: x.lower())
+    return files
+
+
 def _render_account_modal(request, errors=None, ok=None, active_tab="profile"):
     prof = _get_or_create_profile(request.user)
 
@@ -24,19 +55,7 @@ def _render_account_modal(request, errors=None, ok=None, active_tab="profile"):
         "active_tab": active_tab,
         "errors": errors or {},
         "ok": ok or {},
-        "avatar_presets": [
-            "avatar1.jpeg",
-            "avatar2.png",
-            "avatar3.png",
-            "avatar4.png",
-            "avatar5.png",
-            "avatar6.png",
-            "avatar7.png",
-            "avatar8.png",
-            "avatar9.png",
-            "avatar10.png",
-            "avatar11.png",
-        ],
+        "avatar_presets": _list_avatar_presets(),
     }
     return render(request, "boards/user_modal.html", ctx)
 
@@ -160,8 +179,9 @@ def account_avatar_update(request):
         return _render_account_modal(request, errors=errors, active_tab="avatar")
 
     prof.avatar = f
-    prof.avatar_choice = ""  # se fizer upload, limpa preset (opcional, mas consistente)
+    prof.avatar_choice = None
     prof.save(update_fields=["avatar", "avatar_choice"])
+
 
     resp = _render_account_modal(
         request,
@@ -184,11 +204,6 @@ def public_profile(request, handle):
     return render(request, "boards/public_profile.html", {"profile": profile})
 
 
-from django.templatetags.static import static as static_url
-from django.views.decorators.http import require_POST
-from django.contrib.auth.decorators import login_required
-
-from django.templatetags.static import static as static_url
 
 @require_POST
 @login_required
@@ -196,6 +211,7 @@ def account_avatar_choice_update(request):
     prof = _get_or_create_profile(request.user)
 
     choice = (request.POST.get("avatar_choice") or "").strip()
+
     if not choice:
         return _render_account_modal(
             request,
@@ -203,10 +219,11 @@ def account_avatar_choice_update(request):
             active_tab="avatar",
         )
 
-    allowed = {
-        "avatar1.jpeg","avatar2.png","avatar3.png","avatar4.png","avatar5.png",
-        "avatar6.png","avatar7.png","avatar8.png","avatar9.png","avatar10.png","avatar11.png",
-    }
+    # segurança 1.0: impede path traversal (ex: ../../etc/passwd)
+    choice = Path(choice).name
+
+    # ✅ whitelist dinâmica: tudo que estiver na pasta vira permitido
+    allowed = set(_list_avatar_presets())
     if choice not in allowed:
         return _render_account_modal(
             request,
@@ -228,7 +245,7 @@ def account_avatar_choice_update(request):
         active_tab="avatar",
     )
 
-    # DISPARA EVENTO (mesmo padrão do upload), mas com URL do static
+    # dispara evento pro header/board atualizarem sem F5
     try:
         url = static_url(f"images/avatar/{choice}")
         resp["HX-Trigger"] = f'{{"userAvatarUpdated": {{"url": "{url}"}}}}'
