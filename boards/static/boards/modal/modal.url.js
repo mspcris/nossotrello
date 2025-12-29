@@ -5,6 +5,7 @@
     return;
   }
 
+  // evita redefinir em swaps/duplicidade
   if (window.Modal.url) return;
 
   function getCardIdFromUrl() {
@@ -28,6 +29,31 @@
     else history.pushState({}, "", u);
   }
 
+  // ✅ helper: “voltar para o board limpo”
+  // - remove ?card=... sem poluir histórico (replace)
+  // - zera estado do modal
+  // - navega para pathname (sem query) evitando reabrir ao reload
+  function goToBoard(opts = {}) {
+    const replace = ("replace" in opts) ? !!opts.replace : true;
+
+    // 1) limpa a URL
+    clearUrlCard(replace);
+
+    // 2) zera estado do modal (hardening)
+    try {
+      if (window.Modal?.state) window.Modal.state.currentCardId = null;
+    } catch (_e) {}
+
+    // 3) navega para o board sem querystring
+    // usa href para garantir request limpo (e evitar reabrir via boot)
+    try {
+      window.location.href = window.location.pathname;
+    } catch (_e) {
+      // fallback
+      window.location.replace(window.location.pathname);
+    }
+  }
+
   window.Modal.url = {
     getCardIdFromUrl,
     set(cardId, opts = {}) {
@@ -36,6 +62,9 @@
     clear(opts = {}) {
       clearUrlCard(!!opts.replace);
     },
+
+    // ✅ expõe para outros módulos (ex.: mover card, fechar modal, etc.)
+    goToBoard,
   };
 
   // Boot por URL (refresh / deep link)
