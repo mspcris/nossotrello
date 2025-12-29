@@ -2,48 +2,33 @@
 from django.contrib.auth.decorators import login_required
 from django.http import Http404
 from django.shortcuts import get_object_or_404, render
+from django.contrib.auth import get_user_model
 from types import SimpleNamespace
-from django.contrib.auth.models import User  # se estiver usando o User padrão
 
 from ..models import BoardMembership, UserProfile
 
-
-@login_required
-def public_profile(request, handle: str):
-    handle = (handle or "").strip().lstrip("@")
-    prof = get_object_or_404(
-        UserProfile.objects.select_related("user"),
-        handle__iexact=handle,
-    )
-
-    u = prof.user
-    display_name = (prof.display_name or u.get_full_name() or u.get_username() or "").strip()
-
-    return render(
-        request,
-        "boards/public_profile.html",  # usa o template que você já criou
-        {"profile": prof, "user_obj": u, "display_name": display_name},
-    )
-
+User = get_user_model()
 
 
 @login_required
 def user_profile_readonly_modal(request, user_id: int):
     target_user = get_object_or_404(User, id=user_id)
 
-    # evita enumerar usuários por ID: só vê quem compartilha board
+    # 🔒 Segurança: só permite ver quem compartilha ao menos um board
     shared = BoardMembership.objects.filter(
         user=request.user,
-        board__memberships__user_id=target_user.id,
+        board__memberships__user=target_user,
     ).exists()
 
-    if not shared and request.user.id != target_user.id and not request.user.is_staff:
+    if not shared and request.user != target_user and not request.user.is_staff:
         raise Http404("Perfil não encontrado")
 
     profile = UserProfile.objects.filter(user=target_user).first()
+
     if not profile:
         profile = SimpleNamespace(
             avatar=None,
+            avatar_choice=None,
             display_name="",
             handle="",
             posto="",
@@ -52,17 +37,30 @@ def user_profile_readonly_modal(request, user_id: int):
             telefone="",
         )
 
-    display_name = (getattr(profile, "display_name", "") or target_user.get_full_name() or "").strip()
-    if not display_name:
-        # fallback forte: username > email
-        display_name = (target_user.get_username() or target_user.email or "").strip()
+    # ✅ Nome a exibir
+    display_name = (
+        profile.display_name
+        or target_user.get_full_name()
+        or target_user.username
+        or ""
+    ).strip()
 
-    ctx = {
+    # ✅ Email SEMPRE visível
+    email_display = (target_user.email or "").strip()
+    if not email_display:
+        # fallback legado
+        email_display = (target_user.username or "").strip()
+
+    context = {
         "profile": profile,
         "user_obj": target_user,
         "display_name": display_name,
-        "email": (target_user.email or "").strip(),
-        "username": (target_user.get_username() or "").strip(),
+        "email_display": email_display,
         "is_me": request.user.id == target_user.id,
     }
-    return render(request, "boards/user_profile_readonly_modal.html", ctx)
+
+    return render(
+        request,
+        "boards/user_profile_readonly_modal.html",
+        context,
+    )
