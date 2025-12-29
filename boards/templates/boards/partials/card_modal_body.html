@@ -1182,8 +1182,24 @@ if (btnMove) {
             }
 
             closePanel();
-            closeDock();
-            location.reload();
+closeDock();
+
+      // volta para o board SEM ?card= (senão o boot por URL reabre o modal)
+      if (window.Modal?.nav?.goToBoard) {
+        window.Modal.nav.goToBoard();
+      } else if (window.Modal?.url?.clear) {
+        window.Modal.url.clear({ replace: true });
+        window.location.href = window.location.pathname;
+      } else {
+      // fallback final
+        try {
+          const u = new URL(window.location.href);
+          u.searchParams.delete("card");
+          history.replaceState({}, "", u.toString());
+        } catch (_e) {}
+        window.location.href = window.location.pathname;
+      }
+
           } catch (ex) {
             setError(ex.message || "Erro ao mover.");
           }
