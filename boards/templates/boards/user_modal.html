@@ -185,8 +185,10 @@
     <!-- Foto -->
     <div id="um-panel-avatar" style="{% if active_tab != 'avatar' %}display:none{% endif %}">
 
+      {# ================== PRESETS (avatar_choice) ================== #}
       {% if avatar_presets %}
         <form
+          id="um-avatar-presets-form"
           hx-post="{% url 'boards:account_avatar_choice_update' %}"
           hx-target="#modal-body"
           hx-swap="innerHTML"
@@ -195,25 +197,28 @@
           {% csrf_token %}
 
           <div class="text-sm font-semibold mb-2">Escolher um avatar</div>
+          <div class="text-xs opacity-70 mb-3">Clique em um avatar e depois confirme.</div>
 
-          <div class="grid grid-cols-4 sm:grid-cols-6 gap-2">
+          <div id="um-avatar-grid" class="grid grid-cols-6 sm:grid-cols-8 gap-2">
             {% for f in avatar_presets %}
-              <label for="av-{{ forloop.counter }}" class="cursor-pointer inline-block">
-                <input
-  id="av-{{ forloop.counter }}"
-  type="radio"
-  name="avatar_choice"
-  value="{{ f }}"
-  class="sr-only"
-  {% if profile.avatar_choice == f %}checked{% endif %}
->
-
-                <img
-                  src="{% static 'images/avatar/' %}{{ f }}"
-                  class="h-14 w-14 rounded-xl object-cover border {% if profile.avatar_choice == f %}border-blue-600{% else %}border-white/40{% endif %}"
-                  alt="{{ f }}"
-                >
-              </label>
+              {% with rid="um-avatar-"|add:forloop.counter|stringformat:"s" %}
+                <label for="{{ rid }}" class="cursor-pointer block">
+                  <input
+                    id="{{ rid }}"
+                    type="radio"
+                    name="avatar_choice"
+                    value="{{ f }}"
+                    class="sr-only"
+                    {% if profile.avatar_choice == f %}checked{% endif %}
+                  >
+                  <img
+                    src="{% static 'images/avatar/' %}{{ f }}"
+                    alt="{{ f }}"
+                    class="um-avatar-item h-14 w-14 rounded-xl object-cover border border-white/40"
+                    data-avatar="{{ f }}"
+                  >
+                </label>
+              {% endwith %}
             {% endfor %}
           </div>
 
@@ -225,6 +230,41 @@
             Usar este avatar
           </button>
         </form>
+
+        <script>
+          (function () {
+            const grid = document.getElementById("um-avatar-grid");
+            if (!grid) return;
+
+            function refreshSelected() {
+              const checked = grid.querySelector("input[name='avatar_choice']:checked");
+              const chosen = checked ? checked.value : null;
+
+              grid.querySelectorAll(".um-avatar-item").forEach((img) => {
+                const isOn = chosen && img.dataset.avatar === chosen;
+                img.classList.toggle("ring-2", isOn);
+                img.classList.toggle("ring-blue-600", isOn);
+                img.classList.toggle("border-blue-600", isOn);
+              });
+            }
+
+            grid.addEventListener("click", (e) => {
+              const img = e.target.closest(".um-avatar-item");
+              if (!img) return;
+
+              const label = img.closest("label");
+              const inputId = label && label.getAttribute("for");
+              const radio = inputId ? document.getElementById(inputId) : null;
+
+              if (radio) {
+                radio.checked = true;
+                refreshSelected();
+              }
+            });
+
+            refreshSelected();
+          })();
+        </script>
       {% endif %}
 
       <form
@@ -253,3 +293,17 @@
 
   </div>
 </div>
+
+<script>
+  window.umOpenTab = function(tab) {
+    const panels = {
+      profile: document.getElementById("um-panel-profile"),
+      password: document.getElementById("um-panel-password"),
+      avatar: document.getElementById("um-panel-avatar")
+    };
+
+    Object.keys(panels).forEach((k) => {
+      if (panels[k]) panels[k].style.display = (k === tab) ? "block" : "none";
+    });
+  };
+</script>

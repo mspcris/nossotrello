@@ -12,40 +12,80 @@
 {% endblock %}
 
 {% block header_right_under_logo %}
-<div class="w-64">
-  <div class="flex items-center justify-between">
-    <span id="filter-label" class="text-sm font-semibold text-gray-600 board-label">
-      Filtrar por:
-    </span>
 
-    <div class="inline-flex rounded-md border border-gray-300 bg-white/80 overflow-hidden">
-      <button
-        type="button"
-        id="filter-mode-tags"
-        class="px-3 py-1 text-xs font-semibold bg-gray-900 text-white"
-        onclick="setFilterMode('tags')"
-      >
-        Tags
-      </button>
-      <button
-        type="button"
-        id="filter-mode-text"
-        class="px-3 py-1 text-xs font-semibold text-gray-700"
-        onclick="setFilterMode('text')"
-      >
-        Texto
-      </button>
-    </div>
+
+<div class="flex items-center gap-3 w-full">
+  {# Miniatura do quadro (fica à esquerda da busca) #}
+  <div class="shrink-0">
+    {% if board.image %}
+      <div class="relative group inline-block">
+        <div class="h-10 w-16 border border-gray-300 rounded-lg overflow-hidden bg-white flex items-center justify-center">
+          <img src="{{ board.image.url }}" class="h-full w-auto object-contain">
+        </div>
+
+        <button class="absolute top-1 right-1 bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded
+                       opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                hx-post="{% url 'boards:remove_board_image' board.id %}"
+                hx-target="body" hx-swap="beforeend"
+                aria-label="Remover imagem do quadro"
+                title="Remover imagem">
+          X
+        </button>
+      </div>
+    {% else %}
+      <div class="h-10 w-16 flex items-center justify-center rounded-lg border border-gray-300
+                  bg-gray-100 text-gray-400 text-xl cursor-pointer hover:bg-gray-200"
+           hx-get="{% url 'boards:update_board_image' board.id %}"
+           hx-target="body" hx-swap="beforeend"
+           aria-label="Adicionar imagem do quadro"
+           title="Adicionar imagem">
+        +
+      </div>
+    {% endif %}
   </div>
 
-  <input
-    type="text"
-    id="board-filter"
-    placeholder="Ex: urgente"
-    class="border rounded px-3 py-2 text-sm w-full mt-2"
-    oninput="applyBoardFilter(this.value)"
-  >
+  {# Busca/Filtro (ocupa o restante) #}
+  <div class="flex-1 min-w-0">
+    <div class="flex items-center justify-between">
+      <span id="filter-label" class="text-sm font-semibold text-gray-600 board-label">
+        Filtrar por:
+      </span>
+
+      <div class="inline-flex rounded-md border border-gray-300 bg-white/80 overflow-hidden">
+        <button
+          type="button"
+          id="filter-mode-tags"
+          class="px-3 py-1 text-xs font-semibold bg-gray-900 text-white"
+          onclick="setFilterMode('tags')"
+        >
+          Tags
+        </button>
+        <button
+          type="button"
+          id="filter-mode-text"
+          class="px-3 py-1 text-xs font-semibold text-gray-700"
+          onclick="setFilterMode('text')"
+        >
+          Texto
+        </button>
+      </div>
+    </div>
+
+    <input
+      type="text"
+      id="board-filter"
+      placeholder="Ex: urgente"
+      class="border rounded px-3 py-2 text-sm w-full mt-2"
+      oninput="applyBoardFilter(this.value)"
+    >
+  </div>
 </div>
+
+
+
+
+
+
 {% endblock %}
 
 {% block drawer_items %}
@@ -128,19 +168,26 @@
             data-display-name="{{ p.display_name|default:member.get_full_name|default:member.email }}"
             data-handle="{{ p.handle|default:'' }}"
             data-email="{{ member.email|default:'' }}"
-            data-avatar-url="{% if p and p.avatar %}{{ p.avatar.url }}{% endif %}"
+            data-avatar-url="{% if p and p.avatar %}{{ p.avatar.url }}{% elif p and p.avatar_choice %}{% static 'images/avatar/' %}{{ p.avatar_choice }}{% endif %}"
             onclick="openReadonlyUserProfile({{ member.id }})">
 
             {% if p and p.avatar %}
-              <img
-                src="{{ p.avatar.url }}"
-                alt="{{ p.display_name|default:member.get_full_name|default:member.email }}"
-                loading="lazy">
-            {% else %}
-              <span class="avatar-fallback">
-                {{ p.display_name|default:member.get_full_name|default:member.email|first|upper }}
-              </span>
-            {% endif %}
+  <img
+    src="{{ p.avatar.url }}"
+    alt="{{ p.display_name|default:member.get_full_name|default:member.email }}"
+    loading="lazy">
+{% elif p and p.avatar_choice %}
+  <img
+    src="{% static 'images/avatar/' %}{{ p.avatar_choice }}"
+    alt="{{ p.display_name|default:member.get_full_name|default:member.email }}"
+    loading="lazy">
+{% else %}
+  <span class="avatar-fallback">
+    {{ p.display_name|default:member.get_full_name|default:member.email|first|upper }}
+  </span>
+{% endif %}
+
+            
           </button>
         {% endwith %}
       {% endfor %}

@@ -1,10 +1,8 @@
 # boards/views/account.py
 import re
 
-from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404, redirect
 from django.views.decorators.http import require_GET, require_POST
 
 from boards.models import UserProfile
@@ -19,8 +17,7 @@ def _get_or_create_profile(user):
 
 
 def _render_account_modal(request, errors=None, ok=None, active_tab="profile"):
-    user = request.user
-    prof = _get_or_create_profile(user)
+    prof = _get_or_create_profile(request.user)
 
     ctx = {
         "profile": prof,
@@ -53,8 +50,7 @@ def account_modal(request):
 @require_POST
 @login_required
 def account_profile_update(request):
-    user = request.user
-    prof = _get_or_create_profile(user)
+    prof = _get_or_create_profile(request.user)
 
     display_name = (request.POST.get("display_name") or "").strip()
     handle = (request.POST.get("handle") or "").strip().lower()
@@ -132,7 +128,6 @@ def account_password_change(request):
     user.set_password(new1)
     user.save(update_fields=["password"])
 
-    # mantém o usuário logado após trocar a senha
     from django.contrib.auth import update_session_auth_hash
     update_session_auth_hash(request, user)
 
@@ -154,7 +149,6 @@ def account_avatar_update(request):
     if not f:
         errors["avatar"] = "Selecione uma imagem."
 
-    # validações defensivas (sem “reinventar roda”, mas sem template do Django)
     if f:
         ctype = (getattr(f, "content_type", "") or "").lower()
         if not ctype.startswith("image/"):
@@ -166,7 +160,8 @@ def account_avatar_update(request):
         return _render_account_modal(request, errors=errors, active_tab="avatar")
 
     prof.avatar = f
-    prof.save(update_fields=["avatar"])
+    prof.avatar_choice = ""  # se fizer upload, limpa preset (opcional, mas consistente)
+    prof.save(update_fields=["avatar", "avatar_choice"])
 
     resp = _render_account_modal(
         request,
@@ -174,7 +169,6 @@ def account_avatar_update(request):
         active_tab="avatar",
     )
 
-    # dispara evento HTMX para o front atualizar a bolinha no header sem reload
     try:
         resp["HX-Trigger"] = f'{{"userAvatarUpdated": {{"url": "{prof.avatar.url}"}}}}'
     except Exception:
@@ -183,10 +177,6 @@ def account_avatar_update(request):
     return resp
 
 
-from django.shortcuts import get_object_or_404, render
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_GET
-
 @require_GET
 @login_required
 def public_profile(request, handle):
@@ -194,6 +184,7 @@ def public_profile(request, handle):
     return render(request, "boards/public_profile.html", {"profile": profile})
 
 
+from django.templatetags.static import static as static_url
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 
@@ -210,7 +201,6 @@ def account_avatar_choice_update(request):
             active_tab="avatar",
         )
 
-    # whitelist simples 1.0 (evita salvar lixo)
     allowed = {
         "avatar1.jpeg","avatar2.png","avatar3.png","avatar4.png","avatar5.png",
         "avatar6.png","avatar7.png","avatar8.png","avatar9.png","avatar10.png","avatar11.png",
@@ -224,13 +214,23 @@ def account_avatar_choice_update(request):
 
     prof.avatar_choice = choice
 
-    # se escolheu preset, opcionalmente limpa upload para padronizar o render
+    # se escolheu preset, limpa upload para padronizar render (1.0 simples)
     if prof.avatar:
         prof.avatar = None
 
     prof.save(update_fields=["avatar_choice", "avatar"])
-    return _render_account_modal(request, ok={"avatar": "Avatar atualizado."}, active_tab="avatar")
 
+    resp = _render_account_modal(
+        request,
+        ok={"avatar": "Avatar atualizado."},
+        active_tab="avatar",
+    )
 
+    # Atualiza o ícone do header (canto direito) sem reload
+    try:
+        url = static_url(f"images/avatar/{choice}")
+        resp["HX-Trigger"] = f'{{"userAvatarUpdated": {{"url": "{url}"}}}}'
+    except Exception:
+        pass
 
-#END boards/views/account.py
+    return resp
