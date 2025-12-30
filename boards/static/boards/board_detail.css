@@ -187,3 +187,9 @@ estilos fixos do board, não do wallpaper */
   flex-direction: column;
   justify-content: center;
 }
+
+/* garante que header e seus botões ganham prioridade de clique */
+header { position: relative; z-index: 50; }
+
+/* garante que o slot mobile e breadcrumb não fiquem “atrás” de nada */
+#cm-mobile-breadcrumb, #cm-mobile-search-wrapper { position: relative; z-index: 40; }

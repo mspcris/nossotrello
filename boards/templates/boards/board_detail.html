@@ -13,88 +13,86 @@
 
 {% block header_right_under_logo %}
 
-<div class="w-full flex items-center gap-3">
+<div class="w-full">
+  {# DESKTOP (>=768): mantém a barra como sempre foi, centralizada no header #}
+  <div class="hidden md:flex w-full justify-center">
+    <div class="w-full max-w-[980px]">
+      <div id="cm-search-panel"
+           class="cm-search-panel w-full rounded-xl bg-emerald-200/70 backdrop-blur-md border border-white/30 shadow px-4 py-3">
+        
+        <div class="flex items-center gap-3 w-full">
+          {# Miniatura do quadro (fica à esquerda da busca) #}
+          <div class="shrink-0">
+            {% if board.image %}
+              <div class="relative group inline-block">
+                <div class="h-10 w-16 border border-gray-300 rounded-lg overflow-hidden bg-white flex items-center justify-center">
+                  <img src="{{ board.image.url }}" class="h-full w-auto object-contain">
+                </div>
 
-  {# COLUNA ESQUERDA (fixa) — miniatura #}
-  <div class="shrink-0 w-[84px] flex items-center justify-start">
-    {% if board.image %}
-      <div class="relative group inline-block">
-        <div class="h-10 w-16 border border-gray-300 rounded-lg overflow-hidden bg-white flex items-center justify-center">
-          <img src="{{ board.image.url }}" class="h-full w-auto object-contain">
+                <button class="absolute top-1 right-1 bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded
+                               opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                        hx-post="{% url 'boards:remove_board_image' board.id %}"
+                        hx-target="body" hx-swap="beforeend"
+                        aria-label="Remover imagem do quadro"
+                        title="Remover imagem">
+                  X
+                </button>
+              </div>
+            {% else %}
+              <div class="h-10 w-16 flex items-center justify-center rounded-lg border border-gray-300
+                          bg-gray-100 text-gray-400 text-xl cursor-pointer hover:bg-gray-200"
+                   hx-get="{% url 'boards:update_board_image' board.id %}"
+                   hx-target="body" hx-swap="beforeend"
+                   aria-label="Adicionar imagem do quadro"
+                   title="Adicionar imagem">
+                +
+              </div>
+            {% endif %}
+          </div>
+
+          {# Busca/Filtro (ocupa o restante) #}
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between">
+              <span id="filter-label" class="text-sm font-semibold text-gray-600 board-label">
+                Filtrar por:
+              </span>
+
+              <div class="inline-flex rounded-md border border-gray-300 bg-white/80 overflow-hidden">
+                <button type="button"
+                        id="filter-mode-tags"
+                        class="px-3 py-1 text-xs font-semibold bg-gray-900 text-white"
+                        onclick="setFilterMode('tags')">
+                  Tags
+                </button>
+                <button type="button"
+                        id="filter-mode-text"
+                        class="px-3 py-1 text-xs font-semibold text-gray-700"
+                        onclick="setFilterMode('text')">
+                  Texto
+                </button>
+              </div>
+            </div>
+
+            <input type="text"
+                   id="board-filter"
+                   placeholder="Ex: urgente"
+                   class="border rounded px-3 py-2 text-sm w-full mt-2"
+                   oninput="applyBoardFilter(this.value)">
+          </div>
         </div>
 
-        <button class="absolute top-1 right-1 bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded
-                       opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                hx-post="{% url 'boards:remove_board_image' board.id %}"
-                hx-target="body" hx-swap="beforeend"
-                aria-label="Remover imagem do quadro"
-                title="Remover imagem">
-          X
-        </button>
       </div>
-    {% else %}
-      <div class="h-10 w-16 flex items-center justify-center rounded-lg border border-gray-300
-                  bg-gray-100 text-gray-400 text-xl cursor-pointer hover:bg-gray-200"
-           hx-get="{% url 'boards:update_board_image' board.id %}"
-           hx-target="body" hx-swap="beforeend"
-           aria-label="Adicionar imagem do quadro"
-           title="Adicionar imagem">
-        +
-      </div>
-    {% endif %}
-  </div>
-
-  {# COLUNA CENTRO (flex) — busca. Desktop sempre visível, mobile vira “movível” #}
-  <div id="header-search-slot" class="flex-1 min-w-0 flex justify-center">
-    <div id="cm-search-panel" class="w-full max-w-[820px] min-w-0">
-      <div class="flex items-center justify-between">
-        <span id="filter-label" class="text-sm font-semibold text-gray-600 board-label">
-          Filtrar por:
-        </span>
-
-        <div class="inline-flex rounded-md border border-gray-300 bg-white/80 overflow-hidden">
-          <button type="button"
-                  id="filter-mode-tags"
-                  class="px-3 py-1 text-xs font-semibold bg-gray-900 text-white"
-                  onclick="setFilterMode('tags')">
-            Tags
-          </button>
-
-          <button type="button"
-                  id="filter-mode-text"
-                  class="px-3 py-1 text-xs font-semibold text-gray-700"
-                  onclick="setFilterMode('text')">
-            Texto
-          </button>
-        </div>
-      </div>
-
-      <input type="text"
-             id="board-filter"
-             placeholder="Ex: urgente"
-             class="border rounded px-3 py-2 text-sm w-full mt-2"
-             oninput="applyBoardFilter(this.value)">
     </div>
   </div>
 
-  {# COLUNA DIREITA (fixa) — reserva de espaço para alinhar com o menu/user do base #}
-  <div class="shrink-0 w-[220px] flex items-center justify-end">
-    {# não coloca nada aqui; serve para “equilibrar” o centro visual #}
-  </div>
-
-  {# MOBILE: lupa discreta centralizada (aparece somente <768) #}
-  <div class="md:hidden shrink-0">
-    <button id="cm-search-toggle"
-            type="button"
-            aria-label="Buscar"
-            class="cm-search-icon">
-      🔍
-    </button>
-  </div>
-
+  {# MOBILE (<768): o cm-search-panel vai ser “movido” pra área do breadcrumb via JS #}
+  <div id="cm-search-desktop-home" class="hidden md:block"></div>
 </div>
 
 {% endblock %}
+
+
+
 
 {% block drawer_items %}
 <li>
@@ -171,17 +169,27 @@
   <div class="md:hidden">
 
     <!-- Breadcrumb MOBILE (estado fechado) -->
-    <div id="cm-mobile-breadcrumb"
-         class="text-sm font-semibold text-white/90 drop-shadow truncate">
-      <a href="{% url 'boards:boards_index' %}"
-         class="underline underline-offset-2">
-        Todos os Quadros
-      </a>
-      <span class="opacity-70">→</span>
-      <span class="board-breadcrumb-name">
-        {{ board.name }}
-      </span>
-    </div>
+<div id="cm-mobile-breadcrumb"
+     class="flex items-center justify-between gap-3 text-sm font-semibold text-white/90 drop-shadow truncate">
+  <div class="min-w-0 truncate">
+    <a href="{% url 'boards:boards_index' %}"
+       class="underline underline-offset-2">
+      Todos os Quadros
+    </a>
+    <span class="opacity-70">→</span>
+    <span class="board-breadcrumb-name">
+      {{ board.name }}
+    </span>
+  </div>
+
+  <button id="cm-search-icon"
+          type="button"
+          aria-label="Buscar"
+          class="shrink-0 w-9 h-9 rounded-full bg-white/70 border border-white/40 backdrop-blur-md shadow flex items-center justify-center">
+    🔍
+  </button>
+</div>
+
 
     <!-- Search MOBILE (estado aberto) -->
     <div id="cm-mobile-search-wrapper"
@@ -791,14 +799,15 @@ function openReadonlyUserProfile(userId) {
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
-  const toggle = document.getElementById("cm-search-toggle");          // lupa mobile
-  const slot   = document.getElementById("cm-mobile-search-wrapper");  // slot abaixo (mobile)
-  const crumb  = document.getElementById("cm-mobile-breadcrumb");      // breadcrumb mobile
+  const icon = document.getElementById("cm-search-icon");
+  const mobileSlot = document.getElementById("cm-mobile-search-wrapper");
+  const breadcrumb = document.getElementById("cm-mobile-breadcrumb");
+  const searchPanel = document.getElementById("cm-search-panel");
 
-  const panel  = document.getElementById("cm-search-panel");           // painel único
-  const home   = document.getElementById("header-search-slot");        // casa no header
+  // onde a barra fica no desktop (container do header)
+  const desktopContainer = searchPanel?.parentElement;
 
-  if (!toggle || !slot || !panel || !home) return;
+  if (!icon || !mobileSlot || !breadcrumb || !searchPanel || !desktopContainer) return;
 
   let opened = false;
 
@@ -810,41 +819,46 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!isMobilePortrait() || opened) return;
     opened = true;
 
-    crumb && crumb.classList.add("hidden");
-    slot.classList.remove("hidden");
+    breadcrumb.classList.add("hidden");
+    mobileSlot.classList.remove("hidden");
 
-    slot.appendChild(panel);
+    // move o painel para o slot mobile
+    mobileSlot.appendChild(searchPanel);
 
-    // foco no input
-    const input = panel.querySelector("#board-filter");
-    if (input) input.focus();
+    // foco
+    const input = searchPanel.querySelector("#board-filter");
+    if (input) setTimeout(() => input.focus(), 0);
   }
 
   function closeSearch() {
     if (!opened) return;
     opened = false;
 
-    home.appendChild(panel);
+    // devolve ao desktopContainer original
+    desktopContainer.appendChild(searchPanel);
 
-    slot.classList.add("hidden");
-    crumb && crumb.classList.remove("hidden");
+    mobileSlot.classList.add("hidden");
+    breadcrumb.classList.remove("hidden");
   }
 
-  toggle.addEventListener("click", (e) => {
+  icon.addEventListener("click", (e) => {
+    e.preventDefault();
     e.stopPropagation();
     openSearch();
   });
 
   document.addEventListener("click", (e) => {
     if (!opened) return;
-    if (slot.contains(e.target) || toggle.contains(e.target)) return;
+    if (mobileSlot.contains(e.target) || e.target === icon) return;
     closeSearch();
   });
 
+  // se girar tela / sair do retrato, garante que tudo volta pro desktop
   window.addEventListener("resize", () => {
-    // se saiu do mobile retrato, garante que o painel volte pro header
     if (!isMobilePortrait() && opened) closeSearch();
-    if (!isMobilePortrait() && panel.parentElement !== home) home.appendChild(panel);
+    if (!isMobilePortrait() && searchPanel.parentElement !== desktopContainer) {
+      desktopContainer.appendChild(searchPanel);
+    }
   });
 });
 </script>
