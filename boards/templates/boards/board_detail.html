@@ -45,7 +45,16 @@
   </div>
 
   {# Busca/Filtro (ocupa o restante) #}
-  <button id="cm-search-toggle" class="cm-search-icon">🔍</button>
+  <!-- Lupa mobile -->
+<div class="md:hidden flex justify-center">
+  <button id="cm-search-icon"
+          aria-label="Buscar"
+          class="cm-search-icon">
+    🔍
+  </button>
+</div>
+
+
 
 <div id="cm-search-panel" class="cm-search-panel hidden">
   <!-- reaproveita exatamente o HTML atual da busca -->
@@ -151,14 +160,49 @@
 
 {% block content %}
 <div class="mt-2 mb-4">
-  <div class="flex items-center justify-between gap-4">
+
+  <!-- DESKTOP / PAISAGEM (>= 768px) — INTACTO -->
+  <div class="hidden md:flex items-center justify-between gap-4">
     <div class="text-sm font-semibold text-white/90 drop-shadow truncate min-w-0">
-      <a href="{% url 'boards:boards_index' %}" class="underline underline-offset-2">
+      <a href="{% url 'boards:boards_index' %}"
+         class="underline underline-offset-2">
         Todos os Quadros
       </a>
       <span class="opacity-70">→</span>
-      <span class="board-breadcrumb-name">{{ board.name }}</span>
+      <span class="board-breadcrumb-name">
+        {{ board.name }}
+      </span>
     </div>
+  </div>
+
+  <!-- MOBILE RETRATO (< 768px) — SLOT DINÂMICO -->
+  <div class="md:hidden">
+
+    <!-- Breadcrumb MOBILE (estado fechado) -->
+    <div id="cm-mobile-breadcrumb"
+         class="text-sm font-semibold text-white/90 drop-shadow truncate">
+      <a href="{% url 'boards:boards_index' %}"
+         class="underline underline-offset-2">
+        Todos os Quadros
+      </a>
+      <span class="opacity-70">→</span>
+      <span class="board-breadcrumb-name">
+        {{ board.name }}
+      </span>
+    </div>
+
+    <!-- Search MOBILE (estado aberto) -->
+    <div id="cm-mobile-search-wrapper"
+         class="cm-mobile-search-wrapper hidden">
+
+      <!-- ⬇️ A BARRA ORIGINAL, SEM ALTERAR UMA LINHA ⬇️ -->
+      <!-- Cole aqui exatamente o HTML atual da barra de pesquisa -->
+      
+    </div>
+
+  </div>
+</div>
+
 
     <div id="board-members-bar"
          class="board-members-bar"
@@ -768,6 +812,56 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 
 
+<!--BUSCA MOBILE-->
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const icon = document.getElementById("cm-search-icon");
+  const mobileSlot = document.getElementById("cm-mobile-search-wrapper");
+  const breadcrumb = document.getElementById("cm-mobile-breadcrumb");
+
+  // barra ORIGINAL
+  const searchPanel = document.getElementById("cm-search-panel");
+
+  if (!icon || !mobileSlot || !breadcrumb || !searchPanel) return;
+
+  let opened = false;
+
+  function openSearch() {
+    opened = true;
+    breadcrumb.classList.add("hidden");
+    mobileSlot.classList.remove("hidden");
+
+    // move a barra para o slot mobile
+    mobileSlot.appendChild(searchPanel);
+    searchPanel.classList.remove("hidden");
+  }
+
+  function closeSearch() {
+    if (!opened) return;
+    opened = false;
+
+    searchPanel.classList.add("hidden");
+    breadcrumb.classList.remove("hidden");
+    mobileSlot.classList.add("hidden");
+
+    // devolve a barra para o local original (desktop)
+    document
+      .querySelector("#header-search-slot .w-full")
+      ?.appendChild(searchPanel);
+  }
+
+  icon.addEventListener("click", (e) => {
+    e.stopPropagation();
+    openSearch();
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!mobileSlot.contains(e.target) && e.target !== icon) {
+      closeSearch();
+    }
+  });
+});
+</script>
 
 
 
