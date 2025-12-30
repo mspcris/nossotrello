@@ -87,6 +87,16 @@ class Board(models.Model):
     # controle de versão para polling/sync
     version = models.PositiveIntegerField(default=0)
 
+    #+ ============================================================
+    #+ PRAZOS (cores do badge por board)
+    #+ ============================================================
+    due_colors = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Cores do prazo: {'ok':'#..','warn':'#..','overdue':'#..'}",
+    )
+
+
     image = models.ImageField(upload_to="board_covers/", null=True, blank=True)
 
     background_image = models.ImageField(
@@ -195,6 +205,15 @@ class Card(models.Model):
     description = models.TextField(blank=True, null=True)
     tags = models.CharField(max_length=255, blank=True, null=True)
     tag_colors = models.JSONField(default=dict, blank=True)
+
+
+    #+ ============================================================
+    #+PRAZOS (vencimento)
+    #+ ============================================================
+    due_date = models.DateField(null=True, blank=True)
+    due_warn_date = models.DateField(null=True, blank=True)
+    due_notify = models.BooleanField(default=True)
+
 
     cover_image = models.ImageField(upload_to="card_covers/", null=True, blank=True)
 
@@ -386,3 +405,13 @@ class Mention(models.Model):
 
     def __str__(self):
         return f"{self.mentioned_user} mencionado em {self.card} ({self.source})"
+
+
+    # ============================================================
+    # PRAZOS (cores do badge por board)
+    # ============================================================
+    due_colors = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Cores do prazo: {'ok':'#..','warn':'#..','overdue':'#..'}",
+    )

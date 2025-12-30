@@ -367,6 +367,11 @@
   window.__isDraggingCard = false;
 </script>
 
+<script>
+  window.BOARD_TERM_COLORS = JSON.parse("{{ board.term_colors|default:'{}'|escapejs }}");
+</script>
+
+
 
 <script>
   // ============================================================

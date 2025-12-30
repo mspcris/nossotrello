@@ -22,6 +22,8 @@ from . import views
 from .views import cards
 from .views.mentions import board_mentions
 from .views.polling import board_poll
+from boards.views.modal_card_term import set_card_term_due, set_board_term_colors
+
 
 
 app_name = "boards"
@@ -134,6 +136,12 @@ urlpatterns = [
 
     # board polling
     path("board/<int:board_id>/poll/", board_poll, name="board_poll"),
+
+    # board prazos
+    path("card/<int:card_id>/term-due/", set_card_term_due, name="set_card_term_due"),
+    path("board/<int:board_id>/term-colors/", set_board_term_colors, name="set_board_term_colors"),
+
+    
 
 
 

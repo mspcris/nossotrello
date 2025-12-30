@@ -17,6 +17,9 @@ from django.core.files.uploadedfile import UploadedFile
 from django.core.files.storage import default_storage
 from django.db.models import F
 from django.template.loader import render_to_string
+from datetime import datetime
+from django.utils.dateparse import parse_date
+
 
 from .helpers import (
     _actor_label,
@@ -145,6 +148,28 @@ def add_card(request, column_id):
         "boards/partials/add_card_form.html",
         {"column": column, "form": CardForm(), "where": where},
     )
+def _parse_any_date(s: str):
+    """
+    Aceita:
+      - YYYY-MM-DD (input type=date)
+      - DD/MM/YYYY (campo texto)
+    Retorna datetime.date ou None.
+    """
+    raw = (s or "").strip()
+    if not raw:
+        return None
+
+    d = parse_date(raw)
+    if d:
+        return d
+
+    # fallback BR
+    try:
+        return datetime.strptime(raw, "%d/%m/%Y").date()
+    except Exception:
+        return None
+
+
 
 @login_required
 @require_POST
@@ -167,6 +192,34 @@ def update_card(request, card_id):
     card.description = new_desc_html
 
     new_tags_raw = request.POST.get("tags", old_tags_raw) or ""
+
+    #+ ============================================================
+    #+ PRAZOS (novo) — não encosta em TAG
+    #+ ============================================================
+    due_date_raw = (request.POST.get("due_date") or "").strip()
+    due_warn_raw = (request.POST.get("due_warn_date") or "").strip()
+    due_notify_raw = (request.POST.get("due_notify") or "").strip()
+
+    due_date = _parse_any_date(due_date_raw)
+    due_warn_date = _parse_any_date(due_warn_raw)
+
+    # checkbox: HTML costuma mandar "on" quando marcado
+    due_notify = True
+    if due_notify_raw:
+        due_notify = str(due_notify_raw).strip().lower() in ("1", "true", "on", "yes")
+    else:
+        # se o campo vier ausente, assumimos False só se o template mandar um hidden.
+        # (na prática: no template vamos mandar hidden+checkbox pra não ambiguidade)
+        due_notify = True
+
+    # regra: se due_date preenchida => warn obrigatória
+    if due_date and not due_warn_date:
+        return JsonResponse({"error": "Data aviso vencimento é obrigatória."}, status=400)
+
+    card.due_date = due_date
+    card.due_warn_date = due_warn_date
+    card.due_notify = bool(due_notify)
+
 
     old_tags = [t.strip() for t in (old_tags_raw or "").split(",") if t.strip()]
     new_tags = [t.strip() for t in (new_tags_raw or "").split(",") if t.strip()]

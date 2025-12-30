@@ -141,6 +141,77 @@ function startViewerPolling() {
         window.applySavedTagColorsToBoard(columnsList);
       }
 
+
+
+      // ============================================================
+// TERM COLORS (prazos) — computed client-side
+// ============================================================
+window.applySavedTermColorsToBoard = function (scope) {
+  const root = scope || document;
+
+  const colors = (window.BOARD_TERM_COLORS && typeof window.BOARD_TERM_COLORS === "object")
+    ? window.BOARD_TERM_COLORS
+    : {};
+
+  const cOk = colors.ok || "#16a34a";
+  const cWarn = colors.warn || "#f59e0b";
+  const cOver = colors.overdue || "#dc2626";
+
+  function parseYMD(s) {
+    if (!s) return null;
+    const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return null;
+    const y = Number(m[1]), mo = Number(m[2]) - 1, d = Number(m[3]);
+    const dt = new Date(Date.UTC(y, mo, d, 0, 0, 0));
+    return isNaN(dt.getTime()) ? null : dt;
+  }
+
+  function todayUTC() {
+    const now = new Date();
+    return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0));
+  }
+
+  function setBadge(badge, text, color) {
+    badge.textContent = text;
+    badge.style.backgroundColor = color + "20";
+    badge.style.color = color;
+    badge.style.border = "1px solid " + color;
+    badge.classList.remove("hidden");
+  }
+
+  root.querySelectorAll("li[data-card-id]").forEach((cardEl) => {
+    const notify = (cardEl.getAttribute("data-term-notify") || "1") === "1";
+    const due = parseYMD(cardEl.getAttribute("data-term-due") || "");
+    const warn = parseYMD(cardEl.getAttribute("data-term-warn") || "");
+
+    const badge = cardEl.querySelector(".term-badge");
+    if (!badge) return;
+
+    // sem prazo ou sem notify => neutro (esconde)
+    if (!notify || !due) {
+      badge.classList.add("hidden");
+      return;
+    }
+
+    const t = todayUTC();
+
+    // status: overdue / warn / ok
+    if (due.getTime() < t.getTime()) {
+      setBadge(badge, "Vencido", cOver);
+      return;
+    }
+
+    if (warn && t.getTime() >= warn.getTime()) {
+      setBadge(badge, "A vencer", cWarn);
+      return;
+    }
+
+    setBadge(badge, "Em dia", cOk);
+  });
+};
+
+
+
       // se existirem no global, reinit de sortable (p/ owner em outra sessão)
       if (typeof window.initSortable === "function") window.initSortable();
       if (typeof window.initSortableColumns === "function") window.initSortableColumns();

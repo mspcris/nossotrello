@@ -643,6 +643,53 @@
         hx-swap="innerHTML">
     {% csrf_token %}
 
+
+{# ===================== TERM (prazos) ===================== #}
+<div class="cm-card space-y-3" style="margin-bottom:10px;">
+  <div class="flex items-center justify-between gap-2 flex-wrap">
+    <div>
+      <div class="cm-label" style="margin:0;">Term (prazo)</div>
+      <div class="cm-muted">
+        Se preencher vencimento, o aviso vira obrigatório (default: 5 dias antes).
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <label class="cm-muted" style="display:flex;align-items:center;gap:8px;">
+        <input type="checkbox" id="cm-term-notify" {% if card.term_notify|default_if_none:True %}checked{% endif %}>
+        Notificar com cores
+      </label>
+      <button type="button" class="cm-btn primary" id="cm-term-save">Salvar term</button>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+    <label class="block">
+      <span class="cm-label">Vencimento</span>
+      <input type="date"
+             id="cm-term-due"
+             class="cm-input"
+             value="{% if card.term_due_date %}{{ card.term_due_date|date:'Y-m-d' }}{% endif %}">
+    </label>
+
+    <label class="block">
+      <span class="cm-label">Avisar em</span>
+      <input type="date"
+             id="cm-term-warn"
+             class="cm-input"
+             value="{% if card.term_warn_date %}{{ card.term_warn_date|date:'Y-m-d' }}{% endif %}">
+    </label>
+  </div>
+
+  <div class="cm-muted">
+    Cores do board (ok / alerta / vencido) ficam no menu do board (endpoint term-colors).
+  </div>
+</div>
+
+
+
+
+
     <section class="cm-panel is-active" data-cm-panel="desc" role="tabpanel">
       <div class="cm-card space-y-3">
         <div>

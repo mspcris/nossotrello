@@ -666,6 +666,21 @@ def _card_checklists_qs(card: Card):
 
 
 def _card_modal_context(card: Card) -> dict:
-    return {"card": card, "checklists": _card_checklists_qs(card)}
+    board = card.column.board
 
+    # cores padrão do board (fallback determinístico)
+    colors = getattr(board, "due_colors", None) or {}
+    if not isinstance(colors, dict):
+        colors = {}
+
+    # defaults
+    colors.setdefault("ok", "#16a34a")       # verde
+    colors.setdefault("warn", "#f59e0b")     # amarelo
+    colors.setdefault("overdue", "#dc2626")  # vermelho
+
+    return {
+        "card": card,
+        "checklists": _card_checklists_qs(card),
+        "board_due_colors": colors,
+    }
 
