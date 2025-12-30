@@ -234,35 +234,38 @@
        DESKTOP / LANDSCAPE  (>= md) — 100% ORIGINAL
        ===================================================== -->
     <!-- DESKTOP / LANDSCAPE (>= md) -->
-  <div class="hidden md:flex items-center justify-between gap-3
-              mx-auto w-full max-w-[1400px] rounded-xl
-              bg-emerald-900/70 backdrop-blur-md border border-white/30 shadow
-              px-4 py-3">
-
-
-    <!-- ESQUERDA -->
-    <div class="flex items-center gap-3 min-w-[220px]">
-      <button id="menuToggle"
-              type="button"
-              class="text-gray-900 bg-white/80 border border-gray-400 rounded-md px-3 py-2 shadow hover:bg-white transition"
-              aria-label="Abrir menu">
-        ☰
-      </button>
+  <div class="hidden md:flex relative items-center justify-between gap-3
+            mx-auto w-full max-w-[1400px] rounded-xl
+            bg-emerald-900/70 backdrop-blur-md border border-white/30 shadow
+            px-4 py-3">
 
 
 
+<!-- ESQUERDA (hamburguer + logo centralizada no corredor até a busca) -->
+<div class="flex items-center gap-3 w-[260px]">
+  <!-- Hamburguer -->
+  <button id="menuToggle"
+          type="button"
+          class="text-gray-900 bg-white/80 border border-gray-400 rounded-md px-3 py-2 shadow hover:bg-white transition"
+          aria-label="Abrir menu">
+    ☰
+  </button>
 
-
-      <a href="{% url 'boards:boards_index' %}" class="flex items-center gap-2 select-none">
-        <img src="{% static 'images/logo-camim.png' %}"
-             alt="CAMIM"
-             class="h-10 w-10 rounded-full object-cover border border-white/40 shadow">
-      </a>
-
-
-
+  <!-- “corredor” que sobra: logo fica CENTRALIZADA aqui -->
+  <div class="flex-1 flex justify-center">
+    <a href="{% url 'boards:boards_index' %}" class="select-none">
+      <img src="{% static brand_logo %}"
+           alt="LOGOMARCA"
+           class="h-14 w-14 rounded-full object-cover border border-white/40 shadow">
+    </a>
+  </div>
+</div>
       {% block header_left %}{% endblock %}
-    </div>
+
+
+
+
+
 
     <!-- CENTRO -->
     <div class="flex-1 flex justify-center">
@@ -319,16 +322,16 @@
         </button>
 
         <div class="cm-brand flex items-center gap-2">
-          <img src="{% static 'images/logo-camim.png' %}"
-               alt="CAMIM"
-               class="h-9 w-9 rounded-full">
+          <img src="{% static brand_logo %}"
+               alt="LOGOMARCA"
+               class="h-13 w-13 rounded-full">
         </div>
 
         <div class="cm-user-menu relative">
           <img
             src="{% if user_avatar_url %}{{ user_avatar_url }}{% else %}{% static brand_logo %}{% endif %}"
             alt="Perfil"
-            class="cm-avatar h-9 w-9 rounded-full border border-white/40 shadow"
+            class="cm-avatar h-12 w-12 rounded-full border border-white/40 shadow"
             id="cm-avatar-toggle">
 
           <div class="cm-user-dropdown hidden" id="cm-user-dropdown">

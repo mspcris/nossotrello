@@ -26,32 +26,39 @@ def user_profile_context(request):
     return {"user_avatar_url": avatar_url}
 
 
+from django.templatetags.static import static as static_url
+
 def brand_context(request):
     """
-    Decide qual marca mostrar no header com base no domínio do e-mail do usuário.
-    - @egidesaude.com.br  -> Égide (logo sem texto)
-    - @camim.com.br / @clinicacamim.com.br -> CAMIM (logo + texto)
+    Decide qual marca mostrar no header com base no e-mail do usuário.
+    - @egidesaude.com.br  -> Égide (logo)
+    - @camim.com.br / @clinicacamim.com.br -> CAMIM (logo)
     """
-    email = ""
     user = getattr(request, "user", None)
+
+    # pega do campo email; se vier vazio, usa username (muito comum em setups onde username = email)
+    email = ""
     if user and getattr(user, "is_authenticated", False):
         email = (getattr(user, "email", "") or "").strip().lower()
+        if not email:
+            email = (getattr(user, "get_username", lambda: "")() or "").strip().lower()
 
-    # Defaults (CAMIM)
+    # default: CAMIM
     brand = {
         "brand_key": "camim",
         "brand_name": "CAMIM",
         "brand_logo": "images/logo-camim.png",
-        "brand_show_text": True,
+        "brand_show_text": False,  # você disse que vai remover o texto
     }
 
     if email.endswith("@egidesaude.com.br"):
         brand = {
             "brand_key": "egide",
             "brand_name": "Égide Saúde e Benefícios",
-            "brand_logo": "images/egide-logo-verde.svg",  # ajuste se o nome real for outro
-            "brand_show_text": False,  # Égide: sem texto ao lado
+            "brand_logo": "images/egide-logo-verde.png",
+            "brand_show_text": False,
         }
 
     return brand
+
 #END boards/context_processors.py
