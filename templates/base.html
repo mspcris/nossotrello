@@ -229,10 +229,6 @@
 
 
 <!-- Header -->
- <div class="flex items-center justify-between p-2 gap-3 border-b border-white/20">
-
-
-
 <header class="w-full px-4 py-3">
     <!-- =====================================================
        DESKTOP / LANDSCAPE  (>= md) — 100% ORIGINAL
@@ -253,17 +249,16 @@
         ☰
       </button>
 
-      <a href="{% url 'boards:boards_index' %}" class="flex items-center gap-2 select-none">
-  <img src="{% static brand_logo %}"
-       alt="{{ brand_name }}"
-       class="h-10 w-10 rounded-full object-cover border border-white/40 shadow">
 
-  {% if brand_show_text %}
-    <span class="text-2xl font-extrabold tracking-wide text-white drop-shadow">
-      {{ brand_name }}
-    </span>
-  {% endif %}
-</a>
+
+
+
+      <a href="{% url 'boards:boards_index' %}" class="flex items-center gap-2 select-none">
+        <img src="{% static 'images/logo-camim.png' %}"
+             alt="CAMIM"
+             class="h-10 w-10 rounded-full object-cover border border-white/40 shadow">
+      </a>
+
 
 
       {% block header_left %}{% endblock %}
@@ -301,13 +296,13 @@
 
       <a href="#" id="open-user-settings" class="block">
         <img
-          src="{% if user_avatar_url %}{{ user_avatar_url }}{% else %}{% static 'images/logo-camim.png' %}{% endif %}"
+          src="{% if user_avatar_url %}{{ user_avatar_url }}{% else %}{% static brand_logo %}{% endif %}"
           alt="Perfil"
           class="h-12 w-12 rounded-full object-cover border border-white/50 shadow">
       </a>
     </div>
   </div>
-</div>
+
   <!-- =====================================================
        MOBILE RETRATO (< md) — NOVO
        ===================================================== -->
@@ -324,23 +319,14 @@
         </button>
 
         <div class="cm-brand flex items-center gap-2">
-  <img src="{% static brand_logo %}"
-       alt="{{ brand_name }}"
-       class="h-9 w-9 rounded-full">
-
-  {% if brand_show_text %}
-    <span class="cm-brand-name font-bold text-white drop-shadow">
-      {{ brand_name }}
-    </span>
-  {% endif %}
-</div>
-
-
+          <img src="{% static 'images/logo-camim.png' %}"
+               alt="CAMIM"
+               class="h-9 w-9 rounded-full">
         </div>
 
         <div class="cm-user-menu relative">
           <img
-            src="{% if user_avatar_url %}{{ user_avatar_url }}{% else %}{% static 'images/logo-camim.png' %}{% endif %}"
+            src="{% if user_avatar_url %}{{ user_avatar_url }}{% else %}{% static brand_logo %}{% endif %}"
             alt="Perfil"
             class="cm-avatar h-9 w-9 rounded-full border border-white/40 shadow"
             id="cm-avatar-toggle">
@@ -363,15 +349,14 @@
 
       <!-- Linha 2 -->
       {% if board %}
-      <div class="cm-header-row cm-board-title text-sm opacity-90 mt-1">
-        <!--{{ board.name }} -->
-      </div>
+      
       {% endif %}
 
     </div>
   </div>
 
 </header>
+
 
 
 
