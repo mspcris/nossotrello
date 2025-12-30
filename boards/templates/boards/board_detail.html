@@ -22,37 +22,35 @@
 
 
 
-
-
 {% block header_right_under_logo %}
-  <!-- “home” onde o painel fica no DESKTOP -->
   <div id="cm-search-desktop-home" class="w-full hidden md:flex justify-center">
     <div class="w-full max-w-[980px]">
       <div id="cm-search-panel"
-           class="cm-search-panel w-full rounded-xl bg-emerald-200/70 backdrop-blur-md border border-white/30 shadow px-4 py-3">
-        <div class="relative w-full">
+           class="cm-search-panel w-full rounded-xl bg-emerald-200/70 backdrop-blur-md border border-white/30 shadow px-3 py-2">
+        <div class="flex items-center gap-3">
 
-          <!-- Miniatura ANCORADA à esquerda (não influencia o centro) -->
-          <div class="absolute left-0 top-1/2 -translate-y-1/2">
-            {% if board.image %}
-              <div class="relative group inline-block">
-                <div class="h-10 w-16 border border-gray-300 rounded-lg overflow-hidden bg-white flex items-center justify-center">
-                  <img src="{{ board.image.url }}" class="h-full w-auto object-contain">
+          <!-- THUMB (larga, sem aumentar altura) -->
+          <div class="shrink-0">
+            {% if board and board.image %}
+              <div class="relative group">
+                <div class="h-10 w-24 border border-gray-300 rounded-lg overflow-hidden bg-white">
+                  <img src="{{ board.image.url }}" class="h-full w-full object-cover">
                 </div>
 
-                <button class="absolute top-1 right-1 bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded
-                               opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                <button class="absolute -top-2 -right-2 h-6 w-6 rounded-full
+                               bg-black/60 text-white text-xs flex items-center justify-center
+                               opacity-0 group-hover:opacity-100 transition-opacity"
                         hx-post="{% url 'boards:remove_board_image' board.id %}"
                         hx-target="body" hx-swap="beforeend"
                         aria-label="Remover imagem do quadro"
                         title="Remover imagem">
-                  X
+                  ✖
                 </button>
               </div>
             {% else %}
-              <div class="h-10 w-16 flex items-center justify-center rounded-lg border border-gray-300
-                          bg-gray-100 text-gray-400 text-xl cursor-pointer hover:bg-gray-200"
-                   hx-get="{% url 'boards:update_board_image' board.id %}"
+              <div class="h-10 w-24 flex items-center justify-center rounded-lg border border-gray-300
+                          bg-gray-100 text-gray-500 text-xl cursor-pointer hover:bg-gray-200"
+                   {% if board %}hx-get="{% url 'boards:update_board_image' board.id %}"{% endif %}
                    hx-target="body" hx-swap="beforeend"
                    aria-label="Adicionar imagem do quadro"
                    title="Adicionar imagem">
@@ -61,48 +59,36 @@
             {% endif %}
           </div>
 
-          <!-- “falso” spacer à direita, para manter simetria visual -->
-          <div class="absolute right-0 top-1/2 -translate-y-1/2 w-16 h-10"></div>
-
-          <!-- Conteúdo CENTRAL (reserva espaço p/ miniatura + spacer) -->
-          <div class="mx-auto w-full max-w-[760px] pl-24 pr-24">
-            <div class="flex items-center justify-between">
-              <span id="filter-label" class="text-sm font-semibold text-gray-600 board-label">
-                Filtrar por:
-              </span>
-
-              <div class="inline-flex rounded-md border border-gray-300 bg-white/80 overflow-hidden">
-                <button type="button"
-                        id="filter-mode-tags"
-                        class="px-3 py-1 text-xs font-semibold bg-gray-900 text-white"
-                        onclick="setFilterMode('tags')">
-                  Tags
-                </button>
-                <button type="button"
-                        id="filter-mode-text"
-                        class="px-3 py-1 text-xs font-semibold text-gray-700"
-                        onclick="setFilterMode('text')">
-                  Texto
-                </button>
-              </div>
-            </div>
-
+          <!-- INPUT (1 linha, sem “Filtrar por:” consumindo altura) -->
+          <div class="flex-1 min-w-0">
             <input type="text"
                    id="board-filter"
-                   placeholder="Ex: urgente"
-                   class="border rounded px-3 py-2 text-sm w-full mt-2"
+                   placeholder="Filtrar… (ex: urgente)"
+                   class="w-full h-10 rounded-lg px-3 text-sm bg-white/80 border border-gray-300"
                    oninput="applyBoardFilter(this.value)">
+          </div>
+
+          <!-- TOGGLE (compacto) -->
+          <div class="shrink-0 inline-flex rounded-lg border border-gray-300 bg-white/80 overflow-hidden h-10">
+            <button type="button"
+                    id="filter-mode-tags"
+                    class="px-3 text-xs font-semibold bg-gray-900 text-white"
+                    onclick="setFilterMode('tags')">
+              Tags
+            </button>
+            <button type="button"
+                    id="filter-mode-text"
+                    class="px-3 text-xs font-semibold text-gray-700"
+                    onclick="setFilterMode('text')">
+              Texto
+            </button>
           </div>
 
         </div>
       </div>
     </div>
   </div>
-
-  <!-- No MOBILE a busca não ocupa espaço no header; ela será movida via JS (o painel é o mesmo) -->
 {% endblock %}
-
-
 
 
 
@@ -168,19 +154,63 @@
 {% block content %}
 <div class="mt-2 mb-4">
 
-  <!-- DESKTOP / PAISAGEM (>= 768px) — INTACTO -->
-  <div class="hidden md:flex items-center justify-between gap-4">
-    <div class="text-sm font-semibold text-white/90 drop-shadow truncate min-w-0">
-      <a href="{% url 'boards:boards_index' %}"
-         class="underline underline-offset-2">
-        Todos os Quadros
-      </a>
-      <span class="opacity-70">→</span>
-      <span class="board-breadcrumb-name">
-        {{ board.name }}
-      </span>
-    </div>
+<!-- DESKTOP / PAISAGEM (>= 768px) — breadcrumb + membros na MESMA LINHA -->
+<div class="hidden md:flex items-center justify-between gap-4">
+  <!-- breadcrumb -->
+  <div class="text-sm font-semibold text-white/90 drop-shadow truncate min-w-0">
+    <a href="{% url 'boards:boards_index' %}"
+       class="underline underline-offset-2">
+      Todos os Quadros
+    </a>
+    <span class="opacity-70">→</span>
+    <span class="board-breadcrumb-name">
+      {{ board.name }}
+    </span>
   </div>
+
+  <!-- membros (direita) -->
+  <div id="board-members-bar"
+       class="board-members-bar flex items-center gap-1 shrink-0"
+       aria-label="Usuários do quadro">
+    {% for member in board_members %}
+      {% with p=member.profile %}
+        <button
+          type="button"
+          class="board-member-avatar"
+          title="{{ p.display_name|default:member.get_full_name|default:member.email }}"
+          aria-label="Ver perfil de {{ p.display_name|default:member.get_full_name|default:member.email }}"
+          data-user-id="{{ member.id }}"
+          data-display-name="{{ p.display_name|default:member.get_full_name|default:member.email }}"
+          data-handle="{{ p.handle|default:'' }}"
+          data-email="{{ member.email|default:'' }}"
+          data-avatar-url="{% if p and p.avatar %}{{ p.avatar.url }}{% elif p and p.avatar_choice %}{% static 'images/avatar/' %}{{ p.avatar_choice }}{% endif %}"
+          onclick="openReadonlyUserProfile({{ member.id }})">
+
+          {% if p and p.avatar %}
+            <img src="{{ p.avatar.url }}"
+                 alt="{{ p.display_name|default:member.get_full_name|default:member.email }}"
+                 loading="lazy">
+          {% elif p and p.avatar_choice %}
+            <img src="{% static 'images/avatar/' %}{{ p.avatar_choice }}"
+                 alt="{{ p.display_name|default:member.get_full_name|default:member.email }}"
+                 loading="lazy">
+          {% else %}
+            <span class="avatar-fallback">
+              {{ p.display_name|default:member.get_full_name|default:member.email|first|upper }}
+            </span>
+          {% endif %}
+        </button>
+      {% endwith %}
+    {% endfor %}
+  </div>
+</div>
+
+
+
+
+
+
+
 
   <!-- MOBILE RETRATO (< 768px) — SLOT DINÂMICO -->
   <div class="md:hidden">
@@ -231,48 +261,6 @@
   </div>
 </div>
 
-
-    <div id="board-members-bar"
-         class="board-members-bar"
-         aria-label="Usuários do quadro">
-
-      {% for member in board_members %}
-        {% with p=member.profile %}
-          <button
-            type="button"
-            class="board-member-avatar"
-            title="{{ p.display_name|default:member.get_full_name|default:member.email }}"
-            aria-label="Ver perfil de {{ p.display_name|default:member.get_full_name|default:member.email }}"
-            data-user-id="{{ member.id }}"
-            data-display-name="{{ p.display_name|default:member.get_full_name|default:member.email }}"
-            data-handle="{{ p.handle|default:'' }}"
-            data-email="{{ member.email|default:'' }}"
-            data-avatar-url="{% if p and p.avatar %}{{ p.avatar.url }}{% elif p and p.avatar_choice %}{% static 'images/avatar/' %}{{ p.avatar_choice }}{% endif %}"
-            onclick="openReadonlyUserProfile({{ member.id }})">
-
-            {% if p and p.avatar %}
-  <img
-    src="{{ p.avatar.url }}"
-    alt="{{ p.display_name|default:member.get_full_name|default:member.email }}"
-    loading="lazy">
-{% elif p and p.avatar_choice %}
-  <img
-    src="{% static 'images/avatar/' %}{{ p.avatar_choice }}"
-    alt="{{ p.display_name|default:member.get_full_name|default:member.email }}"
-    loading="lazy">
-{% else %}
-  <span class="avatar-fallback">
-    {{ p.display_name|default:member.get_full_name|default:member.email|first|upper }}
-  </span>
-{% endif %}
-
-            
-          </button>
-        {% endwith %}
-      {% endfor %}
-
-    </div>
-  </div>
 
 
 

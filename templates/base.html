@@ -229,6 +229,10 @@
 
 
 <!-- Header -->
+ <div class="flex items-center justify-between p-2 gap-3 border-b border-white/20">
+
+
+
 <header class="w-full px-4 py-3">
     <!-- =====================================================
        DESKTOP / LANDSCAPE  (>= md) — 100% ORIGINAL
@@ -299,7 +303,7 @@
       </a>
     </div>
   </div>
-
+</div>
   <!-- =====================================================
        MOBILE RETRATO (< md) — NOVO
        ===================================================== -->
@@ -319,9 +323,10 @@
           <img src="{% static 'images/logo-camim.png' %}"
                alt="CAMIM"
                class="h-9 w-9 rounded-full">
-          <span class="cm-brand-name font-bold">
-            CAMIM
-          </span>
+          <span class="cm-brand-name font-extrabold text-white drop-shadow">
+  CAMIM
+</span>
+
         </div>
 
         <div class="cm-user-menu relative">
@@ -350,7 +355,7 @@
       <!-- Linha 2 -->
       {% if board %}
       <div class="cm-header-row cm-board-title text-sm opacity-90 mt-1">
-        {{ board.name }}
+        <!--{{ board.name }} -->
       </div>
       {% endif %}
 
@@ -609,23 +614,42 @@
       }
     });
   </script>
-<script>
+
+<!--ABERTURA DO MODAL NA FOTO - MOBILE-->
+  <script>
 document.addEventListener("DOMContentLoaded", () => {
   const toggle = document.getElementById("cm-avatar-toggle");
   const menu = document.getElementById("cm-user-dropdown");
+  const openUserSettings = document.getElementById("open-user-settings");
 
-  if (!toggle || !menu) return;
+  if (!toggle) return;
 
+  function isMobile() {
+    return window.matchMedia && window.matchMedia("(max-width: 767px)").matches;
+  }
+
+  // MOBILE: foto abre o modal da conta
   toggle.addEventListener("click", (e) => {
+    e.preventDefault();
     e.stopPropagation();
-    menu.classList.toggle("hidden");
+
+    if (isMobile()) {
+      openUserSettings?.click?.();   // dispara o mesmo fluxo do desktop
+      if (menu) menu.classList.add("hidden");
+      return;
+    }
+
+    // DESKTOP (se você usar esse mesmo avatar no desktop algum dia):
+    if (menu) menu.classList.toggle("hidden");
   });
 
-  document.addEventListener("click", () => {
-    menu.classList.add("hidden");
-  });
+  // fecha dropdown quando clicar fora (só se existir dropdown)
+  if (menu) {
+    document.addEventListener("click", () => menu.classList.add("hidden"));
+  }
 });
 </script>
+
 
 </body>
 </html>
