@@ -18,6 +18,7 @@ from .legacy import *  # noqa
 from .mentions import *  # noqa
 from .account import *  # noqa
 from .profiles import *  # noqa
+from .modal_card_term import *  # noqa
 
 
 
