@@ -1158,6 +1158,63 @@ html.dark #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-
 }
 
 
+
+
+/* ===== MOBILE HEADER ===== */
+@media (max-width: 768px) {
+  .cm-header {
+    padding: 8px 12px;
+  }
+
+  .cm-header-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .cm-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .cm-brand {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .cm-brand-name {
+    font-weight: 600;
+  }
+
+  .cm-board-title {
+    font-size: 14px;
+    opacity: 0.9;
+  }
+
+  .cm-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+  }
+
+  .cm-user-dropdown {
+    position: absolute;
+    right: 12px;
+    top: 56px;
+    background: white;
+    border-radius: 8px;
+    padding: 8px 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,.15);
+    z-index: 50;
+  }
+
+  .cm-user-dropdown.hidden {
+    display: none;
+  }
+}
+
 /* =======================================================================
    FIM DO BASE.CSS CONSOLIDADO
    ======================================================================= */

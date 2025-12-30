@@ -82,3 +82,10 @@ html.dark .column-header * {
 [data-column-id].boing-bottom {
   animation: boingUp 240ms ease-out;
 }
+
+
+@media (max-width: 768px) {
+  .board-column {
+    min-width: 48vw;
+  }
+}

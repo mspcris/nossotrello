@@ -45,6 +45,11 @@
   </div>
 
   {# Busca/Filtro (ocupa o restante) #}
+  <button id="cm-search-toggle" class="cm-search-icon">🔍</button>
+
+<div id="cm-search-panel" class="cm-search-panel hidden">
+  <!-- reaproveita exatamente o HTML atual da busca -->
+
   <div class="flex-1 min-w-0">
     <div class="flex items-center justify-between">
       <span id="filter-label" class="text-sm font-semibold text-gray-600 board-label">
@@ -81,6 +86,8 @@
   </div>
 </div>
 
+  <button id="cm-search-close">Fechar</button>
+</div>
 
 
 
@@ -741,6 +748,27 @@ function openReadonlyUserProfile(userId) {
   });
 }
 </script>
+
+
+
+
+<!--LUPA DA BUSCA-->
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const open = document.getElementById("cm-search-toggle");
+  const panel = document.getElementById("cm-search-panel");
+  const close = document.getElementById("cm-search-close");
+
+  if (!open || !panel) return;
+
+  open.onclick = () => panel.classList.remove("hidden");
+  close.onclick = () => panel.classList.add("hidden");
+});
+</script>
+
+
+
 
 
 {% endblock %}

@@ -139,3 +139,23 @@ estilos fixos do board, não do wallpaper */
   line-height: 1.1;
 }
 
+
+
+@media (max-width: 768px) {
+  .cm-search-icon {
+    font-size: 20px;
+    background: none;
+    border: none;
+  }
+
+  .cm-search-panel {
+    background: white;
+    padding: 12px;
+    border-radius: 12px;
+    margin: 8px;
+  }
+
+  .cm-search-panel.hidden {
+    display: none;
+  }
+}
