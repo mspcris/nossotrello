@@ -16,6 +16,7 @@
 
 
 
+{% block body_attrs %}style="overflow:hidden;"{% endblock %}
 
 
 
@@ -278,7 +279,8 @@
 {# ======================== LISTA DE COLUNAS ======================== #}
 <div id="board-root" data-can-edit="{{ can_edit|yesno:'1,0' }}">
   <div id="columns-wrapper"
-       class="flex gap-6 overflow-x-auto overflow-y-hidden pb-6 pr-4 h-[calc(100vh-140px)]">
+     class="flex gap-6 overflow-x-auto overflow-y-hidden pb-6 pr-4 min-h-0">
+
 
     {# 🔑 CONTAINER QUE SERÁ ATUALIZADO PELO POLLING (use o id que o seu polling usa: columns-list) #}
     <div id="columns-list" class="flex gap-6">
@@ -879,6 +881,37 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 </script>
 
+
+
+
+<!--ZERAR SCROLL NA TELA!!-->
+
+<script>
+(function () {
+  function fitColumnsWrapper() {
+    const wrap = document.getElementById("columns-wrapper");
+    if (!wrap) return;
+
+    // garante que a página não role (só as colunas)
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+
+    // altura disponível = viewport - topo real do wrapper - folga
+    const top = wrap.getBoundingClientRect().top;
+    const paddingBottom = 12; // folga mínima pra não "colar" no fim
+    const h = Math.max(240, Math.floor(window.innerHeight - top - paddingBottom));
+
+    wrap.style.height = h + "px";
+  }
+
+  window.addEventListener("load", fitColumnsWrapper);
+  window.addEventListener("resize", fitColumnsWrapper);
+
+  // se algum swap HTMX mexer no topo, recalcula
+  document.body.addEventListener("htmx:afterSwap", fitColumnsWrapper);
+  document.body.addEventListener("htmx:afterSettle", fitColumnsWrapper);
+})();
+</script>
 
 
 {% endblock content %}
