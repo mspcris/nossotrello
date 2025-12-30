@@ -686,14 +686,19 @@
   {# ===================== CHECKLISTS ===================== #}
   <section class="cm-panel" data-cm-panel="check" role="tabpanel">
     <div class="cm-card space-y-3">
-      <form method="post"
+      <form id="cm-checklist-create-form"
+            method="post"
             hx-post="{% url 'boards:checklist_add' card.id %}"
             hx-target="#checklist-list"
             hx-swap="innerHTML">
         {% csrf_token %}
         <label class="cm-label">Novo checklist</label>
         <div class="flex gap-2">
-          <input type="text" name="title" class="cm-input" placeholder="Ex: Tarefas da semana">
+          <input id="cm-checklist-create-input"
+       type="text"
+       name="title"
+       class="cm-input"
+       placeholder="Ex: Tarefas da semana">
           <button type="submit" class="cm-btn primary">Adicionar</button>
         </div>
       </form>

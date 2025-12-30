@@ -8,9 +8,17 @@
     window.Modal.tags?.init();
     window.Modal.breadcrumb?.render();
     window.Modal.breadcrumb?.bind();
+    
+
 
     // ✅ capa (click / change / paste)
     window.Modal.cover?.init();
+
+
+
+    window.Modal.checklists?.init();
+
+    
   };
 })();
 //END modal.index.js
