@@ -662,20 +662,26 @@ def set_tag_color(request, card_id):
     board = card.column.board
     board.version += 1
     board.save(update_fields=["version"])
-    modal_html = render(
-        request,
+    tags_bar = render_to_string(
         "boards/partials/card_tags_bar.html",
         {"card": card},
-    ).content.decode("utf-8")
+        request=request,
+    )
 
-    snippet_html = render(
-        request,
+    snippet_html = render_to_string(
         "boards/partials/card_item.html",
         {"card": card},
-    ).content.decode("utf-8")
+        request=request,
+    )
 
-    return JsonResponse({"modal": modal_html, "snippet": snippet_html, "card_id": card.id})
-
+    return JsonResponse(
+        {
+            "ok": True,
+            "tags_bar": tags_bar,
+            "card_id": card.id,
+            "snippet": snippet_html,
+        }
+    )
 
 
 

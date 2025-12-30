@@ -15,19 +15,35 @@ def split_tags(value):
 
 
 @register.filter
-def tag_color(tag_name):
+def tag_color(tag_name, tag_colors=None):
     """
-    Gera uma cor estável para a tag, baseada em hash.
+    Se tag_colors vier (dict ou JSON), usa a cor salva.
+    Senão, gera uma cor estável por hash (fallback).
     """
     if not tag_name:
         return "#888888"
 
+    # 1) Tenta pegar cor salva (tag_colors pode ser JSON string ou dict)
+    try:
+        data = tag_colors
+
+        if isinstance(tag_colors, str) and tag_colors.strip():
+            import json
+            data = json.loads(tag_colors)
+
+        if isinstance(data, dict):
+            c = (data.get(str(tag_name)) or "").strip()
+            if c:
+                return c
+    except Exception:
+        pass
+
+    # 2) Fallback: cor estável por hash
     h = hashlib.md5(str(tag_name).encode("utf-8")).hexdigest()
     r = int(h[:2], 16)
     g = int(h[2:4], 16)
     b = int(h[4:6], 16)
 
-    # suaviza um pouco as cores
     r = (r + 150) // 2
     g = (g + 150) // 2
     b = (b + 150) // 2

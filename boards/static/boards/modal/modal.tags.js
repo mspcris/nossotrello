@@ -3,9 +3,7 @@
   if (!window.Modal || window.Modal.tags) return;
 
   function getCSRFToken() {
-    return (
-      document.querySelector('input[name="csrfmiddlewaretoken"]')?.value || ""
-    );
+    return document.querySelector('input[name="csrfmiddlewaretoken"]')?.value || "";
   }
 
   function safeJsonParse(s, fallback) {
@@ -16,18 +14,9 @@
     }
   }
 
-  function setBtnColor(btn, color) {
-    if (!btn || !color) return;
-    btn.style.backgroundColor = `${color}20`;
-    btn.style.color = color;
-    btn.style.borderColor = color;
-    btn.dataset.fallbackColor = color;
-  }
-
   function positionPopover(popover, root, anchorEl) {
     if (!popover || !root || !anchorEl) return;
 
-    // popover é absolute; root já está no DOM do modal
     const a = anchorEl.getBoundingClientRect();
     const r = root.getBoundingClientRect();
 
@@ -38,27 +27,41 @@
     popover.style.top = `${top}px`;
   }
 
+  function getModalRoot() {
+    // prioridade: cm-root dentro do modal
+    const modalBody = document.getElementById("modal-body");
+    if (modalBody) {
+      const inModal = modalBody.querySelector("#cm-root");
+      if (inModal) return inModal;
+    }
+
+    // fallback (não ideal): último cm-root do documento
+    const all = document.querySelectorAll("#cm-root");
+    if (all && all.length) return all[all.length - 1];
+
+    return null;
+  }
+
   window.Modal.tags = {
     init() {
-      const root = document.getElementById("cm-root");
+      const root = getModalRoot();
       if (!root) return;
 
-      const tagsWrap = document.getElementById("cm-tags-wrap");
-      const popover = document.getElementById("cm-tag-color-popover");
-      const picker = document.getElementById("cm-tag-color-picker");
-      const btnCancel = document.getElementById("cm-tag-color-cancel");
-      const btnSave = document.getElementById("cm-tag-color-save");
+      const tagsWrap = root.querySelector("#cm-tags-wrap");
+      const popover = root.querySelector("#cm-tag-color-popover");
+      const picker = root.querySelector("#cm-tag-color-picker");
+      const btnCancel = root.querySelector("#cm-tag-color-cancel");
+      const btnSave = root.querySelector("#cm-tag-color-save");
 
-      const form = document.getElementById("cm-tag-color-form");
-      const inputTag = document.getElementById("cm-tag-color-tag");
-      const inputColor = document.getElementById("cm-tag-color-value");
+      const form = root.querySelector("#cm-tag-color-form");
+      const inputTag = root.querySelector("#cm-tag-color-tag");
+      const inputColor = root.querySelector("#cm-tag-color-value");
 
       if (!popover || !picker || !btnCancel || !btnSave || !form || !inputTag || !inputColor) {
-        // modal pode estar em estado antigo (sem picker); nesse caso, não faz nada
         return;
       }
 
-      // evita bind duplicado a cada swap/reopen
+      // evita bind duplicado (por root do modal)
       if (root.dataset.cmTagsBound === "1") return;
       root.dataset.cmTagsBound = "1";
 
@@ -70,7 +73,6 @@
         const tag = (btn?.dataset?.tag || "").trim();
         if (!tag) return;
 
-        // cor atual: tenta data-tag-colors do root; fallback no data-fallback-color do botão
         const raw = root.getAttribute("data-tag-colors") || "{}";
         const colors = safeJsonParse(raw, {});
         const currentColor =
@@ -91,7 +93,6 @@
         currentBtn = null;
       }
 
-      // atualiza hidden enquanto escolhe no color input
       picker.addEventListener("input", function () {
         inputColor.value = (picker.value || "").trim();
       });
@@ -101,16 +102,26 @@
         closePopover();
       });
 
-      // fecha popover clicando fora
-      document.addEventListener(
-        "click",
-        function (e) {
-          if (popover.classList.contains("hidden")) return;
-          if (e.target && (e.target.closest("#cm-tag-color-popover") || e.target.closest(".cm-tag-btn"))) return;
-          closePopover();
-        },
-        true
-      );
+      // listener global só 1 vez (não acumula)
+      if (!window.__cmTagsOutsideClickBound) {
+        window.__cmTagsOutsideClickBound = true;
+
+        document.addEventListener(
+          "click",
+          function (e) {
+            const r = getModalRoot();
+            if (!r) return;
+
+            const pop = r.querySelector("#cm-tag-color-popover");
+            if (!pop || pop.classList.contains("hidden")) return;
+
+            if (e.target && (e.target.closest("#cm-tag-color-popover") || e.target.closest(".cm-tag-btn"))) return;
+
+            pop.classList.add("hidden");
+          },
+          true
+        );
+      }
 
       // binds: tags do topo (.cm-tag-btn)
       root.querySelectorAll(".cm-tag-btn[data-tag]").forEach((btn) => {
@@ -161,40 +172,45 @@
             credentials: "same-origin",
           });
 
-          // VIEWER: backend retorna 403 com JSON “Somente leitura.”
           if (res.status === 403) {
             const data403 = await res.json().catch(() => ({}));
             closePopover();
-            // sem inventar UI nova: feedback mínimo
             alert(data403?.error || "Somente leitura.");
             return;
           }
 
+          const respText = await res.text().catch(() => "");
           if (!res.ok) {
-            const txt = await res.text().catch(() => "");
-            throw new Error(txt || "Falha ao salvar cor.");
+            alert(`HTTP ${res.status}\n${respText.slice(0, 400)}`);
+            return;
           }
 
-          const data = await res.json().catch(() => ({}));
-          if (!data || data.ok !== true) throw new Error("Resposta inválida.");
-
-          // 1) atualiza barra (sem mexer no resto do modal)
-          if (tagsWrap && typeof data.tags_bar === "string") {
-            tagsWrap.innerHTML = data.tags_bar;
-
-            // rebind nos novos botões
-            root.dataset.cmTagsBound = "0";
-            window.Modal.tags.init();
+          const ctype = (res.headers.get("content-type") || "").toLowerCase();
+          if (!ctype.includes("application/json")) {
+            alert(`Não veio JSON (${ctype || "sem content-type"})\n${respText.slice(0, 400)}`);
+            return;
           }
 
-          // 2) atualiza data-tag-colors local (pra abrir popover com cor certa)
-          const raw = root.getAttribute("data-tag-colors") || "{}";
-          const colors = safeJsonParse(raw, {});
+          let data = {};
+          try { data = JSON.parse(respText || "{}"); } catch (_e) {}
+
+          if (!data || typeof data.tags_bar !== "string") {
+            alert(`JSON sem "tags_bar"\n${respText.slice(0, 400)}`);
+            return;
+          }
+
+          // 1) atualiza a barra no modal
+          if (tagsWrap) tagsWrap.innerHTML = data.tags_bar;
+
+          // 2) atualiza estado no root do modal
+          const rawColors = root.getAttribute("data-tag-colors") || "{}";
+          const colors = safeJsonParse(rawColors, {});
           colors[tag] = color;
           root.setAttribute("data-tag-colors", JSON.stringify(colors));
 
-          // 3) se o botão ainda existe, aplica cor imediatamente (melhor UX)
-          if (currentBtn) setBtnColor(currentBtn, color);
+          // 3) rebind nos botões re-renderizados
+          root.dataset.cmTagsBound = "0";
+          window.Modal.tags.init();
 
           closePopover();
         } catch (err) {

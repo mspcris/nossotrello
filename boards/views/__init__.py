@@ -20,10 +20,6 @@ from .account import *  # noqa
 from .profiles import *  # noqa
 from .modal_card_term import *  # noqa
 
-
-
-
-
 class FirstLoginPasswordResetForm(PasswordResetForm):
     """
     Permite enviar e-mail de reset mesmo se o usuário ainda não tem senha utilizável

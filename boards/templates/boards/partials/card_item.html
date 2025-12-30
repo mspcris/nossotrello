@@ -4,6 +4,7 @@
 <li
   id="card-{{ card.id }}"
   data-card-id="{{ card.id }}"
+  data-tag-colors="{{ card.tag_colors|default:'{}'|escape }}"
   data-card-open-url="{% url 'boards:card_modal' card.id %}"
   class="card-item p-3 bg-white/80 rounded-xl shadow-sm mb-3 cursor-pointer relative overflow-hidden"
 >
@@ -45,18 +46,19 @@
   </button>
 
   {% if card.tags %}
-    <div class="flex flex-wrap gap-1 mb-2 mt-4">
-      {% for tag in card.tags|split_tags %}
-        {% with tag|tag_color as color %}
-          <span
-            class="text-xs font-semibold px-2 py-1 rounded-md"
-            style="background-color: {{ color }}20; color: {{ color }}; border: 1px solid {{ color }};">
-            {{ tag }}
-          </span>
-        {% endwith %}
-      {% endfor %}
-    </div>
-  {% endif %}
+  <div class="flex flex-wrap gap-1 mb-2 mt-4">
+    {% for tag in card.tags|split_tags %}
+      {% with tag|tag_color:card.tag_colors as color %}
+        <span
+          data-tag="{{ tag }}"
+          class="text-xs font-semibold px-2 py-1 rounded-md"
+          style="background-color: {{ color }}20; color: {{ color }}; border: 1px solid {{ color }};">
+          {{ tag }}
+        </span>
+      {% endwith %}
+    {% endfor %}
+  </div>
+{% endif %}
 
   <span class="block text-sm text-gray-800">
     {{ card.title }}

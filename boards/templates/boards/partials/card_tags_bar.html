@@ -2,24 +2,27 @@
 
 {% load tag_helpers %}
 
-{% if card.tags %}
-  <div id="cm-tags-bar" class="px-3 pb-2">
-    <div class="flex flex-wrap gap-2">
-      {% for tag in card.tags|split_tags %}
-        {% with tag|tag_color as color %}
-          <button
-            type="button"
-            class="px-2 py-1 rounded-md text-xs font-semibold border cm-tag-btn"
-            data-tag="{{ tag|escape }}"
-            data-fallback-color="{{ color }}"
-            style="background-color: {{ color }}20; color: {{ color }}; border-color: {{ color }};">
-            {{ tag }}
-          </button>
-        {% endwith %}
-      {% endfor %}
+{% with tag_colors=card.tag_colors|default:"{}" %}
+  {% if card.tags %}
+    <div id="cm-tags-bar" class="px-3 pb-2">
+      <div class="flex flex-wrap gap-2">
+        {% for tag in card.tags|split_tags %}
+          {% with color=tag|tag_color:tag_colors %}
+            <button
+              type="button"
+              class="px-2 py-1 rounded-md text-xs font-semibold border cm-tag-btn"
+              data-tag="{{ tag|escape }}"
+              data-fallback-color="{{ color }}"
+              style="background-color: {{ color }}20; color: {{ color }}; border-color: {{ color }};">
+              {{ tag }}
+            </button>
+          {% endwith %}
+        {% endfor %}
+      </div>
     </div>
-  </div>
-{% else %}
-  <div id="cm-tags-bar"></div>
-{% endif %}
+  {% else %}
+    <div id="cm-tags-bar"></div>
+  {% endif %}
+{% endwith %}
+
 <!--END card_tags_bar.html-->
