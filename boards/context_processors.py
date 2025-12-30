@@ -24,3 +24,34 @@ def user_profile_context(request):
             avatar_url = None
 
     return {"user_avatar_url": avatar_url}
+
+
+def brand_context(request):
+    """
+    Decide qual marca mostrar no header com base no domínio do e-mail do usuário.
+    - @egidesaude.com.br  -> Égide (logo sem texto)
+    - @camim.com.br / @clinicacamim.com.br -> CAMIM (logo + texto)
+    """
+    email = ""
+    user = getattr(request, "user", None)
+    if user and getattr(user, "is_authenticated", False):
+        email = (getattr(user, "email", "") or "").strip().lower()
+
+    # Defaults (CAMIM)
+    brand = {
+        "brand_key": "camim",
+        "brand_name": "CAMIM",
+        "brand_logo": "images/logo-camim.png",
+        "brand_show_text": True,
+    }
+
+    if email.endswith("@egidesaude.com.br"):
+        brand = {
+            "brand_key": "egide",
+            "brand_name": "Égide Saúde e Benefícios",
+            "brand_logo": "images/egide-logo-verde.svg",  # ajuste se o nome real for outro
+            "brand_show_text": False,  # Égide: sem texto ao lado
+        }
+
+    return brand
+#END boards/context_processors.py

@@ -254,13 +254,17 @@
       </button>
 
       <a href="{% url 'boards:boards_index' %}" class="flex items-center gap-2 select-none">
-        <img src="{% static 'images/logo-camim.png' %}"
-             alt="CAMIM"
-             class="h-10 w-10 rounded-full object-cover border border-white/40 shadow">
-        <span class="text-2xl font-extrabold tracking-wide text-white drop-shadow">
-          CAMIM
-        </span>
-      </a>
+  <img src="{% static brand_logo %}"
+       alt="{{ brand_name }}"
+       class="h-10 w-10 rounded-full object-cover border border-white/40 shadow">
+
+  {% if brand_show_text %}
+    <span class="text-2xl font-extrabold tracking-wide text-white drop-shadow">
+      {{ brand_name }}
+    </span>
+  {% endif %}
+</a>
+
 
       {% block header_left %}{% endblock %}
     </div>
@@ -320,12 +324,17 @@
         </button>
 
         <div class="cm-brand flex items-center gap-2">
-          <img src="{% static 'images/logo-camim.png' %}"
-               alt="CAMIM"
-               class="h-9 w-9 rounded-full">
-          <span class="cm-brand-name font-extrabold text-white drop-shadow">
-  CAMIM
-</span>
+  <img src="{% static brand_logo %}"
+       alt="{{ brand_name }}"
+       class="h-9 w-9 rounded-full">
+
+  {% if brand_show_text %}
+    <span class="cm-brand-name font-bold text-white drop-shadow">
+      {{ brand_name }}
+    </span>
+  {% endif %}
+</div>
+
 
         </div>
 

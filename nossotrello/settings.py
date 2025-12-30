@@ -134,6 +134,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'boards.context_processors.user_profile_context',
+                "boards.context_processors.brand_context",
 
             ],
         },
