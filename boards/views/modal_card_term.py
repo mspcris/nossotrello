@@ -1,4 +1,4 @@
-# boards/views/modal_tag.py
+# boards/views/modal_card_term.py
 
 import json
 import re
@@ -16,9 +16,9 @@ from .cards import _user_can_edit_board, _deny_read_only
 
 @login_required
 @require_POST
-def remove_tag(request, card_id):
+def remove_term(request, card_id):
     """
-    Remove uma etiqueta do card (mantém as demais).
+    Remove um termo do card (mantém os demais).
     Retorna HTML do modal atualizado.
     """
     card = get_object_or_404(Card, id=card_id, is_deleted=False)
@@ -28,14 +28,14 @@ def remove_tag(request, card_id):
     if not _user_can_edit_board(request.user, board):
         return _deny_read_only(request, as_json=True)
 
-    tag = (request.POST.get("tag") or "").strip()
-    if not tag:
-        return HttpResponse("Tag inválida.", status=400)
+    term = (request.POST.get("term") or "").strip()
+    if not term:
+        return HttpResponse("Termo inválido.", status=400)
 
-    tags = [t.strip() for t in (card.tags or "").split(",") if t.strip()]
-    before = list(tags)
-    tags = [t for t in tags if t != tag]
-    card.tags = ", ".join(tags)
+    terms = [t.strip() for t in (card.tags or "").split(",") if t.strip()]
+    before = list(terms)
+    terms = [t for t in terms if t != term]
+    card.tags = ", ".join(terms)
     card.save(update_fields=["tags"])
 
     # version do board (polling/refresh)
@@ -43,12 +43,12 @@ def remove_tag(request, card_id):
     board.save(update_fields=["version"])
 
     # log (só se realmente removeu)
-    if before != tags:
+    if before != terms:
         actor = _actor_label(request)
         _log_card(
             card,
             request,
-            f"<p><strong>{actor}</strong> removeu a etiqueta <strong>{escape(tag)}</strong>.</p>",
+            f"<p><strong>{actor}</strong> removeu o termo <strong>{escape(term)}</strong>.</p>",
         )
 
     return render(request, "boards/partials/card_modal_body.html", _card_modal_context(card))
@@ -56,10 +56,10 @@ def remove_tag(request, card_id):
 
 @login_required
 @require_POST
-def set_tag_color(request, card_id):
+def set_term_color(request, card_id):
     """
-    Salva/atualiza cor da etiqueta (tag_colors_json) e devolve
-    (a) barra de tags (parcial) e (b) HTML do modal atualizado.
+    Salva/atualiza cor do termo (tag_colors_json) e devolve:
+    (a) barra de termos (parcial novo) e (b) HTML do modal atualizado.
     """
     card = get_object_or_404(Card, id=card_id, is_deleted=False)
     board = card.column.board
@@ -68,9 +68,9 @@ def set_tag_color(request, card_id):
     if not _user_can_edit_board(request.user, board):
         return _deny_read_only(request, as_json=True)
 
-    tag = (request.POST.get("tag") or "").strip()
+    term = (request.POST.get("term") or "").strip()
     color = (request.POST.get("color") or "").strip()
-    if not tag or not color:
+    if not term or not color:
         return JsonResponse({"error": "Dados inválidos."}, status=400)
 
     # validação simples do formato (mantém compat com o frontend)
@@ -84,7 +84,7 @@ def set_tag_color(request, card_id):
     except Exception:
         data = {}
 
-    data[tag] = color
+    data[term] = color
     card.tag_colors_json = json.dumps(data, ensure_ascii=False)
     card.save(update_fields=["tag_colors_json"])
 
@@ -92,13 +92,13 @@ def set_tag_color(request, card_id):
     board.version += 1
     board.save(update_fields=["version"])
 
-    # barra de tags no modal (parcial)
-    tags_bar_html = render(
+    # barra de termos no modal (parcial novo)
+    terms_bar_html = render(
         request,
-        "boards/partials/card_tags_bar.html",
+        "boards/partials/card_terms_bar.html",
         {
             "card": card,
-            "tag_colors": data,
+            "term_colors": data,  # (mantém semântica “term”, mesmo que o template use tag_color hoje)
         },
     ).content.decode("utf-8")
 
@@ -112,8 +112,8 @@ def set_tag_color(request, card_id):
     return JsonResponse(
         {
             "ok": True,
-            "tags_bar": tags_bar_html,
+            "terms_bar": terms_bar_html,
             "modal": modal_html,
         }
     )
-#END boards/views/modal_tag.py
+# END boards/views/modal_card_term.py

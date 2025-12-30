@@ -164,6 +164,10 @@ urlpatterns = [
     # Etiquetas
     path("cards/<int:card_id>/tag-color/", views.set_tag_color, name="set_tag_color"),
     path("card/<int:card_id>/remove_tag/", views.remove_tag, name="remove_tag"),
+    
+    # Vencimento do card
+    path("cards/<int:card_id>/term-color/", views.set_term_color, name="set_term_color"),
+    path("card/<int:card_id>/remove_term/", views.remove_term, name="remove_term"),
 
     # Capa do card
     path("card/<int:card_id>/cover/set/", cards.set_card_cover, name="set_card_cover"),
@@ -191,6 +195,8 @@ urlpatterns = [
         views.delete_attachment,
         name="delete_attachment",
     ),
+    
+
 
 
     # ============================================================
