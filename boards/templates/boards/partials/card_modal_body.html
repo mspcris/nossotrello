@@ -707,27 +707,31 @@
   {# ===================== ATIVIDADE ===================== #}
   <section class="cm-panel" data-cm-panel="ativ" role="tabpanel">
     <div class="cm-card space-y-3">
-      <form method="post"
-            hx-post="{% url 'boards:add_activity' card.id %}"
-            hx-target="#cm-activity-panel"
-            hx-swap="innerHTML"
-            hx-on::after-request="this.reset()">
-        {% csrf_token %}
+      <form
+  id="cm-activity-form"
+  method="post"
+  hx-post="{% url 'boards:add_activity' card.id %}"
+  hx-target="#cm-activity-panel"
+  hx-swap="innerHTML"
+>
+  {% csrf_token %}
 
-        <div id="activity-error"
-             class="hidden mb-2 px-3 py-2 rounded-md text-sm border border-red-500/30 bg-red-500/10 text-red-200"></div>
+  <div id="activity-error"
+       class="hidden mb-2 px-3 py-2 rounded-md text-sm border border-red-500/30 bg-red-500/10 text-red-200"></div>
 
-        <label class="cm-label">Nova atividade</label>
-        <textarea name="content" class="cm-textarea" style="min-height:140px;" placeholder="Escreva aqui..."></textarea>
+  <label class="cm-label">Nova atividade</label>
 
-        <div class="flex gap-2">
-          <button type="submit" class="cm-btn primary">Incluir</button>
-          <button type="button" class="cm-btn"
-                  onclick="this.closest('form')?.querySelector('textarea[name=content]')?.value='';">
-            Limpar
-          </button>
-        </div>
-      </form>
+  <div id="cm-activity-editor"
+       class="cm-textarea"
+       style="min-height:140px;"></div>
+
+  <input type="hidden" name="content" id="cm-activity-content">
+
+  <div class="flex gap-2">
+    <button type="submit" class="cm-btn primary">Incluir</button>
+    <button type="button" class="cm-btn" onclick="resetActivityQuill()">Limpar</button>
+  </div>
+</form>
 
       <div id="cm-activity-panel">
         {% include "boards/partials/card_activity_panel.html" %}
@@ -805,8 +809,12 @@
 </div>
 </div>
 
+
+
+
+
 <script>
-(function(){
+  (function(){
   const root = document.getElementById("cm-root");
   if (!root) return;
 
@@ -840,6 +848,16 @@
     // notifica outros módulos (ex.: floatbar)
     try { root.dispatchEvent(new CustomEvent("cm:tabchange", { detail: { tab } })); } catch (_e) {}
   }
+
+  
+
+
+
+
+
+
+
+
 
   function initTabs(){
     // bind clicks (idempotente por swap)
@@ -1410,9 +1428,11 @@ document.addEventListener("keydown", escClose);
   // helpers
   // ============================================================
   function getCSRFToken(){
-    const el = document.querySelector('input[name="csrfmiddlewaretoken"]');
-    return el ? el.value : "";
+    return document.querySelector(
+      'input[name="csrfmiddlewaretoken"]'
+    )?.value || "";
   }
+
 
   function escapeHtml(s){
     return String(s || "")
@@ -1434,4 +1454,224 @@ document.addEventListener("keydown", escClose);
   initActionDock();
 })();
 
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script>
+(function () {
+  const STATE_KEY = "__cmActivityQuill";
+  const BOUND_KEY = "__cmActivityBound";
+
+  function getRoot() {
+    return document.getElementById("cm-root");
+  }
+
+  function getCardId() {
+    const root = getRoot();
+    return root?.getAttribute("data-card-id") || root?.dataset?.cardId || "";
+  }
+
+  function getCSRF() {
+    return document.querySelector('input[name="csrfmiddlewaretoken"]')?.value || "";
+  }
+
+  function showActivityError(msg) {
+    const box = document.getElementById("activity-error");
+    if (!box) return;
+    box.textContent = msg || "";
+    box.classList.toggle("hidden", !msg);
+  }
+
+  function clearActivityError() {
+    showActivityError("");
+  }
+
+  function ensureQuill() {
+    if (window[STATE_KEY] || typeof Quill === "undefined") return;
+
+    const el = document.getElementById("cm-activity-editor");
+    if (!el) return;
+
+    const quill = new Quill(el, {
+      theme: "snow",
+      placeholder: "Escreva aqui...",
+      modules: {
+        toolbar: [
+          ["bold","italic","underline","strike"],
+          [{ list: "ordered" }, { list: "bullet" }],
+          ["link","image"],
+          ["clean"]
+        ]
+      }
+    });
+
+    window[STATE_KEY] = quill;
+
+    // ✅ COLAR IMAGEM: usa endpoint REAL e trata HTML
+    quill.root.addEventListener("paste", async function (e) {
+      try {
+        const items = e.clipboardData?.items || [];
+        let file = null;
+
+        for (const item of items) {
+          if (item.type && item.type.startsWith("image/")) {
+            file = item.getAsFile();
+            break;
+          }
+        }
+
+        if (!file) return; // texto segue normal
+
+        e.preventDefault();
+        clearActivityError();
+
+        const cardId = getCardId();
+        if (!cardId) throw new Error("cardId ausente.");
+
+        const uploadUrl = `/card/${cardId}/attachments/add/`; // ✅ correto no seu projeto
+
+        const form = new FormData();
+        form.append("file", file);
+        form.append("description", "Imagem colada na atividade");
+
+        const res = await fetch(uploadUrl, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "X-CSRFToken": getCSRF(),
+            "X-Requested-With": "XMLHttpRequest",
+          },
+          body: form,
+        });
+
+        if (!res.ok) {
+          const t = await res.text().catch(() => "");
+          throw new Error(t || `Upload falhou (${res.status}).`);
+        }
+
+        // backend retorna HTML do attachment_item
+        const html = await res.text();
+
+        // 1) mantém o anexo na aba Anexos
+        const list = document.getElementById("attachments-list");
+        if (list) list.insertAdjacentHTML("beforeend", html);
+
+        // 2) extrai URL do HTML (href ou src)
+        const tmp = document.createElement("div");
+        tmp.innerHTML = html;
+
+        const a = tmp.querySelector("a[href]");
+        const img = tmp.querySelector("img[src]");
+        const fileUrl = (img && img.getAttribute("src")) || (a && a.getAttribute("href")) || "";
+
+        // 3) insere no quill (imagem inline se der, senão link)
+        const range = quill.getSelection(true) || { index: quill.getLength() };
+
+        if (fileUrl) {
+          // tenta imagem inline; se não renderizar (não for imagem), cai no link
+          quill.insertEmbed(range.index, "image", fileUrl);
+          quill.insertText(range.index + 1, "\n");
+          quill.setSelection(range.index + 2);
+        } else {
+          quill.insertText(range.index, "[anexo criado]\n");
+          quill.setSelection(range.index + 14);
+        }
+
+      } catch (err) {
+        showActivityError(err?.message || "Erro ao colar imagem na atividade.");
+      }
+    });
+  }
+
+  function syncToHidden() {
+    const quill = window[STATE_KEY];
+    if (!quill) return "";
+    const html = (quill.root.innerHTML || "").trim();
+    const hidden = document.getElementById("cm-activity-content");
+    if (hidden) hidden.value = html;
+    return html;
+  }
+
+  function resetEditor() {
+    const quill = window[STATE_KEY];
+    if (!quill) return;
+    quill.setText("");
+    const hidden = document.getElementById("cm-activity-content");
+    if (hidden) hidden.value = "";
+  }
+
+  function bindActivityForm() {
+    const form = document.querySelector('section[data-cm-panel="ativ"] form');
+    if (!form) return;
+
+    // ✅ idempotente por swap
+    if (form.dataset.cmBound === "1") return;
+    form.dataset.cmBound = "1";
+
+    // ✅ GARANTIA DO TEXTO: injeta "content" no request do HTMX (não depende do hidden)
+    form.addEventListener("htmx:configRequest", function (evt) {
+      ensureQuill();
+      clearActivityError();
+
+      const html = syncToHidden();
+      if (evt.detail && evt.detail.parameters) {
+        evt.detail.parameters["content"] = html;
+      }
+    });
+
+    // ✅ limpa só em sucesso
+    form.addEventListener("htmx:afterRequest", function (evt) {
+      if (evt.detail?.successful === true) {
+        resetEditor();
+        clearActivityError();
+      } else {
+        // se quiser, mostra algo amigável; não apaga o texto
+        // showActivityError("Erro ao incluir atividade.");
+      }
+    });
+  }
+
+  function initActivityModule() {
+    ensureQuill();
+    bindActivityForm();
+  }
+
+  // ao abrir aba atividade
+  getRoot()?.addEventListener("cm:tabchange", function (e) {
+    if (e.detail?.tab === "ativ") {
+      setTimeout(initActivityModule, 0);
+      setTimeout(initActivityModule, 50);
+    }
+  });
+
+  // fallback se abriu direto
+  if (getRoot()?.getAttribute("data-cm-active") === "ativ") {
+    setTimeout(initActivityModule, 0);
+    setTimeout(initActivityModule, 50);
+  }
+
+  // rebind pós swap do HTMX
+  document.body.addEventListener("htmx:afterSwap", function () {
+    if (!document.getElementById("cm-root")) return;
+    setTimeout(bindActivityForm, 0);
+  });
+
+})();
 </script>
