@@ -1473,16 +1473,12 @@ document.addEventListener("keydown", escClose);
 
 
 
-
-
-
-
-
-
 <script>
+  // ============================================================
+  // Quill da aba atividade
+  // ============================================================
 (function () {
   const STATE_KEY = "__cmActivityQuill";
-  const BOUND_KEY = "__cmActivityBound";
 
   function getRoot() {
     return document.getElementById("cm-root");
@@ -1508,23 +1504,116 @@ document.addEventListener("keydown", escClose);
     showActivityError("");
   }
 
+  // ===== Mentions (mesmo padrão do modal.quill.js) =====
+  function getBoardIdFromUrl() {
+    const m = (window.location.pathname || "").match(/\/board\/(\d+)\b/);
+    return m ? m[1] : null;
+  }
+
+  function renderMentionCard(item) {
+    const name =
+      (item?.display_name || "").trim() ||
+      (item?.handle ? `@${item.handle}` : "") ||
+      (item?.email || "").trim();
+
+    const handle = (item?.handle || "").trim();
+    const email = (item?.email || "").trim();
+    const avatar = (item?.avatar_url || "").trim();
+
+    const root = document.createElement("div");
+    root.className = "mention-card";
+
+    let avatarEl;
+    if (avatar) {
+      avatarEl = document.createElement("img");
+      avatarEl.className = "mention-avatar";
+      avatarEl.src = avatar;
+      avatarEl.alt = "";
+    } else {
+      avatarEl = document.createElement("div");
+      avatarEl.className = "mention-avatar mention-avatar-fallback";
+      avatarEl.textContent = (handle || name || "?").slice(0, 2).toUpperCase();
+    }
+
+    const meta = document.createElement("div");
+    meta.className = "mention-meta";
+
+    const nameEl = document.createElement("div");
+    nameEl.className = "mention-name";
+    nameEl.textContent = name;
+    meta.appendChild(nameEl);
+
+    if (handle) {
+      const handleEl = document.createElement("div");
+      handleEl.className = "mention-handle";
+      handleEl.textContent = `@${handle}`;
+      meta.appendChild(handleEl);
+    }
+
+    if (email) {
+      const emailEl = document.createElement("div");
+      emailEl.className = "mention-email";
+      emailEl.textContent = email;
+      meta.appendChild(emailEl);
+    }
+
+    root.appendChild(avatarEl);
+    root.appendChild(meta);
+    return root;
+  }
+
+  function makeMentionConfig(boardId) {
+    return {
+      allowedChars: /^[A-Za-zÀ-ÖØ-öø-ÿ0-9_]+$/,
+      mentionDenotationChars: ["@"],
+      showDenotationChar: true,
+
+      source: async function (searchTerm, renderList) {
+        try {
+          if (!boardId) return renderList([], searchTerm);
+
+          const url = `/board/${boardId}/mentions/?q=${encodeURIComponent(searchTerm || "")}`;
+          const r = await fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } });
+          if (!r.ok) return renderList([], searchTerm);
+
+          const users = await r.json();
+          renderList(users || [], searchTerm);
+        } catch (_e) {
+          renderList([], searchTerm);
+        }
+      },
+
+      renderItem: function (item) {
+        return renderMentionCard(item);
+      },
+
+      onSelect: function (item, insertItem) {
+        insertItem(item);
+      },
+    };
+  }
+
   function ensureQuill() {
     if (window[STATE_KEY] || typeof Quill === "undefined") return;
 
     const el = document.getElementById("cm-activity-editor");
     if (!el) return;
 
+    const boardId = getBoardIdFromUrl();
+
     const quill = new Quill(el, {
       theme: "snow",
       placeholder: "Escreva aqui...",
       modules: {
         toolbar: [
-          ["bold","italic","underline","strike"],
+          [{ header: [1, 2, 3, false] }],
+          ["bold", "italic", "underline", "strike"],
           [{ list: "ordered" }, { list: "bullet" }],
-          ["link","image"],
-          ["clean"]
-        ]
-      }
+          ["link", "image"],
+          ["clean"],
+        ],
+        mention: makeMentionConfig(boardId),
+      },
     });
 
     window[STATE_KEY] = quill;
@@ -1550,7 +1639,7 @@ document.addEventListener("keydown", escClose);
         const cardId = getCardId();
         if (!cardId) throw new Error("cardId ausente.");
 
-        const uploadUrl = `/card/${cardId}/attachments/add/`; // ✅ correto no seu projeto
+        const uploadUrl = `/card/${cardId}/attachments/add/`;
 
         const form = new FormData();
         form.append("file", file);
@@ -1571,7 +1660,6 @@ document.addEventListener("keydown", escClose);
           throw new Error(t || `Upload falhou (${res.status}).`);
         }
 
-        // backend retorna HTML do attachment_item
         const html = await res.text();
 
         // 1) mantém o anexo na aba Anexos
@@ -1584,13 +1672,15 @@ document.addEventListener("keydown", escClose);
 
         const a = tmp.querySelector("a[href]");
         const img = tmp.querySelector("img[src]");
-        const fileUrl = (img && img.getAttribute("src")) || (a && a.getAttribute("href")) || "";
+        const fileUrl =
+          (img && img.getAttribute("src")) ||
+          (a && a.getAttribute("href")) ||
+          "";
 
         // 3) insere no quill (imagem inline se der, senão link)
         const range = quill.getSelection(true) || { index: quill.getLength() };
 
         if (fileUrl) {
-          // tenta imagem inline; se não renderizar (não for imagem), cai no link
           quill.insertEmbed(range.index, "image", fileUrl);
           quill.insertText(range.index + 1, "\n");
           quill.setSelection(range.index + 2);
@@ -1598,7 +1688,6 @@ document.addEventListener("keydown", escClose);
           quill.insertText(range.index, "[anexo criado]\n");
           quill.setSelection(range.index + 14);
         }
-
       } catch (err) {
         showActivityError(err?.message || "Erro ao colar imagem na atividade.");
       }
@@ -1626,11 +1715,9 @@ document.addEventListener("keydown", escClose);
     const form = document.querySelector('section[data-cm-panel="ativ"] form');
     if (!form) return;
 
-    // ✅ idempotente por swap
     if (form.dataset.cmBound === "1") return;
     form.dataset.cmBound = "1";
 
-    // ✅ GARANTIA DO TEXTO: injeta "content" no request do HTMX (não depende do hidden)
     form.addEventListener("htmx:configRequest", function (evt) {
       ensureQuill();
       clearActivityError();
@@ -1641,14 +1728,10 @@ document.addEventListener("keydown", escClose);
       }
     });
 
-    // ✅ limpa só em sucesso
     form.addEventListener("htmx:afterRequest", function (evt) {
       if (evt.detail?.successful === true) {
         resetEditor();
         clearActivityError();
-      } else {
-        // se quiser, mostra algo amigável; não apaga o texto
-        // showActivityError("Erro ao incluir atividade.");
       }
     });
   }
@@ -1677,6 +1760,5 @@ document.addEventListener("keydown", escClose);
     if (!document.getElementById("cm-root")) return;
     setTimeout(bindActivityForm, 0);
   });
-
 })();
 </script>
