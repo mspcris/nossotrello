@@ -4,7 +4,10 @@
 {% load tag_helpers %}
 
 {% block title %}{{ board.name }}{% endblock %}
-{% block header_left %}{% endblock %}
+{% block header_left %}
+  {{ block.super }}
+{% endblock %}
+
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% url 'boards:board_wallpaper_css' board.id %}">

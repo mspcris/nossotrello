@@ -1,13 +1,20 @@
-//boards/static/menu.js
-// Menu lateral (drawer) - padrão NossoTrello 
+// boards/static/menu.js
+// Menu lateral (drawer) - padrão NossoTrello
+
 document.addEventListener("DOMContentLoaded", () => {
   const drawer = document.getElementById("app-drawer");
   const overlay = document.getElementById("drawerOverlay");
-  const toggleBtn = document.getElementById("menuToggle");
+
+  // ✅ aceita desktop e mobile (evita ID duplicado)
+  const toggleBtns = [
+    document.getElementById("menuToggle"),
+    document.getElementById("menuToggleMobile"),
+  ].filter(Boolean);
+
   const closeBtn = document.getElementById("drawerClose");
   const accordions = document.querySelectorAll(".nt-accordion");
 
-  if (!drawer || !overlay || !toggleBtn || !closeBtn) return;
+  if (!drawer || !overlay || toggleBtns.length === 0 || !closeBtn) return;
 
   function openDrawer() {
     drawer.hidden = false;
@@ -28,10 +35,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }, 320);
   }
 
-  toggleBtn.addEventListener("click", (e) => {
-    e.preventDefault();
-    if (drawer.getAttribute("data-open") === "true") closeDrawer();
-    else openDrawer();
+  toggleBtns.forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      if (drawer.getAttribute("data-open") === "true") closeDrawer();
+      else openDrawer();
+    });
   });
 
   closeBtn.addEventListener("click", (e) => {
@@ -63,4 +72,3 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 });
-//END boards/static/menu.js
