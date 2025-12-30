@@ -11,18 +11,26 @@
 <link rel="stylesheet" href="{% static 'boards/board_detail.css' %}">
 {% endblock %}
 
-{% block header_right_under_logo %}
 
-<div class="w-full">
-  {# DESKTOP (>=768): mantém a barra como sempre foi, centralizada no header #}
-  <div class="hidden md:flex w-full justify-center">
+
+
+
+
+
+
+
+
+
+{% block header_right_under_logo %}
+  <!-- “home” onde o painel fica no DESKTOP -->
+  <div id="cm-search-desktop-home" class="w-full hidden md:flex justify-center">
     <div class="w-full max-w-[980px]">
       <div id="cm-search-panel"
            class="cm-search-panel w-full rounded-xl bg-emerald-200/70 backdrop-blur-md border border-white/30 shadow px-4 py-3">
-        
-        <div class="flex items-center gap-3 w-full">
-          {# Miniatura do quadro (fica à esquerda da busca) #}
-          <div class="shrink-0">
+        <div class="relative w-full">
+
+          <!-- Miniatura ANCORADA à esquerda (não influencia o centro) -->
+          <div class="absolute left-0 top-1/2 -translate-y-1/2">
             {% if board.image %}
               <div class="relative group inline-block">
                 <div class="h-10 w-16 border border-gray-300 rounded-lg overflow-hidden bg-white flex items-center justify-center">
@@ -50,8 +58,11 @@
             {% endif %}
           </div>
 
-          {# Busca/Filtro (ocupa o restante) #}
-          <div class="flex-1 min-w-0">
+          <!-- “falso” spacer à direita, para manter simetria visual -->
+          <div class="absolute right-0 top-1/2 -translate-y-1/2 w-16 h-10"></div>
+
+          <!-- Conteúdo CENTRAL (reserva espaço p/ miniatura + spacer) -->
+          <div class="mx-auto w-full max-w-[760px] pl-24 pr-24">
             <div class="flex items-center justify-between">
               <span id="filter-label" class="text-sm font-semibold text-gray-600 board-label">
                 Filtrar por:
@@ -79,17 +90,20 @@
                    class="border rounded px-3 py-2 text-sm w-full mt-2"
                    oninput="applyBoardFilter(this.value)">
           </div>
-        </div>
 
+        </div>
       </div>
     </div>
   </div>
 
-  {# MOBILE (<768): o cm-search-panel vai ser “movido” pra área do breadcrumb via JS #}
-  <div id="cm-search-desktop-home" class="hidden md:block"></div>
-</div>
-
+  <!-- No MOBILE a busca não ocupa espaço no header; ela será movida via JS (o painel é o mesmo) -->
 {% endblock %}
+
+
+
+
+
+
 
 
 
@@ -169,31 +183,41 @@
   <div class="md:hidden">
 
     <!-- Breadcrumb MOBILE (estado fechado) -->
-<div id="cm-mobile-breadcrumb"
-     class="flex items-center justify-between gap-3 text-sm font-semibold text-white/90 drop-shadow truncate">
-  <div class="min-w-0 truncate">
-    <a href="{% url 'boards:boards_index' %}"
-       class="underline underline-offset-2">
+<div class="flex items-center justify-between gap-3">
+  <div id="cm-mobile-breadcrumb"
+       class="text-sm font-semibold text-white/90 drop-shadow truncate min-w-0">
+    <a href="{% url 'boards:boards_index' %}" class="underline underline-offset-2">
       Todos os Quadros
     </a>
     <span class="opacity-70">→</span>
-    <span class="board-breadcrumb-name">
-      {{ board.name }}
-    </span>
+    <span class="board-breadcrumb-name">{{ board.name }}</span>
   </div>
 
   <button id="cm-search-icon"
           type="button"
           aria-label="Buscar"
-          class="shrink-0 w-9 h-9 rounded-full bg-white/70 border border-white/40 backdrop-blur-md shadow flex items-center justify-center">
+          class="shrink-0 h-10 w-10 rounded-full bg-white/35 backdrop-blur-md border border-white/30 shadow
+                 flex items-center justify-center">
     🔍
   </button>
 </div>
 
 
     <!-- Search MOBILE (estado aberto) -->
-    <div id="cm-mobile-search-wrapper"
-     class="cm-mobile-search-wrapper hidden rounded-xl bg-white/35 backdrop-blur-md border border-white/30 shadow px-4 py-2">
+<div id="cm-mobile-search-wrapper"
+     class="hidden mt-2 rounded-xl bg-white/35 backdrop-blur-md border border-white/30 shadow px-4 py-2">
+
+  <div class="flex items-center justify-between mb-2">
+    <span class="text-sm font-semibold text-white/90 drop-shadow">Busca</span>
+    <button id="cm-search-close"
+            type="button"
+            class="text-sm font-semibold text-white/90 underline underline-offset-2">
+      Fechar
+    </button>
+  </div>
+
+  <div id="cm-mobile-search-inner"></div>
+</div>
 
 
       <!-- ⬇️ A BARRA ORIGINAL, SEM ALTERAR UMA LINHA ⬇️ -->
@@ -797,48 +821,44 @@ function openReadonlyUserProfile(userId) {
 
 
 
+
+
+
+
+
+
+
+
+
 <script>
 document.addEventListener("DOMContentLoaded", () => {
   const icon = document.getElementById("cm-search-icon");
-  const mobileSlot = document.getElementById("cm-mobile-search-wrapper");
-  const breadcrumb = document.getElementById("cm-mobile-breadcrumb");
-  const searchPanel = document.getElementById("cm-search-panel");
+  const wrapper = document.getElementById("cm-mobile-search-wrapper");
+  const inner = document.getElementById("cm-mobile-search-inner");
+  const closeBtn = document.getElementById("cm-search-close");
 
-  // onde a barra fica no desktop (container do header)
-  const desktopContainer = searchPanel?.parentElement;
+  const panel = document.getElementById("cm-search-panel");
+  const desktopHome = document.getElementById("cm-search-desktop-home");
 
-  if (!icon || !mobileSlot || !breadcrumb || !searchPanel || !desktopContainer) return;
-
-  let opened = false;
+  if (!icon || !wrapper || !inner || !closeBtn || !panel || !desktopHome) return;
 
   function isMobilePortrait() {
     return window.matchMedia("(max-width: 767px)").matches;
   }
 
   function openSearch() {
-    if (!isMobilePortrait() || opened) return;
-    opened = true;
+    if (!isMobilePortrait()) return;
 
-    breadcrumb.classList.add("hidden");
-    mobileSlot.classList.remove("hidden");
+    wrapper.classList.remove("hidden");
+    inner.appendChild(panel);
 
-    // move o painel para o slot mobile
-    mobileSlot.appendChild(searchPanel);
-
-    // foco
-    const input = searchPanel.querySelector("#board-filter");
-    if (input) setTimeout(() => input.focus(), 0);
+    const input = panel.querySelector("#board-filter");
+    if (input) input.focus();
   }
 
   function closeSearch() {
-    if (!opened) return;
-    opened = false;
-
-    // devolve ao desktopContainer original
-    desktopContainer.appendChild(searchPanel);
-
-    mobileSlot.classList.add("hidden");
-    breadcrumb.classList.remove("hidden");
+    desktopHome.appendChild(panel);
+    wrapper.classList.add("hidden");
   }
 
   icon.addEventListener("click", (e) => {
@@ -847,22 +867,27 @@ document.addEventListener("DOMContentLoaded", () => {
     openSearch();
   });
 
-  document.addEventListener("click", (e) => {
-    if (!opened) return;
-    if (mobileSlot.contains(e.target) || e.target === icon) return;
+  closeBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
     closeSearch();
   });
 
-  // se girar tela / sair do retrato, garante que tudo volta pro desktop
+  // clicou fora: fecha
+  document.addEventListener("click", (e) => {
+    if (!isMobilePortrait()) return;
+    if (wrapper.classList.contains("hidden")) return;
+    if (wrapper.contains(e.target) || e.target === icon) return;
+    closeSearch();
+  });
+
+  // se virou desktop: garante painel no lugar certo
   window.addEventListener("resize", () => {
-    if (!isMobilePortrait() && opened) closeSearch();
-    if (!isMobilePortrait() && searchPanel.parentElement !== desktopContainer) {
-      desktopContainer.appendChild(searchPanel);
-    }
+    if (!isMobilePortrait()) closeSearch();
   });
 });
 </script>
 
 
 
-{% endblock %}
+{% endblock content %}

@@ -37,7 +37,8 @@ DEBUG = _env_bool("DEBUG", default=False)
 
 ALLOWED_HOSTS = _env_csv(
     "ALLOWED_HOSTS",
-    default_list=["127.0.0.1", "localhost", "tarefas.camim.com.br"],
+    default_list=["127.0.0.1", "192.168.1.213", "localhost", "tarefas.camim.com.br"],
+
 )
 
 CSRF_TRUSTED_ORIGINS = _env_csv(
