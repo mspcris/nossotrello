@@ -48,6 +48,9 @@
     --cm-shadow: 0 10px 30px rgba(2,6,23,0.10);
     --cm-shadow-sm: 0 6px 18px rgba(2,6,23,0.08);
     --cm-ring: 0 0 0 3px rgba(37,99,235,0.22);
+
+    --cm-term-rgb: 0,0,0;
+    --cm-term-opacity: 0;
   }
 
   #card-modal-root.theme-dark #cm-root,
@@ -81,11 +84,32 @@
     --cm-ring: 0 0 0 3px rgba(59,130,246,0.25);
   }
 
-  .cm-wrap{
+    .cm-wrap{
     padding: 16px;
     width: 100%;
     min-width: 0;
     color: var(--cm-text) !important;
+
+    /* ✅ base do overlay */
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* ✅ overlay do prazo (mantém o vidro original) */
+  #cm-root::before{
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: var(--cm-radius);
+    background: rgba(var(--cm-term-rgb, 0,0,0), var(--cm-term-opacity, 0));
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ✅ tudo acima do overlay */
+  #cm-root > *{
+    position: relative;
+    z-index: 1;
   }
 
   .cm-card{

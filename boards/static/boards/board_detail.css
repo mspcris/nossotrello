@@ -33,8 +33,30 @@ estilos fixos do board, não do wallpaper */
     transition:
         transform 0.18s ease,
         box-shadow 0.18s ease,
-        background-color 0.18s ease;
+        background 0.18s ease;
+
+    /* ✅ necessário pro overlay do prazo */
+    position: relative;
+    overflow: hidden;
 }
+
+/* ✅ camada de cor do prazo (mantém o glass) */
+#columns-wrapper li[data-card-id]::before{
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: rgba(var(--term-rgb, 0,0,0), var(--term-opacity, 0));
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* ✅ garante que o conteúdo fique acima do overlay */
+#columns-wrapper li[data-card-id] > *{
+    position: relative;
+    z-index: 1;
+}
+
 
 /* Hover com leve destaque, mantendo legibilidade em fundo escuro */
 #columns-wrapper li[data-card-id]:hover {

@@ -171,6 +171,30 @@ window.applySavedTermColorsToBoard = function (scope) {
     return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0));
   }
 
+  function hexToRgbStr(hex) {
+    const h = String(hex || "").trim();
+    const m = h.match(/^#?([0-9a-fA-F]{6})$/);
+    if (!m) return "0,0,0";
+    const n = parseInt(m[1], 16);
+    const r = (n >> 16) & 255;
+    const g = (n >> 8) & 255;
+    const b = n & 255;
+    return `${r},${g},${b}`;
+  }
+
+  function clearTint(cardEl) {
+    if (!cardEl) return;
+    cardEl.style.setProperty("--term-opacity", "0");
+    cardEl.style.removeProperty("--term-rgb");
+  }
+
+  function setTint(cardEl, hexColor) {
+    if (!cardEl || !hexColor) return;
+    cardEl.style.setProperty("--term-rgb", hexToRgbStr(hexColor));
+    cardEl.style.setProperty("--term-opacity", "0.18"); // ✅ mesmo “peso” do glass do card
+  }
+
+
   function setBadge(badge, text, color) {
     badge.textContent = text;
     badge.style.backgroundColor = color + "20";
@@ -197,16 +221,16 @@ window.applySavedTermColorsToBoard = function (scope) {
 
     // status: overdue / warn / ok
     if (due.getTime() < t.getTime()) {
-      setBadge(badge, "Vencido", cOver);
+      setBadge(cardEl, badge, "Vencido", cOver);
       return;
     }
 
     if (warn && t.getTime() >= warn.getTime()) {
-      setBadge(badge, "A vencer", cWarn);
+      setBadge(cardEl, badge, "A vencer", cWarn);
       return;
     }
 
-    setBadge(badge, "Em dia", cOk);
+    setBadge(cardEl, badge, "Em dia", cOk);
   });
 };
 
