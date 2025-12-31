@@ -557,7 +557,11 @@
      id="cm-root"
      data-card-id="{{ card.id }}"
      data-cm-active="desc"
-     data-tag-colors='{{ card.tag_colors|default_if_none:"{}"|escape }}'>
+     data-tag-colors='{{ card.tag_colors|default_if_none:"{}"|escape }}'
+     data-term-due="{% if card.due_date %}{{ card.due_date|date:'Y-m-d' }}{% endif %}"
+     data-term-warn="{% if card.due_warn_date %}{{ card.due_warn_date|date:'Y-m-d' }}{% endif %}"
+     data-term-notify="{% if card.due_notify %}1{% else %}0{% endif %}">
+
 
   {# ===================== TOPBAR: só abas e botão salvar =saveBtn==================== #}
   <div class="cm-topbar">
@@ -1592,26 +1596,16 @@ document.addEventListener("keydown", escClose);
 
 
 
-// ============================================================
-// RE-HIDRATA TAGS APÓS SALVAR (HTMX swap do modal)
-// ============================================================
-document.body.addEventListener("htmx:afterSwap", function (e) {
-  const cmRoot = document.getElementById("cm-root");
-  if (!cmRoot) return;
 
-  // TAGS
-  if (typeof window.applySavedTagColorsToModal === "function") {
-    window.applySavedTagColorsToModal(cmRoot);
-  }
-
-  // ✅ PRAZO (FALTAVA ISSO)
-  if (typeof window.applySavedTermColorsToModal === "function") {
-    window.applySavedTermColorsToModal(cmRoot);
-  }
-});
 
 
 </script>
+
+
+
+
+
+
 
 
 
@@ -1908,10 +1902,40 @@ document.body.addEventListener("htmx:afterSwap", function (e) {
   }
 
   // rebind pós swap do HTMX
-  document.body.addEventListener("htmx:afterSwap", function () {
-    if (!document.getElementById("cm-root")) return;
-    setTimeout(bindActivityForm, 0);
-  });
+  document.body.addEventListener("htmx:afterSwap", function (e) {
+  // ✅ só reage ao swap do modal principal
+  if (!e.target || e.target.id !== "modal-body") return;
+
+  const cmRoot = document.getElementById("cm-root");
+  if (!cmRoot) return;
+
+  if (typeof window.applySavedTagColorsToModal === "function") {
+    window.applySavedTagColorsToModal(cmRoot);
+  }
+
+  if (typeof window.applySavedTermColorsToModal === "function") {
+    window.applySavedTermColorsToModal(cmRoot);
+  }
+});
+
+
 })();
 </script>
+
+
+
+
+<script>
+(function () {
+  const root = document.getElementById("cm-root");
+  if (!root) return;
+
+  if (typeof window.applySavedTermColorsToModal === "function") {
+    window.applySavedTermColorsToModal(root);
+  }
+})();
+</script>
+
+
+
 <!--end card_modal_body.html-->
