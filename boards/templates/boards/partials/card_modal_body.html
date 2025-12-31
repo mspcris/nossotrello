@@ -559,7 +559,7 @@
      data-cm-active="desc"
      data-tag-colors='{{ card.tag_colors|default_if_none:"{}"|escape }}'>
 
-  {# ===================== TOPBAR: só abas e botão salvar ===================== #}
+  {# ===================== TOPBAR: só abas e botão salvar =saveBtn==================== #}
   <div class="cm-topbar">
     <div class="cm-bar" role="tablist" aria-label="Abas do card">
       <div class="cm-tabs">
@@ -627,10 +627,6 @@
       hx-post="{% url 'boards:update_card' card.id %}"
       hx-target="#modal-body"
       hx-swap="innerHTML"
-      hx-on::after-request="if(event.detail.successful){ refreshCardSnippet({{ card.id }}); }">
-
-
-
       
     {% csrf_token %}
 
@@ -784,7 +780,7 @@
     </section>
   </form>
 
-  {# ===================== BARRA FLUTUANTE (dirty) ===================== #}
+  {# ===================== BARRA FLUTUANTE COM saveBtn(dirty) ===================== #}
   <div id="cm-floatbar" class="cm-floatbar hidden" aria-live="polite">
     <div class="cm-floatbar-inner">
       <button type="button" class="cm-btn" id="cm-close-btn">Fechar</button>
@@ -1044,8 +1040,34 @@
     // quando muda de aba, reavalia visibilidade da floatbar
     root.addEventListener("cm:tabchange", syncBars);
 
+
+
+    // salvar do modal savebtn
     function submitForm(){
       form.requestSubmit ? form.requestSubmit() : form.submit();
+          // ✅ quando o HTMX terminar um POST com sucesso, força refresh do snippet na board
+    if (form && form.dataset.cmAfterReqBound !== "1") {
+      form.dataset.cmAfterReqBound = "1";
+
+      form.addEventListener("htmx:afterRequest", function (evt) {
+        if (!evt.detail?.successful) return;
+
+        // 1) atualiza card na board (para as etiquetas aparecerem)
+        if (typeof window.refreshCardSnippet === "function") {
+          window.refreshCardSnippet(cardId);
+        }
+
+        // 2) re-aplica cores no board (se existir)
+        const columnsList = document.getElementById("columns-list");
+        if (columnsList && typeof window.applySavedTagColorsToBoard === "function") {
+          window.applySavedTagColorsToBoard(columnsList);
+        }
+        if (columnsList && typeof window.applySavedTermColorsToBoard === "function") {
+          window.applySavedTermColorsToBoard(columnsList);
+        }
+      });
+    }
+
     }
 
     if (topSave) topSave.addEventListener("click", submitForm);
