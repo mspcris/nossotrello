@@ -213,8 +213,12 @@ def update_card(request, card_id):
         due_notify = True
 
     # regra: se due_date preenchida => warn obrigatória
+    from datetime import timedelta
+
+    # regra: se due_date preenchida e warn vazio => default = due-5
     if due_date and not due_warn_date:
-        return JsonResponse({"error": "Data aviso vencimento é obrigatória."}, status=400)
+        due_warn_date = due_date - timedelta(days=5)
+
 
     card.due_date = due_date
     card.due_warn_date = due_warn_date
@@ -230,6 +234,25 @@ def update_card(request, card_id):
 
     card.save()
     board = card.column.board
+
+    import re
+
+    c_ok = (request.POST.get("due_color_ok") or "").strip()
+    c_warn = (request.POST.get("due_color_warn") or "").strip()
+    c_over = (request.POST.get("due_color_overdue") or "").strip()
+
+    def valid_hex(c):
+        return bool(re.match(r"^#[0-9a-fA-F]{6}$", c or ""))
+
+    if c_ok and c_warn and c_over:
+        if not (valid_hex(c_ok) and valid_hex(c_warn) and valid_hex(c_over)):
+            return JsonResponse({"error": "Cores inválidas."}, status=400)
+
+    board = card.column.board
+    board.due_colors = {"ok": c_ok, "warn": c_warn, "overdue": c_over}
+    board.save(update_fields=["due_colors"])
+
+
     board.version += 1
     board.save(update_fields=["version"])
 
