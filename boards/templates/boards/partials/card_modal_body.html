@@ -958,8 +958,8 @@
 
     // notifica outros módulos (ex.: floatbar)
     try { root.dispatchEvent(new CustomEvent("cm:tabchange", { detail: { tab } })); } catch (_e) {}
+  
   }
-
   
 
 
@@ -1042,22 +1042,19 @@
 
 
 
-    // salvar do modal savebtn
-    function submitForm(){
-      form.requestSubmit ? form.requestSubmit() : form.submit();
-          // ✅ quando o HTMX terminar um POST com sucesso, força refresh do snippet na board
+function submitForm(){
+    form.requestSubmit ? form.requestSubmit() : form.submit();
+
     if (form && form.dataset.cmAfterReqBound !== "1") {
       form.dataset.cmAfterReqBound = "1";
 
       form.addEventListener("htmx:afterRequest", function (evt) {
         if (!evt.detail?.successful) return;
 
-        // 1) atualiza card na board (para as etiquetas aparecerem)
         if (typeof window.refreshCardSnippet === "function") {
           window.refreshCardSnippet(cardId);
         }
 
-        // 2) re-aplica cores no board (se existir)
         const columnsList = document.getElementById("columns-list");
         if (columnsList && typeof window.applySavedTagColorsToBoard === "function") {
           window.applySavedTagColorsToBoard(columnsList);
@@ -1067,22 +1064,23 @@
         }
       });
     }
-
-    }
-
-    if (topSave) topSave.addEventListener("click", submitForm);
-    if (floatSave) floatSave.addEventListener("click", submitForm);
-
-    if (closeBtn){
-      closeBtn.addEventListener("click", function(){
-        if (typeof window.closeModal === "function") return window.closeModal();
-        const x = document.querySelector("#modal .modal-top-x");
-        if (x) x.click();
-      });
-    }
-
-    syncBars();
   }
+
+  if (topSave) topSave.addEventListener("click", submitForm);
+  if (floatSave) floatSave.addEventListener("click", submitForm);
+
+  if (closeBtn){
+    closeBtn.addEventListener("click", function(){
+      if (typeof window.closeModal === "function") return window.closeModal();
+      const x = document.querySelector("#modal .modal-top-x");
+      if (x) x.click();
+    });
+  }
+
+  syncBars();
+}
+  
+
 
 // ============================================================
 // 2) ACTION DOCK — mover/duplicar/copiar link
@@ -1590,6 +1588,28 @@ document.addEventListener("keydown", escClose);
   initFloatbarDirty();
   initActionDock();
 })();
+
+
+
+
+// ============================================================
+// RE-HIDRATA TAGS APÓS SALVAR (HTMX swap do modal)
+// ============================================================
+document.body.addEventListener("htmx:afterSwap", function (e) {
+  const cmRoot = document.getElementById("cm-root");
+  if (!cmRoot) return;
+
+  // TAGS
+  if (typeof window.applySavedTagColorsToModal === "function") {
+    window.applySavedTagColorsToModal(cmRoot);
+  }
+
+  // ✅ PRAZO (FALTAVA ISSO)
+  if (typeof window.applySavedTermColorsToModal === "function") {
+    window.applySavedTermColorsToModal(cmRoot);
+  }
+});
+
 
 </script>
 
