@@ -68,6 +68,103 @@ document.body.addEventListener("htmx:afterSettle", applyReadonlyUI);
 
 
 // ============================================================
+// TERM COLORS (prazos) — computed client-side
+// ============================================================
+window.applySavedTermColorsToBoard = function (scope) {
+  const root = scope || document;
+
+  const colors = (window.BOARD_TERM_COLORS && typeof window.BOARD_TERM_COLORS === "object")
+    ? window.BOARD_TERM_COLORS
+    : {};
+
+  const cOk = colors.ok || "#16a34a";
+  const cWarn = colors.warn || "#f59e0b";
+  const cOver = colors.overdue || "#dc2626";
+
+  function parseYMD(s) {
+    if (!s) return null;
+    const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return null;
+    const y = Number(m[1]), mo = Number(m[2]) - 1, d = Number(m[3]);
+    const dt = new Date(Date.UTC(y, mo, d, 0, 0, 0));
+    return isNaN(dt.getTime()) ? null : dt;
+  }
+
+  function todayUTC() {
+    const now = new Date();
+    return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0));
+  }
+
+  function hexToRgbStr(hex) {
+    const h = String(hex || "").trim();
+    const m = h.match(/^#?([0-9a-fA-F]{6})$/);
+    if (!m) return "0,0,0";
+    const n = parseInt(m[1], 16);
+    const r = (n >> 16) & 255;
+    const g = (n >> 8) & 255;
+    const b = n & 255;
+    return `${r},${g},${b}`;
+  }
+
+  function clearTint(cardEl) {
+    if (!cardEl) return;
+    cardEl.style.setProperty("--term-opacity", "0");
+    cardEl.style.removeProperty("--term-rgb");
+  }
+
+  function setTint(cardEl, hexColor) {
+    if (!cardEl || !hexColor) return;
+    cardEl.style.setProperty("--term-rgb", hexToRgbStr(hexColor));
+    cardEl.style.setProperty("--term-opacity", "0.18"); // ✅ mesmo “peso” do glass do card
+  }
+
+
+  function setBadge(badge, text, color) {
+    badge.textContent = text;
+    badge.style.backgroundColor = color + "20";
+    badge.style.color = color;
+    badge.style.border = "1px solid " + color;
+    badge.classList.remove("hidden");
+  }
+
+  root.querySelectorAll("li[data-card-id]").forEach((cardEl) => {
+    const notify = (cardEl.getAttribute("data-term-notify") || "1") === "1";
+    const due = parseYMD(cardEl.getAttribute("data-term-due") || "");
+    const warn = parseYMD(cardEl.getAttribute("data-term-warn") || "");
+
+    const badge = cardEl.querySelector(".term-badge");
+
+    // sem prazo ou sem notify => neutro (tira tint; badge opcional)
+    if (!notify || !due) {
+      clearTint(cardEl);
+      if (badge) badge.classList.add("hidden");
+      return;
+    }
+
+
+    const t = todayUTC();
+
+    // status: overdue / warn / ok
+    if (due.getTime() < t.getTime()) {
+      setTint(cardEl, cOver);
+      if (badge) setBadge(badge, "Vencido", cOver);
+      return;
+    }
+
+    if (warn && t.getTime() >= warn.getTime()) {
+      setTint(cardEl, cWarn);
+      if (badge) setBadge(badge, "A vencer", cWarn);
+      return;
+    }
+
+    setTint(cardEl, cOk);
+    if (badge) setBadge(badge, "Em dia", cOk);
+  });
+};
+
+
+
+// ============================================================
 // VIEWER LIVE REFRESH (sem websocket): atualiza columns-list sem F5
 // ============================================================
 
@@ -137,103 +234,14 @@ function startViewerPolling() {
       applyReadonlyUI();
       scanAndBind();
 
-      if (window.applySavedTagColorsToBoard) {
-        window.applySavedTagColorsToBoard(columnsList);
+      if (typeof window.applySavedTermColorsToBoard === "function") {
+        window.applySavedTermColorsToBoard(columnsList);
       }
 
 
-
-      // ============================================================
-// TERM COLORS (prazos) — computed client-side
-// ============================================================
-window.applySavedTermColorsToBoard = function (scope) {
-  const root = scope || document;
-
-  const colors = (window.BOARD_TERM_COLORS && typeof window.BOARD_TERM_COLORS === "object")
-    ? window.BOARD_TERM_COLORS
-    : {};
-
-  const cOk = colors.ok || "#16a34a";
-  const cWarn = colors.warn || "#f59e0b";
-  const cOver = colors.overdue || "#dc2626";
-
-  function parseYMD(s) {
-    if (!s) return null;
-    const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (!m) return null;
-    const y = Number(m[1]), mo = Number(m[2]) - 1, d = Number(m[3]);
-    const dt = new Date(Date.UTC(y, mo, d, 0, 0, 0));
-    return isNaN(dt.getTime()) ? null : dt;
-  }
-
-  function todayUTC() {
-    const now = new Date();
-    return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0));
-  }
-
-  function hexToRgbStr(hex) {
-    const h = String(hex || "").trim();
-    const m = h.match(/^#?([0-9a-fA-F]{6})$/);
-    if (!m) return "0,0,0";
-    const n = parseInt(m[1], 16);
-    const r = (n >> 16) & 255;
-    const g = (n >> 8) & 255;
-    const b = n & 255;
-    return `${r},${g},${b}`;
-  }
-
-  function clearTint(cardEl) {
-    if (!cardEl) return;
-    cardEl.style.setProperty("--term-opacity", "0");
-    cardEl.style.removeProperty("--term-rgb");
-  }
-
-  function setTint(cardEl, hexColor) {
-    if (!cardEl || !hexColor) return;
-    cardEl.style.setProperty("--term-rgb", hexToRgbStr(hexColor));
-    cardEl.style.setProperty("--term-opacity", "0.18"); // ✅ mesmo “peso” do glass do card
-  }
-
-
-  function setBadge(badge, text, color) {
-    badge.textContent = text;
-    badge.style.backgroundColor = color + "20";
-    badge.style.color = color;
-    badge.style.border = "1px solid " + color;
-    badge.classList.remove("hidden");
-  }
-
-  root.querySelectorAll("li[data-card-id]").forEach((cardEl) => {
-    const notify = (cardEl.getAttribute("data-term-notify") || "1") === "1";
-    const due = parseYMD(cardEl.getAttribute("data-term-due") || "");
-    const warn = parseYMD(cardEl.getAttribute("data-term-warn") || "");
-
-    const badge = cardEl.querySelector(".term-badge");
-    if (!badge) return;
-
-    // sem prazo ou sem notify => neutro (esconde)
-    if (!notify || !due) {
-      badge.classList.add("hidden");
-      return;
-    }
-
-    const t = todayUTC();
-
-    // status: overdue / warn / ok
-    if (due.getTime() < t.getTime()) {
-      setBadge(cardEl, badge, "Vencido", cOver);
-      return;
-    }
-
-    if (warn && t.getTime() >= warn.getTime()) {
-      setBadge(cardEl, badge, "A vencer", cWarn);
-      return;
-    }
-
-    setBadge(cardEl, badge, "Em dia", cOk);
-  });
-};
-
+      if (window.applySavedTagColorsToBoard) {
+        window.applySavedTagColorsToBoard(columnsList);
+      }
 
 
       // se existirem no global, reinit de sortable (p/ owner em outra sessão)
@@ -446,6 +454,21 @@ window.applySavedTermColorsToBoard = function (scope) {
   function scanAndBind() {
     findColumns().forEach(bindObserverForColumn);
   }
+
+  document.addEventListener("DOMContentLoaded", () => {
+  const columnsList = document.getElementById("columns-list");
+  if (columnsList && typeof window.applySavedTermColorsToBoard === "function") {
+    window.applySavedTermColorsToBoard(columnsList);
+  }
+});
+
+document.body.addEventListener("htmx:afterSwap", (e) => {
+  const columnsList = document.getElementById("columns-list");
+  if (columnsList && typeof window.applySavedTermColorsToBoard === "function") {
+    window.applySavedTermColorsToBoard(columnsList);
+  }
+});
+
 
   document.addEventListener("DOMContentLoaded", scanAndBind);
   document.body.addEventListener("htmx:afterSwap", scanAndBind);

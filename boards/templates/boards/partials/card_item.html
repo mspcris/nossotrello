@@ -4,7 +4,7 @@
 <li
   id="card-{{ card.id }}"
   data-card-id="{{ card.id }}"
-  data-tag-colors="{{ card.tag_colors|default:'{}'|escape }}"
+  data-tag-colors='{{ card.tag_colors|default:"{}"|escapejs }}'
   data-card-open-url="{% url 'boards:card_modal' card.id %}"
   data-term-due="{% if card.due_date %}{{ card.due_date|date:'Y-m-d' }}{% endif %}"
   data-term-warn="{% if card.due_warn_date %}{{ card.due_warn_date|date:'Y-m-d' }}{% endif %}"
@@ -63,7 +63,7 @@
   </div>
 {% endif %}
 
-  <span class="block text-sm text-gray-800">
+  <span class="term-badge hidden absolute bottom-2 right-2 text-[10px] font-semibold px-2 py-0.5 rounded-md border z-10"></span>
     {{ card.title }}
   </span>
 
