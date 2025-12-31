@@ -30,10 +30,6 @@
     return x;
   }
 
-  function getCSRFToken() {
-    return qs('input[name="csrfmiddlewaretoken"]')?.value || "";
-  }
-
   function todayUTC() {
     const now = new Date();
     return new Date(Date.UTC(
@@ -55,30 +51,28 @@
     return `${r},${g},${b}`;
   }
 
+    function pickInput(root, name) {
+    return qs(`input[name="${name}"]`, root);
+  }
+
+  function pickCheckbox(root, name) {
+    return qs(`input[name="${name}"][type="checkbox"]`, root);
+  }
+
+
   Modal.term.init = function initTerm() {
     const root = qs("#cm-root");
     if (!root) return;
 
-    const cardId = root.getAttribute("data-card-id");
-    if (!cardId) return;
+    // HTML novo (sem IDs antigos)
+    const due = pickInput(root, "due_date");
+    const warn = pickInput(root, "due_warn_date");
+    const notify = pickCheckbox(root, "due_notify"); // checkbox
+    const cOk = pickInput(root, "due_color_ok");
+    const cWarn = pickInput(root, "due_color_warn");
+    const cOver = pickInput(root, "due_color_overdue");
 
-    const due = qs("#cm-term-due");
-    const warn = qs("#cm-term-warn");
-    const notify = qs("#cm-term-notify");
-    const saveBtn = qs("#cm-term-save");
-
-    // Se você removeu "Salvar term", este módulo pode continuar existindo sem quebrar.
-    // Ele só atua quando os elementos existem.
-    if (!due || !warn || !notify || !saveBtn) return;
-
-    // Cores do board (de preferência injetadas em window.BOARD_TERM_COLORS pelo template)
-    const colors = (window.BOARD_TERM_COLORS && typeof window.BOARD_TERM_COLORS === "object")
-      ? window.BOARD_TERM_COLORS
-      : {};
-
-    const cOk = colors.ok || "#16a34a";
-    const cWarn = colors.warn || "#f59e0b";
-    const cOver = colors.overdue || "#dc2626";
+    if (!due || !warn || !notify) return;
 
     function clearModalTint() {
       root.style.setProperty("--cm-term-opacity", "0");
@@ -87,50 +81,26 @@
 
     function setModalTint(hexColor) {
       root.style.setProperty("--cm-term-rgb", hexToRgbStr(hexColor));
-      root.style.setProperty("--cm-term-opacity", "0.12"); // mesmo "peso" do glass do modal
+      root.style.setProperty("--cm-term-opacity", "0.12"); // mesmo tom “glass”
     }
 
-    function updateModalTint() {
-      const dueDt = parseYMD(due.value);
-
-      // sem vencimento ou notify off => sem tint
-      if (!dueDt || !notify.checked) {
-        clearModalTint();
-        return;
-      }
-
-      const warnDt = parseYMD(warn.value);
-      const t = todayUTC();
-
-      // vencido
-      if (dueDt.getTime() < t.getTime()) {
-        setModalTint(cOver);
-        return;
-      }
-
-      // alerta (já entrou no range de aviso)
-      if (warnDt && t.getTime() >= warnDt.getTime()) {
-        setModalTint(cWarn);
-        return;
-      }
-
-      // ok
-      setModalTint(cOk);
+    function getColors() {
+      return {
+        ok: (cOk && cOk.value) ? cOk.value : "#16a34a",
+        warn: (cWarn && cWarn.value) ? cWarn.value : "#f59e0b",
+        overdue: (cOver && cOver.value) ? cOver.value : "#dc2626",
+      };
     }
 
-    // default UX:
+    // UX:
     // - sem due => warn disabled e vazio
     // - com due e warn vazio => default due-5
     function syncWarnState() {
       const dueDt = parseYMD(due.value);
-
       if (!dueDt) {
         warn.value = "";
         warn.disabled = true;
         warn.required = false;
-
-        // ✅ garante consistência visual
-        updateModalTint();
         return;
       }
 
@@ -141,51 +111,54 @@
         const def = addDaysUTC(dueDt, -5);
         warn.value = fmtYMD(def);
       }
+    }
 
-      // ✅ garante consistência visual
+    function updateModalTint() {
+      const dueDt = parseYMD(due.value);
+
+      // regra: sem vencimento ou notify off => sem tint
+      if (!dueDt || !notify.checked) {
+        clearModalTint();
+        return;
+      }
+
+      const warnDt = parseYMD(warn.value);
+      const t = todayUTC();
+      const colors = getColors();
+
+      if (dueDt.getTime() < t.getTime()) {
+        setModalTint(colors.overdue);
+        return;
+      }
+
+      if (warnDt && t.getTime() >= warnDt.getTime()) {
+        setModalTint(colors.warn);
+        return;
+      }
+
+      setModalTint(colors.ok);
+    }
+
+    function refreshAll() {
+      syncWarnState();
       updateModalTint();
     }
 
-    // autosync
-    due.addEventListener("change", syncWarnState);
-    due.addEventListener("input", syncWarnState);
+    // listeners
+    due.addEventListener("change", refreshAll);
+    due.addEventListener("input", refreshAll);
 
-    // atualiza tint quando usuário mexe diretamente
     warn.addEventListener("change", updateModalTint);
     warn.addEventListener("input", updateModalTint);
+
     notify.addEventListener("change", updateModalTint);
 
-    // first sync
-    syncWarnState();
+    // preview ao trocar cores (sem precisar salvar)
+    if (cOk) cOk.addEventListener("input", updateModalTint);
+    if (cWarn) cWarn.addEventListener("input", updateModalTint);
+    if (cOver) cOver.addEventListener("input", updateModalTint);
 
-    // salvar (HTMX-less, evita mexer no cm-main-form)
-    saveBtn.addEventListener("click", async (e) => {
-      e.preventDefault();
-
-      const endpoint = `/card/${cardId}/term-due/`;
-
-      const fd = new FormData();
-      fd.append("term_due_date", due.value || "");
-      fd.append("term_warn_date", warn.value || "");
-      fd.append("term_notify", notify.checked ? "1" : "0");
-      fd.append("csrfmiddlewaretoken", getCSRFToken());
-
-      const res = await fetch(endpoint, {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "X-Requested-With": "XMLHttpRequest" },
-        body: fd,
-      });
-
-      if (!res.ok) return;
-
-      // swap modal body (mesma estratégia do resto do projeto)
-      const html = await res.text();
-      const modalBody = qs("#modal-body");
-      if (modalBody) modalBody.innerHTML = html;
-
-      // reinit padrão
-      window.Modal?.init?.();
-    });
+    // init
+    refreshAll();
   };
 })();

@@ -6,9 +6,9 @@
   data-card-id="{{ card.id }}"
   data-tag-colors="{{ card.tag_colors|default:'{}'|escape }}"
   data-card-open-url="{% url 'boards:card_modal' card.id %}"
-  data-term-due="{% if card.term_due_date %}{{ card.term_due_date|date:'Y-m-d' }}{% endif %}"
-  data-term-warn="{% if card.term_warn_date %}{{ card.term_warn_date|date:'Y-m-d' }}{% endif %}"
-  data-term-notify="{{ card.term_notify|default_if_none:True|yesno:'1,0' }}"
+  data-term-due="{% if card.due_date %}{{ card.due_date|date:'Y-m-d' }}{% endif %}"
+  data-term-warn="{% if card.due_warn_date %}{{ card.due_warn_date|date:'Y-m-d' }}{% endif %}"
+  data-term-notify="{{ card.due_notify|default_if_none:True|yesno:'1,0' }}"
   class="card-item p-3 bg-white/80 rounded-xl shadow-sm mb-3 cursor-pointer relative overflow-hidden"
 >
 
