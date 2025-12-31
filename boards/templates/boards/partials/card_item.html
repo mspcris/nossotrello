@@ -12,9 +12,21 @@
   class="card-item p-3 bg-white/80 rounded-xl shadow-sm mb-3 cursor-pointer relative overflow-hidden"
 >
 
+<div class="card-term-row">
+  <span class="term-badge hidden"></span>
+</div>
+
+<div class="card-tags-row">
+  <!-- tags existentes aqui -->
+</div>
+
+<div class="card-title-row">
+  <!-- título aqui -->
+</div>
+
 
   {% if card.tags %}
-  <div class="flex flex-wrap gap-1 mb-2 mt-4">
+  <div class="flex flex-wrap gap-1 mb-2">
     {% for tag in card.tags|split_tags %}
       {% with tag|tag_color:card.tag_colors as color %}
         <span

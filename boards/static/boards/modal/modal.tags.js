@@ -202,6 +202,31 @@
           // 1) atualiza a barra no modal
           if (tagsWrap) tagsWrap.innerHTML = data.tags_bar;
 
+          // 1.5) atualiza o card na BOARD (se veio snippet)
+          if (data && typeof data.snippet === "string" && data.card_id) {
+            const cardEl = document.getElementById(`card-${data.card_id}`);
+            if (cardEl) {
+              // substitui o LI inteiro
+              const tmp = document.createElement("div");
+              tmp.innerHTML = data.snippet.trim();
+              const freshLi = tmp.firstElementChild;
+              if (freshLi) cardEl.replaceWith(freshLi);
+            }
+          
+            // re-pinta TERM se existir (pra não perder overlay/cores)
+            if (typeof window.applySavedTermColorsToBoard === "function") {
+              const columnsList = document.getElementById("columns-list");
+              window.applySavedTermColorsToBoard(columnsList || document);
+            }
+          
+            // re-pinta TAGS se você tiver isso no global
+            if (typeof window.applySavedTagColorsToBoard === "function") {
+              const columnsList = document.getElementById("columns-list");
+              window.applySavedTagColorsToBoard(columnsList || document);
+            }
+          }
+
+
           // 2) atualiza estado no root do modal
           const rawColors = root.getAttribute("data-tag-colors") || "{}";
           const colors = safeJsonParse(rawColors, {});

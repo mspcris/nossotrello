@@ -13,6 +13,8 @@ from django.views.decorators.http import require_POST
 from boards.models import Card
 from .helpers import _actor_label, _log_card, _card_modal_context
 from .cards import _user_can_edit_board, _deny_read_only
+from django.template.loader import render_to_string
+
 
 
 # ============================================================================
@@ -182,8 +184,12 @@ def set_card_term_due(request, card_id):
         updates.append("term_notify")
 
     if not updates:
-        # nada mudou, só re-render
-        return render(request, "boards/partials/card_modal_body.html", _card_modal_context(card))
+        modal_html = render_to_string(...)
+
+        snippet_html = render_to_string(...)
+
+        return JsonResponse({"ok": True, "card_id": card.id, "modal": modal_html, "snippet": snippet_html})
+
 
     card.save(update_fields=updates)
 
@@ -202,6 +208,26 @@ def set_card_term_due(request, card_id):
             f"<p><strong>{actor}</strong> definiu prazo (term): "
             f"<strong>{escape(str(card.term_due_date))}</strong> "
             f"(aviso: <strong>{escape(str(card.term_warn_date))}</strong>).</p>",
+        )
+        modal_html = render_to_string(
+            "boards/partials/card_modal_body.html",
+            _card_modal_context(card),
+            request=request,
+        )
+
+        snippet_html = render_to_string(
+            "boards/partials/card_item.html",
+            {"card": card},
+            request=request,
+        )
+
+        return JsonResponse(
+            {
+        "ok": True,
+        "card_id": card.id,
+        "modal": modal_html,
+        "snippet": snippet_html,
+            }
         )
 
     return render(request, "boards/partials/card_modal_body.html", _card_modal_context(card))
