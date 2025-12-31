@@ -12,41 +12,6 @@
   class="card-item p-3 bg-white/80 rounded-xl shadow-sm mb-3 cursor-pointer relative overflow-hidden"
 >
 
-  {% if card.cover_image %}
-    <div class="-mx-3 -mt-3 mb-2">
-      <img
-        src="{{ card.cover_image.url }}"
-        alt="Capa do card"
-        class="w-full h-20 object-cover"
-        loading="lazy">
-    </div>
-  {% endif %}
-
-  <!-- BOTÃO ⋮ -->
-  <button
-    type="button"
-    class="absolute top-1 left-1 text-gray-400 hover:text-gray-700 text-xs px-1 z-20"
-    onpointerdown="event.stopPropagation();"
-    onclick="event.stopPropagation();"
-    hx-get="{% url 'boards:card_modal' card.id %}"
-    hx-target="#modal-body"
-    hx-swap="innerHTML"
-  >
-    ⋮
-  </button>
-
-  <!-- EXCLUIR -->
-  <button
-    type="button"
-    class="delete-card-btn hidden absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded z-20"
-    onpointerdown="event.stopPropagation();"
-    onclick="event.stopPropagation();"
-    hx-post="{% url 'boards:delete_card' card.id %}"
-    hx-target="#card-{{ card.id }}"
-    hx-swap="outerHTML"
-  >
-    X
-  </button>
 
   {% if card.tags %}
   <div class="flex flex-wrap gap-1 mb-2 mt-4">
@@ -62,6 +27,33 @@
     {% endfor %}
   </div>
 {% endif %}
+
+
+  {% if card.cover_image %}
+    <div class="-mx-3 -mt-3 mb-2">
+      <img
+        src="{{ card.cover_image.url }}"
+        alt="Capa do card"
+        class="w-full h-20 object-cover"
+        loading="lazy">
+    </div>
+  {% endif %}
+
+
+  <!-- EXCLUIR -->
+  <button
+    type="button"
+    class="delete-card-btn hidden absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded z-20"
+    onpointerdown="event.stopPropagation();"
+    onclick="event.stopPropagation();"
+    hx-post="{% url 'boards:delete_card' card.id %}"
+    hx-target="#card-{{ card.id }}"
+    hx-swap="outerHTML"
+  >
+    X
+  </button>
+
+
 
   <span class="term-badge hidden absolute bottom-2 right-2 text-[10px] font-semibold px-2 py-0.5 rounded-md border z-10"></span>
     {{ card.title }}
