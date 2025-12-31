@@ -622,11 +622,16 @@
 
   {# ===================== FORM PRINCIPAL (desc + tags) ===================== #}
   <form id="cm-main-form"
-        method="post"
-        enctype="multipart/form-data"
-        hx-post="{% url 'boards:update_card' card.id %}"
-        hx-target="#modal-body"
-        hx-swap="innerHTML">
+      method="post"
+      enctype="multipart/form-data"
+      hx-post="{% url 'boards:update_card' card.id %}"
+      hx-target="#modal-body"
+      hx-swap="innerHTML"
+      hx-on::after-request="if(event.detail.successful){ refreshCardSnippet({{ card.id }}); }">
+
+
+
+      
     {% csrf_token %}
 
 
