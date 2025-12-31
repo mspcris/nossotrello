@@ -134,12 +134,13 @@ window.applySavedTermColorsToBoard = function (scope) {
 
     const badge = cardEl.querySelector(".term-badge");
 
-    // sem prazo ou sem notify => neutro (tira tint; badge opcional)
+    // sem prazo ou sem notify => neutro
     if (!notify || !due) {
       clearTint(cardEl);
       if (badge) badge.classList.add("hidden");
       return;
     }
+
 
 
     const t = todayUTC();
@@ -149,7 +150,7 @@ window.applySavedTermColorsToBoard = function (scope) {
       setTint(cardEl, cOver);
       if (badge) setBadge(badge, "Vencido", cOver);
       return;
-    }
+    }   
 
     if (warn && t.getTime() >= warn.getTime()) {
       setTint(cardEl, cWarn);
@@ -159,6 +160,7 @@ window.applySavedTermColorsToBoard = function (scope) {
 
     setTint(cardEl, cOk);
     if (badge) setBadge(badge, "Em dia", cOk);
+
   });
 };
 
