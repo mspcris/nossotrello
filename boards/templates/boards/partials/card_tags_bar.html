@@ -1,7 +1,6 @@
 <!--card_tags_bar.html-->
 
 {% load tag_helpers %}
-
 {% with tag_colors=card.tag_colors|default:"{}" %}
   {% if card.tags %}
     <div id="cm-tags-bar" class="px-3 pb-2">
@@ -16,6 +15,7 @@
               style="background-color: {{ color }}20; color: {{ color }}; border-color: {{ color }};">
               {{ tag }}
             </button>
+            
           {% endwith %}
         {% endfor %}
       </div>

@@ -237,16 +237,19 @@ html.dark #cm-root{
 
   {# Color picker de tag (form + popover) #}
   <form id="cm-tag-color-form"
-        class="hidden"
-        method="post"
-        action="{% url 'boards:set_tag_color' card.id %}"
-        onsubmit="return false;">
+      style="display:none !important;"
+      method="post"
+      action="{% url 'boards:set_tag_color' card.id %}"
+      onsubmit="return false;">
     {% csrf_token %}
     <input type="hidden" name="tag" id="cm-tag-color-tag">
     <input type="hidden" name="color" id="cm-tag-color-value">
   </form>
 
-  <div id="cm-tag-color-popover" class="hidden absolute z-50 p-3 rounded-xl">
+  <div id="cm-tag-color-popover"
+     style="display:none; position:absolute; z-index:99999; padding:12px; border-radius:12px;
+            background: rgba(255,255,255,0.98); border:1px solid rgba(15,23,42,0.12);
+            box-shadow: 0 10px 30px rgba(2,6,23,0.18);">
     <div class="flex flex-col gap-3">
       <input type="color"
              id="cm-tag-color-picker"
@@ -1303,11 +1306,203 @@ function initDueColorDots(){
 }
 
 
+
+
+// ============================================================
+// TAG COLOR POPOVER — delegação global (funciona mesmo com HTMX swap)
+// ============================================================
+function initTagColorPopover(){
+  // bind global 1x (sobrevive a swaps)
+  if (window.__cmTagPopoverGlobalBound === "1") return;
+  window.__cmTagPopoverGlobalBound = "1";
+
+  function getCSRFTokenSafe(){
+    return document.querySelector('input[name="csrfmiddlewaretoken"]')?.value || "";
+  }
+
+  function getColorsMap(root){
+    try {
+      const raw = root.getAttribute("data-tag-colors") || "{}";
+      const data = JSON.parse(raw);
+      return (data && typeof data === "object") ? data : {};
+    } catch (_e) {
+      return {};
+    }
+  }
+
+  function setColorsMap(root, map){
+    try { root.setAttribute("data-tag-colors", JSON.stringify(map || {})); } catch (_e) {}
+  }
+
+  function ensureWired(root){
+    if (root.dataset.cmTagPopoverWired === "1") return;
+
+    const pop = root.querySelector("#cm-tag-color-popover");
+    const picker = root.querySelector("#cm-tag-color-picker");
+    const btnCancel = root.querySelector("#cm-tag-color-cancel");
+    const btnSave = root.querySelector("#cm-tag-color-save");
+    const form = root.querySelector("#cm-tag-color-form");
+    const inTag = root.querySelector("#cm-tag-color-tag");
+    const inColor = root.querySelector("#cm-tag-color-value");
+    const tagsWrap = root.querySelector("#cm-tags-wrap");
+
+    if (!pop || !picker || !btnCancel || !btnSave || !form || !inTag || !inColor) return;
+
+    function closePopover(){
+      pop.style.display = "none";
+      inTag.value = "";
+      inColor.value = "";
+    }
+
+    picker.addEventListener("input", function(){
+      inColor.value = picker.value || "";
+    });
+
+    btnCancel.addEventListener("click", function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      closePopover();
+    });
+
+    btnSave.addEventListener("click", async function(e){
+      e.preventDefault();
+      e.stopPropagation();
+
+      const tag = (inTag.value || "").trim();
+      const color = (picker.value || "").trim();
+      if (!tag) return;
+      if (!/^#[0-9a-fA-F]{6}$/.test(color)) return;
+
+      const endpoint = form.getAttribute("action");
+      const csrf = getCSRFTokenSafe();
+
+      try {
+        const fd = new FormData();
+        fd.append("csrfmiddlewaretoken", csrf);
+        fd.append("tag", tag);
+        fd.append("color", color);
+
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "X-Requested-With": "XMLHttpRequest",
+            "X-CSRFToken": csrf,
+          },
+          body: fd,
+        });
+
+        if (!res.ok) {
+          const t = await res.text().catch(() => "");
+          throw new Error(t || "Falha ao salvar cor da etiqueta.");
+        }
+
+        const data = await res.json().catch(() => ({}));
+
+        // atualiza barra de tags do modal (se backend devolver)
+        if (data && data.ok && tagsWrap && data.tags_bar) {
+          tagsWrap.innerHTML = data.tags_bar;
+        }
+
+        // atualiza estado local do modal
+        const map = getColorsMap(root);
+        map[tag] = color;
+        setColorsMap(root, map);
+
+        closePopover();
+
+        // opcional: refresh do snippet
+        const cardId = root.getAttribute("data-card-id");
+        if (cardId && typeof window.refreshCardSnippet === "function") {
+          window.refreshCardSnippet(cardId);
+        }
+      } catch (ex) {
+        try { console.error(ex); } catch (_e) {}
+      }
+    });
+
+    // fecha ao clicar fora
+    root.addEventListener("click", function(e){
+      const popEl = root.querySelector("#cm-tag-color-popover");
+      if (!popEl || popEl.style.display !== "block") return;
+
+      const insidePopover = e.target?.closest?.("#cm-tag-color-popover");
+      const onTagBtn = e.target?.closest?.(".cm-tag-btn[data-tag]");
+      if (insidePopover || onTagBtn) return;
+
+      popEl.style.display = "none";
+    }, true);
+
+    root.dataset.cmTagPopoverWired = "1";
+  }
+
+  function openPopoverFor(btn){
+    const root = btn.closest("#cm-root");
+    if (!root) return;
+
+    ensureWired(root);
+
+    const pop = root.querySelector("#cm-tag-color-popover");
+    const picker = root.querySelector("#cm-tag-color-picker");
+    const inTag = root.querySelector("#cm-tag-color-tag");
+    const inColor = root.querySelector("#cm-tag-color-value");
+    if (!pop || !picker || !inTag || !inColor) return;
+
+    const tag = (btn.getAttribute("data-tag") || "").trim();
+    if (!tag) return;
+
+    const map = getColorsMap(root);
+    const fallback = (btn.getAttribute("data-fallback-color") || "").trim();
+    const current = (map[tag] || fallback || "").trim();
+    const hex = /^#[0-9a-fA-F]{6}$/.test(current) ? current : "#3b82f6";
+
+    inTag.value = tag;
+    picker.value = hex;
+    inColor.value = hex;
+
+    // posiciona relativo ao root
+    const br = btn.getBoundingClientRect();
+    const rr = root.getBoundingClientRect();
+
+    let left = (br.left - rr.left) + 8;
+    let top  = (br.bottom - rr.top) + 8;
+
+    pop.style.display = "block";
+
+    const maxLeft = root.clientWidth - pop.offsetWidth - 8;
+    const maxTop  = root.clientHeight - pop.offsetHeight - 8;
+
+    left = Math.min(Math.max(8, left), Math.max(8, maxLeft));
+    top  = Math.min(Math.max(8, top), Math.max(8, maxTop));
+
+    pop.style.left = left + "px";
+    pop.style.top  = top + "px";
+  }
+
+  // clique global nas tags (funciona mesmo após swaps)
+  document.addEventListener("click", function(e){
+    const btn = e.target?.closest?.(".cm-tag-btn[data-tag]");
+    if (!btn) return;
+
+    // garante que é do modal
+    if (!btn.closest("#cm-root")) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    openPopoverFor(btn);
+  }, true);
+}
+
+
+
+
+
   // init
   initTabs();
   initFloatbarDirty();
   initActionDock();
   initDueColorDots();
+  initTagColorPopover();
 })();
 
 
