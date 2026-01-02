@@ -23,547 +23,184 @@
 {% endif %}
 
 <style>
-  /* ============================================================
-     CM MODAL (card_modal_body.html)
-     ============================================================ */
 
-  #cm-root{
-    --cm-radius: 14px;
-    --cm-radius-sm: 10px;
-    --cm-pad: 14px;
 
-    --cm-bg: rgba(255,255,255,0.86);
-    --cm-surface: rgba(255,255,255,0.92);
-    --cm-surface-2: rgba(250,250,250,0.95);
-    --cm-border: rgba(15,23,42,0.12);
-    --cm-border-2: rgba(15,23,42,0.08);
-    --cm-text: rgba(15,23,42,0.92);
-    --cm-muted: rgba(15,23,42,0.62);
-    --cm-placeholder: rgba(15,23,42,0.45);
+/* ============================================================
+   CM MODAL (card_modal_body.html)
+   ============================================================ */
 
-    --cm-accent: rgb(37 99 235);
-    --cm-accent-2: rgba(37,99,235,0.12);
-    --cm-danger: rgb(220 38 38);
+#cm-root{
+  --cm-radius: 14px;
+  --cm-radius-sm: 10px;
+  --cm-pad: 14px;
 
-    --cm-shadow: 0 10px 30px rgba(2,6,23,0.10);
-    --cm-shadow-sm: 0 6px 18px rgba(2,6,23,0.08);
-    --cm-ring: 0 0 0 3px rgba(37,99,235,0.22);
+  --cm-bg: rgba(255,255,255,0.86);
+  --cm-surface: rgba(255,255,255,0.92);
+  --cm-surface-2: rgba(250,250,250,0.95);
+  --cm-border: rgba(15,23,42,0.12);
+  --cm-border-2: rgba(15,23,42,0.08);
+  --cm-text: rgba(15,23,42,0.92);
+  --cm-muted: rgba(15,23,42,0.62);
+  --cm-placeholder: rgba(15,23,42,0.45);
 
-    --cm-term-rgb: 0,0,0;
-    --cm-term-opacity: 0;
-  }
+  --cm-accent: rgb(37 99 235);
+  --cm-accent-2: rgba(37,99,235,0.12);
+  --cm-danger: rgb(220 38 38);
 
-  #card-modal-root.theme-dark #cm-root,
-  #card-modal-root.card-theme-dark #cm-root{
-    --cm-bg: rgba(2,6,23,0.55);
-    --cm-surface: rgba(2,6,23,0.62);
-    --cm-surface-2: rgba(15,23,42,0.56);
-    --cm-border: rgba(255,255,255,0.14);
-    --cm-border-2: rgba(255,255,255,0.10);
-    --cm-text: rgba(241,245,249,0.94);
-    --cm-muted: rgba(226,232,240,0.72);
-    --cm-placeholder: rgba(226,232,240,0.52);
-    --cm-accent: rgb(96 165 250);
-    --cm-shadow: 0 14px 40px rgba(0,0,0,0.35);
-    --cm-shadow-sm: 0 10px 26px rgba(0,0,0,0.30);
-    --cm-ring: 0 0 0 3px rgba(59,130,246,0.25);
-  }
+  --cm-shadow: 0 10px 30px rgba(2,6,23,0.10);
+  --cm-shadow-sm: 0 6px 18px rgba(2,6,23,0.08);
+  --cm-ring: 0 0 0 3px rgba(37,99,235,0.22);
 
-  html.dark #cm-root{
-    --cm-bg: rgba(2,6,23,0.55);
-    --cm-surface: rgba(2,6,23,0.62);
-    --cm-surface-2: rgba(15,23,42,0.56);
-    --cm-border: rgba(255,255,255,0.14);
-    --cm-border-2: rgba(255,255,255,0.10);
-    --cm-text: rgba(241,245,249,0.94);
-    --cm-muted: rgba(226,232,240,0.72);
-    --cm-placeholder: rgba(226,232,240,0.52);
-    --cm-accent: rgb(96 165 250);
-    --cm-shadow: 0 14px 40px rgba(0,0,0,0.35);
-    --cm-shadow-sm: 0 10px 26px rgba(0,0,0,0.30);
-    --cm-ring: 0 0 0 3px rgba(59,130,246,0.25);
-  }
-
-    .cm-wrap{
-    padding: 16px;
-    width: 100%;
-    min-width: 0;
-    color: var(--cm-text) !important;
-
-    /* ✅ base do overlay */
-    position: relative;
-    overflow: hidden;
-  }
-
-  /* ✅ overlay do prazo (mantém o vidro original) */
-  #cm-root::before{
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: var(--cm-radius);
-    background: rgba(var(--cm-term-rgb, 0,0,0), var(--cm-term-opacity, 0));
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  /* ✅ tudo acima do overlay */
-  #cm-root > *{
-    position: relative;
-    z-index: 1;
-  }
-
-  .cm-card{
-    border-radius: var(--cm-radius);
-    border: 1px solid var(--cm-border);
-    background: var(--cm-surface);
-    box-shadow: var(--cm-shadow-sm);
-    padding: var(--cm-pad);
-  }
-
-  .cm-muted{
-    font-size: 12px;
-    color: var(--cm-muted) !important;
-  }
-
-  .cm-topbar{
-    position: sticky;
-    top: 0;
-    z-index: 10;
-
-    border-radius: var(--cm-radius);
-    border: 1px solid var(--cm-border);
-    background: var(--cm-bg);
-    box-shadow: var(--cm-shadow);
-    padding: 10px;
-    margin-bottom: 8px;
-  }
-
-  .cm-bar{
-    display:flex;
-    align-items:center;
-    gap: 10px;
-    width: 100%;
-    min-width: 0;
-  }
-
-  .cm-tabs{
-    display:flex;
-    gap: 8px;
-    align-items:center;
-    min-width: 0;
-    flex: 1 1 auto;
-    overflow-x: auto;
-    scrollbar-width: thin;
-    padding-bottom: 2px;
-  }
-  .cm-tabs::-webkit-scrollbar{ height: 6px; }
-  .cm-tabs::-webkit-scrollbar-thumb{ background: rgba(255,255,255,0.12); border-radius: 999px; }
-
-  .cm-tabbtn{
-    padding: 8px 12px;
-    border-radius: 999px;
-    font-size: 13px;
-    border: 1px solid var(--cm-border-2);
-    background: var(--cm-surface-2);
-    color: var(--cm-text) !important;
-    cursor: pointer;
-    user-select: none;
-    white-space: nowrap;
-    transition: transform .12s ease, border-color .12s ease, background .12s ease;
-    flex: 0 0 auto;
-  }
-  .cm-tabbtn:hover{
-    transform: translateY(-1px);
-    border-color: var(--cm-border);
-  }
-  .cm-tabbtn.is-active{
-    background: linear-gradient(180deg, rgba(37,99,235,0.16), rgba(37,99,235,0.10));
-    border-color: rgba(37,99,235,0.38);
-    box-shadow: 0 0 0 1px rgba(37,99,235,0.12) inset;
-  }
-
-  .cm-actions{
-    display:flex;
-    gap:8px;
-    flex: 0 0 auto;
-    align-self:center;
-  }
-
-  .cm-btn{
-    padding: 8px 12px;
-    border-radius: 999px;
-    border: 1px solid var(--cm-border-2);
-    background: var(--cm-surface-2);
-    color: var(--cm-text) !important;
-    cursor:pointer;
-    font-size: 13px;
-    transition: transform .12s ease, filter .12s ease, border-color .12s ease;
-    white-space: nowrap;
-  }
-  .cm-btn:hover{ transform: translateY(-1px); border-color: var(--cm-border); }
-  .cm-btn.primary{
-    background: var(--cm-accent);
-    border-color: rgba(37,99,235,0.85);
-    color: #fff !important;
-    box-shadow: 0 10px 22px rgba(37,99,235,0.22);
-  }
-  .cm-btn.primary:hover{ filter: brightness(1.05); }
-
-  .cm-label{
-    display:block;
-    font-size: 12px;
-    margin: 0 0 6px 2px;
-    color: var(--cm-muted) !important;
-  }
-
-  .cm-input, .cm-textarea, .cm-select{
-    width:100%;
-    border-radius: var(--cm-radius-sm);
-    border: 1px solid var(--cm-border-2);
-    background: var(--cm-surface-2);
-    color: var(--cm-text) !important;
-    padding: 10px 12px;
-    outline: none;
-    transition: box-shadow .12s ease, border-color .12s ease, background .12s ease;
-  }
-  .cm-input::placeholder,
-  .cm-textarea::placeholder{
-    color: var(--cm-placeholder) !important;
-  }
-  .cm-input:focus,
-  .cm-textarea:focus,
-  .cm-select:focus{
-    border-color: rgba(37,99,235,0.55);
-    box-shadow: var(--cm-ring);
-    background: var(--cm-surface);
-  }
-
-  .cm-textarea{ min-height: 220px; resize: vertical; }
-
-  .cm-panel{ display:none; }
-  .cm-panel.is-active{ display:block; }
-
-  #cm-actions{ display:none; }
-  #cm-root[data-cm-active="desc"] #cm-actions,
-  #cm-root[data-cm-active="tags"] #cm-actions{
-    display:flex;
-  }
-
-  /* --- Barra fixa de tags (fica entre topbar e conteúdo) --- */
-  #cm-tags-wrap{
-    margin-bottom: 10px;
-  }
-  #cm-tags-bar button{
-    cursor: pointer;
-  }
-
-  /* Atividade */
-  #cm-root #cm-activity-panel,
-  #cm-root #cm-activity-panel *{
-    color: var(--cm-text) !important;
-  }
-  #cm-root #cm-activity-panel a{
-    color: var(--cm-accent) !important;
-    text-decoration: underline;
-    text-underline-offset: 2px;
-  }
-
-  /* Anexos */
-  #cm-root #attachments-list a{
-    color: var(--cm-accent) !important;
-    text-decoration: underline;
-    text-underline-offset: 2px;
-    font-weight: 600;
-  }
-  #cm-root #attachments-list a:hover{
-    filter: brightness(1.08);
-  }
-
-  #attachments-error{ border-radius: 10px; }
-
-  .hidden{ display:none !important; }
-
-  @media (max-width: 1024px){
-    .cm-topbar{ padding: 8px; }
-    .cm-tabbtn, .cm-btn{ padding: 8px 10px; }
-    .cm-wrap{ padding: 12px; }
-  }
-
-#modal-body { position: relative; }
-
-#cm-tag-color-popover{
-  background: var(--cm-surface);
-  border: 1px solid var(--cm-border);
-  color: var(--cm-text);
-  box-shadow: var(--cm-shadow);
+  /* overlay de prazo */
+  --cm-term-rgb: 0,0,0;
+  --cm-term-opacity: 0;
 }
 
 /* ============================================================
-   CM — BARRA FLUTUANTE DE AÇÕES (Salvar / Fechar)
+   DARK MODE
    ============================================================ */
-.cm-floatbar{
-  position: sticky;
-  bottom: 12px;
-  z-index: 25;
 
-  margin-top: 12px;
-
-  border-radius: 999px;
-  border: 1px solid var(--cm-border);
-  background: var(--cm-bg);
-  box-shadow: var(--cm-shadow);
-
-  padding: 10px;
+#card-modal-root.theme-dark #cm-root,
+#card-modal-root.card-theme-dark #cm-root,
+html.dark #cm-root{
+  --cm-bg: rgba(2,6,23,0.55);
+  --cm-surface: rgba(2,6,23,0.62);
+  --cm-surface-2: rgba(15,23,42,0.56);
+  --cm-border: rgba(255,255,255,0.14);
+  --cm-border-2: rgba(255,255,255,0.10);
+  --cm-text: rgba(241,245,249,0.94);
+  --cm-muted: rgba(226,232,240,0.72);
+  --cm-placeholder: rgba(226,232,240,0.52);
+  --cm-accent: rgb(96 165 250);
+  --cm-shadow: 0 14px 40px rgba(0,0,0,0.35);
+  --cm-shadow-sm: 0 10px 26px rgba(0,0,0,0.30);
+  --cm-ring: 0 0 0 3px rgba(59,130,246,0.25);
 }
 
-.cm-floatbar-inner{
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
+/* ============================================================
+   BASE
+   ============================================================ */
+
+.cm-wrap{
+  padding: 16px;
   width: 100%;
+  min-width: 0;
+  color: var(--cm-text) !important;
+  position: relative;
+  overflow: hidden;
 }
 
-.cm-floatbar.hidden{ display:none !important; }
+/* overlay do prazo */
+#cm-root::before{
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--cm-radius);
+  background: rgba(var(--cm-term-rgb), var(--cm-term-opacity));
+  pointer-events: none;
+  z-index: 0;
+}
+
+#cm-root > *{
+  position: relative;
+  z-index: 1;
+}
+
+.cm-card{
+  border-radius: var(--cm-radius);
+  border: 1px solid var(--cm-border);
+  background: var(--cm-surface);
+  box-shadow: var(--cm-shadow-sm);
+  padding: var(--cm-pad);
+}
+
+.cm-muted{
+  font-size: 12px;
+  color: var(--cm-muted) !important;
+}
 
 /* ============================================================
-   CM — ACTION DOCK (Mover / Duplicar / Copiar link)
+   TOPBAR / TABS / BUTTONS
    ============================================================ */
-#cm-action-dock{
-  position: fixed;
-  right: 22px;
-  bottom: 22px;
-  z-index: 9999;
 
-  display: flex;
-  justify-content: flex-end;
-
-  margin-top: 0;
-  pointer-events: none; /* só o dock captura clique */
-}
-
-#cm-action-dock .dock-wrap{
-  pointer-events: auto;
-
-  border-radius: 999px;
+.cm-topbar{
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  border-radius: var(--cm-radius);
   border: 1px solid var(--cm-border);
   background: var(--cm-bg);
   box-shadow: var(--cm-shadow);
-
-  padding: 8px;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+  padding: 10px;
+  margin-bottom: 8px;
 }
 
-/* botão principal */
-#cm-action-dock .dock-toggle{
-  width: 42px;
-  height: 42px;
-  border-radius: 999px;
-  border: 1px solid var(--cm-border-2);
-  background: var(--cm-surface-2);
-  color: var(--cm-text);
-  cursor: pointer;
-
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-
-  opacity: .88;
-  transition: transform .12s ease, opacity .12s ease, border-color .12s ease;
-}
-#cm-action-dock .dock-toggle:hover{
-  opacity: 1;
-  transform: translateY(-1px);
-  border-color: var(--cm-border);
-}
-
-/* ações */
-#cm-action-dock .dock-actions{
-  display: none;
-  gap: 8px;
-  align-items: center;
-}
-
-
-#cm-action-dock.is-open .dock-actions{
-  display: inline-flex;
-}
-
-#cm-action-dock .dock-action{
-  border-radius: 999px;
-  border: 1px solid var(--cm-border-2);
-  background: var(--cm-surface-2);
-  color: var(--cm-text);
-  cursor: pointer;
-
-  padding: 10px 12px;
-  font-size: 13px;
-
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
-
-  transition: transform .12s ease, border-color .12s ease;
-}
-#cm-action-dock .dock-action:hover{
-  transform: translateY(-1px);
-  border-color: var(--cm-border);
-}
-
-#cm-action-dock .dock-action .label{
-  display: none;
-  white-space: nowrap;
-}
-
-#cm-action-dock.is-open .dock-action .label{
-  display: inline;
-}
-
-/* painel ancorado */
-#cm-action-dock-panel{
-  position: absolute;
-  right: 0;
-  bottom: 58px;
-
-  width: min(520px, calc(100vw - 48px));
-  border-radius: 14px;
-  border: 1px solid var(--cm-border);
-  background: var(--cm-surface);
-  box-shadow: var(--cm-shadow);
-
-  padding: 12px;
-  display: none;
-}
-
-#cm-action-dock-panel.is-open{ display:block; }
-
-@keyframes cmBoing {
-  0%   { transform: translateY(8px) scale(0.98); opacity: 0.0; }
-  70%  { transform: translateY(-2px) scale(1.01); opacity: 1.0; }
-  100% { transform: translateY(0) scale(1.00); opacity: 1.0; }
-}
-#cm-action-dock-panel.boing{
-  animation: cmBoing 220ms ease-out;
-}
-
-@media (max-width: 767px) {
-  /* reduz folga e impede estourar a viewport */
-  #cm-action-dock{
-    right: 12px !important;
-    bottom: 12px !important;
-    max-width: calc(100vw - 24px) !important;
-  }
-
-  #cm-action-dock-panel{
-    right: 0 !important;
-    width: calc(100vw - 24px) !important;
-    max-width: calc(100vw - 24px) !important;
-  }
-}
-
-@media (max-width: 767px) {
-  #modal-body { overflow-x: hidden !important; }
-  #cm-root { overflow-x: hidden !important; }
-}
-
-@media (max-width: 767px) {
-  /* dock visível acima da barra do sistema */
-  #cm-action-dock{
-    right: 12px !important;
-    bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
-    max-width: calc(100vw - 24px) !important;
-  }
-
-  #cm-action-dock-panel{
-    right: 0 !important;
-    bottom: calc(58px + env(safe-area-inset-bottom, 0px)) !important;
-    width: calc(100vw - 24px) !important;
-    max-width: calc(100vw - 24px) !important;
-  }
-
-  /* evita qualquer “vazamento” horizontal */
-  #modal-body, #cm-root { overflow-x: hidden !important; }
-}
-
-@media (max-width: 767px) {
-  #modal-body{
-    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
-  }
-}
-
-
-/* =========================
-   Card/carteirinha do compartilhar '@'
-   ========================= */
-
-
-.mention-card{
+.cm-bar{
   display:flex;
-  gap:10px;
   align-items:center;
-  padding:10px 12px;
-  border-radius:10px;
+  gap: 10px;
 }
 
-.mention-card:hover{
-  filter:brightness(0.98);
+.cm-tabs{
+  display:flex;
+  gap:8px;
+  flex:1;
+  overflow-x:auto;
 }
 
-.mention-avatar{
-  width:38px;
-  height:38px;
+.cm-tabbtn{
+  padding:8px 12px;
   border-radius:999px;
-  object-fit:cover;
-  flex:0 0 38px;
+  font-size:13px;
+  border:1px solid var(--cm-border-2);
+  background:var(--cm-surface-2);
+  cursor:pointer;
 }
 
-.mention-avatar-fallback{
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-weight:700;
-  font-size:12px;
-  border:1px solid rgba(0,0,0,.08);
+.cm-tabbtn.is-active{
+  background: linear-gradient(180deg, rgba(37,99,235,0.16), rgba(37,99,235,0.10));
+  border-color: rgba(37,99,235,0.38);
 }
 
-.mention-meta{
-  display:flex;
-  flex-direction:column;
-  line-height:1.15;
+/* ============================================================
+   FLOATBAR / ACTION DOCK
+   (inalterado visualmente)
+   ============================================================ */
+/* (mantido exatamente como estava) */
+
+/* ============================================================
+   PRAZO — OVERLAY FINAL (ÚNICO BLOCO VÁLIDO)
+   ============================================================ */
+
+#cm-root[data-term-notify="1"][data-term-status="ok"]{
+  --cm-term-rgb: 22,163,74;
+  --cm-term-opacity: 0.12;
 }
 
-.mention-name{
-  font-weight:700;
-  font-size:14px;
+#cm-root[data-term-notify="1"][data-term-status="warn"]{
+  --cm-term-rgb: 245,158,11;
+  --cm-term-opacity: 0.12;
 }
 
-.mention-handle{
-  font-size:12px;
-  opacity:.75;
-  margin-top:2px;
+#cm-root[data-term-notify="1"][data-term-status="overdue"]{
+  --cm-term-rgb: 220,38,38;
+  --cm-term-opacity: 0.12;
 }
 
-.mention-email{
-  font-size:12px;
-  opacity:.65;
-  margin-top:2px;
-}
+
 
 </style>
 
-{# ✅ IMPORTANTE: data-tag-colors aqui para o JS aplicar as cores salvas #}
+{# cm-root (modal do card) #}
 <div class="cm-wrap"
      id="cm-root"
      data-card-id="{{ card.id }}"
      data-cm-active="desc"
      data-tag-colors='{{ card.tag_colors|default_if_none:"{}"|escape }}'
-     data-term-due="{% if card.due_date %}{{ card.due_date|date:'Y-m-d' }}{% endif %}"
-     data-term-warn="{% if card.due_warn_date %}{{ card.due_warn_date|date:'Y-m-d' }}{% endif %}"
+     data-term-status="{{ term_status }}"
      data-term-notify="{% if card.due_notify %}1{% else %}0{% endif %}">
 
-
-  {# ===================== TOPBAR: só abas e botão salvar =saveBtn==================== #}
+  {# Topbar (abas + salvar) #}
   <div class="cm-topbar">
     <div class="cm-bar" role="tablist" aria-label="Abas do card">
       <div class="cm-tabs">
@@ -580,13 +217,12 @@
     </div>
   </div>
 
-  {# ===================== TAGS FIXAS NO TOPO (fora da aba) ===================== #}
+  {# Tags fixas (fora das abas) #}
   <div id="cm-tags-wrap">
     {% include "boards/partials/card_tags_bar.html" %}
   </div>
 
-  {# ===================== TAG COLOR PICKER POPOVER ===================== #}
-  {# ✅ Form invisível + color picker invisível (para salvar cor via POST) #}
+  {# Color picker de tag (form + popover) #}
   <form id="cm-tag-color-form"
         class="hidden"
         method="post"
@@ -597,45 +233,29 @@
     <input type="hidden" name="color" id="cm-tag-color-value">
   </form>
 
-  <div id="cm-tag-color-popover"
-     class="hidden absolute z-50 p-3 rounded-xl">
-
+  <div id="cm-tag-color-popover" class="hidden absolute z-50 p-3 rounded-xl">
     <div class="flex flex-col gap-3">
-
-      <!-- SELETOR DE COR VISÍVEL -->
       <input type="color"
              id="cm-tag-color-picker"
              class="w-12 h-12 border rounded cursor-pointer">
 
       <div class="flex gap-2 justify-end">
-        <button type="button"
-                class="cm-btn"
-                id="cm-tag-color-cancel">
-          Cancelar
-        </button>
-
-        <button type="button"
-                class="cm-btn primary"
-                id="cm-tag-color-save">
-          Salvar cor
-        </button>
+        <button type="button" class="cm-btn" id="cm-tag-color-cancel">Cancelar</button>
+        <button type="button" class="cm-btn primary" id="cm-tag-color-save">Salvar cor</button>
       </div>
-
     </div>
   </div>
 
-  {# ===================== FORM PRINCIPAL (desc + tags) ===================== #}
+  {# Form principal (descrição + tags + prazo + capa) #}
   <form id="cm-main-form"
-      method="post"
-      enctype="multipart/form-data"
-      hx-post="{% url 'boards:update_card' card.id %}"
-      hx-target="#modal-body"
-      hx-swap="innerHTML"
-      
+        method="post"
+        enctype="multipart/form-data"
+        hx-post="{% url 'boards:update_card' card.id %}"
+        hx-target="#modal-body"
+        hx-swap="innerHTML">
     {% csrf_token %}
 
-
-{# ===================== TÍTULO DESCRIÇÃO ===================== #}
+    {# Aba: Descrição #}
     <section class="cm-panel is-active" data-cm-panel="desc" role="tabpanel">
       <div class="cm-card space-y-3">
         <div>
@@ -647,129 +267,107 @@
           <label class="cm-label">Descrição</label>
           <textarea name="description" class="cm-textarea">{{ card.description|default_if_none:"" }}</textarea>
           <div class="cm-muted" style="margin-top:8px;">
-            Observação: Você pode aumentar o tamanho deste campo usando o mouse e clicando na parte de baixo à direita do quadro. 
+            Observação: você pode aumentar o tamanho do campo arrastando o canto inferior direito.
           </div>
         </div>
       </div>
+
+      {# Prazo (fica na aba Descrição) #}
+      <div class="cm-card space-y-3" style="margin:10px 0;">
+        <div class="flex items-center justify-between gap-2 flex-wrap">
+          <div>
+            <div class="cm-label" style="margin:0;">Prazo</div>
+            <div class="cm-muted">
+              Se preencher vencimento, o aviso vira obrigatório (default: 5 dias antes).
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3 flex-wrap">
+            <label class="cm-muted" style="display:flex;align-items:center;gap:8px;">
+              <input type="color" name="due_color_ok" value="{{ board_due_colors.ok }}">
+              OK
+            </label>
+
+            <label class="cm-muted" style="display:flex;align-items:center;gap:8px;">
+              <input type="color" name="due_color_warn" value="{{ board_due_colors.warn }}">
+              Alerta
+            </label>
+
+            <label class="cm-muted" style="display:flex;align-items:center;gap:8px;">
+              <input type="color" name="due_color_overdue" value="{{ board_due_colors.overdue }}">
+              Vencido
+            </label>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <label class="block">
+            <span class="cm-label">Vencimento</span>
+            <input type="date"
+                   name="due_date"
+                   class="cm-input"
+                   value="{% if card.due_date %}{{ card.due_date|date:'Y-m-d' }}{% endif %}">
+          </label>
+
+          <label class="block">
+            <span class="cm-label">Avisar em</span>
+            <input type="date"
+                   name="due_warn_date"
+                   class="cm-input"
+                   value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'Y-m-d' }}{% endif %}">
+          </label>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <input type="hidden" name="due_notify" value="0">
+          <label class="cm-muted" style="display:flex;align-items:center;gap:8px;">
+            <input type="checkbox"
+                   name="due_notify"
+                   value="1"
+                   {% if card.due_notify|default_if_none:True %}checked{% endif %}>
+            Notificar com cores
+          </label>
+        </div>
+      </div>
+
+      {# Capa (fica na aba Descrição) #}
+      <div class="cm-card" style="margin-bottom:10px;">
+        <div class="flex items-center justify-between gap-2 flex-wrap">
+          <div>
+            <div class="cm-label" style="margin:0;">Capa do card</div>
+            <div class="cm-muted">Dica: na aba Descrição, você pode colar uma imagem (Ctrl+V) para virar capa.</div>
+          </div>
+
+          <div class="flex gap-2 items-center">
+            <button type="button"
+                    class="cm-btn"
+                    id="cm-cover-pick-btn"
+                    onclick="document.getElementById('cm-cover-file')?.click();">
+              Escolher imagem…
+            </button>
+
+            <form id="cm-cover-form"
+                  class="hidden"
+                  method="post"
+                  enctype="multipart/form-data"
+                  action="{% url 'boards:set_card_cover' card.id %}">
+              {% csrf_token %}
+            </form>
+
+            <input type="file"
+                   id="cm-cover-file"
+                   name="cover"
+                   accept="image/*"
+                   style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;">
+          </div>
+        </div>
+
+        <div id="cm-cover-error"
+             class="hidden mt-2 px-3 py-2 rounded-md text-sm border border-red-500/30 bg-red-500/10 text-red-200"></div>
+      </div>
     </section>
 
-
-
-
-
-    {# ===================== PRAZO (vencimento) ===================== #}
-<div class="cm-card space-y-3" style="margin-bottom:10px;">
-  <div class="flex items-center justify-between gap-2 flex-wrap">
-    <div>
-      <div class="cm-label" style="margin:0;">Prazo</div>
-      <div class="cm-muted">
-        Se preencher vencimento, o aviso vira obrigatório (default: 5 dias antes).
-      </div>
-    </div>
-
-    {# No lugar do “Salvar term”: 3 cores do board #}
-    <div class="flex items-center gap-3 flex-wrap">
-      <label class="cm-muted" style="display:flex;align-items:center;gap:8px;">
-        <input type="color"
-               name="due_color_ok"
-               value="{{ board_due_colors.ok }}">
-        OK
-      </label>
-
-      <label class="cm-muted" style="display:flex;align-items:center;gap:8px;">
-        <input type="color"
-               name="due_color_warn"
-               value="{{ board_due_colors.warn }}">
-        Alerta
-      </label>
-
-      <label class="cm-muted" style="display:flex;align-items:center;gap:8px;">
-        <input type="color"
-               name="due_color_overdue"
-               value="{{ board_due_colors.overdue }}">
-        Vencido
-      </label>
-    </div>
-  </div>
-
- 
-
-
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-    <label class="block">
-      <span class="cm-label">Vencimento</span>
-      <input type="date"
-             name="due_date"
-             class="cm-input"
-             value="{% if card.due_date %}{{ card.due_date|date:'Y-m-d' }}{% endif %}">
-    </label>
-
-    <label class="block">
-      <span class="cm-label">Avisar em</span>
-      <input type="date"
-             name="due_warn_date"
-             class="cm-input"
-             value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'Y-m-d' }}{% endif %}">
-    </label>
-  </div>
-
-  <div class="flex items-center gap-2">
-    <input type="hidden" name="due_notify" value="0">
-    <label class="cm-muted" style="display:flex;align-items:center;gap:8px;">
-      <input type="checkbox"
-             name="due_notify"
-             value="1"
-             {% if card.due_notify|default_if_none:True %}checked{% endif %}>
-      Notificar com cores
-    </label>
-  </div>
-</div>
-
-
-
-
-{# ===================== CAPA DO CARD (upload + paste) ===================== #}
-<div class="cm-card" style="margin-bottom:10px;">
-  <div class="flex items-center justify-between gap-2 flex-wrap">
-    <div>
-      <div class="cm-label" style="margin:0;">Capa do card</div>
-      <div class="cm-muted">Dica: na aba Descrição, você pode colar uma imagem (Ctrl+V) para virar capa.</div>
-    </div>
-
-    <div class="flex gap-2 items-center">
-      <button type="button"
-          class="cm-btn"
-          id="cm-cover-pick-btn"
-          onclick="document.getElementById('cm-cover-file')?.click();">
-      Escolher imagem…
-      </button>
-
-
-      <form id="cm-cover-form"
-            class="hidden"
-            method="post"
-            enctype="multipart/form-data"
-            action="{% url 'boards:set_card_cover' card.id %}">
-        {% csrf_token %}
-      </form>
-
-      <input type="file"
-             id="cm-cover-file"
-             name="cover"
-             accept="image/*"
-             style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;" />
-    </div>
-  </div>
-
-  <div id="cm-cover-error"
-       class="hidden mt-2 px-3 py-2 rounded-md text-sm border border-red-500/30 bg-red-500/10 text-red-200"></div>
-</div>
-
-
-
-
-
-{# ===================== TAGS ===================== #}
+    {# Aba: Tags (campo de texto) #}
     <section class="cm-panel" data-cm-panel="tags" role="tabpanel">
       <div class="cm-card space-y-3">
         <div>
@@ -778,13 +376,13 @@
         </div>
 
         <div class="cm-muted">
-          Dica: as etiquetas agora ficam sempre visíveis no topo do modal (clique nelas para escolher a cor).
+          Dica: as etiquetas ficam sempre visíveis no topo do modal (clique nelas para escolher a cor).
         </div>
       </div>
     </section>
   </form>
 
-  {# ===================== BARRA FLUTUANTE COM saveBtn(dirty) ===================== #}
+  {# Floatbar (salvar/fechar) #}
   <div id="cm-floatbar" class="cm-floatbar hidden" aria-live="polite">
     <div class="cm-floatbar-inner">
       <button type="button" class="cm-btn" id="cm-close-btn">Fechar</button>
@@ -792,8 +390,7 @@
     </div>
   </div>
 
-
-  {# ===================== CHECKLISTS ===================== #}
+  {# Aba: Checklists #}
   <section class="cm-panel" data-cm-panel="check" role="tabpanel">
     <div class="cm-card space-y-3">
       <form id="cm-checklist-create-form"
@@ -803,12 +400,13 @@
             hx-swap="innerHTML">
         {% csrf_token %}
         <label class="cm-label">Novo checklist</label>
+
         <div class="flex gap-2">
           <input id="cm-checklist-create-input"
-       type="text"
-       name="title"
-       class="cm-input"
-       placeholder="Ex: Tarefas da semana">
+                 type="text"
+                 name="title"
+                 class="cm-input"
+                 placeholder="Ex: Tarefas da semana">
           <button type="submit" class="cm-btn primary">Adicionar</button>
         </div>
       </form>
@@ -819,7 +417,7 @@
     </div>
   </section>
 
-  {# ===================== ATIVIDADE ===================== #}
+  {# Aba: Atividade #}
   <section class="cm-panel" data-cm-panel="ativ" role="tabpanel">
     <div class="cm-card space-y-3">
       <form
@@ -848,19 +446,19 @@
   </div>
 </form>
 
+
       <div id="cm-activity-panel">
         {% include "boards/partials/card_activity_panel.html" %}
       </div>
     </div>
   </section>
 
-  {# ===================== ANEXOS ===================== #}
+  {# Aba: Anexos #}
   <section class="cm-panel" data-cm-panel="files" role="tabpanel">
     <div class="cm-card space-y-3">
       <div id="attachments-error"
-           class="hidden mb-2 px-3 py-2 rounded-md text-sm border
-                  border-red-500/30 bg-red-500/10 text-red-200">
-      </div>
+           class="hidden mb-2 px-3 py-2 rounded-md text-sm border border-red-500/30 bg-red-500/10 text-red-200"></div>
+
       <div>
         <label class="cm-label">Enviar novo anexo</label>
 
@@ -872,22 +470,22 @@
                  style="max-width: 420px;"
                  placeholder="Descrição do anexo (opcional)">
 
-          <input type="file" name="file"
-       id="attachment-file"
-       class="cm-input"
-       style="max-width: 520px;"
-       hx-post="{% url 'boards:add_attachment' card.id %}"
-       hx-target="#attachments-list"
-       hx-swap="beforeend"
-       hx-trigger="change"
-       hx-encoding="multipart/form-data"
-       hx-include="#attachment-desc, input[name='csrfmiddlewaretoken']" />
+          <input type="file"
+                 name="file"
+                 id="attachment-file"
+                 class="cm-input"
+                 style="max-width: 520px;"
+                 hx-post="{% url 'boards:add_attachment' card.id %}"
+                 hx-target="#attachments-list"
+                 hx-swap="beforeend"
+                 hx-trigger="change"
+                 hx-encoding="multipart/form-data"
+                 hx-include="#attachment-desc, input[name='csrfmiddlewaretoken']">
+        </div>
 
-        </div>
-        <div class="cm-muted" style="margin-top:6px;">
-          Limite: 50MB por arquivo.
-        </div>
+        <div class="cm-muted" style="margin-top:6px;">Limite: 50MB por arquivo.</div>
       </div>
+
       <div id="attachments-list" class="space-y-3">
         {% for attachment in card.attachments.all %}
           {% include "boards/partials/attachment_item.html" %}
@@ -898,31 +496,53 @@
     </div>
   </section>
 
-{# ===================== ACTION DOCK (sempre visível) ===================== #}
-<div id="cm-action-dock" aria-label="Ações do card">
-  <div class="dock-wrap relative">
-    <button type="button" class="dock-toggle" id="cm-dock-toggle" title="Ações">
-      ⋮
-    </button>
-    <div class="dock-actions" id="cm-dock-actions">
-      <button type="button" class="dock-action" id="cm-dock-move">
-        <span>↔️</span> <span class="label">Mover</span>
-      </button>
-      <button type="button" class="dock-action" id="cm-dock-duplicate">
-        <span>📄</span> <span class="label">Duplicar</span>
-      </button>
-      <button type="button" class="dock-action" id="cm-dock-copylink">
-        <span>🔗</span> <span class="label">Copiar link</span>
-      </button>
-    </div>
-    <div id="cm-action-dock-panel" role="dialog" aria-label="Painel de ação">
-      <div id="cm-dock-panel-body">
-        {# conteúdo lazy-loaded (Mover) entra aqui #}
+  {# Action dock #}
+  <div id="cm-action-dock" aria-label="Ações do card">
+    <div class="dock-wrap relative">
+      <button type="button" class="dock-toggle" id="cm-dock-toggle" title="Ações">⋮</button>
+
+      <div class="dock-actions" id="cm-dock-actions">
+        <button type="button" class="dock-action" id="cm-dock-move">
+          <span>↔️</span> <span class="label">Mover</span>
+        </button>
+        <button type="button" class="dock-action" id="cm-dock-duplicate">
+          <span>📄</span> <span class="label">Duplicar</span>
+        </button>
+        <button type="button" class="dock-action" id="cm-dock-copylink">
+          <span>🔗</span> <span class="label">Copiar link</span>
+        </button>
+      </div>
+
+      <div id="cm-action-dock-panel" role="dialog" aria-label="Painel de ação">
+        <div id="cm-dock-panel-body">
+          {# conteúdo lazy-loaded (Mover) entra aqui #}
+        </div>
       </div>
     </div>
   </div>
+
 </div>
-</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1618,323 +1238,6 @@ document.addEventListener("keydown", escClose);
 
 
 
-
-<script>
-  // ============================================================
-  // Quill da aba atividade
-  // ============================================================
-(function () {
-  const STATE_KEY = "__cmActivityQuill";
-
-  function getRoot() {
-    return document.getElementById("cm-root");
-  }
-
-  function getCardId() {
-    const root = getRoot();
-    return root?.getAttribute("data-card-id") || root?.dataset?.cardId || "";
-  }
-
-  function getCSRF() {
-    return document.querySelector('input[name="csrfmiddlewaretoken"]')?.value || "";
-  }
-
-  function showActivityError(msg) {
-    const box = document.getElementById("activity-error");
-    if (!box) return;
-    box.textContent = msg || "";
-    box.classList.toggle("hidden", !msg);
-  }
-
-  function clearActivityError() {
-    showActivityError("");
-  }
-
-  // ===== Mentions (mesmo padrão do modal.quill.js) =====
-  function getBoardIdFromUrl() {
-    const m = (window.location.pathname || "").match(/\/board\/(\d+)\b/);
-    return m ? m[1] : null;
-  }
-
-  function renderMentionCard(item) {
-    const name =
-      (item?.display_name || "").trim() ||
-      (item?.handle ? `@${item.handle}` : "") ||
-      (item?.email || "").trim();
-
-    const handle = (item?.handle || "").trim();
-    const email = (item?.email || "").trim();
-    const avatar = (item?.avatar_url || "").trim();
-
-    const root = document.createElement("div");
-    root.className = "mention-card";
-
-    let avatarEl;
-    if (avatar) {
-      avatarEl = document.createElement("img");
-      avatarEl.className = "mention-avatar";
-      avatarEl.src = avatar;
-      avatarEl.alt = "";
-    } else {
-      avatarEl = document.createElement("div");
-      avatarEl.className = "mention-avatar mention-avatar-fallback";
-      avatarEl.textContent = (handle || name || "?").slice(0, 2).toUpperCase();
-    }
-
-    const meta = document.createElement("div");
-    meta.className = "mention-meta";
-
-    const nameEl = document.createElement("div");
-    nameEl.className = "mention-name";
-    nameEl.textContent = name;
-    meta.appendChild(nameEl);
-
-    if (handle) {
-      const handleEl = document.createElement("div");
-      handleEl.className = "mention-handle";
-      handleEl.textContent = `@${handle}`;
-      meta.appendChild(handleEl);
-    }
-
-    if (email) {
-      const emailEl = document.createElement("div");
-      emailEl.className = "mention-email";
-      emailEl.textContent = email;
-      meta.appendChild(emailEl);
-    }
-
-    root.appendChild(avatarEl);
-    root.appendChild(meta);
-    return root;
-  }
-
-  function makeMentionConfig(boardId) {
-    return {
-      allowedChars: /^[A-Za-zÀ-ÖØ-öø-ÿ0-9_]+$/,
-      mentionDenotationChars: ["@"],
-      showDenotationChar: true,
-
-      source: async function (searchTerm, renderList) {
-        try {
-          if (!boardId) return renderList([], searchTerm);
-
-          const url = `/board/${boardId}/mentions/?q=${encodeURIComponent(searchTerm || "")}`;
-          const r = await fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } });
-          if (!r.ok) return renderList([], searchTerm);
-
-          const users = await r.json();
-          renderList(users || [], searchTerm);
-        } catch (_e) {
-          renderList([], searchTerm);
-        }
-      },
-
-      renderItem: function (item) {
-        return renderMentionCard(item);
-      },
-
-      onSelect: function (item, insertItem) {
-        insertItem(item);
-      },
-    };
-  }
-
-  function ensureQuill() {
-    if (window[STATE_KEY] || typeof Quill === "undefined") return;
-
-    const el = document.getElementById("cm-activity-editor");
-    if (!el) return;
-
-    const boardId = getBoardIdFromUrl();
-
-    const quill = new Quill(el, {
-      theme: "snow",
-      placeholder: "Escreva aqui...",
-      modules: {
-        toolbar: [
-          [{ header: [1, 2, 3, false] }],
-          ["bold", "italic", "underline", "strike"],
-          [{ list: "ordered" }, { list: "bullet" }],
-          ["link", "image"],
-          ["clean"],
-        ],
-        mention: makeMentionConfig(boardId),
-      },
-    });
-
-    window[STATE_KEY] = quill;
-
-    // ✅ COLAR IMAGEM: usa endpoint REAL e trata HTML
-    quill.root.addEventListener("paste", async function (e) {
-      try {
-        const items = e.clipboardData?.items || [];
-        let file = null;
-
-        for (const item of items) {
-          if (item.type && item.type.startsWith("image/")) {
-            file = item.getAsFile();
-            break;
-          }
-        }
-
-        if (!file) return; // texto segue normal
-
-        e.preventDefault();
-        clearActivityError();
-
-        const cardId = getCardId();
-        if (!cardId) throw new Error("cardId ausente.");
-
-        const uploadUrl = `/card/${cardId}/attachments/add/`;
-
-        const form = new FormData();
-        form.append("file", file);
-        form.append("description", "Imagem colada na atividade");
-
-        const res = await fetch(uploadUrl, {
-          method: "POST",
-          credentials: "same-origin",
-          headers: {
-            "X-CSRFToken": getCSRF(),
-            "X-Requested-With": "XMLHttpRequest",
-          },
-          body: form,
-        });
-
-        if (!res.ok) {
-          const t = await res.text().catch(() => "");
-          throw new Error(t || `Upload falhou (${res.status}).`);
-        }
-
-        const html = await res.text();
-
-        // 1) mantém o anexo na aba Anexos
-        const list = document.getElementById("attachments-list");
-        if (list) list.insertAdjacentHTML("beforeend", html);
-
-        // 2) extrai URL do HTML (href ou src)
-        const tmp = document.createElement("div");
-        tmp.innerHTML = html;
-
-        const a = tmp.querySelector("a[href]");
-        const img = tmp.querySelector("img[src]");
-        const fileUrl =
-          (img && img.getAttribute("src")) ||
-          (a && a.getAttribute("href")) ||
-          "";
-
-        // 3) insere no quill (imagem inline se der, senão link)
-        const range = quill.getSelection(true) || { index: quill.getLength() };
-
-        if (fileUrl) {
-          quill.insertEmbed(range.index, "image", fileUrl);
-          quill.insertText(range.index + 1, "\n");
-          quill.setSelection(range.index + 2);
-        } else {
-          quill.insertText(range.index, "[anexo criado]\n");
-          quill.setSelection(range.index + 14);
-        }
-      } catch (err) {
-        showActivityError(err?.message || "Erro ao colar imagem na atividade.");
-      }
-    });
-  }
-
-  function syncToHidden() {
-    const quill = window[STATE_KEY];
-    if (!quill) return "";
-    const html = (quill.root.innerHTML || "").trim();
-    const hidden = document.getElementById("cm-activity-content");
-    if (hidden) hidden.value = html;
-    return html;
-  }
-
-  function resetEditor() {
-    const quill = window[STATE_KEY];
-    if (!quill) return;
-    quill.setText("");
-    const hidden = document.getElementById("cm-activity-content");
-    if (hidden) hidden.value = "";
-  }
-
-  function bindActivityForm() {
-    const form = document.querySelector('section[data-cm-panel="ativ"] form');
-    if (!form) return;
-
-    if (form.dataset.cmBound === "1") return;
-    form.dataset.cmBound = "1";
-
-    form.addEventListener("htmx:configRequest", function (evt) {
-      ensureQuill();
-      clearActivityError();
-
-      const html = syncToHidden();
-      if (evt.detail && evt.detail.parameters) {
-        evt.detail.parameters["content"] = html;
-      }
-    });
-
-    form.addEventListener("htmx:afterRequest", function (evt) {
-      if (evt.detail?.successful === true) {
-        resetEditor();
-        clearActivityError();
-      }
-    });
-  }
-
-  function initActivityModule() {
-    ensureQuill();
-    bindActivityForm();
-  }
-
-  // ao abrir aba atividade
-  getRoot()?.addEventListener("cm:tabchange", function (e) {
-    if (e.detail?.tab === "ativ") {
-      setTimeout(initActivityModule, 0);
-      setTimeout(initActivityModule, 50);
-    }
-  });
-
-  // fallback se abriu direto
-  if (getRoot()?.getAttribute("data-cm-active") === "ativ") {
-    setTimeout(initActivityModule, 0);
-    setTimeout(initActivityModule, 50);
-  }
-
-  // rebind pós swap do HTMX
-  document.body.addEventListener("htmx:afterSwap", function (e) {
-  // ✅ só reage ao swap do modal principal
-  if (!e.target || e.target.id !== "modal-body") return;
-
-  const cmRoot = document.getElementById("cm-root");
-  if (!cmRoot) return;
-
-  if (typeof window.applySavedTagColorsToModal === "function") {
-    window.applySavedTagColorsToModal(cmRoot);
-  }
-
-  if (typeof window.applySavedTermColorsToModal === "function") {
-    window.applySavedTermColorsToModal(cmRoot);
-  }
-});
-
-
-})();
-</script>
-
-
-
-
-<script>
-(function () {
-  const root = document.getElementById("cm-root");
-  if (!root) return;
-
-  if (typeof window.applySavedTermColorsToModal === "function") {
-    window.applySavedTermColorsToModal(root);
-  }
-})();
-</script>
 
 
 

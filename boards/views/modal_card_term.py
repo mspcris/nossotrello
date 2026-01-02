@@ -163,17 +163,29 @@ def set_card_term_due(request, card_id):
         else:
             _log_card(card, request, f"<p><strong>{actor}</strong> removeu o prazo.</p>")
 
+
+    from datetime import date
+
+    today = date.today()
+
+    term_status = ""
+    if card.term_due_date and card.term_notify:
+        if card.term_due_date < today:
+            term_status = "overdue"
+        elif card.term_warn_date and today >= card.term_warn_date:
+            term_status = "warn"
+        else:
+            term_status = "ok"
+
+    context = _card_modal_context(card)
+    context["term_status"] = term_status
+
     return JsonResponse({
         "ok": True,
         "card_id": card.id,
         "modal": render_to_string(
             "boards/partials/card_modal_body.html",
-            _card_modal_context(card),
-            request=request,
-        ),
-        "snippet": render_to_string(
-            "boards/partials/card_item.html",
-            {"card": card},
+            context,
             request=request,
         ),
     })
