@@ -205,16 +205,19 @@ def set_board_term_colors(request, board_id):
     if not _user_can_edit_board(request.user, board):
         return _deny_read_only(request, as_json=True)
 
-    colors = {
-        "ok": request.POST.get("term_color_ok"),
-        "warn": request.POST.get("term_color_warn"),
-        "overdue": request.POST.get("term_color_overdue"),
-    }
+    # aceita os dois nomes (term_color_* e due_color_*)
+    ok = (request.POST.get("term_color_ok") or request.POST.get("due_color_ok") or "").strip()
+    warn = (request.POST.get("term_color_warn") or request.POST.get("due_color_warn") or "").strip()
+    overdue = (request.POST.get("term_color_overdue") or request.POST.get("due_color_overdue") or "").strip()
+
+    colors = {"ok": ok, "warn": warn, "overdue": overdue}
 
     if not all(re.match(r"^#[0-9a-fA-F]{6}$", c or "") for c in colors.values()):
         return JsonResponse({"ok": False, "error": "Cores inválidas."}, status=400)
 
     fields = []
+
+    # ✅ fonte de verdade do board_detail.html
     if hasattr(board, "due_colors"):
         board.due_colors = colors
         fields.append("due_colors")
@@ -225,8 +228,10 @@ def set_board_term_colors(request, board_id):
         board.term_colors_json = json.dumps(colors, ensure_ascii=False)
         fields.append("term_colors_json")
 
-    board.version += 1
+    board.version = (board.version or 0) + 1
     fields.append("version")
     board.save(update_fields=fields)
 
-    return JsonResponse({"ok": True, "term_colors": colors})
+    # devolve ambos para o front se ajustar
+    return JsonResponse({"ok": True, "due_colors": colors, "term_colors": colors})
+

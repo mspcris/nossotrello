@@ -235,30 +235,46 @@ def update_card(request, card_id):
 
     card.save()
 
-    board = card.column.board  # ✅ DEFINE board AQUI (era isso que faltava)
+    board = card.column.board  # ✅ garante board definido
 
     # ============================================================
     # CORES do board (badge de prazo)
-    # Só persiste se vierem as 3 cores válidas.
-    # Evita "wipe" ao salvar card.
+    # - se vier qualquer campo, tenta persistir
+    # - completa faltantes com o que já está no board (evita wipe)
     # ============================================================
-    c_ok = (request.POST.get("due_color_ok") or "").strip()
-    c_warn = (request.POST.get("due_color_warn") or "").strip()
-    c_over = (request.POST.get("due_color_overdue") or "").strip()
+    has_due_color_fields = any(
+        k in request.POST
+        for k in ("due_color_ok", "due_color_warn", "due_color_overdue")
+    )
 
-    def valid_hex(c: str) -> bool:
-        return bool(re.match(r"^#[0-9a-fA-F]{6}$", c or ""))
+    if has_due_color_fields:
+        posted_ok = (request.POST.get("due_color_ok") or "").strip()
+        posted_warn = (request.POST.get("due_color_warn") or "").strip()
+        posted_over = (request.POST.get("due_color_overdue") or "").strip()
 
-    if c_ok and c_warn and c_over:
-        if not (valid_hex(c_ok) and valid_hex(c_warn) and valid_hex(c_over)):
-            return JsonResponse({"error": "Cores inválidas."}, status=400)
+        # estado atual do board
+        current = getattr(board, "due_colors", None) or {}
+        if not isinstance(current, dict):
+            current = {}
 
-        board.due_colors = {"ok": c_ok, "warn": c_warn, "overdue": c_over}
-        board.save(update_fields=["due_colors"])
+        new_ok = posted_ok or (current.get("ok") or "")
+        new_warn = posted_warn or (current.get("warn") or "")
+        new_over = posted_over or (current.get("overdue") or "")
 
-    # ✅ board.version deve subir sempre que o card foi salvo (independente de cor)
+        def valid_hex(c: str) -> bool:
+            return bool(re.match(r"^#[0-9a-fA-F]{6}$", c or ""))
+
+            # só salva se o "resultado final" tiver as 3 válidas
+        if new_ok and new_warn and new_over and all(valid_hex(c) for c in (new_ok, new_warn, new_over)):
+            board.due_colors = {"ok": new_ok, "warn": new_warn, "overdue": new_over}
+            board.save(update_fields=["due_colors"])
+        else:
+            return JsonResponse({"error": "Cores inválidas/incompletas."}, status=400)
+
+    # ✅ version sempre sobe quando atualiza o card
     board.version += 1
     board.save(update_fields=["version"])
+
 
 
     # ✅ menções na descrição (texto bruto do POST)
