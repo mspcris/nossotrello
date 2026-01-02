@@ -331,27 +331,104 @@ html.dark #cm-root{
           </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <label class="block">
-            <span class="cm-label">Vencimento</span>
-            <input type="date"
-                   name="due_date"
-                   class="cm-input"
-                   value="{% if card.due_date %}{{ card.due_date|date:'Y-m-d' }}{% endif %}">
-          </label>
 
-          <label class="block">
-            <span class="cm-label">Avisar em</span>
-            <input type="date"
-                   name="due_warn_date"
-                   class="cm-input"
-                   value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'Y-m-d' }}{% endif %}">
-          </label>
-        </div>
+
+
+
+
+
+
+
+
+
+
+
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+  <!-- VENCIMENTO -->
+  <div class="min-w-0">
+    <div class="cm-label">Vencimento</div>
+
+    <div class="relative">
+  <input type="text"
+         id="cm-due-date-display"
+         class="cm-input pr-10"
+         inputmode="numeric"
+         placeholder="DD/MM/AAAA"
+         value="{% if card.due_date %}{{ card.due_date|date:'d/m/Y' }}{% endif %}">
+
+  <!-- ícone (visual) -->
+  <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">
+    📅
+  </span>
+
+  <!-- o verdadeiro date picker (invisível, mas CLICÁVEL em cima do ícone) -->
+  <input type="date"
+         id="cm-due-date-picker"
+         class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 opacity-0 cursor-pointer z-10"
+         value="{% if card.due_date %}{{ card.due_date|date:'Y-m-d' }}{% endif %}">
+
+  <!-- valor real que vai no POST (ISO) -->
+  <input type="hidden"
+         name="due_date"
+         id="cm-due-date"
+         value="{% if card.due_date %}{{ card.due_date|date:'Y-m-d' }}{% endif %}">
+</div>
+
+  </div>
+
+  <!-- AVISAR EM -->
+  <div class="min-w-0">
+    <div class="cm-label">Avisar em</div>
+
+    <div class="relative">
+  <input type="text"
+         id="cm-due-warn-date-display"
+         class="cm-input pr-10"
+         inputmode="numeric"
+         placeholder="DD/MM/AAAA"
+         value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'d/m/Y' }}{% endif %}">
+
+  <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">
+    📅
+  </span>
+
+  <input type="date"
+         id="cm-due-warn-date-picker"
+         class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 opacity-0 cursor-pointer z-10"
+         value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'Y-m-d' }}{% endif %}">
+
+  <input type="hidden"
+         name="due_warn_date"
+         id="cm-due-warn-date"
+         value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'Y-m-d' }}{% endif %}">
+</div>
+
+  </div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         <div class="flex items-center gap-2">
           <input type="hidden" name="due_notify" value="0">
-          <label class="cm-muted" style="display:flex;align-items:center;gap:8px;">
+            <label class="cm-muted" style="display:flex;align-items:center;gap:8px;white-space:nowrap;">
             <input type="checkbox"
                    name="due_notify"
                    value="1"
@@ -1520,12 +1597,307 @@ if (!window.__cmChecklistAfterSwapBound) {
 
 
 
+
+function initBrazilDateInputs(){
+  const form = document.getElementById("cm-main-form");
+  if (!form) return;
+
+  const pairs = [
+    {
+      displayId: "cm-due-date-display",
+      hiddenId: "cm-due-date",
+      pickerId: "cm-due-date-picker",
+      btnId: "cm-due-date-btn"
+    },
+    {
+      displayId: "cm-due-warn-date-display",
+      hiddenId: "cm-due-warn-date",
+      pickerId: "cm-due-warn-date-picker",
+      btnId: "cm-due-warn-date-btn"
+    },
+  ];
+
+  function digitsOnly(s){ return String(s || "").replace(/\D+/g, ""); }
+
+  function applyMaskDDMMYYYY(raw){
+    const d = digitsOnly(raw).slice(0, 8); // ddmmyyyy
+    const p1 = d.slice(0, 2);
+    const p2 = d.slice(2, 4);
+    const p3 = d.slice(4, 8);
+    let out = p1;
+    if (p2) out += "/" + p2;
+    if (p3) out += "/" + p3;
+    return out;
+  }
+
+  function isoToBR(iso){
+    const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return "";
+    return `${m[3]}/${m[2]}/${m[1]}`;
+  }
+
+  function toISO(ddmmyyyy){
+    const m = String(ddmmyyyy || "").match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (!m) return "";
+    const dd = parseInt(m[1], 10);
+    const mm = parseInt(m[2], 10);
+    const yyyy = parseInt(m[3], 10);
+
+    if (yyyy < 1900 || yyyy > 2200) return "";
+    if (mm < 1 || mm > 12) return "";
+    if (dd < 1 || dd > 31) return "";
+
+    const dt = new Date(yyyy, mm - 1, dd);
+    if (dt.getFullYear() !== yyyy || (dt.getMonth() + 1) !== mm || dt.getDate() !== dd) return "";
+
+    const mm2 = String(mm).padStart(2, "0");
+    const dd2 = String(dd).padStart(2, "0");
+    return `${yyyy}-${mm2}-${dd2}`;
+  }
+
+  function submitNow(){
+    try {
+      form.requestSubmit ? form.requestSubmit() : form.submit();
+    } catch (_e) {
+      try { form.submit(); } catch (_e2) {}
+    }
+  }
+
+  function wireOne(cfg){
+    const displayEl = document.getElementById(cfg.displayId);
+    const hiddenEl  = document.getElementById(cfg.hiddenId);
+    const pickerEl  = document.getElementById(cfg.pickerId);
+    const btnEl     = document.getElementById(cfg.btnId);
+    if (!displayEl || !hiddenEl) return;
+
+    // evita bind duplicado (por swap)
+    if (displayEl.dataset.brDateBound === "1") return;
+    displayEl.dataset.brDateBound = "1";
+
+    // estado p/ auto-save
+    const savedKey = cfg.hiddenId + "__lastSaved";
+    displayEl.dataset[savedKey] = (hiddenEl.value || "").trim();
+
+    function syncFromDisplay(){
+      const masked = applyMaskDDMMYYYY(displayEl.value || "");
+      if (displayEl.value !== masked) displayEl.value = masked;
+
+      const iso = toISO(masked);
+      hiddenEl.value = iso; // vazio se inválido/incompleto
+
+      if (pickerEl && iso) pickerEl.value = iso;
+    }
+
+    function maybeAutoSave(){
+      const iso = (hiddenEl.value || "").trim();
+      if (!iso) return; // só salva quando válido
+
+      const last = (displayEl.dataset[savedKey] || "").trim();
+      if (iso === last) return;
+
+      displayEl.dataset[savedKey] = iso;
+      submitNow();
+    }
+
+    // digitando (não salva aqui, só sincroniza)
+    displayEl.addEventListener("input", syncFromDisplay);
+
+    // ao sair do campo: sincroniza e salva
+    displayEl.addEventListener("blur", function(){
+      syncFromDisplay();
+      maybeAutoSave();
+    });
+
+    // Enter salva
+    displayEl.addEventListener("keydown", function(e){
+      if (e.key === "Enter") {
+        e.preventDefault();
+        syncFromDisplay();
+        maybeAutoSave();
+      }
+    });
+
+    // calendário (picker nativo)
+    if (btnEl && pickerEl) {
+      btnEl.addEventListener("click", function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        try {
+          if (pickerEl.showPicker) pickerEl.showPicker();
+          else { pickerEl.focus(); pickerEl.click(); }
+        } catch (_e) {
+          try { pickerEl.focus(); pickerEl.click(); } catch (_e2) {}
+        }
+      });
+
+      pickerEl.addEventListener("change", function(){
+        const iso = (pickerEl.value || "").trim();
+        hiddenEl.value = iso;
+        displayEl.value = isoToBR(iso);
+
+        // auto-save imediato ao escolher no calendário
+        maybeAutoSave();
+      });
+    }
+
+    // inicial
+    syncFromDisplay();
+  }
+
+  pairs.forEach(wireOne);
+}
+
+
+
+
+
+
+
+
+function initDueDatePickersAutosave(){
+  const form = document.getElementById("cm-main-form");
+  if (!form) return;
+
+  function parseBRtoISO(s){
+    const v = String(s || "").trim();
+    const m = v.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (!m) return "";
+    const dd = parseInt(m[1], 10);
+    const mm = parseInt(m[2], 10);
+    const yy = parseInt(m[3], 10);
+    if (!yy || mm < 1 || mm > 12 || dd < 1 || dd > 31) return "";
+
+    const dt = new Date(yy, mm - 1, dd);
+    if (dt.getFullYear() !== yy || (dt.getMonth() + 1) !== mm || dt.getDate() !== dd) return "";
+
+    return (
+      String(yy).padStart(4, "0") + "-" +
+      String(mm).padStart(2, "0") + "-" +
+      String(dd).padStart(2, "0")
+    );
+  }
+
+  function formatISOtoBR(iso){
+    const v = String(iso || "").trim();
+    const m = v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return "";
+    return `${m[3]}/${m[2]}/${m[1]}`;
+  }
+
+  function digitsOnly(s){ return String(s || "").replace(/\D+/g, ""); }
+
+  function maskDDMMYYYY(raw){
+    const d = digitsOnly(raw).slice(0, 8);
+    const p1 = d.slice(0, 2);
+    const p2 = d.slice(2, 4);
+    const p3 = d.slice(4, 8);
+    let out = p1;
+    if (p2) out += "/" + p2;
+    if (p3) out += "/" + p3;
+    return out;
+  }
+
+  function autosave(){
+    try {
+      form.requestSubmit ? form.requestSubmit() : form.submit();
+    } catch (_e) {
+      try { form.submit(); } catch (_e2) {}
+    }
+  }
+
+  function wireOne(prefix){
+    const display = document.getElementById(`cm-${prefix}-display`);
+    const picker  = document.getElementById(`cm-${prefix}-picker`);
+    const hidden  = document.getElementById(`cm-${prefix}`);
+    if (!display || !picker || !hidden) return;
+
+    // evita bind duplicado em swaps
+    if (display.dataset.cmDateBound === "1") return;
+    display.dataset.cmDateBound = "1";
+
+    function applyDisplayMask(){
+      const masked = maskDDMMYYYY(display.value);
+      if (display.value !== masked) display.value = masked;
+    }
+
+    function syncFromDisplay(){
+      applyDisplayMask();
+      const iso = parseBRtoISO(display.value);
+      hidden.value = iso;
+      if (iso) picker.value = iso;
+      return iso;
+    }
+
+    function syncFromPicker(){
+      const iso = (picker.value || "").trim();
+      hidden.value = iso;
+      display.value = iso ? formatISOtoBR(iso) : "";
+      return iso;
+    }
+
+    // digitando: só máscara + sync de hidden (sem salvar)
+    display.addEventListener("input", function(){
+      applyDisplayMask();
+      const iso = parseBRtoISO(display.value);
+      hidden.value = iso;
+      if (iso) picker.value = iso;
+    });
+
+    // blur: valida e salva se válido (ou salva vazio se limpou)
+    display.addEventListener("blur", function(){
+      const txt = String(display.value || "").trim();
+      const iso = syncFromDisplay();
+
+      if (!iso && txt !== "") return; // inválido: não salva
+      if (iso) display.value = formatISOtoBR(iso); // normaliza
+      autosave();
+    });
+
+    display.addEventListener("keydown", function(ev){
+      if (ev.key === "Enter") {
+        ev.preventDefault();
+        display.blur();
+      }
+      if (ev.key === "Escape") {
+        ev.preventDefault();
+        // volta para o que estava salvo no hidden
+        const iso = (hidden.value || "").trim();
+        display.value = iso ? formatISOtoBR(iso) : "";
+        display.blur();
+      }
+    });
+
+    // picker: alguns browsers disparam input, outros change -> ouve ambos
+    const onPickerCommit = function(){
+      syncFromPicker();
+      autosave();
+    };
+    picker.addEventListener("input", onPickerCommit);
+    picker.addEventListener("change", onPickerCommit);
+
+    // inicial: garante consistência visual
+    const iso0 = (hidden.value || "").trim() || (picker.value || "").trim();
+    if (iso0) {
+      hidden.value = iso0;
+      picker.value = iso0;
+      display.value = formatISOtoBR(iso0);
+    }
+  }
+
+  wireOne("due-date");
+  wireOne("due-warn-date");
+}
+
+
+
+
   // init
   initTabs();
   initFloatbarDirty();
   initActionDock();
   initDueColorDots();
   initTagColorPopover();
+  initDueDatePickersAutosave();
 })();
 
 
