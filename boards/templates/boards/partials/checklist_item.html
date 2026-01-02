@@ -1,6 +1,7 @@
-<li class="checklist-item {% if item.is_done %}is-done{% endif %}"
-    data-item-id="{{ item.id }}">
+{# templates/boards/partials/checklist_item.html (arquivo completo) #}
 
+<li class="checklist-item flex items-center gap-2 py-1 {% if item.is_done %}is-done{% endif %}"
+    data-item-id="{{ item.id }}">
 
   <!-- DRAG HANDLE -->
   <span class="checklist-item-handle cursor-grab select-none text-gray-400">
@@ -8,16 +9,91 @@
   </span>
 
   <!-- CHECKBOX -->
-<input type="checkbox"
-       {% if item.is_done %}checked{% endif %}
-       hx-post="{% url 'boards:checklist_toggle_item' item.id %}"
-       hx-target="#checklist-list"
-       hx-swap="innerHTML">
+  <input type="checkbox"
+         {% if item.is_done %}checked{% endif %}
+         hx-post="{% url 'boards:checklist_toggle_item' item.id %}"
+         hx-target="#checklist-list"
+         hx-swap="innerHTML">
 
-  <!-- TEXTO -->
-  <span class="flex-1 text-sm leading-snug break-words">
+  <!-- TEXTO (view) -->
+  <span class="checklist-text flex-1 text-sm leading-snug break-words cursor-text"
+        onclick="(function(el){
+          const li = el.closest('li.checklist-item');
+          if(!li) return;
+          const view = li.querySelector('.checklist-text');
+          const form = li.querySelector('.checklist-edit-form');
+          const input = li.querySelector('.checklist-edit-input');
+          if(!view || !form || !input) return;
+
+          view.classList.add('hidden');
+          form.classList.remove('hidden');
+          input.focus();
+          try { input.setSelectionRange(input.value.length, input.value.length); } catch(_e) {}
+
+          function submitViaHtmx(){
+            // evita form.submit() (bypass HTMX)
+            if (window.htmx && typeof window.htmx.trigger === 'function') {
+              window.htmx.trigger(form, 'submit');
+              return;
+            }
+            if (form.requestSubmit) { form.requestSubmit(); return; }
+            form.dispatchEvent(new Event('submit', { bubbles:true, cancelable:true }));
+          }
+
+          // salva no blur (1x)
+          if (input.dataset.blurBound !== '1') {
+            input.dataset.blurBound = '1';
+            input.addEventListener('blur', function(){
+              submitViaHtmx();
+            });
+          }
+
+          // Enter salva / Esc cancela (1x)
+          if (input.dataset.keyBound !== '1') {
+            input.dataset.keyBound = '1';
+            input.addEventListener('keydown', function(e){
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                submitViaHtmx();
+              }
+              if (e.key === 'Escape') {
+                e.preventDefault();
+                form.classList.add('hidden');
+                view.classList.remove('hidden');
+              }
+            });
+          }
+        })(this);">
     {{ item.text }}
   </span>
+
+  <!-- FORM (edit) -->
+  <form class="checklist-edit-form flex-1 hidden"
+        method="post"
+        hx-post="{% url 'boards:checklist_update_item' item.id %}"
+        hx-trigger="submit"
+        hx-target="#checklist-list"
+        hx-swap="innerHTML">
+    {% csrf_token %}
+    <input type="text"
+           name="text"
+           value="{{ item.text }}"
+           class="checklist-edit-input w-full text-sm leading-snug bg-transparent border border-gray-300 rounded px-2 py-1 outline-none"
+           autocomplete="off">
+    <button type="submit" class="hidden" tabindex="-1" aria-hidden="true">Salvar</button>
+  </form>
+
+  <!-- EDITAR (caneta) -->
+  <button type="button"
+          class="text-xs text-gray-400 hover:text-gray-700"
+          title="Editar"
+          onclick="(function(btn){
+            const li = btn.closest('li.checklist-item');
+            const view = li && li.querySelector('.checklist-text');
+            if (view) view.click();
+          })(this);">
+    ✎
+  </button>
 
   <!-- REMOVER -->
   <button type="button"

@@ -1495,6 +1495,29 @@ function initTagColorPopover(){
 
 
 
+function reorderChecklistDoneToEnd(){
+  const list = document.getElementById("checklist-list");
+  if (!list) return;
+
+  const done = Array.from(list.querySelectorAll("li.checklist-item.is-done"));
+  done.forEach(li => list.appendChild(li));
+}
+
+// 1) ao abrir modal
+reorderChecklistDoneToEnd();
+
+// 2) após qualquer swap do checklist
+if (!window.__cmChecklistAfterSwapBound) {
+  window.__cmChecklistAfterSwapBound = true;
+
+  document.body.addEventListener("htmx:afterSwap", function(evt){
+    if (evt.target && evt.target.id === "checklist-list") {
+      reorderChecklistDoneToEnd();
+    }
+  });
+}
+
+
 
 
   // init
