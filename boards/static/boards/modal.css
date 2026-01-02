@@ -1,0 +1,110 @@
+/* ============================================================
+   CM — ACTION DOCK (Mover / Duplicar / Copiar link)
+   ============================================================ */
+#cm-action-dock {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 9999;
+
+  display: flex;
+  justify-content: flex-end;
+  pointer-events: none;
+}
+
+#cm-action-dock .dock-wrap {
+  pointer-events: auto;
+  border-radius: 999px;
+  border: 1px solid var(--cm-border);
+  background: var(--cm-bg);
+  box-shadow: var(--cm-shadow);
+
+  padding: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* botão principal */
+#cm-action-dock .dock-toggle {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  border: 1px solid var(--cm-border-2);
+  background: var(--cm-surface-2);
+  color: var(--cm-text);
+  cursor: pointer;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  opacity: .88;
+  transition: transform .12s ease, opacity .12s ease, border-color .12s ease;
+}
+#cm-action-dock .dock-toggle:hover {
+  opacity: 1;
+  transform: translateY(-1px);
+  border-color: var(--cm-border);
+}
+
+/* ações */
+#cm-action-dock .dock-actions {
+  display: none;
+  gap: 8px;
+  align-items: center;
+}
+#cm-action-dock.is-open .dock-actions {
+  display: inline-flex;
+}
+
+#cm-action-dock .dock-action {
+  border-radius: 999px;
+  border: 1px solid var(--cm-border-2);
+  background: var(--cm-surface-2);
+  color: var(--cm-text);
+  cursor: pointer;
+  padding: 10px 12px;
+  font-size: 13px;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  transition: transform .12s ease, border-color .12s ease;
+}
+#cm-action-dock .dock-action:hover {
+  transform: translateY(-1px);
+  border-color: var(--cm-border);
+}
+
+#cm-action-dock .dock-action .label {
+  display: none;
+  white-space: nowrap;
+}
+#cm-action-dock.is-open .dock-action .label {
+  display: inline;
+}
+
+#cm-action-dock-panel {
+  position: absolute;
+  right: 0;
+  bottom: 58px;
+  width: min(520px, calc(100vw - 48px));
+  border-radius: 14px;
+  border: 1px solid var(--cm-border);
+  background: var(--cm-surface);
+  box-shadow: var(--cm-shadow);
+  padding: 12px;
+  display: none;
+}
+#cm-action-dock-panel.is-open {
+  display: block;
+}
+
+@keyframes cmBoing {
+  0%   { transform: translateY(8px) scale(0.98); opacity: 0.0; }
+  70%  { transform: translateY(-2px) scale(1.01); opacity: 1.0; }
+  100% { transform: translateY(0) scale(1.00); opacity: 1.0; }
+}
+#cm-action-dock-panel.boing {
+  animation: cmBoing 220ms ease-out;
+}

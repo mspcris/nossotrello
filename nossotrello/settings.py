@@ -37,7 +37,8 @@ DEBUG = _env_bool("DEBUG", default=False)
 
 ALLOWED_HOSTS = _env_csv(
     "ALLOWED_HOSTS",
-    default_list=["127.0.0.1", "192.168.1.213","192.168.1.226", "localhost", "tarefas.camim.com.br"],
+    default_list=["127.0.0.1", "localhost", "tarefas.camim.com.br",
+                  "192.168.1.213","192.168.1.226",  "192.168.0.129",],
 
 )
 

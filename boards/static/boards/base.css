@@ -1215,6 +1215,13 @@ html.dark #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-
   }
 }
 
+/* ============================================================
+   CM MODAL — Tabs/Panels (garante hidden por padrão)
+   ============================================================ */
+.cm-panel { display: none; }
+.cm-panel.is-active { display: block; }
+
+
 /* =======================================================================
    FIM DO BASE.CSS CONSOLIDADO
    ======================================================================= */

@@ -212,7 +212,7 @@ html.dark #cm-root{
       </div>
 
       <div class="cm-actions" id="cm-actions">
-        <button type="button" class="cm-btn primary" id="cm-save-btn">Salvar</button>
+        <button type="submit" form="cm-main-form" class="cm-btn primary" id="cm-save-btn">Salvar</button>
       </div>
     </div>
   </div>
@@ -245,6 +245,14 @@ html.dark #cm-root{
       </div>
     </div>
   </div>
+
+  <form id="cm-cover-form"
+    class="hidden"
+    method="post"
+    enctype="multipart/form-data"
+    action="{% url 'boards:set_card_cover' card.id %}">
+    {% csrf_token %}
+  </form>
 
   {# Form principal (descrição + tags + prazo + capa) #}
   <form id="cm-main-form"
@@ -346,19 +354,15 @@ html.dark #cm-root{
               Escolher imagem…
             </button>
 
-            <form id="cm-cover-form"
-                  class="hidden"
-                  method="post"
-                  enctype="multipart/form-data"
-                  action="{% url 'boards:set_card_cover' card.id %}">
-              {% csrf_token %}
-            </form>
+            
 
             <input type="file"
-                   id="cm-cover-file"
-                   name="cover"
-                   accept="image/*"
-                   style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;">
+             id="cm-cover-file"
+             name="cover"
+             form="cm-cover-form"
+             accept="image/*"
+             style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;">
+
           </div>
         </div>
 
@@ -386,7 +390,8 @@ html.dark #cm-root{
   <div id="cm-floatbar" class="cm-floatbar hidden" aria-live="polite">
     <div class="cm-floatbar-inner">
       <button type="button" class="cm-btn" id="cm-close-btn">Fechar</button>
-      <button type="button" class="cm-btn primary" id="cm-float-save-btn">Salvar</button>
+        <button type="submit" form="cm-main-form" class="cm-btn primary" id="cm-float-save-btn">Salvar</button>
+
     </div>
   </div>
 
@@ -690,8 +695,9 @@ function submitForm(){
     }
   }
 
-  if (topSave) topSave.addEventListener("click", submitForm);
-  if (floatSave) floatSave.addEventListener("click", submitForm);
+  if (topSave) topSave.addEventListener("click", (e) => { e.preventDefault(); submitForm(); });
+  if (floatSave) floatSave.addEventListener("click", (e) => { e.preventDefault(); submitForm(); });
+
 
   if (closeBtn){
     closeBtn.addEventListener("click", function(){
