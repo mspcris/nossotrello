@@ -233,24 +233,25 @@ def update_card(request, card_id):
     added = [t for t in new_tags if t not in old_tags]
 
     card.save()
+    # ... (depois de card.save())
     board = card.column.board
 
     import re
-
     c_ok = (request.POST.get("due_color_ok") or "").strip()
     c_warn = (request.POST.get("due_color_warn") or "").strip()
     c_over = (request.POST.get("due_color_overdue") or "").strip()
 
-    def valid_hex(c):
+    def valid_hex(c: str) -> bool:
         return bool(re.match(r"^#[0-9a-fA-F]{6}$", c or ""))
 
+    # Só atualiza se vierem as 3 e forem válidas
     if c_ok and c_warn and c_over:
         if not (valid_hex(c_ok) and valid_hex(c_warn) and valid_hex(c_over)):
             return JsonResponse({"error": "Cores inválidas."}, status=400)
 
-    board = card.column.board
     board.due_colors = {"ok": c_ok, "warn": c_warn, "overdue": c_over}
     board.save(update_fields=["due_colors"])
+
 
 
     board.version += 1

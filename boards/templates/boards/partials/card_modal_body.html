@@ -701,48 +701,60 @@ html.dark #cm-root{
 
 
 
-function submitForm() {
-  // dispara o submit do form (HTMX intercepta)
-  form.requestSubmit ? form.requestSubmit() : form.submit();
+  function submitForm() {
+  if (!form) return;
 
-  // bind 1x do afterRequest
-  if (form && form.dataset.cmAfterReqBound !== "1") {
+  // Bind único e determinístico (antes do submit)
+  if (form.dataset.cmAfterReqBound !== "1") {
     form.dataset.cmAfterReqBound = "1";
 
     form.addEventListener("htmx:afterRequest", function (evt) {
+      // garante que é o request deste form
+      if (evt.target !== form) return;
       if (!evt.detail?.successful) return;
 
-      // 1) atualiza snippet do card (board)
+      // 1) Atualiza snippet do card (se existir)
       if (typeof window.refreshCardSnippet === "function") {
         window.refreshCardSnippet(cardId);
       }
 
-      // 2) atualiza cache global de cores do prazo (board) com o que acabou de ser salvo no modal
-      try {
-        const okEl = form.querySelector('input[name="due_color_ok"]');
-        const warnEl = form.querySelector('input[name="due_color_warn"]');
-        const overEl = form.querySelector('input[name="due_color_overdue"]');
+      // 2) Atualiza as cores globais do board com o que está no modal AGORA
+      const okEl = form.querySelector('input[name="due_color_ok"]');
+      const warnEl = form.querySelector('input[name="due_color_warn"]');
+      const overEl = form.querySelector('input[name="due_color_overdue"]');
 
-        if (okEl && warnEl && overEl) {
-          window.BOARD_TERM_COLORS = {
-            ok: okEl.value,
-            warn: warnEl.value,
-            overdue: overEl.value,
-          };
-        }
-      } catch (_e) {}
+      const next = {
+        ok: (okEl?.value || "").trim(),
+        warn: (warnEl?.value || "").trim(),
+        overdue: (overEl?.value || "").trim(),
+      };
 
-      // 3) reaplica cores na board imediatamente (sem reload)
+      // Só sobrescreve se vierem as 3 (evita apagar estado)
+      if (next.ok && next.warn && next.overdue) {
+        window.BOARD_TERM_COLORS = next;
+      }
+
+      // 3) Reaplica cores no board
       const columnsList = document.getElementById("columns-list");
+
       if (columnsList && typeof window.applySavedTagColorsToBoard === "function") {
         window.applySavedTagColorsToBoard(columnsList);
       }
+
       if (columnsList && typeof window.applySavedTermColorsToBoard === "function") {
         window.applySavedTermColorsToBoard(columnsList);
       }
     });
   }
+
+  // Dispara submit
+  try {
+    form.requestSubmit ? form.requestSubmit() : form.submit();
+  } catch (_e) {
+    form.submit();
+  }
 }
+
 
 
   if (topSave) topSave.addEventListener("click", (e) => { e.preventDefault(); submitForm(); });
