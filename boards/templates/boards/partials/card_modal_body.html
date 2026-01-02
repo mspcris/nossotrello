@@ -172,19 +172,15 @@ html.dark #cm-root{
    PRAZO — OVERLAY FINAL (ÚNICO BLOCO VÁLIDO)
    ============================================================ */
 
-#cm-root[data-term-notify="1"][data-term-status="ok"]{
-  --cm-term-rgb: 22,163,74;
+/* Overlay do prazo (cor vem do JS via --cm-term-rgb) */
+#cm-root[data-term-notify="1"][data-term-status]{
   --cm-term-opacity: 0.12;
 }
 
-#cm-root[data-term-notify="1"][data-term-status="warn"]{
-  --cm-term-rgb: 245,158,11;
-  --cm-term-opacity: 0.12;
-}
-
-#cm-root[data-term-notify="1"][data-term-status="overdue"]{
-  --cm-term-rgb: 220,38,38;
-  --cm-term-opacity: 0.12;
+/* Se não notifica, overlay some */
+#cm-root:not([data-term-notify="1"]),
+#cm-root[data-term-notify="0"]{
+  --cm-term-opacity: 0;
 }
 
 
@@ -308,23 +304,26 @@ html.dark #cm-root{
           </div>
 
           <div class="flex items-center gap-3 flex-wrap">
-            <label class="cm-muted" style="display:flex;align-items:center;gap:8px;">
-              <input type="color" name="due_color_ok" value="{{ board_due_colors.ok }}">
-            OK
-            <span class="cm-color-dot" aria-hidden="true"></span>
-            </label>
+            <div class="flex items-center gap-3 flex-wrap">
+              <label class="cm-muted cm-due-color" style="display:flex;align-items:center;gap:8px;">
+                <input type="color" name="due_color_ok" value="{{ board_due_colors.ok|default:'#16a34a' }}">
+                OK
+                <span class="cm-color-dot" aria-hidden="true"></span>
+              </label>
+            
+              <label class="cm-muted cm-due-color" style="display:flex;align-items:center;gap:8px;">
+                <input type="color" name="due_color_warn" value="{{ board_due_colors.warn|default:'#f59e0b' }}">
+                Alerta
+                <span class="cm-color-dot" aria-hidden="true"></span>
+              </label>
+            
+              <label class="cm-muted cm-due-color" style="display:flex;align-items:center;gap:8px;">
+                <input type="color" name="due_color_overdue" value="{{ board_due_colors.overdue|default:'#dc2626' }}">
+                Vencido
+                <span class="cm-color-dot" aria-hidden="true"></span>
+              </label>
+            </div>
 
-            <label class="cm-muted" style="display:flex;align-items:center;gap:8px;">
-              <input type="color" name="due_color_warn" value="{{ board_due_colors.warn }}">
-            Alerta
-            <span class="cm-color-dot" aria-hidden="true"></span>
-            </label>
-
-            <label class="cm-muted" style="display:flex;align-items:center;gap:8px;">
-              <input type="color" name="due_color_overdue" value="{{ board_due_colors.overdue }}">
-            Vencido
-            <span class="cm-color-dot" aria-hidden="true"></span>
-            </label>
 
           </div>
         </div>
@@ -719,6 +718,7 @@ html.dark #cm-root{
       }
 
       // 2) Atualiza as cores globais do board com o que está no modal AGORA
+        // ✅ atualiza estado global ANTES do swap
       const okEl = form.querySelector('input[name="due_color_ok"]');
       const warnEl = form.querySelector('input[name="due_color_warn"]');
       const overEl = form.querySelector('input[name="due_color_overdue"]');
@@ -728,6 +728,11 @@ html.dark #cm-root{
         warn: (warnEl?.value || "").trim(),
         overdue: (overEl?.value || "").trim(),
       };
+
+      if (next.ok && next.warn && next.overdue) {
+        window.BOARD_TERM_COLORS = next;
+      }
+
 
       // Só sobrescreve se vierem as 3 (evita apagar estado)
       if (next.ok && next.warn && next.overdue) {

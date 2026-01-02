@@ -332,7 +332,29 @@ def update_card(request, card_id):
     ):
         _log_card(card, request, f"<p><strong>{actor}</strong> atualizou o card.</p>")
 
-    return render(request, "boards/partials/card_modal_body.html", _card_modal_context(card))
+    from datetime import date as _date
+
+    today = _date.today()
+
+    term_status = ""
+    if card.due_date and card.due_notify:
+        if card.due_date < today:
+            term_status = "overdue"
+        elif card.due_warn_date and today >= card.due_warn_date:
+            term_status = "warn"
+        else:
+            term_status = "ok"
+
+    ctx = _card_modal_context(card)
+
+    # garante que o overlay não “zera” após salvar
+    ctx["term_status"] = term_status
+
+    # garante que os inputs de cor sempre venham do source of truth atual
+    ctx["board_due_colors"] = getattr(card.column.board, "due_colors", {}) or {}
+
+    return render(request, "boards/partials/card_modal_body.html", ctx)
+
 
 
 

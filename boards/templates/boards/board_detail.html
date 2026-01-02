@@ -720,8 +720,9 @@
   });
 
   document.body.addEventListener("htmx:afterSwap", (evt) => {
-    window.applySavedTagColorsToBoard(evt.target);
+    window.applySavedTagColorsToBoard(evt.detail?.target || evt.target || document);
   });
+
 </script>
 
 <script>
@@ -806,18 +807,51 @@
     });
 
     document.body.addEventListener("htmx:afterSwap", (e) => {
-      window.BoardRuntime.ensure(e.target || document);
+      const scope = e.detail?.target || e.target || document;
+      window.BoardRuntime.ensure(scope);
     });
 
     document.body.addEventListener("htmx:afterSettle", (e) => {
-      window.BoardRuntime.ensure(e.target || document);
+      const scope = e.detail?.target || e.target || document;
+      window.BoardRuntime.ensure(scope);
     });
+
 
     document.addEventListener("modal:closed", () => {
       window.BoardRuntime.ensure(document);
     });
   })();
 </script>
+
+
+<script>
+  // ============================================================
+  // TERM COLORS (board.due_colors) — rehidratação do MODAL + DOM
+  // ============================================================
+  window.applySavedTermColorsToBoard = function(scope) {
+    const root = scope || document;
+    const colors = window.BOARD_TERM_COLORS || {};
+
+    const okInput   = root.querySelector('input[name="term_color_ok"], input[name="due_color_ok"], #term_color_ok, #due_color_ok');
+    const warnInput = root.querySelector('input[name="term_color_warn"], input[name="due_color_warn"], #term_color_warn, #due_color_warn');
+    const overInput = root.querySelector('input[name="term_color_overdue"], input[name="due_color_overdue"], #term_color_overdue, #due_color_overdue');
+
+    if (okInput && colors.ok) okInput.value = colors.ok;
+    if (warnInput && colors.warn) warnInput.value = colors.warn;
+    if (overInput && colors.overdue) overInput.value = colors.overdue;
+
+    root.querySelectorAll("[data-term-status]").forEach((el) => {
+      const st = (el.getAttribute("data-term-status") || "").trim(); // ok|warn|overdue
+      const c = colors[st];
+      if (!c) return;
+
+      el.style.backgroundColor = c + "20";
+      el.style.color = c;
+      el.style.borderColor = c;
+    });
+  };
+</script>
+
 
 
 <script>
