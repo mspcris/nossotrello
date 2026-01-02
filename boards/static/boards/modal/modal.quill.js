@@ -154,9 +154,16 @@ function renderMentionCard(item) {
     if (initial) quill.root.innerHTML = initial;
 
     // manter textarea atualizado
+    // manter textarea atualizado + disparar input (dirty tracking / floatbar)
     quill.on("text-change", () => {
       textarea.value = quill.root.innerHTML;
+
+      // garante que listeners que dependem de "input" enxerguem a mudança
+      try {
+        textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      } catch (_e) {}
     });
+
 
     // upload image base64 quando inserir via toolbar
     const toolbar = quill.getModule("toolbar");
