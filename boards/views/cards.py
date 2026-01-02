@@ -234,10 +234,14 @@ def update_card(request, card_id):
     added = [t for t in new_tags if t not in old_tags]
 
     card.save()
-    # ... (depois de card.save())
-    board = card.column.board
 
-    import re
+    board = card.column.board  # ✅ DEFINE board AQUI (era isso que faltava)
+
+    # ============================================================
+    # CORES do board (badge de prazo)
+    # Só persiste se vierem as 3 cores válidas.
+    # Evita "wipe" ao salvar card.
+    # ============================================================
     c_ok = (request.POST.get("due_color_ok") or "").strip()
     c_warn = (request.POST.get("due_color_warn") or "").strip()
     c_over = (request.POST.get("due_color_overdue") or "").strip()
@@ -249,14 +253,13 @@ def update_card(request, card_id):
         if not (valid_hex(c_ok) and valid_hex(c_warn) and valid_hex(c_over)):
             return JsonResponse({"error": "Cores inválidas."}, status=400)
 
-    board.due_colors = {"ok": c_ok, "warn": c_warn, "overdue": c_over}
-    board.save(update_fields=["due_colors"])
+        board.due_colors = {"ok": c_ok, "warn": c_warn, "overdue": c_over}
+        board.save(update_fields=["due_colors"])
 
-
-
-
+    # ✅ board.version deve subir sempre que o card foi salvo (independente de cor)
     board.version += 1
     board.save(update_fields=["version"])
+
 
     # ✅ menções na descrição (texto bruto do POST)
     import logging
