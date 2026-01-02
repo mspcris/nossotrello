@@ -214,14 +214,19 @@ def set_board_term_colors(request, board_id):
     if not all(re.match(r"^#[0-9a-fA-F]{6}$", c or "") for c in colors.values()):
         return JsonResponse({"ok": False, "error": "Cores inválidas."}, status=400)
 
-    if hasattr(board, "term_colors"):
+    fields = []
+    if hasattr(board, "due_colors"):
+        board.due_colors = colors
+        fields.append("due_colors")
+    elif hasattr(board, "term_colors"):
         board.term_colors = colors
-        board.save(update_fields=["term_colors"])
+        fields.append("term_colors")
     else:
         board.term_colors_json = json.dumps(colors, ensure_ascii=False)
-        board.save(update_fields=["term_colors_json"])
+        fields.append("term_colors_json")
 
     board.version += 1
-    board.save(update_fields=["version"])
+    fields.append("version")
+    board.save(update_fields=fields)
 
     return JsonResponse({"ok": True, "term_colors": colors})

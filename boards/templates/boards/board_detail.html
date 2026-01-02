@@ -775,6 +775,10 @@
       safe(() => window.applySavedTagColorsToBoard && window.applySavedTagColorsToBoard(scope || document));
     }
 
+    function ensureTermColors(scope) {
+      safe(() => window.applySavedTermColorsToBoard && window.applySavedTermColorsToBoard(scope || document));
+    }
+
     function ensureHtmxProcess(scopeEl) {
       const el = scopeEl || document;
       if (window.htmx && typeof window.htmx.process === "function") {
@@ -787,18 +791,15 @@
       ensureHtmxProcess(scopeEl);
       ensureSortable();
       ensureTagColors(scopeEl || document);
+      ensureTermColors(scopeEl || document);
     }
 
-    window.BoardRuntime = {
-      ensure: ensureAll
-    };
+    window.BoardRuntime = { ensure: ensureAll };
 
-    // 1) hard reload / normal load
     document.addEventListener("DOMContentLoaded", () => {
       window.BoardRuntime.ensure(document);
     });
 
-    // 2) qualquer swap HTMX relevante
     document.body.addEventListener("htmx:afterSwap", (e) => {
       window.BoardRuntime.ensure(e.target || document);
     });
@@ -807,7 +808,6 @@
       window.BoardRuntime.ensure(e.target || document);
     });
 
-    // 3) quando o modal fechar, rehidrata board (isso elimina o “só funciona depois que abre e fecha”)
     document.addEventListener("modal:closed", () => {
       window.BoardRuntime.ensure(document);
     });
