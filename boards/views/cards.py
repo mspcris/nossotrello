@@ -106,6 +106,7 @@ def add_card(request, column_id):
             card.save()
 
             board = card.column.board
+
             board.version += 1
             board.save(update_fields=["version"])
 
@@ -244,13 +245,13 @@ def update_card(request, card_id):
     def valid_hex(c: str) -> bool:
         return bool(re.match(r"^#[0-9a-fA-F]{6}$", c or ""))
 
-    # Só atualiza se vierem as 3 e forem válidas
     if c_ok and c_warn and c_over:
         if not (valid_hex(c_ok) and valid_hex(c_warn) and valid_hex(c_over)):
             return JsonResponse({"error": "Cores inválidas."}, status=400)
 
     board.due_colors = {"ok": c_ok, "warn": c_warn, "overdue": c_over}
     board.save(update_fields=["due_colors"])
+
 
 
 
@@ -312,6 +313,10 @@ def update_card(request, card_id):
         _log_card(card, request, f"<p><strong>{actor}</strong> atualizou o card.</p>")
 
     return render(request, "boards/partials/card_modal_body.html", _card_modal_context(card))
+
+
+
+
 
 
 @login_required
