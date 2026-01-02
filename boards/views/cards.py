@@ -177,6 +177,7 @@ def _parse_any_date(s: str):
 def update_card(request, card_id):
     card = get_object_or_404(Card, id=card_id)
     actor = _actor_label(request)
+    board = card.column.board
 
     # ✅ Escrita: bloqueio forte para VIEWER
     if not _user_can_edit_board(request.user, card.column.board):

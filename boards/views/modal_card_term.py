@@ -191,47 +191,49 @@ def set_card_term_due(request, card_id):
     })
 
 
-# ============================================================================
-# CORES DE PRAZO NO BOARD
-# ============================================================================
+# boards/views/modal_card_term.py
 
 @login_required
 @require_POST
 def set_board_term_colors(request, board_id):
-    from boards.models import Board
+    from boards.models import Board  # import local para evitar circular
 
-    board = get_object_or_404(Board, id=board_id)
+    board = get_object_or_404(Board, id=board_id, is_deleted=False) if hasattr(Board, "is_deleted") else get_object_or_404(Board, id=board_id)
 
     if not _user_can_edit_board(request.user, board):
         return _deny_read_only(request, as_json=True)
 
-    # aceita os dois nomes (term_color_* e due_color_*)
-    ok = (request.POST.get("term_color_ok") or request.POST.get("due_color_ok") or "").strip()
-    warn = (request.POST.get("term_color_warn") or request.POST.get("due_color_warn") or "").strip()
-    overdue = (request.POST.get("term_color_overdue") or request.POST.get("due_color_overdue") or "").strip()
+    c_ok = (request.POST.get("term_color_ok") or "").strip()
+    c_warn = (request.POST.get("term_color_warn") or "").strip()
+    c_over = (request.POST.get("term_color_overdue") or "").strip()
 
-    colors = {"ok": ok, "warn": warn, "overdue": overdue}
+    def valid_hex(c):
+        return bool(re.match(r"^#[0-9a-fA-F]{6}$", c or ""))
 
-    if not all(re.match(r"^#[0-9a-fA-F]{6}$", c or "") for c in colors.values()):
+    if not (valid_hex(c_ok) and valid_hex(c_warn) and valid_hex(c_over)):
         return JsonResponse({"ok": False, "error": "Cores inválidas."}, status=400)
 
-    fields = []
+    colors = {"ok": c_ok, "warn": c_warn, "overdue": c_over}
 
-    # ✅ fonte de verdade do board_detail.html
+    update_fields = []
+
+    # ✅ FONTE DA VERDADE (board_detail lê isto)
     if hasattr(board, "due_colors"):
         board.due_colors = colors
-        fields.append("due_colors")
-    elif hasattr(board, "term_colors"):
+        update_fields.append("due_colors")
+
+    # ✅ COMPAT (se ainda existir algum lugar lendo o legado)
+    if hasattr(board, "term_colors"):
         board.term_colors = colors
-        fields.append("term_colors")
-    else:
+        update_fields.append("term_colors")
+    elif hasattr(board, "term_colors_json"):
         board.term_colors_json = json.dumps(colors, ensure_ascii=False)
-        fields.append("term_colors_json")
+        update_fields.append("term_colors_json")
 
-    board.version = (board.version or 0) + 1
-    fields.append("version")
-    board.save(update_fields=fields)
+    # bump version junto (menos chance de corrida)
+    board.version += 1
+    update_fields.append("version")
 
-    # devolve ambos para o front se ajustar
-    return JsonResponse({"ok": True, "due_colors": colors, "term_colors": colors})
+    board.save(update_fields=update_fields)
 
+    return JsonResponse({"ok": True, "term_colors": colors})

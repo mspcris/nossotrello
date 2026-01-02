@@ -367,8 +367,13 @@
   window.__isDraggingCard = false;
 </script>
 
+{# templates/boards/board_detail.html #}
+
+{{ board.due_colors|default:"{}"|json_script:"board-due-colors" }}
 <script>
-  window.BOARD_TERM_COLORS = JSON.parse("{{ board.due_colors|default:'{}'|escapejs }}");
+  window.BOARD_TERM_COLORS = JSON.parse(
+    document.getElementById("board-due-colors")?.textContent || "{}"
+  );
 </script>
 
 
