@@ -658,7 +658,16 @@ html.dark #cm-root{
 
     if (!form || !floatbar) return;
 
-    const watched = form.querySelectorAll('input[name="title"], textarea[name="description"], input[name="tags"]');
+    const watched = form.querySelectorAll([
+      'input[name="title"]',
+      'textarea[name="description"]',
+      'input[name="tags"]',
+      // ✅ cores do prazo
+      'input[name="due_color_ok"]',
+      'input[name="due_color_warn"]',
+      'input[name="due_color_overdue"]'
+    ].join(","));
+
     const initial = {};
     watched.forEach(el => { initial[el.name] = (el.value || "").trim(); });
 
