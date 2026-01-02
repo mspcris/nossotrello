@@ -194,6 +194,18 @@ html.dark #cm-root{
   display: none !important;
 }
 
+/* ============================================================
+   PRAZO — bolinha de cor ao lado do texto (OK/Alerta/Vencido)
+   ============================================================ */
+.cm-color-dot{
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  display: inline-block;
+  background: transparent;
+  border: 1px solid var(--cm-border);
+}
+
 </style>
 
 {# cm-root (modal do card) #}
@@ -298,18 +310,22 @@ html.dark #cm-root{
           <div class="flex items-center gap-3 flex-wrap">
             <label class="cm-muted" style="display:flex;align-items:center;gap:8px;">
               <input type="color" name="due_color_ok" value="{{ board_due_colors.ok }}">
-              OK
+            OK
+            <span class="cm-color-dot" aria-hidden="true"></span>
             </label>
 
             <label class="cm-muted" style="display:flex;align-items:center;gap:8px;">
               <input type="color" name="due_color_warn" value="{{ board_due_colors.warn }}">
-              Alerta
+            Alerta
+            <span class="cm-color-dot" aria-hidden="true"></span>
             </label>
 
             <label class="cm-muted" style="display:flex;align-items:center;gap:8px;">
               <input type="color" name="due_color_overdue" value="{{ board_due_colors.overdue }}">
-              Vencido
+            Vencido
+            <span class="cm-color-dot" aria-hidden="true"></span>
             </label>
+
           </div>
         </div>
 
@@ -1217,11 +1233,35 @@ document.addEventListener("keydown", escClose);
     return escapeHtml(s).replaceAll("`", "&#096;");
   }
 
-  // init
+  
+function initDueColorDots(){
+  root.querySelectorAll("label.cm-due-color").forEach((label) => {
+    const input = label.querySelector('input[type="color"]');
+    const dot = label.querySelector(".cm-color-dot");
+    if (!input || !dot) return;
+
+    const sync = () => {
+      dot.style.backgroundColor = input.value || "transparent";
+      dot.style.borderColor = input.value || "transparent";
+    };
+
+    // inicial
+    sync();
+
+    // bind 1x
+    if (input.dataset.cmDotBound === "1") return;
+    input.dataset.cmDotBound = "1";
+    input.addEventListener("input", sync);
+    input.addEventListener("change", sync);
+  });
+}
+
+
   // init
   initTabs();
   initFloatbarDirty();
   initActionDock();
+  initDueColorDots();
 })();
 
 
