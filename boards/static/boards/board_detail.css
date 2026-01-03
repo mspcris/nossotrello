@@ -220,15 +220,10 @@ header { position: relative; z-index: 50; }
    Aggregator Column
 ========================= */
 
-.aggregator-column {
-  background: rgba(255,255,255,.55);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(0,0,0,.15);
-  border-radius: 12px;
-}
+
 
 .aggregator-card {
-  background: rgba(255,255,255,.85);
+  background: rgba(255, 255, 255, 0.124);
   border-radius: 10px;
   padding: 10px 12px;
   font-size: 14px;
@@ -249,7 +244,148 @@ header { position: relative; z-index: 50; }
   opacity: .85;
 }
 
-/* bloqueia interação */
+
+
+/* ================================
+   AGGREGATOR COLUMN – CINEMÁTICO
+================================ */
+
+
+/* ENTRADA */
+@keyframes aggregator-in {
+  0% {
+    opacity: 0;
+    transform: translateX(-48px) scaleX(0.92);
+    filter: blur(6px);
+  }
+  60% {
+    opacity: 1;
+    transform: translateX(6px) scaleX(1.01);
+    filter: blur(0);
+  }
+  100% {
+    transform: translateX(0) scaleX(1);
+  }
+}
+
+/* SAÍDA */
+@keyframes aggregator-out {
+  0% {
+    opacity: 1;
+    transform: translateX(0) scaleX(1);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-64px) scaleX(0.9);
+    filter: blur(8px);
+  }
+}
+
+/* classe aplicada dinamicamente */
+.aggregator-enter {
+  animation: aggregator-in 4200ms cubic-bezier(.22,.61,.36,1) both;
+}
+
+.aggregator-exit {
+  animation: aggregator-out 6000ms ease-in both;
+}
+
+/* glow sutil de presença */
+.aggregator-column::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 16px;
+  background: linear-gradient(
+    120deg,
+    rgba(99,102,241,.15),
+    rgba(56,189,248,.12),
+    transparent 60%
+  );
+  opacity: 0;
+  transition: opacity .4s ease;
+  pointer-events: none;
+}
+
+.aggregator-enter::after {
+  opacity: 1;
+}
+
+/* ===============================
+   Aggregator Column – Cinematic
+   =============================== */
+
+/* estado inicial (antes de entrar) */
+.aggregator-enter {
+  opacity: 0;
+  transform: scale(0.96) translateY(-6px);
+  filter: blur(6px);
+  max-width: 0;
+}
+
+/* estado visível */
+.aggregator-enter-active {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  filter: blur(0);
+  max-width: 1000px;
+  transition:
+    opacity 280ms ease,
+    transform 360ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 240ms ease,
+    max-width 360ms ease;
+}
+
+/* saída */
+.aggregator-exit {
+  opacity: 0;
+  transform: scale(0.97) translateY(-4px);
+  filter: blur(4px);
+  max-width: 0;
+  transition:
+    opacity 200ms ease,
+    transform 200ms ease,
+    filter 200ms ease,
+    max-width 260ms ease;
+}
+
+/* =========================
+   Aggregator Column — FINAL
+========================= */
+
+/* visual only */
 .aggregator-column * {
   pointer-events: none;
 }
+
+/* coluna em si */
+.aggregator-column {
+  position: relative;
+  border: none;
+  border-radius: 14px;
+  overflow: visible;
+
+  transform-origin: top center;
+  will-change: transform, opacity, filter, max-width;
+}
+
+/* 🔑 HEADER — AQUI ESTÁ O FIX */
+.aggregator-column .column-header {
+  background: transparent;              /* mata painel branco */
+  border: none;                          /* remove linhas herdadas */
+  border-radius: 14px 14px 12px 12px;    /* força arredondamento */
+  overflow: hidden;                      /* corta qualquer fundo filho */
+}
+
+/* garante que nenhum reset mate o radius */
+.aggregator-column .column-header * {
+  border-radius: inherit;
+}
+
+/* cards internos */
+.aggregator-column .card-item {
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+}
+

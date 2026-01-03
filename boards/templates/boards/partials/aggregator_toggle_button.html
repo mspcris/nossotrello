@@ -1,11 +1,18 @@
+{# boards/partials/aggregator_toggle_button.html #}
 
-<!--aggregator_toggle_button.html-->
 <li id="aggregator-toggle">
   <button
+    type="button"
     class="nt-link"
     hx-post="{% url 'boards:toggle_aggregator_column' board.id %}"
     hx-target="#aggregator-toggle"
     hx-swap="outerHTML"
+
+    hx-on="
+      click:
+        document.body.classList.remove('drawer-open');
+        document.getElementById('drawerOverlay')?.click?.();
+    "
   >
     {% if board.show_aggregator_column %}
       Ocultar coluna agrupadora
@@ -15,5 +22,4 @@
   </button>
 </li>
 
-
-<!-- END aggregator_toggle_button.html-->
+{# END aggregator_toggle_button.html #}

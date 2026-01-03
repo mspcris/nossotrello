@@ -1041,4 +1041,100 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 
+<script>
+(function () {
+  function animateAggregator(scope) {
+    const col = scope.querySelector?.(".aggregator-column");
+    if (!col) return;
+
+    col.classList.remove("aggregator-enter");
+    void col.offsetWidth; // reflow
+    col.classList.add("aggregator-enter");
+  }
+
+  function animateAggregatorExit() {
+    const col = document.querySelector(".aggregator-column");
+    if (!col) return;
+
+    col.classList.add("aggregator-exit");
+
+    // espera a animação antes do HTMX swap
+    setTimeout(() => {
+      col.remove();
+    }, 300);
+  }
+
+  document.body.addEventListener("htmx:beforeSwap", (e) => {
+    const target = e.detail?.target;
+    if (!target || target.id !== "columns-list") return;
+
+    const hasBefore = document.querySelector(".aggregator-column");
+    const hasAfter = e.detail.xhr.response?.includes("aggregator-column");
+
+    // vai remover
+    if (hasBefore && !hasAfter) {
+      animateAggregatorExit();
+    }
+  });
+
+  document.body.addEventListener("htmx:afterSwap", (e) => {
+    const target = e.detail?.target;
+    if (!target || target.id !== "columns-list") return;
+
+    animateAggregator(target);
+  });
+})();
+</script>
+
+
+
+
+<script>
+(function () {
+  function closeDrawerSmooth() {
+    document.body.classList.remove("drawer-open");
+    document.getElementById("drawerOverlay")?.click?.();
+  }
+
+  function animateAggregator(scope) {
+    const col = scope.querySelector(".aggregator-column");
+    if (!col) return;
+
+    // ENTRADA
+    col.classList.add("aggregator-enter");
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        col.classList.add("aggregator-enter-active");
+        col.classList.remove("aggregator-enter");
+      });
+    });
+  }
+
+  function animateAggregatorExit() {
+    const col = document.querySelector(".aggregator-column");
+    if (!col) return;
+
+    col.classList.add("aggregator-exit");
+  }
+
+  // 🔑 Integração com HTMX
+  document.body.addEventListener("htmx:beforeRequest", (e) => {
+    if (e.target.closest("#aggregator-toggle")) {
+      closeDrawerSmooth();
+      animateAggregatorExit();
+    }
+  });
+
+  document.body.addEventListener("htmx:afterSwap", (e) => {
+    // atraso proposital → ritmo visual
+    setTimeout(() => {
+      animateAggregator(e.detail.target || document);
+    }, 120);
+  });
+})();
+</script>
+
+
+
 {% endblock content %}
