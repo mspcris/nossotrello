@@ -115,6 +115,9 @@ class Board(models.Model):
     # legado
     home_wallpaper_filename = models.CharField(max_length=255, blank=True, default="")
 
+    # coluna de agragacao
+    show_aggregator_column = models.BooleanField(default=False)
+
     def __str__(self):
         return self.name
 

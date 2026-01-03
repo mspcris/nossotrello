@@ -282,10 +282,32 @@
 
 
 
+<div id="columns-list" class="flex gap-6">
+
+  {% if board.show_aggregator_column %}
+    {% include "boards/partials/aggregator_column.html" %}
+  {% endif %}
+
+  {% for column in columns %}
+    {% include "boards/partials/column_item.html" %}
+  {% endfor %}
+</div>
 
 
 
 
+<li>
+  <button class="nt-link"
+          hx-post="{% url 'boards:toggle_aggregator_column' board.id %}"
+          hx-target="#columns-list"
+          hx-swap="outerHTML">
+    {% if board.show_aggregator_column %}
+      Ocultar coluna agrupadora
+    {% else %}
+      Mostrar coluna agrupadora
+    {% endif %}
+  </button>
+</li>
 
 
 
@@ -500,62 +522,47 @@
 
 <script>
   // ============================================================
-  // SORTABLE (cards)
+  // SORTABLE (columns)
   // ============================================================
-  window.initSortable = function initSortable() {
-    const canEdit = document.getElementById("board-root")?.dataset?.canEdit === "1";
-    if (!canEdit) return;
+  window.initSortableColumns = function initSortableColumns() {
+    const columnsList = document.getElementById("columns-list");
+    if (!columnsList) return;
 
-    document.querySelectorAll("[id^='cards-col-']").forEach(listEl => {
-      if (listEl.dataset.sortableApplied === "1") return;
-      listEl.dataset.sortableApplied = "1";
+    if (columnsList.dataset.sortableColumnsApplied === "1") return;
+    columnsList.dataset.sortableColumnsApplied = "1";
 
-      new Sortable(listEl, {
-        group: "cards",
-        animation: 150,
-        ghostClass: "drag-ghost",
+    new Sortable(columnsList, {
+      animation: 150,
+      ghostClass: "drag-ghost",
 
-        delay: 280,
-        delayOnTouchOnly: true,
-        touchStartThreshold: 10,
+      handle: ".column-header",
+      draggable: ".column-item:not(.aggregator-column)",
 
-        filter: "button, a, input, textarea, select",
-        preventOnFilter: false,
+      filter: ".aggregator-column, button, a, input, textarea, select, [contenteditable='true']",
+      preventOnFilter: true,
 
-        onStart: () => { window.__isDraggingCard = true; },
 
-        onEnd: async (evt) => {
-          const csrftoken = document.querySelector("[name=csrfmiddlewaretoken]")?.value || "";
+      onEnd: () => {
+        const order = Array.from(columnsList.querySelectorAll(".column-item"))
+          .map(el => el.getAttribute("data-column-id"))
+          .filter(Boolean)
+          .map(Number);
 
-          try {
-            const resp = await fetch("{% url 'boards:move_card' %}", {
-              method: "POST",
-              credentials: "same-origin",
-              headers: {
-                "Content-Type": "application/json",
-                "X-CSRFToken": csrftoken
-              },
-              body: JSON.stringify({
-                card_id: Number(evt.item.dataset.cardId),
-                new_column_id: Number(evt.to.id.replace("cards-col-", "")),
-                new_position: Number(evt.newIndex)
-              })
-            });
-
-            if (!resp.ok) {
-              const ref = evt.from.children[evt.oldIndex] || null;
-              evt.from.insertBefore(evt.item, ref);
-            }
-          } finally {
-            window.__isDraggingCard = false;
-          }
-        }
-      });
+        fetch("{% url 'boards:reorder_columns' board.id %}", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]")?.value || ""
+          },
+          body: JSON.stringify({ order })
+        });
+      }
     });
   }
 
-  document.addEventListener("DOMContentLoaded", window.initSortable);
-  document.body.addEventListener("htmx:afterSwap", window.initSortable);
+  document.addEventListener("DOMContentLoaded", window.initSortableColumns);
+  document.body.addEventListener("htmx:afterSwap", window.initSortableColumns);
 </script>
 
 <script>

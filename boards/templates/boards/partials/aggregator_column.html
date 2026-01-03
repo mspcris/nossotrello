@@ -1,0 +1,57 @@
+<div
+  class="column-item aggregator-column w-64 shrink-0"
+  data-aggregator="1"
+  aria-disabled="true"
+>
+
+  <!-- HEADER -->
+  <div class="column-header px-3 py-2">
+    <h3 class="font-semibold text-sm">
+      Coluna Agrupadora
+    </h3>
+  </div>
+
+  <!-- BODY -->
+  <ul class="px-3 pb-3 space-y-2">
+    {% for col in columns %}
+      <li
+        class="aggregator-card select-none"
+        data-column-id="{{ col.id }}"
+      >
+        <span class="aggregator-count">
+          {{ col.cards.count|stringformat:"02d" }}
+        </span>
+        <span class="aggregator-name">
+          {{ col.name }}
+        </span>
+      </li>
+    {% endfor %}
+  </ul>
+</div>
+
+
+
+<script>
+  // ============================================================
+  // Aggregator Column — runtime update
+  // ============================================================
+  window.updateAggregatorCounts = function () {
+    const agg = document.querySelector(".aggregator-column");
+    if (!agg) return;
+
+    agg.querySelectorAll(".aggregator-card").forEach(card => {
+      const colId = card.dataset.columnId;
+      const list = document.getElementById("cards-col-" + colId);
+      if (!list) return;
+
+      const count = list.querySelectorAll("li[data-card-id]").length;
+      const label = String(count).padStart(2, "0");
+
+      const countEl = card.querySelector(".aggregator-count");
+      if (countEl) countEl.textContent = label;
+    });
+  };
+
+  document.addEventListener("DOMContentLoaded", updateAggregatorCounts);
+  document.body.addEventListener("htmx:afterSwap", updateAggregatorCounts);
+</script>

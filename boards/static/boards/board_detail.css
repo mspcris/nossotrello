@@ -215,3 +215,41 @@ header { position: relative; z-index: 50; }
 
 /* garante que o slot mobile e breadcrumb não fiquem “atrás” de nada */
 #cm-mobile-breadcrumb, #cm-mobile-search-wrapper { position: relative; z-index: 40; }
+
+/* =========================
+   Aggregator Column
+========================= */
+
+.aggregator-column {
+  background: rgba(255,255,255,.55);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0,0,0,.15);
+  border-radius: 12px;
+}
+
+.aggregator-card {
+  background: rgba(255,255,255,.85);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  cursor: default;
+}
+
+.aggregator-count {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  min-width: 2.5ch;
+  text-align: right;
+}
+
+.aggregator-name {
+  opacity: .85;
+}
+
+/* bloqueia interação */
+.aggregator-column * {
+  pointer-events: none;
+}
