@@ -988,4 +988,84 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 
 
+<script>
+(function () {
+  if (window.__cmTabsDelegated === true) return;
+  window.__cmTabsDelegated = true;
+
+  const ALLOWED = new Set(["desc", "tags", "check", "ativ", "files"]);
+
+  function getInitialTab() {
+    try {
+      const deep = new URLSearchParams(window.location.search).get("tab");
+      if (deep && ALLOWED.has(deep)) return deep;
+    } catch (_e) {}
+    return "desc";
+  }
+
+  function setActive(root, tab) {
+    if (!root || !ALLOWED.has(tab)) return;
+
+    root.querySelectorAll(".cm-tabbtn[data-cm-tab]").forEach((btn) => {
+      btn.classList.toggle("is-active", btn.getAttribute("data-cm-tab") === tab);
+    });
+
+    root.querySelectorAll(".cm-panel[data-cm-panel]").forEach((p) => {
+      p.classList.toggle("is-active", p.getAttribute("data-cm-panel") === tab);
+    });
+
+    root.setAttribute("data-cm-active", tab);
+
+    // mantém compatibilidade com sua floatbar (cm:tabchange)
+    try {
+      root.dispatchEvent(new CustomEvent("cm:tabchange", { detail: { tab } }));
+    } catch (_e) {}
+  }
+
+  function ensureModalTabs(scope) {
+    const el = scope || document;
+    const root =
+      (el && el.id === "cm-root" && el) ||
+      (el && el.querySelector && el.querySelector("#cm-root")) ||
+      document.getElementById("cm-root");
+
+    if (!root) return;
+    setActive(root, getInitialTab());
+  }
+
+  // Delegação: funciona mesmo após HTMX swap
+  document.addEventListener(
+    "click",
+    function (e) {
+      const btn = e.target?.closest?.(".cm-tabbtn[data-cm-tab]");
+      if (!btn) return;
+
+      const root = btn.closest("#cm-root");
+      if (!root) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      setActive(root, btn.getAttribute("data-cm-tab"));
+    },
+    true
+  );
+
+  // Reaplica após qualquer swap do modal
+  document.body.addEventListener("htmx:afterSwap", function (evt) {
+    const target = evt.detail?.target || evt.target;
+    if (!target) return;
+
+    if (target.id === "modal-body" || target.closest?.("#modal-body")) {
+      ensureModalTabs(document.getElementById("modal-body") || target);
+    }
+  });
+
+  // Primeira carga (caso o modal já esteja aberto por URL)
+  document.addEventListener("DOMContentLoaded", () => ensureModalTabs(document));
+})();
+</script>
+
+
+
 {% endblock content %}
