@@ -89,3 +89,57 @@ html.dark .column-header * {
     min-width: 48vw;
   }
 }
+
+/* =========================================================
+   COLUNA AGRUPADORA
+   ========================================================= */
+
+.column-item[data-aggregator="1"] {
+  background: linear-gradient(
+    to bottom,
+    rgba(255,255,255,0.85),
+    rgba(255,255,255,0.65)
+  );
+}
+
+.column-item[data-aggregator="1"] .column-header {
+  padding-bottom: 12px;
+}
+
+.column-item[data-aggregator="1"] ul {
+  margin-top: 10px; /* 🔑 evita grudar no título */
+}
+
+/* Cards da coluna agrupadora */
+.column-item[data-aggregator="1"] li {
+  cursor: default;
+  user-select: none;
+}
+
+/* Conteúdo interno */
+.column-item[data-aggregator="1"] .aggregator-card {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+/* Número (contador) */
+.column-item[data-aggregator="1"] .aggregator-count {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #111;
+  min-width: 2.2ch; /* 00, 01, 16 */
+  text-align: right;
+}
+
+/* Nome da coluna */
+.column-item[data-aggregator="1"] .aggregator-name {
+  line-height: 1.25;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

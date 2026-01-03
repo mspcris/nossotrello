@@ -150,6 +150,12 @@
     Excluir cards
   </button>
 </li>
+
+<li>
+  {% include "boards/partials/aggregator_toggle_button.html" %}
+</li>
+
+
 {% endblock %}
 
 {% block content %}
@@ -273,113 +279,73 @@
 
 
 
-
-
+{# ======================== LISTA DE COLUNAS ======================== #}
 
 {# ======================== LISTA DE COLUNAS ======================== #}
 <div id="cm-board-root" data-card-id="" data-tag-colors="{}">
 
+  <div id="board-root" data-can-edit="{{ can_edit|yesno:'1,0' }}">
+    <div id="columns-wrapper"
+         class="flex gap-6 overflow-x-auto overflow-y-hidden pb-6 pr-4 min-h-0">
 
+      {# 🔑 ÚNICO columns-list do sistema #}
+      {% include "boards/partials/columns_list.html" %}
 
+      {# ➕ adicionar coluna #}
+      <div id="add-column-box"
+           class="w-64 bg-white/60 backdrop-blur-md border border-gray-300 rounded-xl p-4 h-fit shrink-0 shadow-md">
 
-<div id="columns-list" class="flex gap-6">
+        <h3 class="font-semibold mb-2">Adicionar nova coluna</h3>
 
-  {% if board.show_aggregator_column %}
-    {% include "boards/partials/aggregator_column.html" %}
-  {% endif %}
+        <form method="post"
+              id="add-column-form"
+              hx-post="{% url 'boards:add_column' board.id %}"
+              hx-target="#columns-list"
+              hx-swap="beforeend"
+              hx-on="
+                submit: if(!validateAddColumnForm(this,event)) return false;
+                htmx:afterRequest: if (event.detail.successful) {
+                  this.reset();
+                  hideAddColumnError();
+                }
+              ">
+          {% csrf_token %}
 
-  {% for column in columns %}
-    {% include "boards/partials/column_item.html" %}
-  {% endfor %}
-</div>
+          <label class="block text-sm font-medium mb-1">Nome:</label>
 
+          <input type="text"
+                 name="name"
+                 id="add-column-name"
+                 class="w-full border rounded px-3 py-2 mb-2"
+                 placeholder="Nome da coluna">
 
+          <div id="add-column-error"
+               class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2 mb-3">
+            Digite o nome da coluna antes.
+          </div>
 
+          <button class="px-3 py-2 bg-blue-600 text-white rounded w-full hover:bg-blue-700 transition">
+            Adicionar Coluna
+          </button>
+        </form>
+      </div>
 
-<li>
-  <button class="nt-link"
-          hx-post="{% url 'boards:toggle_aggregator_column' board.id %}"
-          hx-target="#columns-list"
-          hx-swap="outerHTML">
-    {% if board.show_aggregator_column %}
-      Ocultar coluna agrupadora
-    {% else %}
-      Mostrar coluna agrupadora
-    {% endif %}
-  </button>
-</li>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<div id="board-root" data-can-edit="{{ can_edit|yesno:'1,0' }}">
-  <div id="columns-wrapper"
-     class="flex gap-6 overflow-x-auto overflow-y-hidden pb-6 pr-4 min-h-0">
-
-
-    {# 🔑 CONTAINER QUE SERÁ ATUALIZADO PELO POLLING (use o id que o seu polling usa: columns-list) #}
-    <div id="columns-list" class="flex gap-6">
-      {% for column in columns %}
-        {% include "boards/partials/column_item.html" %}
-      {% endfor %}
-    </div>
-
-    <div id="add-column-box"
-         class="w-64 bg-white/60 backdrop-blur-md border border-gray-300 rounded-xl p-4 h-fit shrink-0 shadow-md">
-
-      <h3 class="font-semibold mb-2">Adicionar nova coluna</h3>
-
-      <form method="post"
-            id="add-column-form"
-            hx-post="{% url 'boards:add_column' board.id %}"
-            hx-target="#columns-list"
-            hx-swap="beforeend"
-            hx-on="
-              submit: if(!validateAddColumnForm(this,event)) return false;
-              htmx:afterRequest: if (event.detail.successful) {
-                this.reset();
-                hideAddColumnError();
-              }
-            ">
-        {% csrf_token %}
-
-        <label class="block text-sm font-medium mb-1">Nome:</label>
-
-        <input type="text"
-               name="name"
-               id="add-column-name"
-               class="w-full border rounded px-3 py-2 mb-2"
-               placeholder="Nome da coluna">
-
-        <div id="add-column-error"
-             class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2 mb-3">
-          Digite o nome da coluna antes.
-        </div>
-
-        <button class="px-3 py-2 bg-blue-600 text-white rounded w-full hover:bg-blue-700 transition">
-          Adicionar Coluna
-        </button>
-      </form>
     </div>
   </div>
 </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 {# ======================== BOOT GLOBAL ======================== #}
 <script>

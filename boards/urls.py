@@ -23,6 +23,8 @@ from .views import cards
 from .views.mentions import board_mentions
 from .views.polling import board_poll
 from boards.views.modal_card_term import set_card_term_due, set_board_term_colors
+from boards.views.boards import toggle_aggregator_column
+
 
 
 
@@ -140,6 +142,13 @@ urlpatterns = [
     # board prazos
     path("card/<int:card_id>/term-due/", set_card_term_due, name="set_card_term_due"),
     path("board/<int:board_id>/term-colors/", set_board_term_colors, name="set_board_term_colors"),
+
+    # board agregador de colunas
+    path(
+    "board/<int:board_id>/toggle-aggregator/",
+    toggle_aggregator_column,
+    name="toggle_aggregator_column",
+),
 
     
 

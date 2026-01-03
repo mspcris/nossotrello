@@ -816,21 +816,29 @@ def board_poll(request, board_id):
 
 @login_required
 def toggle_aggregator_column(request, board_id):
-    board = get_object_or_404(Board, id=board_id)
-
-    if not board.can_edit(request.user):
-        return HttpResponseForbidden()
+    board = get_object_or_404(Board, id=board_id, is_deleted=False)
 
     board.show_aggregator_column = not board.show_aggregator_column
     board.save(update_fields=["show_aggregator_column"])
 
-    columns = board.columns.prefetch_related("cards").all()
+    columns = (
+        board.columns
+        .filter(is_deleted=False)
+        .order_by("position")
+        .prefetch_related(
+            Prefetch(
+                "cards",
+                queryset=Card.objects.filter(is_deleted=False).order_by("position"),
+            )
+        )
+    )
 
     return render(
         request,
-        "boards/partials/columns_list.html",
+        "boards/partials/aggregator_toggle_response.html",
         {
             "board": board,
             "columns": columns,
-        }
+        },
     )
+

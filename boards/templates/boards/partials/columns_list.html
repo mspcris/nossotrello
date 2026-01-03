@@ -1,4 +1,6 @@
+{# boards/partials/columns_list.html #}
 <div id="columns-list" class="flex gap-6">
+
   {% if board.show_aggregator_column %}
     {% include "boards/partials/aggregator_column.html" %}
   {% endif %}
@@ -6,4 +8,5 @@
   {% for column in columns %}
     {% include "boards/partials/column_item.html" %}
   {% endfor %}
+
 </div>

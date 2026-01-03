@@ -1,0 +1,19 @@
+
+<!--aggregator_toggle_button.html-->
+<li id="aggregator-toggle">
+  <button
+    class="nt-link"
+    hx-post="{% url 'boards:toggle_aggregator_column' board.id %}"
+    hx-target="#aggregator-toggle"
+    hx-swap="outerHTML"
+  >
+    {% if board.show_aggregator_column %}
+      Ocultar coluna agrupadora
+    {% else %}
+      Mostrar coluna agrupadora
+    {% endif %}
+  </button>
+</li>
+
+
+<!-- END aggregator_toggle_button.html-->
