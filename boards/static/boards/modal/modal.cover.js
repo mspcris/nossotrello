@@ -32,17 +32,27 @@
   }
 
   async function refreshModalBody(cardId) {
+  try {
     const url = `/card/${cardId}/modal/`;
     const r = await fetch(url, { headers: { "HX-Request": "true" } });
     if (!r.ok) return;
 
     const html = await r.text();
     const modalBody = document.getElementById("modal-body");
-    if (modalBody) modalBody.innerHTML = html;
+    if (modalBody) {
+      modalBody.innerHTML = html;
 
-    // rebind depois do swap manual
+      // O CM re-binda listeners (abas/salvar/dirty) no evento htmx:afterSwap.
+      // innerHTML não dispara isso, então forçamos aqui.
+      try {
+        modalBody.dispatchEvent(new Event("htmx:afterSwap", { bubbles: true }));
+      } catch (_e) {}
+    }
+
     window.Modal.init?.();
-  }
+  } catch (_e) {}
+}
+
 
   async function refreshBoardCardSnippet(cardId) {
     try {
