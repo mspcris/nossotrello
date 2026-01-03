@@ -668,27 +668,31 @@ html.dark #cm-root{
     catch (_e) { return null; }
   }
 
-  function setActiveTab(tabName){
-    const tab = (tabName || "").trim();
-    if (!tab) return;
+  function setActive(root, tab) {
+  if (!root || !ALLOWED.has(tab)) return;
 
-    // buttons
-    root.querySelectorAll(".cm-tabbtn[data-cm-tab]").forEach((b) => {
-      b.classList.toggle("is-active", b.getAttribute("data-cm-tab") === tab);
-    });
+  root.querySelectorAll(".cm-tabbtn[data-cm-tab]").forEach((btn) => {
+    btn.classList.toggle("is-active", btn.getAttribute("data-cm-tab") === tab);
+  });
 
-    // panels
-    root.querySelectorAll(".cm-panel[data-cm-panel]").forEach((p) => {
-      p.classList.toggle("is-active", p.getAttribute("data-cm-panel") === tab);
-    });
+  root.querySelectorAll(".cm-panel[data-cm-panel]").forEach((p) => {
+    p.classList.toggle("is-active", p.getAttribute("data-cm-panel") === tab);
+  });
 
-    // state
-    root.setAttribute("data-cm-active", tab);
+  root.setAttribute("data-cm-active", tab);
 
-    // notifica outros módulos (ex.: floatbar)
-    try { root.dispatchEvent(new CustomEvent("cm:tabchange", { detail: { tab } })); } catch (_e) {}
-  
-  }
+  // ✅ mantém aba após qualquer HTMX swap
+  try {
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", tab);
+    window.history.replaceState({}, "", url.toString());
+  } catch (_e) {}
+
+  try {
+    root.dispatchEvent(new CustomEvent("cm:tabchange", { detail: { tab } }));
+  } catch (_e) {}
+}
+
   
 
 

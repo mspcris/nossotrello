@@ -1,8 +1,9 @@
 // ============================================================
-// Quill da aba atividade
+// /boards/static/modal/modal.acitivity_quill.js
 // ============================================================
 (function () {
   const STATE_KEY = "__cmActivityQuill";
+  const STATE_EL_KEY = "__cmActivityQuillEl";
 
   function getRoot() {
     return document.getElementById("cm-root");
@@ -28,7 +29,7 @@
     showActivityError("");
   }
 
-  // ===== Mentions (mesmo padrão do modal.quill.js) =====
+  // ===== Mentions =====
   function getBoardIdFromUrl() {
     const m = (window.location.pathname || "").match(/\/board\/(\d+)\b/);
     return m ? m[1] : null;
@@ -117,11 +118,59 @@
     };
   }
 
+  // ============================================================
+  // Detectar se a aba ATIVIDADE está realmente ativa no DOM
+  // (não confiar só em data-cm-active)
+  // ============================================================
+  function isActivityTabActive() {
+    const root = getRoot();
+    if (!root) return false;
+
+    // 1) fonte “forte”: painel ativo
+    const panel = root.querySelector('section[data-cm-panel="ativ"]');
+    if (panel && panel.classList.contains("is-active")) return true;
+
+    // 2) botão ativo
+    const btn = root.querySelector('.cm-tabbtn[data-cm-tab="ativ"]');
+    if (btn && btn.classList.contains("is-active")) return true;
+
+    // 3) fallback: atributo
+    return root.getAttribute("data-cm-active") === "ativ";
+  }
+
+  function destroyQuillIfStale(elNow) {
+    const q = window[STATE_KEY];
+    const elPrev = window[STATE_EL_KEY];
+    if (!q) return;
+
+    const prevGone = elPrev && !document.contains(elPrev);
+    const changed = elNow && elPrev && elNow !== elPrev;
+
+    if (prevGone || changed) {
+      try {
+        const toolbar = elPrev?.previousSibling;
+        if (toolbar && toolbar.classList && toolbar.classList.contains("ql-toolbar")) {
+          toolbar.remove();
+        }
+      } catch (_e) {}
+
+      try {
+        if (elPrev) elPrev.innerHTML = "";
+      } catch (_e) {}
+
+      window[STATE_KEY] = null;
+      window[STATE_EL_KEY] = null;
+    }
+  }
+
   function ensureQuill() {
-    if (window[STATE_KEY] || typeof Quill === "undefined") return;
+    if (typeof Quill === "undefined") return;
 
     const el = document.getElementById("cm-activity-editor");
     if (!el) return;
+
+    destroyQuillIfStale(el);
+    if (window[STATE_KEY]) return;
 
     const boardId = getBoardIdFromUrl();
 
@@ -141,8 +190,9 @@
     });
 
     window[STATE_KEY] = quill;
+    window[STATE_EL_KEY] = el;
 
-    // ✅ COLAR IMAGEM: usa endpoint REAL e trata HTML
+    // ✅ COLAR IMAGEM
     quill.root.addEventListener("paste", async function (e) {
       try {
         const items = e.clipboardData?.items || [];
@@ -155,7 +205,7 @@
           }
         }
 
-        if (!file) return; // texto segue normal
+        if (!file) return;
 
         e.preventDefault();
         clearActivityError();
@@ -186,11 +236,9 @@
 
         const html = await res.text();
 
-        // 1) mantém o anexo na aba Anexos
         const list = document.getElementById("attachments-list");
         if (list) list.insertAdjacentHTML("beforeend", html);
 
-        // 2) extrai URL do HTML (href ou src)
         const tmp = document.createElement("div");
         tmp.innerHTML = html;
 
@@ -201,7 +249,6 @@
           (a && a.getAttribute("href")) ||
           "";
 
-        // 3) insere no quill (imagem inline se der, senão link)
         const range = quill.getSelection(true) || { index: quill.getLength() };
 
         if (fileUrl) {
@@ -235,7 +282,6 @@
     if (hidden) hidden.value = "";
   }
 
-  // expõe para o botão "Limpar" do template
   window.resetActivityQuill = resetEditor;
 
   function bindActivityForm() {
@@ -264,11 +310,31 @@
   }
 
   function initActivityModule() {
+    // ✅ só inicializa se a aba estiver ativa (evita quill em aba escondida)
+    if (!isActivityTabActive()) return;
     ensureQuill();
     bindActivityForm();
   }
 
-  // ao abrir aba atividade
+  // ============================================================
+  // GATILHO 1: click direto na aba "Atividade" (delegado)
+  // ============================================================
+  document.addEventListener(
+    "click",
+    function (e) {
+      const btn = e.target?.closest?.('.cm-tabbtn[data-cm-tab="ativ"]');
+      if (!btn) return;
+
+      // deixa o script das tabs ativar a aba primeiro, depois inicializa
+      setTimeout(initActivityModule, 0);
+      setTimeout(initActivityModule, 50);
+    },
+    true
+  );
+
+  // ============================================================
+  // GATILHO 2: evento de tabchange (se existir)
+  // ============================================================
   getRoot()?.addEventListener("cm:tabchange", function (e) {
     if (e.detail?.tab === "ativ") {
       setTimeout(initActivityModule, 0);
@@ -276,15 +342,27 @@
     }
   });
 
-  // fallback se abriu direto
-  if (getRoot()?.getAttribute("data-cm-active") === "ativ") {
+  // ============================================================
+  // GATILHO 3: modal renderizado / swaps do HTMX
+  // ============================================================
+  function afterModalPaint() {
     setTimeout(initActivityModule, 0);
     setTimeout(initActivityModule, 50);
+    setTimeout(initActivityModule, 150); // ✅ último “tiro” quando CSS/layout estabiliza
   }
 
-  // rebind pós swap do HTMX (apenas modal principal) + reaplica cores
+  document.addEventListener("DOMContentLoaded", afterModalPaint);
+  document.body.addEventListener("htmx:afterSettle", function (e) {
+    const target = e.detail?.target || e.target;
+    if (!target) return;
+    if (target.id === "modal-body" || target.closest?.("#modal-body")) {
+      afterModalPaint();
+    }
+  });
+
   document.body.addEventListener("htmx:afterSwap", function (e) {
-    if (!e.target || e.target.id !== "modal-body") return;
+    const target = e.detail?.target || e.target;
+    if (!target || target.id !== "modal-body") return;
 
     const cmRoot = document.getElementById("cm-root");
     if (!cmRoot) return;
@@ -297,7 +375,14 @@
       window.applySavedTermColorsToModal(cmRoot);
     }
 
-    // garante rebind do form após swap
+    // ✅ sempre tenta inicializar depois do swap (mas só efetiva se aba ativ)
+    afterModalPaint();
+
+    // ✅ e garante rebind do form mesmo que não esteja na aba ainda
     setTimeout(bindActivityForm, 0);
   });
 })();
+
+// ============================================================
+// END /boards/static/modal/modal.acitivity_quill.js
+// ============================================================
