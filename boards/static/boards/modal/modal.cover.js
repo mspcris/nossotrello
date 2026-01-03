@@ -32,25 +32,40 @@
   }
 
   async function refreshModalBody(cardId) {
-  try {
-    const url = `/card/${cardId}/modal/`;
-    const r = await fetch(url, { headers: { "HX-Request": "true" } });
-    if (!r.ok) return;
+  const target = document.getElementById("modal-body");
+  if (!target) return;
 
-    const html = await r.text();
-    const modalBody = document.getElementById("modal-body");
-    if (modalBody) {
-      modalBody.innerHTML = html;
+  const hx = window.htmx;
 
-      // O CM re-binda listeners (abas/salvar/dirty) no evento htmx:afterSwap.
-      // innerHTML não dispara isso, então forçamos aqui.
-      try {
-        modalBody.dispatchEvent(new Event("htmx:afterSwap", { bubbles: true }));
-      } catch (_e) {}
-    }
+  // Preferencial: usar o pipeline oficial (HTMX), porque ele executa scripts do HTML injetado
+  if (hx && typeof hx.ajax === "function") {
+    await new Promise((resolve) => {
+      const handler = (e) => {
+        const t = e.detail?.target || e.target;
+        if (t && t.id === "modal-body") {
+          document.removeEventListener("htmx:afterSwap", handler);
+          resolve();
+        }
+      };
+      document.addEventListener("htmx:afterSwap", handler);
 
-    window.Modal.init?.();
-  } catch (_e) {}
+      hx.ajax("GET", `/card/${cardId}/modal/`, {
+        target: "#modal-body",
+        swap: "innerHTML",
+      });
+    });
+
+    return;
+  }
+
+  // Fallback: mantém o fetch (mas não é o ideal, pois innerHTML não executa scripts inline)
+  const url = `/card/${cardId}/modal/`;
+  const r = await fetch(url, { headers: { "HX-Request": "true" } });
+  if (!r.ok) return;
+
+  const html = await r.text();
+  target.innerHTML = html;
+  window.Modal.init?.();
 }
 
 
