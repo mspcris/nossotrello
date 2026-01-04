@@ -1,3 +1,5 @@
+{# boards/templates/boards/partials/home_group_block.html #}
+
 <div class="home-group-block rounded-xl bg-white/20 backdrop-blur-md border border-white/20 p-4"
      data-group-id="{{ g.id }}">
 
@@ -27,43 +29,30 @@
     {% endif %}
   </div>
 
-  <div class="home-group-dropzone"
-       data-group-id="{{ g.id }}">
-    <div class="flex flex-wrap gap-6"
-         id="home-group-items-{{ g.id }}">
-      {% if items %}
-        {% for it in items %}
-          {% with board=it.board %}
-            <div class="board-card relative w-64 cursor-pointer shadow-lg p-6 rounded-xl flex flex-col gap-3"
-                 data-board-id="{{ board.id }}">
+  <div class="home-group-dropzone" data-group-id="{{ g.id }}">
+    <div class="flex flex-wrap gap-6" id="home-group-items-{{ g.id }}">
 
-              <div class="absolute top-2 right-2 flex gap-2">
-                <button type="button"
-                        class="text-lg"
-                        onclick="HomeGroups.toggleFavorite({{ board.id }}, this)"
-                        aria-label="Favoritar">
-                  {% if board.id in favorite_board_ids %}★{% else %}☆{% endif %}
-                </button>
+      {% for it in items %}
+        <div class="relative">
+          {# Card padrão (mesmo visual/estrutura de Meus/Compartilhados/Favoritos) #}
+          {% include "boards/partials/home_board_card.html" with board=it.board favorite_board_ids=favorite_board_ids %}
 
-                <button type="button"
-                        class="text-xs underline text-red-300"
-                        onclick="HomeGroups.removeFromGroup({{ g.id }}, {{ board.id }}, this)">
-                  Remover
-                </button>
-              </div>
-
-              <a href="{% url 'boards:board_detail' board.id %}">
-                <h2 class="text-xl font-bold home-card-text">{{ board.name }}</h2>
-                <p class="text-sm home-card-sub">Organizado aqui</p>
-              </a>
-            </div>
-          {% endwith %}
-        {% endfor %}
-      {% else %}
+          {# Ação específica do agrupamento: remover do agrupamento (não apaga o board) #}
+          {% if not g.is_favorites %}
+            <button type="button"
+                    class="absolute top-2 right-10 text-xs underline text-red-300"
+                    onclick="HomeGroups.removeFromGroup({{ g.id }}, {{ it.board.id }}, this)">
+              Remover
+            </button>
+          {% endif %}
+        </div>
+      {% empty %}
         <div class="text-gray-300 backdrop-blur-lg px-4 py-2 rounded-lg">
           Arraste quadros aqui para organizar.
         </div>
-      {% endif %}
+      {% endfor %}
+
     </div>
   </div>
+
 </div>

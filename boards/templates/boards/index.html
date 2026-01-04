@@ -1,7 +1,7 @@
-<!-- board/index.html-->
+{# boards/templates/boards/index.html #}
 {% extends "base.html" %}
 {% load static %}
-<!--teste-->
+
 {% block extra_css %}
 <link rel="stylesheet" href="{% url 'boards:home_wallpaper_css' %}">
 <link rel="stylesheet" href="{% static 'boards/home.css' %}">
@@ -34,25 +34,22 @@
   </li>
 {% endblock %}
 
-
-
 {% block content %}
-
 
   <div id="home-groups-area" class="mb-8">
 
-    {# Favoritos #}
+    {# ===================== FAVORITOS ===================== #}
     <div class="mb-6">
       <div class="flex items-center justify-between mb-2">
         <h2 class="text-lg font-semibold">⭐ Favoritos</h2>
         <span class="text-xs text-white/80">Marque a estrela em um quadro para aparecer aqui.</span>
       </div>
 
-      <div class="home-group-dropzone"
-           data-group-id="{{ favorites_group.id }}">
+      <div class="home-group-dropzone" data-group-id="{{ favorites_group.id }}">
         <div class="flex flex-wrap gap-6" id="home-group-items-{{ favorites_group.id }}">
-          {% for it in favorites_group.items.all %}
-           {% empty %}
+          {% for it in favorites_group_items %}
+            {% include "boards/partials/home_board_card.html" with board=it.board favorite_board_ids=favorite_board_ids subtitle="Organizado aqui" %}
+          {% empty %}
             <div class="text-gray-300 backdrop-blur-lg px-4 py-2 rounded-lg">
               Sem favoritos ainda.
             </div>
@@ -61,7 +58,7 @@
       </div>
     </div>
 
-    {# Criar novo agrupamento #}
+    {# ===================== CRIAR NOVO AGRUPAMENTO ===================== #}
     <div class="mb-4">
       <form class="flex gap-2 items-center"
             hx-post="{% url 'boards:home_group_create' %}"
@@ -73,153 +70,89 @@
       </form>
     </div>
 
-    {# Lista de agrupamentos custom #}
+    {# ===================== GRUPOS CUSTOM ===================== #}
     <div id="home-custom-groups" class="flex flex-col gap-6">
       {% for row in custom_groups %}
-            {% include "boards/partials/home_group_block.html" with g=favorites_group items=favorites_group_items favorite_board_ids=favorite_board_ids %}
+        {% include "boards/partials/home_group_block.html" with g=row.group items=row.items favorite_board_ids=favorite_board_ids %}
+      {% empty %}
+        {# sem grupos custom ainda #}
       {% endfor %}
     </div>
+
   </div>
 
+  {# ===================== LISTAS BASE (NÃO MEXER) ===================== #}
+  <div class="pt-2 pr-4">
+    <h1 class="text-2xl font-bold mb-6 home-title">Quadros</h1>
 
-
-<!-- CONTEÚDO DA HOME (SOBE E AINDA NÃO COLIDE COM O MENU FIXO) -->
-<div class="pt-2 pr-4">
-  <h1 class="text-2xl font-bold mb-6 home-title">Quadros</h1>
-
-  <h2 class="text-lg font-semibold mb-3">Meus quadros</h2>
-  <div class="flex flex-wrap gap-6 mb-10 home-source-list">
-    {% for board in owned_boards %}
-      <div class="board-card relative w-64 cursor-pointer shadow-lg p-6 rounded-xl flex flex-col gap-3"
-     data-board-id="{{ board.id }}">
-        {% if board.image %}
-          <a href="{% url 'boards:board_detail' board.id %}">
-            <div class="h-20 w-full rounded-lg border overflow-hidden bg-white flex items-center justify-center">
-              <img
-                src="{{ board.image.url }}"
-                class="h-full w-auto object-contain"
-                onerror="this.style.display='none';
-                         this.parentElement.innerHTML =
-                         `<div class='text-red-700 text-center p-4 font-semibold'>
-                            Imagem corrompida<br>⚠️
-                          </div>`;"
-              >
-            </div>
-          </a>
-        {% else %}
-          <div
-            hx-get="{% url 'boards:update_board_image' board.id %}"
-            hx-target="body"
-            hx-swap="beforeend"
-            class="h-20 w-full bg-gray-300 rounded-lg border-2 border-dashed border-gray-600 flex items-center justify-center text-3xl font-bold text-gray-600 hover:bg-gray-200"
-          >
-            +
-          </div>
-        {% endif %}
-
-        <a href="{% url 'boards:board_detail' board.id %}">
-          <h2 class="text-xl font-bold home-card-text">{{ board.name }}</h2>
-          <p class="text-sm home-card-sub">Clique para abrir</p>
-        </a>
-
-        <button
-          hx-post="{% url 'boards:delete_board' board.id %}"
-          hx-target="closest .board-card"
-          hx-swap="outerHTML"
-          class="delete-button hidden text-red-600 text-sm underline hover:text-red-800 mt-2 text-left"
-          type="button"
-        >
-          Excluir quadro
-        </button>
-        <button type="button"
-          class="absolute top-2 right-2 text-lg"
-          onclick="HomeGroups.toggleFavorite({{ board.id }}, this)"
-          aria-label="Favoritar">
-          {% if board.id in favorite_board_ids %}★{% else %}☆{% endif %}
-        </button>
-
-      </div>
-    {% empty %}
-      <p class="text-gray-300 backdrop-blur-lg px-4 py-2 rounded-lg">Nenhum quadro criado ainda.</p>
-    {% endfor %}
-
-    <div
-      hx-get="{% url 'boards:add_board' %}"
-      hx-target="body"
-      hx-swap="beforeend"
-      class="new-board-button cursor-pointer p-6 rounded-lg w-64 flex items-center justify-center font-semibold"
-    >
-      + Criar novo quadro
-    </div>
-  </div>
-
-  {% if shared_boards %}
-    <h2 class="text-lg font-semibold mb-3">Compartilhados comigo</h2>
-    <div class="flex flex-wrap gap-6 home-source-list">
-      {% for board in shared_boards %}
-        <div class="board-card relative w-64 cursor-pointer shadow-lg p-6 rounded-xl flex flex-col gap-3">
-          {% if board.image %}
-            <a href="{% url 'boards:board_detail' board.id %}">
-              <div class="h-20 w-full rounded-lg border overflow-hidden bg-white flex items-center justify-center">
-                <img src="{{ board.image.url }}" class="h-full w-auto object-contain">
-              </div>
-            </a>
-          {% endif %}
-
-          <a href="{% url 'boards:board_detail' board.id %}">
-            <h2 class="text-xl font-bold home-card-text">{{ board.name }}</h2>
-            <p class="text-sm home-card-sub">Compartilhado com você</p>
-
-{% if board.owner_email %}
-  <div class="mt-2 inline-flex items-center gap-2 text-xs font-semibold text-white bg-black/60 rounded-md px-2 py-1">
-    <span class="opacity-90">owner:</span>
-    <span class="break-all">{{ board.owner_email }}</span>
-  </div>
-{% endif %}
-
-          </a>
+    <h2 class="text-lg font-semibold mb-3">Meus quadros</h2>
+    <div class="flex flex-wrap gap-6 mb-10 home-source-list">
+      {% for board in owned_boards %}
+        {# usa o mesmo card padrão #}
+        <div class="relative">
+          {% include "boards/partials/home_board_card.html" with board=board favorite_board_ids=favorite_board_ids subtitle="Clique para abrir" %}
+          <button
+            hx-post="{% url 'boards:delete_board' board.id %}"
+            hx-target="closest .relative"
+            hx-swap="outerHTML"
+            class="delete-button hidden text-red-600 text-sm underline hover:text-red-800 mt-2 text-left"
+            type="button">
+            Excluir quadro
+          </button>
         </div>
+      {% empty %}
+        <p class="text-gray-300 backdrop-blur-lg px-4 py-2 rounded-lg">Nenhum quadro criado ainda.</p>
       {% endfor %}
+
+      <div
+        hx-get="{% url 'boards:add_board' %}"
+        hx-target="body"
+        hx-swap="beforeend"
+        class="new-board-button cursor-pointer p-6 rounded-lg w-64 flex items-center justify-center font-semibold">
+        + Criar novo quadro
+      </div>
     </div>
-  {% endif %}
-</div>
 
-<script>
-  (function () {
-    const toggleBtn = document.getElementById("toggle-delete-mode");
-    let deleteMode = false;
+    {% if shared_boards %}
+      <h2 class="text-lg font-semibold mb-3">Compartilhados comigo</h2>
+      <div class="flex flex-wrap gap-6 home-source-list">
+        {% for board in shared_boards %}
+          {# IMPORTANTE: mesmo card padrão + show_owner #}
+          {% include "boards/partials/home_board_card.html" with board=board favorite_board_ids=favorite_board_ids subtitle="Compartilhado com você" show_owner=True owner_email=board.owner_email %}
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
 
-    toggleBtn?.addEventListener("click", () => {
-      deleteMode = !deleteMode;
+  <script>
+    (function () {
+      const toggleBtn = document.getElementById("toggle-delete-mode");
+      let deleteMode = false;
 
-      document.querySelectorAll(".delete-button").forEach(btn => {
-        btn.classList.toggle("hidden", !deleteMode);
+      toggleBtn?.addEventListener("click", () => {
+        deleteMode = !deleteMode;
+
+        document.querySelectorAll(".delete-button").forEach(btn => {
+          btn.classList.toggle("hidden", !deleteMode);
+        });
+
+        if (toggleBtn) {
+          toggleBtn.innerText = deleteMode ? "Sair do modo de exclusão" : "Excluir quadros";
+        }
       });
 
-      if (toggleBtn) {
-        toggleBtn.innerText = deleteMode ? "Sair do modo de exclusão" : "Excluir quadros";
-      }
-    });
+      document.body.addEventListener("htmx:afterRequest", function () {
+        if (!deleteMode) return;
 
-    // Quando excluir um board → desliga automaticamente o modo delete
-    document.body.addEventListener("htmx:afterRequest", function () {
-      if (!deleteMode) return;
-
-      deleteMode = false;
-
-      document.querySelectorAll(".delete-button").forEach(btn => {
-        btn.classList.add("hidden");
+        deleteMode = false;
+        document.querySelectorAll(".delete-button").forEach(btn => btn.classList.add("hidden"));
+        if (toggleBtn) toggleBtn.innerText = "Excluir quadros";
       });
 
-      if (toggleBtn) toggleBtn.innerText = "Excluir quadros";
-    });
-
-    // Evita estado “travado” ao voltar pelo cache do browser
-    window.addEventListener("pageshow", function (event) {
-      if (event.persisted) window.location.reload();
-    });
-  })();
-</script>
+      window.addEventListener("pageshow", function (event) {
+        if (event.persisted) window.location.reload();
+      });
+    })();
+  </script>
 
 {% endblock %}
-<!--END board/index.html-->

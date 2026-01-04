@@ -1,0 +1,43 @@
+{# boards/templates/boards/partials/home_board_card.html #}
+
+<div class="board-card relative w-64 cursor-pointer shadow-lg p-6 rounded-xl flex flex-col gap-3"
+     data-board-id="{{ board.id }}">
+
+  {# estrela (sempre disponível) #}
+  <button type="button"
+          class="absolute top-2 right-2 text-lg"
+          onclick="HomeGroups.toggleFavorite({{ board.id }}, this)"
+          aria-label="Favoritar">
+    {% if board.id in favorite_board_ids %}★{% else %}☆{% endif %}
+  </button>
+
+  {# imagem / placeholder #}
+  {% if board.image %}
+    <a href="{% url 'boards:board_detail' board.id %}">
+      <div class="h-20 w-full rounded-lg border overflow-hidden bg-white flex items-center justify-center">
+        <img src="{{ board.image.url }}" class="h-full w-auto object-contain">
+      </div>
+    </a>
+  {% else %}
+    <a href="{% url 'boards:board_detail' board.id %}">
+      <div class="h-20 w-full bg-gray-300 rounded-lg border-2 border-dashed border-gray-600 flex items-center justify-center text-3xl font-bold text-gray-600">
+        +
+      </div>
+    </a>
+  {% endif %}
+
+  <a href="{% url 'boards:board_detail' board.id %}">
+    <h2 class="text-xl font-bold home-card-text">{{ board.name }}</h2>
+    <p class="text-sm home-card-sub">
+      {% if subtitle %}{{ subtitle }}{% else %}Clique para abrir{% endif %}
+    </p>
+
+    {% if show_owner and owner_email %}
+      <div class="mt-2 inline-flex items-center gap-2 text-xs font-semibold text-white bg-black/60 rounded-md px-2 py-1">
+        <span class="opacity-90">owner:</span>
+        <span class="break-all">{{ owner_email }}</span>
+      </div>
+    {% endif %}
+  </a>
+
+</div>
