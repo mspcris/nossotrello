@@ -838,6 +838,163 @@
 </script>
 
 
+<script>
+  // ============================================================
+  // DRAG AUTO-SCROLL (cards) — facilita mover em colunas longas
+  // Funciona com o seu window.__isDraggingCard (setado no initSortable)
+  // ============================================================
+
+  (function () {
+    if (window.__cmDragAutoScrollInstalled) return;
+    window.__cmDragAutoScrollInstalled = true;
+
+    const CFG = {
+      zonePx: 56,          // “faixa” no topo/rodapé que ativa o scroll
+      maxStep: 22,         // passo máximo por frame (px)
+      minStep: 4,          // passo mínimo por frame (px)
+      rafThrottle: true
+    };
+
+    let active = {
+      scroller: null,
+      dir: 0,     // -1 cima, +1 baixo
+      intensity: 0
+    };
+
+    function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
+
+    function isScrollable(el) {
+      if (!el || el === document.body || el === document.documentElement) return false;
+      const st = window.getComputedStyle(el);
+      const oy = st.overflowY;
+      if (oy !== "auto" && oy !== "scroll") return false;
+      return el.scrollHeight > el.clientHeight + 2;
+    }
+
+    function findScrollParent(startEl) {
+      let el = startEl;
+      while (el && el !== document.body && el !== document.documentElement) {
+        if (isScrollable(el)) return el;
+        el = el.parentElement;
+      }
+      // fallback: colunas wrapper (caso a lista em si não role)
+      const wrap = document.getElementById("columns-wrapper");
+      if (isScrollable(wrap)) return wrap;
+      return null;
+    }
+
+    function findListUnderPointer(x, y) {
+      // pega o elemento sob o ponteiro e procura um UL de cards
+      const el = document.elementFromPoint(x, y);
+      if (!el) return null;
+
+      const list =
+        el.closest?.('[id^="cards-col-"]') ||
+        el.querySelector?.('[id^="cards-col-"]');
+
+      return list || null;
+    }
+
+    function updateActiveFromPointer(x, y) {
+      const list = findListUnderPointer(x, y);
+      if (!list) {
+        active.scroller = null;
+        active.dir = 0;
+        active.intensity = 0;
+        return;
+      }
+
+      const scroller = findScrollParent(list) || list;
+      if (!scroller) {
+        active.scroller = null;
+        active.dir = 0;
+        active.intensity = 0;
+        return;
+      }
+
+      const r = scroller.getBoundingClientRect();
+      const topZoneEnd = r.top + CFG.zonePx;
+      const botZoneStart = r.bottom - CFG.zonePx;
+
+      if (y < r.top || y > r.bottom || x < r.left || x > r.right) {
+        active.scroller = null;
+        active.dir = 0;
+        active.intensity = 0;
+        return;
+      }
+
+      if (y <= topZoneEnd) {
+        const d = clamp((topZoneEnd - y) / CFG.zonePx, 0, 1);
+        active.scroller = scroller;
+        active.dir = -1;
+        active.intensity = d;
+        return;
+      }
+
+      if (y >= botZoneStart) {
+        const d = clamp((y - botZoneStart) / CFG.zonePx, 0, 1);
+        active.scroller = scroller;
+        active.dir = +1;
+        active.intensity = d;
+        return;
+      }
+
+      active.scroller = null;
+      active.dir = 0;
+      active.intensity = 0;
+    }
+
+    function stepScroll() {
+      if (!window.__isDraggingCard) {
+        active.scroller = null;
+        active.dir = 0;
+        active.intensity = 0;
+        return;
+      }
+
+      if (active.scroller && active.dir !== 0) {
+        const d = clamp(active.intensity || 0, 0, 1);
+        const step = Math.round(CFG.minStep + (CFG.maxStep - CFG.minStep) * d);
+        active.scroller.scrollTop += active.dir * step;
+      }
+    }
+
+    let rafId = null;
+    function loop() {
+      stepScroll();
+      rafId = requestAnimationFrame(loop);
+    }
+
+    // liga/desliga loop baseado no estado de drag (usa seus flags)
+    document.addEventListener("pointermove", (e) => {
+      if (!window.__isDraggingCard) return;
+      updateActiveFromPointer(e.clientX, e.clientY);
+    }, { passive: true });
+
+    document.addEventListener("dragover", (e) => {
+      // fallback (alguns browsers mantêm dragover mais estável durante Sortable)
+      if (!window.__isDraggingCard) return;
+      updateActiveFromPointer(e.clientX, e.clientY);
+    }, { passive: true });
+
+    document.addEventListener("pointerup", () => {
+      active.scroller = null;
+      active.dir = 0;
+      active.intensity = 0;
+    }, { passive: true });
+
+    document.addEventListener("keyup", (e) => {
+      if (e.key === "Escape") {
+        active.scroller = null;
+        active.dir = 0;
+        active.intensity = 0;
+      }
+    });
+
+    // inicia loop
+    rafId = requestAnimationFrame(loop);
+  })();
+</script>
 
 
 
