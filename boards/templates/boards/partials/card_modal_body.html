@@ -1027,98 +1027,95 @@ html.dark #cm-root{
 </script>
 
 
-
 <script>
   // ============================================================
-  // HOTKEYS (ALT+S / ALT+I) — Card Modal
-  // - ALT+S: clica no botão Salvar da floatbar (#cm-float-save-btn)
-  // - ALT+I: clica no botão Incluir (aba Atividade) do form (#cm-activity-form)
+  // HOTKEYS (ALT+S / ALT+I) — Card Modal (robusto com HTMX/Quill)
+  // - ALT+S: submete o form principal (#cm-main-form) SEM depender da floatbar
+  // - ALT+I: vai para aba Atividade e submete o form (#cm-activity-form)
   // ============================================================
   (function () {
-    if (window.__cmModalHotkeysInstalled) return;
-    window.__cmModalHotkeysInstalled = true;
+    // OBS: como este HTML é re-renderizado via HTMX, não use "instalar 1 vez"
+    // com window.__flag, senão você pode ficar sem handler dependendo da ordem.
+    // Aqui a gente instala por modal-open (por cm-root) e evita duplicar pelo dataset.
 
-    function isModalOpen() {
-      // critério simples e robusto: se existe #cm-root, o body do modal está carregado
-      return !!document.getElementById("cm-root");
-    }
+    const root = document.getElementById("cm-root");
+    if (!root) return;
 
-    function isTypingContext(el) {
-      if (!el) return false;
-      const tag = (el.tagName || "").toLowerCase();
-      if (tag === "input" || tag === "textarea" || tag === "select") return true;
-      if (el.isContentEditable) return true;
-      return false;
-    }
+    if (root.dataset.cmHotkeysBound === "1") return;
+    root.dataset.cmHotkeysBound = "1";
 
-    function clickIfUsable(el) {
-      if (!el) return false;
-      if (el.disabled) return false;
-      if (el.getAttribute("aria-disabled") === "true") return false;
-
-      const style = window.getComputedStyle(el);
-      const visible = style.display !== "none" && style.visibility !== "hidden" && el.offsetParent !== null;
-      if (!visible) return false;
-
-      el.click();
-      return true;
+    function clampKey(e) {
+      // mais estável que e.key em layout PT/ABNT: usa code quando possível
+      const code = (e.code || "").toLowerCase(); // "keys", "keyi"
+      if (code === "keys") return "s";
+      if (code === "keyi") return "i";
+      return (e.key || "").toLowerCase();
     }
 
     function gotoTabAtiv() {
-      const root = document.getElementById("cm-root");
-      if (!root) return false;
       const btn = root.querySelector('.cm-tabbtn[data-cm-tab="ativ"]');
       if (!btn) return false;
       btn.click();
       return true;
     }
 
-    function clickIncluirAtividade() {
-      // botão "Incluir" do form de atividade
+    function submitMain() {
+      const form = document.getElementById("cm-main-form");
+      if (!form) return false;
+
+      try {
+        // dispara listeners + validações + HTMX
+        if (form.requestSubmit) form.requestSubmit();
+        else form.submit();
+        return true;
+      } catch (_e) {
+        try { form.submit(); return true; } catch (_e2) {}
+      }
+      return false;
+    }
+
+    function submitActivity() {
       const form = document.getElementById("cm-activity-form");
       if (!form) return false;
 
-      const btn = form.querySelector('button[type="submit"].cm-btn.primary');
-      if (!btn) return false;
-
-      return clickIfUsable(btn);
+      try {
+        if (form.requestSubmit) form.requestSubmit();
+        else form.submit();
+        return true;
+      } catch (_e) {
+        try { form.submit(); return true; } catch (_e2) {}
+      }
+      return false;
     }
 
-    document.addEventListener(
+    // IMPORTANT: bind no root do modal (não no document) para evitar conflito global
+    root.addEventListener(
       "keydown",
       function (e) {
         if (!e.altKey) return;
         if (e.ctrlKey || e.metaKey) return;
 
-        if (!isModalOpen()) return;
+        const k = clampKey(e);
+        if (k !== "s" && k !== "i") return;
 
-        // não dispara enquanto o usuário está digitando em input/textarea/contenteditable
-        const active = document.activeElement;
-        if (isTypingContext(active)) return;
+        // não deixar o browser “comer” o ALT
+        e.preventDefault();
+        e.stopPropagation();
 
-        const k = (e.key || "").toLowerCase();
-
-        // ALT+S => Salvar (floatbar)
+        // ALT+S => salvar SEM depender do floatbar
         if (k === "s") {
-          e.preventDefault();
-          e.stopPropagation();
-          clickIfUsable(document.getElementById("cm-float-save-btn"));
+          submitMain();
           return;
         }
 
-        // ALT+I => Incluir atividade (vai para aba Atividade e submete o form)
+        // ALT+I => incluir atividade
         if (k === "i") {
-          e.preventDefault();
-          e.stopPropagation();
-
-          // garante que a aba esteja visível antes de clicar
+          // garante aba Atividade
           gotoTabAtiv();
 
-          // aguarda a troca de aba (classe is-active) e então clica
+          // dá 1 tick para trocar o painel e então submete
           setTimeout(() => {
-            // tenta focar o editor (opcional)
-            document.getElementById("cm-activity-editor")?.focus?.();
-            clickIncluirAtividade();
+            submitActivity();
           }, 0);
 
           return;
