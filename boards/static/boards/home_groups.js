@@ -122,19 +122,44 @@
       if (resp.ok) location.reload();
     },
 
-    toggleFavorite: async function (boardId, btnEl) {
-      const resp = await postJson(`/home/favorites/toggle/`, { board_id: boardId });
-      if (!resp.ok) return;
+    toggleFavorite: async function (boardId, el, ev) {
+  try {
+    if (ev) { ev.preventDefault(); ev.stopPropagation(); }
 
-      const data = await resp.json().catch(() => null);
-      if (!data) return;
+    // (opcional) trava double click
+    if (el?.dataset?.busy === "1") return;
+    if (el) el.dataset.busy = "1";
 
-      if (btnEl) btnEl.textContent = data.favorited ? "★" : "☆";
+    // TODO: aqui entra sua chamada (fetch/htmx) para a rota de toggle
+    // Exemplo genérico:
+    const url = `/home/favorites/toggle/${boardId}/`; // ajuste para sua rota real
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: {
+        "X-CSRFToken": HomeGroups.getCsrfToken(),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({}),
+    });
 
-      // opcional: se está em Favoritos, recarrega para refletir lista
-      // (simples e consistente)
-      location.reload();
+    if (!resp.ok) {
+      const txt = await resp.text();
+      console.error("toggleFavorite failed:", resp.status, txt);
+      return;
     }
+
+    const data = await resp.json();
+
+    // Atualiza ícone local
+    if (el) el.textContent = data.is_favorite ? "★" : "☆";
+
+  } catch (e) {
+    console.error("toggleFavorite error:", e);
+  } finally {
+    if (el) el.dataset.busy = "0";
+  }
+},
+
   };
 
   document.addEventListener("DOMContentLoaded", ensureSortableHome);

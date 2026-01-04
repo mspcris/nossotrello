@@ -7,12 +7,17 @@
      data-board-name="{{ board.name|lower }}">
 
   {# estrela (sempre aparece, inclusive no compartilhado) #}
-  <button type="button"
-          class="absolute top-2 right-2 text-lg"
-          onclick="HomeGroups.toggleFavorite({{ board.id }}, this)"
-          aria-label="Favoritar">
-    {% if board.id in favorite_board_ids %}★{% else %}☆{% endif %}
-  </button>
+  <button
+  type="button"
+  class="favorite-star absolute top-2 right-2 text-lg"
+  data-board-id="{{ board.id }}"
+  onclick="HomeGroups.toggleFavorite({{ board.id }}, this); event.stopPropagation();"
+  onmousedown="event.stopPropagation();"
+  onpointerdown="event.stopPropagation();"
+  aria-label="Favoritar"
+>
+  {% if board.id in favorite_board_ids %}★{% else %}☆{% endif %}
+</button>
 
   {# imagem / placeholder #}
   {% if board.image %}

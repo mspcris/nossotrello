@@ -17,11 +17,16 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import get_user_model
 from django.db.models import Q
-from django.urls import reverse
+from django.db.models import Max
+from django.db.models.functions import Coalesce
 from django.db import models
 from django.db.models import Prefetch
+
+from django.urls import reverse
 from types import SimpleNamespace
 from ..models import BoardGroup, BoardGroupItem
+from django.db import transaction
+
 
 
 
@@ -174,23 +179,35 @@ def index(request):
 
 @require_POST
 @login_required
+@transaction.atomic
 def home_group_create(request):
     org = _get_home_org(request)
     name = (request.POST.get("name") or "").strip() or "Novo agrupamento"
 
-    # sempre nasce acima: posição negativa para aparecer antes, depois normaliza se quiser
-    min_pos = BoardGroup.objects.filter(user=request.user, organization=org, is_favorites=False).aggregate(models.Min("position")).get("position__min")
-    new_pos = (min_pos - 1) if (min_pos is not None) else 1
+    # Mesma “scope” usada no create (user + org + somente grupos customizados)
+    qs = BoardGroup.objects.filter(
+        user=request.user,
+        organization=org,
+        is_favorites=False,
+    )
+
+    # Próxima posição segura (evita NULL e respeita CHECK constraint do SQLite)
+    next_pos = qs.aggregate(p=Coalesce(Max("position"), 0))["p"] + 1
+    next_pos = int(next_pos)
 
     g = BoardGroup.objects.create(
         user=request.user,
         organization=org,
         name=name,
-        position=new_pos,
+        position=next_pos,
         is_favorites=False,
     )
 
-    html = render_to_string("boards/partials/home_group_block.html", {"g": g, "items": [] , "favorite_board_ids": []}, request=request)
+    html = render_to_string(
+        "boards/partials/home_group_block.html",
+        {"g": g, "items": [], "favorite_board_ids": []},
+        request=request,
+    )
     return HttpResponse(html)
 
 

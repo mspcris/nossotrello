@@ -73,3 +73,55 @@
     border: 2px solid rgba(255, 80, 80, 0.8);
     background: rgba(255, 0, 0, 0.15);
 }
+
+/* estrela de favorito (melhor alvo de clique) */
+.favorite-star{
+  cursor: pointer;
+  transform-origin: center;
+  transition: transform .12s ease;
+  padding: 6px;          /* aumenta área de clique sem “poluir” */
+  line-height: 1;
+  border-radius: 10px;   /* opcional: melhora UX */
+}
+
+.favorite-star:hover{
+  transform: scale(3);
+}
+
+
+.favorite-star{
+  cursor: pointer;
+
+  /* área de clique */
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  /* contraste garantido */
+  color: #fff;
+  background: rgba(0,0,0,.55);
+  border: 1px solid rgba(255,255,255,.35);
+  border-radius: 999px;
+
+  /* “separar” do fundo */
+  box-shadow: 0 2px 10px rgba(0,0,0,.35);
+  text-shadow: 0 1px 2px rgba(0,0,0,.7);
+
+  /* hover */
+  transform-origin: center;
+  transition: transform .12s ease, background .12s ease, box-shadow .12s ease;
+}
+
+.favorite-star:hover{
+  transform: scale(3);
+  background: rgba(0,0,0,.75);
+  box-shadow: 0 6px 18px rgba(0,0,0,.55);
+}
+
+/* opcional: quando estiver favoritado, dá um “destaque” */
+.favorite-star.is-on{
+  background: rgba(255,215,0,.25);
+  border-color: rgba(255,215,0,.55);
+}
