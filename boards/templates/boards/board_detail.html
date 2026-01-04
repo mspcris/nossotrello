@@ -380,15 +380,19 @@
 
 
 
-
 <script>
   // ============================================================
   // FILTER (Tags = frontend | Texto = backend)
+  // - Tags: filtra no DOM (tags + TERM: Vencido/A vencer/Em dia)
+  // - Texto: busca no backend (/search/)
+  //
+  // Fix do bug “segurar backspace volta filtro antigo”:
+  // - controle de "request id" (seq) para ignorar respostas antigas
+  // - cancelamento do debounce pendente quando muda modo/zera input
   // ============================================================
 
   window.__boardFilterMode = "tags"; // "tags" | "text"
 
-  // ---- Debounce com cancel() ----
   function debounce(fn, wait) {
     let t = null;
     function debounced(...args) {
@@ -402,17 +406,19 @@
     return debounced;
   }
 
-  function refreshCounters() {
-    if (window.BoardUI && typeof window.BoardUI.refreshColumnCounters === "function") {
-      window.BoardUI.refreshColumnCounters();
-    }
+  function getFilterInputValue() {
+    return (document.getElementById("board-filter")?.value || "").trim();
   }
 
   function resetSearchUI() {
     // volta tudo (cards + colunas)
     document.querySelectorAll('li[data-card-id]').forEach((card) => (card.style.display = ""));
     document.querySelectorAll(".column-item[data-column-id]").forEach((col) => (col.style.display = ""));
-    refreshCounters();
+
+    // ✅ atualiza contadores
+    if (window.BoardUI && typeof window.BoardUI.refreshColumnCounters === "function") {
+      window.BoardUI.refreshColumnCounters();
+    }
   }
 
   function applySearchResult(cardIds, columnIds) {
@@ -431,47 +437,102 @@
       col.style.display = colSet.has(id) ? "" : "none";
     });
 
-    refreshCounters();
+    // ✅ atualiza contadores
+    if (window.BoardUI && typeof window.BoardUI.refreshColumnCounters === "function") {
+      window.BoardUI.refreshColumnCounters();
+    }
   }
 
-  // ---- Backend search: abort + seq anti-resposta-atrasada ----
-  let __backendSearchCtrl = null;
-  let __backendSearchSeq = 0;
-
-  function cancelBackendSearch() {
-    try { runBackendSearch.cancel && runBackendSearch.cancel(); } catch (_e) {}
-    try { __backendSearchCtrl && __backendSearchCtrl.abort(); } catch (_e) {}
-    __backendSearchCtrl = null;
-    __backendSearchSeq += 1; // invalida qualquer resposta antiga que ainda chegue
+  // -------- TAGS MODE: tags + TERM (Vencido/A vencer/Em dia) --------
+  function normalize(s) {
+    return (s || "").toString().trim().toLowerCase();
   }
 
-  const runBackendSearch = debounce(async function (raw) {
-    const q = (raw || "").trim();
+  function getCardTagsText(cardEl) {
+    // principal (seu padrão)
+    const byDataTag = Array.from(cardEl.querySelectorAll("[data-tag]"))
+      .map(el => normalize(el.textContent));
 
-    // se virou vazio, garante que nada atrasado vai reaplicar filtro antigo
+    // fallback (se em algum template trocar o atributo)
+    const byClassTag = Array.from(cardEl.querySelectorAll(".tag, .cm-tag, .badge-tag, [data-tag-name]"))
+      .map(el => normalize(el.textContent));
+
+    return [...byDataTag, ...byClassTag].filter(Boolean);
+  }
+
+  function getCardTermText(cardEl) {
+    // 1) badge visível (Vencido / A vencer / Em dia)
+    const badgeText =
+      normalize(cardEl.querySelector(".term-badge")?.textContent) ||
+      normalize(cardEl.querySelector("[data-term-status]")?.textContent);
+
+    // 2) status em atributo (se existir)
+    const st = normalize(cardEl.getAttribute("data-term-status"));
+
+    // 3) alguns templates guardam em data-*
+    const due  = normalize(cardEl.getAttribute("data-term-due"));
+    const warn = normalize(cardEl.getAttribute("data-term-warn"));
+
+    // Só devolve tokens úteis (não joga datas cruas como match principal, mas deixa disponível)
+    return [badgeText, st, due, warn].filter(Boolean);
+  }
+
+  function applyTagsFilter(raw) {
+    const q = normalize(raw);
     if (!q) {
-      cancelBackendSearch();
       resetSearchUI();
       return;
     }
 
-    // cancela request anterior e cria uma nova
-    if (__backendSearchCtrl) {
-      try { __backendSearchCtrl.abort(); } catch (_e) {}
+    const cards = document.querySelectorAll('[id^="cards-col-"] li[data-card-id]');
+
+    cards.forEach((card) => {
+      const tags = getCardTagsText(card);
+      const terms = getCardTermText(card);
+
+      // match em tags OU em TERM (ex: "vencido", "a vencer", "em dia")
+      const hay = [...tags, ...terms];
+      const match = hay.some(t => t.includes(q));
+
+      card.style.display = match ? "" : "none";
+    });
+
+    // colunas: mostra só se tiver algum card visível
+    document.querySelectorAll(".column-item[data-column-id]").forEach((col) => {
+      const anyVisible = col.querySelector('li[data-card-id]:not([style*="display: none"])');
+      col.style.display = anyVisible ? "" : "none";
+    });
+
+    // ✅ contadores sempre no final do filtro
+    if (window.BoardUI && typeof window.BoardUI.refreshColumnCounters === "function") {
+      window.BoardUI.refreshColumnCounters();
     }
-    __backendSearchCtrl = new AbortController();
-    const mySeq = ++__backendSearchSeq;
+  }
+
+  // -------- BACKEND MODE (texto) com anti-resposta velha --------
+  let __searchSeq = 0;
+
+  const runBackendSearch = debounce(async function (raw) {
+    const modeAtStart = window.__boardFilterMode;
+    const mySeq = ++__searchSeq;
+
+    const q = (raw || "").trim();
+    if (!q) {
+      resetSearchUI();
+      return;
+    }
 
     try {
       const resp = await fetch(`/board/{{ board.id }}/search/?q=${encodeURIComponent(q)}`, {
         method: "GET",
         credentials: "same-origin",
-        headers: { "Accept": "application/json" },
-        signal: __backendSearchCtrl.signal
+        headers: { "Accept": "application/json" }
       });
 
-      // se outra busca começou depois, ignora
-      if (mySeq !== __backendSearchSeq) return;
+      // se mudou modo / input / seq, ignora
+      if (mySeq !== __searchSeq) return;
+      if (window.__boardFilterMode !== modeAtStart) return;
+      if (getFilterInputValue() !== q) return;
 
       if (!resp.ok) {
         resetSearchUI();
@@ -480,13 +541,15 @@
 
       const data = await resp.json();
 
-      // ainda é a busca mais recente?
-      if (mySeq !== __backendSearchSeq) return;
+      // se mudou algo enquanto esperava, ignora
+      if (mySeq !== __searchSeq) return;
+      if (window.__boardFilterMode !== modeAtStart) return;
+      if (getFilterInputValue() !== q) return;
 
       applySearchResult(data.card_ids || [], data.column_ids || []);
-    } catch (e) {
-      // AbortError = esperado quando o usuário digita/apaga rápido
-      if (e && e.name === "AbortError") return;
+    } catch (_e) {
+      // evita “voltar filtro velho” em corrida
+      if (mySeq !== __searchSeq) return;
       resetSearchUI();
     }
   }, 250);
@@ -494,8 +557,9 @@
   function setFilterMode(mode) {
     window.__boardFilterMode = (mode === "text") ? "text" : "tags";
 
-    // ao trocar modo, mata qualquer backend pendente (evita “voltar filtro antigo”)
-    cancelBackendSearch();
+    // 🔑 mata qualquer busca backend pendente ao trocar de modo
+    runBackendSearch.cancel?.();
+    __searchSeq++; // invalida respostas pendentes imediatamente
 
     const btnTags = document.getElementById("filter-mode-tags");
     const btnText = document.getElementById("filter-mode-text");
@@ -514,47 +578,34 @@
     if (input) {
       input.placeholder = (window.__boardFilterMode === "text")
         ? "Buscar em cards…"
-        : "Ex: urgente";
+        : "Ex: urgente / vencido / em dia";
 
+      // reaplica com o valor atual do input
       applyBoardFilter(input.value || "");
       if (!window.matchMedia || !window.matchMedia("(pointer: coarse)").matches) input.focus();
     }
   }
 
   function applyBoardFilter(raw) {
-    const q = (raw || "").trim().toLowerCase();
+    const q = (raw || "").trim();
 
     if (!q) {
-      cancelBackendSearch();
+      // 🔑 cancela backend pendente e invalida respostas antigas
+      runBackendSearch.cancel?.();
+      __searchSeq++;
       resetSearchUI();
       return;
     }
 
     if (window.__boardFilterMode === "tags") {
-      // garante que nada do backend vai “rebater” depois
-      cancelBackendSearch();
-
-      const cards = document.querySelectorAll('[id^="cards-col-"] li[data-card-id]');
-      cards.forEach((card) => {
-        // mantém seu contrato atual: procurar em elementos [data-tag]
-        const tags = Array.from(card.querySelectorAll("[data-tag]"))
-          .map(t => (t.textContent || "").toLowerCase());
-
-        const match = tags.some(t => t.includes(q));
-        card.style.display = match ? "" : "none";
-      });
-
-      document.querySelectorAll(".column-item[data-column-id]").forEach((col) => {
-        const anyVisible = col.querySelector('li[data-card-id]:not([style*="display: none"])');
-        col.style.display = anyVisible ? "" : "none";
-      });
-
-      refreshCounters();
+      // 🔑 garante que nenhuma resposta de backend “volte” o filtro antigo
+      runBackendSearch.cancel?.();
+      __searchSeq++;
+      applyTagsFilter(q);
       return;
     }
 
-    // text mode (backend)
-    runBackendSearch(raw);
+    runBackendSearch(q);
   }
 
   document.addEventListener("DOMContentLoaded", () => setFilterMode("tags"));
