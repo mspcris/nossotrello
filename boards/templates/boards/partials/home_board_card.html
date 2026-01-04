@@ -6,18 +6,34 @@
      data-board-id="{{ board.id }}"
      data-board-name="{{ board.name|lower }}">
 
-  {# estrela (sempre aparece, inclusive no compartilhado) #}
-  <button
+    <div class="absolute top-2 right-2 flex flex-col items-end gap-2">
+    {# ⭐ Favorito #}
+    <button
   type="button"
   class="favorite-star absolute top-2 right-2 text-lg"
-  data-board-id="{{ board.id }}"
-  onclick="HomeGroups.toggleFavorite({{ board.id }}, this); event.stopPropagation();"
-  onmousedown="event.stopPropagation();"
-  onpointerdown="event.stopPropagation();"
+  data-toggle-url="{% url 'boards:home_favorite_toggle' board.id %}"
+  onclick="HomeGroups.toggleFavorite({{ board.id }}, this, event);"
   aria-label="Favoritar"
 >
   {% if board.id in favorite_board_ids %}★{% else %}☆{% endif %}
 </button>
+
+
+    {# 📚 Agrupar #}
+    <button
+      type="button"
+      class="group-board-btn text-sm px-2 py-1 rounded-md bg-black/50 text-white hover:bg-black/70"
+      onclick="HomeGroups.openGroupPicker({{ board.id }}, event);"
+      aria-label="Agrupar"
+      title="Agrupar"
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 3L2 9l10 6 10-6-10-6Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M2 15l10 6 10-6" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+      </svg>
+    </button>
+  </div>
+
 
   {# imagem / placeholder #}
   {% if board.image %}
@@ -52,6 +68,7 @@
 
   <a href="{% url 'boards:board_detail' board.id %}">
     <h2 class="text-xl font-bold home-card-text">{{ board.name }}</h2>
+
     {% if subtitle %}
       <p class="text-sm home-card-sub">{{ subtitle }}</p>
     {% endif %}

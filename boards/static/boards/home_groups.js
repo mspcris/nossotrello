@@ -1,3 +1,4 @@
+//boards/static/boards/home_groups.js
 (function () {
   function getCsrf() {
     return (
@@ -126,20 +127,19 @@
   try {
     if (ev) { ev.preventDefault(); ev.stopPropagation(); }
 
-    // (opcional) trava double click
-    if (el?.dataset?.busy === "1") return;
-    if (el) el.dataset.busy = "1";
+    if (!el) return;
+    if (el.dataset.busy === "1") return;
+    el.dataset.busy = "1";
 
-    // TODO: aqui entra sua chamada (fetch/htmx) para a rota de toggle
-    // Exemplo genérico:
-    const url = `/home/favorites/toggle/${boardId}/`; // ajuste para sua rota real
+    const url = el.getAttribute("data-toggle-url") || `/home/favorites/toggle/${boardId}/`;
+
     const resp = await fetch(url, {
       method: "POST",
+      credentials: "same-origin",
       headers: {
-        "X-CSRFToken": HomeGroups.getCsrfToken(),
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({}),
+        "X-CSRFToken": getCsrf(),
+        "Accept": "application/json",
+      }
     });
 
     if (!resp.ok) {
@@ -149,9 +149,7 @@
     }
 
     const data = await resp.json();
-
-    // Atualiza ícone local
-    if (el) el.textContent = data.is_favorite ? "★" : "☆";
+    el.textContent = data.favorited ? "★" : "☆";
 
   } catch (e) {
     console.error("toggleFavorite error:", e);

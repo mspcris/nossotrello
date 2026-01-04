@@ -276,11 +276,11 @@ def home_group_item_remove(request, group_id, board_id):
 
 @require_POST
 @login_required
-def home_favorite_toggle(request):
+def home_favorite_toggle(request, board_id):
     org = _get_home_org(request)
     fav = _get_or_create_favorites_group(request.user, org)
 
-    board_id = int(request.POST.get("board_id") or 0)
+    board_id = int(board_id or 0)
     if not board_id:
         return HttpResponse("board_id inválido", status=400)
 
@@ -291,10 +291,10 @@ def home_favorite_toggle(request):
     if existing:
         existing.delete()
         return JsonResponse({"favorited": False})
-    else:
-        last_pos = BoardGroupItem.objects.filter(group=fav).aggregate(models.Max("position")).get("position__max") or 0
-        BoardGroupItem.objects.create(group=fav, board_id=board_id, position=last_pos + 1)
-        return JsonResponse({"favorited": True})
+
+    last_pos = BoardGroupItem.objects.filter(group=fav).aggregate(Max("position")).get("position__max") or 0
+    BoardGroupItem.objects.create(group=fav, board_id=board_id, position=last_pos + 1)
+    return JsonResponse({"favorited": True})
 
 
 
