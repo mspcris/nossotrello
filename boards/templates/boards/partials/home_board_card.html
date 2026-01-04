@@ -1,9 +1,12 @@
-{# boards/templates/boards/partials/home_board_card.html #}
+{% load static %}
+
+{# flags: show_delete_button (True/False), is_shared (True/False), subtitle (string), owner_email (string opcional) #}
 
 <div class="board-card relative w-64 cursor-pointer shadow-lg p-6 rounded-xl flex flex-col gap-3"
-     data-board-id="{{ board.id }}">
+     data-board-id="{{ board.id }}"
+     data-board-name="{{ board.name|lower }}">
 
-  {# estrela (sempre disponível) #}
+  {# estrela (sempre aparece, inclusive no compartilhado) #}
   <button type="button"
           class="absolute top-2 right-2 text-lg"
           onclick="HomeGroups.toggleFavorite({{ board.id }}, this)"
@@ -15,24 +18,40 @@
   {% if board.image %}
     <a href="{% url 'boards:board_detail' board.id %}">
       <div class="h-20 w-full rounded-lg border overflow-hidden bg-white flex items-center justify-center">
-        <img src="{{ board.image.url }}" class="h-full w-auto object-contain">
+        <img src="{{ board.image.url }}"
+             class="h-full w-auto object-contain"
+             loading="lazy"
+             onerror="this.style.display='none';
+                      this.parentElement.innerHTML =
+                      `<div class='text-red-700 text-center p-4 font-semibold'>
+                         Imagem corrompida<br>⚠️
+                       </div>`;">
       </div>
     </a>
   {% else %}
-    <a href="{% url 'boards:board_detail' board.id %}">
-      <div class="h-20 w-full bg-gray-300 rounded-lg border-2 border-dashed border-gray-600 flex items-center justify-center text-3xl font-bold text-gray-600">
+    {% if not is_shared %}
+      <div
+        hx-get="{% url 'boards:update_board_image' board.id %}"
+        hx-target="body"
+        hx-swap="beforeend"
+        class="h-20 w-full bg-gray-300 rounded-lg border-2 border-dashed border-gray-600 flex items-center justify-center text-3xl font-bold text-gray-600 hover:bg-gray-200"
+      >
         +
       </div>
-    </a>
+    {% else %}
+      <div class="h-20 w-full bg-white/40 rounded-lg border flex items-center justify-center text-sm text-white/80">
+        Sem imagem
+      </div>
+    {% endif %}
   {% endif %}
 
   <a href="{% url 'boards:board_detail' board.id %}">
     <h2 class="text-xl font-bold home-card-text">{{ board.name }}</h2>
-    <p class="text-sm home-card-sub">
-      {% if subtitle %}{{ subtitle }}{% else %}Clique para abrir{% endif %}
-    </p>
+    {% if subtitle %}
+      <p class="text-sm home-card-sub">{{ subtitle }}</p>
+    {% endif %}
 
-    {% if show_owner and owner_email %}
+    {% if owner_email %}
       <div class="mt-2 inline-flex items-center gap-2 text-xs font-semibold text-white bg-black/60 rounded-md px-2 py-1">
         <span class="opacity-90">owner:</span>
         <span class="break-all">{{ owner_email }}</span>
@@ -40,4 +59,15 @@
     {% endif %}
   </a>
 
+  {% if show_delete_button %}
+    <button
+      hx-post="{% url 'boards:delete_board' board.id %}"
+      hx-target="closest .board-card"
+      hx-swap="outerHTML"
+      class="delete-button hidden text-red-600 text-sm underline hover:text-red-800 mt-2 text-left"
+      type="button"
+    >
+      Excluir quadro
+    </button>
+  {% endif %}
 </div>

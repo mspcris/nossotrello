@@ -1,4 +1,3 @@
-{# boards/templates/boards/index.html #}
 {% extends "base.html" %}
 {% load static %}
 
@@ -6,9 +5,38 @@
 <link rel="stylesheet" href="{% url 'boards:home_wallpaper_css' %}">
 <link rel="stylesheet" href="{% static 'boards/home.css' %}">
 <script src="{% static 'boards/home_groups.js' %}"></script>
+<script src="{% static 'boards/home_board_search.js' %}"></script>
 {% endblock %}
 
 {% block title %}NossoTrello - Boards{% endblock %}
+
+{# =========================
+   SEARCH BAR NO TOPO (HEADER)
+   Usa o slot já existente no base.html
+   ========================= #}
+{% block header_right_under_logo %}
+  <div class="w-full hidden md:flex justify-center">
+    <div class="w-full max-w-[980px]">
+      <div class="cm-search-panel w-full rounded-xl bg-emerald-200/70 backdrop-blur-md border border-white/30 shadow px-3 py-2">
+        <div class="flex items-center gap-3">
+          <div class="flex-1 min-w-0">
+            <input
+              id="home-board-search"
+              type="text"
+              placeholder="Pesquisar quadros…"
+              class="w-full h-10 rounded-lg px-3 text-sm bg-white/80 border border-gray-300"
+              autocomplete="off"
+            >
+          </div>
+
+          <div class="shrink-0 text-xs font-semibold text-gray-700 bg-white/70 border border-gray-300 rounded-lg px-3 h-10 flex items-center">
+            Nome do quadro
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
 
 {% block drawer_items %}
   <li>
@@ -38,19 +66,20 @@
 
   <div id="home-groups-area" class="mb-8">
 
-    {# ===================== FAVORITOS ===================== #}
-    <div class="mb-6">
+    {# Favoritos #}
+    <div class="mb-6" id="home-favorites-block">
       <div class="flex items-center justify-between mb-2">
         <h2 class="text-lg font-semibold">⭐ Favoritos</h2>
         <span class="text-xs text-white/80">Marque a estrela em um quadro para aparecer aqui.</span>
       </div>
 
-      <div class="home-group-dropzone" data-group-id="{{ favorites_group.id }}">
+      <div class="home-group-dropzone"
+           data-group-id="{{ favorites_group.id }}">
         <div class="flex flex-wrap gap-6" id="home-group-items-{{ favorites_group.id }}">
           {% for it in favorites_group_items %}
-            {% include "boards/partials/home_board_card.html" with board=it.board favorite_board_ids=favorite_board_ids subtitle="Organizado aqui" %}
+            {% include "boards/partials/home_board_card.html" with board=it.board favorite_board_ids=favorite_board_ids subtitle="Organizado aqui" show_delete_button=False is_shared=False %}
           {% empty %}
-            <div class="text-gray-300 backdrop-blur-lg px-4 py-2 rounded-lg">
+            <div class="text-gray-300 backdrop-blur-lg px-4 py-2 rounded-lg home-empty-hint">
               Sem favoritos ainda.
             </div>
           {% endfor %}
@@ -58,7 +87,7 @@
       </div>
     </div>
 
-    {# ===================== CRIAR NOVO AGRUPAMENTO ===================== #}
+    {# Criar novo agrupamento #}
     <div class="mb-4">
       <form class="flex gap-2 items-center"
             hx-post="{% url 'boards:home_group_create' %}"
@@ -70,7 +99,7 @@
       </form>
     </div>
 
-    {# ===================== GRUPOS CUSTOM ===================== #}
+    {# Lista de agrupamentos custom #}
     <div id="home-custom-groups" class="flex flex-col gap-6">
       {% for row in custom_groups %}
         {% include "boards/partials/home_group_block.html" with g=row.group items=row.items favorite_board_ids=favorite_board_ids %}
@@ -81,44 +110,33 @@
 
   </div>
 
-  {# ===================== LISTAS BASE (NÃO MEXER) ===================== #}
+  {# CONTEÚDO DA HOME #}
   <div class="pt-2 pr-4">
     <h1 class="text-2xl font-bold mb-6 home-title">Quadros</h1>
 
     <h2 class="text-lg font-semibold mb-3">Meus quadros</h2>
-    <div class="flex flex-wrap gap-6 mb-10 home-source-list">
+    <div class="flex flex-wrap gap-6 mb-10 home-source-list" id="home-owned-list">
       {% for board in owned_boards %}
-        {# usa o mesmo card padrão #}
-        <div class="relative">
-          {% include "boards/partials/home_board_card.html" with board=board favorite_board_ids=favorite_board_ids subtitle="Clique para abrir" %}
-          <button
-            hx-post="{% url 'boards:delete_board' board.id %}"
-            hx-target="closest .relative"
-            hx-swap="outerHTML"
-            class="delete-button hidden text-red-600 text-sm underline hover:text-red-800 mt-2 text-left"
-            type="button">
-            Excluir quadro
-          </button>
-        </div>
+        {% include "boards/partials/home_board_card.html" with board=board favorite_board_ids=favorite_board_ids subtitle="Clique para abrir" show_delete_button=True is_shared=False %}
       {% empty %}
-        <p class="text-gray-300 backdrop-blur-lg px-4 py-2 rounded-lg">Nenhum quadro criado ainda.</p>
+        <p class="text-gray-300 backdrop-blur-lg px-4 py-2 rounded-lg home-empty-hint">Nenhum quadro criado ainda.</p>
       {% endfor %}
 
       <div
         hx-get="{% url 'boards:add_board' %}"
         hx-target="body"
         hx-swap="beforeend"
-        class="new-board-button cursor-pointer p-6 rounded-lg w-64 flex items-center justify-center font-semibold">
+        class="new-board-button cursor-pointer p-6 rounded-lg w-64 flex items-center justify-center font-semibold"
+      >
         + Criar novo quadro
       </div>
     </div>
 
     {% if shared_boards %}
       <h2 class="text-lg font-semibold mb-3">Compartilhados comigo</h2>
-      <div class="flex flex-wrap gap-6 home-source-list">
+      <div class="flex flex-wrap gap-6 home-source-list" id="home-shared-list">
         {% for board in shared_boards %}
-          {# IMPORTANTE: mesmo card padrão + show_owner #}
-          {% include "boards/partials/home_board_card.html" with board=board favorite_board_ids=favorite_board_ids subtitle="Compartilhado com você" show_owner=True owner_email=board.owner_email %}
+          {% include "boards/partials/home_board_card.html" with board=board favorite_board_ids=favorite_board_ids subtitle="Compartilhado com você" show_delete_button=False is_shared=True owner_email=board.owner_email %}
         {% endfor %}
       </div>
     {% endif %}
@@ -145,7 +163,11 @@
         if (!deleteMode) return;
 
         deleteMode = false;
-        document.querySelectorAll(".delete-button").forEach(btn => btn.classList.add("hidden"));
+
+        document.querySelectorAll(".delete-button").forEach(btn => {
+          btn.classList.add("hidden");
+        });
+
         if (toggleBtn) toggleBtn.innerText = "Excluir quadros";
       });
 
