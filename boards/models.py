@@ -418,3 +418,69 @@ class Mention(models.Model):
         blank=True,
         help_text="Cores do prazo: {'ok':'#..','warn':'#..','overdue':'#..'}",
     )
+
+
+# ============================================================
+# HOME GROUPS (agrupamentos pessoais de quadros)
+# ============================================================
+
+class BoardGroup(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="board_groups",
+        on_delete=models.CASCADE,
+    )
+
+    organization = models.ForeignKey(
+        Organization,
+        related_name="board_groups",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+    )
+
+    name = models.CharField(max_length=120, default="", blank=True)
+    position = models.PositiveIntegerField(default=0)
+
+    # Favoritos é um grupo especial (1 por usuário/org)
+    is_favorites = models.BooleanField(default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["position", "id"]
+        indexes = [
+            models.Index(fields=["user", "organization", "position"]),
+            models.Index(fields=["user", "organization", "is_favorites"]),
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({self.user})"
+
+
+class BoardGroupItem(models.Model):
+    group = models.ForeignKey(
+        BoardGroup,
+        related_name="items",
+        on_delete=models.CASCADE,
+    )
+    board = models.ForeignKey(
+        Board,
+        related_name="group_items",
+        on_delete=models.CASCADE,
+    )
+    position = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["position", "id"]
+        constraints = [
+            models.UniqueConstraint(fields=["group", "board"], name="uniq_group_board"),
+        ]
+        indexes = [
+            models.Index(fields=["group", "position"]),
+            models.Index(fields=["board"]),
+        ]
+
+    def __str__(self):
+        return f"{self.board} em {self.group}"

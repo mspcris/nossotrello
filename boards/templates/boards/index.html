@@ -5,6 +5,7 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% url 'boards:home_wallpaper_css' %}">
 <link rel="stylesheet" href="{% static 'boards/home.css' %}">
+<script src="{% static 'boards/home_groups.js' %}"></script>
 {% endblock %}
 
 {% block title %}NossoTrello - Boards{% endblock %}
@@ -34,16 +35,63 @@
 {% endblock %}
 
 
+
 {% block content %}
+
+
+  <div id="home-groups-area" class="mb-8">
+
+    {# Favoritos #}
+    <div class="mb-6">
+      <div class="flex items-center justify-between mb-2">
+        <h2 class="text-lg font-semibold">⭐ Favoritos</h2>
+        <span class="text-xs text-white/80">Marque a estrela em um quadro para aparecer aqui.</span>
+      </div>
+
+      <div class="home-group-dropzone"
+           data-group-id="{{ favorites_group.id }}">
+        <div class="flex flex-wrap gap-6" id="home-group-items-{{ favorites_group.id }}">
+          {% for it in favorites_group.items.all %}
+           {% empty %}
+            <div class="text-gray-300 backdrop-blur-lg px-4 py-2 rounded-lg">
+              Sem favoritos ainda.
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    {# Criar novo agrupamento #}
+    <div class="mb-4">
+      <form class="flex gap-2 items-center"
+            hx-post="{% url 'boards:home_group_create' %}"
+            hx-target="#home-custom-groups"
+            hx-swap="afterbegin">
+        {% csrf_token %}
+        <input type="text" name="name" class="rounded-lg px-3 py-2 w-64" placeholder="Novo agrupamento (ex: Clínicas RJ)">
+        <button type="submit" class="px-3 py-2 bg-white/70 rounded-lg font-semibold">+ Criar agrupamento</button>
+      </form>
+    </div>
+
+    {# Lista de agrupamentos custom #}
+    <div id="home-custom-groups" class="flex flex-col gap-6">
+      {% for row in custom_groups %}
+            {% include "boards/partials/home_group_block.html" with g=favorites_group items=favorites_group_items favorite_board_ids=favorite_board_ids %}
+      {% endfor %}
+    </div>
+  </div>
+
+
 
 <!-- CONTEÚDO DA HOME (SOBE E AINDA NÃO COLIDE COM O MENU FIXO) -->
 <div class="pt-2 pr-4">
   <h1 class="text-2xl font-bold mb-6 home-title">Quadros</h1>
 
   <h2 class="text-lg font-semibold mb-3">Meus quadros</h2>
-  <div class="flex flex-wrap gap-6 mb-10">
+  <div class="flex flex-wrap gap-6 mb-10 home-source-list">
     {% for board in owned_boards %}
-      <div class="board-card relative w-64 cursor-pointer shadow-lg p-6 rounded-xl flex flex-col gap-3">
+      <div class="board-card relative w-64 cursor-pointer shadow-lg p-6 rounded-xl flex flex-col gap-3"
+     data-board-id="{{ board.id }}">
         {% if board.image %}
           <a href="{% url 'boards:board_detail' board.id %}">
             <div class="h-20 w-full rounded-lg border overflow-hidden bg-white flex items-center justify-center">
@@ -83,6 +131,13 @@
         >
           Excluir quadro
         </button>
+        <button type="button"
+          class="absolute top-2 right-2 text-lg"
+          onclick="HomeGroups.toggleFavorite({{ board.id }}, this)"
+          aria-label="Favoritar">
+          {% if board.id in favorite_board_ids %}★{% else %}☆{% endif %}
+        </button>
+
       </div>
     {% empty %}
       <p class="text-gray-300 backdrop-blur-lg px-4 py-2 rounded-lg">Nenhum quadro criado ainda.</p>
@@ -100,7 +155,7 @@
 
   {% if shared_boards %}
     <h2 class="text-lg font-semibold mb-3">Compartilhados comigo</h2>
-    <div class="flex flex-wrap gap-6">
+    <div class="flex flex-wrap gap-6 home-source-list">
       {% for board in shared_boards %}
         <div class="board-card relative w-64 cursor-pointer shadow-lg p-6 rounded-xl flex flex-col gap-3">
           {% if board.image %}

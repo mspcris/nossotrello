@@ -4,7 +4,6 @@ import os
 import uuid
 import requests
 
-
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
 from django.template.loader import render_to_string
@@ -19,8 +18,13 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 from django.urls import reverse
+from django.db import models
 from django.db.models import Prefetch
 from types import SimpleNamespace
+from ..models import BoardGroup, BoardGroupItem
+
+
+
 
 
 from .helpers import (
@@ -34,6 +38,29 @@ from .helpers import (
 from .helpers import Board, Column, Card, BoardMembership, Organization
 
 
+def _get_home_org(request):
+    if not request.user.is_authenticated:
+        return None
+    return get_or_create_user_default_organization(request.user)
+
+def _get_or_create_favorites_group(user, org):
+    obj = BoardGroup.objects.filter(user=user, organization=org, is_favorites=True).first()
+    if obj:
+        return obj
+    # position 0: sempre topo
+    return BoardGroup.objects.create(
+        user=user,
+        organization=org,
+        name="Favoritos",
+        position=0,
+        is_favorites=True,
+    )
+
+def _user_accessible_board_ids(user):
+    qs = BoardMembership.objects.filter(user=user, board__is_deleted=False)
+    return list(qs.values_list("board_id", flat=True))
+
+
 # ======================================================================
 # HOME (lista de boards)
 # ======================================================================
@@ -44,9 +71,48 @@ def index(request):
             user=request.user,
             board__is_deleted=False,
         ).select_related("board")
+        favorites_group = None
+        favorite_ids = set()
+        groups_data = []
 
         owned_ids = list(qs.filter(role=BoardMembership.Role.OWNER).values_list("board_id", flat=True))
         shared_ids = list(qs.exclude(role=BoardMembership.Role.OWNER).values_list("board_id", flat=True))
+
+        org = _get_home_org(request)
+        favorites_group = _get_or_create_favorites_group(request.user, org)
+
+        groups_qs = BoardGroup.objects.filter(
+            user=request.user,
+            organization=org,
+        ).order_by("position", "id")
+
+        # separa favoritos
+        custom_groups = groups_qs.filter(is_favorites=False)
+
+        accessible_ids = set(_user_accessible_board_ids(request.user))
+
+        # pré-carrega itens e filtra boards que o user ainda acessa
+        groups_data = []
+        favorite_ids = set()
+
+        # favoritos primeiro
+        fav_items = (
+            BoardGroupItem.objects.filter(group=favorites_group, board_id__in=accessible_ids)
+            .select_related("board")
+            .order_by("position", "id")
+        )
+        for it in fav_items:
+            favorite_ids.add(it.board_id)
+
+        # custom groups
+        for g in custom_groups:
+            items = (
+                BoardGroupItem.objects.filter(group=g, board_id__in=accessible_ids)
+                .select_related("board")
+                .order_by("position", "id")
+            )
+            groups_data.append({"group": g, "items": items})
+
 
         owned_boards = (
             Board.objects.filter(id__in=owned_ids, is_deleted=False)
@@ -89,15 +155,130 @@ def index(request):
             home_bg_image = filename
 
     return render(
-        request,
-        "boards/index.html",
-        {
-            "owned_boards": owned_boards,
-            "shared_boards": shared_boards,
-            "home_bg": True,
-            "home_bg_image": home_bg_image,
-        },
+    request,
+    "boards/index.html",
+    {   
+        "favorites_group": favorites_group,
+        "favorites_group_items": fav_items,   
+        "favorite_board_ids": list(favorite_ids),
+        "custom_groups": groups_data,
+        "owned_boards": owned_boards,
+        "shared_boards": shared_boards,
+        "home_bg": True,
+        "home_bg_image": home_bg_image,
+    },
+)
+
+
+
+
+@require_POST
+@login_required
+def home_group_create(request):
+    org = _get_home_org(request)
+    name = (request.POST.get("name") or "").strip() or "Novo agrupamento"
+
+    # sempre nasce acima: posição negativa para aparecer antes, depois normaliza se quiser
+    min_pos = BoardGroup.objects.filter(user=request.user, organization=org, is_favorites=False).aggregate(models.Min("position")).get("position__min")
+    new_pos = (min_pos - 1) if (min_pos is not None) else 1
+
+    g = BoardGroup.objects.create(
+        user=request.user,
+        organization=org,
+        name=name,
+        position=new_pos,
+        is_favorites=False,
     )
+
+    html = render_to_string("boards/partials/home_group_block.html", {"g": g, "items": [] , "favorite_board_ids": []}, request=request)
+    return HttpResponse(html)
+
+
+@require_POST
+@login_required
+def home_group_rename(request, group_id):
+    org = _get_home_org(request)
+    g = get_object_or_404(BoardGroup, id=group_id, user=request.user, organization=org, is_favorites=False)
+
+    name = (request.POST.get("name") or "").strip()
+    if not name:
+        return HttpResponse("Nome inválido", status=400)
+
+    g.name = name
+    g.save(update_fields=["name"])
+
+    return HttpResponse("OK")
+
+
+@require_POST
+@login_required
+def home_group_delete(request, group_id):
+    org = _get_home_org(request)
+    g = get_object_or_404(BoardGroup, id=group_id, user=request.user, organization=org, is_favorites=False)
+    g.delete()
+    return HttpResponse("")
+
+
+@require_POST
+@login_required
+def home_group_item_add(request, group_id):
+    org = _get_home_org(request)
+    g = get_object_or_404(BoardGroup, id=group_id, user=request.user, organization=org)
+
+    board_id = int(request.POST.get("board_id") or 0)
+    if not board_id:
+        return HttpResponse("board_id inválido", status=400)
+
+    # valida acesso ao board
+    if not BoardMembership.objects.filter(user=request.user, board_id=board_id, board__is_deleted=False).exists():
+        return HttpResponse("Sem acesso ao quadro.", status=403)
+
+    # posição: último
+    last_pos = BoardGroupItem.objects.filter(group=g).aggregate(models.Max("position")).get("position__max") or 0
+    obj, created = BoardGroupItem.objects.get_or_create(
+        group=g,
+        board_id=board_id,
+        defaults={"position": last_pos + 1},
+    )
+    if not created:
+        # já existe: não duplica
+        return HttpResponse("OK")
+
+    return HttpResponse("OK")
+
+
+@require_POST
+@login_required
+def home_group_item_remove(request, group_id, board_id):
+    org = _get_home_org(request)
+    g = get_object_or_404(BoardGroup, id=group_id, user=request.user, organization=org)
+
+    BoardGroupItem.objects.filter(group=g, board_id=board_id).delete()
+    return HttpResponse("")
+
+
+@require_POST
+@login_required
+def home_favorite_toggle(request):
+    org = _get_home_org(request)
+    fav = _get_or_create_favorites_group(request.user, org)
+
+    board_id = int(request.POST.get("board_id") or 0)
+    if not board_id:
+        return HttpResponse("board_id inválido", status=400)
+
+    if not BoardMembership.objects.filter(user=request.user, board_id=board_id, board__is_deleted=False).exists():
+        return HttpResponse("Sem acesso ao quadro.", status=403)
+
+    existing = BoardGroupItem.objects.filter(group=fav, board_id=board_id).first()
+    if existing:
+        existing.delete()
+        return JsonResponse({"favorited": False})
+    else:
+        last_pos = BoardGroupItem.objects.filter(group=fav).aggregate(models.Max("position")).get("position__max") or 0
+        BoardGroupItem.objects.create(group=fav, board_id=board_id, position=last_pos + 1)
+        return JsonResponse({"favorited": True})
+
 
 
 # ======================================================================

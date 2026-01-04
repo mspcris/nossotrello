@@ -152,6 +152,15 @@ urlpatterns = [
 
     
 
+    # ============================================================
+    # HOME GROUPS / FAVORITOS
+    # ============================================================
+    path("home/groups/create/", views.home_group_create, name="home_group_create"),
+    path("home/groups/<int:group_id>/rename/", views.home_group_rename, name="home_group_rename"),
+    path("home/groups/<int:group_id>/delete/", views.home_group_delete, name="home_group_delete"),
+    path("home/groups/<int:group_id>/items/add/", views.home_group_item_add, name="home_group_item_add"),
+    path("home/groups/<int:group_id>/items/<int:board_id>/remove/", views.home_group_item_remove, name="home_group_item_remove"),
+    path("home/favorites/toggle/", views.home_favorite_toggle, name="home_favorite_toggle"),
 
 
     # ============================================================
