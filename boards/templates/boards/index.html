@@ -73,18 +73,19 @@
         <span class="text-xs text-white/80">Marque a estrela em um quadro para aparecer aqui.</span>
       </div>
 
-      <div class="home-group-dropzone"
-           data-group-id="{{ favorites_group.id }}">
-        <div class="flex flex-wrap gap-6" id="home-group-items-{{ favorites_group.id }}">
-          {% for it in favorites_group_items %}
-            {% include "boards/partials/home_board_card.html" with board=it.board favorite_board_ids=favorite_board_ids subtitle="Organizado aqui" show_delete_button=False is_shared=False %}
-          {% empty %}
-            <div class="text-gray-300 backdrop-blur-lg px-4 py-2 rounded-lg home-empty-hint">
-              Sem favoritos ainda.
-            </div>
-          {% endfor %}
-        </div>
+      <div class="home-group-dropzone" data-group-id="{{ favorites_group.id }}">
+  <div class="flex flex-wrap gap-6" id="home-favorites-items">
+    {% for it in favorites_group_items %}
+      {% include "boards/partials/home_board_card.html" with board=it.board favorite_board_ids=favorite_board_ids subtitle="Organizado aqui" %}
+    {% empty %}
+      <div class="text-gray-300 backdrop-blur-lg px-4 py-2 rounded-lg">
+        Sem favoritos ainda.
       </div>
+    {% endfor %}
+  </div>
+</div>
+
+
     </div>
 
     {# Criar novo agrupamento #}
@@ -176,5 +177,13 @@
       });
     })();
   </script>
+
+  <script>
+  window.HOME_GROUPS = [
+    {% for row in custom_groups %}
+      {"id": {{ row.group.id }}, "name": "{{ row.group.name|escapejs }}"}{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ];
+</script>
 
 {% endblock %}

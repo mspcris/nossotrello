@@ -1,4 +1,4 @@
-//boards/static/boards/home_groups.js
+// boards/static/boards/home_groups.js
 (function () {
   function getCsrf() {
     return (
@@ -83,8 +83,6 @@
           const boardId = Number(cardEl.getAttribute("data-board-id") || 0);
           if (!groupId || !boardId) return;
 
-          // Remove o clone “temporário” se ele veio de clone e não tem botões corretos
-          // Por simplicidade, mantém e depois recarrega a página se quiser.
           const resp = await post(`/home/groups/${groupId}/items/add/`, { board_id: boardId });
           if (!resp.ok) {
             // rollback visual
@@ -92,15 +90,69 @@
             return;
           }
 
-          // Recarrega para renderizar o card do jeito certo (com botões remover/estrela)
-          // (fase 2: retornar html parcial e trocar só o card)
+          // MVP: recarrega para garantir render correto do card
           location.reload();
         }
       });
     });
   }
 
+  // ==========================
+  // Modal de agrupamento (sem dependências)
+  // ==========================
+  function closeGroupPickerModal() {
+    const el = document.getElementById("group-picker-modal");
+    if (el) el.remove();
+  }
+
+  function renderGroupPickerModal(groups, boardId) {
+    closeGroupPickerModal();
+
+    const modal = document.createElement("div");
+    modal.id = "group-picker-modal";
+    modal.className = "fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50";
+
+    const sheet = document.createElement("div");
+    sheet.className = "w-full sm:w-[420px] bg-white rounded-t-2xl sm:rounded-2xl shadow-xl p-4";
+
+    sheet.innerHTML = `
+      <div class="flex items-center justify-between mb-3">
+        <div class="text-base font-bold">Agrupar quadro</div>
+        <button type="button" class="text-sm px-2 py-1 rounded-md bg-gray-100 hover:bg-gray-200" aria-label="Fechar">Fechar</button>
+      </div>
+      <div class="text-sm text-gray-600 mb-3">Selecione um agrupamento:</div>
+      <div class="flex flex-col gap-2" id="group-picker-list"></div>
+    `;
+
+    // fechar por botão
+    sheet.querySelector("button").addEventListener("click", closeGroupPickerModal);
+
+    // fechar clicando fora
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) closeGroupPickerModal();
+    });
+
+    const list = sheet.querySelector("#group-picker-list");
+
+    groups.forEach((g) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "w-full text-left px-3 py-2 rounded-lg border hover:bg-gray-50";
+      btn.textContent = g.name;
+
+      btn.addEventListener("click", async () => {
+        await window.HomeGroups.addToGroup(boardId, g.id);
+      });
+
+      list.appendChild(btn);
+    });
+
+    modal.appendChild(sheet);
+    document.body.appendChild(modal);
+  }
+
   window.HomeGroups = {
+    // ========= existentes =========
     renameGroup: async function (groupId, currentName) {
       const name = prompt("Novo nome do agrupamento:", currentName || "");
       if (!name) return;
@@ -124,40 +176,112 @@
     },
 
     toggleFavorite: async function (boardId, el, ev) {
-  try {
-    if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+      try {
+        if (ev) { ev.preventDefault(); ev.stopPropagation(); }
 
-    if (!el) return;
-    if (el.dataset.busy === "1") return;
-    el.dataset.busy = "1";
+        if (!el) return;
+        if (el.dataset.busy === "1") return;
+        el.dataset.busy = "1";
 
-    const url = el.getAttribute("data-toggle-url") || `/home/favorites/toggle/${boardId}/`;
+        const url = el.getAttribute("data-toggle-url") || `/home/favorites/toggle/${boardId}/`;
 
-    const resp = await fetch(url, {
-      method: "POST",
-      credentials: "same-origin",
-      headers: {
-        "X-CSRFToken": getCsrf(),
-        "Accept": "application/json",
+        const resp = await fetch(url, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "X-CSRFToken": getCsrf(),
+            "Accept": "application/json",
+          }
+        });
+
+        if (!resp.ok) {
+          const txt = await resp.text();
+          console.error("toggleFavorite failed:", resp.status, txt);
+          return;
+        }
+
+        const data = await resp.json();
+        el.textContent = data.favorited ? "★" : "☆";
+        // Atualiza a barra de favoritos (topo) sem reload
+const favContainer = document.getElementById("home-favorites-items");
+if (favContainer) {
+  const boardCard = el.closest(".board-card");
+  if (data.favorited) {
+    // evita duplicar
+    const exists = favContainer.querySelector(`.board-card[data-board-id="${boardId}"]`);
+    if (!exists && boardCard) {
+      const clone = boardCard.cloneNode(true);
+
+      // garante que a estrela do clone continue funcionando
+      const star = clone.querySelector(".favorite-star");
+      if (star) {
+        // mantém URL e handler
+        star.textContent = "★";
       }
-    });
 
-    if (!resp.ok) {
-      const txt = await resp.text();
-      console.error("toggleFavorite failed:", resp.status, txt);
-      return;
+      favContainer.prepend(clone);
+
+      // remove placeholder "Sem favoritos" se existir
+      const emptyMsg = favContainer.querySelector(":scope > .text-gray-300");
+      if (emptyMsg && favContainer.querySelectorAll(".board-card").length > 0) {
+        emptyMsg.remove();
+      }
     }
+  } else {
+    // remove do topo
+    const toRemove = favContainer.querySelector(`.board-card[data-board-id="${boardId}"]`);
+    if (toRemove) toRemove.remove();
 
-    const data = await resp.json();
-    el.textContent = data.favorited ? "★" : "☆";
-
-  } catch (e) {
-    console.error("toggleFavorite error:", e);
-  } finally {
-    if (el) el.dataset.busy = "0";
+    // se ficou vazio, coloca placeholder
+    if (favContainer.querySelectorAll(".board-card").length === 0) {
+      favContainer.innerHTML = `
+        <div class="text-gray-300 backdrop-blur-lg px-4 py-2 rounded-lg">
+          Sem favoritos ainda.
+        </div>
+      `;
+    }
   }
-},
+}
 
+      } catch (e) {
+        console.error("toggleFavorite error:", e);
+      } finally {
+        if (el) el.dataset.busy = "0";
+      }
+    },
+
+    // ========= novo: agrupar por botão =========
+    openGroupPicker: function (boardId, event) {
+      if (event) { event.preventDefault(); event.stopPropagation(); }
+
+      const groups = Array.isArray(window.HOME_GROUPS) ? window.HOME_GROUPS : [];
+      if (!groups.length) {
+        alert("Nenhum agrupamento disponível. Crie um agrupamento primeiro.");
+        return;
+      }
+
+      renderGroupPickerModal(groups, boardId);
+    },
+
+    addToGroup: async function (boardId, groupId) {
+      try {
+        const resp = await post(`/home/groups/${groupId}/items/add/`, { board_id: boardId });
+
+        if (!resp.ok) {
+          const txt = await resp.text();
+          console.error("addToGroup failed:", resp.status, txt);
+          alert("Não foi possível agrupar. Verifique permissões e tente novamente.");
+          return;
+        }
+
+        closeGroupPickerModal();
+        // MVP: garante consistência visual sem mexer na renderização parcial
+        location.reload();
+      } catch (e) {
+        console.error("addToGroup error:", e);
+        alert("Não foi possível agrupar. Verifique permissões e tente novamente.");
+      }
+    },
   };
 
   document.addEventListener("DOMContentLoaded", ensureSortableHome);
