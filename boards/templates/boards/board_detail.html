@@ -711,18 +711,23 @@
 <script>
   // ============================================================
   // SORTABLE (cards) — drag & drop de cards entre colunas
-  // Depende do SortableJS já carregado na página.
+  // (Mobile-friendly: long-press no touch pra evitar arrastar sem querer)
   // ============================================================
 
   window.initSortable = function initSortable() {
     // read-only guard (mantém alinhado com board_ui.js)
-    const boardRoot = document.getElementById("board-root");
+    // Há IDs duplicados no template; pega o board-root “correto” (o último do DOM)
+    const boardRoots = document.querySelectorAll('#board-root[data-can-edit]');
+    const boardRoot = boardRoots.length ? boardRoots[boardRoots.length - 1] : null;
     const canEdit = (boardRoot?.getAttribute("data-can-edit") === "1");
     if (!canEdit) return;
+
 
     // todas as listas de cards por coluna
     const lists = Array.from(document.querySelectorAll('[id^="cards-col-"]'));
     if (!lists.length) return;
+
+    const isCoarsePointer = !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
 
     function getCsrfToken() {
       return (
@@ -733,16 +738,13 @@
     }
 
     function resolveColumnIdFromList(listEl) {
-      // Preferência 1: data-column-id no próprio UL
       const d1 = listEl?.getAttribute?.("data-column-id");
       if (d1) return Number(d1);
 
-      // Preferência 2: coluna “pai” com data-column-id
       const col = listEl?.closest?.(".column-item[data-column-id]");
       const d2 = col?.getAttribute?.("data-column-id");
       if (d2) return Number(d2);
 
-      // Preferência 3: id="cards-col-123"
       const m = (listEl?.id || "").match(/^cards-col-(\d+)$/);
       if (m) return Number(m[1]);
 
@@ -750,7 +752,6 @@
     }
 
     function resolveCardIdFromItem(itemEl) {
-      // seu DOM já usa data-card-id no <li>
       const v = itemEl?.getAttribute?.("data-card-id") || itemEl?.dataset?.cardId;
       return v ? Number(v) : 0;
     }
@@ -773,7 +774,6 @@
       });
 
       if (!resp.ok) {
-        // mantém UX: não quebra a página, mas deixa evidente no console
         const txt = await resp.text().catch(() => "");
         console.error("move-card falhou:", resp.status, txt);
       }
@@ -784,11 +784,31 @@
       if (listEl.dataset.sortableApplied === "1") return;
       listEl.dataset.sortableApplied = "1";
 
+      // 🔑 Config “anti-arraste acidental” no mobile:
+      // - long-press (delay) só no touch
+      // - tolerância de movimento antes de considerar “drag”
+      // - fallback melhora consistência em alguns Androids
+      const mobileDnD = isCoarsePointer
+  ? {
+      delay: 280,
+      delayOnTouchOnly: true,
+      touchStartThreshold: 10,
+      fallbackOnBody: true
+    }
+  : {
+      delay: 0,
+      delayOnTouchOnly: false,
+      touchStartThreshold: 0
+    };
+
+
       new Sortable(listEl, {
         group: "cards",
         animation: 150,
         ghostClass: "drag-ghost",
         dragClass: "drag-dragging",
+
+        ...mobileDnD,
 
         // garante que seja só card
         draggable: 'li[data-card-id]',
@@ -809,7 +829,6 @@
         },
 
         onAdd: (evt) => {
-          // entrou em outra coluna
           const item = evt.item;
           const cardId = resolveCardIdFromItem(item);
           const newColumnId = resolveColumnIdFromList(evt.to);
@@ -820,7 +839,6 @@
         },
 
         onUpdate: (evt) => {
-          // reordenou dentro da mesma coluna
           const item = evt.item;
           const cardId = resolveCardIdFromItem(item);
           const newColumnId = resolveColumnIdFromList(evt.to);
