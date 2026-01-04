@@ -389,3 +389,60 @@ header { position: relative; z-index: 50; }
   box-shadow: 0 4px 10px rgba(0,0,0,0.12);
 }
 
+/* Dock sempre clicável e acima */
+#cm-action-dock{
+  position: fixed;         /* ou absolute, se preferir dentro do modal */
+  right: 18px;
+  bottom: 18px;
+  z-index: 999999;
+  pointer-events: auto;
+}
+
+/* Container relativo pro dropdown */
+#cm-action-dock .dock-wrap{
+  position: relative;
+  overflow: visible;
+}
+
+/* Dropdown */
+#cm-dock-actions{
+  position: absolute;
+  right: 0;
+  bottom: 48px;            /* sobe acima do botão */
+  z-index: 999999;
+  min-width: 160px;
+  border-radius: 12px;
+  border: 1px solid rgba(15,23,42,0.12);
+  background: rgba(255,255,255,0.98);
+  box-shadow: 0 10px 30px rgba(2,6,23,0.18);
+  padding: 8px;
+}
+
+/* Itens */
+#cm-dock-actions .dock-action{
+  width: 100%;
+  text-align: left;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 10px;
+}
+
+/* hover simples */
+#cm-dock-actions .dock-action:hover{
+  background: rgba(15,23,42,0.06);
+}
+
+#cm-action-dock{
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 999999;
+}
+#cm-dock-actions{
+  position: absolute;
+  right: 0;
+  bottom: 48px;
+  z-index: 999999;
+}

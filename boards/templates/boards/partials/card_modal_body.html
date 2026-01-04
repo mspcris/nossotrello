@@ -205,6 +205,40 @@ html.dark #cm-root{
 #cm-root[data-term-status="overdue"] { --cm-term-rgb: 220, 38, 38; }
 
 
+#cm-action-dock{
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 999999;
+  pointer-events: auto;
+}
+
+#cm-action-dock .dock-wrap{
+  position: relative;
+}
+
+#cm-action-dock .dock-toggle{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.35);
+  background: rgba(0,0,0,0.45);
+  color: #fff;
+  font-size: 22px;
+  line-height: 1;
+}
+
+#cm-dock-actions{
+  position: absolute;
+  right: 0;
+  bottom: 52px;
+  z-index: 999999;
+}
+
+
 </style>
 
 {# cm-root (modal do card) #}
@@ -558,29 +592,31 @@ html.dark #cm-root{
   </section>
 
   {# Action dock #}
-  <div id="cm-action-dock" aria-label="Ações do card">
-    <div class="dock-wrap relative">
-      <button type="button" class="dock-toggle" id="cm-dock-toggle" title="Ações">⋮</button>
+<div id="cm-action-dock" aria-label="Ações do card">
+  <div class="dock-wrap">
+    <button type="button"
+            class="dock-toggle"
+            id="cm-dock-toggle"
+            title="Ações"
+            aria-expanded="false">⋮</button>
 
-      <div class="dock-actions" id="cm-dock-actions">
-        <button type="button" class="dock-action" id="cm-dock-move">
-          <span>↔️</span> <span class="label">Mover</span>
-        </button>
-        <button type="button" class="dock-action" id="cm-dock-duplicate">
-          <span>📄</span> <span class="label">Duplicar</span>
-        </button>
-        <button type="button" class="dock-action" id="cm-dock-copylink">
-          <span>🔗</span> <span class="label">Copiar link</span>
-        </button>
-      </div>
+    <div class="dock-actions hidden" id="cm-dock-actions">
+      <button type="button" class="dock-action" id="cm-dock-move">
+        <span>↔️</span> <span class="label">Mover</span>
+      </button>
+      <button type="button" class="dock-action" id="cm-dock-duplicate">
+        <span>📄</span> <span class="label">Duplicar</span>
+      </button>
+      <button type="button" class="dock-action" id="cm-dock-copylink">
+        <span>🔗</span> <span class="label">Copiar link</span>
+      </button>
+    </div>
 
-      <div id="cm-action-dock-panel" role="dialog" aria-label="Painel de ação">
-        <div id="cm-dock-panel-body">
-          {# conteúdo lazy-loaded (Mover) entra aqui #}
-        </div>
-      </div>
+    <div id="cm-action-dock-panel" role="dialog" aria-label="Painel de ação">
+      <div id="cm-dock-panel-body"></div>
     </div>
   </div>
+</div>
 
 </div>
 
