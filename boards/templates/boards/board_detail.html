@@ -336,6 +336,20 @@
 
 
 
+<div id="board-root" data-can-edit="{{ can_edit|yesno:'1,0' }}">
+  <div id="columns-wrapper" class="flex gap-6 overflow-x-auto overflow-y-hidden pb-6 pr-4 h-[calc(100vh-140px)]">
+
+    <!-- alvo do polling -->
+    <div id="columns-container">
+      <div id="columns-list" class="flex gap-6">
+        {% for column in columns %}
+          {% include "boards/partials/column_item.html" %}
+        {% endfor %}
+      </div>
+    </div>
+
+  </div>
+</div>
 
 
 
@@ -486,50 +500,6 @@
   document.addEventListener("DOMContentLoaded", () => setFilterMode("tags"));
 </script>
 
-<script>
-  // ============================================================
-  // SORTABLE (columns)
-  // ============================================================
-  window.initSortableColumns = function initSortableColumns() {
-    const columnsList = document.getElementById("columns-list");
-    if (!columnsList) return;
-
-    if (columnsList.dataset.sortableColumnsApplied === "1") return;
-    columnsList.dataset.sortableColumnsApplied = "1";
-
-    new Sortable(columnsList, {
-      animation: 150,
-      ghostClass: "drag-ghost",
-
-      handle: ".column-header",
-      draggable: ".column-item:not(.aggregator-column)",
-
-      filter: ".aggregator-column, button, a, input, textarea, select, [contenteditable='true']",
-      preventOnFilter: true,
-
-
-      onEnd: () => {
-        const order = Array.from(columnsList.querySelectorAll(".column-item"))
-          .map(el => el.getAttribute("data-column-id"))
-          .filter(Boolean)
-          .map(Number);
-
-        fetch("{% url 'boards:reorder_columns' board.id %}", {
-          method: "POST",
-          credentials: "same-origin",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]")?.value || ""
-          },
-          body: JSON.stringify({ order })
-        });
-      }
-    });
-  }
-
-  document.addEventListener("DOMContentLoaded", window.initSortableColumns);
-  document.body.addEventListener("htmx:afterSwap", window.initSortableColumns);
-</script>
 
 <script>
   // ============================================================
@@ -735,6 +705,141 @@
     if (e.target && e.target.id === "add-column-name") hideAddColumnError();
   });
 </script>
+
+
+
+<script>
+  // ============================================================
+  // SORTABLE (cards) — drag & drop de cards entre colunas
+  // Depende do SortableJS já carregado na página.
+  // ============================================================
+
+  window.initSortable = function initSortable() {
+    // read-only guard (mantém alinhado com board_ui.js)
+    const boardRoot = document.getElementById("board-root");
+    const canEdit = (boardRoot?.getAttribute("data-can-edit") === "1");
+    if (!canEdit) return;
+
+    // todas as listas de cards por coluna
+    const lists = Array.from(document.querySelectorAll('[id^="cards-col-"]'));
+    if (!lists.length) return;
+
+    function getCsrfToken() {
+      return (
+        document.querySelector("[name=csrfmiddlewaretoken]")?.value ||
+        document.querySelector("input[name=csrfmiddlewaretoken]")?.value ||
+        ""
+      );
+    }
+
+    function resolveColumnIdFromList(listEl) {
+      // Preferência 1: data-column-id no próprio UL
+      const d1 = listEl?.getAttribute?.("data-column-id");
+      if (d1) return Number(d1);
+
+      // Preferência 2: coluna “pai” com data-column-id
+      const col = listEl?.closest?.(".column-item[data-column-id]");
+      const d2 = col?.getAttribute?.("data-column-id");
+      if (d2) return Number(d2);
+
+      // Preferência 3: id="cards-col-123"
+      const m = (listEl?.id || "").match(/^cards-col-(\d+)$/);
+      if (m) return Number(m[1]);
+
+      return 0;
+    }
+
+    function resolveCardIdFromItem(itemEl) {
+      // seu DOM já usa data-card-id no <li>
+      const v = itemEl?.getAttribute?.("data-card-id") || itemEl?.dataset?.cardId;
+      return v ? Number(v) : 0;
+    }
+
+    async function postMove({ cardId, newColumnId, newPosition }) {
+      const csrf = getCsrfToken();
+
+      const resp = await fetch("/move-card/", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrf
+        },
+        body: JSON.stringify({
+          card_id: cardId,
+          new_column_id: newColumnId,
+          new_position: newPosition
+        })
+      });
+
+      if (!resp.ok) {
+        // mantém UX: não quebra a página, mas deixa evidente no console
+        const txt = await resp.text().catch(() => "");
+        console.error("move-card falhou:", resp.status, txt);
+      }
+    }
+
+    lists.forEach((listEl) => {
+      // evita re-aplicar
+      if (listEl.dataset.sortableApplied === "1") return;
+      listEl.dataset.sortableApplied = "1";
+
+      new Sortable(listEl, {
+        group: "cards",
+        animation: 150,
+        ghostClass: "drag-ghost",
+        dragClass: "drag-dragging",
+
+        // garante que seja só card
+        draggable: 'li[data-card-id]',
+
+        // não inicia drag ao interagir com inputs/links/editores
+        filter: "button, a, input, textarea, select, [contenteditable='true']",
+        preventOnFilter: true,
+
+        // scroll assistido (melhora colunas longas)
+        scroll: true,
+        scrollSensitivity: 60,
+        scrollSpeed: 16,
+
+        onStart: () => { window.__isDraggingCard = true; },
+
+        onEnd: () => {
+          window.__isDraggingCard = false;
+        },
+
+        onAdd: (evt) => {
+          // entrou em outra coluna
+          const item = evt.item;
+          const cardId = resolveCardIdFromItem(item);
+          const newColumnId = resolveColumnIdFromList(evt.to);
+          const newPosition = Number(evt.newIndex || 0);
+
+          if (!cardId || !newColumnId) return;
+          postMove({ cardId, newColumnId, newPosition });
+        },
+
+        onUpdate: (evt) => {
+          // reordenou dentro da mesma coluna
+          const item = evt.item;
+          const cardId = resolveCardIdFromItem(item);
+          const newColumnId = resolveColumnIdFromList(evt.to);
+          const newPosition = Number(evt.newIndex || 0);
+
+          if (!cardId || !newColumnId) return;
+          postMove({ cardId, newColumnId, newPosition });
+        }
+      });
+    });
+  };
+
+  document.addEventListener("DOMContentLoaded", window.initSortable);
+  document.body.addEventListener("htmx:afterSwap", window.initSortable);
+</script>
+
+
+
+
 
 <script>
   // ============================================================
