@@ -591,32 +591,53 @@ html.dark #cm-root{
     </div>
   </section>
 
-  {# Action dock #}
+    {# Action dock #}
 <div id="cm-action-dock" aria-label="Ações do card">
-  <div class="dock-wrap">
-    <button type="button"
-            class="dock-toggle"
-            id="cm-dock-toggle"
-            title="Ações"
-            aria-expanded="false">⋮</button>
+  <div id="cm-dock-menu" class="hidden" role="menu" aria-label="Menu de ações">
+  <button
+    type="button"
+    class="dock-action"
+    id="cm-dock-duplicate"
+    role="menuitem"
+    data-url-duplicate="{% url 'boards:duplicate_card' card.id %}">
+    <span>📄</span> <span class="label">Duplicar</span>
+  </button>
 
-    <div class="dock-actions hidden" id="cm-dock-actions">
-      <button type="button" class="dock-action" id="cm-dock-move">
-        <span>↔️</span> <span class="label">Mover</span>
-      </button>
-      <button type="button" class="dock-action" id="cm-dock-duplicate">
-        <span>📄</span> <span class="label">Duplicar</span>
-      </button>
-      <button type="button" class="dock-action" id="cm-dock-copylink">
-        <span>🔗</span> <span class="label">Copiar link</span>
-      </button>
-    </div>
+  <button
+    type="button"
+    class="dock-action"
+    id="cm-dock-move"
+    role="menuitem"
+    data-url-move="{% url 'boards:card_move_options' card.id %}">
+    <span>↔️</span> <span class="label">Mover</span>
+  </button>
 
-    <div id="cm-action-dock-panel" role="dialog" aria-label="Painel de ação">
-      <div id="cm-dock-panel-body"></div>
-    </div>
+  <button
+    type="button"
+    class="dock-action"
+    id="cm-dock-copylink"
+    role="menuitem">
+    <span>🔗</span> <span class="label">Copiar link</span>
+  </button>
+</div>
+
+
+    <button type="button" class="dock-action" id="cm-dock-copylink" role="menuitem">
+      <span>🔗</span> <span class="label">Copiar link</span>
+    </button>
+  </div>
+
+  <div id="cm-action-dock-panel" role="dialog" aria-label="Painel de ação" class="hidden">
+    <div id="cm-dock-panel-body"></div>
   </div>
 </div>
+
+
+
+
+
+
+
 
 </div>
 
