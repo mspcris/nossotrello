@@ -1029,8 +1029,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const target = evt.detail?.target || evt.target;
     if (!target) return;
 
-    if (target.id === "modal-body" || target.closest?.("#modal-body")) {
-      ensureModalTabs(document.getElementById("modal-body") || target);
+    if (target.id === "modal-body") {
+      ensureModalTabs(target);
     }
   });
 

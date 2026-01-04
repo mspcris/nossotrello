@@ -23,8 +23,6 @@
 {% endif %}
 
 <style>
-
-
 /* ============================================================
    CM MODAL (card_modal_body.html)
    ============================================================ */
@@ -163,26 +161,17 @@ html.dark #cm-root{
 }
 
 /* ============================================================
-   FLOATBAR / ACTION DOCK
-   (inalterado visualmente)
-   ============================================================ */
-/* (mantido exatamente como estava) */
-
-/* ============================================================
    PRAZO — OVERLAY FINAL (ÚNICO BLOCO VÁLIDO)
    ============================================================ */
 
-/* Overlay do prazo (cor vem do JS via --cm-term-rgb) */
 #cm-root[data-term-notify="1"][data-term-status]{
   --cm-term-opacity: 0.12;
 }
 
-/* Se não notifica, overlay some */
 #cm-root:not([data-term-notify="1"]),
 #cm-root[data-term-notify="0"]{
   --cm-term-opacity: 0;
 }
-
 
 /* CM: desativar Salvar do topo (fica só o FloatSave) */
 #cm-actions,
@@ -202,6 +191,11 @@ html.dark #cm-root{
   border: 1px solid var(--cm-border);
 }
 
+/* ============================================================
+   PANELS (abas) — mostrar somente o painel ativo
+   ============================================================ */
+.cm-panel{ display: none; }
+.cm-panel.is-active{ display: block; }
 </style>
 
 {# cm-root (modal do card) #}
@@ -313,122 +307,79 @@ html.dark #cm-root{
                 OK
                 <span class="cm-color-dot" aria-hidden="true"></span>
               </label>
-            
+
               <label class="cm-muted cm-due-color" style="display:flex;align-items:center;gap:8px;">
                 <input type="color" name="due_color_warn" value="{{ board_due_colors.warn|default:'#f59e0b' }}">
                 Alerta
                 <span class="cm-color-dot" aria-hidden="true"></span>
               </label>
-            
+
               <label class="cm-muted cm-due-color" style="display:flex;align-items:center;gap:8px;">
                 <input type="color" name="due_color_overdue" value="{{ board_due_colors.overdue|default:'#dc2626' }}">
                 Vencido
                 <span class="cm-color-dot" aria-hidden="true"></span>
               </label>
             </div>
-
-
           </div>
         </div>
 
-
-
-
-
-
-
-
-
-
-
-
-
-
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-  <!-- VENCIMENTO -->
-  <div class="min-w-0">
-    <div class="cm-label">Vencimento</div>
+          <!-- VENCIMENTO -->
+          <div class="min-w-0">
+            <div class="cm-label">Vencimento</div>
 
-    <div class="relative">
-  <input type="text"
-         id="cm-due-date-display"
-         class="cm-input pr-10"
-         inputmode="numeric"
-         placeholder="DD/MM/AAAA"
-         value="{% if card.due_date %}{{ card.due_date|date:'d/m/Y' }}{% endif %}">
+            <div class="relative">
+              <input type="text"
+                     id="cm-due-date-display"
+                     class="cm-input pr-10"
+                     inputmode="numeric"
+                     placeholder="DD/MM/AAAA"
+                     value="{% if card.due_date %}{{ card.due_date|date:'d/m/Y' }}{% endif %}">
 
-  <!-- ícone (visual) -->
-  <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">
-    📅
-  </span>
+              <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">📅</span>
 
-  <!-- o verdadeiro date picker (invisível, mas CLICÁVEL em cima do ícone) -->
-  <input type="date"
-         id="cm-due-date-picker"
-         class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 opacity-0 cursor-pointer z-10"
-         value="{% if card.due_date %}{{ card.due_date|date:'Y-m-d' }}{% endif %}">
+              <input type="date"
+                     id="cm-due-date-picker"
+                     class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 opacity-0 cursor-pointer z-10"
+                     value="{% if card.due_date %}{{ card.due_date|date:'Y-m-d' }}{% endif %}">
 
-  <!-- valor real que vai no POST (ISO) -->
-  <input type="hidden"
-         name="due_date"
-         id="cm-due-date"
-         value="{% if card.due_date %}{{ card.due_date|date:'Y-m-d' }}{% endif %}">
-</div>
+              <input type="hidden"
+                     name="due_date"
+                     id="cm-due-date"
+                     value="{% if card.due_date %}{{ card.due_date|date:'Y-m-d' }}{% endif %}">
+            </div>
+          </div>
 
-  </div>
+          <!-- AVISAR EM -->
+          <div class="min-w-0">
+            <div class="cm-label">Avisar em</div>
 
-  <!-- AVISAR EM -->
-  <div class="min-w-0">
-    <div class="cm-label">Avisar em</div>
+            <div class="relative">
+              <input type="text"
+                     id="cm-due-warn-date-display"
+                     class="cm-input pr-10"
+                     inputmode="numeric"
+                     placeholder="DD/MM/AAAA"
+                     value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'d/m/Y' }}{% endif %}">
 
-    <div class="relative">
-  <input type="text"
-         id="cm-due-warn-date-display"
-         class="cm-input pr-10"
-         inputmode="numeric"
-         placeholder="DD/MM/AAAA"
-         value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'d/m/Y' }}{% endif %}">
+              <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">📅</span>
 
-  <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">
-    📅
-  </span>
+              <input type="date"
+                     id="cm-due-warn-date-picker"
+                     class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 opacity-0 cursor-pointer z-10"
+                     value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'Y-m-d' }}{% endif %}">
 
-  <input type="date"
-         id="cm-due-warn-date-picker"
-         class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 opacity-0 cursor-pointer z-10"
-         value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'Y-m-d' }}{% endif %}">
-
-  <input type="hidden"
-         name="due_warn_date"
-         id="cm-due-warn-date"
-         value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'Y-m-d' }}{% endif %}">
-</div>
-
-  </div>
-</div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+              <input type="hidden"
+                     name="due_warn_date"
+                     id="cm-due-warn-date"
+                     value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'Y-m-d' }}{% endif %}">
+            </div>
+          </div>
+        </div>
 
         <div class="flex items-center gap-2">
           <input type="hidden" name="due_notify" value="0">
-            <label class="cm-muted" style="display:flex;align-items:center;gap:8px;white-space:nowrap;">
+          <label class="cm-muted" style="display:flex;align-items:center;gap:8px;white-space:nowrap;">
             <input type="checkbox"
                    name="due_notify"
                    value="1"
@@ -454,15 +405,12 @@ html.dark #cm-root{
               Escolher imagem…
             </button>
 
-            
-
             <input type="file"
-             id="cm-cover-file"
-             name="cover"
-             form="cm-cover-form"
-             accept="image/*"
-             style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;">
-
+                   id="cm-cover-file"
+                   name="cover"
+                   form="cm-cover-form"
+                   accept="image/*"
+                   style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;">
           </div>
         </div>
 
@@ -471,7 +419,7 @@ html.dark #cm-root{
       </div>
     </section>
 
-    {# Aba: Tags (campo de texto) #}
+    {# Aba: Tags (campo de texto) — CORRIGIDO: data-cm-panel="tags" #}
     <section class="cm-panel" data-cm-panel="tags" role="tabpanel">
       <div class="cm-card space-y-3">
         <div>
@@ -490,8 +438,7 @@ html.dark #cm-root{
   <div id="cm-floatbar" class="cm-floatbar hidden" aria-live="polite">
     <div class="cm-floatbar-inner">
       <button type="button" class="cm-btn" id="cm-close-btn">Fechar</button>
-        <button type="submit" form="cm-main-form" class="cm-btn primary" id="cm-float-save-btn">Salvar</button>
-
+      <button type="submit" form="cm-main-form" class="cm-btn primary" id="cm-float-save-btn">Salvar</button>
     </div>
   </div>
 
@@ -526,31 +473,30 @@ html.dark #cm-root{
   <section class="cm-panel" data-cm-panel="ativ" role="tabpanel">
     <div class="cm-card space-y-3">
       <form
-  id="cm-activity-form"
-  method="post"
-  hx-post="{% url 'boards:add_activity' card.id %}"
-  hx-target="#cm-activity-panel"
-  hx-swap="innerHTML"
->
-  {% csrf_token %}
+        id="cm-activity-form"
+        method="post"
+        hx-post="{% url 'boards:add_activity' card.id %}"
+        hx-target="#cm-activity-panel"
+        hx-swap="innerHTML"
+      >
+        {% csrf_token %}
 
-  <div id="activity-error"
-       class="hidden mb-2 px-3 py-2 rounded-md text-sm border border-red-500/30 bg-red-500/10 text-red-200"></div>
+        <div id="activity-error"
+             class="hidden mb-2 px-3 py-2 rounded-md text-sm border border-red-500/30 bg-red-500/10 text-red-200"></div>
 
-  <label class="cm-label">Nova atividade</label>
+        <label class="cm-label">Nova atividade</label>
 
-  <div id="cm-activity-editor"
-       class="cm-textarea"
-       style="min-height:140px;"></div>
+        <div id="cm-activity-editor"
+             class="cm-textarea"
+             style="min-height:140px;"></div>
 
-  <input type="hidden" name="content" id="cm-activity-content">
+        <input type="hidden" name="content" id="cm-activity-content">
 
-  <div class="flex gap-2">
-    <button type="submit" class="cm-btn primary">Incluir</button>
-    <button type="button" class="cm-btn" onclick="resetActivityQuill()">Limpar</button>
-  </div>
-</form>
-
+        <div class="flex gap-2">
+          <button type="submit" class="cm-btn primary">Incluir</button>
+          <button type="button" class="cm-btn" onclick="resetActivityQuill()">Limpar</button>
+        </div>
+      </form>
 
       <div id="cm-activity-panel">
         {% include "boards/partials/card_activity_panel.html" %}
@@ -628,1308 +574,370 @@ html.dark #cm-root{
 
 </div>
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 <script>
-  (function(){
+(function () {
   const root = document.getElementById("cm-root");
   if (!root) return;
 
-  const cardId = root.getAttribute("data-card-id");
+  const cardId = (root.getAttribute("data-card-id") || "").trim() || "x";
+  const ALLOWED = ["desc", "tags", "check", "ativ", "files"];
+  const STORAGE_KEY = `cm_active_tab_${cardId}`;
 
-  // ============================================================
-  // 0) TABS — estado determinístico + reset na abertura
-  // ============================================================
-  function getUrlParam(name){
-    try { return new URLSearchParams(window.location.search).get(name); }
-    catch (_e) { return null; }
+  function clampTab(tab) {
+    const t = String(tab || "").trim();
+    return ALLOWED.includes(t) ? t : "desc";
   }
 
-  function setActive(root, tab) {
-  if (!root || !ALLOWED.has(tab)) return;
+  function getActiveTab() {
+    return clampTab(root.getAttribute("data-cm-active") || root.dataset.cmActive || "desc");
+  }
 
-  root.querySelectorAll(".cm-tabbtn[data-cm-tab]").forEach((btn) => {
-    btn.classList.toggle("is-active", btn.getAttribute("data-cm-tab") === tab);
-  });
+  function setActiveTab(tab) {
+    const t = clampTab(tab);
 
-  root.querySelectorAll(".cm-panel[data-cm-panel]").forEach((p) => {
-    p.classList.toggle("is-active", p.getAttribute("data-cm-panel") === tab);
-  });
+    // Tenta usar o mecanismo existente (modal.tabs.js) via click (mantém tudo alinhado)
+    const btn = root.querySelector(`.cm-tabbtn[data-cm-tab="${CSS.escape(t)}"]`);
+    if (btn) {
+      btn.click();
+      return;
+    }
 
-  root.setAttribute("data-cm-active", tab);
+    // Fallback: alterna manualmente
+    root.setAttribute("data-cm-active", t);
+    root.dataset.cmActive = t;
 
-  // ✅ mantém aba após qualquer HTMX swap
-  try {
-    const url = new URL(window.location.href);
-    url.searchParams.set("tab", tab);
-    window.history.replaceState({}, "", url.toString());
-  } catch (_e) {}
-
-  try {
-    root.dispatchEvent(new CustomEvent("cm:tabchange", { detail: { tab } }));
-  } catch (_e) {}
-}
-
-  
-
-
-
-
-
-
-
-
-
-  function initTabs(){
-    // bind clicks (idempotente por swap)
-    root.querySelectorAll(".cm-tabbtn[data-cm-tab]").forEach((btn) => {
-      if (btn.dataset.cmBound === "1") return;
-      btn.dataset.cmBound = "1";
-
-      btn.addEventListener("click", (e) => {
-        e.preventDefault();
-        const t = btn.getAttribute("data-cm-tab");
-        setActiveTab(t);
-      });
+    root.querySelectorAll(".cm-tabbtn[data-cm-tab]").forEach((b) => {
+      b.classList.toggle("is-active", b.getAttribute("data-cm-tab") === t);
     });
 
-    // regra: sempre abre em Descrição, a menos que exista deep-link explícito ?tab=
-    const deepTab = (getUrlParam("tab") || "").trim();
-    const allowed = new Set(["desc", "tags", "check", "ativ", "files"]);
-    const initial = (deepTab && allowed.has(deepTab)) ? deepTab : "desc";
+    root.querySelectorAll(".cm-panel[data-cm-panel]").forEach((p) => {
+      p.classList.toggle("is-active", p.getAttribute("data-cm-panel") === t);
+    });
 
-    // força o estado (mesmo se algum resíduo tentar setar outra aba)
-    setActiveTab(initial);
-
-    // reforço pós-render (HTMX/exec de scripts pode variar timing)
-    setTimeout(() => setActiveTab(initial), 0);
-    setTimeout(() => setActiveTab(initial), 50);
+    try {
+      root.dispatchEvent(new CustomEvent("cm:tabchange", { detail: { tab: t } }));
+    } catch (_e) {}
   }
 
-  // ============================================================
-  // 1) FLOATBAR (dirty) — seu comportamento atual
-  // ============================================================
-  function initFloatbarDirty(){
+  function hasStoredTab() {
+    try { return sessionStorage.getItem(STORAGE_KEY) !== null; } catch (_e) { return false; }
+  }
+
+  function loadStoredTab() {
+    try { return clampTab(sessionStorage.getItem(STORAGE_KEY) || "desc"); }
+    catch (_e) { return "desc"; }
+  }
+
+  function storeTab(tab) {
+    try { sessionStorage.setItem(STORAGE_KEY, clampTab(tab)); } catch (_e) {}
+  }
+
+  // 1) TAB PERSISTENCE
+  // - Primeira abertura: força desc
+  // - Pós swaps (HTMX): restaura a aba salva
+  (function initTabPersistence() {
+    const initial = hasStoredTab() ? loadStoredTab() : "desc";
+    storeTab(initial);
+
+    // Aplica após o DOM do modal estar pronto + scripts defer (cinto e suspensório)
+    setTimeout(() => setActiveTab(initial), 0);
+    setTimeout(() => setActiveTab(loadStoredTab()), 50);
+
+    // Persiste por evento central (emitido por modal.tabs.js)
+    root.addEventListener("cm:tabchange", function (e) {
+      const t = clampTab(e.detail && e.detail.tab);
+      storeTab(t);
+    });
+
+    // Global: captura requests/swap do HTMX sem depender deste script rodar de novo
+    if (window.__cmTabKeepBound === true) return;
+    window.__cmTabKeepBound = true;
+
+    document.body.addEventListener("htmx:beforeRequest", function (evt) {
+      const r = document.getElementById("cm-root");
+      if (!r) return;
+      const cid = (r.getAttribute("data-card-id") || "").trim() || "x";
+      const key = `cm_active_tab_${cid}`;
+      const t = clampTab(r.dataset.cmActive || r.getAttribute("data-cm-active") || "desc");
+      try { sessionStorage.setItem(key, t); } catch (_e) {}
+    });
+
+    document.body.addEventListener("htmx:afterSwap", function (evt) {
+      const target = evt.target;
+      if (!target) return;
+
+      // Quando trocar o body do modal, restaura a última aba
+      if (target.id === "modal-body") {
+        const r = document.getElementById("cm-root");
+        if (!r) return;
+
+        const cid = (r.getAttribute("data-card-id") || "").trim() || "x";
+        const key = `cm_active_tab_${cid}`;
+        let t = "desc";
+        try { t = clampTab(sessionStorage.getItem(key) || "desc"); } catch (_e) {}
+
+        setTimeout(() => {
+          const rr = document.getElementById("cm-root");
+          if (rr && (rr.getAttribute("data-card-id") || "").trim() === cid) {
+            const btn = rr.querySelector(`.cm-tabbtn[data-cm-tab="${CSS.escape(t)}"]`);
+            if (btn) btn.click();
+          }
+        }, 0);
+
+        setTimeout(() => {
+          const rr = document.getElementById("cm-root");
+          if (rr && (rr.getAttribute("data-card-id") || "").trim() === cid) {
+            const btn = rr.querySelector(`.cm-tabbtn[data-cm-tab="${CSS.escape(t)}"]`);
+            if (btn) btn.click();
+          }
+        }, 50);
+      }
+    });
+  })();
+
+  // 2) BLOQUEAR ENTER que submete form e “volta” para Descrição
+  (function initPreventEnterSubmit() {
+    const form = document.getElementById("cm-main-form");
+    if (!form) return;
+
+    form.addEventListener("keydown", function (ev) {
+      if (ev.key !== "Enter") return;
+      if (ev.isComposing) return;
+
+      const el = ev.target;
+      if (!el) return;
+
+      // Em textarea, Enter é newline
+      if (el.tagName === "TEXTAREA") return;
+
+      // Só bloqueia nos campos do CM (título/tags/datas)
+      const shouldBlock = el.matches(
+        'input[name="title"], input[name="tags"], #cm-due-date-display, #cm-due-warn-date-display'
+      );
+
+      if (shouldBlock) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        try { el.blur(); } catch (_e) {}
+      }
+    }, true);
+  })();
+
+  // 3) FLOATBAR — aparece quando houver alterações em Desc/Tags
+  (function initFloatbarDirty() {
     const form = document.getElementById("cm-main-form");
     const floatbar = document.getElementById("cm-floatbar");
-    const topSave = document.getElementById("cm-save-btn");
     const floatSave = document.getElementById("cm-float-save-btn");
     const closeBtn = document.getElementById("cm-close-btn");
 
     if (!form || !floatbar) return;
 
-    const watched = form.querySelectorAll([
-      'input[name="title"]',
-      'textarea[name="description"]',
-      'input[name="tags"]',
-      // ✅ cores do prazo
-      'input[name="due_color_ok"]',
-      'input[name="due_color_warn"]',
-      'input[name="due_color_overdue"]'
-    ].join(","));
+    const WATCH = [
+      "title",
+      "description",
+      "tags",
+      "due_color_ok",
+      "due_color_warn",
+      "due_color_overdue",
+      "due_date",
+      "due_warn_date",
+      "due_notify",
+    ];
 
-    const initial = {};
-    watched.forEach(el => { initial[el.name] = (el.value || "").trim(); });
+    function snapshot() {
+      const fd = new FormData(form);
+      const obj = {};
+      WATCH.forEach((k) => { obj[k] = ""; });
+      for (const [k, v] of fd.entries()) {
+        if (WATCH.includes(k)) obj[k] = String(v ?? "");
+      }
+      return obj;
+    }
 
-    function isDirty(){
-      for (const el of watched){
-        const now = (el.value || "").trim();
-        const before = (initial[el.name] ?? "");
-        if (now !== before) return true;
+    let base = snapshot();
+
+    function isDirty() {
+      const now = snapshot();
+      for (const k of WATCH) {
+        if (String(now[k] ?? "") !== String(base[k] ?? "")) return true;
       }
       return false;
     }
 
-    function isActionsTabActive(){
-      const active = (root.getAttribute("data-cm-active") || "").trim();
-      return (active === "desc" || active === "tags");
+    function isActionsTabActive() {
+      const t = getActiveTab();
+      return t === "desc" || t === "tags";
     }
 
-    function syncBars(){
-      const dirty = isDirty();
-      const show = dirty && isActionsTabActive();
+    function syncFloatbar() {
+      const show = isActionsTabActive() && isDirty();
       floatbar.classList.toggle("hidden", !show);
     }
 
-    watched.forEach(el => {
-      el.addEventListener("input", syncBars);
-      el.addEventListener("change", syncBars);
-    });
+    form.addEventListener("input", syncFloatbar, true);
+    form.addEventListener("change", syncFloatbar, true);
+    root.addEventListener("cm:tabchange", syncFloatbar);
 
-    // quando muda de aba, reavalia visibilidade da floatbar
-    root.addEventListener("cm:tabchange", syncBars);
-
-
-
-  function submitForm() {
-  if (!form) return;
-
-  // Bind único e determinístico (antes do submit)
-  if (form.dataset.cmAfterReqBound !== "1") {
-    form.dataset.cmAfterReqBound = "1";
-
+    // Reset baseline após salvar com sucesso
     form.addEventListener("htmx:afterRequest", function (evt) {
-      // garante que é o request deste form
       if (evt.target !== form) return;
-      if (!evt.detail?.successful) return;
+      if (!evt.detail || !evt.detail.successful) return;
 
-      // 1) Atualiza snippet do card (se existir)
+      base = snapshot();
+      syncFloatbar();
+
+      // refresh snippet (se existe)
       if (typeof window.refreshCardSnippet === "function") {
-        window.refreshCardSnippet(cardId);
-      }
-
-      // 2) Atualiza as cores globais do board com o que está no modal AGORA
-        // ✅ atualiza estado global ANTES do swap
-      const okEl = form.querySelector('input[name="due_color_ok"]');
-      const warnEl = form.querySelector('input[name="due_color_warn"]');
-      const overEl = form.querySelector('input[name="due_color_overdue"]');
-
-      const next = {
-        ok: (okEl?.value || "").trim(),
-        warn: (warnEl?.value || "").trim(),
-        overdue: (overEl?.value || "").trim(),
-      };
-
-      if (next.ok && next.warn && next.overdue) {
-        window.BOARD_TERM_COLORS = next;
-      }
-
-
-      // Só sobrescreve se vierem as 3 (evita apagar estado)
-      if (next.ok && next.warn && next.overdue) {
-        window.BOARD_TERM_COLORS = next;
-      }
-
-      // 3) Reaplica cores no board
-      const columnsList = document.getElementById("columns-list");
-
-      if (columnsList && typeof window.applySavedTagColorsToBoard === "function") {
-        window.applySavedTagColorsToBoard(columnsList);
-      }
-
-      if (columnsList && typeof window.applySavedTermColorsToBoard === "function") {
-        window.applySavedTermColorsToBoard(columnsList);
-      }
-    });
-  }
-
-  // Dispara submit
-  try {
-    form.requestSubmit ? form.requestSubmit() : form.submit();
-  } catch (_e) {
-    form.submit();
-  }
-}
-
-
-
-  if (topSave) topSave.addEventListener("click", (e) => { e.preventDefault(); submitForm(); });
-  if (floatSave) floatSave.addEventListener("click", (e) => { e.preventDefault(); submitForm(); });
-
-
-  if (closeBtn){
-    closeBtn.addEventListener("click", function(){
-      if (typeof window.closeModal === "function") return window.closeModal();
-      const x = document.querySelector("#modal .modal-top-x");
-      if (x) x.click();
-    });
-  }
-
-  syncBars();
-}
-  
-
-
-// ============================================================
-// 2) ACTION DOCK — mover/duplicar/copiar link
-// ============================================================
-function initActionDock() {
-  const dock = document.getElementById("cm-action-dock");
-  const toggle = document.getElementById("cm-dock-toggle");
-  const btnMove = document.getElementById("cm-dock-move");
-  const btnDup = document.getElementById("cm-dock-duplicate");
-  const btnCopy = document.getElementById("cm-dock-copylink");
-
-  const panel = document.getElementById("cm-action-dock-panel");
-  const panelBody = document.getElementById("cm-dock-panel-body");
-
-  if (!dock || !toggle || !panel || !panelBody) return;
-
-  function openDock() {
-    dock.classList.add("is-open");
-  }
-
-  function closeDock() {
-    dock.classList.remove("is-open");
-    closePanel();
-  }
-
-  function toggleDock() {
-    dock.classList.toggle("is-open");
-  }
-
-  function openPanel(html) {
-    panelBody.innerHTML = html || "";
-    panel.classList.add("is-open");
-    panel.classList.remove("boing");
-    void panel.offsetWidth;
-    panel.classList.add("boing");
-  }
-
-  function closePanel() {
-    panel.classList.remove("is-open");
-    panelBody.innerHTML = "";
-  }
-
-  function clickOutsideClose(e) {
-  // se clicou dentro do dock, não fecha
-  if (e.target && e.target.closest && e.target.closest("#cm-action-dock")) return;
-  closeDock();
-}
-
-
-  function escClose(e) {
-    if (e.key === "Escape") closeDock();
-  }
-
-  // Clique no ⋮ abre/fecha dock e sempre fecha o painel
-  toggle.addEventListener("click", function (e) {
-    e.preventDefault();
-    e.stopPropagation();
-    toggleDock();
-    closePanel();
-  });
-
-  // Hover abre ao apontar o mouse (hover)
-  //dock.addEventListener("mouseenter", openDock);
-
-
-
-
-// ============================================================
-// MOVER — GET opções no endpoint REAL + POST no move-card REAL
-// ============================================================
-if (btnMove) {
-  btnMove.addEventListener("click", async function (e) {
-    e.preventDefault();
-    e.stopPropagation();
-
-    try {
-      const url = `/card/${cardId}/move/options/`;
-      const res = await fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } });
-
-      if (!res.ok) {
-        const t = await res.text().catch(() => "");
-        throw new Error(t || "Falha ao carregar opções.");
-      }
-
-      const data = await res.json();
-
-      const current = data.current || {};
-      const boards = data.boards || [];
-      const columnsByBoard = data.columns_by_board || {};
-
-      const boardOptions = boards
-        .map((b) => `<option value="${b.id}">${escapeHtml(b.name)}</option>`)
-        .join("");
-
-      openPanel(`
-        <div class="cm-card" style="box-shadow:none; border:none; background:transparent; padding:0;">
-          <div class="cm-muted" style="margin-bottom:8px;">
-            <div>
-              <strong>Local atual:</strong>
-              ${escapeHtml(current.board_name || "")} → ${escapeHtml(current.column_name || "")}
-              (#${escapeHtml(current.position_display ?? (current.position != null ? (current.position + 1) : ""))})
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <label class="block">
-              <span class="cm-label">Quadro</span>
-              <select id="cm-move-board" class="cm-select">
-                <option value="">Selecione…</option>
-                ${boardOptions}
-              </select>
-            </label>
-
-            <label class="block">
-              <span class="cm-label">Coluna</span>
-              <select id="cm-move-column" class="cm-select" disabled>
-                <option value="">Selecione um quadro</option>
-              </select>
-            </label>
-
-            <label class="block">
-              <span class="cm-label">Posição</span>
-              <select id="cm-move-position" class="cm-select" disabled>
-                <option value="">Selecione uma coluna</option>
-              </select>
-            </label>
-          </div>
-
-          <div class="flex items-center justify-end gap-2 pt-3">
-            <button type="button" class="cm-btn" id="cm-move-cancel">Cancelar</button>
-            <button type="button" class="cm-btn primary" id="cm-move-confirm">Mover</button>
-          </div>
-
-          <p id="cm-move-error" class="hidden" style="margin-top:10px; color: var(--cm-danger); font-size: 12px;"></p>
-        </div>
-      `);
-
-      const selBoard = document.getElementById("cm-move-board");
-      const selCol = document.getElementById("cm-move-column");
-      const selPos = document.getElementById("cm-move-position");
-      const btnCancel = document.getElementById("cm-move-cancel");
-      const btnConfirm = document.getElementById("cm-move-confirm");
-      const err = document.getElementById("cm-move-error");
-
-      function setError(msg) {
-        if (!err) return;
-        err.textContent = msg || "";
-        err.classList.toggle("hidden", !msg);
-      }
-
-      function fillColumns(boardId) {
-        const cols = columnsByBoard[String(boardId)] || [];
-
-        selCol.innerHTML = cols.length
-          ? `<option value="">Selecione…</option>` +
-            cols
-              .map((c) =>
-                `<option value="${c.id}" data-total="${c.positions_total_plus_one}">${escapeHtml(c.name)}</option>`
-              )
-              .join("")
-          : `<option value="">Sem colunas</option>`;
-
-        selCol.disabled = cols.length === 0;
-        selPos.innerHTML = `<option value="">Selecione uma coluna</option>`;
-        selPos.disabled = true;
-      }
-
-      function fillPositions(total) {
-        const n = parseInt(total || "0", 10) || 0;
-        const opts = [];
-        for (let i = 1; i <= n; i++) opts.push(`<option value="${i - 1}">${i}</option>`);
-        selPos.innerHTML = opts.length ? opts.join("") : `<option value="">—</option>`;
-        selPos.disabled = opts.length === 0;
-      }
-
-      selBoard.addEventListener("change", function () {
-        setError("");
-        if (!this.value) return;
-        fillColumns(this.value);
-      });
-
-      selCol.addEventListener("change", function () {
-        setError("");
-        if (!this.value) return;
-        const opt = this.options[this.selectedIndex];
-        const total = opt ? opt.getAttribute("data-total") : "0";
-        fillPositions(total);
-      });
-
-      if (btnCancel) btnCancel.addEventListener("click", closePanel);
-
-      // ✅ PREFILL: agora com tudo definido
-      (function prefillMove() {
-        try {
-          const curBoardId = current.board_id;
-          const curColId = current.column_id;
-          const curPos0 = current.position; // 0-based
-
-          if (!curBoardId) return;
-
-          selBoard.value = String(curBoardId);
-          fillColumns(curBoardId);
-
-          if (curColId) {
-            selCol.value = String(curColId);
-
-            const opt = selCol.options[selCol.selectedIndex];
-            const total = opt ? opt.getAttribute("data-total") : "0";
-            fillPositions(total);
-
-            if (curPos0 != null && curPos0 !== "") selPos.value = String(curPos0);
-
-            selCol.disabled = false;
-            selPos.disabled = false;
-          }
-        } catch (_e) {}
-      })();
-
-      if (btnConfirm) {
-        btnConfirm.addEventListener("click", async function (e) {
-          e.preventDefault();
-          e.stopPropagation();
-
-          try {
-            setError("");
-
-            const boardId = selBoard.value; // valida UX; backend não usa
-            const colId = selCol.value;
-            const pos = selPos.value; // 0-based
-
-            if (!boardId || !colId || pos === "") {
-              setError("Selecione quadro, coluna e posição.");
-              return;
-            }
-
-            const csrf = getCSRFToken();
-            const endpoint = `/move-card/`;
-
-            const payload = {
-              card_id: parseInt(cardId, 10),
-              new_column_id: parseInt(colId, 10),
-              new_position: parseInt(pos, 10),
-            };
-
-            const res = await fetch(endpoint, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "X-CSRFToken": csrf,
-                "X-Requested-With": "XMLHttpRequest",
-              },
-              body: JSON.stringify(payload),
-            });
-
-            if (!res.ok) {
-              const t = await res.text().catch(() => "");
-              throw new Error(t || "Falha ao mover.");
-            }
-
-            closePanel();
-closeDock();
-
-      // volta para o board SEM ?card= (senão o boot por URL reabre o modal)
-      if (window.Modal?.nav?.goToBoard) {
-        window.Modal.nav.goToBoard();
-      } else if (window.Modal?.url?.clear) {
-        window.Modal.url.clear({ replace: true });
-        window.location.href = window.location.pathname;
-      } else {
-      // fallback final
-        try {
-          const u = new URL(window.location.href);
-          u.searchParams.delete("card");
-          history.replaceState({}, "", u.toString());
-        } catch (_e) {}
-        window.location.href = window.location.pathname;
-      }
-
-          } catch (ex) {
-            setError(ex.message || "Erro ao mover.");
-          }
-        });
-      }
-    } catch (ex) {
-      openPanel(`<div class="cm-muted">Erro: ${escapeHtml(ex.message || "Falha ao carregar mover.")}</div>`);
-    }
-  });
-}
-
-
-
-
-
-// ============================================================
-// DUPLICAR — backend existe + fecha modal + atualiza DOM
-// ============================================================
-if (btnDup) {
-  btnDup.addEventListener("click", async function (e) {
-    e.preventDefault();
-    e.stopPropagation();
-
-    function getFlexIsReverse(el) {
-      try {
-        const st = window.getComputedStyle(el);
-        return String(st.flexDirection || "").includes("reverse");
-      } catch (_e) {
-        return false;
-      }
-    }
-
-    // Insere respeitando ordem visual vs DOM (column-reverse etc.)
-    function insertAtVisualIndex(listEl, nodeEl, visualIndex) {
-      const children = Array.from(listEl.children).filter((n) => n.nodeType === 1);
-      const isReverse = getFlexIsReverse(listEl);
-
-      const idx = Math.max(0, Math.min(parseInt(visualIndex, 10) || 0, children.length));
-
-      // Se reverse, o índice visual precisa ser convertido para índice DOM
-      // Ex.: visual "fim" (children.length) vira DOM 0.
-      const domIndex = isReverse ? (children.length - idx) : idx;
-
-      if (children[domIndex]) listEl.insertBefore(nodeEl, children[domIndex]);
-      else listEl.appendChild(nodeEl);
-    }
-
-    try {
-      const csrf = getCSRFToken();
-
-      // ✅ use aqui o endpoint REAL que você já fez funcionar
-      // exemplo: const endpoint = `/card/${cardId}/duplicate/`;
-      const endpoint = `/card/${cardId}/duplicate/`;
-
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRFToken": csrf,
-          "X-Requested-With": "XMLHttpRequest",
-        },
-        body: JSON.stringify({ card_id: parseInt(cardId, 10) }),
-      });
-
-      if (!res.ok) {
-        const t = await res.text().catch(() => "");
-        throw new Error(t || "Falha ao duplicar.");
-      }
-
-      const data = await res.json().catch(() => ({}));
-
-      // tenta extrair infos do retorno (tolerante)
-      const newId =
-        parseInt(data.new_card_id ?? data.card_id ?? data.id ?? data.newId ?? "", 10);
-
-      const newColumnId =
-        parseInt(data.column_id ?? data.new_column_id ?? data.newColumnId ?? "", 10);
-
-      // posição 0-based (igual seu move_card espera)
-      const newPos =
-        parseInt(data.position ?? data.new_position ?? data.newPos ?? "", 10);
-
-      // 1) fecha painel/dock (se estiver aberto)
-      try { closePanel(); } catch (_e) {}
-      try { closeDock(); } catch (_e) {}
-
-      // 2) fecha modal
-      if (typeof window.closeModal === "function") {
-        window.closeModal();
-      } else {
-        const x = document.querySelector("#modal .modal-top-x");
-        if (x) x.click();
-      }
-
-      // sem id novo? não dá pra atualizar DOM com segurança -> reload
-      if (!newId) {
-        location.reload();
-        return;
-      }
-
-      // 3) busca snippet do NOVO card
-      let newCardHTML = "";
-      try {
-        const sn = await fetch(`/card/${newId}/snippet/`, {
-          headers: { "X-Requested-With": "XMLHttpRequest" },
-        });
-        if (sn.ok) newCardHTML = await sn.text();
-      } catch (_e) {}
-
-      if (!newCardHTML) {
-        location.reload();
-        return;
-      }
-
-      // 4) encontra coluna destino
-      // Se o backend não retornou column_id, assume mesma coluna do card original (melhor esforço)
-      const targetColId = newColumnId || parseInt(data.current_column_id ?? "", 10) || null;
-
-      const targetCol =
-        (targetColId && (
-          document.querySelector(`[data-column-id="${targetColId}"]`) ||
-          document.getElementById(`column-${targetColId}`)
-        )) ||
-        // fallback: tenta mesma coluna do card original (se o card estiver na tela)
-        (document.querySelector(`[data-card-id="${cardId}"]`)?.closest(`[data-column-id]`) || null);
-
-      if (!targetCol) {
-        location.reload();
-        return;
-      }
-
-      const list =
-        targetCol.querySelector(`[data-cards-list]`) ||
-        targetCol.querySelector(`.cards`) ||
-        targetCol;
-
-      // cria nó
-      const tmp = document.createElement("div");
-      tmp.innerHTML = newCardHTML.trim();
-      const node = tmp.firstElementChild;
-
-      if (!node) {
-        location.reload();
-        return;
-      }
-
-      // 5) insere respeitando posição
-      // se backend retornou posição, usa; senão joga no fim (visual)
-      const visualIndex = Number.isFinite(newPos) ? newPos : Array.from(list.children).length;
-      insertAtVisualIndex(list, node, visualIndex);
-
-    } catch (ex) {
-      openPanel(`<div class="cm-muted">Erro ao duplicar: ${escapeHtml(ex.message || "Falha")}</div>`);
-    }
-  });
-}
-
-  // ============================================================
-  // COPIAR LINK (frontend-only)
-  // ============================================================
-  if (btnCopy) {
-    btnCopy.addEventListener("click", async function (e) {
-      e.preventDefault();
-      e.stopPropagation();
-
-      const url = `${location.origin}${location.pathname}?card=${cardId}`;
-
-      try {
-        await navigator.clipboard.writeText(url);
-        openPanel(`<div class="cm-muted">Link copiado.</div>`);
-        setTimeout(closePanel, 900);
-      } catch (_e) {
-        openPanel(`
-          <div class="cm-muted" style="margin-bottom:6px;">Copie manualmente:</div>
-          <input class="cm-input" value="${escapeAttr(
-            url
-          )}" onclick="this.select()" readonly />
-        `);
-      }
-    });
-  }
-
-    // ============================================================
-  // Evita duplicar listeners globais a cada re-render do modal (HTMX swap)
-  // ============================================================
-try {
-  if (window.__cmDockHandlers) {
-    document.removeEventListener("click", window.__cmDockHandlers.clickOutsideClose, true);
-    document.removeEventListener("keydown", window.__cmDockHandlers.escClose);
-  }
-} catch (_e) {}
-
-window.__cmDockHandlers = { clickOutsideClose, escClose };
-
-document.addEventListener("click", clickOutsideClose, true);
-document.addEventListener("keydown", escClose);
-
-// ✅ fecha a função initActionDock aqui
-}
-
-  // ============================================================
-  // helpers
-  // ============================================================
-  function getCSRFToken(){
-    return document.querySelector(
-      'input[name="csrfmiddlewaretoken"]'
-    )?.value || "";
-  }
-
-
-  function escapeHtml(s){
-    return String(s || "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
-  }
-
-  function escapeAttr(s){
-    return escapeHtml(s).replaceAll("`", "&#096;");
-  }
-
-  
-function initDueColorDots(){
-  root.querySelectorAll("label.cm-due-color").forEach((label) => {
-    const input = label.querySelector('input[type="color"]');
-    const dot = label.querySelector(".cm-color-dot");
-    if (!input || !dot) return;
-
-    const sync = () => {
-      dot.style.backgroundColor = input.value || "transparent";
-      dot.style.borderColor = input.value || "transparent";
-    };
-
-    // inicial
-    sync();
-
-    // bind 1x
-    if (input.dataset.cmDotBound === "1") return;
-    input.dataset.cmDotBound = "1";
-    input.addEventListener("input", sync);
-    input.addEventListener("change", sync);
-  });
-}
-
-
-
-
-// ============================================================
-// TAG COLOR POPOVER — delegação global (funciona mesmo com HTMX swap)
-// ============================================================
-function initTagColorPopover(){
-  // bind global 1x (sobrevive a swaps)
-  if (window.__cmTagPopoverGlobalBound === "1") return;
-  window.__cmTagPopoverGlobalBound = "1";
-
-  function getCSRFTokenSafe(){
-    return document.querySelector('input[name="csrfmiddlewaretoken"]')?.value || "";
-  }
-
-  function getColorsMap(root){
-    try {
-      const raw = root.getAttribute("data-tag-colors") || "{}";
-      const data = JSON.parse(raw);
-      return (data && typeof data === "object") ? data : {};
-    } catch (_e) {
-      return {};
-    }
-  }
-
-  function setColorsMap(root, map){
-    try { root.setAttribute("data-tag-colors", JSON.stringify(map || {})); } catch (_e) {}
-  }
-
-  function ensureWired(root){
-    if (root.dataset.cmTagPopoverWired === "1") return;
-
-    const pop = root.querySelector("#cm-tag-color-popover");
-    const picker = root.querySelector("#cm-tag-color-picker");
-    const btnCancel = root.querySelector("#cm-tag-color-cancel");
-    const btnSave = root.querySelector("#cm-tag-color-save");
-    const form = root.querySelector("#cm-tag-color-form");
-    const inTag = root.querySelector("#cm-tag-color-tag");
-    const inColor = root.querySelector("#cm-tag-color-value");
-    const tagsWrap = root.querySelector("#cm-tags-wrap");
-
-    if (!pop || !picker || !btnCancel || !btnSave || !form || !inTag || !inColor) return;
-
-    function closePopover(){
-      pop.style.display = "none";
-      inTag.value = "";
-      inColor.value = "";
-    }
-
-    picker.addEventListener("input", function(){
-      inColor.value = picker.value || "";
-    });
-
-    btnCancel.addEventListener("click", function(e){
-      e.preventDefault();
-      e.stopPropagation();
-      closePopover();
-    });
-
-    btnSave.addEventListener("click", async function(e){
-      e.preventDefault();
-      e.stopPropagation();
-
-      const tag = (inTag.value || "").trim();
-      const color = (picker.value || "").trim();
-      if (!tag) return;
-      if (!/^#[0-9a-fA-F]{6}$/.test(color)) return;
-
-      const endpoint = form.getAttribute("action");
-      const csrf = getCSRFTokenSafe();
-
-      try {
-        const fd = new FormData();
-        fd.append("csrfmiddlewaretoken", csrf);
-        fd.append("tag", tag);
-        fd.append("color", color);
-
-        const res = await fetch(endpoint, {
-          method: "POST",
-          headers: {
-            "X-Requested-With": "XMLHttpRequest",
-            "X-CSRFToken": csrf,
-          },
-          body: fd,
-        });
-
-        if (!res.ok) {
-          const t = await res.text().catch(() => "");
-          throw new Error(t || "Falha ao salvar cor da etiqueta.");
-        }
-
-        const data = await res.json().catch(() => ({}));
-
-        // atualiza barra de tags do modal (se backend devolver)
-        if (data && data.ok && tagsWrap && data.tags_bar) {
-          tagsWrap.innerHTML = data.tags_bar;
-        }
-
-        // atualiza estado local do modal
-        const map = getColorsMap(root);
-        map[tag] = color;
-        setColorsMap(root, map);
-
-        closePopover();
-
-        // opcional: refresh do snippet
-        const cardId = root.getAttribute("data-card-id");
-        if (cardId && typeof window.refreshCardSnippet === "function") {
-          window.refreshCardSnippet(cardId);
-        }
-      } catch (ex) {
-        try { console.error(ex); } catch (_e) {}
+        try { window.refreshCardSnippet(cardId); } catch (_e) {}
       }
     });
 
-    // fecha ao clicar fora
-    root.addEventListener("click", function(e){
-      const popEl = root.querySelector("#cm-tag-color-popover");
-      if (!popEl || popEl.style.display !== "block") return;
-
-      const insidePopover = e.target?.closest?.("#cm-tag-color-popover");
-      const onTagBtn = e.target?.closest?.(".cm-tag-btn[data-tag]");
-      if (insidePopover || onTagBtn) return;
-
-      popEl.style.display = "none";
-    }, true);
-
-    root.dataset.cmTagPopoverWired = "1";
-  }
-
-  function openPopoverFor(btn){
-    const root = btn.closest("#cm-root");
-    if (!root) return;
-
-    ensureWired(root);
-
-    const pop = root.querySelector("#cm-tag-color-popover");
-    const picker = root.querySelector("#cm-tag-color-picker");
-    const inTag = root.querySelector("#cm-tag-color-tag");
-    const inColor = root.querySelector("#cm-tag-color-value");
-    if (!pop || !picker || !inTag || !inColor) return;
-
-    const tag = (btn.getAttribute("data-tag") || "").trim();
-    if (!tag) return;
-
-    const map = getColorsMap(root);
-    const fallback = (btn.getAttribute("data-fallback-color") || "").trim();
-    const current = (map[tag] || fallback || "").trim();
-    const hex = /^#[0-9a-fA-F]{6}$/.test(current) ? current : "#3b82f6";
-
-    inTag.value = tag;
-    picker.value = hex;
-    inColor.value = hex;
-
-    // posiciona relativo ao root
-    const br = btn.getBoundingClientRect();
-    const rr = root.getBoundingClientRect();
-
-    let left = (br.left - rr.left) + 8;
-    let top  = (br.bottom - rr.top) + 8;
-
-    pop.style.display = "block";
-
-    const maxLeft = root.clientWidth - pop.offsetWidth - 8;
-    const maxTop  = root.clientHeight - pop.offsetHeight - 8;
-
-    left = Math.min(Math.max(8, left), Math.max(8, maxLeft));
-    top  = Math.min(Math.max(8, top), Math.max(8, maxTop));
-
-    pop.style.left = left + "px";
-    pop.style.top  = top + "px";
-  }
-
-  // clique global nas tags (funciona mesmo após swaps)
-  document.addEventListener("click", function(e){
-    const btn = e.target?.closest?.(".cm-tag-btn[data-tag]");
-    if (!btn) return;
-
-    // garante que é do modal
-    if (!btn.closest("#cm-root")) return;
-
-    e.preventDefault();
-    e.stopPropagation();
-
-    openPopoverFor(btn);
-  }, true);
-}
-
-
-
-function reorderChecklistDoneToEnd(){
-  const list = document.getElementById("checklist-list");
-  if (!list) return;
-
-  const done = Array.from(list.querySelectorAll("li.checklist-item.is-done"));
-  done.forEach(li => list.appendChild(li));
-}
-
-// 1) ao abrir modal
-reorderChecklistDoneToEnd();
-
-// 2) após qualquer swap do checklist
-if (!window.__cmChecklistAfterSwapBound) {
-  window.__cmChecklistAfterSwapBound = true;
-
-  document.body.addEventListener("htmx:afterSwap", function(evt){
-    if (evt.target && evt.target.id === "checklist-list") {
-      reorderChecklistDoneToEnd();
-    }
-  });
-}
-
-
-
-
-
-function initBrazilDateInputs(){
-  const form = document.getElementById("cm-main-form");
-  if (!form) return;
-
-  const pairs = [
-    {
-      displayId: "cm-due-date-display",
-      hiddenId: "cm-due-date",
-      pickerId: "cm-due-date-picker",
-      btnId: "cm-due-date-btn"
-    },
-    {
-      displayId: "cm-due-warn-date-display",
-      hiddenId: "cm-due-warn-date",
-      pickerId: "cm-due-warn-date-picker",
-      btnId: "cm-due-warn-date-btn"
-    },
-  ];
-
-  function digitsOnly(s){ return String(s || "").replace(/\D+/g, ""); }
-
-  function applyMaskDDMMYYYY(raw){
-    const d = digitsOnly(raw).slice(0, 8); // ddmmyyyy
-    const p1 = d.slice(0, 2);
-    const p2 = d.slice(2, 4);
-    const p3 = d.slice(4, 8);
-    let out = p1;
-    if (p2) out += "/" + p2;
-    if (p3) out += "/" + p3;
-    return out;
-  }
-
-  function isoToBR(iso){
-    const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (!m) return "";
-    return `${m[3]}/${m[2]}/${m[1]}`;
-  }
-
-  function toISO(ddmmyyyy){
-    const m = String(ddmmyyyy || "").match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-    if (!m) return "";
-    const dd = parseInt(m[1], 10);
-    const mm = parseInt(m[2], 10);
-    const yyyy = parseInt(m[3], 10);
-
-    if (yyyy < 1900 || yyyy > 2200) return "";
-    if (mm < 1 || mm > 12) return "";
-    if (dd < 1 || dd > 31) return "";
-
-    const dt = new Date(yyyy, mm - 1, dd);
-    if (dt.getFullYear() !== yyyy || (dt.getMonth() + 1) !== mm || dt.getDate() !== dd) return "";
-
-    const mm2 = String(mm).padStart(2, "0");
-    const dd2 = String(dd).padStart(2, "0");
-    return `${yyyy}-${mm2}-${dd2}`;
-  }
-
-  function submitNow(){
-    try {
-      form.requestSubmit ? form.requestSubmit() : form.submit();
-    } catch (_e) {
-      try { form.submit(); } catch (_e2) {}
-    }
-  }
-
-  function wireOne(cfg){
-    const displayEl = document.getElementById(cfg.displayId);
-    const hiddenEl  = document.getElementById(cfg.hiddenId);
-    const pickerEl  = document.getElementById(cfg.pickerId);
-    const btnEl     = document.getElementById(cfg.btnId);
-    if (!displayEl || !hiddenEl) return;
-
-    // evita bind duplicado (por swap)
-    if (displayEl.dataset.brDateBound === "1") return;
-    displayEl.dataset.brDateBound = "1";
-
-    // estado p/ auto-save
-    const savedKey = cfg.hiddenId + "__lastSaved";
-    displayEl.dataset[savedKey] = (hiddenEl.value || "").trim();
-
-    function syncFromDisplay(){
-      const masked = applyMaskDDMMYYYY(displayEl.value || "");
-      if (displayEl.value !== masked) displayEl.value = masked;
-
-      const iso = toISO(masked);
-      hiddenEl.value = iso; // vazio se inválido/incompleto
-
-      if (pickerEl && iso) pickerEl.value = iso;
-    }
-
-    function maybeAutoSave(){
-      const iso = (hiddenEl.value || "").trim();
-      if (!iso) return; // só salva quando válido
-
-      const last = (displayEl.dataset[savedKey] || "").trim();
-      if (iso === last) return;
-
-      displayEl.dataset[savedKey] = iso;
-      submitNow();
-    }
-
-    // digitando (não salva aqui, só sincroniza)
-    displayEl.addEventListener("input", syncFromDisplay);
-
-    // ao sair do campo: sincroniza e salva
-    displayEl.addEventListener("blur", function(){
-      syncFromDisplay();
-      maybeAutoSave();
-    });
-
-    // Enter salva
-    displayEl.addEventListener("keydown", function(e){
-      if (e.key === "Enter") {
-        e.preventDefault();
-        syncFromDisplay();
-        maybeAutoSave();
-      }
-    });
-
-    // calendário (picker nativo)
-    if (btnEl && pickerEl) {
-      btnEl.addEventListener("click", function(e){
+    if (floatSave) {
+      floatSave.addEventListener("click", function (e) {
         e.preventDefault();
         e.stopPropagation();
+        storeTab(getActiveTab());
         try {
-          if (pickerEl.showPicker) pickerEl.showPicker();
-          else { pickerEl.focus(); pickerEl.click(); }
+          form.requestSubmit ? form.requestSubmit() : form.submit();
         } catch (_e) {
-          try { pickerEl.focus(); pickerEl.click(); } catch (_e2) {}
+          try { form.submit(); } catch (_e2) {}
+        }
+      });
+    }
+
+    if (closeBtn) {
+      closeBtn.addEventListener("click", function () {
+        if (typeof window.closeModal === "function") return window.closeModal();
+        const x = document.querySelector("#modal .modal-top-x");
+        if (x) x.click();
+      });
+    }
+
+    syncFloatbar();
+  })();
+
+  // 4) DATAS — abrir picker + sincronizar BR/ISO (sem autosave)
+  (function initDueDatePickers() {
+    const form = document.getElementById("cm-main-form");
+    if (!form) return;
+
+    function parseBRtoISO(s) {
+      const v = String(s || "").trim();
+      const m = v.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      if (!m) return "";
+      const dd = parseInt(m[1], 10);
+      const mm = parseInt(m[2], 10);
+      const yy = parseInt(m[3], 10);
+      if (!yy || mm < 1 || mm > 12 || dd < 1 || dd > 31) return "";
+      const dt = new Date(yy, mm - 1, dd);
+      if (dt.getFullYear() !== yy || (dt.getMonth() + 1) !== mm || dt.getDate() !== dd) return "";
+      return `${String(yy).padStart(4, "0")}-${String(mm).padStart(2, "0")}-${String(dd).padStart(2, "0")}`;
+    }
+
+    function formatISOtoBR(iso) {
+      const v = String(iso || "").trim();
+      const m = v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!m) return "";
+      return `${m[3]}/${m[2]}/${m[1]}`;
+    }
+
+    function digitsOnly(s) { return String(s || "").replace(/\D+/g, ""); }
+
+    function maskDDMMYYYY(raw) {
+      const d = digitsOnly(raw).slice(0, 8);
+      const p1 = d.slice(0, 2);
+      const p2 = d.slice(2, 4);
+      const p3 = d.slice(4, 8);
+      let out = p1;
+      if (p2) out += "/" + p2;
+      if (p3) out += "/" + p3;
+      return out;
+    }
+
+    function openPicker(picker) {
+      if (!picker) return;
+      if (typeof picker.showPicker === "function") {
+        try { picker.showPicker(); return; } catch (_e) {}
+      }
+      try { picker.click(); } catch (_e) {}
+    }
+
+    function wire(prefix) {
+      const display = document.getElementById(`cm-${prefix}-display`);
+      const picker = document.getElementById(`cm-${prefix}-picker`);
+      const hidden = document.getElementById(`cm-${prefix}`);
+      if (!display || !picker || !hidden) return;
+
+      if (display.dataset.cmDateBound === "1") return;
+      display.dataset.cmDateBound = "1";
+
+      display.addEventListener("input", function () {
+        const masked = maskDDMMYYYY(display.value);
+        if (display.value !== masked) display.value = masked;
+      });
+
+      display.addEventListener("blur", function () {
+        const iso = parseBRtoISO(display.value);
+        hidden.value = iso;
+        if (iso) {
+          picker.value = iso;
+          display.value = formatISOtoBR(iso);
         }
       });
 
-      pickerEl.addEventListener("change", function(){
-        const iso = (pickerEl.value || "").trim();
-        hiddenEl.value = iso;
-        displayEl.value = isoToBR(iso);
-
-        // auto-save imediato ao escolher no calendário
-        maybeAutoSave();
+      display.addEventListener("click", function () {
+        openPicker(picker);
       });
-    }
 
-    // inicial
-    syncFromDisplay();
-  }
-
-  pairs.forEach(wireOne);
-}
-
-
-
-
-
-
-
-
-function initDueDatePickersAutosave(){
-  const form = document.getElementById("cm-main-form");
-  if (!form) return;
-
-  function parseBRtoISO(s){
-    const v = String(s || "").trim();
-    const m = v.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-    if (!m) return "";
-    const dd = parseInt(m[1], 10);
-    const mm = parseInt(m[2], 10);
-    const yy = parseInt(m[3], 10);
-    if (!yy || mm < 1 || mm > 12 || dd < 1 || dd > 31) return "";
-
-    const dt = new Date(yy, mm - 1, dd);
-    if (dt.getFullYear() !== yy || (dt.getMonth() + 1) !== mm || dt.getDate() !== dd) return "";
-
-    return (
-      String(yy).padStart(4, "0") + "-" +
-      String(mm).padStart(2, "0") + "-" +
-      String(dd).padStart(2, "0")
-    );
-  }
-
-  function formatISOtoBR(iso){
-    const v = String(iso || "").trim();
-    const m = v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (!m) return "";
-    return `${m[3]}/${m[2]}/${m[1]}`;
-  }
-
-  function digitsOnly(s){ return String(s || "").replace(/\D+/g, ""); }
-
-  function maskDDMMYYYY(raw){
-    const d = digitsOnly(raw).slice(0, 8);
-    const p1 = d.slice(0, 2);
-    const p2 = d.slice(2, 4);
-    const p3 = d.slice(4, 8);
-    let out = p1;
-    if (p2) out += "/" + p2;
-    if (p3) out += "/" + p3;
-    return out;
-  }
-
-  function autosave(){
-    try {
-      form.requestSubmit ? form.requestSubmit() : form.submit();
-    } catch (_e) {
-      try { form.submit(); } catch (_e2) {}
-    }
-  }
-
-  function wireOne(prefix){
-    const display = document.getElementById(`cm-${prefix}-display`);
-    const picker  = document.getElementById(`cm-${prefix}-picker`);
-    const hidden  = document.getElementById(`cm-${prefix}`);
-    if (!display || !picker || !hidden) return;
-
-    // evita bind duplicado em swaps
-    if (display.dataset.cmDateBound === "1") return;
-    display.dataset.cmDateBound = "1";
-
-    function applyDisplayMask(){
-      const masked = maskDDMMYYYY(display.value);
-      if (display.value !== masked) display.value = masked;
-    }
-
-    function syncFromDisplay(){
-      applyDisplayMask();
-      const iso = parseBRtoISO(display.value);
-      hidden.value = iso;
-      if (iso) picker.value = iso;
-      return iso;
-    }
-
-    function syncFromPicker(){
-      const iso = (picker.value || "").trim();
-      hidden.value = iso;
-      display.value = iso ? formatISOtoBR(iso) : "";
-      return iso;
-    }
-
-    // digitando: só máscara + sync de hidden (sem salvar)
-    display.addEventListener("input", function(){
-      applyDisplayMask();
-      const iso = parseBRtoISO(display.value);
-      hidden.value = iso;
-      if (iso) picker.value = iso;
-    });
-
-    // blur: valida e salva se válido (ou salva vazio se limpou)
-    display.addEventListener("blur", function(){
-      const txt = String(display.value || "").trim();
-      const iso = syncFromDisplay();
-
-      if (!iso && txt !== "") return; // inválido: não salva
-      if (iso) display.value = formatISOtoBR(iso); // normaliza
-      autosave();
-    });
-
-    display.addEventListener("keydown", function(ev){
-      if (ev.key === "Enter") {
-        ev.preventDefault();
-        display.blur();
+      const icon = display.parentElement?.querySelector("span");
+      if (icon) {
+        icon.addEventListener("click", function () {
+          openPicker(picker);
+        });
       }
-      if (ev.key === "Escape") {
-        ev.preventDefault();
-        // volta para o que estava salvo no hidden
-        const iso = (hidden.value || "").trim();
+
+      picker.addEventListener("input", function () {
+        const iso = String(picker.value || "").trim();
+        hidden.value = iso;
         display.value = iso ? formatISOtoBR(iso) : "";
-        display.blur();
-      }
-    });
+      });
 
-    // picker: alguns browsers disparam input, outros change -> ouve ambos
-    const onPickerCommit = function(){
-      syncFromPicker();
-      autosave();
-    };
-    picker.addEventListener("input", onPickerCommit);
-    picker.addEventListener("change", onPickerCommit);
+      picker.addEventListener("change", function () {
+        const iso = String(picker.value || "").trim();
+        hidden.value = iso;
+        display.value = iso ? formatISOtoBR(iso) : "";
+      });
 
-    // inicial: garante consistência visual
-    const iso0 = (hidden.value || "").trim() || (picker.value || "").trim();
-    if (iso0) {
+      // inicial
+      const iso0 = String(hidden.value || "").trim() || String(picker.value || "").trim();
       hidden.value = iso0;
       picker.value = iso0;
-      display.value = formatISOtoBR(iso0);
+      display.value = iso0 ? formatISOtoBR(iso0) : "";
     }
-  }
 
-  wireOne("due-date");
-  wireOne("due-warn-date");
-}
+    wire("due-date");
+    wire("due-warn-date");
+  })();
 
+  // 5) BOLINHAS DAS CORES (OK/Alerta/Vencido)
+  (function initDueColorDots() {
+    root.querySelectorAll("label.cm-due-color").forEach((label) => {
+      const input = label.querySelector('input[type="color"]');
+      const dot = label.querySelector(".cm-color-dot");
+      if (!input || !dot) return;
 
-// init
+      const sync = () => {
+        dot.style.backgroundColor = input.value || "transparent";
+        dot.style.borderColor = input.value || "transparent";
+      };
 
-  // init
-  initTabs();
-  initFloatbarDirty();
-  initActionDock();
-  initDueColorDots();
-  initTagColorPopover();
-  initDueDatePickersAutosave();
+      if (input.dataset.cmDotBound === "1") return;
+      input.dataset.cmDotBound = "1";
+
+      sync();
+      input.addEventListener("input", sync);
+      input.addEventListener("change", sync);
+    });
+  })();
 })();
-
-
-
-
-
-
-
 </script>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<!--end card_modal_body.html-->

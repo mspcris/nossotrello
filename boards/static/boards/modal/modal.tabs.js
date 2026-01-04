@@ -30,6 +30,7 @@
     function activate(name) {
       // estado (também controla visibilidade do salvar via CSS)
       root.dataset.cmActive = name;
+      root.setAttribute("data-cm-active", name);
 
       tabs.forEach((b) =>
         b.classList.toggle("is-active", b.getAttribute("data-cm-tab") === name)
