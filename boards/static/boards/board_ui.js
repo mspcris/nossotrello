@@ -373,8 +373,23 @@ function startViewerPolling() {
 
   function countCards(scopeEl) {
     if (!scopeEl) return 0;
-    return qsa("li[id^='card-'], li[data-card-id], .card-item, .card", scopeEl).length;
+
+    const cards = qsa("li[id^='card-'], li[data-card-id], .card-item, .card", scopeEl);
+
+    // conta apenas os visíveis (compatível com seu filtro que usa display:none e/ou .hidden)
+    let n = 0;
+    for (const el of cards) {
+     if (!el) continue;
+     if (el.classList && el.classList.contains("hidden")) continue;
+
+      const cs = window.getComputedStyle(el);
+      if (cs.display === "none" || cs.visibility === "hidden") continue;
+
+      n += 1;
+    }
+    return n;
   }
+
 
   function findCounterEl(columnEl) {
     const explicit = qs("[data-card-count]", columnEl) || qs(".col-card-count", columnEl);

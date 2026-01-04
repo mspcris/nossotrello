@@ -380,6 +380,7 @@
 
 
 
+
 <script>
   // ============================================================
   // FILTER (Tags = frontend | Texto = backend)
@@ -387,47 +388,90 @@
 
   window.__boardFilterMode = "tags"; // "tags" | "text"
 
+  // ---- Debounce com cancel() ----
   function debounce(fn, wait) {
-    let t;
-    return function (...args) {
-      clearTimeout(t);
+    let t = null;
+    function debounced(...args) {
+      if (t) clearTimeout(t);
       t = setTimeout(() => fn.apply(this, args), wait);
+    }
+    debounced.cancel = function () {
+      if (t) clearTimeout(t);
+      t = null;
     };
+    return debounced;
+  }
+
+  function refreshCounters() {
+    if (window.BoardUI && typeof window.BoardUI.refreshColumnCounters === "function") {
+      window.BoardUI.refreshColumnCounters();
+    }
   }
 
   function resetSearchUI() {
+    // volta tudo (cards + colunas)
     document.querySelectorAll('li[data-card-id]').forEach((card) => (card.style.display = ""));
     document.querySelectorAll(".column-item[data-column-id]").forEach((col) => (col.style.display = ""));
+    refreshCounters();
   }
 
   function applySearchResult(cardIds, columnIds) {
     const cardSet = new Set((cardIds || []).map((x) => Number(x)));
-    const colSet = new Set((columnIds || []).map((x) => Number(x)));
+    const colSet  = new Set((columnIds || []).map((x) => Number(x)));
 
+    // cards
     document.querySelectorAll('li[data-card-id]').forEach((card) => {
       const id = Number(card.dataset.cardId);
       card.style.display = cardSet.has(id) ? "" : "none";
     });
 
+    // colunas
     document.querySelectorAll(".column-item[data-column-id]").forEach((col) => {
       const id = Number(col.getAttribute("data-column-id"));
       col.style.display = colSet.has(id) ? "" : "none";
     });
+
+    refreshCounters();
+  }
+
+  // ---- Backend search: abort + seq anti-resposta-atrasada ----
+  let __backendSearchCtrl = null;
+  let __backendSearchSeq = 0;
+
+  function cancelBackendSearch() {
+    try { runBackendSearch.cancel && runBackendSearch.cancel(); } catch (_e) {}
+    try { __backendSearchCtrl && __backendSearchCtrl.abort(); } catch (_e) {}
+    __backendSearchCtrl = null;
+    __backendSearchSeq += 1; // invalida qualquer resposta antiga que ainda chegue
   }
 
   const runBackendSearch = debounce(async function (raw) {
     const q = (raw || "").trim();
+
+    // se virou vazio, garante que nada atrasado vai reaplicar filtro antigo
     if (!q) {
+      cancelBackendSearch();
       resetSearchUI();
       return;
     }
+
+    // cancela request anterior e cria uma nova
+    if (__backendSearchCtrl) {
+      try { __backendSearchCtrl.abort(); } catch (_e) {}
+    }
+    __backendSearchCtrl = new AbortController();
+    const mySeq = ++__backendSearchSeq;
 
     try {
       const resp = await fetch(`/board/{{ board.id }}/search/?q=${encodeURIComponent(q)}`, {
         method: "GET",
         credentials: "same-origin",
-        headers: { "Accept": "application/json" }
+        headers: { "Accept": "application/json" },
+        signal: __backendSearchCtrl.signal
       });
+
+      // se outra busca começou depois, ignora
+      if (mySeq !== __backendSearchSeq) return;
 
       if (!resp.ok) {
         resetSearchUI();
@@ -435,14 +479,23 @@
       }
 
       const data = await resp.json();
+
+      // ainda é a busca mais recente?
+      if (mySeq !== __backendSearchSeq) return;
+
       applySearchResult(data.card_ids || [], data.column_ids || []);
-    } catch (_e) {
+    } catch (e) {
+      // AbortError = esperado quando o usuário digita/apaga rápido
+      if (e && e.name === "AbortError") return;
       resetSearchUI();
     }
   }, 250);
 
   function setFilterMode(mode) {
     window.__boardFilterMode = (mode === "text") ? "text" : "tags";
+
+    // ao trocar modo, mata qualquer backend pendente (evita “voltar filtro antigo”)
+    cancelBackendSearch();
 
     const btnTags = document.getElementById("filter-mode-tags");
     const btnText = document.getElementById("filter-mode-text");
@@ -472,13 +525,18 @@
     const q = (raw || "").trim().toLowerCase();
 
     if (!q) {
+      cancelBackendSearch();
       resetSearchUI();
       return;
     }
 
     if (window.__boardFilterMode === "tags") {
+      // garante que nada do backend vai “rebater” depois
+      cancelBackendSearch();
+
       const cards = document.querySelectorAll('[id^="cards-col-"] li[data-card-id]');
       cards.forEach((card) => {
+        // mantém seu contrato atual: procurar em elementos [data-tag]
         const tags = Array.from(card.querySelectorAll("[data-tag]"))
           .map(t => (t.textContent || "").toLowerCase());
 
@@ -491,14 +549,19 @@
         col.style.display = anyVisible ? "" : "none";
       });
 
+      refreshCounters();
       return;
     }
 
+    // text mode (backend)
     runBackendSearch(raw);
   }
 
   document.addEventListener("DOMContentLoaded", () => setFilterMode("tags"));
 </script>
+
+
+
 
 
 <script>
