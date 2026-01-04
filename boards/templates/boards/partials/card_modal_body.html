@@ -164,9 +164,12 @@ html.dark #cm-root{
    PRAZO — OVERLAY FINAL (ÚNICO BLOCO VÁLIDO)
    ============================================================ */
 
-#cm-root[data-term-notify="1"][data-term-status]{
+#cm-root[data-term-notify="1"][data-term-status="ok"],
+#cm-root[data-term-notify="1"][data-term-status="warn"],
+#cm-root[data-term-notify="1"][data-term-status="overdue"]{
   --cm-term-opacity: 0.12;
 }
+
 
 #cm-root:not([data-term-notify="1"]),
 #cm-root[data-term-notify="0"]{
@@ -196,6 +199,12 @@ html.dark #cm-root{
    ============================================================ */
 .cm-panel{ display: none; }
 .cm-panel.is-active{ display: block; }
+
+#cm-root[data-term-status="ok"]      { --cm-term-rgb: 22, 163, 74; }
+#cm-root[data-term-status="warn"]    { --cm-term-rgb: 245, 158, 11; }
+#cm-root[data-term-status="overdue"] { --cm-term-rgb: 220, 38, 38; }
+
+
 </style>
 
 {# cm-root (modal do card) #}
@@ -204,7 +213,7 @@ html.dark #cm-root{
      data-card-id="{{ card.id }}"
      data-cm-active="desc"
      data-tag-colors='{{ card.tag_colors|default_if_none:"{}"|escape }}'
-     data-term-status="{{ term_status }}"
+     {% if term_status %}data-term-status="{{ term_status }}"{% endif %}
      data-term-notify="{% if card.due_notify %}1{% else %}0{% endif %}">
 
   {# Topbar (abas + salvar) #}
