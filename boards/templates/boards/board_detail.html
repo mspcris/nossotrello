@@ -336,21 +336,6 @@
 
 
 
-<div id="board-root" data-can-edit="{{ can_edit|yesno:'1,0' }}">
-  <div id="columns-wrapper" class="flex gap-6 overflow-x-auto overflow-y-hidden pb-6 pr-4 h-[calc(100vh-140px)]">
-
-    <!-- alvo do polling -->
-    <div id="columns-container">
-      <div id="columns-list" class="flex gap-6">
-        {% for column in columns %}
-          {% include "boards/partials/column_item.html" %}
-        {% endfor %}
-      </div>
-    </div>
-
-  </div>
-</div>
-
 
 
 

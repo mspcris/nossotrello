@@ -51,16 +51,16 @@
 
           <!-- B) Excluir coluna -->
           <button type="button"
-                  class="w-full text-left text-sm px-3 py-2 rounded-lg
-                         bg-red-600 text-white hover:bg-red-700 transition"
-                  onclick="event.preventDefault(); event.stopPropagation(); if(confirm('Excluir esta coluna e todos os cards nela?')) { htmx.trigger(this, 'confirmed'); }"
-                  hx-post="{% url 'boards:delete_column' column.id %}"
-                  hx-trigger="confirmed"
-                  hx-target="#columns-list"
-                  hx-swap="outerHTML"
-                  hx-on::after-request="if(event.detail.successful){ window.location.reload(); }">
-            Excluir coluna
-          </button>
+        class="w-full text-left text-sm px-3 py-2 rounded-lg
+               bg-red-600 text-white hover:bg-red-700 transition"
+        onclick="event.preventDefault(); event.stopPropagation(); if(confirm('Excluir esta coluna e todos os cards nela?')) { htmx.trigger(this, 'confirmed'); }"
+        hx-post="{% url 'boards:delete_column' column.id %}"
+        hx-trigger="confirmed"
+        hx-target="closest .column-item"
+        hx-swap="delete">
+  Excluir coluna
+</button>
+
 
           <hr class="my-2">
 
