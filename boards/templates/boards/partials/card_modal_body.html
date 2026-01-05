@@ -238,6 +238,12 @@ html.dark #cm-root{
   z-index: 999999;
 }
 
+/* Drag & drop de anexo no modal */
+#card-modal-root.cm-dragover #cm-root .cm-wrap{
+  outline: 2px dashed var(--cm-focus);
+  outline-offset: 6px;
+}
+
 
 </style>
 
@@ -1124,4 +1130,105 @@ html.dark #cm-root{
       true
     );
   })();
+</script>
+
+
+<script>
+(function () {
+
+  // ... suas funções existentes ...
+
+  function initAttachmentDragDrop(root) {
+    if (!root) return;
+    if (root.dataset.cmDropBound === "1") return;
+    root.dataset.cmDropBound = "1";
+
+    const modalRoot = document.getElementById("card-modal-root") || root;
+    const fileInput = root.querySelector("#attachment-file");
+    if (!fileInput) return;
+
+    function openFilesTab() {
+      // tenta ir pra aba "Anexos" antes de anexar (não quebra se não achar)
+      const btn = root.querySelector('.cm-tabbtn[data-cm-tab="files"]');
+      if (btn) btn.click();
+    }
+
+    function setDragUI(on) {
+      modalRoot.classList.toggle("cm-dragover", !!on);
+    }
+
+    function onDragOver(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
+      setDragUI(true);
+    }
+
+    function onDragLeave(e) {
+      // evita “piscar” quando passa por elementos internos
+      if (e.target === modalRoot) setDragUI(false);
+    }
+
+    function onDrop(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      setDragUI(false);
+
+      const files = e.dataTransfer && e.dataTransfer.files ? e.dataTransfer.files : null;
+      if (!files || !files.length) return;
+
+      openFilesTab();
+
+      // Se seu input não tiver multiple, pega só o 1º arquivo
+      const dt = new DataTransfer();
+      dt.items.add(files[0]);
+
+      try {
+        fileInput.files = dt.files;
+      } catch (_e) {
+        // fallback: se o browser bloquear setar files, não tem como forçar
+        return;
+      }
+
+      // Dispara o "change" para o HTMX subir (hx-trigger="change")
+      fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+
+    // Bind no root do modal para não virar listener global permanente
+    modalRoot.addEventListener("dragenter", onDragOver, true);
+    modalRoot.addEventListener("dragover", onDragOver, true);
+    modalRoot.addEventListener("dragleave", onDragLeave, true);
+    modalRoot.addEventListener("drop", onDrop, true);
+
+    // Quando fechar o modal, remove o estado visual
+    document.addEventListener("modal:closed", () => setDragUI(false), { once: true });
+  }
+
+  function boot() {
+    syncModalThemeSafely();
+
+    const root = document.getElementById("cm-root");
+    if (!root) return;
+
+    // ... suas chamadas existentes ...
+    initRadicalTabs(root);
+    initAttachmentErrors(root);
+    initTagColorPicker(root);
+    applySavedTagColors(root);
+    initActivityErrorsOnce();
+
+    // ✅ NOVO: drag & drop de arquivo para anexar
+    initAttachmentDragDrop(root);
+  }
+
+  document.addEventListener("DOMContentLoaded", boot);
+
+  // mantém seu afterSwap re-boot quando trocar o modal todo
+  document.body.addEventListener("htmx:afterSwap", function (evt) {
+    const t = evt.target;
+    if (!t) return;
+    if (t.id === "modal-body") boot();
+  });
+
+})();
 </script>
