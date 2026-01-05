@@ -365,15 +365,18 @@
 
 
 
+
+
+
+
+
+
 <script>
   // ============================================================
   // FILTER (Tags = frontend | Texto = backend)
   // - Tags: filtra no DOM (tags + TERM: Vencido/A vencer/Em dia)
   // - Texto: busca no backend (/search/)
-  //
-  // Fix do bug “segurar backspace volta filtro antigo”:
-  // - controle de "request id" (seq) para ignorar respostas antigas
-  // - cancelamento do debounce pendente quando muda modo/zera input
+  // - Contador: sempre recalcula após qualquer alteração de visibilidade
   // ============================================================
 
   window.__boardFilterMode = "tags"; // "tags" | "text"
@@ -395,15 +398,31 @@
     return (document.getElementById("board-filter")?.value || "").trim();
   }
 
+  // Recalcula contadores considerando o filtro atual
+  function refreshCounters() {
+    if (window.BoardUI && typeof window.BoardUI.refreshColumnCounters === "function") {
+      window.BoardUI.refreshColumnCounters();
+      return;
+    }
+
+    // fallback simples (se BoardUI não estiver disponível)
+    document.querySelectorAll(".column-item[data-column-id]").forEach((col) => {
+      const counter = col.querySelector(".column-header span"); // seu contador fica no header
+      if (!counter) return;
+
+      const visibleCards = col.querySelectorAll('li[data-card-id]:not([style*="display: none"])');
+      const n = visibleCards.length;
+
+      counter.textContent = `${n} card${n !== 1 ? "s" : ""}`;
+    });
+  }
+
   function resetSearchUI() {
     // volta tudo (cards + colunas)
     document.querySelectorAll('li[data-card-id]').forEach((card) => (card.style.display = ""));
     document.querySelectorAll(".column-item[data-column-id]").forEach((col) => (col.style.display = ""));
 
-    // ✅ atualiza contadores
-    if (window.BoardUI && typeof window.BoardUI.refreshColumnCounters === "function") {
-      window.BoardUI.refreshColumnCounters();
-    }
+    refreshCounters();
   }
 
   function applySearchResult(cardIds, columnIds) {
@@ -422,10 +441,7 @@
       col.style.display = colSet.has(id) ? "" : "none";
     });
 
-    // ✅ atualiza contadores
-    if (window.BoardUI && typeof window.BoardUI.refreshColumnCounters === "function") {
-      window.BoardUI.refreshColumnCounters();
-    }
+    refreshCounters();
   }
 
   // -------- TAGS MODE: tags + TERM (Vencido/A vencer/Em dia) --------
@@ -434,11 +450,9 @@
   }
 
   function getCardTagsText(cardEl) {
-    // principal (seu padrão)
     const byDataTag = Array.from(cardEl.querySelectorAll("[data-tag]"))
       .map(el => normalize(el.textContent));
 
-    // fallback (se em algum template trocar o atributo)
     const byClassTag = Array.from(cardEl.querySelectorAll(".tag, .cm-tag, .badge-tag, [data-tag-name]"))
       .map(el => normalize(el.textContent));
 
@@ -446,19 +460,14 @@
   }
 
   function getCardTermText(cardEl) {
-    // 1) badge visível (Vencido / A vencer / Em dia)
     const badgeText =
       normalize(cardEl.querySelector(".term-badge")?.textContent) ||
       normalize(cardEl.querySelector("[data-term-status]")?.textContent);
 
-    // 2) status em atributo (se existir)
     const st = normalize(cardEl.getAttribute("data-term-status"));
-
-    // 3) alguns templates guardam em data-*
     const due  = normalize(cardEl.getAttribute("data-term-due"));
     const warn = normalize(cardEl.getAttribute("data-term-warn"));
 
-    // Só devolve tokens úteis (não joga datas cruas como match principal, mas deixa disponível)
     return [badgeText, st, due, warn].filter(Boolean);
   }
 
@@ -475,7 +484,6 @@
       const tags = getCardTagsText(card);
       const terms = getCardTermText(card);
 
-      // match em tags OU em TERM (ex: "vencido", "a vencer", "em dia")
       const hay = [...tags, ...terms];
       const match = hay.some(t => t.includes(q));
 
@@ -488,10 +496,7 @@
       col.style.display = anyVisible ? "" : "none";
     });
 
-    // ✅ contadores sempre no final do filtro
-    if (window.BoardUI && typeof window.BoardUI.refreshColumnCounters === "function") {
-      window.BoardUI.refreshColumnCounters();
-    }
+    refreshCounters();
   }
 
   // -------- BACKEND MODE (texto) com anti-resposta velha --------
@@ -514,7 +519,6 @@
         headers: { "Accept": "application/json" }
       });
 
-      // se mudou modo / input / seq, ignora
       if (mySeq !== __searchSeq) return;
       if (window.__boardFilterMode !== modeAtStart) return;
       if (getFilterInputValue() !== q) return;
@@ -526,14 +530,12 @@
 
       const data = await resp.json();
 
-      // se mudou algo enquanto esperava, ignora
       if (mySeq !== __searchSeq) return;
       if (window.__boardFilterMode !== modeAtStart) return;
       if (getFilterInputValue() !== q) return;
 
       applySearchResult(data.card_ids || [], data.column_ids || []);
     } catch (_e) {
-      // evita “voltar filtro velho” em corrida
       if (mySeq !== __searchSeq) return;
       resetSearchUI();
     }
@@ -542,9 +544,8 @@
   function setFilterMode(mode) {
     window.__boardFilterMode = (mode === "text") ? "text" : "tags";
 
-    // 🔑 mata qualquer busca backend pendente ao trocar de modo
     runBackendSearch.cancel?.();
-    __searchSeq++; // invalida respostas pendentes imediatamente
+    __searchSeq++;
 
     const btnTags = document.getElementById("filter-mode-tags");
     const btnText = document.getElementById("filter-mode-text");
@@ -565,7 +566,6 @@
         ? "Buscar em cards…"
         : "Ex: urgente / vencido / em dia";
 
-      // reaplica com o valor atual do input
       applyBoardFilter(input.value || "");
       if (!window.matchMedia || !window.matchMedia("(pointer: coarse)").matches) input.focus();
     }
@@ -575,7 +575,6 @@
     const q = (raw || "").trim();
 
     if (!q) {
-      // 🔑 cancela backend pendente e invalida respostas antigas
       runBackendSearch.cancel?.();
       __searchSeq++;
       resetSearchUI();
@@ -583,7 +582,6 @@
     }
 
     if (window.__boardFilterMode === "tags") {
-      // 🔑 garante que nenhuma resposta de backend “volte” o filtro antigo
       runBackendSearch.cancel?.();
       __searchSeq++;
       applyTagsFilter(q);
@@ -593,8 +591,27 @@
     runBackendSearch(q);
   }
 
-  document.addEventListener("DOMContentLoaded", () => setFilterMode("tags"));
+  document.addEventListener("DOMContentLoaded", () => {
+    setFilterMode("tags");
+
+    // Se o BoardUI carregar depois, garante 1 recalculo com base no estado atual
+    setTimeout(() => {
+      refreshCounters();
+      const input = document.getElementById("board-filter");
+      if (input && (input.value || "").trim()) applyBoardFilter(input.value);
+    }, 0);
+  });
 </script>
+
+
+
+
+
+
+
+
+
+
 
 
 
