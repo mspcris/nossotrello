@@ -1019,7 +1019,9 @@ def transfer_owner_start(request, board_id):
         return render(request, "boards/partials/transfer_owner_modal.html", context, status=200)
 
     User = get_user_model()
-    to_user = User.objects.filter(email__iexact=email1).first()
+    to_user = User.objects.filter(
+    Q(email__iexact=email1) | Q(username__iexact=email1)
+    ).first()
     if not to_user:
         context["msg_error"] = "Usuário não encontrado. Peça para ele criar conta antes."
         return render(request, "boards/partials/transfer_owner_modal.html", context, status=200)
@@ -1042,31 +1044,46 @@ def transfer_owner_start(request, board_id):
     }
     cache.set(key, payload, timeout=10 * 60)
 
-    # Envia email para OWNER atual
+        # Envia email para OWNER atual
     try:
         subject = f"Código para transferir titularidade — {board.name}"
         body = (
             f"Seu código para confirmar a transferência de titularidade do quadro \"{board.name}\" é: {code}\n\n"
             f"Esse código expira em 10 minutos."
         )
+
+        # Resolve e-mail efetivo do usuário logado (OWNER atual)
+        sender_email = (request.user.email or "").strip()
+        if not sender_email:
+            sender_email = (request.user.get_username() or "").strip()
+
+        if not sender_email or "@" not in sender_email:
+            cache.delete(key)
+            context["msg_error"] = (
+                "Seu usuário não possui e-mail válido cadastrado para receber o código. "
+                "Atualize seu e-mail no perfil (ou peça ao admin)."
+            )
+            return render(request, "boards/partials/transfer_owner_modal.html", context, status=400)
+
         send_mail(
             subject=subject,
             message=body,
             from_email=getattr(settings, "DEFAULT_FROM_EMAIL", None),
-            recipient_list=[request.user.email],
+            recipient_list=[sender_email],
             fail_silently=False,
         )
+
     except Exception:
-        # Sem overengineering: falhou email => falha a operação (usuário precisa do código)
         cache.delete(key)
         context["msg_error"] = "Não foi possível enviar o email com o código. Tente novamente."
         return render(request, "boards/partials/transfer_owner_modal.html", context, status=500)
 
-    # Vai para etapa 2
+    # ✅ SUCESSO: avança para etapa 2 (input do código)
     context["step"] = 2
-    context["to_email"] = email1
-    context["msg_success"] = f"Código enviado para {escape(request.user.email)}."
+    context["msg_success"] = f"Código enviado para {sender_email}."
     return render(request, "boards/partials/transfer_owner_modal.html", context, status=200)
+
+
 
 
 @require_POST
