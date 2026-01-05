@@ -443,3 +443,23 @@ header { position: relative; z-index: 50; }
 #cm-dock-menu .dock-action:hover{
   background: rgba(15,23,42,0.06);
 }
+
+
+/* Card vira contexto pro z-index do X */
+#columns-wrapper li[data-card-id]{
+  position: relative;
+}
+
+/* X sempre acima de capa/preview */
+#columns-wrapper li[data-card-id] .delete-card-btn{
+  position: absolute;     /* se já for absolute, ok */
+  top: 10px;
+  right: 10px;
+  z-index: 9999 !important;
+}
+
+/* Se a imagem/capa estiver “roubando” clique por cima */
+#columns-wrapper li[data-card-id] img{
+  position: relative;
+  z-index: 1;
+}
