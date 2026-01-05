@@ -164,14 +164,16 @@
 
 </div>
 
+
+
 <script>
 (function () {
-  // instala 1x (mesmo esse partial renderizando N colunas)
+  // Evita reinstalar as mesmas funções quando o partial renderiza várias colunas
   if (window.__cmColumnMenuFnsInstalled) return;
   window.__cmColumnMenuFnsInstalled = true;
 
   // =========================
-  // Popover 3-dots (coluna)
+  // Popover do menu da coluna (⋮)
   // =========================
   function hideMenu(menuEl, triggerEl) {
     if (!menuEl) return;
@@ -194,6 +196,7 @@
     });
   }
 
+  // Abre/fecha o menu ⋮ da coluna
   window.__cmToggleColMenu = function (colId) {
     const menu = document.getElementById("col-menu-" + colId);
     const trg  = document.querySelector(`[data-col-menu-trigger="${colId}"]`);
@@ -205,7 +208,7 @@
     else showMenu(menu, trg);
   };
 
-  // fecha ao clicar fora + ESC (1x)
+  // Fecha menus ao clicar fora ou apertar ESC (instala 1x)
   if (!window.__cmColMenuOutsideInstalled) {
     window.__cmColMenuOutsideInstalled = true;
 
@@ -222,7 +225,7 @@
   }
 
   // =========================
-  // Alterar cor (picker)
+  // Color picker da coluna
   // =========================
   window.__cmToggleColumnColorPicker = function (colId) {
     const el = document.getElementById("col-color-picker-" + colId);
@@ -231,10 +234,65 @@
   };
 
   // =========================
-  // Sort por vencimento
+  // Persistência da ordem dos cards (backend)
+  // =========================
+  function getCookie(name) {
+    const parts = (`; ${document.cookie}`).split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(";").shift();
+    return "";
+  }
+
+  function getCSRFToken() {
+    // tenta input hidden (quando houver form na página)
+    const fromInput = document.querySelector("[name=csrfmiddlewaretoken]")?.value || "";
+    return fromInput || getCookie("csrftoken");
+  }
+
+  // Envia a ordem atual do DOM para o backend persistir em Card.position
+  window.__cmPersistColumnOrder = async function (colId) {
+    const ul = document.getElementById("cards-col-" + colId);
+    if (!ul) return;
+
+    const ordered = Array.from(ul.querySelectorAll("li[data-card-id]"))
+      .map((li) => Number(li.dataset.cardId))
+      .filter((n) => Number.isFinite(n));
+
+    if (!ordered.length) return;
+
+    const csrf = getCSRFToken();
+    const endpoint = `/column/${colId}/reorder_cards/`;
+
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrf,
+        "X-Requested-With": "XMLHttpRequest",
+      },
+      body: JSON.stringify({ ordered_card_ids: ordered }),
+      credentials: "same-origin",
+    });
+
+    if (res.status === 403) {
+      const data403 = await res.json().catch(() => ({}));
+      alert(data403?.error || "Somente leitura.");
+      return;
+    }
+
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      throw new Error(txt || "Falha ao salvar ordem da coluna.");
+    }
+
+    const data = await res.json().catch(() => ({}));
+    if (!data || data.ok !== true) throw new Error("Resposta inválida ao salvar ordem.");
+  };
+
+  // =========================
+  // Ordenação por vencimento (DOM + persistência)
   // =========================
   function parseYMD(s) {
-    // espera "YYYY-MM-DD"
+    // Converte "YYYY-MM-DD" em Date UTC (ou null)
     if (!s) return null;
     const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})$/);
     if (!m) return null;
@@ -243,7 +301,8 @@
     return isNaN(dt.getTime()) ? null : dt;
   }
 
-  window.__cmSortColumnByDue = function (colId, dir) {
+  // Ordena os cards da coluna por vencimento e persiste no banco
+  window.__cmSortColumnByDue = async function (colId, dir) {
     const ul = document.getElementById("cards-col-" + colId);
     if (!ul) return;
 
@@ -273,20 +332,21 @@
     if (window.BoardUI && typeof window.BoardUI.refreshColumnCounters === "function") {
       window.BoardUI.refreshColumnCounters();
     }
+
+    try {
+      await window.__cmPersistColumnOrder(colId);
+    } catch (err) {
+      alert(err?.message || "Erro ao persistir ordenação.");
+    }
   };
 
   // =========================
-  // Excluir cards (só desta coluna)
+  // Excluir cards (somente desta coluna)
   // =========================
-  // Estratégia “mais simples e confiável”:
-  // - liga o modo global existente (toggle-delete-cards)
-  // - guarda a coluna alvo
-  // - toda vez que o DOM muda, reaplica (sem depender de “estado interno quebradiço”)
   window.__cmEnableDeleteCardsOnlyThisColumn = function (colId) {
     const toggleBtn = document.getElementById("toggle-delete-cards");
-    if (toggleBtn) toggleBtn.click(); // ativa o modo de excluir (se já estiver ativo, ele desativa; por isso o guard abaixo)
+    if (toggleBtn) toggleBtn.click();
 
-    // garante ON (se desativou por estar ON, clica de novo)
     setTimeout(() => {
       const anyShown = document.querySelector(".delete-card-btn:not(.hidden)");
       if (!anyShown && toggleBtn) toggleBtn.click();
@@ -296,6 +356,7 @@
     }, 0);
   };
 
+  // Aplica filtro visual para mostrar o botão X só na coluna selecionada
   window.__cmApplyDeleteCardsOnlyColumn = function () {
     const onlyColId = document.body.dataset.cmDeleteCardsOnlyColumn || "";
     if (!onlyColId) return;
@@ -306,7 +367,7 @@
     });
   };
 
-  // re-aplica após qualquer swap (delete card / delete col / polling etc)
+  // Reaplica o filtro após swaps do HTMX
   document.body.addEventListener("htmx:afterSwap", () => {
     if (document.body.dataset.cmDeleteCardsOnlyColumn) {
       window.__cmApplyDeleteCardsOnlyColumn();
@@ -320,4 +381,8 @@
 
 })();
 </script>
+
+
+
+
 <!-- END /boards/templates/boards/partials/column_item.html -->

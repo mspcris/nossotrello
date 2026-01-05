@@ -1033,4 +1033,83 @@ def remove_card_cover(request, card_id):
         pass
 
     return render(request, "boards/partials/card_modal_body.html", _card_modal_context(card))
+
+
+
+
+
+# boards/views/cards.py
+
+import json
+from django.http import JsonResponse, HttpResponseBadRequest
+from django.shortcuts import get_object_or_404
+from django.views.decorators.http import require_POST
+from django.db import transaction
+from django.contrib.auth.decorators import login_required
+
+from boards.models import Column, Card
+
+
+# boards/views/cards.py
+
+import json
+from django.http import JsonResponse, HttpResponseBadRequest
+from django.shortcuts import get_object_or_404
+from django.views.decorators.http import require_POST
+from django.db import transaction
+from django.contrib.auth.decorators import login_required
+
+from ..models import Column, Card
+
+@login_required
+@require_POST
+@transaction.atomic
+def reorder_cards_in_column(request, column_id: int):
+    """Persiste a ordem dos cards da coluna (position 0..N-1)."""
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+    except Exception:
+        return HttpResponseBadRequest("JSON inválido.")
+
+    ordered_ids = data.get("ordered_card_ids")
+    if not isinstance(ordered_ids, list):
+        return HttpResponseBadRequest("ordered_card_ids deve ser uma lista.")
+
+    column = get_object_or_404(Column, id=column_id)
+    board = column.board
+
+    # Escrita: bloquear somente leitura (mesma linha do move_card/ações JS)
+    if not _user_can_edit_board(request.user, board):
+        return _deny_read_only(request, as_json=True)  # 403 JSON "Somente leitura." :contentReference[oaicite:2]{index=2}
+
+    # Normaliza ids e valida pertencimento à coluna
+    try:
+        normalized = [int(x) for x in ordered_ids]
+    except Exception:
+        return HttpResponseBadRequest("IDs inválidos em ordered_card_ids.")
+
+    cards_qs = Card.objects.filter(column=column, id__in=normalized)
+    found = set(cards_qs.values_list("id", flat=True))
+    expected = set(normalized)
+    if found != expected:
+        return HttpResponseBadRequest("Lista contém cards inválidos para esta coluna.")
+
+    cards_by_id = {c.id: c for c in cards_qs}
+    changed = []
+    for idx, cid in enumerate(normalized):
+        card = cards_by_id[cid]
+        if int(card.position or 0) != idx:
+            card.position = idx
+            changed.append(card)
+
+    if changed:
+        Card.objects.bulk_update(changed, ["position"])
+
+        # Atualiza versão do board para polling refletir mudança (mesma estratégia de criação/movimento)
+        board.version += 1
+        board.save(update_fields=["version"])  # padrão usado no fluxo de escrita :contentReference[oaicite:3]{index=3}
+
+    return JsonResponse({"ok": True})
+
+
 # end file boards/views/cards.py

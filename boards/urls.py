@@ -178,6 +178,9 @@ urlpatterns = [
     path("column/<int:column_id>/delete/", views.delete_column, name="delete_column"),
     path("column/<int:column_id>/rename/", views.rename_column, name="rename_column"),
     path("column/<int:column_id>/theme/", views.set_column_theme, name="set_column_theme"),
+    path("column/<int:column_id>/reorder_cards/", views.reorder_cards_in_column, name="reorder_cards_in_column"),
+
+
 
     # ============================================================
     # CARDS
