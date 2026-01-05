@@ -111,6 +111,16 @@
     Compartilhar quadro
   </button>
 </li>
+
+<li>
+  <button class="nt-link" type="button"
+          hx-get="{% url 'boards:transfer_owner_start' board.id %}"
+          hx-target="#modal-body" hx-swap="innerHTML"
+          hx-on="htmx:beforeRequest: try{ if(window.Modal&&Modal.open){Modal.open();} }catch(e){}">
+    Transferir titularidade
+  </button>
+</li>
+
 {% elif can_leave_board %}
 <li>
   <form method="post" action="{% url 'boards:board_leave' board.id %}">
@@ -154,8 +164,6 @@
 <li>
   {% include "boards/partials/aggregator_toggle_button.html" %}
 </li>
-
-
 {% endblock %}
 
 {% block content %}

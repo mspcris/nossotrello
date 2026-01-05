@@ -27,6 +27,12 @@ from types import SimpleNamespace
 from ..models import BoardGroup, BoardGroupItem
 from django.db import transaction
 
+import hashlib
+import random
+
+from django.conf import settings
+from django.core.cache import cache
+from django.core.mail import send_mail
 
 
 
@@ -65,6 +71,24 @@ def _user_accessible_board_ids(user):
     qs = BoardMembership.objects.filter(user=user, board__is_deleted=False)
     return list(qs.values_list("board_id", flat=True))
 
+
+
+def _transfer_cache_key(board_id: int, from_user_id: int) -> str:
+    return f"board:{int(board_id)}:transfer_owner:from:{int(from_user_id)}"
+
+def _normalize_email(s: str) -> str:
+    return (s or "").strip().lower()
+
+def _hash_transfer_code(code: str) -> str:
+    """
+    Hash simples para não persistir o código puro.
+    Usa SECRET_KEY como "pepper".
+    """
+    raw = f"{settings.SECRET_KEY}::{code}".encode("utf-8")
+    return hashlib.sha256(raw).hexdigest()
+
+def _gen_6digit_code() -> str:
+    return f"{random.randint(0, 999999):06d}"
 
 # ======================================================================
 # HOME (lista de boards)
@@ -955,6 +979,196 @@ def board_share_remove(request, board_id, user_id):
         {"board": board, "memberships": memberships, "msg_success": f"Acesso removido: {escape(removed_user.get_username())}."},
         status=200,
     )
+
+
+# ======================================================================
+# TROCAR TITULARIDADE
+# ======================================================================
+@require_http_methods(["GET", "POST"])
+@login_required
+def transfer_owner_start(request, board_id):
+    board = get_object_or_404(Board, id=board_id, is_deleted=False)
+
+    # Somente OWNER pode iniciar
+    my = BoardMembership.objects.filter(board=board, user=request.user).first()
+    if not my or my.role != BoardMembership.Role.OWNER:
+        return HttpResponse("Você não tem permissão para transferir a titularidade deste quadro.", status=403)
+
+    context = {
+        "board": board,
+        "step": 1,
+        "email1": "",
+        "email2": "",
+    }
+
+    if request.method == "GET":
+        return render(request, "boards/partials/transfer_owner_modal.html", context)
+
+    email1 = _normalize_email(request.POST.get("email1"))
+    email2 = _normalize_email(request.POST.get("email2"))
+
+    context["email1"] = email1
+    context["email2"] = email2
+
+    if not email1 or not email2:
+        context["msg_error"] = "Informe os dois emails."
+        return render(request, "boards/partials/transfer_owner_modal.html", context, status=400)
+
+    if email1 != email2:
+        context["msg_error"] = "Os emails não conferem."
+        return render(request, "boards/partials/transfer_owner_modal.html", context, status=200)
+
+    User = get_user_model()
+    to_user = User.objects.filter(email__iexact=email1).first()
+    if not to_user:
+        context["msg_error"] = "Usuário não encontrado. Peça para ele criar conta antes."
+        return render(request, "boards/partials/transfer_owner_modal.html", context, status=200)
+
+
+    if to_user.id == request.user.id:
+        context["msg_error"] = "Você já é o titular atual."
+        return render(request, "boards/partials/transfer_owner_modal.html", context, status=200)
+
+    # Gera código e guarda no cache por 10 min
+    code = _gen_6digit_code()
+    key = _transfer_cache_key(board.id, request.user.id)
+
+    payload = {
+        "to_user_id": int(to_user.id),
+        "to_email": to_user.email or "",
+        "code_hash": _hash_transfer_code(code),
+        "attempts": 0,
+        "created_at": timezone.now().isoformat(),
+    }
+    cache.set(key, payload, timeout=10 * 60)
+
+    # Envia email para OWNER atual
+    try:
+        subject = f"Código para transferir titularidade — {board.name}"
+        body = (
+            f"Seu código para confirmar a transferência de titularidade do quadro \"{board.name}\" é: {code}\n\n"
+            f"Esse código expira em 10 minutos."
+        )
+        send_mail(
+            subject=subject,
+            message=body,
+            from_email=getattr(settings, "DEFAULT_FROM_EMAIL", None),
+            recipient_list=[request.user.email],
+            fail_silently=False,
+        )
+    except Exception:
+        # Sem overengineering: falhou email => falha a operação (usuário precisa do código)
+        cache.delete(key)
+        context["msg_error"] = "Não foi possível enviar o email com o código. Tente novamente."
+        return render(request, "boards/partials/transfer_owner_modal.html", context, status=500)
+
+    # Vai para etapa 2
+    context["step"] = 2
+    context["to_email"] = email1
+    context["msg_success"] = f"Código enviado para {escape(request.user.email)}."
+    return render(request, "boards/partials/transfer_owner_modal.html", context, status=200)
+
+
+@require_POST
+@login_required
+def transfer_owner_confirm(request, board_id):
+    board = get_object_or_404(Board, id=board_id, is_deleted=False)
+
+    # Somente OWNER pode confirmar
+    my = BoardMembership.objects.filter(board=board, user=request.user).first()
+    if not my or my.role != BoardMembership.Role.OWNER:
+        return HttpResponse("Você não tem permissão para transferir a titularidade deste quadro.", status=403)
+
+    code = (request.POST.get("code") or "").strip()
+    if not code or len(code) != 6 or not code.isdigit():
+        context = {"board": board, "step": 2, "msg_error": "Código inválido."}
+        return render(request, "boards/partials/transfer_owner_modal.html", context, status=400)
+
+    key = _transfer_cache_key(board.id, request.user.id)
+    payload = cache.get(key)
+    if not payload:
+        context = {"board": board, "step": 1, "msg_error": "Solicitação expirada. Inicie novamente."}
+        return render(request, "boards/partials/transfer_owner_modal.html", context, status=400)
+
+    # Rate-limit simples por tentativas
+    attempts = int(payload.get("attempts") or 0)
+    if attempts >= 6:
+        cache.delete(key)
+        context = {"board": board, "step": 1, "msg_error": "Muitas tentativas. Inicie novamente."}
+        return render(request, "boards/partials/transfer_owner_modal.html", context, status=429)
+
+    expected = payload.get("code_hash") or ""
+    if _hash_transfer_code(code) != expected:
+        payload["attempts"] = attempts + 1
+        cache.set(key, payload, timeout=10 * 60)
+        context = {"board": board, "step": 2, "msg_error": "Código incorreto."}
+        return render(request, "boards/partials/transfer_owner_modal.html", context, status=400)
+
+    User = get_user_model()
+    to_user_id = int(payload.get("to_user_id") or 0)
+    to_user = User.objects.filter(id=to_user_id).first()
+    if not to_user:
+        cache.delete(key)
+        context = {"board": board, "step": 1, "msg_error": "Usuário destino inválido. Inicie novamente."}
+        return render(request, "boards/partials/transfer_owner_modal.html", context, status=400)
+
+    actor = _actor_label(request)
+
+    with transaction.atomic():
+        # Revalida que ainda é OWNER (evita corrida)
+        my2 = BoardMembership.objects.select_for_update().filter(board=board, user=request.user).first()
+        if not my2 or my2.role != BoardMembership.Role.OWNER:
+            cache.delete(key)
+            return HttpResponse("Sua permissão mudou. Operação cancelada.", status=403)
+
+        # Garante/promove destino a OWNER
+        to_membership, created = BoardMembership.objects.get_or_create(
+            board=board,
+            user=to_user,
+            defaults={"role": BoardMembership.Role.OWNER},
+        )
+        if not created and to_membership.role != BoardMembership.Role.OWNER:
+            to_membership.role = BoardMembership.Role.OWNER
+            to_membership.save(update_fields=["role"])
+
+        # Rebaixa o OWNER atual
+        my2.role = BoardMembership.Role.EDITOR
+        my2.save(update_fields=["role"])
+
+        # Garante que existe pelo menos 1 OWNER (o destino)
+        owners_count = BoardMembership.objects.filter(board=board, role=BoardMembership.Role.OWNER).count()
+        if owners_count <= 0:
+            raise ValueError("Board ficou sem OWNER (violação de regra).")
+
+        # Incrementa version para polling
+        try:
+            board.version = int(getattr(board, "version", 0) or 0) + 1
+            board.save(update_fields=["version"])
+        except Exception:
+            # Se não existir version no model, não quebra a transação.
+            pass
+
+        _log_board(
+            board,
+            request,
+            (
+                f"<p><strong>{actor}</strong> transferiu a titularidade do quadro para "
+                f"<strong>{escape(to_user.email or to_user.get_username())}</strong>.</p>"
+            ),
+        )
+
+    # Consome a solicitação
+    cache.delete(key)
+
+    # Sucesso: fecha modal + reload (garante refletir permissões/menus)
+    return HttpResponse(
+        "<script>"
+        "try{ if(window.Modal&&Modal.close){ Modal.close({clearBody:true,clearUrl:false}); } }catch(e){}"
+        "try{ location.reload(); }catch(e){}"
+        "</script>"
+    )
+
+
 
 
 # ======================================================================

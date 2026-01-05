@@ -1,0 +1,105 @@
+{# templates/boards/partials/transfer_owner_modal.html #}
+
+<div class="p-4">
+  <div class="flex items-center justify-between mb-3">
+    <h2 class="text-lg font-semibold">Transferir titularidade</h2>
+    <button type="button"
+            class="text-sm underline underline-offset-2"
+            onclick="try{ if(window.Modal&&Modal.close){Modal.close({clearBody:true,clearUrl:false});} }catch(e){}">
+      Fechar
+    </button>
+  </div>
+
+  {% if msg_error %}
+    <div class="mb-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2">
+      {{ msg_error }}
+    </div>
+  {% endif %}
+
+  {% if msg_success %}
+    <div class="mb-3 text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 rounded px-3 py-2">
+      {{ msg_success }}
+    </div>
+  {% endif %}
+
+  {% if step == 1 %}
+    <form method="post"
+          hx-post="{% url 'boards:transfer_owner_start' board.id %}"
+          hx-target="#modal-body"
+          hx-swap="innerHTML">
+      {% csrf_token %}
+
+      <label class="block text-sm font-medium mb-1">Email do destino</label>
+      <input type="email"
+             name="email1"
+             value="{{ email1|default:'' }}"
+             class="w-full border rounded px-3 py-2 mb-3"
+             autocomplete="off" autocapitalize="off" spellcheck="false"
+             onpaste="event.preventDefault()" oncopy="event.preventDefault()" oncut="event.preventDefault()"
+             placeholder="ex: pessoa@dominio.com">
+
+      <label class="block text-sm font-medium mb-1">Repetir email</label>
+      <input type="email"
+             name="email2"
+             value="{{ email2|default:'' }}"
+             class="w-full border rounded px-3 py-2 mb-4"
+             autocomplete="off" autocapitalize="off" spellcheck="false"
+             onpaste="event.preventDefault()" oncopy="event.preventDefault()" oncut="event.preventDefault()"
+             placeholder="repita o email">
+
+      <div class="flex items-center gap-2">
+        <button type="submit"
+                class="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
+          Enviar código
+        </button>
+
+        <button type="button"
+                class="px-3 py-2 border rounded hover:bg-gray-50 transition"
+                onclick="try{ if(window.Modal&&Modal.close){Modal.close({clearBody:true,clearUrl:false});} }catch(e){}">
+          Cancelar
+        </button>
+      </div>
+
+      <p class="mt-3 text-xs text-gray-600">
+        Observação: o bloqueio de colar/copiar reduz erro, mas não é garantia total. O backend valida tudo.
+      </p>
+    </form>
+
+  {% else %}
+    <div class="mb-3 text-sm text-gray-700">
+      Confirme com o código enviado para <strong>{{ request.user.email }}</strong>.
+    </div>
+
+    <form method="post"
+          hx-post="{% url 'boards:transfer_owner_confirm' board.id %}"
+          hx-target="#modal-body"
+          hx-swap="innerHTML">
+      {% csrf_token %}
+
+      <label class="block text-sm font-medium mb-1">Código (6 dígitos)</label>
+      <input type="text"
+             name="code"
+             inputmode="numeric"
+             maxlength="6"
+             class="w-full border rounded px-3 py-2 mb-4"
+             autocomplete="off" autocapitalize="off" spellcheck="false"
+             onpaste="event.preventDefault()" oncopy="event.preventDefault()" oncut="event.preventDefault()"
+             placeholder="000000">
+
+      <div class="flex items-center gap-2">
+        <button type="submit"
+                class="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
+          Confirmar transferência
+        </button>
+
+        <button type="button"
+                class="px-3 py-2 border rounded hover:bg-gray-50 transition"
+                hx-get="{% url 'boards:transfer_owner_start' board.id %}"
+                hx-target="#modal-body"
+                hx-swap="innerHTML">
+          Voltar
+        </button>
+      </div>
+    </form>
+  {% endif %}
+</div>

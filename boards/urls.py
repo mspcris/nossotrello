@@ -24,6 +24,7 @@ from .views.mentions import board_mentions
 from .views.polling import board_poll
 from boards.views.modal_card_term import set_card_term_due, set_board_term_colors
 from boards.views.boards import toggle_aggregator_column
+from boards.views.boards import transfer_owner_start, transfer_owner_confirm
 
 
 
@@ -104,7 +105,7 @@ urlpatterns = [
     path("users/create/", views.create_user, name="create_user"),
 
     # ============================================================
-    # BOARDS
+    # BOARDS - QUADROS
     # ============================================================
     path("board/add/", views.add_board, name="add_board"),
     path("board/<int:board_id>/", views.board_detail, name="board_detail"),
@@ -148,7 +149,19 @@ urlpatterns = [
     "board/<int:board_id>/toggle-aggregator/",
     toggle_aggregator_column,
     name="toggle_aggregator_column",
-),
+    ),
+
+    # Transferência de titularidade (OWNER -> OWNER)
+    path(
+    "board/<int:board_id>/transfer_owner/start/",
+    transfer_owner_start,
+    name="transfer_owner_start",
+    ),
+    path(
+    "board/<int:board_id>/transfer_owner/confirm/",
+    transfer_owner_confirm,
+    name="transfer_owner_confirm",
+    ),
 
     
 
@@ -252,7 +265,7 @@ urlpatterns = [
     # ============================================================
     # CONTA / PERFIL (SOCIAL)
     # ============================================================
-    path("u/<str:handle>/", views.public_profile, name="public_profile"),
+    # path("u/<str:handle>/", views.public_profile, name="public_profile"),
 
 
     # ============================================================
