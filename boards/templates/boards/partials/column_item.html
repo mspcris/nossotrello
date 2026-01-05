@@ -4,15 +4,6 @@
             flex flex-col max-h-[calc(100vh-180px)]"
      data-column-id="{{ column.id }}">
 
-  <button type="button"
-          class="delete-column-btn hidden absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded z-30"
-          onclick="event.stopPropagation();"
-          hx-post="{% url 'boards:delete_column' column.id %}"
-          hx-target="closest .column-glass"
-          hx-swap="outerHTML">
-    X
-  </button>
-
   <!-- ===================== HEADER ===================== -->
   <div class="column-header shrink-0 px-4 py-2 border-b border-white/40 z-10 min-h-[72px]">
 
@@ -32,37 +23,48 @@
         + Card
       </button>
 
-      <!-- menu 3 dots -->
-      <div class="relative" data-color-popover-scope>
+      <!-- menu 3 dots (POPOVER) -->
+      <div class="relative" data-col-menu-scope="{{ column.id }}">
         <button type="button"
                 class="px-2 py-1 rounded-lg bg-white/20 border border-white/40
                        text-gray-700 hover:text-gray-900 backdrop-blur-sm transition"
-                data-color-popover-trigger
+                data-col-menu-trigger="{{ column.id }}"
                 aria-expanded="false"
-                onclick="toggleMenu('{{ column.id }}')">
+                onclick="event.preventDefault(); event.stopPropagation(); window.__cmToggleColMenu('{{ column.id }}');">
           ⋮
         </button>
 
         <div id="col-menu-{{ column.id }}"
-             data-color-popover
-             class="hidden absolute right-0 mt-2 w-56 rounded-lg shadow-lg
-                    bg-white/90 backdrop-blur-md border border-gray-300 p-3 z-20">
+             data-col-menu-popover="{{ column.id }}"
+             class="hidden absolute right-0 mt-2 w-60 rounded-lg shadow-lg
+                    bg-white/90 backdrop-blur-md border border-gray-300 p-3 z-50">
 
-          <!-- 1) Excluir coluna -->
+          <!-- A) Excluir cards (modo excluir só nesta coluna) -->
+          <button type="button"
+                  class="w-full text-left text-sm px-3 py-2 rounded-lg
+                         bg-gray-900 text-white hover:bg-black transition"
+                  onclick="event.preventDefault(); event.stopPropagation(); window.__cmEnableDeleteCardsOnlyThisColumn('{{ column.id }}'); window.__cmToggleColMenu('{{ column.id }}');">
+            Excluir cards (desta coluna)
+          </button>
+
+          <hr class="my-2">
+
+          <!-- B) Excluir coluna -->
           <button type="button"
                   class="w-full text-left text-sm px-3 py-2 rounded-lg
                          bg-red-600 text-white hover:bg-red-700 transition"
                   onclick="event.preventDefault(); event.stopPropagation(); if(confirm('Excluir esta coluna e todos os cards nela?')) { htmx.trigger(this, 'confirmed'); }"
                   hx-post="{% url 'boards:delete_column' column.id %}"
                   hx-trigger="confirmed"
-                  hx-target="closest .column-glass"
-                  hx-swap="outerHTML">
+                  hx-target="#columns-list"
+                  hx-swap="outerHTML"
+                  hx-on::after-request="if(event.detail.successful){ window.location.reload(); }">
             Excluir coluna
           </button>
 
           <hr class="my-2">
 
-          <!-- 2) Alterar cor (abre o seletor atual) -->
+          <!-- C) Alterar cor (abre seletor atual) -->
           <button type="button"
                   class="w-full text-left text-sm px-3 py-2 rounded-lg
                          bg-white/70 border border-gray-200 hover:bg-white transition"
@@ -90,17 +92,17 @@
 
           <hr class="my-2">
 
-          <!-- 3) Organizar por vencimento -->
+          <!-- D) Organizar por vencimento -->
           <p class="text-xs text-gray-600 mb-2">Organizar por vencimento:</p>
           <div class="grid grid-cols-2 gap-2">
             <button type="button"
                     class="text-sm px-3 py-2 rounded-lg bg-white/70 border border-gray-200 hover:bg-white transition"
-                    onclick="event.preventDefault(); event.stopPropagation(); window.__cmSortColumnByDue('{{ column.id }}','asc'); toggleMenu('{{ column.id }}');">
+                    onclick="event.preventDefault(); event.stopPropagation(); window.__cmSortColumnByDue('{{ column.id }}','asc'); window.__cmToggleColMenu('{{ column.id }}');">
               Asc
             </button>
             <button type="button"
                     class="text-sm px-3 py-2 rounded-lg bg-white/70 border border-gray-200 hover:bg-white transition"
-                    onclick="event.preventDefault(); event.stopPropagation(); window.__cmSortColumnByDue('{{ column.id }}','desc'); toggleMenu('{{ column.id }}');">
+                    onclick="event.preventDefault(); event.stopPropagation(); window.__cmSortColumnByDue('{{ column.id }}','desc'); window.__cmToggleColMenu('{{ column.id }}');">
               Desc
             </button>
           </div>
@@ -168,14 +170,71 @@
   if (window.__cmColumnMenuFnsInstalled) return;
   window.__cmColumnMenuFnsInstalled = true;
 
+  // =========================
+  // Popover 3-dots (coluna)
+  // =========================
+  function hideMenu(menuEl, triggerEl) {
+    if (!menuEl) return;
+    menuEl.classList.add("hidden");
+    if (triggerEl) triggerEl.setAttribute("aria-expanded", "false");
+  }
+
+  function showMenu(menuEl, triggerEl) {
+    if (!menuEl) return;
+    menuEl.classList.remove("hidden");
+    if (triggerEl) triggerEl.setAttribute("aria-expanded", "true");
+  }
+
+  function hideAllMenus(exceptMenuEl) {
+    document.querySelectorAll("[data-col-menu-popover]").forEach((m) => {
+      if (exceptMenuEl && m === exceptMenuEl) return;
+      const id = m.getAttribute("data-col-menu-popover");
+      const trg = document.querySelector(`[data-col-menu-trigger="${id}"]`);
+      hideMenu(m, trg);
+    });
+  }
+
+  window.__cmToggleColMenu = function (colId) {
+    const menu = document.getElementById("col-menu-" + colId);
+    const trg  = document.querySelector(`[data-col-menu-trigger="${colId}"]`);
+    if (!menu) return;
+
+    const isOpen = !menu.classList.contains("hidden");
+    hideAllMenus(menu);
+    if (isOpen) hideMenu(menu, trg);
+    else showMenu(menu, trg);
+  };
+
+  // fecha ao clicar fora + ESC (1x)
+  if (!window.__cmColMenuOutsideInstalled) {
+    window.__cmColMenuOutsideInstalled = true;
+
+    document.addEventListener("click", (e) => {
+      const inside = e.target.closest?.("[data-col-menu-popover], [data-col-menu-trigger]");
+      if (inside) return;
+      hideAllMenus(null);
+    }, true);
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape") return;
+      hideAllMenus(null);
+    }, true);
+  }
+
+  // =========================
+  // Alterar cor (picker)
+  // =========================
   window.__cmToggleColumnColorPicker = function (colId) {
     const el = document.getElementById("col-color-picker-" + colId);
     if (!el) return;
     el.classList.toggle("hidden");
   };
 
+  // =========================
+  // Sort por vencimento
+  // =========================
   function parseYMD(s) {
-    // espera "YYYY-MM-DD" (mesmo padrão que você já usa no data-term-due)
+    // espera "YYYY-MM-DD"
     if (!s) return null;
     const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})$/);
     if (!m) return null;
@@ -191,14 +250,12 @@
     const items = Array.from(ul.querySelectorAll("li[data-card-id]"));
     if (!items.length) return;
 
-    // estabilidade: guarda ordem original
     const indexed = items.map((el, idx) => ({ el, idx }));
 
     indexed.sort((a, b) => {
       const da = parseYMD(a.el.getAttribute("data-term-due") || "");
       const db = parseYMD(b.el.getAttribute("data-term-due") || "");
 
-      // sem data vai pro fim
       const aMissing = !da;
       const bMissing = !db;
       if (aMissing && bMissing) return a.idx - b.idx;
@@ -211,14 +268,56 @@
       return a.idx - b.idx;
     });
 
-    // reaplica no DOM
     indexed.forEach((x) => ul.appendChild(x.el));
 
-    // mantém contadores coerentes (quando existir)
     if (window.BoardUI && typeof window.BoardUI.refreshColumnCounters === "function") {
       window.BoardUI.refreshColumnCounters();
     }
   };
+
+  // =========================
+  // Excluir cards (só desta coluna)
+  // =========================
+  // Estratégia “mais simples e confiável”:
+  // - liga o modo global existente (toggle-delete-cards)
+  // - guarda a coluna alvo
+  // - toda vez que o DOM muda, reaplica (sem depender de “estado interno quebradiço”)
+  window.__cmEnableDeleteCardsOnlyThisColumn = function (colId) {
+    const toggleBtn = document.getElementById("toggle-delete-cards");
+    if (toggleBtn) toggleBtn.click(); // ativa o modo de excluir (se já estiver ativo, ele desativa; por isso o guard abaixo)
+
+    // garante ON (se desativou por estar ON, clica de novo)
+    setTimeout(() => {
+      const anyShown = document.querySelector(".delete-card-btn:not(.hidden)");
+      if (!anyShown && toggleBtn) toggleBtn.click();
+
+      document.body.dataset.cmDeleteCardsOnlyColumn = String(colId);
+      window.__cmApplyDeleteCardsOnlyColumn();
+    }, 0);
+  };
+
+  window.__cmApplyDeleteCardsOnlyColumn = function () {
+    const onlyColId = document.body.dataset.cmDeleteCardsOnlyColumn || "";
+    if (!onlyColId) return;
+
+    document.querySelectorAll(".delete-card-btn").forEach((btn) => {
+      const inCol = btn.closest(`.column-item[data-column-id="${onlyColId}"]`);
+      btn.style.display = inCol ? "" : "none";
+    });
+  };
+
+  // re-aplica após qualquer swap (delete card / delete col / polling etc)
+  document.body.addEventListener("htmx:afterSwap", () => {
+    if (document.body.dataset.cmDeleteCardsOnlyColumn) {
+      window.__cmApplyDeleteCardsOnlyColumn();
+    }
+  });
+  document.body.addEventListener("htmx:afterSettle", () => {
+    if (document.body.dataset.cmDeleteCardsOnlyColumn) {
+      window.__cmApplyDeleteCardsOnlyColumn();
+    }
+  });
+
 })();
 </script>
 <!-- END /boards/templates/boards/partials/column_item.html -->
