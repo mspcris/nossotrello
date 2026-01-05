@@ -246,6 +246,33 @@ INSTITUTIONAL_EMAIL_DOMAINS = _env_csv(
     ],
 )
 
+# ============================================================
+# CACHE (Redis) — necessário para fluxos multi-instância (homolog/prod)
+# ============================================================
+
+REDIS_URL = (os.getenv("REDIS_URL") or "").strip()
+
+if REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": REDIS_URL,  # ex: redis://:senha@host:6379/1
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            },
+            # evita colisão entre ambientes no mesmo Redis
+            "KEY_PREFIX": (os.getenv("CACHE_KEY_PREFIX") or "nossotrello").strip(),
+        }
+    }
+else:
+    # fallback: mantém comportamento atual (1 processo ok, multi-processo não)
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "nossotrello-locmem",
+        }
+    }
+
 
 LOGGING = {
     "version": 1,
