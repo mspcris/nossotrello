@@ -251,11 +251,17 @@
 <div class="flex items-center gap-3 w-[260px]">
   <!-- Hamburguer -->
   <button id="menuToggle"
-          type="button"
-          class="text-gray-900 bg-white/80 border border-gray-400 rounded-md px-3 py-2 shadow hover:bg-white transition"
-          aria-label="Abrir menu">
-    ☰
-  </button>
+        type="button"
+        class="relative text-gray-900 bg-white/80 border border-gray-400 rounded-md px-3 py-2 shadow hover:bg-white transition"
+        aria-label="Abrir menu">
+  ☰
+  <span id="drawer-unread-badge"
+        class="absolute -top-2 -right-2 hidden min-w-[18px] h-[18px] px-1
+               rounded-full text-[11px] leading-[18px] text-white bg-red-600 text-center">
+    0
+  </span>
+</button>
+
 
   <!-- “corredor” que sobra: logo fica CENTRALIZADA aqui -->
   <div class="flex-1 flex justify-center">
@@ -319,13 +325,18 @@
     <div class="cm-header-mobile">
 
       <!-- Linha 1 -->
-      <div class="cm-header-row">
-        <button id="menuToggleMobile"
-                type="button"
-                class="text-gray-900 bg-white/80 border border-gray-400 rounded-md px-3 py-2 shadow"
-                aria-label="Abrir menu">
-          ☰
-        </button>
+      <button id="menuToggleMobile"
+        type="button"
+        class="relative text-gray-900 bg-white/80 border border-gray-400 rounded-md px-3 py-2 shadow"
+        aria-label="Abrir menu">
+  ☰
+  <span id="drawer-unread-badge-mobile"
+        class="absolute -top-2 -right-2 hidden min-w-[18px] h-[18px] px-1
+               rounded-full text-[11px] leading-[18px] text-white bg-red-600 text-center">
+    0
+  </span>
+</button>
+
 
         <div class="cm-brand flex items-center gap-2">
           <img src="{% static brand_logo %}"

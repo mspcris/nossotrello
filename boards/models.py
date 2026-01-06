@@ -484,3 +484,27 @@ class BoardGroupItem(models.Model):
 
     def __str__(self):
         return f"{self.board} em {self.group}"
+
+
+# ============================================================
+# BOARD ACTIVITY READ STATE (lido/não lido do Histórico do quadro)
+# ============================================================
+class BoardActivityReadState(models.Model):
+    board = models.ForeignKey(Board, related_name="read_states", on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="board_read_states", on_delete=models.CASCADE)
+
+    # Tudo acima disso é considerado "lido"
+    last_seen_at = models.DateTimeField(null=True, blank=True)
+
+    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("board", "user")
+        indexes = [
+            models.Index(fields=["board", "user"]),
+            models.Index(fields=["board", "last_seen_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user} leu {self.board} até {self.last_seen_at}"

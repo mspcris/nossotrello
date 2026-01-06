@@ -19,6 +19,7 @@ from django.contrib.auth import get_user_model
 from django.db.models import Q
 from django.db.models import Max
 from django.db.models.functions import Coalesce
+from ..models import CardLog, BoardActivityReadState
 from django.db import models
 from django.db.models import Prefetch
 
@@ -1271,3 +1272,53 @@ def toggle_aggregator_column(request, board_id):
         },
     )
 
+
+
+
+@login_required
+@require_http_methods(["GET"])
+def board_history_modal(request, board_id):
+    board = get_object_or_404(Board, id=board_id, is_deleted=False)
+
+    memberships_qs = board.memberships.all()
+    if memberships_qs.exists() and not memberships_qs.filter(user=request.user).exists():
+        return HttpResponse("Você não tem acesso a este quadro.", status=403)
+
+    # logs do quadro = todos CardLog dos cards do board
+    logs = (
+        CardLog.objects
+        .filter(card__column__board=board, card__is_deleted=False)
+        .select_related("card", "card__column")
+        .order_by("-created_at")[:500]  # MVP: limita para não explodir o modal
+    )
+
+    # Ao abrir o histórico: marca como lido (zera contagem)
+    now = timezone.now()
+    st, _created = BoardActivityReadState.objects.get_or_create(board=board, user=request.user)
+    st.last_seen_at = now
+    st.save(update_fields=["last_seen_at", "updated_at"])
+
+    return render(
+        request,
+        "boards/partials/board_history_modal.html",
+        {"board": board, "logs": logs},
+    )
+
+
+@login_required
+@require_http_methods(["GET"])
+def board_history_unread_count(request, board_id):
+    board = get_object_or_404(Board, id=board_id, is_deleted=False)
+
+    memberships_qs = board.memberships.all()
+    if memberships_qs.exists() and not memberships_qs.filter(user=request.user).exists():
+        return JsonResponse({"unread": 0})
+
+    st = BoardActivityReadState.objects.filter(board=board, user=request.user).first()
+    last_seen = st.last_seen_at if st and st.last_seen_at else None
+
+    qs = CardLog.objects.filter(card__column__board=board, card__is_deleted=False)
+    if last_seen:
+        qs = qs.filter(created_at__gt=last_seen)
+
+    return JsonResponse({"unread": int(qs.count())})

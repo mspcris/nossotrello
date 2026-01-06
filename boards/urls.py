@@ -289,5 +289,15 @@ urlpatterns = [
     path("checklist/item/<int:item_id>/toggle/", views.checklist_toggle_item, name="checklist_toggle_item"),
     path("checklist/item/<int:item_id>/delete/", views.checklist_delete_item, name="checklist_delete_item"),
     path("checklist/item/<int:item_id>/update/", views.checklist_update_item, name="checklist_update_item"),
+
+
+    # ============================================================
+    # ATIVIDADES 
+    # ============================================================
+
+    path("board/<int:board_id>/history/", views.board_history_modal, name="board_history_modal"),
+    path("board/<int:board_id>/history/unread-count/", views.board_history_unread_count, name="board_history_unread_count"),
+
 ]
+
 #END file boards/urls.py

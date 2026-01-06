@@ -19,6 +19,9 @@
 {% block body_attrs %}style="overflow:hidden;"{% endblock %}
 
 
+<script>
+  window.BOARD_ID = {{ board.id|default:"null" }};
+</script>
 
 
 
@@ -164,6 +167,19 @@
 <li>
   {% include "boards/partials/aggregator_toggle_button.html" %}
 </li>
+
+<li>
+  <button class="nt-link relative" type="button"
+          hx-get="{% url 'boards:board_history_modal' board.id %}"
+          hx-target="#modal-body" hx-swap="innerHTML"
+          hx-on="htmx:beforeRequest: try{ if(window.Modal&&Modal.open){Modal.open();} }catch(e){}">
+    Histórico do quadro
+    <span id="board-history-badge"
+          class="ml-2 inline-flex items-center justify-center text-xs font-semibold
+                 rounded-full px-2 py-0.5 bg-red-600 text-white hidden">0</span>
+  </button>
+</li>
+
 {% endblock %}
 
 {% block content %}
@@ -1536,6 +1552,79 @@ document.addEventListener("DOMContentLoaded", () => {
       animateAggregator(e.detail.target || document);
     }, 120);
   });
+})();
+</script>
+
+<script>
+(function () {
+  function getParam(name) {
+    try { return new URLSearchParams(window.location.search).get(name); }
+    catch(e) { return null; }
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const cardId = Number(getParam("card") || 0);
+    if (!cardId) return;
+
+    // abre o modal do card
+    try {
+      if (window.Modal && typeof window.Modal.openCard === "function") {
+        window.Modal.openCard(cardId, true, null);
+      }
+    } catch (e) {}
+  });
+})();
+</script>
+
+
+<script>
+(function () {
+  async function refreshBoardHistoryBadge() {
+    try {
+      const resp = await fetch(`/board/${window.BOARD_ID}/history/unread-count/`, {
+        method: "GET",
+        credentials: "same-origin",
+        headers: { "Accept": "application/json" }
+      });
+      if (!resp.ok) return;
+
+      const data = await resp.json();
+      const n = Number(data.unread || 0);
+
+      // Badge no item do drawer (Histórico do quadro)
+      const badge = document.getElementById("board-history-badge");
+
+      // Badges no botão ☰ (desktop e mobile)
+      const badgeDrawer = document.getElementById("drawer-unread-badge");
+      const badgeDrawerMobile = document.getElementById("drawer-unread-badge-mobile");
+
+      function applyBadge(el) {
+        if (!el) return;
+        if (n > 0) {
+          el.textContent = String(n);
+          el.classList.remove("hidden");
+        } else {
+          el.textContent = "0";
+          el.classList.add("hidden");
+        }
+      }
+
+      applyBadge(badge);
+      applyBadge(badgeDrawer);
+      applyBadge(badgeDrawerMobile);
+
+    } catch (e) {}
+  }
+
+  document.addEventListener("DOMContentLoaded", refreshBoardHistoryBadge);
+
+  document.body.addEventListener("htmx:afterSwap", () => {
+    refreshBoardHistoryBadge();
+  });
+
+  document.addEventListener("modal:closed", refreshBoardHistoryBadge);
+
+  window.refreshBoardHistoryBadge = refreshBoardHistoryBadge;
 })();
 </script>
 
