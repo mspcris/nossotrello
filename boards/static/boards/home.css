@@ -1,127 +1,176 @@
-/* ================================================
-   HOME — Cards dos boards (layout do print 2)
-   ================================================ */
+/* ================================
+   HOME - NOSSO TRELLO
+   Layout unificado e previsível
+   ================================ */
 
+/* Variáveis globais */
+:root {
+  --boards-gap: 1rem;
+  --boards-cols: 3;
+  --board-width: 16rem; /* 256px */
+  --board-min-height: 11rem; /* 176px */
+  --board-cover-height: 5rem; /* 80px */
+}
+
+/* Ajuste por modo manual (1,2,3 colunas) */
+body.boards-cols-1 { --boards-cols: 1; }
+body.boards-cols-2 { --boards-cols: 2; }
+body.boards-cols-3 { --boards-cols: 3; }
+
+/* Containers principais */
+#home-favorites-items,
+.home-group-items,
+#home-owned-list,
+#home-shared-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--boards-gap);
+  align-items: stretch;
+}
+
+/* Mobile usa grid */
+@media (max-width: 767px) {
+  #home-favorites-items,
+  .home-group-items,
+  #home-owned-list,
+  #home-shared-list {
+    display: grid;
+    grid-template-columns: repeat(var(--boards-cols), minmax(0, 1fr));
+    gap: var(--boards-gap);
+  }
+}
+
+/* ================================
+   CARD
+   ================================ */
 .board-card {
-    background: rgba(255, 255, 255, 0.12);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    border-radius: 18px;
-    padding: 24px;
-    width: 256px; /* w-64 */
-    cursor: pointer;
-
-    box-shadow:
-        0 4px 14px rgba(0, 0, 0, 0.45),
-        inset 0 0 8px rgba(255, 255, 255, 0.15);
-
-    transition: 0.25s ease;
-}
-
-.board-card:hover {
-    transform: translateY(-4px);
-    box-shadow:
-        0 6px 22px rgba(0, 0, 0, 0.55),
-        inset 0 0 12px rgba(255, 255, 255, 0.25);
-}
-
-/* Título */
-.home-card-text {
-    color: #fff;
-    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.60);
-}
-
-/* Subtitulo */
-.home-card-sub {
-    color: #ddd;
-    font-size: 0.85rem;
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
-}
-
-/* Título "Quadros" */
-.home-title {
-    color: #fff;
-    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.70);
-}
-
-/* Botão Criar Novo Board */
-.new-board-button {
-    background: rgba(255, 255, 255, 0.10);
-    border: 1px dashed rgba(255, 255, 255, 0.35);
-    backdrop-filter: blur(8px);
-    color: #fff;
-
-    width: 256px; /* w-64 */
-    height: auto;
-    padding: 24px;
-    border-radius: 18px;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    transition: 0.25s ease;
-}
-
-.new-board-button:hover {
-    background: rgba(255, 255, 255, 0.22);
-    border-color: rgba(255, 255, 255, 0.55);
-    transform: translateY(-3px);
-}
-/* Modo Exclusão — deixa o card mais evidente ao mostrar o botão */
-.board-card.delete-mode {
-    border: 2px solid rgba(255, 80, 80, 0.8);
-    background: rgba(255, 0, 0, 0.15);
-}
-
-/* estrela de favorito (melhor alvo de clique) */
-.favorite-star{
+  position: relative;
   cursor: pointer;
-  transform-origin: center;
-  transition: transform .12s ease;
-  padding: 6px;          /* aumenta área de clique sem “poluir” */
-  line-height: 1;
-  border-radius: 10px;   /* opcional: melhora UX */
+  width: var(--board-width);
+  min-height: var(--board-min-height);
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(4px);
 }
 
-.favorite-star:hover{
-  transform: scale(3);
+/* Mobile: ocupa a coluna inteira */
+@media (max-width: 767px) {
+  .board-card {
+    width: 100%;
+  }
 }
 
+/* Ações (estrela e agrupar) */
+.board-card__actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 10;
+}
 
-.favorite-star{
-  cursor: pointer;
-
-  /* área de clique */
-  width: 34px;
-  height: 34px;
-  display: inline-flex;
+.board-card button.favorite-star,
+.board-card button.group-board-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 0;
+  display: flex;
   align-items: center;
   justify-content: center;
-
-  /* contraste garantido */
   color: #fff;
-  background: rgba(0,0,0,.55);
-  border: 1px solid rgba(255,255,255,.35);
-  border-radius: 999px;
-
-  /* “separar” do fundo */
-  box-shadow: 0 2px 10px rgba(0,0,0,.35);
-  text-shadow: 0 1px 2px rgba(0,0,0,.7);
-
-  /* hover */
-  transform-origin: center;
-  transition: transform .12s ease, background .12s ease, box-shadow .12s ease;
+  background: rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  transition: all 0.15s ease;
 }
 
-.favorite-star:hover{
-  transform: scale(3);
-  background: rgba(0,0,0,.75);
-  box-shadow: 0 6px 18px rgba(0,0,0,.55);
+.board-card button.favorite-star:hover,
+.board-card button.group-board-btn:hover {
+  background: rgba(0, 0, 0, 0.6);
+  transform: scale(1.1);
 }
 
-/* opcional: quando estiver favoritado, dá um “destaque” */
-.favorite-star.is-on{
-  background: rgba(255,215,0,.25);
-  border-color: rgba(255,215,0,.55);
+/* Capa */
+.board-card__cover {
+  width: 100%;
+  height: var(--board-cover-height);
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.board-card__cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Texto */
+.board-card__body {
+  color: inherit;
+  text-decoration: none;
+}
+
+.board-card__body h2 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.board-card__body p {
+  font-size: 0.9rem;
+  opacity: 0.8;
+  margin: 0;
+}
+
+/* Owner */
+.board-card__owner {
+  margin-top: 6px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  border-radius: 6px;
+  padding: 4px 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+}
+
+.board-card__owner-email {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Botão excluir (só modo delete) */
+.board-card .delete-button {
+  display: none !important;
+  color: #dc2626;
+  text-decoration: underline;
+  font-size: 0.875rem;
+  margin-top: 6px;
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+.board-card.delete-mode .delete-button {
+  display: inline-block !important;
 }

@@ -143,3 +143,36 @@ html.dark .column-header * {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+
+
+/* =========================================================
+   MOBILE GRANDE: 2 colunas lado a lado no board
+   - ativa a partir de ~430px (ajuste fino)
+   ========================================================= */
+@media (min-width: 430px) and (max-width: 767px) {
+
+  /* container que segura as colunas deve permitir 2 "cards" */
+  .columns-container,
+  #columns,
+  .board-columns,
+  .columns {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+    align-items: start !important;
+  }
+
+  /* cada coluna não pode ter largura fixa gigante */
+  .column,
+  .board-column,
+  .column-wrapper {
+    width: auto !important;
+    min-width: 0 !important;
+  }
+
+  /* opcional: reduzir um pouco padding interno no mobile grande */
+  .column-header {
+    padding: 10px 10px !important;
+  }
+}

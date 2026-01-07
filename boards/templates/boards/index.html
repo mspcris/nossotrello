@@ -1,3 +1,4 @@
+{# boards/templates/boards/index.html #}
 {% extends "base.html" %}
 {% load static %}
 
@@ -10,10 +11,6 @@
 
 {% block title %}NossoTrello - Boards{% endblock %}
 
-{# =========================
-   SEARCH BAR NO TOPO (HEADER)
-   Usa o slot já existente no base.html
-   ========================= #}
 {% block header_right_under_logo %}
   <div class="w-full hidden md:flex justify-center">
     <div class="w-full max-w-[980px]">
@@ -66,19 +63,21 @@
 
   <div id="home-groups-area" class="mb-8">
 
-    {# Favoritos #}
+    {# ===================== FAVORITOS ===================== #}
     <div class="mb-6" id="home-favorites-block">
-      <div class="flex items-center justify-between mb-2">
+      <div class="flex items-center justify-between mb-2 gap-3">
         <h2 class="text-lg font-semibold">⭐ Favoritos</h2>
-        <span class="text-xs text-white/80">Marque a estrela em um quadro para aparecer aqui.</span>
+        <span class="text-xs text-white/80 text-right">
+          Marque a estrela em um quadro para aparecer aqui.
+        </span>
       </div>
 
       <div class="home-group-dropzone" data-group-id="{{ favorites_group.id }}">
   <div class="flex flex-wrap gap-6" id="home-favorites-items">
     {% for it in favorites_group_items %}
-      {% include "boards/partials/home_board_card.html" with board=it.board favorite_board_ids=favorite_board_ids subtitle="Organizado aqui" %}
+      {% include "boards/partials/home_board_card.html" with board=it.board favorite_board_ids=favorite_board_ids subtitle="Organizado aqui" show_delete_button=False is_shared=False %}
     {% empty %}
-      <div class="text-gray-300 backdrop-blur-lg px-4 py-2 rounded-lg">
+      <div class="text-gray-300 backdrop-blur-lg px-4 py-2 rounded-lg home-empty-hint">
         Sem favoritos ainda.
       </div>
     {% endfor %}
@@ -88,9 +87,9 @@
 
     </div>
 
-    {# Criar novo agrupamento #}
+    {# ===================== CRIAR NOVO AGRUPAMENTO ===================== #}
     <div class="mb-4">
-      <form class="flex gap-2 items-center"
+      <form class="flex gap-2 items-center flex-wrap"
             hx-post="{% url 'boards:home_group_create' %}"
             hx-target="#home-custom-groups"
             hx-swap="afterbegin">
@@ -100,23 +99,22 @@
       </form>
     </div>
 
-    {# Lista de agrupamentos custom #}
+    {# ===================== GRUPOS CUSTOM ===================== #}
     <div id="home-custom-groups" class="flex flex-col gap-6">
       {% for row in custom_groups %}
         {% include "boards/partials/home_group_block.html" with g=row.group items=row.items favorite_board_ids=favorite_board_ids %}
       {% empty %}
-        {# sem grupos custom ainda #}
       {% endfor %}
     </div>
 
   </div>
 
-  {# CONTEÚDO DA HOME #}
+  {# ===================== LISTAS BASE ===================== #}
   <div class="pt-2 pr-4">
     <h1 class="text-2xl font-bold mb-6 home-title">Quadros</h1>
 
     <h2 class="text-lg font-semibold mb-3">Meus quadros</h2>
-    <div class="flex flex-wrap gap-6 mb-10 home-source-list" id="home-owned-list">
+    <div class="boards-grid home-source-list" id="home-owned-list">
       {% for board in owned_boards %}
         {% include "boards/partials/home_board_card.html" with board=board favorite_board_ids=favorite_board_ids subtitle="Clique para abrir" show_delete_button=True is_shared=False %}
       {% empty %}
@@ -135,7 +133,7 @@
 
     {% if shared_boards %}
       <h2 class="text-lg font-semibold mb-3">Compartilhados comigo</h2>
-      <div class="flex flex-wrap gap-6 home-source-list" id="home-shared-list">
+      <div class="boards-grid home-source-list" id="home-shared-list">
         {% for board in shared_boards %}
           {% include "boards/partials/home_board_card.html" with board=board favorite_board_ids=favorite_board_ids subtitle="Compartilhado com você" show_delete_button=False is_shared=True owner_email=board.owner_email %}
         {% endfor %}
@@ -179,11 +177,11 @@
   </script>
 
   <script>
-  window.HOME_GROUPS = [
-    {% for row in custom_groups %}
-      {"id": {{ row.group.id }}, "name": "{{ row.group.name|escapejs }}"}{% if not forloop.last %},{% endif %}
-    {% endfor %}
-  ];
-</script>
+    window.HOME_GROUPS = [
+      {% for row in custom_groups %}
+        {"id": {{ row.group.id }}, "name": "{{ row.group.name|escapejs }}"}{% if not forloop.last %},{% endif %}
+      {% endfor %}
+    ];
+  </script>
 
 {% endblock %}

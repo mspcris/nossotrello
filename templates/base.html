@@ -26,6 +26,21 @@
   <!-- SortableJS -->
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
+
+
+  <script>
+  (function () {
+    const _warn = console.warn;
+    console.warn = function (...args) {
+      try {
+        const msg = String(args?.[0] ?? "");
+        if (msg.includes("cdn.tailwindcss.com should not be used in production")) return;
+      } catch {}
+      return _warn.apply(console, args);
+    };
+  })();
+</script>
+
   <!-- Tailwind (dev) --> 
   <script src="https://cdn.tailwindcss.com"></script>
   <script>tailwind.config = { darkMode: 'class' }</script>
@@ -235,7 +250,8 @@
 
 
 <!-- Header -->
-<header class="w-full px-4 py-3">
+<header class="cm-header w-full px-4 py-3">
+
     <!-- =====================================================
        DESKTOP / LANDSCAPE  (>= md) — 100% ORIGINAL
        ===================================================== -->
@@ -348,42 +364,57 @@
     </div>
   </div>
 
-  <!-- =====================================================
-       MOBILE RETRATO (< md) — NOVO
+   <!-- =====================================================
+       MOBILE RETRATO (< md)
        ===================================================== -->
-  <div class="md:hidden w-full">
+  
+  
+       <div class="md:hidden w-full">
     <div class="cm-header-mobile">
-
-      <!-- Linha 1 -->
-      <button id="menuToggleMobile"
-        type="button"
-        class="relative text-gray-900 bg-white/80 border border-gray-400 rounded-md px-3 py-2 shadow"
-        aria-label="Abrir menu">
-  ☰
-  <span id="drawer-unread-badge-mobile"
-        class="absolute -top-2 -right-2 hidden min-w-[18px] h-[18px] px-1
-               rounded-full text-[11px] leading-[18px] text-white bg-red-600 text-center">
-    0
-  </span>
-</button>
+      <div class="boards-cols-switch" role="group" aria-label="Colunas">
+  <button type="button" class="bcs-btn" data-cols="1">1</button>
+  <button type="button" class="bcs-btn" data-cols="2">2</button>
+  <button type="button" class="bcs-btn" data-cols="3">3</button>
+  <button type="button" class="bcs-btn" data-cols="auto">Auto</button>
+</div>
 
 
-        <div class="cm-brand flex items-center gap-2">
-          <img src="{% static brand_logo %}"
-               alt="LOGOMARCA"
-               class="h-20 w-20 rounded-full">
+      <!-- Linha 1 (row real) -->
+      <div class="cm-header-row">
+
+        <button id="menuToggleMobile"
+          type="button"
+          class="relative text-gray-900 bg-white/80 border border-gray-400 rounded-md px-3 py-2 shadow"
+          aria-label="Abrir menu">
+          ☰
+          <span id="drawer-unread-badge-mobile"
+                class="absolute -top-2 -right-2 hidden min-w-[18px] h-[18px] px-1
+                       rounded-full text-[11px] leading-[18px] text-white bg-red-600 text-center">
+            0
+          </span>
+        </button>
+
+        <div class="cm-brand">
+          <a href="{% url 'boards:boards_index' %}" class="select-none">
+            <img src="{% static brand_logo %}"
+                 alt="LOGOMARCA"
+                 class="cm-brand-logo"
+            >
+          </a>
         </div>
 
         <div class="cm-user-menu relative">
           <img
             src="{% if user_avatar_url %}{{ user_avatar_url }}{% else %}{% static brand_logo %}{% endif %}"
             alt="Perfil"
-            class="cm-avatar h-12 w-12 rounded-full border border-white/40 shadow"
+            class="cm-avatar"
             id="cm-avatar-toggle">
 
           <div class="cm-user-dropdown hidden" id="cm-user-dropdown">
             <div class="cm-user-email mb-2 text-sm">
-              {{ request.user.get_full_name|default:request.user.get_username }}
+              {% with prof=request.user.profile %}
+                {{ prof.display_name|default:request.user.email }}
+              {% endwith %}
             </div>
 
             <form method="post" action="{% url 'boards:logout' %}">
@@ -395,11 +426,12 @@
             </form>
           </div>
         </div>
+
       </div>
 
       <!-- Linha 2 -->
       {% if board %}
-      
+        {# se você quiser mostrar o título do board aqui, a gente coloca depois #}
       {% endif %}
 
     </div>
@@ -767,6 +799,59 @@ document.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("DOMContentLoaded", initHeaderIdentityToggle);
 })();
 </script>
+
+
+
+
+<script>
+(function () {
+  const KEY = "boardsColsPref"; // "1" | "2" | "3" | null
+
+  function apply(pref) {
+    document.body.classList.remove("boards-cols-1","boards-cols-2","boards-cols-3");
+    if (pref === "1" || pref === "2" || pref === "3") {
+      document.body.classList.add("boards-cols-" + pref);
+    }
+
+    // UI ativa
+    document.querySelectorAll(".boards-cols-switch .bcs-btn").forEach(btn => {
+      const v = btn.dataset.cols;
+      const active = (pref ? v === pref : v === "auto");
+      btn.classList.toggle("is-active", active);
+    });
+  }
+
+  function setPref(v){
+    if (v === "auto") {
+      localStorage.removeItem(KEY);
+      apply(null);
+      return;
+    }
+    if (!["1","2","3"].includes(v)) return;
+    localStorage.setItem(KEY, v);
+    apply(v);
+  }
+
+  // expõe para compat
+  window.setBoardsCols = (n) => setPref(String(n));
+  window.resetBoardsCols = () => setPref("auto");
+
+  // init
+  apply(localStorage.getItem(KEY));
+
+  // bind botões (delegation)
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest(".boards-cols-switch .bcs-btn");
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setPref(btn.dataset.cols);
+  }, { passive: false });
+
+})();
+</script>
+
+
 
 
 </body>
