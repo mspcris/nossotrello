@@ -40,8 +40,6 @@ from ..models import (
 )
 
 
-
-
 # ======================================================================
 # constantes
 # ======================================================================
@@ -298,276 +296,159 @@ def _ensure_attachments_and_activity_for_images(
 # ======================================================================
 # MENTIONS helpers
 # ======================================================================
+# ======================================================================
+# MENTIONS (Lógica de Contador/Delta)
+# ======================================================================
+
+from collections import Counter
+
+from collections import Counter
 
 MENTION_HANDLE_RE = re.compile(r"(?<!\w)@([a-z0-9_\.]{2,40})\b", re.IGNORECASE)
 EMAIL_RE = re.compile(r"(?<![\w\.-])([A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,})(?![\w\.-])", re.IGNORECASE)
 
+# Remove blocos HTML que carregam data-id (menção do Quill) para não contar @handle dentro deles
+_QUILL_MENTION_BLOCK_RE = re.compile(
+    r"<[^>]*\bdata-id=['\"]\d+['\"][^>]*>.*?</[^>]+>",
+    re.IGNORECASE | re.DOTALL,
+)
 
-def _extract_handles(text: str) -> list[str]:
-    if not text:
-        return []
-    handles = [m.group(1).strip().lower() for m in MENTION_HANDLE_RE.finditer(text)]
-    seen = set()
-    out = []
-    for h in handles:
-        if h in seen:
-            continue
-        seen.add(h)
-        out.append(h)
-    return out
-
-
-def _extract_emails(text: str) -> list[str]:
-    if not text:
-        return []
-    emails = [m.group(1).strip().lower() for m in EMAIL_RE.finditer(text)]
-    seen = set()
-    out = []
-    for e in emails:
-        if e in seen:
-            continue
-        seen.add(e)
-        out.append(e)
-    return out
-
-
-
-
-
-# boards/views/helpers.py
-
-import re
-from typing import List
-from django.contrib.auth import get_user_model
-from django.db.models import Q
-
-# Se você já tem esses helpers no arquivo, NÃO duplique.
-# Use os que já existem:
-# - _extract_handles(text)
-# - _extract_emails(text)
-# - UserProfile model (se existir)
-# Se não existirem, deixe a parte do fallback (handles/emails) como está no seu arquivo atual.
-
-def _resolve_users_from_mentions(text: str):
+def _resolve_users_counts_from_mentions(text: str):
     """
-    Resolve usuários a partir de menções no HTML/Texto do Quill.
+    Retorna {UserInstance: count}.
 
-    Ordem de resolução (mantém ordem do texto e dedupe):
-      1) data-id="123" / data-id='123' (prioridade máxima)
-      2) @handle (UserProfile.handle)  [fallback]
-      3) emails no texto              [fallback]
+    Regras:
+    - Conta data-id do Quill como 1 ocorrência por elemento.
+    - Evita contar o @handle que aparece dentro do HTML do Quill (senão duplica).
+    - Ainda suporta menções digitadas "puras" (@handle / email) fora do Quill.
     """
     UserModel = get_user_model()
     raw = text or ""
 
-    users: List[UserModel] = []
+    all_resolved_ids: list[int] = []
 
-    # ------------------------------------------------------------
-    # 1) PRIORIDADE MÁXIMA: data-id do span do Quill mention
-    # ------------------------------------------------------------
-    # Aceita aspas duplas ou simples
+    # 1) data-id do Quill (fonte preferencial)
     ids = [int(x) for x in re.findall(r"data-id=['\"](\d+)['\"]", raw)]
-    if ids:
-        qs = (
-            UserModel._default_manager
-            .filter(id__in=ids, is_active=True)
-            .exclude(email__isnull=True)
-            .exclude(email__exact="")
-        )
+    all_resolved_ids.extend(ids)
 
-        by_id = {u.id: u for u in qs}
-        for i in ids:  # mantém ordem do HTML
-            u = by_id.get(i)
-            if u:
-                users.append(u)
+    # 2) Para não duplicar: remove os blocos com data-id antes de procurar @handle/email
+    raw_without_quill_mentions = _QUILL_MENTION_BLOCK_RE.sub(" ", raw)
 
-    # ------------------------------------------------------------
-    # 2) FALLBACK: @handle (UserProfile.handle)
-    # ------------------------------------------------------------
-    # Mantém sua lógica atual por handle, MAS sem quebrar se UserProfile não existir/estiver vazio
-    try:
-        handles = _extract_handles(raw)  # usa o helper que você já tinha
-    except Exception:
-        handles = []
-
+    # 3) Handles (@user) fora do Quill
+    handles = [m.group(1).strip().lower() for m in MENTION_HANDLE_RE.finditer(raw_without_quill_mentions)]
     if handles:
-        try:
-            profs = (
-                UserProfile.objects.select_related("user")
-                .filter(handle__in=[h.lower() for h in handles])
-            )
-            by_handle = {((p.handle or "").lower()): p.user for p in profs}
-            for h in handles:
-                u = by_handle.get((h or "").lower())
-                if u and getattr(u, "is_active", True):
-                    # se tiver email, ok; se não tiver, ignora
-                    if getattr(u, "email", ""):
-                        users.append(u)
-        except Exception:
-            # Se UserProfile não estiver migrado/criado/não existir, não derruba o fluxo
-            pass
+        p_ids = UserProfile.objects.filter(handle__in=handles).values_list("user_id", flat=True)
+        all_resolved_ids.extend(list(p_ids))
 
-    # ------------------------------------------------------------
-    # 3) FALLBACK: emails no texto
-    # ------------------------------------------------------------
-    try:
-        emails = _extract_emails(raw)  # usa o helper que você já tinha
-    except Exception:
-        emails = []
-
+    # 4) Emails diretos fora do Quill
+    emails = [m.group(1).strip().lower() for m in EMAIL_RE.finditer(raw_without_quill_mentions)]
     if emails:
-        username_field = getattr(UserModel, "USERNAME_FIELD", "username")
+        e_ids = UserModel.objects.filter(email__in=emails).values_list("id", flat=True)
+        all_resolved_ids.extend(list(e_ids))
 
-        q = Q()
-        if hasattr(UserModel, "email"):
-            q |= Q(email__in=emails)
-        q |= Q(**{f"{username_field}__in": emails})
+    counts = Counter(all_resolved_ids)
+    if not counts:
+        return {}
 
-        qs = UserModel._default_manager.filter(q, is_active=True).distinct()
+    users = UserModel.objects.filter(id__in=list(counts.keys()), is_active=True)
+    return {u: counts.get(u.id, 0) for u in users if getattr(u, "email", None)}
 
-        by_key = {}
-        for u in qs:
-            if getattr(u, "email", None):
-                by_key[(u.email or "").strip().lower()] = u
-            by_key[(u.get_username() or "").strip().lower()] = u
-
-        for e in emails:
-            u = by_key.get((e or "").strip().lower())
-            if u and getattr(u, "email", ""):
-                users.append(u)
-
-    # ------------------------------------------------------------
-    # DEDUPE preservando ordem
-    # ------------------------------------------------------------
-    seen_ids = set()
-    out = []
-    for u in users:
-        if not u or u.id in seen_ids:
-            continue
-        seen_ids.add(u.id)
-        out.append(u)
-
-    return out
-
-
-
-
-
-
-
-
-
-
-
-def _send_mention_email(request, mentioned_user, actor_user, board: Board, card: Card, mention: Mention):
+def _send_mention_email(request, mentioned_user, actor_user, board, card, mention):
     """
-    MVP e-mail: conteúdo simples e resiliente.
+    Dispara o e-mail de notificação.
     """
     try:
         to_email = (getattr(mentioned_user, "email", "") or "").strip()
-        if not to_email:
-            return
+        if not to_email: return
 
-        # nome do ator (perfil se existir)
-        actor_name = ""
-        try:
-            actor_name = (
-                getattr(actor_user, "profile", None)
-                and (actor_user.profile.display_name or actor_user.profile.handle)
-            ) or ""
-        except Exception:
-            actor_name = ""
+        actor_name = (getattr(actor_user, "profile", None) and 
+                     (actor_user.profile.display_name or actor_user.profile.handle)) or \
+                     actor_user.get_full_name() or actor_user.get_username()
 
-        if not actor_name:
-            actor_name = actor_user.get_full_name() or actor_user.get_username()
-
-        board_name = getattr(board, "name", f"Board #{board.id}")
-        card_title = getattr(card, "title", f"Card #{card.id}")
-
-        # abre o board e sinaliza card/tab
         path = reverse("boards:board_detail", kwargs={"board_id": board.id})
         url = request.build_absolute_uri(f"{path}?card={card.id}&tab=ativ&mention={mention.id}")
 
-        subject = f"Você foi marcado em: {board_name}"
-        body = (
-            f"Você foi marcado por {actor_name}.\n\n"
-            f"Quadro: {board_name}\n"
-            f"Card: {card_title}\n\n"
-            f"Abrir: {url}\n"
-        )
+        subject = f"Nova marcação em: {board.name}"
+        body = f"Você foi marcado por {actor_name}.\n\nQuadro: {board.name}\nCard: {card.title}\n\nLink: {url}"
 
-        send_mail(
-            subject=subject,
-            message=body,
-            from_email=getattr(settings, "DEFAULT_FROM_EMAIL", None),
-            recipient_list=[to_email],
-            fail_silently=False,
-        )
+        send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [to_email], fail_silently=True)
     except Exception:
-        return
+        pass
 
-
-
-
-
-def process_mentions_and_notify(
-    *,
-    request,
-    board: Board,
-    card: Card,
-    source: str,
-    raw_text: str,
-):
-    import logging
-    logger = logging.getLogger(__name__)
-
-    logger.info(
-        "MENTIONS: enter source=%s card_id=%s actor_id=%s raw=%r",
-        source, getattr(card, "id", None), getattr(getattr(request, "user", None), "id", None),
-        (raw_text or "")[:200],
-    )
-
+def process_mentions_and_notify(*, request, board, card, source, raw_text):
     if not getattr(request, "user", None) or not request.user.is_authenticated:
-        logger.info("MENTIONS: abort not_authenticated")
         return
 
-    mentioned_users = _resolve_users_from_mentions(raw_text or "")
-    logger.info(
-        "MENTIONS: resolved count=%s ids=%s emails=%s",
-        len(mentioned_users),
-        [u.id for u in mentioned_users],
-        [getattr(u, "email", "") for u in mentioned_users],
-    )
+    # Cache por request (evita dupla execução dentro do mesmo request sem vazar memória)
+    if not hasattr(request, "_mentions_notify_cache"):
+        request._mentions_notify_cache = set()
 
-    if not mentioned_users:
-        logger.info("MENTIONS: abort none_resolved")
-        return
+    user_counts = _resolve_users_counts_from_mentions(raw_text or "")
+    current_user_ids = set(u.id for u in user_counts.keys())
 
-    for u in mentioned_users:
-        if not u or u.id == request.user.id:
-            logger.info("MENTIONS: skip user_id=%s (self/invalid)", getattr(u, "id", None))
-            continue
+    with transaction.atomic():
+        # 1) Trata usuários que EXISTIAM antes e foram REMOVIDOS completamente no texto
+        #    => zera baseline para permitir que uma futura re-marcação dispare
+        stale_qs = (
+            Mention.objects.select_for_update()
+            .filter(card=card, source=source)
+            .exclude(mentioned_user_id__in=current_user_ids)
+        )
+        for m in stale_qs:
+            # Se não está mais no texto, baseline vira 0
+            if m.seen_count != 0 or m.emailed_count != 0:
+                m.seen_count = 0
+                m.emailed_count = 0
+                m.raw_text = (raw_text or "")[:5000]
+                m.save(update_fields=["seen_count", "emailed_count", "raw_text"])
 
-        try:
-            mention, created = Mention.objects.get_or_create(
-                board=board,
+        # 2) Processa usuários presentes no texto atual
+        for mentioned_user, current_total in user_counts.items():
+            if mentioned_user == request.user:
+                continue
+
+            cache_key = (card.id, mentioned_user.id, source)
+            if cache_key in request._mentions_notify_cache:
+                continue
+
+            mention_obj, created = Mention.objects.select_for_update().get_or_create(
                 card=card,
+                mentioned_user=mentioned_user,
                 source=source,
-                mentioned_user=u,
                 defaults={
+                    "board": board,
                     "actor": request.user,
+                    "seen_count": 0,
+                    "emailed_count": 0,
                     "raw_text": (raw_text or "")[:5000],
                 },
             )
-            logger.info("MENTIONS: get_or_create user_id=%s created=%s", u.id, created)
-            if created:
-                _send_mention_email(request, u, request.user, board, card, mention)
-        except Exception:
-            logger.exception("MENTIONS: error processing user_id=%s", getattr(u, "id", None))
-            continue
 
+            if not created:
+                mention_obj.refresh_from_db()
 
+            # 2.1 Se houve remoção parcial (queda), rebaixa baseline
+            # Ex.: tinha 2 enviados, apagou para 1 => emailed_count deve virar 1
+            if current_total < mention_obj.seen_count:
+                mention_obj.emailed_count = min(mention_obj.emailed_count, current_total)
 
+            # 2.2 Delta: se current_total > emailed_count => manda (geralmente 1)
+            if current_total > mention_obj.emailed_count:
+                delta = current_total - mention_obj.emailed_count
+                # Se você quiser mandar 1 email por “nova marcação”, mande 1 e pronto.
+                # Se quiser mandar delta emails, faça loop. Vou manter 1 por save (mais seguro).
+                _send_mention_email(request, mentioned_user, request.user, board, card, mention_obj)
+
+                mention_obj.emailed_count = current_total
+
+            # 2.3 Sempre atualiza seen_count e raw_text
+            mention_obj.seen_count = current_total
+            mention_obj.raw_text = (raw_text or "")[:5000]
+            mention_obj.actor = request.user
+            mention_obj.board = board
+            mention_obj.save(update_fields=["seen_count", "emailed_count", "raw_text", "actor", "board"])
+
+            request._mentions_notify_cache.add(cache_key)
 
 # ======================================================================
 # Save e disponibilizar de imagens do HTML (quill)

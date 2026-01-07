@@ -381,15 +381,13 @@ class Mention(models.Model):
 
     board = models.ForeignKey(Board, related_name="mentions", on_delete=models.CASCADE)
     card = models.ForeignKey(Card, related_name="mentions", on_delete=models.CASCADE)
-
     source = models.CharField(max_length=20, choices=Source.choices)
-
+    
     actor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name="mentions_made",
         on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
+        null=True, blank=True,
     )
     mentioned_user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -398,40 +396,43 @@ class Mention(models.Model):
     )
 
     raw_text = models.TextField(blank=True, default="")
+    
+    # NOVOS CAMPOS PARA O CONTADOR
+    seen_count = models.PositiveIntegerField(default=0)
+    emailed_count = models.PositiveIntegerField(default=0)
+
     card_log = models.ForeignKey(
         CardLog,
         related_name="mentions",
         on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
+        null=True, blank=True,
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=["card", "mentioned_user", "source", "card_log"],
-                name="uniq_mention_per_card_user_source_log",
-            )
-        ]
+        # REMOVEMOS a UniqueConstraint para permitir a lógica de "delta" por registro
         indexes = [
             models.Index(fields=["card", "mentioned_user"]),
             models.Index(fields=["board", "mentioned_user"]),
         ]
 
     def __str__(self):
-        return f"{self.mentioned_user} mencionado em {self.card} ({self.source})"
+        return f"{self.mentioned_user} ({self.emailed_count}/{self.seen_count}) em {self.card}"
+    
 
-
-    # ============================================================
-    # PRAZOS (cores do badge por board)
-    # ============================================================
-    due_colors = models.JSONField(
-        default=dict,
-        blank=True,
-        help_text="Cores do prazo: {'ok':'#..','warn':'#..','overdue':'#..'}",
-    )
+    class Meta:
+        constraints = [
+        models.UniqueConstraint(
+            fields=["card", "mentioned_user", "source"],
+            name="uniq_mention_card_user_source",
+        ),
+    ]
+    indexes = [
+        models.Index(fields=["card", "mentioned_user"]),
+        models.Index(fields=["board", "mentioned_user"]),
+        models.Index(fields=["card", "source"]),
+    ]
 
 
 # ============================================================
