@@ -4,6 +4,7 @@ from django.shortcuts import render, get_object_or_404
 from django.views.decorators.http import require_POST
 from django.utils.html import escape
 from django.contrib.auth.decorators import login_required
+from django.template.loader import render_to_string
 
 from ..permissions import can_edit_board
 from ..models import Card, CardAttachment
@@ -72,7 +73,6 @@ def add_attachment(request, card_id):
     card = get_object_or_404(Card, id=card_id, is_deleted=False)
     board = card.column.board
 
-    # ✅ ESCRITA: viewer não pode anexar
     if not can_edit_board(request.user, board):
         return HttpResponse("Somente leitura.", status=403)
 
@@ -89,7 +89,7 @@ def add_attachment(request, card_id):
         file=uploaded,
         description=desc,
     )
-    
+
     board.version += 1
     board.save(update_fields=["version"])
 
@@ -109,5 +109,34 @@ def add_attachment(request, card_id):
             attachment=attachment.file,
         )
 
-    return render(request, "boards/partials/attachment_item.html", {"attachment": attachment})
+    # Recarrega para garantir estado real (ordem/relacionamentos)
+    card = Card.objects.get(id=card.id)
+
+    # 1) HTML do item recém inserido (mantém UX de append imediato)
+    attachment_html = render_to_string(
+        "boards/partials/attachment_item.html",
+        {"attachment": attachment},
+        request=request,
+    )
+
+    # 2) OOB: reconcilia a lista inteira (ganha de corridas de swap/poll)
+    items = list(card.attachments.all())
+    if items:
+        full_list_inner = "".join(
+            render_to_string(
+                "boards/partials/attachment_item.html",
+                {"attachment": att},
+                request=request,
+            )
+            for att in items
+        )
+    else:
+        full_list_inner = '<div class="cm-muted">Nenhum anexo ainda.</div>'
+
+    oob_refresh = (
+        f'<div id="attachments-list" hx-swap-oob="innerHTML">{full_list_inner}</div>'
+    )
+
+    return HttpResponse(attachment_html + oob_refresh, content_type="text/html")
+
 # END boards/views/attachments.py

@@ -561,7 +561,7 @@ html.dark #cm-root{
            class="hidden mb-2 px-3 py-2 rounded-md text-sm border border-red-500/30 bg-red-500/10 text-red-200"></div>
 
       <div>
-        <label class="cm-label">Enviar novo anexo</label>
+        <label class="cm-label">Enviar novo anexo clicando em 'Choose File' ou, se for uma imagem em print, CTRL-V. Você também pode arrastar o arquivo para o campo Choose File, segure por um segundo e solte</label>
 
         <div class="flex gap-2 flex-wrap">
           <input type="text"
@@ -1133,25 +1133,110 @@ html.dark #cm-root{
 </script>
 
 
+
+
+
+
 <script>
 (function () {
+  function getRoot() {
+    return document.getElementById("cm-root");
+  }
 
-  // ... suas funções existentes ...
+  function getActiveTab() {
+    const r = getRoot();
+    if (!r) return "desc";
 
-  function initAttachmentDragDrop(root) {
-    if (!root) return;
-    if (root.dataset.cmDropBound === "1") return;
-    root.dataset.cmDropBound = "1";
+    const attr = (r.dataset.cmActive || r.getAttribute("data-cm-active") || "").trim();
+    if (attr) return attr;
 
-    const modalRoot = document.getElementById("card-modal-root") || root;
-    const fileInput = root.querySelector("#attachment-file");
+    const btn = r.querySelector(".cm-tabbtn.is-active[data-cm-tab]");
+    if (btn) return (btn.getAttribute("data-cm-tab") || "desc").trim();
+
+    const panel = r.querySelector(".cm-panel.is-active[data-cm-panel]");
+    if (panel) return (panel.getAttribute("data-cm-panel") || "desc").trim();
+
+    return "desc";
+  }
+
+  function randomName(ext) {
+    const now = new Date();
+    const stamp =
+      String(now.getFullYear()) +
+      String(now.getMonth() + 1).padStart(2, "0") +
+      String(now.getDate()).padStart(2, "0") + "-" +
+      String(now.getHours()).padStart(2, "0") +
+      String(now.getMinutes()).padStart(2, "0") +
+      String(now.getSeconds()).padStart(2, "0");
+
+    let rnd = "";
+    try { rnd = crypto.getRandomValues(new Uint32Array(2)).join(""); }
+    catch (_e) { rnd = String(Math.random()).slice(2); }
+
+    return `print-${stamp}-${rnd}${ext}`;
+  }
+
+  // PASTE: instala 1x global
+  if (window.__cmAttachPasteBound !== true) {
+    window.__cmAttachPasteBound = true;
+
+    document.addEventListener("paste", function (e) {
+      if (getActiveTab() !== "files") return;
+
+      const r = getRoot();
+      if (!r) return;
+
+      const fileInput = r.querySelector("#attachment-file");
+      if (!fileInput) return;
+
+      const cd = e.clipboardData;
+      if (!cd || !cd.items || !cd.items.length) return;
+
+      let imgItem = null;
+      for (const it of cd.items) {
+        if (it && it.kind === "file" && String(it.type || "").startsWith("image/")) {
+          imgItem = it;
+          break;
+        }
+      }
+      if (!imgItem) return;
+
+      const blob = imgItem.getAsFile();
+      if (!blob) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      const mime = String(blob.type || "image/png");
+      const ext = mime === "image/jpeg" ? ".jpg" : (mime === "image/webp" ? ".webp" : ".png");
+      const file = new File([blob], randomName(ext), { type: mime });
+
+      const desc = r.querySelector("#attachment-desc");
+      const focused = document.activeElement === desc;
+      if (desc && !focused && !String(desc.value || "").trim()) {
+        desc.value = "Print (Ctrl+V)";
+      }
+
+
+      const dt = new DataTransfer();
+      dt.items.add(file);
+
+      try { fileInput.files = dt.files; } catch (_e) { return; }
+      fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+      setTimeout(() => { try { fileInput.value = ""; } catch (_e) {} }, 0);
+    }, true);
+  }
+
+  // DRAG&DROP: instala por modal (re-render safe)
+  function initAttachmentDragDrop() {
+    const r = getRoot();
+    if (!r) return;
+    if (r.dataset.cmDropBound === "1") return;
+    r.dataset.cmDropBound = "1";
+
+    const modalRoot = document.getElementById("card-modal-root") || r;
+    const fileInput = r.querySelector("#attachment-file");
     if (!fileInput) return;
-
-    function openFilesTab() {
-      // tenta ir pra aba "Anexos" antes de anexar (não quebra se não achar)
-      const btn = root.querySelector('.cm-tabbtn[data-cm-tab="files"]');
-      if (btn) btn.click();
-    }
 
     function setDragUI(on) {
       modalRoot.classList.toggle("cm-dragover", !!on);
@@ -1164,11 +1249,6 @@ html.dark #cm-root{
       setDragUI(true);
     }
 
-    function onDragLeave(e) {
-      // evita “piscar” quando passa por elementos internos
-      if (e.target === modalRoot) setDragUI(false);
-    }
-
     function onDrop(e) {
       e.preventDefault();
       e.stopPropagation();
@@ -1177,58 +1257,26 @@ html.dark #cm-root{
       const files = e.dataTransfer && e.dataTransfer.files ? e.dataTransfer.files : null;
       if (!files || !files.length) return;
 
-      openFilesTab();
-
-      // Se seu input não tiver multiple, pega só o 1º arquivo
       const dt = new DataTransfer();
       dt.items.add(files[0]);
 
-      try {
-        fileInput.files = dt.files;
-      } catch (_e) {
-        // fallback: se o browser bloquear setar files, não tem como forçar
-        return;
-      }
-
-      // Dispara o "change" para o HTMX subir (hx-trigger="change")
+      try { fileInput.files = dt.files; } catch (_e) { return; }
       fileInput.dispatchEvent(new Event("change", { bubbles: true }));
     }
 
-    // Bind no root do modal para não virar listener global permanente
     modalRoot.addEventListener("dragenter", onDragOver, true);
     modalRoot.addEventListener("dragover", onDragOver, true);
-    modalRoot.addEventListener("dragleave", onDragLeave, true);
     modalRoot.addEventListener("drop", onDrop, true);
-
-    // Quando fechar o modal, remove o estado visual
-    document.addEventListener("modal:closed", () => setDragUI(false), { once: true });
+    modalRoot.addEventListener("dragleave", () => setDragUI(false), true);
   }
 
-  function boot() {
-    syncModalThemeSafely();
-
-    const root = document.getElementById("cm-root");
-    if (!root) return;
-
-    // ... suas chamadas existentes ...
-    initRadicalTabs(root);
-    initAttachmentErrors(root);
-    initTagColorPicker(root);
-    applySavedTagColors(root);
-    initActivityErrorsOnce();
-
-    // ✅ NOVO: drag & drop de arquivo para anexar
-    initAttachmentDragDrop(root);
+  function bootAttach() {
+    initAttachmentDragDrop();
   }
 
-  document.addEventListener("DOMContentLoaded", boot);
-
-  // mantém seu afterSwap re-boot quando trocar o modal todo
+  document.addEventListener("DOMContentLoaded", bootAttach);
   document.body.addEventListener("htmx:afterSwap", function (evt) {
-    const t = evt.target;
-    if (!t) return;
-    if (t.id === "modal-body") boot();
+    if (evt.target && evt.target.id === "modal-body") bootAttach();
   });
-
 })();
 </script>
