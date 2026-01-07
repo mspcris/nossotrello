@@ -158,7 +158,7 @@
     }
 
     // 2) Modal — avatar grande no topo do modal
-    const modalTopImg = document.querySelector("#um-root .h-14.w-14 img");
+    const modalTopImg = document.querySelector("#um-root #um-avatar-img");
     if (modalTopImg) {
       modalTopImg.src = url;
     }

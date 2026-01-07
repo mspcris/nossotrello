@@ -5,15 +5,26 @@
 
   <div class="flex items-start justify-between gap-4 mb-4">
     <div class="flex items-center gap-3">
-      <div class="h-14 w-14 rounded-full overflow-hidden border border-white/40 bg-white/70">
-        {% if profile.avatar %}
-          <img src="{{ profile.avatar.url }}" class="h-full w-full object-cover" alt="Avatar">
-        {% elif profile.avatar_choice %}
-          <img src="{% static 'images/avatar/' %}{{ profile.avatar_choice }}" class="h-full w-full object-cover" alt="Avatar">
-        {% else %}
-          <img src="{% static 'images/logo-camim.png' %}" class="h-full w-full object-cover" alt="Logo">
-        {% endif %}
-      </div>
+      
+      
+      
+      {# FOTO AVATAR #}
+
+<div class="h-28 w-28 rounded-full overflow-hidden border border-white/40 bg-white/70 flex items-center justify-center">
+  {% if profile.avatar %}
+    <img id="um-avatar-img" src="{{ profile.avatar.url }}" class="h-full w-full object-contain" alt="Avatar">
+  {% elif profile.avatar_choice %}
+    <img id="um-avatar-img" src="{% static 'images/avatar/' %}{{ profile.avatar_choice }}" class="h-full w-full object-contain" alt="Avatar">
+  {% else %}
+    <img id="um-avatar-img" src="{% static 'images/logo-camim.png' %}" class="h-full w-full object-contain" alt="Logo">
+  {% endif %}
+</div>
+
+
+      
+
+
+
 
       <div class="min-w-0">
         {# IDENTITY TOGGLE (clicável) #}
