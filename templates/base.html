@@ -296,9 +296,39 @@
     <!-- DIREITA -->
     <div class="flex items-center justify-end gap-3 min-w-[220px]">
       {% if request.user.is_authenticated %}
-        <span class="text-sm bg-white/70 px-2 py-1 rounded">
+        
+      
+<!--
+              <span class="text-sm bg-white/70 px-2 py-1 rounded">
           {{ request.user.get_full_name|default:request.user.get_username }}
         </span>
+-->
+
+
+{% with prof=request.user.profile %}
+<button
+  type="button"
+  id="cm-identity-toggle"
+  class="text-left"
+  data-display-name="{{ prof.display_name|default:'' }}"
+  data-email="{{ request.user.email|default:'' }}"
+  data-handle="{% if prof.handle %}@{{ prof.handle }}{% else %}{% endif %}"
+  title="Clique para alternar (Nome / Email / Handle)"
+>
+  <span id="cm-identity-label" class="text-sm bg-white/70 px-2 py-1 rounded">
+    {% if prof.preferred_identity_label == 'email' %}
+      {{ request.user.email|default:prof.display_name }}
+    {% elif prof.preferred_identity_label == 'handle' and prof.handle %}
+      @{{ prof.handle }}
+    {% else %}
+      {{ prof.display_name|default:request.user.email }}
+    {% endif %}
+  </span>
+</button>
+{% endwith %}
+
+
+
 
         <form method="post" action="{% url 'boards:logout' %}" class="inline">
           {% csrf_token %}
@@ -665,6 +695,77 @@ document.addEventListener("DOMContentLoaded", () => {
     document.addEventListener("click", () => menu.classList.add("hidden"));
   }
 });
+</script>
+
+
+
+
+
+<form
+  id="cm-identity-form"
+  method="post"
+  hx-post="{% url 'boards:account_identity_label_update' %}"
+  hx-swap="none"
+  style="display:none;"
+>
+  {% csrf_token %}
+  {% with prof=request.user.profile %}
+    <input
+      type="hidden"
+      name="preferred_identity_label"
+      id="cm-preferred-identity-label"
+      value="{{ prof.preferred_identity_label|default:'display_name' }}"
+    >
+  {% endwith %}
+</form>
+
+
+<script>
+(function () {
+  function initHeaderIdentityToggle() {
+    const btn = document.getElementById("cm-identity-toggle");
+    const label = document.getElementById("cm-identity-label");
+    const input = document.getElementById("cm-preferred-identity-label");
+    const form = document.getElementById("cm-identity-form");
+    if (!btn || !label || !input || !form || !window.htmx) return;
+
+    const order = ["display_name", "email", "handle"];
+
+    function next(v) {
+      const i = order.indexOf(v);
+      return order[(i >= 0 ? i + 1 : 0) % order.length];
+    }
+
+    function textFor(which) {
+      if (which === "email") return (btn.dataset.email || "").trim();
+      if (which === "handle") return (btn.dataset.handle || "").trim();
+      return (btn.dataset.displayName || "").trim();
+    }
+
+    btn.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const cur = (input.value || "display_name").trim();
+      const nxt = next(cur);
+
+      // UI imediata
+      const txt = textFor(nxt) || textFor("display_name") || textFor("email") || "";
+      if (txt) label.textContent = txt;
+
+      input.value = nxt;
+
+      // persistência (forçada)
+      const url = form.getAttribute("hx-post");
+      window.htmx.ajax("POST", url, {
+        swap: "none",
+        values: { preferred_identity_label: nxt }
+      });
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", initHeaderIdentityToggle);
+})();
 </script>
 
 

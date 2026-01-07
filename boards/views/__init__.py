@@ -19,6 +19,8 @@ from .mentions import *  # noqa
 from .account import *  # noqa
 from .profiles import *  # noqa
 from .modal_card_term import *  # noqa
+from .account import account_identity_label_update
+
 
 class FirstLoginPasswordResetForm(PasswordResetForm):
     """

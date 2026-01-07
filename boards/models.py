@@ -348,6 +348,20 @@ class UserProfile(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
+    IDENTITY_LABEL_CHOICES = [
+        ("display_name", "Nome amigável"),
+        ("email", "Email"),
+        ("handle", "Handle"),
+    ]
+
+    preferred_identity_label = models.CharField(
+        max_length=20,
+        choices=IDENTITY_LABEL_CHOICES,
+        default="display_name",
+        blank=True,
+    )
+
+
     class Meta:
         indexes = [
             models.Index(fields=["handle"]),

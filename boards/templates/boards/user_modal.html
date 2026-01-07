@@ -15,16 +15,40 @@
         {% endif %}
       </div>
 
-      <div>
-        <div class="text-lg font-semibold leading-tight">
-          {{ profile.display_name|default:request.user.email }}
-        </div>
+      <div class="min-w-0">
+        {# IDENTITY TOGGLE (clicável) #}
+        <button
+          type="button"
+          id="um-identity-toggle"
+          class="text-left"
+          data-display-name="{{ profile.display_name|default:'' }}"
+          data-email="{{ request.user.email|default:'' }}"
+          data-handle="{% if profile.handle %}@{{ profile.handle }}{% else %}{% endif %}"
+          data-current="{{ profile.preferred_identity_label|default:'display_name' }}"
+          title="Clique para alternar (Nome / Email / Handle) à ser exibid na board"
+        >
+          <div id="um-identity-primary" class="text-lg font-semibold leading-tight truncate">
+            {# texto inicial (server-side) #}
+            {% if profile.preferred_identity_label == 'email' %}
+              {{ request.user.email|default:profile.display_name }}
+            {% elif profile.preferred_identity_label == 'handle' and profile.handle %}
+              @{{ profile.handle }}
+            {% else %}
+              {{ profile.display_name|default:request.user.email }}
+            {% endif %}
+          </div>
 
+          <div class="text-xs opacity-70" id="um-identity-hint">
+            Clique para alternar (Nome / Email / Handle)
+          </div>
+        </button>
+
+        {# linhas secundárias (mantidas) #}
         {% if request.user.email %}
-          <div class="text-sm opacity-80">{{ request.user.email }}</div>
+          <div class="text-sm opacity-80 truncate">{{ request.user.email }}</div>
         {% endif %}
 
-        <div class="text-sm opacity-80">
+        <div class="text-sm opacity-80 truncate">
           {% if profile.handle %}@{{ profile.handle }}{% endif %}
         </div>
       </div>
@@ -205,7 +229,7 @@
           <div class="text-sm font-semibold mb-2">Escolher um avatar</div>
           <div class="text-xs opacity-70 mb-3">Clique em um avatar e depois confirme.</div>
 
-    <div id="um-avatar-grid" class="flex flex-wrap gap-2">
+          <div id="um-avatar-grid" class="flex flex-wrap gap-2">
             {% for f in avatar_presets %}
               {% with rid="um-avatar-"|add:forloop.counter|stringformat:"s" %}
                 <label for="{{ rid }}" class="cursor-pointer block">
@@ -217,10 +241,10 @@
                     class="sr-only"
                     {% if profile.avatar_choice == f %}checked{% endif %}
                   >
-            <img
+                  <img
                     src="{% static 'images/avatar/' %}{{ f }}"
                     alt="{{ f }}"
-              class="um-avatar-item h-14 w-14 rounded-xl object-cover border border-white/40"
+                    class="um-avatar-item h-14 w-14 rounded-xl object-cover border border-white/40"
                     data-avatar="{{ f }}"
                   >
                 </label>
@@ -301,6 +325,67 @@
 
   </div>
 </div>
+
+{# FORM HIDDEN: salva preferred_identity_label #}
+<form
+  id="um-identity-form"
+  method="post"
+  hx-post="{% url 'boards:account_identity_label_update' %}"
+  hx-target="this"
+  hx-swap="none"
+  style="display:none;"
+>
+  {% csrf_token %}
+  <input
+    type="hidden"
+    name="preferred_identity_label"
+    id="um-preferred-identity-label"
+    value="{{ profile.preferred_identity_label|default:'display_name' }}"
+  >
+</form>
+
+<script>
+(function () {
+  const btn = document.getElementById("um-identity-toggle");
+  const primary = document.getElementById("um-identity-primary");
+  const input = document.getElementById("um-preferred-identity-label");
+  const form = document.getElementById("um-identity-form");
+  if (!btn || !primary || !input || !form || !window.htmx) return;
+
+  const order = ["display_name", "email", "handle"];
+
+  function next(v) {
+    const i = order.indexOf(v);
+    return order[(i >= 0 ? i + 1 : 0) % order.length];
+  }
+
+  function textFor(which) {
+    if (which === "email") return (btn.dataset.email || "").trim();
+    if (which === "handle") return (btn.dataset.handle || "").trim();
+    return (btn.dataset.displayName || "").trim();
+  }
+
+  btn.addEventListener("click", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const cur = (input.value || "display_name").trim();
+    const nxt = next(cur);
+
+    // atualiza UI imediatamente
+    const txt = textFor(nxt) || textFor("display_name") || textFor("email") || "";
+    if (txt) primary.textContent = txt;
+
+    // atualiza hidden e persiste via HTMX
+    input.value = nxt;
+    try {
+      window.htmx.trigger(form, "submit");
+    } catch (_e) {
+      try { form.submit(); } catch (_e2) {}
+    }
+  });
+})();
+</script>
 
 <script>
   window.umOpenTab = function(tab) {

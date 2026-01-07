@@ -260,7 +260,8 @@ urlpatterns = [
     views.user_profile_readonly_modal,
     name="user_profile_readonly_modal",
     ),
-    
+    path("account/identity-label/update/", views.account_identity_label_update, name="account_identity_label_update"),
+
 
     # ============================================================
     # CONTA / PERFIL (SOCIAL)

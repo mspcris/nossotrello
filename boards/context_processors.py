@@ -61,4 +61,13 @@ def brand_context(request):
 
     return brand
 
+
+from .models import UserProfile
+
+def user_profile(request):
+    if not request.user.is_authenticated:
+        return {}
+    prof, _ = UserProfile.objects.get_or_create(user=request.user)
+    return {"profile": prof}
+
 #END boards/context_processors.py

@@ -71,49 +71,87 @@ def account_modal(request):
 def account_profile_update(request):
     prof = _get_or_create_profile(request.user)
 
-    display_name = (request.POST.get("display_name") or "").strip()
-    handle = (request.POST.get("handle") or "").strip().lower()
-
-    posto = (request.POST.get("posto") or "").strip()
-    setor = (request.POST.get("setor") or "").strip()
-    ramal = (request.POST.get("ramal") or "").strip()
-    telefone = (request.POST.get("telefone") or "").strip()
-
     errors = {}
+    update_fields = []
 
-    if len(display_name) > 120:
-        errors["display_name"] = "Nome muito longo (máx 120)."
+    # ------------------------------------------------------------
+    # Preferência do "label" no header (clique no email)
+    # ------------------------------------------------------------
+    if "preferred_identity_label" in request.POST:
+        pref = (request.POST.get("preferred_identity_label") or "").strip()
 
-    if handle:
-        if len(handle) > 40:
-            errors["handle"] = "Handle muito longo (máx 40)."
-        elif not HANDLE_RE.match(handle):
-            errors["handle"] = "Use apenas letras minúsculas, números, _ ou ."
+        allowed = {"display_name", "email", "handle"}
+        if pref and pref not in allowed:
+            errors["preferred_identity_label"] = "Preferência inválida."
         else:
-            qs = UserProfile.objects.filter(handle=handle).exclude(pk=prof.pk)
-            if qs.exists():
-                errors["handle"] = "Este handle já está em uso."
+            prof.preferred_identity_label = pref or "display_name"
+            update_fields.append("preferred_identity_label")
 
-    if len(posto) > 120:
-        errors["posto"] = "Posto muito longo (máx 120)."
-    if len(setor) > 120:
-        errors["setor"] = "Setor muito longo (máx 120)."
-    if len(ramal) > 20:
-        errors["ramal"] = "Ramal muito longo (máx 20)."
-    if len(telefone) > 30:
-        errors["telefone"] = "Telefone muito longo (máx 30)."
+    # ------------------------------------------------------------
+    # Campos do perfil (só valida/atualiza se vierem no POST)
+    # ------------------------------------------------------------
+    if "display_name" in request.POST:
+        display_name = (request.POST.get("display_name") or "").strip()
+        if len(display_name) > 120:
+            errors["display_name"] = "Nome muito longo (máx 120)."
+        else:
+            prof.display_name = display_name
+            update_fields.append("display_name")
+
+    if "handle" in request.POST:
+        handle = (request.POST.get("handle") or "").strip().lower()
+
+        if handle:
+            if len(handle) > 40:
+                errors["handle"] = "Handle muito longo (máx 40)."
+            elif not HANDLE_RE.match(handle):
+                errors["handle"] = "Use apenas letras minúsculas, números, _ ou ."
+            else:
+                qs = UserProfile.objects.filter(handle=handle).exclude(pk=prof.pk)
+                if qs.exists():
+                    errors["handle"] = "Este handle já está em uso."
+        # se passou validação, aplica (ou None)
+        if "handle" not in errors:
+            prof.handle = handle or None
+            update_fields.append("handle")
+
+    if "posto" in request.POST:
+        posto = (request.POST.get("posto") or "").strip()
+        if len(posto) > 120:
+            errors["posto"] = "Posto muito longo (máx 120)."
+        else:
+            prof.posto = posto
+            update_fields.append("posto")
+
+    if "setor" in request.POST:
+        setor = (request.POST.get("setor") or "").strip()
+        if len(setor) > 120:
+            errors["setor"] = "Setor muito longo (máx 120)."
+        else:
+            prof.setor = setor
+            update_fields.append("setor")
+
+    if "ramal" in request.POST:
+        ramal = (request.POST.get("ramal") or "").strip()
+        if len(ramal) > 20:
+            errors["ramal"] = "Ramal muito longo (máx 20)."
+        else:
+            prof.ramal = ramal
+            update_fields.append("ramal")
+
+    if "telefone" in request.POST:
+        telefone = (request.POST.get("telefone") or "").strip()
+        if len(telefone) > 30:
+            errors["telefone"] = "Telefone muito longo (máx 30)."
+        else:
+            prof.telefone = telefone
+            update_fields.append("telefone")
 
     if errors:
         return _render_account_modal(request, errors=errors, active_tab="profile")
 
-    prof.display_name = display_name
-    prof.handle = handle or None
-    prof.posto = posto
-    prof.setor = setor
-    prof.ramal = ramal
-    prof.telefone = telefone
-
-    prof.save(update_fields=["display_name", "handle", "posto", "setor", "ramal", "telefone"])
+    if update_fields:
+        prof.save(update_fields=sorted(set(update_fields)))
 
     return _render_account_modal(
         request,
@@ -253,3 +291,22 @@ def account_avatar_choice_update(request):
         pass
 
     return resp
+
+from django.http import HttpResponse, HttpResponseBadRequest
+from django.views.decorators.http import require_POST
+from django.contrib.auth.decorators import login_required
+
+@require_POST
+@login_required
+def account_identity_label_update(request):
+    prof = _get_or_create_profile(request.user)
+
+    val = (request.POST.get("preferred_identity_label") or "display_name").strip()
+
+    allowed = {k for k, _ in UserProfile.IDENTITY_LABEL_CHOICES}
+    if val not in allowed:
+        return HttpResponseBadRequest("invalid preferred_identity_label")
+
+    prof.preferred_identity_label = val
+    prof.save(update_fields=["preferred_identity_label"])
+    return HttpResponse("", status=204)
