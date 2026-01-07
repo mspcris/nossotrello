@@ -88,7 +88,7 @@
     </div>
 
     {# ===================== CRIAR NOVO AGRUPAMENTO ===================== #}
-    <div class="mb-4">
+    <div class="flex flex-wrap gap-6" >
       <form class="flex gap-2 items-center flex-wrap"
             hx-post="{% url 'boards:home_group_create' %}"
             hx-target="#home-custom-groups"
@@ -100,13 +100,12 @@
     </div>
 
     {# ===================== GRUPOS CUSTOM ===================== #}
-    <div id="home-custom-groups" class="flex flex-col gap-6">
+     <div id="home-custom-groups" class="pt-2 pr-4">
       {% for row in custom_groups %}
         {% include "boards/partials/home_group_block.html" with g=row.group items=row.items favorite_board_ids=favorite_board_ids %}
       {% empty %}
       {% endfor %}
     </div>
-
   </div>
 
   {# ===================== LISTAS BASE ===================== #}

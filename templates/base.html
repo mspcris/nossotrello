@@ -232,6 +232,97 @@
     }
 
 
+
+
+
+
+
+
+
+
+    /* =================================================================
+   CORREÇÃO FINAL: FORÇA BRUTA DE LAYOUT
+   ================================================================= */
+
+/* 1. CONTAINER: A REGRA DE OURO
+   Força TODOS os containers (incluindo o teimoso do agrupamento) 
+   a serem Flexbox de LINHA (lado a lado) e com QUEBRA de linha. 
+   O 'flex-direction: row !important' é o que impede a fila indiana.
+*/
+.home-group-items,
+.home-group-dropzone,
+.boards-grid,
+#home-favorites-items,
+#home-owned-list,
+#home-shared-list {
+  display: flex !important;
+  flex-direction: row !important; /* <--- OBRIGA a ficar lado a lado */
+  flex-wrap: wrap !important;     /* <--- OBRIGA a quebrar linha quando acaba o espaço */
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  gap: 12px !important; /* Gap fixo para facilitar o cálculo */
+  width: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+}
+
+/* 2. O ITEM (CARD): COMPORTAMENTO PADRÃO
+   Reseta largura para evitar o efeito "tripa" ou espremido.
+*/
+.board-card {
+  flex: 0 0 auto !important; /* Não estica nem encolhe sozinho */
+  box-sizing: border-box !important;
+  /* Desktop padrão (caso não tenha classe no body, usa tamanho fixo) */
+  width: var(--board-width, 16rem) !important;
+}
+
+/* 3. MOBILE: MATEMÁTICA ESTRITA DO MENU 1-2-3
+   (Aplica-se apenas abaixo de 767px)
+*/
+@media (max-width: 767px) {
+  
+  /* --- MODO 1 COLUNA --- */
+  body.boards-cols-1 .board-card {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* --- MODO 2 COLUNAS (O Padrão geralmente) --- */
+  /* Cálculo: (100% / 2) - (metade do gap de 12px) = 50% - 6px */
+  body.boards-cols-2 .board-card {
+    width: calc(50% - 6px) !important;
+  }
+
+  /* --- MODO 3 COLUNAS --- */
+  /* Cálculo: (100% / 3) - (compensação do gap) = aprox 33% - 8px */
+  body.boards-cols-3 .board-card {
+    width: calc(33.33% - 8px) !important;
+  }
+
+  /* Se por acaso nenhuma classe estiver no body, força 2 colunas como fallback seguro */
+  body:not(.boards-cols-1):not(.boards-cols-2):not(.boards-cols-3) .board-card {
+    width: calc(50% - 6px) !important;
+  }
+
+  /* Ajustes visuais internos para o card não quebrar quando pequeno */
+  .board-card {
+    min-width: 0 !important; /* Permite encolher sem estourar layout */
+    margin: 0 !important;
+  }
+  
+  .board-card__cover {
+    height: 70px !important; /* Altura fixa para a capa */
+  }
+  
+  .board-card__body h2 {
+    font-size: 0.85rem !important;
+    line-height: 1.2 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+}
   </style>
 </head>
 

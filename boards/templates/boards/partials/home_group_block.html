@@ -1,58 +1,30 @@
-{# boards/templates/boards/partials/home_group_block.html #}
-
-<div class="home-group-block rounded-xl bg-white/20 backdrop-blur-md border border-white/20 p-4"
-     data-group-id="{{ g.id }}">
-
-  <div class="flex items-center justify-between gap-3 mb-3">
-    <div class="flex items-center gap-2 min-w-0">
-      {% if g.is_favorites %}
-        <h3 class="text-base font-semibold truncate">⭐ {{ g.name }}</h3>
-      {% else %}
-        <h3 class="text-base font-semibold truncate">{{ g.name }}</h3>
-      {% endif %}
+<div class="mb-6 home-group-wrapper" id="group-{{ g.id }}">
+  
+  {# Cabeçalho simples sem fundo #}
+  <div class="flex items-center justify-between mb-3 px-1">
+    <div>
+      <h2 class="text-lg font-semibold text-white">
+        {{ g.name }}
+      </h2>
     </div>
 
-    {% if not g.is_favorites %}
-      <div class="flex items-center gap-2 shrink-0">
-        <button type="button"
-                class="text-xs underline text-white/90"
-                onclick="HomeGroups.renameGroup({{ g.id }}, '{{ g.name|escapejs }}')">
-          Renomear
-        </button>
-
-        <button type="button"
-                class="text-xs underline text-red-200"
-                onclick="HomeGroups.deleteGroup({{ g.id }})">
-          Apagar
-        </button>
-      </div>
-    {% endif %}
+    {# Ação de Apagar (Esta já existe no seu projeto) #}
+    <div>
+      <button class="text-red-300 hover:text-red-100 text-xs font-semibold transition-colors"
+              hx-delete="{% url 'boards:home_group_delete' g.id %}"
+              hx-confirm="Deseja apagar o grupo '{{ g.name }}'? (Os quadros não serão excluídos)"
+              hx-target="#group-{{ g.id }}"
+              hx-swap="outerHTML">
+        Apagar Agrupamento
+      </button>
+    </div>
   </div>
 
-  <div class="home-group-dropzone" data-group-id="{{ g.id }}">
-    <div class="flex flex-wrap gap-6" id="home-group-items-{{ g.id }}">
-
-      {% for it in items %}
-        <div class="relative">
-          {# Card padrão (mesmo visual/estrutura de Meus/Compartilhados/Favoritos) #}
-          {% include "boards/partials/home_board_card.html" with board=it.board favorite_board_ids=favorite_board_ids %}
-
-          {# Ação específica do agrupamento: remover do agrupamento (não apaga o board) #}
-          {% if not g.is_favorites %}
-            <button type="button"
-                    class="absolute top-2 right-10 text-xs underline text-red-300"
-                    onclick="HomeGroups.removeFromGroup({{ g.id }}, {{ it.board.id }}, this)">
-              Remover
-            </button>
-          {% endif %}
-        </div>
-      {% empty %}
-        <div class="text-gray-300 backdrop-blur-lg px-4 py-2 rounded-lg">
-          Arraste quadros aqui para organizar.
-        </div>
-      {% endfor %}
-
-    </div>
+  {# Container dos cards: Pelado, sem painel de fundo, seguindo o CSS global #}
+  <div class="home-group-items home-group-dropzone w-full" data-group-id="{{ g.id }}">
+    {% for it in items %}
+      {% include "boards/partials/home_board_card.html" with board=it.board favorite_board_ids=favorite_board_ids subtitle="Organizado aqui" show_delete_button=False is_shared=False %}
+    {% endfor %}
   </div>
 
 </div>

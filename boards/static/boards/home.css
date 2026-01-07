@@ -17,28 +17,7 @@ body.boards-cols-1 { --boards-cols: 1; }
 body.boards-cols-2 { --boards-cols: 2; }
 body.boards-cols-3 { --boards-cols: 3; }
 
-/* Containers principais */
-#home-favorites-items,
-.home-group-items,
-#home-owned-list,
-#home-shared-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--boards-gap);
-  align-items: stretch;
-}
 
-/* Mobile usa grid */
-@media (max-width: 767px) {
-  #home-favorites-items,
-  .home-group-items,
-  #home-owned-list,
-  #home-shared-list {
-    display: grid;
-    grid-template-columns: repeat(var(--boards-cols), minmax(0, 1fr));
-    gap: var(--boards-gap);
-  }
-}
 
 /* ================================
    CARD
@@ -174,3 +153,19 @@ body.boards-cols-3 { --boards-cols: 3; }
 .board-card.delete-mode .delete-button {
   display: inline-block !important;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
