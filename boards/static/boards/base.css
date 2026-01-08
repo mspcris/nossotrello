@@ -1257,6 +1257,33 @@ pre {
   }
 }
 
+  /* ============================================================
+     HEADER MOBILE: LOGO + AVATAR (não mexe no desktop)
+     ============================================================ */
+
+  .cm-header-mobile .cm-header-row{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .cm-header-mobile .cm-brand-logo{
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 999px !important;
+    object-fit: cover !important;
+    display: block !important;
+  }
+
+  .cm-header-mobile .cm-avatar{
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 999px !important;
+    object-fit: cover !important;
+    display: block !important;
+  }
+
+
 /* =======================================================================
    FIM DO BASE.CSS CONSOLIDADO
    ======================================================================= */
