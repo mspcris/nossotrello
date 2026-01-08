@@ -252,16 +252,26 @@ if (favContainer) {
 
     // ========= novo: agrupar por botão =========
     openGroupPicker: function (boardId, event) {
-      if (event) { event.preventDefault(); event.stopPropagation(); }
+  if (event) { event.preventDefault(); event.stopPropagation(); }
 
-      const groups = Array.isArray(window.HOME_GROUPS) ? window.HOME_GROUPS : [];
-      if (!groups.length) {
-        alert("Nenhum agrupamento disponível. Crie um agrupamento primeiro.");
-        return;
-      }
+  // Lê do DOM para refletir create/delete/rename sem F5
+  const groups = Array.from(document.querySelectorAll("#home-custom-groups .home-group-wrapper"))
+    .map((wrap) => {
+      const idRaw = (wrap.id || "").replace("group-", "");
+      const id = Number(idRaw || 0);
+      const name = (wrap.querySelector("h2")?.textContent || "").trim();
+      return (id && name) ? { id, name } : null;
+    })
+    .filter(Boolean);
 
-      renderGroupPickerModal(groups, boardId);
-    },
+  if (!groups.length) {
+    alert("Nenhum agrupamento disponível. Crie um agrupamento primeiro.");
+    return;
+  }
+
+  renderGroupPickerModal(groups, boardId);
+},
+
 
     addToGroup: async function (boardId, groupId) {
       try {
@@ -286,4 +296,6 @@ if (favContainer) {
 
   document.addEventListener("DOMContentLoaded", ensureSortableHome);
   document.body.addEventListener("htmx:afterSwap", ensureSortableHome);
+  document.body.addEventListener("htmx:load", ensureSortableHome);
+
 })();

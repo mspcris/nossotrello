@@ -89,14 +89,18 @@
 
     {# ===================== CRIAR NOVO AGRUPAMENTO ===================== #}
     <div class="flex flex-wrap gap-6" >
-      <form class="flex gap-2 items-center flex-wrap"
-            hx-post="{% url 'boards:home_group_create' %}"
-            hx-target="#home-custom-groups"
-            hx-swap="afterbegin">
-        {% csrf_token %}
-        <input type="text" name="name" class="rounded-lg px-3 py-2 w-64" placeholder="Novo agrupamento (ex: Clínicas RJ)">
-        <button type="submit" class="px-3 py-2 bg-white/70 rounded-lg font-semibold">+ Criar agrupamento</button>
-      </form>
+      <form
+  class="flex gap-2 items-center flex-wrap"
+  hx-post="{% url 'boards:home_group_create' %}"
+  hx-target="#home-custom-groups"
+  hx-swap="beforeend"
+  hx-on::after-request="if(event.detail.successful){ this.querySelector('input[name=name]').value=''; }"
+>
+  {% csrf_token %}
+  <input type="text" name="name" class="rounded-lg px-3 py-2 w-64" placeholder="Novo agrupamento (ex: Clínicas RJ)">
+  <button type="submit" class="px-3 py-2 bg-white/70 rounded-lg font-semibold">+ Criar agrupamento</button>
+</form>
+
     </div>
 
     {# ===================== GRUPOS CUSTOM ===================== #}
