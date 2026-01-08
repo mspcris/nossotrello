@@ -409,6 +409,13 @@ body.is-home .boards-cols-switch .bcs-btn.is-active {
   border-color: rgba(5,150,105,0.90) !important;
 }
 
+/* Barra de colunas: só mobile */
+@media (min-width: 768px) {
+  .boards-cols-switch {
+    display: none !important;
+  }
+}
+
   </style>
 </head>
 <body
@@ -540,8 +547,8 @@ body.is-home .boards-cols-switch .bcs-btn.is-active {
 
 
 <!-- 1 / 2 / 3 / Auto (DESKTOP) — centralizado -->
-<div class="w-full flex justify-center mt-3">
-  <div class="boards-cols-switch hidden md:flex" role="group" aria-label="Colunas">
+<div class="w-full flex justify-center mt-3 md:hidden">
+  <div class="boards-cols-switch" role="group" aria-label="Colunas">
     <button type="button" class="bcs-btn" data-cols="1">1</button>
     <button type="button" class="bcs-btn" data-cols="2">2</button>
     <button type="button" class="bcs-btn" data-cols="3">3</button>
