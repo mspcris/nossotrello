@@ -123,132 +123,47 @@
        CSS utilitário + ajustes modal
        ============================================================ -->
   <style>
-    pre {
-      background: transparent !important;
-      padding: 0 !important;
-      margin: 0 0 1rem 0 !important;
-      border-radius: 0 !important;
-      color: inherit !important;
-      box-shadow: none !important;
-      border: none !important;
-      position: relative;
-      white-space: pre-wrap !important;
-      word-break: break-word !important;
-    }
+/* ============================================================
+   MODAL — FULLSCREEN MOBILE (CRÍTICO DE ORDEM)
+   ============================================================ */
+@media (max-width: 767px) {
+  #modal {
+    padding: 0 !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+  }
 
-    .code-wrapper { position: relative; }
+  #card-modal-root {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+  }
 
-    .copy-code-btn {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      background: #444;
-      color: white;
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 11px;
-      cursor: pointer;
-      opacity: 0.8;
-      transition: 0.2s;
-    }
-    .copy-code-btn:hover { opacity: 1; }
+  #modal-body {
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    overflow: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
 
-    /* MOBILE: modal fullscreen */
-    @media (max-width: 767px) {
-      #modal {
-        padding: 0 !important;
-        align-items: stretch !important;
-        justify-content: stretch !important;
-      }
+  html, body { overflow-x: hidden !important; }
+  #modal, #modal * { box-sizing: border-box; }
+}
 
-      #card-modal-root {
-        width: 100vw !important;
-        max-width: 100vw !important;
-        height: 100dvh !important;
-        max-height: 100dvh !important;
-        border-radius: 0 !important;
-        margin: 0 !important;
-      }
-
-      #modal-body {
-        height: 100dvh !important;
-        max-height: 100dvh !important;
-        border-radius: 0 !important;
-        overflow: auto !important;
-        -webkit-overflow-scrolling: touch;
-      }
-
-      html, body { overflow-x: hidden !important; }
-      #modal, #modal * { box-sizing: border-box; }
-    }
-
-    #modal { pointer-events: auto; }
-    #card-modal-root { pointer-events: auto; }
-
-    /* Wallpaper helper */
-    .home-background {
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
-    }
-
-    /* Modal root base */
-    .card-modal {
-      width: min(1000px, 96vw);
-      max-height: min(86vh, 860px);
-    }
-
-    /* Scroll único */
-    .card-modal-scroll {
-      overflow: auto;
-      -webkit-overflow-scrolling: touch;
-    }
-
-    /* Header search */
-    #header-search-slot .w-64 {
-      width: 100% !important;
-      max-width: 100% !important;
-    }
-
-    #header-search-slot input#board-filter {
-      width: 100% !important;
-      border-radius: 9999px !important;
-      padding-right: 2.75rem !important;
-      background-color: rgba(255, 255, 255, 0.75) !important;
-      border: 1px solid rgba(0, 0, 0, 0.18) !important;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M21 21l-4.35-4.35m1.1-5.15a7 7 0 11-14 0 7 7 0 0114 0z'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 0.85rem center;
-      background-size: 18px 18px;
-    }
-
-    #header-search-slot input#board-filter::placeholder {
-      color: rgba(107, 114, 128, 0.85);
-    }
-
-    #header-search-slot input#board-filter:focus {
-      outline: none;
-      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.35);
-    }
+#modal { pointer-events: auto; }
+#card-modal-root { pointer-events: auto; }
 
 
+/* ============================================================
+   MISSÃO 00 — CONTROLE ABSOLUTO DE COLUNAS (HOME / MOBILE)
+   FLEX + WIDTH MANUAL (FORÇA BRUTA CONTROLADA)
+   ============================================================ */
 
-
-
-
-
-
-
-
-    /* =================================================================
-   CORREÇÃO FINAL: FORÇA BRUTA DE LAYOUT
-   ================================================================= */
-
-/* 1. CONTAINER: A REGRA DE OURO
-   Força TODOS os containers (incluindo o teimoso do agrupamento) 
-   a serem Flexbox de LINHA (lado a lado) e com QUEBRA de linha. 
-   O 'flex-direction: row !important' é o que impede a fila indiana.
-*/
+/* Containers da HOME */
 .home-group-items,
 .home-group-dropzone,
 .boards-grid,
@@ -256,65 +171,53 @@
 #home-owned-list,
 #home-shared-list {
   display: flex !important;
-  flex-direction: row !important; /* <--- OBRIGA a ficar lado a lado */
-  flex-wrap: wrap !important;     /* <--- OBRIGA a quebrar linha quando acaba o espaço */
+  flex-direction: row !important;
+  flex-wrap: wrap !important;
   align-items: stretch !important;
   justify-content: flex-start !important;
-  gap: 12px !important; /* Gap fixo para facilitar o cálculo */
+  gap: 12px !important;
   width: 100% !important;
   padding: 0 !important;
   margin: 0 !important;
   box-sizing: border-box !important;
 }
 
-/* 2. O ITEM (CARD): COMPORTAMENTO PADRÃO
-   Reseta largura para evitar o efeito "tripa" ou espremido.
-*/
+/* Card base */
 .board-card {
-  flex: 0 0 auto !important; /* Não estica nem encolhe sozinho */
+  flex: 0 0 auto !important;
   box-sizing: border-box !important;
-  /* Desktop padrão (caso não tenha classe no body, usa tamanho fixo) */
   width: var(--board-width, 16rem) !important;
 }
 
-/* 3. MOBILE: MATEMÁTICA ESTRITA DO MENU 1-2-3
-   (Aplica-se apenas abaixo de 767px)
-*/
+/* MOBILE — lógica 1 / 2 / 3 colunas */
 @media (max-width: 767px) {
-  
-  /* --- MODO 1 COLUNA --- */
+
   body.boards-cols-1 .board-card {
     width: 100% !important;
     max-width: 100% !important;
   }
 
-  /* --- MODO 2 COLUNAS (O Padrão geralmente) --- */
-  /* Cálculo: (100% / 2) - (metade do gap de 12px) = 50% - 6px */
   body.boards-cols-2 .board-card {
     width: calc(50% - 6px) !important;
   }
 
-  /* --- MODO 3 COLUNAS --- */
-  /* Cálculo: (100% / 3) - (compensação do gap) = aprox 33% - 8px */
   body.boards-cols-3 .board-card {
     width: calc(33.33% - 8px) !important;
   }
 
-  /* Se por acaso nenhuma classe estiver no body, força 2 colunas como fallback seguro */
   body:not(.boards-cols-1):not(.boards-cols-2):not(.boards-cols-3) .board-card {
     width: calc(50% - 6px) !important;
   }
 
-  /* Ajustes visuais internos para o card não quebrar quando pequeno */
   .board-card {
-    min-width: 0 !important; /* Permite encolher sem estourar layout */
+    min-width: 0 !important;
     margin: 0 !important;
   }
-  
+
   .board-card__cover {
-    height: 70px !important; /* Altura fixa para a capa */
+    height: 70px !important;
   }
-  
+
   .board-card__body h2 {
     font-size: 0.85rem !important;
     line-height: 1.2 !important;
@@ -323,6 +226,8 @@
     text-overflow: ellipsis !important;
   }
 }
+
+
   </style>
 </head>
 
@@ -404,13 +309,6 @@
     <div class="flex items-center justify-end gap-3 min-w-[220px]">
       {% if request.user.is_authenticated %}
         
-      
-<!--
-              <span class="text-sm bg-white/70 px-2 py-1 rounded">
-          {{ request.user.get_full_name|default:request.user.get_username }}
-        </span>
--->
-
 
 {% with prof=request.user.profile %}
 <button

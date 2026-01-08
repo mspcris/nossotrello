@@ -159,11 +159,70 @@ body.boards-cols-3 { --boards-cols: 3; }
 
 
 
+:root {
+  --boards-cols: 3;
+}
+
+body.boards-cols-2 { --boards-cols: 2; }
+
+.board-card {
+  width: var(--board-width);
+}
+
+@media (max-width: 767px) {
+  .board-card {
+    width: 100%;
+  }
+}
 
 
 
 
 
+
+
+
+/* ============================================================
+   HOME — REMOVER QUADRO DO AGRUPAMENTO
+   ============================================================ */
+
+.remove-from-group-btn {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 20;
+
+  opacity: 0;
+  pointer-events: none;
+
+  background: rgba(239, 68, 68, 0.9);
+  color: #fff;
+  border: 0;
+  border-radius: 9999px;
+  padding: 2px 8px;
+
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1;
+
+  transition: opacity 0.15s ease;
+}
+
+/* Desktop: aparece no hover */
+@media (hover: hover) and (pointer: fine) {
+  .home-group-items .board-card:hover .remove-from-group-btn {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+/* Mobile: sempre visível */
+@media (hover: none) {
+  .home-group-items .remove-from-group-btn {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
 
 
 

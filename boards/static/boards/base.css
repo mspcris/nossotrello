@@ -1119,6 +1119,144 @@ html.dark #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-
   flex-wrap: wrap;
 }
 
+
+/* ================================
+   CODE / PRISM
+   ================================ */
+pre {
+  background: transparent !important;
+  padding: 0 !important;
+  margin: 0 0 1rem 0 !important;
+  border-radius: 0 !important;
+  color: inherit !important;
+  box-shadow: none !important;
+  border: none !important;
+  position: relative;
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+}
+
+.code-wrapper { position: relative; }
+
+.copy-code-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: #444;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  opacity: 0.8;
+  transition: 0.2s;
+}
+.copy-code-btn:hover { opacity: 1; }
+
+
+/* ================================
+   HELPERS
+   ================================ */
+.home-background {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+
+/* ================================
+   HEADER SEARCH
+   ================================ */
+#header-search-slot .w-64 {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+#header-search-slot input#board-filter {
+  width: 100% !important;
+  border-radius: 9999px !important;
+  padding-right: 2.75rem !important;
+  background-color: rgba(255, 255, 255, 0.75) !important;
+  border: 1px solid rgba(0, 0, 0, 0.18) !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M21 21l-4.35-4.35m1.1-5.15a7 7 0 11-14 0 7 7 0 0114 0z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+  background-size: 18px 18px;
+}
+
+#header-search-slot input#board-filter::placeholder {
+  color: rgba(107, 114, 128, 0.85);
+}
+
+#header-search-slot input#board-filter:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.35);
+}
+
+
+/* ============================================================
+   MOBILE — SWITCH 1 / 2 / 3 / AUTO (DEBUG COLUNAS)
+   ============================================================ */
+@media (max-width: 767px) {
+
+  .boards-cols-switch {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 1300;
+
+    display: flex;
+    gap: 6px;
+    padding: 6px;
+
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 12px;
+
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+  }
+
+  .boards-cols-switch .bcs-btn {
+    min-width: 34px;
+    height: 34px;
+
+    padding: 0 8px;
+    border-radius: 8px;
+
+    font-size: 0.85rem;
+    font-weight: 700;
+    line-height: 1;
+
+    border: 1px solid rgba(0, 0, 0, 0.25);
+    background: rgba(255, 255, 255, 0.85);
+    color: #111;
+
+    cursor: pointer;
+    user-select: none;
+
+    transition: background 0.15s ease,
+                color 0.15s ease,
+                transform 0.1s ease,
+                box-shadow 0.1s ease;
+  }
+
+  .boards-cols-switch .bcs-btn:hover {
+    background: rgba(255, 255, 255, 1);
+  }
+
+  .boards-cols-switch .bcs-btn:active {
+    transform: scale(0.95);
+  }
+
+  .boards-cols-switch .bcs-btn.is-active {
+    background: rgba(16, 185, 129, 0.9);
+    color: #fff;
+    border-color: rgba(0, 0, 0, 0.35);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25);
+  }
+}
+
 /* =======================================================================
    FIM DO BASE.CSS CONSOLIDADO
    ======================================================================= */

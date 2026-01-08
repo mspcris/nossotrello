@@ -1,3 +1,4 @@
+<!--home_board_card.html-->
 {% load static %}
 
 <div class="board-card" data-board-id="{{ board.id }}" data-board-name="{{ board.name|lower }}">
@@ -46,9 +47,23 @@
     {% endif %}
   </a>
 
+{% if subtitle == "Organizado aqui" and group_id %}
+  <button
+    type="button"
+    class="remove-from-group-btn"
+    hx-post="{% url 'boards:home_group_item_remove' group_id board.id %}"
+    hx-target="closest .board-card"
+    hx-swap="outerHTML">
+    Remover
+  </button>
+{% endif %}
+
+
+
   {% if show_delete_button %}
     <button hx-post="{% url 'boards:delete_board' board.id %}" 
             hx-target="closest .board-card" hx-swap="outerHTML"
             class="delete-button">Excluir quadro</button>
   {% endif %}
 </div>
+<!--end home_board_card.html-->
