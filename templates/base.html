@@ -228,13 +228,104 @@
 }
 
 
+  /* ============================================================
+     MOBILE: seletor 1/2/3/Auto no canto direito
+     ============================================================ */
+
+  .cm-header-mobile{
+    position: relative; /* ancora o absolute do switch */
+  }
+
+  .cm-header-mobile .boards-cols-switch{
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    left: auto;
+    z-index: 50;
+    margin: 0 !important;
+  }
+
+  /* garante que a linha do header não “bata” no switch */
+  .cm-header-mobile .cm-header-row{
+    padding-top: 58px; /* ajuste fino se precisar */
+  }
+
+body:not(.is-home) .cm-header-search {
+  display: none;
+}
+
+
+/* Logo mobile */
+.cm-brand-logo {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+/* Avatar mobile */
+.cm-avatar {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+@media (max-width: 767px) {
+  .cm-header-search {
+    margin-top: 10px;
+  }
+}
+
+/* Desktop: busca no centro */
+@media (min-width: 768px) {
+  .cm-header-search {
+    display: flex;
+    justify-content: center;
+    flex: 1;
+  }
+}
+
+/* Mobile: busca na linha 2 */
+@media (max-width: 767px) {
+  .cm-header-search {
+    width: 100%;
+    margin-top: 10px;
+  }
+}
+
+/* ============================================================
+   HOME x BOARD — switch 1/2/3/Auto só na HOME
+   + override do base.css (que deixa fixed no topo)
+   ============================================================ */
+@media (max-width: 767px) {
+  body:not(.is-home) .boards-cols-switch {
+    display: none !important;
+  }
+
+  body.is-home .boards-cols-switch {
+    position: absolute !important;
+    top: 10px !important;
+    right: 12px !important;
+    left: auto !important;
+    z-index: 60 !important;
+  }
+
+  body.is-home .cm-header-row {
+    padding-top: 58px !important;
+  }
+}
+
   </style>
 </head>
-
 <body
-  class="min-h-screen p-6 text-slate-900 dark:text-slate-100 {% if home_bg %} home-background {% endif %}"
+  class="min-h-screen p-6 text-slate-900 dark:text-slate-100
+         {% if home_bg %} home-background {% endif %}
+         {% block body_class %}{% endblock %}"
   {% block body_attrs %}{% endblock %}
 >
+
+
   {% if home_bg and home_bg_image %}
     <div class="fixed inset-0 pointer-events-none z-0 bg-white/60 dark:bg-black/50"></div>
   {% endif %}
@@ -252,7 +343,7 @@
        DESKTOP / LANDSCAPE  (>= md) — 100% ORIGINAL
        ===================================================== -->
     <!-- DESKTOP / LANDSCAPE (>= md) -->
-  <div class="hidden md:flex relative items-center justify-between gap-3
+   <div class="flex flex-wrap md:flex-nowrap relative items-center justify-between gap-3
             mx-auto w-full max-w-[1400px] rounded-xl
             bg-emerald-900/70 backdrop-blur-md border border-white/30 shadow
             px-4 py-3">
@@ -293,16 +384,16 @@
 
     <!-- CENTRO -->
     <div class="flex-1 flex justify-center">
-      <div id="header-search-slot" class="w-full max-w-[920px]">
-        <div class="w-full rounded-2xl bg-white/35 backdrop-blur-md border border-white/30 shadow px-4 py-2">
-          
-          
-          {% block header_right_under_logo %} {% endblock %}
+      
 
+      <div class="cm-header-search">
+  <div id="header-search-slot" class="w-full max-w-[920px]">
+    <div class="w-full rounded-2xl bg-white/35 backdrop-blur-md border border-white/30 shadow px-4 py-2">
+      {% block header_right_under_logo %}{% endblock %}
+    </div>
+  </div>
+</div>
 
-
-        </div>
-      </div>
     </div>
 
     <!-- DIREITA -->
@@ -353,80 +444,6 @@
     </div>
   </div>
 
-   <!-- =====================================================
-       MOBILE RETRATO (< md)
-       ===================================================== -->
-  
-  
-       <div class="md:hidden w-full">
-    <div class="cm-header-mobile">
-      <div class="boards-cols-switch" role="group" aria-label="Colunas">
-  <button type="button" class="bcs-btn" data-cols="1">1</button>
-  <button type="button" class="bcs-btn" data-cols="2">2</button>
-  <button type="button" class="bcs-btn" data-cols="3">3</button>
-  <button type="button" class="bcs-btn" data-cols="auto">Auto</button>
-</div>
-
-
-      <!-- Linha 1 (row real) -->
-      <div class="cm-header-row">
-
-        <button id="menuToggleMobile"
-          type="button"
-          class="relative text-gray-900 bg-white/80 border border-gray-400 rounded-md px-3 py-2 shadow"
-          aria-label="Abrir menu">
-          ☰
-          <span id="drawer-unread-badge-mobile"
-                class="absolute -top-2 -right-2 hidden min-w-[18px] h-[18px] px-1
-                       rounded-full text-[11px] leading-[18px] text-white bg-red-600 text-center">
-            0
-          </span>
-        </button>
-
-        <div class="cm-brand">
-          <a href="{% url 'boards:boards_index' %}" class="select-none">
-            <img src="{% static brand_logo %}"
-                 alt="LOGOMARCA"
-                 class="cm-brand-logo"
-            >
-          </a>
-        </div>
-
-        <div class="cm-user-menu relative">
-          <img
-            src="{% if user_avatar_url %}{{ user_avatar_url }}{% else %}{% static brand_logo %}{% endif %}"
-            alt="Perfil"
-            class="cm-avatar"
-            id="cm-avatar-toggle">
-
-          <div class="cm-user-dropdown hidden" id="cm-user-dropdown">
-            <div class="cm-user-email mb-2 text-sm">
-              {% with prof=request.user.profile %}
-                {{ prof.display_name|default:request.user.email }}
-              {% endwith %}
-            </div>
-
-            <form method="post" action="{% url 'boards:logout' %}">
-              {% csrf_token %}
-              <button type="submit"
-                      class="w-full text-left text-sm px-3 py-2 rounded bg-emerald-600 text-white shadow">
-                Sair
-              </button>
-            </form>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- Linha 2 -->
-      {% if board %}
-        {# se você quiser mostrar o título do board aqui, a gente coloca depois #}
-      {% endif %}
-
-    </div>
-  </div>
-
-</header>
 
 
 

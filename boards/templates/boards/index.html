@@ -1,7 +1,7 @@
 {# boards/templates/boards/index.html #}
 {% extends "base.html" %}
 {% load static %}
-
+{% block body_class %}is-home{% endblock %}
 {% block extra_css %}
 <link rel="stylesheet" href="{% url 'boards:home_wallpaper_css' %}">
 <link rel="stylesheet" href="{% static 'boards/home.css' %}">
@@ -12,7 +12,7 @@
 {% block title %}NossoTrello - Boards{% endblock %}
 
 {% block header_right_under_logo %}
-  <div class="w-full hidden md:flex justify-center">
+    <div class="w-full flex justify-center">
     <div class="w-full max-w-[980px]">
       <div class="cm-search-panel w-full rounded-xl bg-emerald-200/70 backdrop-blur-md border border-white/30 shadow px-3 py-2">
         <div class="flex items-center gap-3">
