@@ -174,6 +174,7 @@ urlpatterns = [
     path("home/groups/<int:group_id>/items/add/", views.home_group_item_add, name="home_group_item_add"),
     path("home/groups/<int:group_id>/items/<int:board_id>/remove/", views.home_group_item_remove, name="home_group_item_remove"),
     path("home/favorites/toggle/<int:board_id>/", views.home_favorite_toggle, name="home_favorite_toggle"),
+    path("home/search/", views.home_search, name="home_search"),
 
 
 

@@ -36,11 +36,13 @@ def board_search(request, board_id: int):
             Q(title__icontains=q) |
             Q(description__icontains=q) |
             Q(tags__icontains=q) |
-            Q(logs__content__icontains=q) |                 # ABA ATIVIDADE (CardLog)
-            Q(checklists__title__icontains=q) |             # título do checklist
-            Q(checklist_items__text__icontains=q) |         # itens do checklist
-            Q(attachments__description__icontains=q)        # descrição do anexo (se usar)
+            Q(logs__content__icontains=q) |                  # ABA ATIVIDADE (CardLog)
+            Q(checklists__title__icontains=q) |              # título do checklist
+            Q(checklist_items__text__icontains=q) |          # itens do checklist
+            Q(attachments__description__icontains=q) |       # descrição do anexo (se usar)
+            Q(attachments__file__icontains=q)                # NOME/PATH do arquivo anexado
         )
+
         .distinct()
         .only("id", "column_id")
     )
@@ -51,4 +53,72 @@ def board_search(request, board_id: int):
     return JsonResponse({
         "card_ids": card_ids,
         "column_ids": column_ids,
+    })
+
+
+@login_required
+@require_GET
+def home_search(request):
+    q_raw = (request.GET.get("q") or "").strip()
+
+    if not q_raw:
+        return JsonResponse({"boards": [], "cards": []})
+
+    q = q_raw
+
+    # boards que o usuário tem acesso
+    accessible_board_ids_qs = (
+        BoardMembership.objects
+        .filter(user=request.user, board__is_deleted=False)
+        .values_list("board_id", flat=True)
+        .distinct()
+    )
+
+    # match por nome do board (mantém util)
+    matched_boards = (
+        Board.objects
+        .filter(id__in=accessible_board_ids_qs, is_deleted=False)
+        .filter(Q(name__icontains=q))
+        .values("id", "name")
+        .distinct()
+    )
+
+    # match por conteúdo do card (global)
+    cards_qs = (
+        Card.objects
+        .filter(
+            column__board_id__in=accessible_board_ids_qs,
+            column__is_deleted=False,
+            is_deleted=False,
+        )
+        .select_related("column", "column__board")
+        .filter(
+            Q(title__icontains=q) |
+            Q(description__icontains=q) |
+            Q(tags__icontains=q) |
+            Q(logs__content__icontains=q) |
+            Q(checklists__title__icontains=q) |
+            Q(checklist_items__text__icontains=q) |
+            Q(attachments__description__icontains=q) |
+            Q(attachments__file__icontains=q)
+        )
+        .distinct()
+        .only("id", "title", "column_id", "column__board_id")
+    )
+
+    # payload leve (sem HTML), pronto pro front renderizar
+    cards = []
+    for c in cards_qs[:80]:  # limite pra não explodir UI
+        board_id = getattr(c.column, "board_id", None)
+        cards.append({
+            "id": c.id,
+            "title": c.title or "(sem título)",
+            "board_id": board_id,
+        })
+
+    boards = list(matched_boards[:40])
+
+    return JsonResponse({
+        "boards": boards,
+        "cards": cards,
     })

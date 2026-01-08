@@ -126,4 +126,6 @@ def first_login(request):
     return redirect("boards:login")
 
 from .search import board_search  # noqa
+from .search import home_search
+
 #END boards/views/__init__.py

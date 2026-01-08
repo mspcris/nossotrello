@@ -417,6 +417,15 @@ body.is-home .boards-cols-switch .bcs-btn.is-active {
   }
 }
 
+#modal {
+  z-index: 99999 !important;
+  pointer-events: auto !important;
+}
+#card-modal-root, #modal-body {
+  pointer-events: auto !important;
+}
+
+
   </style>
 </head>
 <body
@@ -987,6 +996,17 @@ document.addEventListener("DOMContentLoaded", () => {
 })();
 </script>
 
+
+
+<script>
+window.addEventListener("popstate", () => {
+  // se voltar e não tem mais ?card, fecha modal
+  try {
+    const hasCard = new URLSearchParams(location.search).get("card");
+    if (!hasCard) window.Modal?.close?.();
+  } catch(e) {}
+});
+</script>
 
 
 

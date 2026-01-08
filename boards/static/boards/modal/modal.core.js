@@ -1,8 +1,19 @@
 // boards/static/boards/modal/modal.core.js
 (() => {
+  // ============================================================
+  // Modal Core — estado + open/close + foco + inert
+  // - Corrige "modal abre mas não clica" (pointer-events/invisible)
+  // - Mantém Genie effect quando existir lastCardRect
+  // - Hardening: não duplica init em HTMX swaps
+  // ============================================================
+
   const Modal =
     (window.Modal && typeof window.Modal === "object") ? window.Modal : {};
   window.Modal = Modal;
+
+  // evita redefinir se esse arquivo for carregado duas vezes
+  if (Modal.__core_inited) return;
+  Modal.__core_inited = true;
 
   const DEBUG =
     location.hostname === "localhost" ||
@@ -20,7 +31,7 @@
   state.lastOpenedAt ??= 0;
   state.lastCardRect ??= null;
 
-  // NOVO: controle de foco + inert
+  // foco / a11y
   state.lastFocusedEl ??= null;
 
   function getModalEl() {
@@ -36,8 +47,7 @@
   }
 
   function getBoardRootEl() {
-    // ajuste se seu board tiver um root específico
-    // fallback: corpo todo, exceto modal
+    // se tiver um root específico no board, use. senão, fallback para body.
     return document.getElementById("board-root") || document.body;
   }
 
@@ -57,7 +67,6 @@
   }
 
   function restoreFocusBeforeHide() {
-    // 1) se o foco atual está dentro do modal, devolve para quem abriu
     const active = document.activeElement;
 
     if (isInsideModal(active)) {
@@ -66,7 +75,7 @@
         if (tryFocus(last)) return;
       }
 
-      // fallback seguro: foca no body para não ficar dentro do modal
+      // fallback seguro fora do modal
       try {
         document.body.tabIndex = document.body.tabIndex || -1;
         tryFocus(document.body);
@@ -75,15 +84,13 @@
   }
 
   function applyInert(isOpen) {
-    // Aplica inert no "fundo" enquanto o modal está aberto
-    // Isso evita foco e clique fora (e melhora A11y).
+    // bloqueia o "fundo" enquanto o modal está aberto
     const modal = getModalEl();
     const board = getBoardRootEl();
     if (!modal || !board) return;
 
-    // se board == body, não aplique inert no body inteiro (senão mata o modal)
+    // se board == body, não aplique inert no body inteiro (mata o modal)
     if (board === document.body) {
-      // aplica inert em todos os filhos do body exceto o modal
       const kids = Array.from(document.body.children || []);
       for (const k of kids) {
         if (k === modal) continue;
@@ -93,7 +100,6 @@
       return;
     }
 
-    // caso exista um #board-root: inert nele
     if (isOpen) board.setAttribute("inert", "");
     else board.removeAttribute("inert");
   }
@@ -106,35 +112,61 @@
     } catch {}
   }
 
-
-
   // ============================================================
-  // PATCH — GENIE EFFECT (SAFE)
-  // ============================================================  
-  // tira foco de dentro do modal IMEDIATAMENTE (antes do timeout)
-  
-try {
-  const modalEl = getModalEl();
-  const active = document.activeElement;
-  if (modalEl && active && modalEl.contains(active)) {
-    // 1) blur no elemento focado (garante que ele não “segure” foco)
-    if (typeof active.blur === "function") active.blur();
+  // VISIBILITY HELPERS (CRÍTICO)
+  // - Seu #modal nasce com: opacity-0 pointer-events-none invisible
+  // - Se open() não remover isso => modal abre mas não clica
+  // ============================================================
+  function makeModalInteractive(modal) {
+    if (!modal) return;
 
-    // 2) devolve foco para quem abriu (se existir)
-    const last = state.lastFocusedEl;
-    if (last && document.contains(last) && !modalEl.contains(last) && typeof last.focus === "function") {
-      last.focus({ preventScroll: true });
-    } else {
-      // fallback seguro fora do modal
-      document.body.tabIndex = document.body.tabIndex || -1;
-      document.body.focus({ preventScroll: true });
-    }
+    // remove travas
+    modal.classList.remove("opacity-0", "pointer-events-none", "invisible");
+    // reforça visível
+    modal.classList.add("opacity-100");
+    // garante que não tem hidden (caso alguém use)
+    modal.classList.remove("hidden");
+
+    // hardening inline (caso CSS esteja ganhando)
+    modal.style.pointerEvents = "auto";
   }
-} catch {}
 
+  function makeModalNonInteractive(modal) {
+    if (!modal) return;
+
+    modal.classList.remove("opacity-100");
+    modal.classList.add("opacity-0", "pointer-events-none", "invisible");
+
+    // limpa inline
+    try {
+      modal.style.pointerEvents = "";
+    } catch {}
+  }
 
   // ============================================================
-  // OPEN — GENIE EFFECT (SAFE)
+  // HARDENING — se algo deixar foco preso dentro do modal
+  // (não execute fora de close/open; fica aqui como util)
+  // ============================================================
+  function forceBlurIfFocusedInsideModal() {
+    try {
+      const modalEl = getModalEl();
+      const active = document.activeElement;
+      if (modalEl && active && modalEl.contains(active)) {
+        if (typeof active.blur === "function") active.blur();
+
+        const last = state.lastFocusedEl;
+        if (last && document.contains(last) && !modalEl.contains(last) && typeof last.focus === "function") {
+          last.focus({ preventScroll: true });
+        } else {
+          document.body.tabIndex = document.body.tabIndex || -1;
+          document.body.focus({ preventScroll: true });
+        }
+      }
+    } catch {}
+  }
+
+  // ============================================================
+  // OPEN — GENIE EFFECT (SAFE) + FIX INTERAÇÃO
   // ============================================================
   Modal.open = function () {
     const modal = getModalEl();
@@ -144,58 +176,72 @@ try {
       return false;
     }
 
-    // NOVO: salva quem tinha foco antes de abrir
+    // anti double-open spam
+    const now = Date.now();
+    if (state.lastOpenedAt && now - state.lastOpenedAt < 150) {
+      return true;
+    }
+
+    // salva quem tinha foco antes de abrir
     state.lastFocusedEl = document.activeElement;
 
-    // garante presença visual sem display:none
-    modal.classList.add("modal-open");
+    // liga estado + acessibilidade
+    state.isOpen = true;
+    state.lastOpenedAt = now;
     modal.setAttribute("aria-hidden", "false");
 
-    // NOVO: bloqueia interação/foco no fundo
+    // ✅ torna clicável/visível (CRÍTICO)
+    makeModalInteractive(modal);
+
+    // marca open (se você usa isso em CSS)
+    modal.classList.add("modal-open");
+
+    // bloqueia fundo
     applyInert(true);
 
     const rect = state.lastCardRect;
 
+    // Genie (se tiver geometria)
     if (rect) {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
 
-      const scaleX = rect.width / root.offsetWidth;
-      const scaleY = rect.height / root.offsetHeight;
+      const scaleX = rect.width / Math.max(root.offsetWidth, 1);
+      const scaleY = rect.height / Math.max(root.offsetHeight, 1);
 
       const translateX = rect.left + rect.width / 2 - vw / 2;
       const translateY = rect.top + rect.height / 2 - vh / 2;
 
-      // 1️⃣ estado inicial (sem transição)
+      // estado inicial
       root.style.transition = "none";
       root.style.transformOrigin = "center center";
       root.style.transform =
         `translate(${translateX}px, ${translateY}px) scale(${scaleX}, ${scaleY})`;
       root.style.opacity = "0";
 
-      // 🔑 força layout (IMPRESCINDÍVEL)
+      // força layout
       root.getBoundingClientRect();
 
-      // 2️⃣ estado final (com transição)
+      // estado final
       requestAnimationFrame(() => {
         root.style.transition =
           "transform 420ms cubic-bezier(0.22, 1, 0.36, 1), opacity 200ms ease";
         root.style.transform = "translate(0,0) scale(1)";
         root.style.opacity = "1";
       });
+    } else {
+      // sem genie: garante root visível
+      root.style.opacity = "1";
     }
 
-    // NOVO: manda o foco para dentro do modal (depois do open)
-    // (não depende do conteúdo já ter carregado)
+    // foco dentro do modal (não depende do conteúdo ter carregado)
     requestAnimationFrame(() => {
       const closeBtn =
-        modal.querySelector("button.modal-top-x, [data-modal-close], #modal-top-x") ||
+        modal.querySelector("button.modal-top-x, [data-modal-close], #modal-close, #modal-top-x") ||
         modal.querySelector("button, [tabindex]:not([tabindex='-1'])");
       if (closeBtn) tryFocus(closeBtn);
     });
 
-    state.isOpen = true;
-    state.lastOpenedAt = Date.now();
     log("open()");
     return true;
   };
@@ -208,22 +254,28 @@ try {
     const root = getRootEl();
     const body = getBodyEl();
 
-    const rect = state.lastCardRect;
-
+    // estado
     state.isOpen = false;
     state.currentCardId = null;
 
-    // NOVO: antes de esconder, tira o foco de dentro do modal
+    // antes de esconder, tira foco de dentro do modal
     restoreFocusBeforeHide();
+    forceBlurIfFocusedInsideModal();
+
+    const rect = state.lastCardRect;
 
     const finalize = () => {
+      // remove marca open
       modal?.classList.remove("modal-open");
       modal?.setAttribute("aria-hidden", "true");
 
-      // NOVO: libera o fundo
+      // ✅ desliga interação
+      makeModalNonInteractive(modal);
+
+      // libera fundo
       applyInert(false);
 
-      // limpa resíduos para o próximo open
+      // limpa resíduos
       if (root) {
         root.style.transition = "";
         root.style.transform = "";
@@ -240,8 +292,8 @@ try {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
 
-      const scaleX = rect.width / root.offsetWidth;
-      const scaleY = rect.height / root.offsetHeight;
+      const scaleX = rect.width / Math.max(root.offsetWidth, 1);
+      const scaleY = rect.height / Math.max(root.offsetHeight, 1);
 
       const translateX = rect.left + rect.width / 2 - vw / 2;
       const translateY = rect.top + rect.height / 2 - vh / 2;
@@ -264,5 +316,21 @@ try {
     modal: getModalEl(),
     body: getBodyEl(),
     root: getRootEl(),
+  });
+
+  // hardening: se recarregar e estiver "aberto" no state, garante coerência visual
+  document.addEventListener("DOMContentLoaded", () => {
+    const modal = getModalEl();
+    if (!modal) return;
+
+    if (state.isOpen) {
+      modal.setAttribute("aria-hidden", "false");
+      makeModalInteractive(modal);
+      modal.classList.add("modal-open");
+      applyInert(true);
+    } else {
+      modal.setAttribute("aria-hidden", "true");
+      // não força nada aqui, só deixa como veio do HTML
+    }
   });
 })();
