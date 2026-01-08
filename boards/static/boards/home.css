@@ -227,4 +227,19 @@ body.boards-cols-2 { --boards-cols: 2; }
 
 
 
+/* =========================
+   HOME: header + busca “sticky”
+   (não mexe em grid/colunas)
+========================= */
+header {
+  position: sticky;
+  top: 0;
+  z-index: 60; /* acima dos cards */
+}
+
+/* opcional: evita “flicker”/sobreposição estranha em alguns browsers */
+#header-search-slot {
+  position: relative;
+  z-index: 61;
+}
 
