@@ -10,6 +10,27 @@
     return (s || "").toString().trim();
   }
 
+  function lower(s) {
+    return (s || "").toString().toLowerCase();
+  }
+
+  function highlight(text, q) {
+    const t = (text || "").toString();
+    const qq = (q || "").toString().trim();
+    if (!t || !qq) return esc(t);
+
+    const tl = t.toLowerCase();
+    const ql = qq.toLowerCase();
+    const i = tl.indexOf(ql);
+    if (i < 0) return esc(t);
+
+    const a = esc(t.slice(0, i));
+    const b = esc(t.slice(i, i + qq.length));
+    const c = esc(t.slice(i + qq.length));
+
+    return `${a}<mark class="px-1 rounded bg-emerald-200/70 text-emerald-950">${b}</mark>${c}`;
+  }
+
   function ensureResultsBox(input) {
     let box = document.getElementById("home-search-results");
     if (box) return box;
@@ -17,16 +38,18 @@
     box = document.createElement("div");
     box.id = "home-search-results";
     box.className =
-      "mt-2 w-full max-w-[980px] mx-auto rounded-xl bg-white/70 backdrop-blur-md " +
-      "border border-white/30 shadow px-3 py-2 hidden relative z-[120] pointer-events-auto";
+      [
+        "mt-2 w-full max-w-[980px] mx-auto",
+        "rounded-2xl border border-white/25 shadow-2xl",
+        "bg-white/18 backdrop-blur-xl",
+        "ring-1 ring-white/30",
+        "px-3 py-3 hidden",
+        "relative z-[2200] pointer-events-auto"
+      ].join(" ");
 
-    // encaixa logo após o painel de busca (mesmo bloco)
     const panel = input.closest(".cm-search-panel") || input.parentElement;
-    if (panel && panel.parentElement) {
-      panel.parentElement.appendChild(box);
-    } else {
-      input.parentElement.appendChild(box);
-    }
+    if (panel && panel.parentElement) panel.parentElement.appendChild(box);
+    else input.parentElement.appendChild(box);
 
     return box;
   }
@@ -36,21 +59,32 @@
     document.querySelectorAll(".home-group-block, #home-favorites-block").forEach(b => (b.style.display = "none"));
   }
 
-  function showHomeCardsAndGroups() {
+  function resetAll() {
     document.querySelectorAll(".board-card[data-board-id]").forEach(el => (el.style.display = ""));
     document.querySelectorAll(".home-group-block, #home-favorites-block").forEach(b => (b.style.display = ""));
-  }
-
-  function hideResultsBox() {
     const box = document.getElementById("home-search-results");
-    if (!box) return;
-    box.classList.add("hidden");
-    box.innerHTML = "";
+    if (box) {
+      box.innerHTML = "";
+      box.classList.add("hidden");
+    }
   }
 
-  function resetAll() {
-    showHomeCardsAndGroups();
-    hideResultsBox();
+  function badge(matchIn) {
+    const m = lower(matchIn);
+    const map = {
+      "title": "título",
+      "description": "descrição",
+      "tags": "tags",
+      "attachment": "anexo",
+      "checklist": "checklist",
+      "checklist_item": "item",
+      "activity": "atividade",
+      "card": "card",
+    };
+    const label = map[m] || m || "match";
+    return `<span class="ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold bg-white/35 border border-white/30 text-slate-900">
+      ${esc(label)}
+    </span>`;
   }
 
   function renderResults(box, data, q) {
@@ -58,7 +92,10 @@
     const boards = Array.isArray(data?.boards) ? data.boards : [];
 
     if (!cards.length && !boards.length) {
-      box.innerHTML = `<div class="text-sm text-gray-700">Nenhum resultado para <b>${esc(q)}</b>.</div>`;
+      box.innerHTML = `
+        <div class="text-sm text-white/90">
+          Nenhum resultado para <b class="text-white">${esc(q)}</b>.
+        </div>`;
       box.classList.remove("hidden");
       hideHomeCardsAndGroups();
       return;
@@ -66,18 +103,39 @@
 
     const cardsHtml = cards.length ? `
       <div class="mb-3">
-        <div class="text-xs font-semibold text-gray-700 mb-2">Cards</div>
+        <div class="text-xs font-semibold text-white/90 mb-2 tracking-wide">Cards</div>
         <div class="flex flex-col gap-2">
           ${cards.map(c => `
             <button
               type="button"
-              class="text-left block w-full rounded-lg bg-white/80 border border-gray-300 px-3 py-2 hover:bg-white transition"
+              class="text-left w-full rounded-xl px-3 py-2
+                     bg-white/25 hover:bg-white/35 transition
+                     border border-white/25 ring-1 ring-black/5
+                     shadow-md"
               data-card-id="${esc(c.id)}"
               data-board-id="${esc(c.board_id)}"
             >
+              <div class="flex items-center justify-between gap-2">
+                <div class="text-sm font-semibold text-white">
+                  ${highlight(c.title, q)}
+                  ${badge(c.match_in)}
+                </div>
+                <div class="text-[11px] text-white/80">
+                  #${esc(c.id)}
+                </div>
+              </div>
 
-              <div class="text-sm font-semibold text-gray-900">${esc(c.title)}</div>
-              <div class="text-xs text-gray-600">card #${esc(c.id)} · board #${esc(c.board_id)}</div>
+              <div class="mt-0.5 text-xs text-white/85">
+                <span class="font-semibold">Quadro:</span> ${highlight(c.board_name || ("#" + c.board_id), q)}
+                <span class="mx-2 text-white/50">•</span>
+                <span class="font-semibold">Coluna:</span> ${highlight(c.column_title || ("#" + c.column_id), q)}
+              </div>
+
+              ${c.excerpt ? `
+                <div class="mt-1 text-xs text-white/80 leading-snug">
+                  ${highlight(c.excerpt, q)}
+                </div>
+              ` : ""}
             </button>
           `).join("")}
         </div>
@@ -86,15 +144,17 @@
 
     const boardsHtml = boards.length ? `
       <div>
-        <div class="text-xs font-semibold text-gray-700 mb-2">Quadros</div>
+        <div class="text-xs font-semibold text-white/90 mb-2 tracking-wide">Quadros</div>
         <div class="flex flex-col gap-2">
           ${boards.map(b => `
             <a
               href="/board/${encodeURIComponent(b.id)}/"
-              class="block rounded-lg bg-white/70 border border-gray-300 px-3 py-2 hover:bg-white transition"
+              class="block rounded-xl px-3 py-2
+                     bg-white/20 hover:bg-white/30 transition
+                     border border-white/25 shadow-md"
             >
-              <div class="text-sm font-semibold text-gray-900">${esc(b.name)}</div>
-              <div class="text-xs text-gray-600">board #${esc(b.id)}</div>
+              <div class="text-sm font-semibold text-white">${highlight(b.name, q)}</div>
+              <div class="text-[11px] text-white/75">board #${esc(b.id)}</div>
             </a>
           `).join("")}
         </div>
@@ -142,7 +202,7 @@
       if (mySeq !== __seq) return;
 
       if (!resp.ok) {
-        box.innerHTML = `<div class="text-sm text-red-700">Erro na busca (${resp.status}).</div>`;
+        box.innerHTML = `<div class="text-sm text-white/90">Erro na busca (${resp.status}).</div>`;
         box.classList.remove("hidden");
         hideHomeCardsAndGroups();
         return;
@@ -154,21 +214,11 @@
       renderResults(box, data, q);
     } catch (_e) {
       const box = ensureResultsBox(inputEl);
-      box.innerHTML = `<div class="text-sm text-red-700">Falha de rede na busca.</div>`;
+      box.innerHTML = `<div class="text-sm text-white/90">Falha de rede na busca.</div>`;
       box.classList.remove("hidden");
       hideHomeCardsAndGroups();
     }
-  }, 250);
-
-  function goToBoardAndOpenCard(boardId, cardId) {
-  const b = Number(boardId || 0);
-  const c = Number(cardId || 0);
-  if (!b || !c) return;
-
-  window.location.href =
-    `/board/${encodeURIComponent(b)}/?card=${encodeURIComponent(c)}`;
-}
-
+  }, 220);
 
   function init() {
     const input = document.getElementById("home-board-search");
@@ -176,41 +226,23 @@
 
     input.addEventListener("input", () => run(input, input.value));
 
-    // clique nos resultados (cards) — delegation
+    // clique no card resultado -> abre no board
     document.addEventListener("click", (ev) => {
-      const btn = ev.target.closest("#home-search-results button[data-card-id]");
+      const btn = ev.target.closest("#home-search-results button[data-card-id][data-board-id]");
       if (!btn) return;
 
       ev.preventDefault();
       ev.stopPropagation();
 
-      input.blur();
+      const cardId = btn.getAttribute("data-card-id");
+      const boardId = btn.getAttribute("data-board-id");
+      if (!cardId || !boardId) return;
 
-      goToBoardAndOpenCard(btn.dataset.boardId, btn.dataset.cardId);
+      // navega para o board e abre o modal via ?card
+      window.location.href =
+  `/board/${encodeURIComponent(boardId)}/?card=${encodeURIComponent(cardId)}`;
+
     }, true);
-
-
-    // click fora do box: fecha resultados (quando estiver aberto)
-    document.addEventListener("click", (ev) => {
-      const box = document.getElementById("home-search-results");
-      if (!box || box.classList.contains("hidden")) return;
-
-      const clickedInsideBox = !!ev.target.closest("#home-search-results");
-      const clickedInput = (ev.target === input) || !!ev.target.closest("#home-board-search");
-      if (clickedInsideBox || clickedInput) return;
-
-      hideResultsBox();
-      showHomeCardsAndGroups();
-    }, true);
-
-    // ESC: limpa busca e volta home
-    document.addEventListener("keydown", (ev) => {
-      if (ev.key !== "Escape") return;
-      if (document.activeElement === input || !document.getElementById("home-search-results")?.classList.contains("hidden")) {
-        input.value = "";
-        resetAll();
-      }
-    });
   }
 
   document.addEventListener("DOMContentLoaded", init);
