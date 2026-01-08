@@ -73,7 +73,9 @@
               type="button"
               class="text-left block w-full rounded-lg bg-white/80 border border-gray-300 px-3 py-2 hover:bg-white transition"
               data-card-id="${esc(c.id)}"
+              data-board-id="${esc(c.board_id)}"
             >
+
               <div class="text-sm font-semibold text-gray-900">${esc(c.title)}</div>
               <div class="text-xs text-gray-600">card #${esc(c.id)} · board #${esc(c.board_id)}</div>
             </button>
@@ -158,26 +160,15 @@
     }
   }, 250);
 
-  function openCardFromHome(cardId, input) {
-    const id = Number(cardId || 0);
-    if (!id) return;
+  function goToBoardAndOpenCard(boardId, cardId) {
+  const b = Number(boardId || 0);
+  const c = Number(cardId || 0);
+  if (!b || !c) return;
 
-    // fecha resultados e tira foco do input
-    if (input) input.blur();
-    hideResultsBox();
+  window.location.href =
+    `/board/${encodeURIComponent(b)}/?card=${encodeURIComponent(c)}`;
+}
 
-    // hardening: garante que o modal volte a aceitar interação
-    const modal = document.getElementById("modal");
-    if (modal) {
-      modal.classList.remove("pointer-events-none", "invisible");
-      modal.style.pointerEvents = "auto";
-    }
-
-    if (window.Modal && typeof window.Modal.openCard === "function") {
-      // não mexer na URL aqui: modal.url.js assume isso
-      window.Modal.openCard(id, false, null);
-    }
-  }
 
   function init() {
     const input = document.getElementById("home-board-search");
@@ -193,8 +184,11 @@
       ev.preventDefault();
       ev.stopPropagation();
 
-      openCardFromHome(btn.dataset.cardId, input);
+      input.blur();
+
+      goToBoardAndOpenCard(btn.dataset.boardId, btn.dataset.cardId);
     }, true);
+
 
     // click fora do box: fecha resultados (quando estiver aberto)
     document.addEventListener("click", (ev) => {
