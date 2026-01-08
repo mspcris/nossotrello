@@ -254,6 +254,55 @@ body:not(.is-home) .cm-header-search {
   display: none;
 }
 
+/* ============================================================
+   MOBILE: switch colapsado (1 botão + dropdown)
+   ============================================================ */
+
+.boards-cols-switch--mobile{
+  position: relative;
+}
+
+/* botão “Auto/1/2/3” */
+.boards-cols-switch--mobile .bcs-trigger{
+  height: 38px;
+  min-width: 86px;
+  padding: 0 12px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.85);
+  border: 1px solid rgba(0,0,0,0.18);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+  font-weight: 600;
+}
+
+/* menu dropdown */
+.boards-cols-switch--mobile .bcs-menu{
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  display: none;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.92);
+  border: 1px solid rgba(0,0,0,0.15);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.22);
+  z-index: 80;
+}
+
+.boards-cols-switch--mobile[data-open="true"] .bcs-menu{
+  display: flex;
+}
+
+.boards-cols-switch--mobile .bcs-btn{
+  height: 38px;
+  min-width: 44px;
+  padding: 0 14px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.88);
+  border: 1px solid rgba(0,0,0,0.18);
+  font-weight: 600;
+}
+
 
 /* Logo mobile */
 .cm-brand-logo {
@@ -314,6 +363,50 @@ body:not(.is-home) .cm-header-search {
   body.is-home .cm-header-row {
     padding-top: 58px !important;
   }
+}
+
+/* ============================================================
+   1/2/3/AUTO — regra de exibição por página
+   - Só aparece na HOME (body.is-home)
+   ============================================================ */
+body:not(.is-home) .boards-cols-switch {
+  display: none !important;
+}
+
+/* ============================================================
+   1/2/3/AUTO — override do base.css (ele força position:fixed no mobile)
+   - Remove o "grude" no topo/esquerda e deixa no fluxo do header
+   ============================================================ */
+body.is-home .boards-cols-switch {
+  position: static !important;
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  margin: 0 !important;
+
+  display: flex !important;
+  gap: 6px !important;
+  padding: 6px !important;
+  border-radius: 14px !important;
+  background: rgba(255,255,255,0.75) !important;
+  border: 1px solid rgba(0,0,0,0.25) !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+}
+
+body.is-home .boards-cols-switch .bcs-btn {
+  width: 44px !important;
+  height: 38px !important;
+  border-radius: 12px !important;
+  background: rgba(255,255,255,0.90) !important;
+  border: 1px solid rgba(0,0,0,0.20) !important;
+  font-weight: 600 !important;
+}
+
+body.is-home .boards-cols-switch .bcs-btn.is-active {
+  background: rgba(16,185,129,0.90) !important;
+  color: #fff !important;
+  border-color: rgba(5,150,105,0.90) !important;
 }
 
   </style>
@@ -441,11 +534,20 @@ body:not(.is-home) .cm-header-search {
           alt="Perfil"
           class="h-12 w-12 rounded-full object-cover border border-white/50 shadow">
       </a>
+
     </div>
   </div>
 
 
-
+<!-- 1 / 2 / 3 / Auto (DESKTOP) — centralizado -->
+<div class="w-full flex justify-center mt-3">
+  <div class="boards-cols-switch hidden md:flex" role="group" aria-label="Colunas">
+    <button type="button" class="bcs-btn" data-cols="1">1</button>
+    <button type="button" class="bcs-btn" data-cols="2">2</button>
+    <button type="button" class="bcs-btn" data-cols="3">3</button>
+    <button type="button" class="bcs-btn" data-cols="auto">Auto</button>
+  </div>
+</div>
 
 
 
@@ -780,6 +882,25 @@ document.addEventListener("DOMContentLoaded", () => {
       return (btn.dataset.displayName || "").trim();
     }
 
+    // Debounce: evita rajada de POST quando o usuário clica várias vezes
+    let persistTimer = null;
+    let lastSent = null;
+
+    function persist(which) {
+      if (!which || which === lastSent) return;
+
+      const url = form.getAttribute("hx-post");
+      if (!url) return;
+
+      lastSent = which;
+
+      // Fire-and-forget: não trava UI
+      window.htmx.ajax("POST", url, {
+        swap: "none",
+        values: { preferred_identity_label: which }
+      });
+    }
+
     btn.addEventListener("click", function (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -787,18 +908,19 @@ document.addEventListener("DOMContentLoaded", () => {
       const cur = (input.value || "display_name").trim();
       const nxt = next(cur);
 
-      // UI imediata
-      const txt = textFor(nxt) || textFor("display_name") || textFor("email") || "";
+      // UI imediata (zero dependência do servidor)
+      const txt =
+        textFor(nxt) ||
+        textFor("display_name") ||
+        textFor("email") ||
+        (label.textContent || "");
       if (txt) label.textContent = txt;
 
       input.value = nxt;
 
-      // persistência (forçada)
-      const url = form.getAttribute("hx-post");
-      window.htmx.ajax("POST", url, {
-        swap: "none",
-        values: { preferred_identity_label: nxt }
-      });
+      // agenda persistência (último clique “vence”)
+      if (persistTimer) clearTimeout(persistTimer);
+      persistTimer = setTimeout(() => persist(nxt), 350);
     });
   }
 
