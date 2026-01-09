@@ -9,12 +9,16 @@
   <div id="activity-panel-wrapper"
        class="activity-panel space-y-4 max-h-[60vh] overflow-y-auto pr-2">
     {% for log in card.logs.all %}
-      <div class="activity-item p-3 rounded border border-gray-200 bg-white shadow-sm">
+      <div class="activity-item p-3 rounded-xl border shadow-sm
+            bg-[var(--cm-surface)] border-[var(--cm-border)]
+            backdrop-blur-md [-webkit-backdrop-filter:blur(12px)]">
+
         <div class="activity-meta text-xs text-gray-500 mb-2">
           {{ log.created_at|date:"d/m/Y H:i" }}
         </div>
 
-        <div class="activity-content text-sm leading-relaxed whitespace-pre-wrap">
+        <div class="activity-content text-sm leading-relaxed whitespace-normal prose prose-sm max-w-none">
+
           {% if log.attachment %}
             <p class="mb-1">
               <strong>Anexo:</strong>

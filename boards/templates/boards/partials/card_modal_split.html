@@ -389,6 +389,15 @@ html.dark #cm-root{
   margin-bottom: 6px;
 }
 
+/* o painel do modal, não os cards */
+#card-modal-root .modal-content,
+#modal .modal-content,
+#modal-body {
+  background: rgba(255,255,255,0.55);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
 </style>
 
 {# ✅ FIX: cm-root envolve TUDO (main + activity) #}

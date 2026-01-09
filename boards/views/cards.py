@@ -41,6 +41,8 @@ from ..forms import CardForm
 from ..models import Board, BoardMembership, Card, CardAttachment, Column
 # regra: se due_date preenchida => warn obrigatória
 from datetime import timedelta
+from django.utils.html import strip_tags
+
 
 # ============================================================
 # PERMISSÕES
@@ -176,6 +178,32 @@ def _parse_any_date(s: str):
 
 
 
+
+
+
+
+from datetime import date as _date, timedelta
+import logging
+import re
+
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
+from django.utils.html import escape
+from django.views.decorators.http import require_POST
+
+
+def _fmt_date_br(d):
+    try:
+        return d.strftime("%d/%m/%Y") if d else "—"
+    except Exception:
+        return "—"
+
+
+def _fmt_bool(v):
+    return "Sim" if bool(v) else "Não"
+
+
 @login_required
 @require_POST
 def update_card(request, card_id):
@@ -184,24 +212,35 @@ def update_card(request, card_id):
     board = card.column.board
 
     # ✅ Escrita: bloqueio forte para VIEWER
-    if not _user_can_edit_board(request.user, card.column.board):
+    if not _user_can_edit_board(request.user, board):
         return _deny_read_only(request, as_json=True)
 
-    old_title = card.title or ""
-    old_desc = card.description or ""
+    # ============================================================
+    # SNAPSHOT (antes)
+    # ============================================================
+    old_title = (card.title or "").strip()
+    old_desc = (card.description or "").strip()
     old_tags_raw = card.tags or ""
 
-    card.title = request.POST.get("title", card.title)
+    old_due_date = card.due_date
+    old_due_warn_date = card.due_warn_date
+    old_due_notify = bool(card.due_notify)
+
+    # ============================================================
+    # UPDATE: título / descrição / tags
+    # ============================================================
+    new_title = (request.POST.get("title", card.title) or "").strip()
+    card.title = new_title
 
     raw_desc = (request.POST.get("description", card.description or "") or "").strip()
     new_desc_html, saved_paths = _save_base64_images_to_media(raw_desc, folder="quill")
-    card.description = new_desc_html
+    card.description = (new_desc_html or "").strip()
 
     new_tags_raw = request.POST.get("tags", old_tags_raw) or ""
 
-    #+ ============================================================
-    #+ PRAZOS (novo) — não encosta em TAG
-    #+ ============================================================
+    # ============================================================
+    # PRAZOS
+    # ============================================================
     due_date_raw = (request.POST.get("due_date") or "").strip()
     due_warn_raw = (request.POST.get("due_warn_date") or "").strip()
     due_notify_raw = (request.POST.get("due_notify") or "").strip()
@@ -209,27 +248,24 @@ def update_card(request, card_id):
     due_date = _parse_any_date(due_date_raw)
     due_warn_date = _parse_any_date(due_warn_raw)
 
-    # checkbox: HTML costuma mandar "on" quando marcado
-    due_notify = True
+    # checkbox: HTML costuma mandar "on"/"1" quando marcado.
+    # Seu template manda hidden due_notify=0 + checkbox due_notify=1.
     if due_notify_raw:
         due_notify = str(due_notify_raw).strip().lower() in ("1", "true", "on", "yes")
     else:
-        # se o campo vier ausente, assumimos False só se o template mandar um hidden.
-        # (na prática: no template vamos mandar hidden+checkbox pra não ambiguidade)
-        due_notify = True
-
-
+        due_notify = True  # mantém seu comportamento atual
 
     # regra: se due_date preenchida e warn vazio => default = due-5
     if due_date and not due_warn_date:
         due_warn_date = due_date - timedelta(days=5)
 
-
     card.due_date = due_date
     card.due_warn_date = due_warn_date
     card.due_notify = bool(due_notify)
 
-
+    # ============================================================
+    # TAGS: diff
+    # ============================================================
     old_tags = [t.strip() for t in (old_tags_raw or "").split(",") if t.strip()]
     new_tags = [t.strip() for t in (new_tags_raw or "").split(",") if t.strip()]
 
@@ -237,18 +273,51 @@ def update_card(request, card_id):
     removed = [t for t in old_tags if t not in new_tags]
     added = [t for t in new_tags if t not in old_tags]
 
+    # ============================================================
+    # SAVE CARD
+    # ============================================================
     card.save()
 
-    board = card.column.board  # ✅ garante board definido
+    # ============================================================
+    # DIFFS pós-save (prazo) -> audit trail
+    # ============================================================
+    due_date_changed = (old_due_date != card.due_date)
+    due_warn_changed = (old_due_warn_date != card.due_warn_date)
+    due_notify_changed = (old_due_notify != bool(card.due_notify))
+
+    if due_date_changed or due_warn_changed or due_notify_changed:
+        parts = [
+            f"<p><strong>{actor}</strong> alterou o prazo do card.</p>",
+            "<ul style='margin:6px 0 0 18px;'>",
+        ]
+
+        if due_date_changed:
+            parts.append(
+                "<li><strong>Vencimento:</strong> "
+                f"{escape(_fmt_date_br(old_due_date))} → <strong>{escape(_fmt_date_br(card.due_date))}</strong></li>"
+            )
+
+        if due_warn_changed:
+            parts.append(
+                "<li><strong>Avisar em:</strong> "
+                f"{escape(_fmt_date_br(old_due_warn_date))} → <strong>{escape(_fmt_date_br(card.due_warn_date))}</strong></li>"
+            )
+
+        if due_notify_changed:
+            parts.append(
+                "<li><strong>Notificar com cores:</strong> "
+                f"{escape(_fmt_bool(old_due_notify))} → <strong>{escape(_fmt_bool(card.due_notify))}</strong></li>"
+            )
+
+        parts.append("</ul>")
+
+        _log_card(card, request, "".join(parts))
 
     # ============================================================
     # CORES do board (badge de prazo)
-    # - se vier qualquer campo, tenta persistir
-    # - completa faltantes com o que já está no board (evita wipe)
     # ============================================================
     has_due_color_fields = any(
-        k in request.POST
-        for k in ("due_color_ok", "due_color_warn", "due_color_overdue")
+        k in request.POST for k in ("due_color_ok", "due_color_warn", "due_color_overdue")
     )
 
     if has_due_color_fields:
@@ -256,7 +325,6 @@ def update_card(request, card_id):
         posted_warn = (request.POST.get("due_color_warn") or "").strip()
         posted_over = (request.POST.get("due_color_overdue") or "").strip()
 
-        # estado atual do board
         current = getattr(board, "due_colors", None) or {}
         if not isinstance(current, dict):
             current = {}
@@ -267,7 +335,7 @@ def update_card(request, card_id):
 
         def valid_hex(c: str) -> bool:
             return bool(re.match(r"^#[0-9a-fA-F]{6}$", c or ""))
-           
+
         if new_ok and new_warn and new_over and all(valid_hex(c) for c in (new_ok, new_warn, new_over)):
             board.due_colors = {"ok": new_ok, "warn": new_warn, "overdue": new_over}
             board.save(update_fields=["due_colors"])
@@ -278,15 +346,14 @@ def update_card(request, card_id):
     board.version += 1
     board.save(update_fields=["version"])
 
-
-
-    # ✅ menções na descrição (texto bruto do POST)
-    
+    # ============================================================
+    # MENÇÕES (texto bruto do POST)
+    # ============================================================
     logger = logging.getLogger(__name__)
     try:
         process_mentions_and_notify(
             request=request,
-            board=card.column.board,
+            board=board,
             card=card,
             source="description",
             raw_text=raw_desc,
@@ -294,7 +361,9 @@ def update_card(request, card_id):
     except Exception:
         logger.exception("Erro ao processar menções na atualização de card.")
 
-    # Garante anexos + atividade para imagens (base64 e/ou já persistidas em /media/)
+    # ============================================================
+    # IMAGENS (base64 + já persistidas em /media/)
+    # ============================================================
     referenced_paths = _extract_media_image_paths(card.description or "", folder="quill")
     all_paths = list(dict.fromkeys((saved_paths or []) + (referenced_paths or [])))
 
@@ -307,37 +376,76 @@ def update_card(request, card_id):
             context_label="descrição",
         )
 
+    # ============================================================
+    # LOGS (tags / descrição / título / fallback)
+    # ============================================================
     if removed:
         for t in removed:
-            _log_card(card, request, f"<p><strong>{actor}</strong> removeu a etiqueta <strong>{escape(t)}</strong>.</p>")
+            _log_card(
+                card,
+                request,
+                f"<p><strong>{actor}</strong> removeu a etiqueta <strong>{escape(t)}</strong>.</p>",
+            )
 
     if added:
         for t in added:
-            _log_card(card, request, f"<p><strong>{actor}</strong> adicionou a etiqueta <strong>{escape(t)}</strong>.</p>")
+            _log_card(
+                card,
+                request,
+                f"<p><strong>{actor}</strong> adicionou a etiqueta <strong>{escape(t)}</strong>.</p>",
+            )
 
-    if (old_desc or "").strip() != (card.description or "").strip():
-        _log_card(card, request, f"<p><strong>{actor}</strong> atualizou a descrição.</p>")
+    desc_changed = (old_desc or "") != ((card.description or "").strip())
+    title_changed = (old_title or "") != ((card.title or "").strip())
 
-    if (old_title or "").strip() != (card.title or "").strip():
+    # ✅ FIX: before/after sempre definidos dentro do bloco correto
+    if desc_changed:
+        before = escape(_summarize_html(old_desc))
+        after = escape(_summarize_html(card.description))
+
         _log_card(
             card,
             request,
-            f"<p><strong>{actor}</strong> alterou o título de <strong>{escape(old_title)}</strong> para <strong>{escape(card.title)}</strong>.</p>",
+            (
+                f"<p><strong>{actor}</strong> alterou a descrição.</p>"
+                f"<div style='margin-top:6px'>"
+                f"<div class='cm-muted' style='margin-bottom:4px'>Antes:</div>"
+                f"<div style='padding:10px;border:1px solid rgba(15,23,42,0.10);border-radius:10px;background:rgba(255,255,255,0.35)'><em>{before}</em></div>"
+                f"</div>"
+                f"<div style='margin-top:10px'>"
+                f"<div class='cm-muted' style='margin-bottom:4px'>Depois:</div>"
+                f"<div style='padding:10px;border:1px solid rgba(15,23,42,0.10);border-radius:10px;background:rgba(255,255,255,0.35)'><strong>{after}</strong></div>"
+                f"</div>"
+            ),
         )
 
+    if title_changed:
+        _log_card(
+            card,
+            request,
+            (
+                f"<p><strong>{actor}</strong> alterou o título de "
+                f"<strong>{escape(old_title)}</strong> para <strong>{escape(card.title)}</strong>.</p>"
+            ),
+        )
+
+    # ✅ fallback só se nada relevante mudou (inclui prazo agora)
     if not (
         removed
         or added
-        or ((old_desc or "").strip() != (card.description or "").strip())
-        or ((old_title or "").strip() != (card.title or "").strip())
+        or desc_changed
+        or title_changed
         or all_paths
+        or due_date_changed
+        or due_warn_changed
+        or due_notify_changed
     ):
         _log_card(card, request, f"<p><strong>{actor}</strong> atualizou o card.</p>")
 
-    
-
+    # ============================================================
+    # TERM STATUS (overlay)
+    # ============================================================
     today = _date.today()
-
     term_status = ""
     if card.due_date and card.due_notify:
         if card.due_date < today:
@@ -348,14 +456,11 @@ def update_card(request, card_id):
             term_status = "ok"
 
     ctx = _card_modal_context(card)
-
-    # garante que o overlay não “zera” após salvar
     ctx["term_status"] = term_status
-
-    # garante que os inputs de cor sempre venham do source of truth atual
-    ctx["board_due_colors"] = getattr(card.column.board, "due_colors", {}) or {}
+    ctx["board_due_colors"] = getattr(board, "due_colors", {}) or {}
 
     return _render_card_modal(request, card, ctx)
+
 
 
 
@@ -653,6 +758,15 @@ def _render_card_modal(request, card, context=None):
 
     return render(request, template_name, ctx)
 
+
+def _summarize_html(html: str, limit: int = 220) -> str:
+    txt = strip_tags(html or "")
+    txt = re.sub(r"\s+", " ", txt).strip()
+    if not txt:
+        return "(vazio)"
+    if len(txt) <= limit:
+        return txt
+    return txt[:limit].rstrip() + "…"
 
 
 
