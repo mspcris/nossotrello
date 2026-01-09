@@ -75,7 +75,7 @@
       <div class="home-group-dropzone" data-group-id="{{ favorites_group.id }}">
   <div class="flex flex-wrap gap-6" id="home-favorites-items">
     {% for it in favorites_group_items %}
-      {% include "boards/partials/home_board_card.html" with board=it.board favorite_board_ids=favorite_board_ids subtitle="Organizado aqui" show_delete_button=False is_shared=False %}
+      {% include "boards/partials/home_board_card.html" with board=it.board favorite_board_ids=favorite_board_ids subtitle="" show_delete_button=False is_shared=False %}
     {% empty %}
       <div class="text-gray-300 backdrop-blur-lg px-4 py-2 rounded-lg home-empty-hint">
         Sem favoritos ainda.

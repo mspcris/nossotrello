@@ -34,7 +34,7 @@
 
   <div class="home-group-items home-group-dropzone w-full" data-group-id="{{ g.id }}">
     {% for it in items %}
-      {% include "boards/partials/home_board_card.html" with board=it.board favorite_board_ids=favorite_board_ids subtitle="Organizado aqui" show_delete_button=False is_shared=False group_id=g.id %}
+      {% include "boards/partials/home_board_card.html" with board=it.board favorite_board_ids=favorite_board_ids subtitle="" show_delete_button=False is_shared=False group_id=g.id %}
     {% endfor %}
   </div>
 
