@@ -21,11 +21,34 @@
 
   {% if board.image %}
     <a href="{% url 'boards:board_detail' board.id %}">
-      <div class="board-card__cover">
-        <img src="{{ board.image.url }}" class="board-card__cover-img"
-          onerror="this.style.display='none';
-                   this.parentElement.innerHTML = `<div class='text-red-600 text-center p-3'>Imagem corrompida ⚠️</div>`;">
-      </div>
+      <div class="board-card__cover relative overflow-hidden rounded-xl bg-gray-200">
+  <!-- Fundo espelhado (preenche tudo) -->
+  <div
+    class="absolute inset-0"
+    style="
+      background-image: url('{{ board.image.url }}');
+      background-size: cover;
+      background-position: center;
+      transform: scaleX(-1) scale(1.15);
+      filter: blur(12px);
+      opacity: 0.9;
+    ">
+  </div>
+
+  <!-- Imagem principal (não corta) -->
+  <img
+    src="{{ board.image.url }}"
+    class="relative z-10 w-full h-full object-contain"
+    alt=""
+    loading="lazy"
+    onerror="this.style.display='none';
+             this.closest('.board-card__cover').innerHTML = `<div class='text-red-600 text-center p-3'>Imagem corrompida ⚠️</div>`;">
+</div>
+
+
+
+
+
     </a>
   {% else %}
     {% if not is_shared %}
