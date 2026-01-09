@@ -1,54 +1,74 @@
-<!--home_board_card.html-->
+<!-- home_board_card.html -->
 {% load static %}
 
-<div class="board-card" data-board-id="{{ board.id }}" data-board-name="{{ board.name|lower }}">
-  <div class="board-card__actions">
-    <button type="button" class="favorite-star"
+<div class="board-card relative" data-board-id="{{ board.id }}" data-board-name="{{ board.name|lower }}">
+  <!-- AÇÕES: stack fixa no canto e sempre acima do cover -->
+<div class="board-card__actions absolute top-3 right-3 z-30 flex flex-col gap-2">
+  {% with btn="w-10 h-10 rounded-full bg-zinc-900/95 text-white shadow-xl ring-1 ring-white/50 flex items-center justify-center transition hover:bg-zinc-800 hover:ring-white/70 active:scale-95 focus:outline-none focus:ring-2 focus:ring-white/80" %}
+    <button
+      type="button"
+      class="favorite-star {{ btn }}"
       data-toggle-url="{% url 'boards:home_favorite_toggle' board.id %}"
       onclick="HomeGroups.toggleFavorite({{ board.id }}, this, event);"
-      title="Favoritar">
+      title="Favoritar"
+    >
       {% if board.id in favorite_board_ids %}★{% else %}☆{% endif %}
     </button>
-    <button type="button" class="group-board-btn"
+
+    <button
+      type="button"
+      class="group-board-btn {{ btn }}"
       onclick="HomeGroups.openGroupPicker({{ board.id }}, event);"
-      title="Agrupar">
+      title="Agrupar"
+    >
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="M12 3L2 9l10 6 10-6-10-6Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
         <path d="M2 15l10 6 10-6" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
       </svg>
     </button>
-  </div>
+
+    <button
+      type="button"
+      class="rename-board-btn {{ btn }}"
+      aria-label="Renomear"
+      data-rename-url="{% url 'boards:rename_board' board.id %}"
+      onclick="HomeGroups.renameBoard({{ board.id }}, this, event);"
+      title="Renomear"
+    >
+      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M12 20h9" stroke-linecap="round"/>
+        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" stroke-linejoin="round"/>
+      </svg>
+    </button>
+  {% endwith %}
+</div>
+  <!-- COVER -->
 
   {% if board.image %}
     <a href="{% url 'boards:board_detail' board.id %}">
-      <div class="board-card__cover relative overflow-hidden rounded-xl bg-gray-200">
-  <!-- Fundo espelhado (preenche tudo) -->
-  <div
-    class="absolute inset-0"
-    style="
-      background-image: url('{{ board.image.url }}');
-      background-size: cover;
-      background-position: center;
-      transform: scaleX(-1) scale(1.15);
-      filter: blur(12px);
-      opacity: 0.9;
-    ">
-  </div>
+      <div class="board-card__cover relative overflow-hidden rounded-xl bg-gray-200 z-0">
+        <!-- Fundo espelhado (preenche tudo) - NÃO captura clique -->
+        <div
+          class="absolute inset-0 pointer-events-none"
+          style="
+            background-image: url('{{ board.image.url }}');
+            background-size: cover;
+            background-position: center;
+            transform: scaleX(-1) scale(1.15);
+            filter: blur(12px);
+            opacity: 0.9;
+          ">
+        </div>
 
-  <!-- Imagem principal (não corta) -->
-  <img
-    src="{{ board.image.url }}"
-    class="relative z-10 w-full h-full object-contain"
-    alt=""
-    loading="lazy"
-    onerror="this.style.display='none';
-             this.closest('.board-card__cover').innerHTML = `<div class='text-red-600 text-center p-3'>Imagem corrompida ⚠️</div>`;">
-</div>
-
-
-
-
-
+        <!-- Imagem principal (não corta) - também não precisa capturar clique -->
+        <img
+          src="{{ board.image.url }}"
+          class="relative z-10 w-full h-full object-contain pointer-events-none select-none"
+          alt=""
+          loading="lazy"
+          onerror="this.style.display='none';
+                   this.closest('.board-card__cover').innerHTML = `<div class='text-red-600 text-center p-3'>Imagem corrompida ⚠️</div>`;">
+      </div>
     </a>
   {% else %}
     {% if not is_shared %}
@@ -70,23 +90,25 @@
     {% endif %}
   </a>
 
-{% if subtitle == "Organizado aqui" and group_id %}
-  <button
-    type="button"
-    class="remove-from-group-btn"
-    hx-post="{% url 'boards:home_group_item_remove' group_id board.id %}"
-    hx-target="closest .board-card"
-    hx-swap="outerHTML">
-    Remover
-  </button>
-{% endif %}
-
-
+  {% if subtitle == "" and group_id %}
+    <button
+      type="button"
+      class="remove-from-group-btn"
+      hx-post="{% url 'boards:home_group_item_remove' group_id board.id %}"
+      hx-target="closest .board-card"
+      hx-swap="outerHTML">
+      Remover
+    </button>
+  {% endif %}
 
   {% if show_delete_button %}
-    <button hx-post="{% url 'boards:delete_board' board.id %}" 
-            hx-target="closest .board-card" hx-swap="outerHTML"
-            class="delete-button">Excluir quadro</button>
+    <button
+      hx-post="{% url 'boards:delete_board' board.id %}"
+      hx-target="closest .board-card"
+      hx-swap="outerHTML"
+      class="delete-button">
+      Excluir quadro
+    </button>
   {% endif %}
 </div>
-<!--end home_board_card.html-->
+<!-- end home_board_card.html -->

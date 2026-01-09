@@ -1,5 +1,8 @@
 // boards/static/boards/home_groups.js
 (function () {
+  // ==========================
+  // Helpers (CSRF + POST)
+  // ==========================
   function getCsrf() {
     return (
       document.querySelector("[name=csrfmiddlewaretoken]")?.value ||
@@ -14,9 +17,10 @@
       credentials: "same-origin",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-        "X-CSRFToken": getCsrf()
+        "X-CSRFToken": getCsrf(),
+        Accept: "application/json",
       },
-      body: new URLSearchParams(data || {}).toString()
+      body: new URLSearchParams(data || {}).toString(),
     });
     return resp;
   }
@@ -28,13 +32,16 @@
       headers: {
         "Content-Type": "application/json",
         "X-CSRFToken": getCsrf(),
-        "Accept": "application/json"
+        Accept: "application/json",
       },
-      body: JSON.stringify(data || {})
+      body: JSON.stringify(data || {}),
     });
     return resp;
   }
 
+  // ==========================
+  // Sortable (drag & drop)
+  // ==========================
   function ensureSortableHome() {
     if (!window.Sortable) return;
 
@@ -57,7 +64,7 @@
         draggable: ".board-card[data-board-id]",
         delay: 280,
         delayOnTouchOnly: true,
-        touchStartThreshold: 10
+        touchStartThreshold: 10,
       });
     });
 
@@ -86,13 +93,15 @@
           const resp = await post(`/home/groups/${groupId}/items/add/`, { board_id: boardId });
           if (!resp.ok) {
             // rollback visual
-            try { evt.from.insertBefore(cardEl, evt.from.children[evt.oldIndex] || null); } catch (_e) {}
+            try {
+              evt.from.insertBefore(cardEl, evt.from.children[evt.oldIndex] || null);
+            } catch (_e) {}
             return;
           }
 
           // MVP: recarrega para garantir render correto do card
           location.reload();
-        }
+        },
       });
     });
   }
@@ -110,10 +119,12 @@
 
     const modal = document.createElement("div");
     modal.id = "group-picker-modal";
-    modal.className = "fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50";
+    modal.className =
+      "fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50";
 
     const sheet = document.createElement("div");
-    sheet.className = "w-full sm:w-[420px] bg-white rounded-t-2xl sm:rounded-2xl shadow-xl p-4";
+    sheet.className =
+      "w-full sm:w-[420px] bg-white rounded-t-2xl sm:rounded-2xl shadow-xl p-4";
 
     sheet.innerHTML = `
       <div class="flex items-center justify-between mb-3">
@@ -125,7 +136,7 @@
     `;
 
     // fechar por botão
-    sheet.querySelector("button").addEventListener("click", closeGroupPickerModal);
+    sheet.querySelector("button")?.addEventListener("click", closeGroupPickerModal);
 
     // fechar clicando fora
     modal.addEventListener("click", (e) => {
@@ -133,7 +144,6 @@
     });
 
     const list = sheet.querySelector("#group-picker-list");
-
     groups.forEach((g) => {
       const btn = document.createElement("button");
       btn.type = "button";
@@ -144,13 +154,102 @@
         await window.HomeGroups.addToGroup(boardId, g.id);
       });
 
-      list.appendChild(btn);
+      list?.appendChild(btn);
     });
 
     modal.appendChild(sheet);
     document.body.appendChild(modal);
   }
 
+  // ==========================
+  // UI: atualiza barra de favoritos (topo) sem reload
+  // ==========================
+  function updateFavoritesBar(boardId, boardCard, favorited) {
+    const favContainer = document.getElementById("home-favorites-items");
+    if (!favContainer) return;
+
+    const selector = `.board-card[data-board-id="${boardId}"]`;
+
+    if (favorited) {
+      const exists = favContainer.querySelector(selector);
+      if (!exists && boardCard) {
+        const clone = boardCard.cloneNode(true);
+
+        // Ajusta a estrela no clone para refletir estado atual (evento será por delegação)
+        const star = clone.querySelector(".favorite-star");
+        if (star) {
+          star.textContent = "★";
+          star.setAttribute("data-board-id", String(boardId));
+          if (!star.getAttribute("data-toggle-url")) {
+            star.setAttribute("data-toggle-url", `/home/favorites/toggle/${boardId}/`);
+          }
+        }
+
+        favContainer.prepend(clone);
+
+        // remove placeholder "Sem favoritos" se existir
+        const emptyMsg = favContainer.querySelector(":scope > .text-gray-300");
+        if (emptyMsg && favContainer.querySelectorAll(".board-card").length > 0) {
+          emptyMsg.remove();
+        }
+      }
+    } else {
+      const toRemove = favContainer.querySelector(selector);
+      if (toRemove) toRemove.remove();
+
+      if (favContainer.querySelectorAll(".board-card").length === 0) {
+        favContainer.innerHTML = `
+          <div class="text-gray-300 backdrop-blur-lg px-4 py-2 rounded-lg">
+            Sem favoritos ainda.
+          </div>
+        `;
+      }
+    }
+  }
+
+  // ==========================
+  // Delegação de eventos (para funcionar no clone)
+  // ==========================
+  function setupDelegatedHandlers() {
+    if (document.body.dataset.homeGroupsDelegation === "1") return;
+    document.body.dataset.homeGroupsDelegation = "1";
+
+    document.body.addEventListener("click", (ev) => {
+      const star = ev.target?.closest?.(".favorite-star");
+      if (star) {
+        const boardId =
+          Number(star.getAttribute("data-board-id") || star.dataset.boardId || 0) ||
+          Number(star.closest(".board-card")?.getAttribute("data-board-id") || 0);
+
+        window.HomeGroups?.toggleFavorite(boardId, star, ev);
+        return;
+      }
+
+      const groupBtn = ev.target?.closest?.("[data-home-open-group-picker]");
+      if (groupBtn) {
+        const boardId =
+          Number(groupBtn.getAttribute("data-board-id") || groupBtn.dataset.boardId || 0) ||
+          Number(groupBtn.closest(".board-card")?.getAttribute("data-board-id") || 0);
+
+        window.HomeGroups?.openGroupPicker(boardId, ev);
+        return;
+      }
+
+      const renameBtn = ev.target?.closest?.("[data-rename-board]");
+      if (renameBtn) {
+        const boardId =
+          Number(renameBtn.getAttribute("data-board-id") || renameBtn.dataset.boardId || 0) ||
+          Number(renameBtn.closest(".board-card")?.getAttribute("data-board-id") || 0);
+
+        window.HomeGroups?.renameBoard(boardId, renameBtn, ev);
+        return;
+      }
+    });
+  }
+
+  // ==========================
+  // API pública (window.HomeGroups)
+  // ==========================
   window.HomeGroups = {
     // ========= existentes =========
     renameGroup: async function (groupId, currentName) {
@@ -175,9 +274,13 @@
       if (resp.ok) location.reload();
     },
 
+    // ========= favoritos =========
     toggleFavorite: async function (boardId, el, ev) {
       try {
-        if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+        if (ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+        }
 
         if (!el) return;
         if (el.dataset.busy === "1") return;
@@ -190,8 +293,8 @@
           credentials: "same-origin",
           headers: {
             "X-CSRFToken": getCsrf(),
-            "Accept": "application/json",
-          }
+            Accept: "application/json",
+          },
         });
 
         if (!resp.ok) {
@@ -201,48 +304,14 @@
         }
 
         const data = await resp.json();
-        el.textContent = data.favorited ? "★" : "☆";
+        const favorited = !!data.favorited;
+
+        // Atualiza estrela clicada
+        el.textContent = favorited ? "★" : "☆";
+
         // Atualiza a barra de favoritos (topo) sem reload
-const favContainer = document.getElementById("home-favorites-items");
-if (favContainer) {
-  const boardCard = el.closest(".board-card");
-  if (data.favorited) {
-    // evita duplicar
-    const exists = favContainer.querySelector(`.board-card[data-board-id="${boardId}"]`);
-    if (!exists && boardCard) {
-      const clone = boardCard.cloneNode(true);
-
-      // garante que a estrela do clone continue funcionando
-      const star = clone.querySelector(".favorite-star");
-      if (star) {
-        // mantém URL e handler
-        star.textContent = "★";
-      }
-
-      favContainer.prepend(clone);
-
-      // remove placeholder "Sem favoritos" se existir
-      const emptyMsg = favContainer.querySelector(":scope > .text-gray-300");
-      if (emptyMsg && favContainer.querySelectorAll(".board-card").length > 0) {
-        emptyMsg.remove();
-      }
-    }
-  } else {
-    // remove do topo
-    const toRemove = favContainer.querySelector(`.board-card[data-board-id="${boardId}"]`);
-    if (toRemove) toRemove.remove();
-
-    // se ficou vazio, coloca placeholder
-    if (favContainer.querySelectorAll(".board-card").length === 0) {
-      favContainer.innerHTML = `
-        <div class="text-gray-300 backdrop-blur-lg px-4 py-2 rounded-lg">
-          Sem favoritos ainda.
-        </div>
-      `;
-    }
-  }
-}
-
+        const boardCard = el.closest(".board-card");
+        updateFavoritesBar(boardId, boardCard, favorited);
       } catch (e) {
         console.error("toggleFavorite error:", e);
       } finally {
@@ -250,28 +319,64 @@ if (favContainer) {
       }
     },
 
+    // ========= renomear quadro (htmx) =========
+    renameBoard: function (boardId, btn, ev) {
+      try {
+        ev?.preventDefault?.();
+        ev?.stopPropagation?.();
+
+        const card = btn?.closest?.(".board-card");
+        if (!card) return;
+
+        const h2 = card.querySelector(".board-card__body h2");
+        const current = (h2?.textContent || "").trim();
+        const next = (prompt("Novo nome do quadro:", current) || "").trim();
+
+        if (!next || next === current) return;
+
+        const url = btn.dataset.renameUrl;
+        if (!url || !window.htmx) return;
+
+        // POST (usa o endpoint existente: rename_board)
+        window.htmx.ajax("POST", url, {
+          swap: "none",
+          values: { name: next },
+        });
+
+        // UI otimista
+        if (h2) h2.textContent = next;
+        card.dataset.boardName = next.toLowerCase();
+      } catch (e) {
+        console.error("renameBoard error:", e);
+      }
+    },
+
     // ========= novo: agrupar por botão =========
     openGroupPicker: function (boardId, event) {
-  if (event) { event.preventDefault(); event.stopPropagation(); }
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
 
-  // Lê do DOM para refletir create/delete/rename sem F5
-  const groups = Array.from(document.querySelectorAll("#home-custom-groups .home-group-wrapper"))
-    .map((wrap) => {
-      const idRaw = (wrap.id || "").replace("group-", "");
-      const id = Number(idRaw || 0);
-      const name = (wrap.querySelector("h2")?.textContent || "").trim();
-      return (id && name) ? { id, name } : null;
-    })
-    .filter(Boolean);
+      // Lê do DOM para refletir create/delete/rename sem F5
+      const groups = Array.from(
+        document.querySelectorAll("#home-custom-groups .home-group-wrapper")
+      )
+        .map((wrap) => {
+          const idRaw = (wrap.id || "").replace("group-", "");
+          const id = Number(idRaw || 0);
+          const name = (wrap.querySelector("h2")?.textContent || "").trim();
+          return id && name ? { id, name } : null;
+        })
+        .filter(Boolean);
 
-  if (!groups.length) {
-    alert("Nenhum agrupamento disponível. Crie um agrupamento primeiro.");
-    return;
-  }
+      if (!groups.length) {
+        alert("Nenhum agrupamento disponível. Crie um agrupamento primeiro.");
+        return;
+      }
 
-  renderGroupPickerModal(groups, boardId);
-},
-
+      renderGroupPickerModal(groups, boardId);
+    },
 
     addToGroup: async function (boardId, groupId) {
       try {
@@ -294,8 +399,21 @@ if (favContainer) {
     },
   };
 
-  document.addEventListener("DOMContentLoaded", ensureSortableHome);
-  document.body.addEventListener("htmx:afterSwap", ensureSortableHome);
-  document.body.addEventListener("htmx:load", ensureSortableHome);
+  // ==========================
+  // Boot
+  // ==========================
+  document.addEventListener("DOMContentLoaded", function () {
+    setupDelegatedHandlers();
+    ensureSortableHome();
+  });
 
+  document.body.addEventListener("htmx:afterSwap", function () {
+    setupDelegatedHandlers();
+    ensureSortableHome();
+  });
+
+  document.body.addEventListener("htmx:load", function () {
+    setupDelegatedHandlers();
+    ensureSortableHome();
+  });
 })();
