@@ -7,7 +7,8 @@
   {% with btn="w-10 h-10 rounded-full bg-zinc-900/95 text-white shadow-xl ring-1 ring-white/50 flex items-center justify-center transition hover:bg-zinc-800 hover:ring-white/70 active:scale-95 focus:outline-none focus:ring-2 focus:ring-white/80" %}
     <button
       type="button"
-      class="favorite-star {{ btn }}"
+      class="!w-10 !h-10 rounded-full bg-black/45 text-white backdrop-blur-md shadow-lg ring-1 ring-white/30 flex items-center justify-center transition hover:bg-black/60 hover:ring-white/45 active:scale-95"
+
       data-toggle-url="{% url 'boards:home_favorite_toggle' board.id %}"
       onclick="HomeGroups.toggleFavorite({{ board.id }}, this, event);"
       title="Favoritar"
@@ -17,7 +18,8 @@
 
     <button
       type="button"
-      class="group-board-btn {{ btn }}"
+      class="!w-10 !h-10 rounded-full bg-black/45 text-white backdrop-blur-md shadow-lg ring-1 ring-white/30 flex items-center justify-center transition hover:bg-black/60 hover:ring-white/45 active:scale-95"
+
       onclick="HomeGroups.openGroupPicker({{ board.id }}, event);"
       title="Agrupar"
     >
@@ -29,7 +31,8 @@
 
     <button
       type="button"
-      class="rename-board-btn {{ btn }}"
+      class="!w-10 !h-10 rounded-full bg-black/45 text-white backdrop-blur-md shadow-lg ring-1 ring-white/30 flex items-center justify-center transition hover:bg-black/60 hover:ring-white/45 active:scale-95"
+
       aria-label="Renomear"
       data-rename-url="{% url 'boards:rename_board' board.id %}"
       onclick="HomeGroups.renameBoard({{ board.id }}, this, event);"
