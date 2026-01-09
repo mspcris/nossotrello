@@ -55,3 +55,38 @@
   document.addEventListener("DOMContentLoaded", updateAggregatorCounts);
   document.body.addEventListener("htmx:afterSwap", updateAggregatorCounts);
 </script>
+
+
+<script>
+  // ============================================================
+  // Aggregator Column — runtime update (espelha o header da coluna)
+  // ============================================================
+  window.updateAggregatorCounts = function () {
+    const agg = document.querySelector(".aggregator-column");
+    if (!agg) return;
+
+    agg.querySelectorAll(".aggregator-card").forEach(card => {
+      const colId = card.dataset.columnId;
+      if (!colId) return;
+
+      // acha a coluna real
+      const colEl = document.querySelector(`.column-item[data-column-id="${colId}"]`);
+      if (!colEl) return;
+
+      // pega o texto que já está correto no header (ex: "4 cards")
+      const counterEl = colEl.querySelector("[data-column-counter]");
+      if (!counterEl) return;
+
+      const txt = (counterEl.textContent || "").trim(); // "4 cards"
+      const n = parseInt(txt, 10);
+      const label = String(Number.isFinite(n) ? n : 0).padStart(2, "0");
+
+      const countEl = card.querySelector(".aggregator-count");
+      if (countEl) countEl.textContent = label;
+    });
+  };
+
+  document.addEventListener("DOMContentLoaded", window.updateAggregatorCounts);
+  document.body.addEventListener("htmx:afterSwap", window.updateAggregatorCounts);
+  document.body.addEventListener("htmx:afterSettle", window.updateAggregatorCounts);
+</script>

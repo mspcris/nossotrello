@@ -424,23 +424,22 @@
   }
 
   // Recalcula contadores considerando o filtro atual
-  function refreshCounters() {
-    if (window.BoardUI && typeof window.BoardUI.refreshColumnCounters === "function") {
-      window.BoardUI.refreshColumnCounters();
-      return;
-    }
+  // Recalcula contadores considerando o filtro atual
 
-    // fallback simples (se BoardUI não estiver disponível)
+  function refreshCounters() {
     document.querySelectorAll(".column-item[data-column-id]").forEach((col) => {
-      const counter = col.querySelector(".column-header span"); // seu contador fica no header
+      const counter = col.querySelector("[data-column-counter]");
       if (!counter) return;
 
-      const visibleCards = col.querySelectorAll('li[data-card-id]:not([style*="display: none"])');
-      const n = visibleCards.length;
+      const n = col.querySelectorAll(
+        'li[data-card-id]:not([style*="display: none"]):not([hidden]):not(.hidden)'
+      ).length;
 
       counter.textContent = `${n} card${n !== 1 ? "s" : ""}`;
     });
   }
+
+
 
   function resetSearchUI() {
     // volta tudo (cards + colunas)
@@ -920,6 +919,24 @@
       }
     }
 
+
+    function afterLocalMoveUpdateUI() {
+  try {
+    requestAnimationFrame(() => {
+      const input = document.getElementById("board-filter");
+      const q = (input?.value || "").trim();
+      if (typeof applyBoardFilter === "function") applyBoardFilter(q);
+
+      // recalcula por DOM
+      refreshCounters();
+      window.updateAggregatorCounts?.();
+
+    });
+  } catch (e) {}
+}
+
+
+
     lists.forEach((listEl) => {
       // evita re-aplicar
       if (listEl.dataset.sortableApplied === "1") return;
@@ -965,29 +982,41 @@
 
         onStart: () => { window.__isDraggingCard = true; },
 
-        onEnd: () => {
-          window.__isDraggingCard = false;
-        },
+onEnd: (evt) => {
+  window.__isDraggingCard = false;
+  afterLocalMoveUpdateUI(); // ✅ garante update sempre (origem/destino)
+},
 
-        onAdd: (evt) => {
-          const item = evt.item;
-          const cardId = resolveCardIdFromItem(item);
-          const newColumnId = resolveColumnIdFromList(evt.to);
-          const newPosition = Number(evt.newIndex || 0);
+onAdd: (evt) => {
+  const item = evt.item;
+  const cardId = resolveCardIdFromItem(item);
+  const newColumnId = resolveColumnIdFromList(evt.to);
+  const newPosition = Number(evt.newIndex || 0);
 
-          if (!cardId || !newColumnId) return;
-          postMove({ cardId, newColumnId, newPosition });
-        },
+  if (!cardId || !newColumnId) return;
 
-        onUpdate: (evt) => {
-          const item = evt.item;
-          const cardId = resolveCardIdFromItem(item);
-          const newColumnId = resolveColumnIdFromList(evt.to);
-          const newPosition = Number(evt.newIndex || 0);
+  afterLocalMoveUpdateUI(); // destino
+  postMove({ cardId, newColumnId, newPosition });
+},
 
-          if (!cardId || !newColumnId) return;
-          postMove({ cardId, newColumnId, newPosition });
-        }
+onUpdate: (evt) => {
+  const item = evt.item;
+  const cardId = resolveCardIdFromItem(item);
+  const newColumnId = resolveColumnIdFromList(evt.to);
+  const newPosition = Number(evt.newIndex || 0);
+
+  if (!cardId || !newColumnId) return;
+
+  afterLocalMoveUpdateUI(); // mesma coluna
+  postMove({ cardId, newColumnId, newPosition });
+},
+
+onRemove: (evt) => {
+  afterLocalMoveUpdateUI(); // ✅ origem (quando sai para outra coluna)
+},
+
+
+
       });
     });
   };
@@ -1629,6 +1658,42 @@ document.addEventListener("DOMContentLoaded", () => {
 })();
 </script>
 
+
+
+
+<script>
+  document.addEventListener("DOMContentLoaded", refreshCounters);
+  document.body.addEventListener("htmx:afterSwap", refreshCounters);
+  document.body.addEventListener("htmx:afterSettle", refreshCounters);
+</script>
+
+
+
+
+<script>
+  window.syncAggregatorCountersFromColumns = function syncAggregatorCountersFromColumns() {
+    // monta um map {colId -> "N cards"} usando o que já está renderizado no header da coluna
+    const map = new Map();
+
+    document.querySelectorAll(".column-item[data-column-id]").forEach((col) => {
+      const colId = col.getAttribute("data-column-id");
+      const counterEl = col.querySelector("[data-column-counter]");
+      if (!colId || !counterEl) return;
+
+      // pega exatamente o texto que você já confia (ex: "4 cards")
+      map.set(String(colId), counterEl.textContent.trim());
+    });
+
+    // aplica na agrupadora
+    document.querySelectorAll("[data-agg-column-id]").forEach((row) => {
+      const colId = row.getAttribute("data-agg-column-id");
+      const target = row.querySelector("[data-agg-count]");
+      if (!colId || !target) return;
+
+      target.textContent = map.get(String(colId)) || "0 cards";
+    });
+  };
+</script>
 
 
 {% endblock content %}
