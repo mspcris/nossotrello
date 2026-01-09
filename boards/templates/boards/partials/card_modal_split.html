@@ -118,6 +118,10 @@ html.dark #cm-root{
   box-shadow: var(--cm-shadow-sm);
   padding: var(--cm-pad);
 }
+.cm-panel .cm-card + .cm-card{
+  margin-top: 14px;
+}
+
 
 .cm-muted{
   font-size: 12px;
@@ -269,11 +273,18 @@ html.dark #cm-root{
 }
 
 .cm-activity{
+  border-left: 1px solid var(--cm-border);
+  background: linear-gradient(
+    180deg,
+    rgba(255,255,255,0.18),
+    rgba(255,255,255,0.06)
+  );
+}
+.cm-activity{
   width: 40%;
   min-width: 0;
-  border-left: 1px solid rgba(0,0,0,0.12);
   padding-left: 16px;
-  overflow-y: auto;
+  box-sizing: border-box;
 }
 
 @media (max-width: 768px){
@@ -676,16 +687,24 @@ html.dark #cm-root{
                      placeholder="Descrição do anexo (opcional)">
 
               <input type="file"
-                     name="file"
-                     id="attachment-file"
-                     class="cm-input"
-                     style="max-width: 520px;"
-                     hx-post="{% url 'boards:add_attachment' card.id %}"
-                     hx-target="#attachments-list"
-                     hx-swap="beforeend"
-                     hx-trigger="change"
-                     hx-encoding="multipart/form-data"
-                     hx-include="#attachment-desc, input[name='csrfmiddlewaretoken']">
+       name="file"
+       id="attachment-file"
+       class="cm-input"
+       style="max-width: 520px;"
+       hx-post="{% url 'boards:add_attachment' card.id %}"
+       hx-target="#attachments-list"
+       hx-swap="beforeend"
+       hx-trigger="change"
+       hx-encoding="multipart/form-data"
+       hx-include="#attachment-desc, input[name='csrfmiddlewaretoken']"
+       hx-on::after-request="
+         if (event.detail && event.detail.successful) {
+           htmx.ajax('GET', '{% url 'boards:activity_panel' card.id %}', '#cm-activity-panel');
+           if (typeof window.refreshCardSnippet === 'function') { window.refreshCardSnippet({{ card.id }}); }
+         }
+       ">
+
+
             </div>
 
             <div class="cm-muted" style="margin-top:6px;">Limite: 50MB por arquivo.</div>

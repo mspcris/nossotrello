@@ -621,11 +621,25 @@ def card_move_options(request, card_id):
 def _render_card_modal(request, card, context=None):
     ctx = context or _card_modal_context(card)
 
+    # ✅ CHECKLISTS (total/done calculados no backend)
+    from django.db.models import Count, Q  # pode mover pro topo depois
+
+    checklists = (
+        card.checklists
+            .all()
+            # .annotate(
+                # total=Count("items", distinct=True),
+                # done=Count("items", filter=Q(items__checked=True), distinct=True),
+            # )
+    )
+    ctx["checklists"] = checklists
+
     # hardening: garante chaves usadas nos templates
     ctx.setdefault("card", card)
     ctx.setdefault("column", getattr(card, "column", None))
     ctx.setdefault("board", getattr(getattr(card, "column", None), "board", None))
-    ctx.setdefault("checklists", card.checklists.all())
+    # ⚠️ REMOVER esta linha, senão você sobrescreve o annotate:
+    # ctx.setdefault("checklists", card.checklists.all())
     ctx.setdefault("board_due_colors", (getattr(card.column.board, "due_colors", None) or {}))
 
     profile = getattr(request.user, "profile", None)
@@ -638,6 +652,7 @@ def _render_card_modal(request, card, context=None):
     )
 
     return render(request, template_name, ctx)
+
 
 
 
