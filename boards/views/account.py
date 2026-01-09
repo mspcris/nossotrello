@@ -146,6 +146,15 @@ def account_profile_update(request):
         else:
             prof.telefone = telefone
             update_fields.append("telefone")
+    # ------------------------------------------------------------
+    # Preferência: Atividade fixa na lateral do modal
+    # ------------------------------------------------------------
+    if "activity_sidebar" in request.POST:
+        prof.activity_sidebar = True
+    else:
+        prof.activity_sidebar = False
+    update_fields.append("activity_sidebar")
+
 
     if errors:
         return _render_account_modal(request, errors=errors, active_tab="profile")
@@ -310,3 +319,5 @@ def account_identity_label_update(request):
     prof.preferred_identity_label = val
     prof.save(update_fields=["preferred_identity_label"])
     return HttpResponse("", status=204)
+
+

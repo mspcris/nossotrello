@@ -1,0 +1,1414 @@
+{# templates/boards/partials/card_modal_split.html (corrigido: cm-root envolve o split) #}
+{% load tag_helpers %}
+
+{% if card.cover_image %}
+  <div class="px-4 pt-4">
+    <div class="group relative rounded-xl overflow-hidden border border-white/20">
+      <a href="{{ card.cover_image.url }}" target="_blank" rel="noopener" class="block">
+        <img src="{{ card.cover_image.url }}" alt="Capa do card" class="w-full object-cover" style="max-height: 260px;">
+      </a>
+
+      <button type="button"
+              class="absolute top-2 right-2 px-2 py-1 rounded text-xs bg-black/60 text-white
+                     opacity-0 group-hover:opacity-100 transition"
+              hx-post="{% url 'boards:remove_card_cover' card.id %}"
+              hx-target="#modal-body"
+              hx-swap="innerHTML"
+              aria-label="Remover capa"
+              title="Remover capa">
+        ✕
+      </button>
+    </div>
+  </div>
+{% endif %}
+
+<style>
+/* ============================================================
+   CM MODAL (card_modal_body.html)
+   ============================================================ */
+
+#cm-root{
+  --cm-radius: 14px;
+  --cm-radius-sm: 10px;
+  --cm-pad: 14px;
+
+
+
+    /* LIGHT MODE */
+--cm-bg: rgba(255,255,255,0.58);        /* fundo do topbar/áreas fixas */
+--cm-surface: rgba(255,255,255,0.62);   /* cartões */
+--cm-surface-2: rgba(255,255,255,0.52); /* campos/áreas secundárias */
+
+
+
+
+  --cm-border: rgba(15,23,42,0.12);
+  --cm-border-2: rgba(15,23,42,0.08);
+  --cm-text: rgba(15,23,42,0.92);
+  --cm-muted: rgba(15,23,42,0.62);
+  --cm-placeholder: rgba(15,23,42,0.45);
+
+  --cm-accent: rgb(37 99 235);
+  --cm-accent-2: rgba(37,99,235,0.12);
+  --cm-danger: rgb(220 38 38);
+
+  --cm-shadow: 0 10px 30px rgba(2,6,23,0.10);
+  --cm-shadow-sm: 0 6px 18px rgba(2,6,23,0.08);
+  --cm-ring: 0 0 0 3px rgba(37,99,235,0.22);
+
+  /* overlay de prazo */
+  --cm-term-rgb: 0,0,0;
+  --cm-term-opacity: 0;
+}
+
+/* ============================================================
+   DARK MODE
+   ============================================================ */
+
+#card-modal-root.theme-dark #cm-root,
+#card-modal-root.card-theme-dark #cm-root,
+html.dark #cm-root{
+  --cm-bg: rgba(2,6,23,0.55);
+  --cm-surface: rgba(2,6,23,0.62);
+  --cm-surface-2: rgba(15,23,42,0.56);
+  --cm-border: rgba(255,255,255,0.14);
+  --cm-border-2: rgba(255,255,255,0.10);
+  --cm-text: rgba(241,245,249,0.94);
+  --cm-muted: rgba(226,232,240,0.72);
+  --cm-placeholder: rgba(226,232,240,0.52);
+  --cm-accent: rgb(96 165 250);
+  --cm-shadow: 0 14px 40px rgba(0,0,0,0.35);
+  --cm-shadow-sm: 0 10px 26px rgba(0,0,0,0.30);
+  --cm-ring: 0 0 0 3px rgba(59,130,246,0.25);
+}
+
+/* ============================================================
+   BASE
+   ============================================================ */
+
+.cm-wrap{
+  padding: 16px;
+  width: 100%;
+  min-width: 0;
+  color: var(--cm-text) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+/* overlay do prazo */
+#cm-root::before{
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--cm-radius);
+  background: rgba(var(--cm-term-rgb), var(--cm-term-opacity));
+  pointer-events: none;
+  z-index: 0;
+}
+
+#cm-root > *{
+  position: relative;
+  z-index: 1;
+}
+
+.cm-card{
+  border-radius: var(--cm-radius);
+  border: 1px solid var(--cm-border);
+  background: var(--cm-surface);
+  box-shadow: var(--cm-shadow-sm);
+  padding: var(--cm-pad);
+}
+
+.cm-muted{
+  font-size: 12px;
+  color: var(--cm-muted) !important;
+}
+
+/* ============================================================
+   TOPBAR / TABS / BUTTONS
+   ============================================================ */
+
+.cm-topbar{
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  border-radius: var(--cm-radius);
+  border: 1px solid var(--cm-border);
+  background: var(--cm-bg);
+  box-shadow: var(--cm-shadow);
+  padding: 10px;
+  margin-bottom: 8px;
+}
+
+.cm-bar{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+}
+
+.cm-tabs{
+  display:flex;
+  gap:8px;
+  flex:1;
+  overflow-x:auto;
+}
+
+.cm-tabbtn{
+  padding:8px 12px;
+  border-radius:999px;
+  font-size:13px;
+  border:1px solid var(--cm-border-2);
+  background:var(--cm-surface-2);
+  cursor:pointer;
+}
+
+.cm-tabbtn.is-active{
+  background: linear-gradient(180deg, rgba(37,99,235,0.16), rgba(37,99,235,0.10));
+  border-color: rgba(37,99,235,0.38);
+}
+
+/* ============================================================
+   PRAZO — OVERLAY FINAL (ÚNICO BLOCO VÁLIDO)
+   ============================================================ */
+
+#cm-root[data-term-notify="1"][data-term-status="ok"],
+#cm-root[data-term-notify="1"][data-term-status="warn"],
+#cm-root[data-term-notify="1"][data-term-status="overdue"]{
+  --cm-term-opacity: 0.12;
+}
+
+#cm-root:not([data-term-notify="1"]),
+#cm-root[data-term-notify="0"]{
+  --cm-term-opacity: 0;
+}
+
+/* CM: desativar Salvar do topo (fica só o FloatSave) */
+#cm-actions,
+#cm-save-btn{
+  display: none !important;
+}
+
+/* ============================================================
+   PRAZO — bolinha de cor ao lado do texto (OK/Alerta/Vencido)
+   ============================================================ */
+.cm-color-dot{
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  display: inline-block;
+  background: transparent;
+  border: 1px solid var(--cm-border);
+}
+
+/* ============================================================
+   PANELS (abas) — mostrar somente o painel ativo
+   ============================================================ */
+.cm-panel{ display: none; }
+.cm-panel.is-active{ display: block; }
+
+#cm-root[data-term-status="ok"]      { --cm-term-rgb: 22, 163, 74; }
+#cm-root[data-term-status="warn"]    { --cm-term-rgb: 245, 158, 11; }
+#cm-root[data-term-status="overdue"] { --cm-term-rgb: 220, 38, 38; }
+
+/* ============================================================
+   ACTION DOCK
+   ============================================================ */
+#cm-action-dock{
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 999999;
+  pointer-events: auto;
+}
+
+#cm-action-dock .dock-wrap{
+  position: relative;
+}
+
+#cm-action-dock .dock-toggle{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.35);
+  background: rgba(0,0,0,0.45);
+  color: #fff;
+  font-size: 22px;
+  line-height: 1;
+}
+
+#cm-dock-actions{
+  position: absolute;
+  right: 0;
+  bottom: 52px;
+  z-index: 999999;
+}
+
+/* Drag & drop de anexo no modal */
+#card-modal-root.cm-dragover #cm-root .cm-wrap{
+  outline: 2px dashed var(--cm-focus);
+  outline-offset: 6px;
+}
+
+/* ============================================================
+   LAYOUT: SPLIT (atividade na lateral)  ✅ FIX
+   - o split agora fica DENTRO do #cm-root
+   ============================================================ */
+.cm-split{
+  display:flex;
+  gap: 16px;
+  height: 100%;
+  min-height: 0;
+}
+
+.cm-main{
+  width: 60%;
+  min-width: 0;
+}
+
+.cm-activity{
+  width: 40%;
+  min-width: 0;
+  border-left: 1px solid rgba(0,0,0,0.12);
+  padding-left: 16px;
+  overflow-y: auto;
+}
+
+@media (max-width: 768px){
+  .cm-split{ flex-direction: column; }
+  .cm-main, .cm-activity{ width: 100%; padding-left: 0; border-left: 0; }
+}
+
+.cm-activity-panel{ display:block; }
+
+
+
+
+/* ============================================================
+   QUILL — Nova Atividade (lado direito)
+   ============================================================ */
+
+.cm-activity-quill{
+  border: 1px solid var(--cm-border);
+  border-radius: var(--cm-radius);
+  background: var(--cm-surface-2);
+  overflow: hidden;
+}
+
+/* toolbar */
+.cm-activity-quill .ql-toolbar.ql-snow{
+  border: 0;
+  border-bottom: 1px solid var(--cm-border-2);
+  background: transparent;
+}
+
+/* área editável */
+.cm-activity-quill .ql-container.ql-snow{
+  border: 0;
+  background: transparent;
+}
+
+.cm-activity-quill .ql-editor{
+  min-height: 140px;
+  font-size: 14px;
+  color: var(--cm-text);
+}
+
+.cm-activity-quill .ql-editor.ql-blank::before{
+  color: var(--cm-placeholder);
+}
+
+
+/* fallback: se Quill não inicializar, o div ainda aparece */
+#cm-activity-editor{
+  min-height: 140px;
+  padding: 10px;
+}
+
+
+
+/* vidro fosco (cards) */
+.cm-card{
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* vidro fosco (topbar) */
+.cm-topbar{
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.cm-card, .cm-topbar{
+  background-image: linear-gradient(
+    180deg,
+    rgba(255,255,255,0.35),
+    rgba(255,255,255,0.12)
+  );
+}
+/* separação entre composer e lista */
+.cm-activity .cm-activity-sep{
+  height: 1px;
+  background: rgba(15,23,42,0.10);
+  margin: 12px 0;
+}
+
+/* lista com espaçamento padrão */
+#cm-activity-panel .cm-activity-list{
+  display: flex;
+  flex-direction: column;
+  gap: 12px; /* mesmo “feeling” do espaço Descrição->Prazo */
+}
+
+/* cada item como “card” */
+#cm-activity-panel .cm-activity-item{
+  border: 1px solid var(--cm-border);
+  background: var(--cm-surface);
+  border-radius: var(--cm-radius);
+  padding: 12px;
+  box-shadow: var(--cm-shadow-sm);
+}
+
+/* data/horário mais discreto (opcional) */
+#cm-activity-panel .cm-activity-item .cm-activity-meta{
+  font-size: 12px;
+  color: var(--cm-muted);
+  margin-bottom: 6px;
+}
+
+</style>
+
+{# ✅ FIX: cm-root envolve TUDO (main + activity) #}
+<div class="cm-wrap"
+     id="cm-root"
+     data-card-id="{{ card.id }}"
+     data-cm-active="desc"
+     data-tag-colors='{{ card.tag_colors|default_if_none:"{}"|escape }}'
+     {% if term_status %}data-term-status="{{ term_status }}"{% endif %}
+     data-term-notify="{% if card.due_notify %}1{% else %}0{% endif %}">
+
+  <div class="cm-split">
+
+    <!-- COLUNA ESQUERDA (60%) -->
+    <div class="cm-main">
+
+      {# Topbar (abas + salvar) #}
+      <div class="cm-topbar">
+        <div class="cm-bar" role="tablist" aria-label="Abas do card">
+          <div class="cm-tabs">
+            <button type="button" class="cm-tabbtn is-active" data-cm-tab="desc">Descrição</button>
+            <button type="button" class="cm-tabbtn" data-cm-tab="tags">Etiquetas</button>
+            <button type="button" class="cm-tabbtn" data-cm-tab="check">Checklists</button>
+            <button type="button" class="cm-tabbtn" data-cm-tab="files">Anexos</button>
+          </div>
+
+          <div class="cm-actions" id="cm-actions">
+            <button type="submit" form="cm-main-form" class="cm-btn primary" id="cm-save-btn">Salvar</button>
+          </div>
+        </div>
+      </div>
+
+      {# Tags fixas (fora das abas) #}
+      <div id="cm-tags-wrap">
+        {% include "boards/partials/card_tags_bar.html" %}
+      </div>
+
+      {# Color picker de tag (form + popover) #}
+      <form id="cm-tag-color-form"
+            style="display:none !important;"
+            method="post"
+            action="{% url 'boards:set_tag_color' card.id %}"
+            onsubmit="return false;">
+        {% csrf_token %}
+        <input type="hidden" name="tag" id="cm-tag-color-tag">
+        <input type="hidden" name="color" id="cm-tag-color-value">
+      </form>
+
+      <div id="cm-tag-color-popover"
+           class="hidden"
+           style="position:absolute; z-index:99999; padding:12px; border-radius:12px;
+                  background: rgba(255,255,255,0.98); border:1px solid rgba(15,23,42,0.12);
+                  box-shadow: 0 10px 30px rgba(2,6,23,0.18);">
+        <div class="flex flex-col gap-3">
+          <input type="color"
+                 id="cm-tag-color-picker"
+                 class="w-12 h-12 border rounded cursor-pointer">
+
+          <div class="flex gap-2 justify-end">
+            <button type="button" class="cm-btn" id="cm-tag-color-cancel">Cancelar</button>
+            <button type="button" class="cm-btn primary" id="cm-tag-color-save">Salvar cor</button>
+          </div>
+        </div>
+      </div>
+
+      <form id="cm-cover-form"
+            class="hidden"
+            method="post"
+            enctype="multipart/form-data"
+            action="{% url 'boards:set_card_cover' card.id %}">
+        {% csrf_token %}
+      </form>
+
+      {# Form principal (descrição + tags + prazo + capa) #}
+      <form id="cm-main-form"
+            method="post"
+            enctype="multipart/form-data"
+            hx-post="{% url 'boards:update_card' card.id %}"
+            hx-target="#modal-body"
+            hx-swap="innerHTML">
+        {% csrf_token %}
+
+        {# Aba: Descrição #}
+        <section class="cm-panel is-active" data-cm-panel="desc" role="tabpanel">
+          <div class="cm-card space-y-3">
+            <div>
+              <label class="cm-label">Título</label>
+              <input type="text" name="title" value="{{ card.title }}" class="cm-input">
+            </div>
+
+            <div>
+              <label class="cm-label">Descrição</label>
+              <textarea name="description" class="cm-textarea">{{ card.description|default_if_none:"" }}</textarea>
+              <div class="cm-muted" style="margin-top:8px;">
+                Observação: você pode aumentar o tamanho do campo arrastando o canto inferior direito.
+              </div>
+            </div>
+          </div>
+
+          {# Prazo (fica na aba Descrição) #}
+          <div class="cm-card space-y-3" style="margin:10px 0;">
+            <div class="flex items-center justify-between gap-2 flex-wrap">
+              <div>
+                <div class="cm-label" style="margin:0;">Prazo</div>
+                <div class="cm-muted">
+                  Se preencher vencimento, o aviso vira obrigatório (default: 5 dias antes).
+                </div>
+              </div>
+
+              <div class="flex items-center gap-3 flex-wrap">
+                <div class="flex items-center gap-3 flex-wrap">
+                  <label class="cm-muted cm-due-color" style="display:flex;align-items:center;gap:8px;">
+                    <input type="color" name="due_color_ok" value="{{ board_due_colors.ok|default:'#16a34a' }}">
+                    OK
+                    <span class="cm-color-dot" aria-hidden="true"></span>
+                  </label>
+
+                  <label class="cm-muted cm-due-color" style="display:flex;align-items:center;gap:8px;">
+                    <input type="color" name="due_color_warn" value="{{ board_due_colors.warn|default:'#f59e0b' }}">
+                    Alerta
+                    <span class="cm-color-dot" aria-hidden="true"></span>
+                  </label>
+
+                  <label class="cm-muted cm-due-color" style="display:flex;align-items:center;gap:8px;">
+                    <input type="color" name="due_color_overdue" value="{{ board_due_colors.overdue|default:'#dc2626' }}">
+                    Vencido
+                    <span class="cm-color-dot" aria-hidden="true"></span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <!-- VENCIMENTO -->
+              <div class="min-w-0">
+                <div class="cm-label">Vencimento</div>
+
+                <div class="relative">
+                  <input type="text"
+                         id="cm-due-date-display"
+                         class="cm-input pr-10"
+                         inputmode="numeric"
+                         placeholder="DD/MM/AAAA"
+                         value="{% if card.due_date %}{{ card.due_date|date:'d/m/Y' }}{% endif %}">
+
+                  <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">📅</span>
+
+                  <input type="date"
+                         id="cm-due-date-picker"
+                         class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 opacity-0 cursor-pointer z-10"
+                         value="{% if card.due_date %}{{ card.due_date|date:'Y-m-d' }}{% endif %}">
+
+                  <input type="hidden"
+                         name="due_date"
+                         id="cm-due-date"
+                         value="{% if card.due_date %}{{ card.due_date|date:'Y-m-d' }}{% endif %}">
+                </div>
+              </div>
+
+              <!-- AVISAR EM -->
+              <div class="min-w-0">
+                <div class="cm-label">Avisar em</div>
+
+                <div class="relative">
+                  <input type="text"
+                         id="cm-due-warn-date-display"
+                         class="cm-input pr-10"
+                         inputmode="numeric"
+                         placeholder="DD/MM/AAAA"
+                         value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'d/m/Y' }}{% endif %}">
+
+                  <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">📅</span>
+
+                  <input type="date"
+                         id="cm-due-warn-date-picker"
+                         class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 opacity-0 cursor-pointer z-10"
+                         value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'Y-m-d' }}{% endif %}">
+
+                  <input type="hidden"
+                         name="due_warn_date"
+                         id="cm-due-warn-date"
+                         value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'Y-m-d' }}{% endif %}">
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <input type="hidden" name="due_notify" value="0">
+              <label class="cm-muted" style="display:flex;align-items:center;gap:8px;white-space:nowrap;">
+                <input type="checkbox"
+                       name="due_notify"
+                       value="1"
+                       {% if card.due_notify|default_if_none:True %}checked{% endif %}>
+                Notificar com cores
+              </label>
+            </div>
+          </div>
+
+          {# Capa (fica na aba Descrição) #}
+          <div class="cm-card" style="margin-bottom:10px;">
+            <div class="flex items-center justify-between gap-2 flex-wrap">
+              <div>
+                <div class="cm-label" style="margin:0;">Capa do card</div>
+                <div class="cm-muted">Dica: na aba Descrição, você pode colar uma imagem (Ctrl+V) para virar capa.</div>
+              </div>
+
+              <div class="flex gap-2 items-center">
+                <button type="button"
+                        class="cm-btn"
+                        id="cm-cover-pick-btn"
+                        onclick="document.getElementById('cm-cover-file')?.click();">
+                  Escolher imagem…
+                </button>
+
+                <input type="file"
+                       id="cm-cover-file"
+                       name="cover"
+                       form="cm-cover-form"
+                       accept="image/*"
+                       style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;">
+              </div>
+            </div>
+
+            <div id="cm-cover-error"
+                 class="hidden mt-2 px-3 py-2 rounded-md text-sm border border-red-500/30 bg-red-500/10 text-red-200"></div>
+          </div>
+        </section>
+
+        {# Aba: Tags #}
+        <section class="cm-panel" data-cm-panel="tags" role="tabpanel">
+          <div class="cm-card space-y-3">
+            <div>
+              <label class="cm-label">Etiquetas (separadas por vírgula)</label>
+              <input type="text" name="tags" value="{{ card.tags|default_if_none:"" }}" class="cm-input">
+            </div>
+
+            <div class="cm-muted">
+              Dica: as etiquetas ficam sempre visíveis no topo do modal (clique nelas para escolher a cor).
+            </div>
+          </div>
+        </section>
+      </form>
+
+      {# Floatbar #}
+      <div id="cm-floatbar" class="cm-floatbar hidden" aria-live="polite">
+        <div class="cm-floatbar-inner">
+          <button type="button" class="cm-btn" id="cm-close-btn">Fechar</button>
+          <button type="submit" form="cm-main-form" class="cm-btn primary" id="cm-float-save-btn">
+            <span class="underline font-semibold">S</span>alvar
+          </button>
+        </div>
+      </div>
+
+      {# Aba: Checklists #}
+      <section class="cm-panel" data-cm-panel="check" role="tabpanel">
+        <div class="cm-card space-y-3">
+          <form id="cm-checklist-create-form"
+                method="post"
+                hx-post="{% url 'boards:checklist_add' card.id %}"
+                hx-target="#checklist-list"
+                hx-swap="innerHTML">
+            {% csrf_token %}
+            <label class="cm-label">Novo checklist</label>
+
+            <div class="flex gap-2">
+              <input id="cm-checklist-create-input"
+                     type="text"
+                     name="title"
+                     class="cm-input"
+                     placeholder="Ex: Tarefas da semana">
+              <button type="submit" class="cm-btn primary">Adicionar</button>
+            </div>
+          </form>
+
+          <div id="checklist-list" class="space-y-4">
+            {% include "boards/partials/checklist_list.html" with checklists=checklists %}
+          </div>
+        </div>
+      </section>
+
+      {# Aba: Anexos #}
+      <section class="cm-panel" data-cm-panel="files" role="tabpanel">
+        <div class="cm-card space-y-3">
+          <div id="attachments-error"
+               class="hidden mb-2 px-3 py-2 rounded-md text-sm border border-red-500/30 bg-red-500/10 text-red-200"></div>
+
+          <div>
+            <label class="cm-label">Enviar novo anexo clicando em 'Choose File' ou, se for uma imagem em print, CTRL-V. Você também pode arrastar o arquivo para o campo Choose File, segure por um segundo e solte</label>
+
+            <div class="flex gap-2 flex-wrap">
+              <input type="text"
+                     id="attachment-desc"
+                     name="description"
+                     class="cm-input"
+                     style="max-width: 420px;"
+                     placeholder="Descrição do anexo (opcional)">
+
+              <input type="file"
+                     name="file"
+                     id="attachment-file"
+                     class="cm-input"
+                     style="max-width: 520px;"
+                     hx-post="{% url 'boards:add_attachment' card.id %}"
+                     hx-target="#attachments-list"
+                     hx-swap="beforeend"
+                     hx-trigger="change"
+                     hx-encoding="multipart/form-data"
+                     hx-include="#attachment-desc, input[name='csrfmiddlewaretoken']">
+            </div>
+
+            <div class="cm-muted" style="margin-top:6px;">Limite: 50MB por arquivo.</div>
+          </div>
+
+          <div id="attachments-list" class="space-y-3">
+            {% for attachment in card.attachments.all %}
+              {% include "boards/partials/attachment_item.html" %}
+            {% empty %}
+              <div class="cm-muted">Nenhum anexo ainda.</div>
+            {% endfor %}
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- COLUNA DIREITA (40%) ✅ agora dentro do #cm-root -->
+    <aside class="cm-activity">
+      <section class="cm-activity-panel" role="region">
+
+  <!-- CARD 1: NOVA ATIVIDADE (composer) -->
+  <div class="cm-card space-y-3">
+    <form
+      id="cm-activity-form"
+      method="post"
+      hx-post="{% url 'boards:add_activity' card.id %}"
+      hx-target="#cm-activity-panel"
+      hx-swap="innerHTML"
+    >
+      {% csrf_token %}
+
+      <div id="activity-error"
+           class="hidden mb-2 px-3 py-2 rounded-md text-sm border border-red-500/30 bg-red-500/10 text-red-200"></div>
+
+      <label class="cm-label">Nova atividade</label>
+
+      <div class="cm-activity-quill">
+        <div id="cm-activity-editor"></div>
+      </div>
+
+      <input type="hidden" name="content" id="cm-activity-content">
+
+      <div class="flex gap-2">
+        <button type="submit" class="cm-btn primary"><span class="underline font-semibold">I</span>ncluir</button>
+        <button type="button" class="cm-btn" onclick="resetActivityQuill()">Limpar</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ESPAÇO ENTRE OS DOIS BLOCOS (igual “Descrição -> Prazo”) -->
+  <div style="height: 10px;"></div>
+
+  <!-- CARD 2: LISTA DE ATIVIDADES -->
+  <div class="cm-card">
+    <div id="cm-activity-panel">
+      {% include "boards/partials/card_activity_panel.html" %}
+    </div>
+  </div>
+
+</section>
+
+    </aside>
+
+  </div>
+
+  {# Action dock #}
+  <div id="cm-action-dock" aria-label="Ações do card">
+    <div class="dock-wrap">
+      <button type="button"
+              id="cm-dock-toggle"
+              class="dock-toggle"
+              aria-expanded="false"
+              aria-haspopup="true"
+              aria-controls="cm-dock-menu">
+        ⋮
+      </button>
+
+      <div id="cm-dock-menu" class="hidden" role="menu" aria-label="Menu de ações">
+        <button type="button"
+                class="dock-action"
+                id="cm-dock-duplicate"
+                role="menuitem"
+                data-url-duplicate="{% url 'boards:duplicate_card' card.id %}">
+          <span>📄</span> <span class="label">Duplicar</span>
+        </button>
+
+        <button type="button"
+                class="dock-action"
+                id="cm-dock-move"
+                role="menuitem"
+                data-url-move="{% url 'boards:card_move_options' card.id %}">
+          <span>↔️</span> <span class="label">Mover</span>
+        </button>
+
+        <button type="button"
+                class="dock-action"
+                id="cm-dock-copylink"
+                role="menuitem">
+          <span>🔗</span> <span class="label">Copiar link</span>
+        </button>
+      </div>
+    </div>
+
+    <div id="cm-action-dock-panel" role="dialog" aria-label="Painel de ação" class="hidden">
+      <div id="cm-dock-panel-body"></div>
+    </div>
+  </div>
+
+</div>
+
+
+
+<script>
+(function () {
+  const root = document.getElementById("cm-root");
+  if (!root) return;
+
+  const cardId = (root.getAttribute("data-card-id") || "").trim() || "x";
+  const ALLOWED = ["desc", "tags", "check", "ativ", "files"];
+  const STORAGE_KEY = `cm_active_tab_${cardId}`;
+
+  function clampTab(tab) {
+    const t = String(tab || "").trim();
+    return ALLOWED.includes(t) ? t : "desc";
+  }
+
+  function getActiveTab() {
+    return clampTab(root.getAttribute("data-cm-active") || root.dataset.cmActive || "desc");
+  }
+
+  function setActiveTab(tab) {
+    const t = clampTab(tab);
+
+    // Tenta usar o mecanismo existente (modal.tabs.js) via click (mantém tudo alinhado)
+    const btn = root.querySelector(`.cm-tabbtn[data-cm-tab="${CSS.escape(t)}"]`);
+    if (btn) {
+      btn.click();
+      return;
+    }
+
+    // Fallback: alterna manualmente
+    root.setAttribute("data-cm-active", t);
+    root.dataset.cmActive = t;
+
+    root.querySelectorAll(".cm-tabbtn[data-cm-tab]").forEach((b) => {
+      b.classList.toggle("is-active", b.getAttribute("data-cm-tab") === t);
+    });
+
+    root.querySelectorAll(".cm-panel[data-cm-panel]").forEach((p) => {
+      p.classList.toggle("is-active", p.getAttribute("data-cm-panel") === t);
+    });
+
+    try {
+      root.dispatchEvent(new CustomEvent("cm:tabchange", { detail: { tab: t } }));
+    } catch (_e) {}
+  }
+
+  function hasStoredTab() {
+    try { return sessionStorage.getItem(STORAGE_KEY) !== null; } catch (_e) { return false; }
+  }
+
+  function loadStoredTab() {
+    try { return clampTab(sessionStorage.getItem(STORAGE_KEY) || "desc"); }
+    catch (_e) { return "desc"; }
+  }
+
+  function storeTab(tab) {
+    try { sessionStorage.setItem(STORAGE_KEY, clampTab(tab)); } catch (_e) {}
+  }
+
+  // 1) TAB PERSISTENCE
+  // - Primeira abertura: força desc
+  // - Pós swaps (HTMX): restaura a aba salva
+  (function initTabPersistence() {
+    const initial = hasStoredTab() ? loadStoredTab() : "desc";
+    storeTab(initial);
+
+    // Aplica após o DOM do modal estar pronto + scripts defer (cinto e suspensório)
+    setTimeout(() => setActiveTab(initial), 0);
+    setTimeout(() => setActiveTab(loadStoredTab()), 50);
+
+    // Persiste por evento central (emitido por modal.tabs.js)
+    root.addEventListener("cm:tabchange", function (e) {
+      const t = clampTab(e.detail && e.detail.tab);
+      storeTab(t);
+    });
+
+    // Global: captura requests/swap do HTMX sem depender deste script rodar de novo
+    if (window.__cmTabKeepBound === true) return;
+    window.__cmTabKeepBound = true;
+
+    document.body.addEventListener("htmx:beforeRequest", function (evt) {
+      const r = document.getElementById("cm-root");
+      if (!r) return;
+      const cid = (r.getAttribute("data-card-id") || "").trim() || "x";
+      const key = `cm_active_tab_${cid}`;
+      const t = clampTab(r.dataset.cmActive || r.getAttribute("data-cm-active") || "desc");
+      try { sessionStorage.setItem(key, t); } catch (_e) {}
+    });
+
+    document.body.addEventListener("htmx:afterSwap", function (evt) {
+      const target = evt.target;
+      if (!target) return;
+
+      // Quando trocar o body do modal, restaura a última aba
+      if (target.id === "modal-body") {
+        const r = document.getElementById("cm-root");
+        if (!r) return;
+
+        const cid = (r.getAttribute("data-card-id") || "").trim() || "x";
+        const key = `cm_active_tab_${cid}`;
+        let t = "desc";
+        try { t = clampTab(sessionStorage.getItem(key) || "desc"); } catch (_e) {}
+
+        setTimeout(() => {
+          const rr = document.getElementById("cm-root");
+          if (rr && (rr.getAttribute("data-card-id") || "").trim() === cid) {
+            const btn = rr.querySelector(`.cm-tabbtn[data-cm-tab="${CSS.escape(t)}"]`);
+            if (btn) btn.click();
+          }
+        }, 0);
+
+        setTimeout(() => {
+          const rr = document.getElementById("cm-root");
+          if (rr && (rr.getAttribute("data-card-id") || "").trim() === cid) {
+            const btn = rr.querySelector(`.cm-tabbtn[data-cm-tab="${CSS.escape(t)}"]`);
+            if (btn) btn.click();
+          }
+        }, 50);
+      }
+    });
+  })();
+
+  // 2) BLOQUEAR ENTER que submete form e “volta” para Descrição
+  (function initPreventEnterSubmit() {
+    const form = document.getElementById("cm-main-form");
+    if (!form) return;
+
+    form.addEventListener("keydown", function (ev) {
+      if (ev.key !== "Enter") return;
+      if (ev.isComposing) return;
+
+      const el = ev.target;
+      if (!el) return;
+
+      // Em textarea, Enter é newline
+      if (el.tagName === "TEXTAREA") return;
+
+      // Só bloqueia nos campos do CM (título/tags/datas)
+      const shouldBlock = el.matches(
+        'input[name="title"], input[name="tags"], #cm-due-date-display, #cm-due-warn-date-display'
+      );
+
+      if (shouldBlock) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        try { el.blur(); } catch (_e) {}
+      }
+    }, true);
+  })();
+
+  // 3) FLOATBAR — aparece quando houver alterações em Desc/Tags
+  (function initFloatbarDirty() {
+    const form = document.getElementById("cm-main-form");
+    const floatbar = document.getElementById("cm-floatbar");
+    const floatSave = document.getElementById("cm-float-save-btn");
+    const closeBtn = document.getElementById("cm-close-btn");
+
+    if (!form || !floatbar) return;
+
+    const WATCH = [
+      "title",
+      "description",
+      "tags",
+      "due_color_ok",
+      "due_color_warn",
+      "due_color_overdue",
+      "due_date",
+      "due_warn_date",
+      "due_notify",
+    ];
+
+    function snapshot() {
+      const fd = new FormData(form);
+      const obj = {};
+      WATCH.forEach((k) => { obj[k] = ""; });
+      for (const [k, v] of fd.entries()) {
+        if (WATCH.includes(k)) obj[k] = String(v ?? "");
+      }
+      return obj;
+    }
+
+    let base = snapshot();
+
+    function isDirty() {
+      const now = snapshot();
+      for (const k of WATCH) {
+        if (String(now[k] ?? "") !== String(base[k] ?? "")) return true;
+      }
+      return false;
+    }
+
+    function isActionsTabActive() {
+      const t = getActiveTab();
+      return t === "desc" || t === "tags";
+    }
+
+    function syncFloatbar() {
+      const show = isActionsTabActive() && isDirty();
+      floatbar.classList.toggle("hidden", !show);
+    }
+
+    form.addEventListener("input", syncFloatbar, true);
+    form.addEventListener("change", syncFloatbar, true);
+    root.addEventListener("cm:tabchange", syncFloatbar);
+
+    // Reset baseline após salvar com sucesso
+    form.addEventListener("htmx:afterRequest", function (evt) {
+      if (evt.target !== form) return;
+      if (!evt.detail || !evt.detail.successful) return;
+
+      base = snapshot();
+      syncFloatbar();
+
+      // refresh snippet (se existe)
+      if (typeof window.refreshCardSnippet === "function") {
+        try { window.refreshCardSnippet(cardId); } catch (_e) {}
+      }
+    });
+
+    if (floatSave) {
+      floatSave.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        storeTab(getActiveTab());
+        try {
+          form.requestSubmit ? form.requestSubmit() : form.submit();
+        } catch (_e) {
+          try { form.submit(); } catch (_e2) {}
+        }
+      });
+    }
+
+    if (closeBtn) {
+      closeBtn.addEventListener("click", function () {
+        if (typeof window.closeModal === "function") return window.closeModal();
+        const x = document.querySelector("#modal .modal-top-x");
+        if (x) x.click();
+      });
+    }
+
+    syncFloatbar();
+  })();
+
+  // 4) DATAS — abrir picker + sincronizar BR/ISO (sem autosave)
+  (function initDueDatePickers() {
+    const form = document.getElementById("cm-main-form");
+    if (!form) return;
+
+    function parseBRtoISO(s) {
+      const v = String(s || "").trim();
+      const m = v.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      if (!m) return "";
+      const dd = parseInt(m[1], 10);
+      const mm = parseInt(m[2], 10);
+      const yy = parseInt(m[3], 10);
+      if (!yy || mm < 1 || mm > 12 || dd < 1 || dd > 31) return "";
+      const dt = new Date(yy, mm - 1, dd);
+      if (dt.getFullYear() !== yy || (dt.getMonth() + 1) !== mm || dt.getDate() !== dd) return "";
+      return `${String(yy).padStart(4, "0")}-${String(mm).padStart(2, "0")}-${String(dd).padStart(2, "0")}`;
+    }
+
+    function formatISOtoBR(iso) {
+      const v = String(iso || "").trim();
+      const m = v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!m) return "";
+      return `${m[3]}/${m[2]}/${m[1]}`;
+    }
+
+    function digitsOnly(s) { return String(s || "").replace(/\D+/g, ""); }
+
+    function maskDDMMYYYY(raw) {
+      const d = digitsOnly(raw).slice(0, 8);
+      const p1 = d.slice(0, 2);
+      const p2 = d.slice(2, 4);
+      const p3 = d.slice(4, 8);
+      let out = p1;
+      if (p2) out += "/" + p2;
+      if (p3) out += "/" + p3;
+      return out;
+    }
+
+    function openPicker(picker) {
+      if (!picker) return;
+      if (typeof picker.showPicker === "function") {
+        try { picker.showPicker(); return; } catch (_e) {}
+      }
+      try { picker.click(); } catch (_e) {}
+    }
+
+    function wire(prefix) {
+      const display = document.getElementById(`cm-${prefix}-display`);
+      const picker = document.getElementById(`cm-${prefix}-picker`);
+      const hidden = document.getElementById(`cm-${prefix}`);
+      if (!display || !picker || !hidden) return;
+
+      if (display.dataset.cmDateBound === "1") return;
+      display.dataset.cmDateBound = "1";
+
+      display.addEventListener("input", function () {
+        const masked = maskDDMMYYYY(display.value);
+        if (display.value !== masked) display.value = masked;
+      });
+
+      display.addEventListener("blur", function () {
+        const iso = parseBRtoISO(display.value);
+        hidden.value = iso;
+        if (iso) {
+          picker.value = iso;
+          display.value = formatISOtoBR(iso);
+        }
+      });
+
+      display.addEventListener("click", function () {
+        openPicker(picker);
+      });
+
+      const icon = display.parentElement?.querySelector("span");
+      if (icon) {
+        icon.addEventListener("click", function () {
+          openPicker(picker);
+        });
+      }
+
+      picker.addEventListener("input", function () {
+        const iso = String(picker.value || "").trim();
+        hidden.value = iso;
+        display.value = iso ? formatISOtoBR(iso) : "";
+      });
+
+      picker.addEventListener("change", function () {
+        const iso = String(picker.value || "").trim();
+        hidden.value = iso;
+        display.value = iso ? formatISOtoBR(iso) : "";
+      });
+
+      // inicial
+      const iso0 = String(hidden.value || "").trim() || String(picker.value || "").trim();
+      hidden.value = iso0;
+      picker.value = iso0;
+      display.value = iso0 ? formatISOtoBR(iso0) : "";
+    }
+
+    wire("due-date");
+    wire("due-warn-date");
+  })();
+
+  // 5) BOLINHAS DAS CORES (OK/Alerta/Vencido)
+  (function initDueColorDots() {
+    root.querySelectorAll("label.cm-due-color").forEach((label) => {
+      const input = label.querySelector('input[type="color"]');
+      const dot = label.querySelector(".cm-color-dot");
+      if (!input || !dot) return;
+
+      const sync = () => {
+        dot.style.backgroundColor = input.value || "transparent";
+        dot.style.borderColor = input.value || "transparent";
+      };
+
+      if (input.dataset.cmDotBound === "1") return;
+      input.dataset.cmDotBound = "1";
+
+      sync();
+      input.addEventListener("input", sync);
+      input.addEventListener("change", sync);
+    });
+  })();
+})();
+</script>
+
+
+<script>
+  // ============================================================
+  // HOTKEYS (ALT+S / ALT+I) — Card Modal (robusto com HTMX/Quill)
+  // - ALT+S: submete o form principal (#cm-main-form) SEM depender da floatbar
+  // - ALT+I: vai para aba Atividade e submete o form (#cm-activity-form)
+  // ============================================================
+  (function () {
+    // OBS: como este HTML é re-renderizado via HTMX, não use "instalar 1 vez"
+    // com window.__flag, senão você pode ficar sem handler dependendo da ordem.
+    // Aqui a gente instala por modal-open (por cm-root) e evita duplicar pelo dataset.
+
+    const root = document.getElementById("cm-root");
+    if (!root) return;
+
+    if (root.dataset.cmHotkeysBound === "1") return;
+    root.dataset.cmHotkeysBound = "1";
+
+    function clampKey(e) {
+      // mais estável que e.key em layout PT/ABNT: usa code quando possível
+      const code = (e.code || "").toLowerCase(); // "keys", "keyi"
+      if (code === "keys") return "s";
+      if (code === "keyi") return "i";
+      return (e.key || "").toLowerCase();
+    }
+
+    function gotoTabAtiv() {
+      return true;
+    }
+
+    function submitMain() {
+      const form = document.getElementById("cm-main-form");
+      if (!form) return false;
+
+      try {
+        // dispara listeners + validações + HTMX
+        if (form.requestSubmit) form.requestSubmit();
+        else form.submit();
+        return true;
+      } catch (_e) {
+        try { form.submit(); return true; } catch (_e2) {}
+      }
+      return false;
+    }
+
+    function submitActivity() {
+      const form = document.getElementById("cm-activity-form");
+      if (!form) return false;
+
+      try {
+        if (form.requestSubmit) form.requestSubmit();
+        else form.submit();
+        return true;
+      } catch (_e) {
+        try { form.submit(); return true; } catch (_e2) {}
+      }
+      return false;
+    }
+
+    // IMPORTANT: bind no root do modal (não no document) para evitar conflito global
+    root.addEventListener(
+      "keydown",
+      function (e) {
+        if (!e.altKey) return;
+        if (e.ctrlKey || e.metaKey) return;
+
+        const k = clampKey(e);
+        if (k !== "s" && k !== "i") return;
+
+        // não deixar o browser “comer” o ALT
+        e.preventDefault();
+        e.stopPropagation();
+
+        // ALT+S => salvar SEM depender do floatbar
+        if (k === "s") {
+          submitMain();
+          return;
+        }
+
+        // ALT+I => incluir atividade
+        if (k === "i") {
+          // garante aba Atividade
+          gotoTabAtiv();
+
+          // dá 1 tick para trocar o painel e então submete
+          setTimeout(() => {
+            submitActivity();
+          }, 0);
+
+          return;
+        }
+      },
+      true
+    );
+  })();
+</script>
+
+
+
+
+
+
+<script>
+(function () {
+  function getRoot() {
+    return document.getElementById("cm-root");
+  }
+
+  function getActiveTab() {
+    const r = getRoot();
+    if (!r) return "desc";
+
+    const attr = (r.dataset.cmActive || r.getAttribute("data-cm-active") || "").trim();
+    if (attr) return attr;
+
+    const btn = r.querySelector(".cm-tabbtn.is-active[data-cm-tab]");
+    if (btn) return (btn.getAttribute("data-cm-tab") || "desc").trim();
+
+    const panel = r.querySelector(".cm-panel.is-active[data-cm-panel]");
+    if (panel) return (panel.getAttribute("data-cm-panel") || "desc").trim();
+
+    return "desc";
+  }
+
+  function randomName(ext) {
+    const now = new Date();
+    const stamp =
+      String(now.getFullYear()) +
+      String(now.getMonth() + 1).padStart(2, "0") +
+      String(now.getDate()).padStart(2, "0") + "-" +
+      String(now.getHours()).padStart(2, "0") +
+      String(now.getMinutes()).padStart(2, "0") +
+      String(now.getSeconds()).padStart(2, "0");
+
+    let rnd = "";
+    try { rnd = crypto.getRandomValues(new Uint32Array(2)).join(""); }
+    catch (_e) { rnd = String(Math.random()).slice(2); }
+
+    return `print-${stamp}-${rnd}${ext}`;
+  }
+
+  // PASTE: instala 1x global
+  if (window.__cmAttachPasteBound !== true) {
+    window.__cmAttachPasteBound = true;
+
+    document.addEventListener("paste", function (e) {
+      if (getActiveTab() !== "files") return;
+
+      const r = getRoot();
+      if (!r) return;
+
+      const fileInput = r.querySelector("#attachment-file");
+      if (!fileInput) return;
+
+      const cd = e.clipboardData;
+      if (!cd || !cd.items || !cd.items.length) return;
+
+      let imgItem = null;
+      for (const it of cd.items) {
+        if (it && it.kind === "file" && String(it.type || "").startsWith("image/")) {
+          imgItem = it;
+          break;
+        }
+      }
+      if (!imgItem) return;
+
+      const blob = imgItem.getAsFile();
+      if (!blob) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      const mime = String(blob.type || "image/png");
+      const ext = mime === "image/jpeg" ? ".jpg" : (mime === "image/webp" ? ".webp" : ".png");
+      const file = new File([blob], randomName(ext), { type: mime });
+
+      const desc = r.querySelector("#attachment-desc");
+      const focused = document.activeElement === desc;
+      if (desc && !focused && !String(desc.value || "").trim()) {
+        desc.value = "Print (Ctrl+V)";
+      }
+
+
+      const dt = new DataTransfer();
+      dt.items.add(file);
+
+      try { fileInput.files = dt.files; } catch (_e) { return; }
+      fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+      setTimeout(() => { try { fileInput.value = ""; } catch (_e) {} }, 0);
+    }, true);
+  }
+
+  // DRAG&DROP: instala por modal (re-render safe)
+  function initAttachmentDragDrop() {
+    const r = getRoot();
+    if (!r) return;
+    if (r.dataset.cmDropBound === "1") return;
+    r.dataset.cmDropBound = "1";
+
+    const modalRoot = document.getElementById("card-modal-root") || r;
+    const fileInput = r.querySelector("#attachment-file");
+    if (!fileInput) return;
+
+    function setDragUI(on) {
+      modalRoot.classList.toggle("cm-dragover", !!on);
+    }
+
+    function onDragOver(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
+      setDragUI(true);
+    }
+
+    function onDrop(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      setDragUI(false);
+
+      const files = e.dataTransfer && e.dataTransfer.files ? e.dataTransfer.files : null;
+      if (!files || !files.length) return;
+
+      const dt = new DataTransfer();
+      dt.items.add(files[0]);
+
+      try { fileInput.files = dt.files; } catch (_e) { return; }
+      fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+
+    modalRoot.addEventListener("dragenter", onDragOver, true);
+    modalRoot.addEventListener("dragover", onDragOver, true);
+    modalRoot.addEventListener("drop", onDrop, true);
+    modalRoot.addEventListener("dragleave", () => setDragUI(false), true);
+  }
+
+  function bootAttach() {
+    initAttachmentDragDrop();
+  }
+
+  document.addEventListener("DOMContentLoaded", bootAttach);
+  document.body.addEventListener("htmx:afterSwap", function (evt) {
+    if (evt.target && evt.target.id === "modal-body") bootAttach();
+  });
+})();
+</script>

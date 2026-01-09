@@ -123,21 +123,23 @@
   // (não confiar só em data-cm-active)
   // ============================================================
   function isActivityTabActive() {
-    const root = getRoot();
-    if (!root) return false;
+  const root = getRoot();
+  if (!root) return false;
 
-    // 1) fonte “forte”: painel ativo
-    const panel = root.querySelector('section[data-cm-panel="ativ"]');
-    if (panel && panel.classList.contains("is-active")) return true;
+  // 1) layout com aba (card_modal_body)
+  const panel = root.querySelector('section[data-cm-panel="ativ"]');
+  if (panel && panel.classList.contains("is-active")) return true;
 
-    // 2) botão ativo
-    const btn = root.querySelector('.cm-tabbtn[data-cm-tab="ativ"]');
-    if (btn && btn.classList.contains("is-active")) return true;
+  const btn = root.querySelector('.cm-tabbtn[data-cm-tab="ativ"]');
+  if (btn && btn.classList.contains("is-active")) return true;
 
-    // 3) fallback: atributo
-    return root.getAttribute("data-cm-active") === "ativ";
-  }
+  if (root.getAttribute("data-cm-active") === "ativ") return true;
 
+  // 2) layout split (card_modal_split): atividade sempre visível
+  return !!document.getElementById("cm-activity-editor");
+}
+  // ============================================================
+  
   function destroyQuillIfStale(elNow) {
     const q = window[STATE_KEY];
     const elPrev = window[STATE_EL_KEY];
@@ -285,7 +287,8 @@
   window.resetActivityQuill = resetEditor;
 
   function bindActivityForm() {
-    const form = document.querySelector('section[data-cm-panel="ativ"] form');
+    const form = document.getElementById("cm-activity-form") 
+          || document.querySelector('section[data-cm-panel="ativ"] form');
     if (!form) return;
 
     if (form.dataset.cmBound === "1") return;
@@ -310,11 +313,12 @@
   }
 
   function initActivityModule() {
-    // ✅ só inicializa se a aba estiver ativa (evita quill em aba escondida)
-    if (!isActivityTabActive()) return;
-    ensureQuill();
-    bindActivityForm();
-  }
+  if (!isActivityTabActive()) return;
+
+  ensureQuill();
+  bindActivityForm();
+}
+
 
   // ============================================================
   // GATILHO 1: click direto na aba "Atividade" (delegado)

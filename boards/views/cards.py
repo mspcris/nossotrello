@@ -1,33 +1,36 @@
 # boards/views/cards.py
 
 import json
-import re
 import os
+import re
 import uuid
+import logging
 
-from django.core.files.base import ContentFile
-from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest
-from django.shortcuts import render, get_object_or_404
-from django.views.decorators.http import require_POST, require_http_methods
-from django.contrib.auth.decorators import login_required
-from django.db import transaction
-from django.utils import timezone
-from django.utils.html import escape
-from django.core.files.uploadedfile import UploadedFile
-from django.core.files.storage import default_storage
-from django.db.models import F
-from django.template.loader import render_to_string
+
 from datetime import datetime
-from django.utils.dateparse import parse_date
+from datetime import date as _date
 
+from django.contrib.auth.decorators import login_required
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
+from django.core.files.uploadedfile import UploadedFile
+from django.db import transaction
+from django.db.models import F
+from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
+from django.shortcuts import get_object_or_404, render
+from django.template.loader import render_to_string
+from django.utils import timezone
+from django.utils.dateparse import parse_date
+from django.utils.html import escape
+from django.views.decorators.http import require_POST, require_http_methods
 
 from .helpers import (
     _actor_label,
+    _card_modal_context,
+    _ensure_attachments_and_activity_for_images,
+    _extract_media_image_paths,
     _log_card,
     _save_base64_images_to_media,
-    _ensure_attachments_and_activity_for_images,
-    _card_modal_context,
-    _extract_media_image_paths,
     process_mentions_and_notify,
 )
 
@@ -35,8 +38,9 @@ from .helpers import (
 from ..permissions import can_edit_board  # noqa: F401
 
 from ..forms import CardForm
-from ..models import Board, Column, Card, CardAttachment, BoardMembership
-
+from ..models import Board, BoardMembership, Card, CardAttachment, Column
+# regra: se due_date preenchida => warn obrigatória
+from datetime import timedelta
 
 # ============================================================
 # PERMISSÕES
@@ -214,8 +218,7 @@ def update_card(request, card_id):
         # (na prática: no template vamos mandar hidden+checkbox pra não ambiguidade)
         due_notify = True
 
-    # regra: se due_date preenchida => warn obrigatória
-    from datetime import timedelta
+
 
     # regra: se due_date preenchida e warn vazio => default = due-5
     if due_date and not due_warn_date:
@@ -264,8 +267,7 @@ def update_card(request, card_id):
 
         def valid_hex(c: str) -> bool:
             return bool(re.match(r"^#[0-9a-fA-F]{6}$", c or ""))
-
-            # só salva se o "resultado final" tiver as 3 válidas
+           
         if new_ok and new_warn and new_over and all(valid_hex(c) for c in (new_ok, new_warn, new_over)):
             board.due_colors = {"ok": new_ok, "warn": new_warn, "overdue": new_over}
             board.save(update_fields=["due_colors"])
@@ -279,7 +281,7 @@ def update_card(request, card_id):
 
 
     # ✅ menções na descrição (texto bruto do POST)
-    import logging
+    
     logger = logging.getLogger(__name__)
     try:
         process_mentions_and_notify(
@@ -332,7 +334,7 @@ def update_card(request, card_id):
     ):
         _log_card(card, request, f"<p><strong>{actor}</strong> atualizou o card.</p>")
 
-    from datetime import date as _date
+    
 
     today = _date.today()
 
@@ -353,7 +355,7 @@ def update_card(request, card_id):
     # garante que os inputs de cor sempre venham do source of truth atual
     ctx["board_due_colors"] = getattr(card.column.board, "due_colors", {}) or {}
 
-    return render(request, "boards/partials/card_modal_body.html", ctx)
+    return _render_card_modal(request, card, ctx)
 
 
 
@@ -380,11 +382,12 @@ def edit_card(request, card_id):
             actor = _actor_label(request)
             _log_card(card, request, f"<p><strong>{actor}</strong> editou o card (modal antigo).</p>")
 
-            return render(request, "boards/partials/card_modal_body.html", _card_modal_context(card))
+            return _render_card_modal(request, card)
     else:
         form = CardForm(instance=card)
 
-    return render(request, "boards/partials/card_edit_form.html", {"card": card, "form": form})
+    return _render_card_modal(request, card)
+
 
 
 @login_required
@@ -612,17 +615,37 @@ def card_move_options(request, card_id):
     return JsonResponse(payload)
 
 
+
+
+
+def _render_card_modal(request, card, context=None):
+    ctx = context or _card_modal_context(card)
+
+    # hardening: garante chaves usadas nos templates
+    ctx.setdefault("card", card)
+    ctx.setdefault("column", getattr(card, "column", None))
+    ctx.setdefault("board", getattr(getattr(card, "column", None), "board", None))
+    ctx.setdefault("checklists", card.checklists.all())
+    ctx.setdefault("board_due_colors", (getattr(card.column.board, "due_colors", None) or {}))
+
+    profile = getattr(request.user, "profile", None)
+    use_sidebar = bool(profile and getattr(profile, "activity_sidebar", False))
+
+    template_name = (
+        "boards/partials/card_modal_split.html"
+        if use_sidebar
+        else "boards/partials/card_modal_body.html"
+    )
+
+    return render(request, template_name, ctx)
+
+
+
+
+@login_required
 def card_modal(request, card_id):
-    # ✅ leitura do modal é permitida (somente leitura continua vendo)
     card = get_object_or_404(Card, id=card_id, is_deleted=False)
-    return render(request, "boards/partials/card_modal_body.html", _card_modal_context(card))
-
-
-def card_snippet(request, card_id):
-    # ✅ snippet é leitura
-    card = get_object_or_404(Card, id=card_id)
-    return render(request, "boards/partials/card_item.html", {"card": card})
-
+    return _render_card_modal(request, card)
 
 
 
@@ -749,7 +772,7 @@ def remove_tag(request, card_id):
     board.save(update_fields=["version"])
     _log_card(card, request, f"<p><strong>{actor}</strong> removeu a etiqueta <strong>{escape(tag)}</strong>.</p>")
 
-    modal_html = render(request, "boards/partials/card_modal_body.html", _card_modal_context(card)).content.decode("utf-8")
+    modal_html = _render_card_modal(request, card, _card_modal_context(card)).content.decode("utf-8")
     snippet_html = render(request, "boards/partials/card_item.html", {"card": card}).content.decode("utf-8")
 
     return JsonResponse({"modal": modal_html, "snippet": snippet_html, "card_id": card.id})
@@ -980,7 +1003,7 @@ def set_card_cover(request, card_id):
     except Exception:
         pass
 
-    return render(request, "boards/partials/card_modal_body.html", _card_modal_context(card))
+    return _render_card_modal(request, card)
 
 
 @login_required
@@ -1032,34 +1055,17 @@ def remove_card_cover(request, card_id):
     except Exception:
         pass
 
-    return render(request, "boards/partials/card_modal_body.html", _card_modal_context(card))
+    return _render_card_modal(request, card)
 
 
 
+@login_required
+def card_snippet(request, card_id):
+    card = get_object_or_404(Card, id=card_id, is_deleted=False)
+    return render(request, "boards/partials/card_item.html", {"card": card})
 
 
-# boards/views/cards.py
 
-import json
-from django.http import JsonResponse, HttpResponseBadRequest
-from django.shortcuts import get_object_or_404
-from django.views.decorators.http import require_POST
-from django.db import transaction
-from django.contrib.auth.decorators import login_required
-
-from boards.models import Column, Card
-
-
-# boards/views/cards.py
-
-import json
-from django.http import JsonResponse, HttpResponseBadRequest
-from django.shortcuts import get_object_or_404
-from django.views.decorators.http import require_POST
-from django.db import transaction
-from django.contrib.auth.decorators import login_required
-
-from ..models import Column, Card
 
 @login_required
 @require_POST

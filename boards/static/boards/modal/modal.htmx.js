@@ -5,7 +5,7 @@
   window.Modal.htmx = {};
 
   document.body.addEventListener("htmx:afterSwap", (e) => {
-    if (e.target.id !== "modal-body") return;
+    if (!e.target || e.target.id !== "modal-body") return;
 
     if (!window.Modal.canOpen()) {
       window.Modal.close();
@@ -14,5 +14,9 @@
 
     window.Modal.open();
     window.Modal.init?.();
+
+    // ✅ reinit Quill após o swap do conteúdo do modal
+    window.Modal.quill?.init?.();
   });
 })();
+//END modal.htmx.js

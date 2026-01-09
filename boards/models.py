@@ -318,14 +318,20 @@ class ChecklistItem(models.Model):
 # USER PROFILE
 # ============================================================
 class UserProfile(models.Model):
-    avatar_choice = models.CharField(max_length=60, blank=True, default="")
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         related_name="profile",
         on_delete=models.CASCADE,
     )
 
+    activity_sidebar = models.BooleanField(
+        default=False,
+        help_text="Mostrar atividade fixa na lateral do modal do card (estilo Trello)",
+    )
+
+    avatar_choice = models.CharField(max_length=60, blank=True, default="")
     display_name = models.CharField(max_length=120, blank=True, default="")
+
     handle = models.CharField(
         max_length=40,
         unique=True,
@@ -346,21 +352,18 @@ class UserProfile(models.Model):
     ramal = models.CharField(max_length=20, blank=True, default="")
     telefone = models.CharField(max_length=30, blank=True, default="")
 
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    IDENTITY_LABEL_CHOICES = [
-        ("display_name", "Nome amigável"),
-        ("email", "Email"),
-        ("handle", "Handle"),
-    ]
-
     preferred_identity_label = models.CharField(
         max_length=20,
-        choices=IDENTITY_LABEL_CHOICES,
+        choices=[
+            ("display_name", "Nome amigável"),
+            ("email", "Email"),
+            ("handle", "Handle"),
+        ],
         default="display_name",
         blank=True,
     )
 
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         indexes = [

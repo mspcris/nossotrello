@@ -32,9 +32,14 @@
   --cm-radius-sm: 10px;
   --cm-pad: 14px;
 
-  --cm-bg: rgba(255,255,255,0.86);
-  --cm-surface: rgba(255,255,255,0.92);
-  --cm-surface-2: rgba(250,250,250,0.95);
+
+    /* LIGHT MODE */
+--cm-bg: rgba(255,255,255,0.58);        /* fundo do topbar/áreas fixas */
+--cm-surface: rgba(255,255,255,0.62);   /* cartões */
+--cm-surface-2: rgba(255,255,255,0.52); /* campos/áreas secundárias */
+
+
+
   --cm-border: rgba(15,23,42,0.12);
   --cm-border-2: rgba(15,23,42,0.08);
   --cm-text: rgba(15,23,42,0.92);
@@ -244,6 +249,56 @@ html.dark #cm-root{
   outline-offset: 6px;
 }
 
+
+/* vidro fosco (cards) */
+.cm-card{
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* vidro fosco (topbar) */
+.cm-topbar{
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.cm-card, .cm-topbar{
+  background-image: linear-gradient(
+    180deg,
+    rgba(255,255,255,0.35),
+    rgba(255,255,255,0.12)
+  );
+}
+
+/* separação entre composer e lista */
+.cm-activity .cm-activity-sep{
+  height: 1px;
+  background: rgba(15,23,42,0.10);
+  margin: 12px 0;
+}
+
+/* lista com espaçamento padrão */
+#cm-activity-panel .cm-activity-list{
+  display: flex;
+  flex-direction: column;
+  gap: 12px; /* mesmo “feeling” do espaço Descrição->Prazo */
+}
+
+/* cada item como “card” */
+#cm-activity-panel .cm-activity-item{
+  border: 1px solid var(--cm-border);
+  background: var(--cm-surface);
+  border-radius: var(--cm-radius);
+  padding: 12px;
+  box-shadow: var(--cm-shadow-sm);
+}
+
+/* data/horário mais discreto (opcional) */
+#cm-activity-panel .cm-activity-item .cm-activity-meta{
+  font-size: 12px;
+  color: var(--cm-muted);
+  margin-bottom: 6px;
+}
 
 </style>
 
@@ -522,39 +577,48 @@ html.dark #cm-root{
 
   {# Aba: Atividade #}
   <section class="cm-panel" data-cm-panel="ativ" role="tabpanel">
-    <div class="cm-card space-y-3">
-      <form
-        id="cm-activity-form"
-        method="post"
-        hx-post="{% url 'boards:add_activity' card.id %}"
-        hx-target="#cm-activity-panel"
-        hx-swap="innerHTML"
-      >
-        {% csrf_token %}
 
-        <div id="activity-error"
-             class="hidden mb-2 px-3 py-2 rounded-md text-sm border border-red-500/30 bg-red-500/10 text-red-200"></div>
+  <!-- CARD 1: NOVA ATIVIDADE (composer) -->
+  <div class="cm-card space-y-3">
+    <form
+      id="cm-activity-form"
+      method="post"
+      hx-post="{% url 'boards:add_activity' card.id %}"
+      hx-target="#cm-activity-panel"
+      hx-swap="innerHTML"
+    >
+      {% csrf_token %}
 
-        <label class="cm-label">Nova atividade</label>
+      <div id="activity-error"
+           class="hidden mb-2 px-3 py-2 rounded-md text-sm border border-red-500/30 bg-red-500/10 text-red-200"></div>
 
-        <div id="cm-activity-editor"
-             class="cm-textarea"
-             style="min-height:140px;"></div>
+      <label class="cm-label">Nova atividade</label>
 
-        <input type="hidden" name="content" id="cm-activity-content">
+      <div id="cm-activity-editor"
+           class="cm-textarea"
+           style="min-height:140px;"></div>
 
-        <div class="flex gap-2">
-          <button type="submit" class="cm-btn primary"><span class="underline font-semibold">I</span>ncluir
-</button>
-          <button type="button" class="cm-btn" onclick="resetActivityQuill()">Limpar</button>
-        </div>
-      </form>
+      <input type="hidden" name="content" id="cm-activity-content">
 
-      <div id="cm-activity-panel">
-        {% include "boards/partials/card_activity_panel.html" %}
+      <div class="flex gap-2">
+        <button type="submit" class="cm-btn primary"><span class="underline font-semibold">I</span>ncluir</button>
+        <button type="button" class="cm-btn" onclick="resetActivityQuill()">Limpar</button>
       </div>
+    </form>
+  </div>
+
+  <!-- ESPAÇO ENTRE OS DOIS BLOCOS -->
+  <div style="height: 10px;"></div>
+
+  <!-- CARD 2: LISTA DE ATIVIDADES -->
+  <div class="cm-card">
+    <div id="cm-activity-panel">
+      {% include "boards/partials/card_activity_panel.html" %}
     </div>
-  </section>
+  </div>
+
+</section>
+
 
   {# Aba: Anexos #}
   <section class="cm-panel" data-cm-panel="files" role="tabpanel">

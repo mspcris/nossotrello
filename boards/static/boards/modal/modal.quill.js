@@ -200,16 +200,88 @@ function renderMentionCard(item) {
     return quill;
   }
 
-  window.Modal.quill.init = function () {
-    const boardId = getBoardIdFromUrl();
+  function bindQuillToDiv(div, hiddenInput, boardId) {
+  if (!div || !hiddenInput) return null;
+  if (div.dataset.quillBound === "1") return null;
+  div.dataset.quillBound = "1";
 
-    // 1) Descrição
-    const descTextarea = document.querySelector('#cm-main-form textarea[name="description"]');
-    bindQuillToTextarea(descTextarea, boardId);
+  const quill = new Quill(div, {
+    theme: "snow",
+    modules: {
+      toolbar: [
+        [{ header: [1, 2, 3, false] }],
+        ["bold", "italic", "underline", "strike"],
+        [{ list: "ordered" }, { list: "bullet" }],
+        ["link", "image"],
+        ["clean"],
+      ],
+      mention: makeMentionConfig(boardId),
+    },
+    placeholder: div.getAttribute("data-placeholder") || "Escreva uma atualização...",
+  });
 
-    // 2) Atividade (novo comentário)
-    const actTextarea = document.querySelector('form[hx-post*="add_activity"] textarea[name="content"]');
-    bindQuillToTextarea(actTextarea, boardId);
+  // inicial (se existir)
+  const initial = (hiddenInput.value || "").trim();
+  if (initial) quill.root.innerHTML = initial;
+
+  // sync no hidden
+  quill.on("text-change", () => {
+    hiddenInput.value = quill.root.innerHTML;
+    try { hiddenInput.dispatchEvent(new Event("input", { bubbles: true })); } catch (_e) {}
+  });
+
+  // toolbar image -> base64
+  const toolbar = quill.getModule("toolbar");
+  if (toolbar) {
+    toolbar.addHandler("image", () => {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "image/*";
+      input.onchange = () => {
+        const file = input.files?.[0];
+        if (file) insertBase64ImageIntoQuill(quill, file);
+      };
+      input.click();
+    });
+  }
+
+  // paste image -> base64
+  quill.root.addEventListener("paste", (e) => {
+    try {
+      const cd = e.clipboardData;
+      const items = cd?.items ? Array.from(cd.items) : [];
+      const imgItem = items.find((it) => (it.type || "").startsWith("image/"));
+      if (!imgItem) return;
+
+      const file = imgItem.getAsFile?.();
+      if (!file) return;
+
+      e.preventDefault();
+      insertBase64ImageIntoQuill(quill, file);
+    } catch (_e) {}
+  });
+
+  // botão "Limpar" do seu template
+  window.resetActivityQuill = function () {
+    try { quill.setText(""); } catch (_e) {}
+    hiddenInput.value = "";
   };
+
+  return quill;
+}
+
+window.Modal.quill.init = function () {
+  const boardId = getBoardIdFromUrl();
+
+  // 1) Descrição (textarea -> quill)
+  const descTextarea = document.querySelector('#cm-main-form textarea[name="description"]');
+  bindQuillToTextarea(descTextarea, boardId);
+
+  // 2) Atividade: novo padrão (div + hidden)
+  //mantida somente em modal.activity_quill.js
+
+};
+
+  
 })();
 //END modal.quill.js
