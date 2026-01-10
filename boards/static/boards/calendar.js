@@ -1,3 +1,5 @@
+// CalendarState.js
+
 const CalendarState = {
   enabled: false,
   mode: 'month', // month | week
@@ -17,3 +19,5 @@ function toggleCalendarMode() {
 
 document.getElementById('cm-toggle-calendar')
   ?.addEventListener('click', toggleCalendarMode);
+
+// end calendar.js

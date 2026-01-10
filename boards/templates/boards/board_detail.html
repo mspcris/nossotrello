@@ -13,6 +13,7 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% url 'boards:board_wallpaper_css' board.id %}">
 <link rel="stylesheet" href="{% static 'boards/board_detail.css' %}">
+<link rel="stylesheet" href="{% static 'boards/calendar.css' %}">
 {% endblock %}
 
 
@@ -314,6 +315,9 @@
 <div id="cm-board-root" data-card-id="" data-tag-colors="{}">
 
   <div id="board-root" data-can-edit="{{ can_edit|yesno:'1,0' }}">
+
+    <div id="calendar-root" class="hidden"></div>
+
     <div id="columns-wrapper"
          class="flex gap-6 overflow-x-auto overflow-y-hidden pb-6 pr-4 min-h-0">
 
@@ -1698,6 +1702,127 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   };
 </script>
+
+
+
+<script>
+/* =======================
+   CALENDAR STATE
+======================= */
+window.CalendarState = {
+  active: false,
+  mode: "month",      // month | week
+  field: "due",       // due | start | warn
+  start: null
+};
+
+/* =======================
+   TOGGLE MENU
+======================= */
+document.addEventListener("DOMContentLoaded", () => {
+  const btn = document.getElementById("cm-toggle-calendar");
+  if (!btn) return;
+
+  btn.addEventListener("click", () => {
+    CalendarState.active = !CalendarState.active;
+
+    const columns = document.getElementById("columns-wrapper");
+    if (!columns) return;
+
+    const calendarRoot = document.getElementById("calendar-root");
+
+if (CalendarState.active) {
+  columns.classList.add("hidden");
+  calendarRoot.classList.remove("hidden");
+  renderCalendar();
+} else {
+  calendarRoot.classList.add("hidden");
+  columns.classList.remove("hidden");
+}
+
+    
+  });
+});
+
+/* =======================
+   FETCH + RENDER
+======================= */
+async function renderCalendar() {
+  try {
+    const start = CalendarState.start || new Date().toISOString().slice(0,10);
+
+    const url =
+      `/calendar/cards/?board=${window.BOARD_ID}` +
+      `&mode=${CalendarState.mode}` +
+      `&field=${CalendarState.field}` +
+      `&start=${start}`;
+
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const data = await res.json();
+    const root = document.getElementById("calendar-root");
+if (!root) {
+  console.error("calendar-root não encontrado no DOM");
+  return;
+}
+root.innerHTML = renderCalendarGrid(data);
+
+
+  } catch (e) {
+    console.error("Erro ao carregar calendário:", e);
+  }
+}
+
+
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+<script>
+function renderCalendarGrid(data) {
+  const days = data.days || {};
+  let html = `<div class="cm-calendar ${data.mode}">`;
+
+  for (let i = 0; i < (data.mode === "week" ? 7 : 42); i++) {
+    const d = new Date(data.start);
+    d.setDate(d.getDate() + i);
+    const key = d.toISOString().slice(0,10);
+
+    html += `
+      <div class="cm-calendar-day">
+        <div class="cm-calendar-date">${d.getDate()}</div>
+        ${(days[key] || []).map(renderCalendarCard).join("")}
+      </div>
+    `;
+  }
+
+  html += `</div>`;
+  return html;
+}
+function setCalendarField(field) {
+  CalendarState.field = field; // "due" | "start" | "warn"
+  renderCalendar();
+}
+
+function renderCalendarCard(card) {
+  return `
+    <div class="cm-calendar-card" data-card-id="${card.id}">
+      ${card.title}
+    </div>
+  `;
+}
+</script>
+
 
 
 {% endblock content %}

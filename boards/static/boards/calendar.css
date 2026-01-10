@@ -1,0 +1,30 @@
+.cm-calendar {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+
+.cm-calendar-day {
+  background: #f1f5f9;
+  min-height: 120px;
+  padding: 6px;
+  border-radius: 6px;
+}
+
+.cm-calendar-date {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.6;
+}
+
+.cm-calendar-card {
+  background: white;
+  margin-top: 4px;
+  padding: 6px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.cm-calendar-card:hover {
+  background: #e2e8f0;
+}
