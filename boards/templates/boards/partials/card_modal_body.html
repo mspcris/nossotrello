@@ -390,7 +390,7 @@ html.dark #cm-root{
           <label class="cm-label">Descrição</label>
           <textarea name="description" class="cm-textarea">{{ card.description|default_if_none:"" }}</textarea>
           <div class="cm-muted" style="margin-top:8px;">
-            Observação: você pode aumentar o tamanho do campo arrastando o canto inferior direito.
+           
           </div>
         </div>
       </div>
@@ -428,59 +428,103 @@ html.dark #cm-root{
           </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <!-- VENCIMENTO -->
-          <div class="min-w-0">
-            <div class="cm-label">Vencimento</div>
 
-            <div class="relative">
-              <input type="text"
-                     id="cm-due-date-display"
-                     class="cm-input pr-10"
-                     inputmode="numeric"
-                     placeholder="DD/MM/AAAA"
-                     value="{% if card.due_date %}{{ card.due_date|date:'d/m/Y' }}{% endif %}">
 
-              <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">📅</span>
 
-              <input type="date"
-                     id="cm-due-date-picker"
-                     class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 opacity-0 cursor-pointer z-10"
-                     value="{% if card.due_date %}{{ card.due_date|date:'Y-m-d' }}{% endif %}">
 
-              <input type="hidden"
-                     name="due_date"
-                     id="cm-due-date"
-                     value="{% if card.due_date %}{{ card.due_date|date:'Y-m-d' }}{% endif %}">
-            </div>
-          </div>
 
-          <!-- AVISAR EM -->
-          <div class="min-w-0">
-            <div class="cm-label">Avisar em</div>
 
-            <div class="relative">
-              <input type="text"
-                     id="cm-due-warn-date-display"
-                     class="cm-input pr-10"
-                     inputmode="numeric"
-                     placeholder="DD/MM/AAAA"
-                     value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'d/m/Y' }}{% endif %}">
 
-              <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">📅</span>
 
-              <input type="date"
-                     id="cm-due-warn-date-picker"
-                     class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 opacity-0 cursor-pointer z-10"
-                     value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'Y-m-d' }}{% endif %}">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
 
-              <input type="hidden"
-                     name="due_warn_date"
-                     id="cm-due-warn-date"
-                     value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'Y-m-d' }}{% endif %}">
-            </div>
-          </div>
-        </div>
+  <!-- DATA DE INÍCIO -->
+  <div class="min-w-0">
+    <div class="cm-label">Data de início</div>
+
+    <div class="relative">
+      <input type="text"
+             id="cm-start-date-display"
+             class="cm-input pr-10"
+             inputmode="numeric"
+             placeholder="DD/MM/AAAA"
+             value="{% if card.start_date %}{{ card.start_date|date:'d/m/Y' }}{% endif %}">
+
+      <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">📅</span>
+
+      <input type="date"
+             id="cm-start-date-picker"
+             class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 opacity-0 cursor-pointer z-10"
+             value="{% if card.start_date %}{{ card.start_date|date:'Y-m-d' }}{% endif %}">
+
+      <input type="hidden"
+             name="start_date"
+             id="cm-start-date"
+             value="{% if card.start_date %}{{ card.start_date|date:'Y-m-d' }}{% endif %}">
+    </div>
+  </div>
+
+  <!-- VENCIMENTO -->
+  <div class="min-w-0">
+    <div class="cm-label">Vencimento</div>
+
+    <div class="relative">
+      <input type="text"
+             id="cm-due-date-display"
+             class="cm-input pr-10"
+             inputmode="numeric"
+             placeholder="DD/MM/AAAA"
+             value="{% if card.due_date %}{{ card.due_date|date:'d/m/Y' }}{% endif %}">
+
+      <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">📅</span>
+
+      <input type="date"
+             id="cm-due-date-picker"
+             class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 opacity-0 cursor-pointer z-10"
+             value="{% if card.due_date %}{{ card.due_date|date:'Y-m-d' }}{% endif %}">
+
+      <input type="hidden"
+             name="due_date"
+             id="cm-due-date"
+             value="{% if card.due_date %}{{ card.due_date|date:'Y-m-d' }}{% endif %}">
+    </div>
+  </div>
+
+  <!-- AVISAR EM -->
+  <div class="min-w-0">
+    <div class="cm-label">Avisar em</div>
+
+    <div class="relative">
+      <input type="text"
+             id="cm-due-warn-date-display"
+             class="cm-input pr-10"
+             inputmode="numeric"
+             placeholder="DD/MM/AAAA"
+             value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'d/m/Y' }}{% endif %}">
+
+      <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">📅</span>
+
+      <input type="date"
+             id="cm-due-warn-date-picker"
+             class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 opacity-0 cursor-pointer z-10"
+             value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'Y-m-d' }}{% endif %}">
+
+      <input type="hidden"
+             name="due_warn_date"
+             id="cm-due-warn-date"
+             value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'Y-m-d' }}{% endif %}">
+    </div>
+  </div>
+
+</div>
+
+
+
+
+
+
+
+
 
         <div class="flex items-center gap-2">
           <input type="hidden" name="due_notify" value="0">
@@ -565,7 +609,10 @@ html.dark #cm-root{
                  name="title"
                  class="cm-input"
                  placeholder="Ex: Tarefas da semana">
-          <button type="submit" class="cm-btn primary">Adicionar</button>
+          <button type="submit" class="cm-btn primary">
+          <span class="underline font-semibold">A</span>dicionar
+          </button>
+
         </div>
       </form>
 
@@ -898,6 +945,7 @@ html.dark #cm-root{
       "due_date",
       "due_warn_date",
       "due_notify",
+      "start_date",
     ];
 
     function snapshot() {
@@ -1070,7 +1118,8 @@ html.dark #cm-root{
       picker.value = iso0;
       display.value = iso0 ? formatISOtoBR(iso0) : "";
     }
-
+    
+    wire("start-date");
     wire("due-date");
     wire("due-warn-date");
   })();
@@ -1099,17 +1148,15 @@ html.dark #cm-root{
 </script>
 
 
+
 <script>
   // ============================================================
-  // HOTKEYS (ALT+S / ALT+I) — Card Modal (robusto com HTMX/Quill)
-  // - ALT+S: submete o form principal (#cm-main-form) SEM depender da floatbar
-  // - ALT+I: vai para aba Atividade e submete o form (#cm-activity-form)
+  // HOTKEYS (ALT+S / ALT+I / ALT+A) — Card Modal
+  // - ALT+S: salva (#cm-main-form)
+  // - ALT+I: vai para Atividade e inclui (#cm-activity-form)
+  // - ALT+A: vai para Checklists e adiciona (#cm-checklist-create-form)
   // ============================================================
   (function () {
-    // OBS: como este HTML é re-renderizado via HTMX, não use "instalar 1 vez"
-    // com window.__flag, senão você pode ficar sem handler dependendo da ordem.
-    // Aqui a gente instala por modal-open (por cm-root) e evita duplicar pelo dataset.
-
     const root = document.getElementById("cm-root");
     if (!root) return;
 
@@ -1117,37 +1164,22 @@ html.dark #cm-root{
     root.dataset.cmHotkeysBound = "1";
 
     function clampKey(e) {
-      // mais estável que e.key em layout PT/ABNT: usa code quando possível
-      const code = (e.code || "").toLowerCase(); // "keys", "keyi"
+      const code = (e.code || "").toLowerCase();
       if (code === "keys") return "s";
       if (code === "keyi") return "i";
+      if (code === "keya") return "a";
       return (e.key || "").toLowerCase();
     }
 
-    function gotoTabAtiv() {
-      const btn = root.querySelector('.cm-tabbtn[data-cm-tab="ativ"]');
+    function gotoTab(tab) {
+      const btn = root.querySelector(`.cm-tabbtn[data-cm-tab="${CSS.escape(tab)}"]`);
       if (!btn) return false;
       btn.click();
       return true;
     }
 
-    function submitMain() {
-      const form = document.getElementById("cm-main-form");
-      if (!form) return false;
-
-      try {
-        // dispara listeners + validações + HTMX
-        if (form.requestSubmit) form.requestSubmit();
-        else form.submit();
-        return true;
-      } catch (_e) {
-        try { form.submit(); return true; } catch (_e2) {}
-      }
-      return false;
-    }
-
-    function submitActivity() {
-      const form = document.getElementById("cm-activity-form");
+    function submitFormById(id) {
+      const form = document.getElementById(id);
       if (!form) return false;
 
       try {
@@ -1160,44 +1192,39 @@ html.dark #cm-root{
       return false;
     }
 
-    // IMPORTANT: bind no root do modal (não no document) para evitar conflito global
-    root.addEventListener(
-      "keydown",
-      function (e) {
-        if (!e.altKey) return;
-        if (e.ctrlKey || e.metaKey) return;
+    root.addEventListener("keydown", function (e) {
+      if (!e.altKey) return;
+      if (e.ctrlKey || e.metaKey) return;
 
-        const k = clampKey(e);
-        if (k !== "s" && k !== "i") return;
+      const k = clampKey(e);
+      if (k !== "s" && k !== "i" && k !== "a") return;
 
-        // não deixar o browser “comer” o ALT
-        e.preventDefault();
-        e.stopPropagation();
+      // bloqueia o browser SEMPRE que for hotkey nosso
+      e.preventDefault();
+      e.stopPropagation();
 
-        // ALT+S => salvar SEM depender do floatbar
-        if (k === "s") {
-          submitMain();
-          return;
-        }
+      // ALT+S => salvar
+      if (k === "s") {
+        submitFormById("cm-main-form");
+        return;
+      }
 
-        // ALT+I => incluir atividade
-        if (k === "i") {
-          // garante aba Atividade
-          gotoTabAtiv();
+      // ALT+I => incluir atividade
+      if (k === "i") {
+        gotoTab("ativ");
+        setTimeout(() => submitFormById("cm-activity-form"), 0);
+        return;
+      }
 
-          // dá 1 tick para trocar o painel e então submete
-          setTimeout(() => {
-            submitActivity();
-          }, 0);
-
-          return;
-        }
-      },
-      true
-    );
+      // ALT+A => adicionar checklist
+      if (k === "a") {
+        gotoTab("check");
+        setTimeout(() => submitFormById("cm-checklist-create-form"), 0);
+        return;
+      }
+    }, true);
   })();
 </script>
-
 
 
 
@@ -1346,3 +1373,4 @@ html.dark #cm-root{
   });
 })();
 </script>
+{# END templates/boards/partials/card_modal_body.html (arquivo completo) #}
