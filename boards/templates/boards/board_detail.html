@@ -177,6 +177,7 @@
           class="ml-2 inline-flex items-center justify-center text-xs font-semibold
                  rounded-full px-2 py-0.5 bg-red-600 text-white hidden">0</span>
   </button>
+</li>
 
 <li>
   <button class="nt-link" data-action="toggle-calendar">
@@ -1261,14 +1262,26 @@ onRemove: (evt) => {
     if (overInput && colors.overdue) overInput.value = colors.overdue;
 
     root.querySelectorAll("[data-term-status]").forEach((el) => {
-      const st = (el.getAttribute("data-term-status") || "").trim(); // ok|warn|overdue
-      const c = colors[st];
-      if (!c) return;
+  const st = (el.getAttribute("data-term-status") || "").trim(); // ok|warn|overdue
+  const c = (window.BOARD_TERM_COLORS || {})[st];
+  if (!c) return;
 
-      el.style.backgroundColor = c + "20";
-      el.style.color = c;
-      el.style.borderColor = c;
-    });
+  const isCalDot = el.classList.contains("cm-cal-dot");
+  const isCalBar = el.classList.contains("cm-cal-bar");
+
+  if (isCalDot || isCalBar) {
+    // calendário: cor sólida (precisa “aparecer” no wallpaper)
+    el.style.backgroundColor = c;
+    el.style.borderColor = c;
+    el.style.color = c;
+  } else {
+    // restante do board: pode continuar suave
+    el.style.backgroundColor = c + "20";
+    el.style.color = c;
+    el.style.borderColor = c;
+  }
+});
+
   };
 </script>
 

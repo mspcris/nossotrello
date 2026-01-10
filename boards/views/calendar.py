@@ -1,7 +1,9 @@
 # boards/views/calendar.py
 
-from datetime import date, timedelta
+from __future__ import annotations
+
 from collections import defaultdict
+from datetime import date, timedelta
 import calendar
 
 from django.contrib.auth.decorators import login_required
@@ -15,6 +17,27 @@ from .cards import _user_can_edit_board
 def _start_of_week_sunday(d: date) -> date:
     # domingo como início (compatível com seu grid atual)
     return d - timedelta(days=(d.weekday() + 1) % 7)
+
+
+def _resolve_term_status(today: date, due_date: date | None, warn_date: date | None) -> str:
+    """
+    Retorna: "ok" | "warn" | "overdue" | ""
+    Regra:
+      - sem due_date => ""
+      - hoje > due_date => overdue
+      - se warn_date e hoje >= warn_date => warn
+      - senão => ok
+    """
+    if not due_date:
+        return ""
+
+    if today > due_date:
+        return "overdue"
+
+    if warn_date and today >= warn_date:
+        return "warn"
+
+    return "ok"
 
 
 @login_required
@@ -60,11 +83,11 @@ def calendar_cards(request):
             "focus": focus.isoformat(),
             "grid_start": start.isoformat(),
             "grid_end": end.isoformat(),
+            "week_start": week_start.isoformat(),
             "focus_year": focus.year,
             "focus_month": focus.month,  # útil pro front manter consistência
             "label": f"Semana de {start.strftime('%d/%m/%Y')}",
         }
-
     else:
         # modo mês: ancorar no mês do focus
         first_of_month = date(focus.year, focus.month, 1)
@@ -77,8 +100,19 @@ def calendar_cards(request):
 
         # label pt-BR simples (sem depender de locale do servidor)
         month_names = [
-            "", "janeiro", "fevereiro", "março", "abril", "maio", "junho",
-            "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"
+            "",
+            "janeiro",
+            "fevereiro",
+            "março",
+            "abril",
+            "maio",
+            "junho",
+            "julho",
+            "agosto",
+            "setembro",
+            "outubro",
+            "novembro",
+            "dezembro",
         ]
 
         meta = {
@@ -96,19 +130,20 @@ def calendar_cards(request):
     # QUERYSET
     # =========================
     qs = (
-        Card.objects
-        .filter(
+        Card.objects.filter(
             column__board_id=board_id,
             is_deleted=False,
             **{
                 f"{field_name}__gte": start,
                 f"{field_name}__lt": end,
-            }
+            },
         )
         .select_related("column", "column__board")
     )
 
-    grouped = defaultdict(list)
+    grouped: dict[str, list[dict]] = defaultdict(list)
+
+    today = date.today()
 
     for card in qs:
         board = card.column.board
@@ -123,19 +158,33 @@ def calendar_cards(request):
         start_date = getattr(card, "start_date", None)
         warn_date = getattr(card, "due_warn_date", None)
 
-        grouped[d.isoformat()].append({
-            "id": card.id,
-            "title": card.title,
-            "column": card.column.name,
-            "due_date": due_date.isoformat() if due_date else None,
-            "start_date": start_date.isoformat() if start_date else None,
-            "warn_date": warn_date.isoformat() if warn_date else None,
-        })
+        term_status = _resolve_term_status(today=today, due_date=due_date, warn_date=warn_date)
 
-    return JsonResponse({
-        "mode": mode,
-        "field": field,
-        "days": dict(grouped),
-        **meta,
-    })
-# =======================
+        cover_url = ""
+        try:
+            if getattr(card, "cover_image", None):
+                cover_url = card.cover_image.url
+        except Exception:
+            cover_url = ""
+
+        grouped[d.isoformat()].append(
+            {
+                "id": card.id,
+                "title": card.title,
+                "column": card.column.name,
+                "due_date": due_date.isoformat() if due_date else None,
+                "start_date": start_date.isoformat() if start_date else None,
+                "warn_date": warn_date.isoformat() if warn_date else None,
+                "term_status": term_status,
+                "cover_url": cover_url,
+            }
+        )
+
+    return JsonResponse(
+        {
+            "mode": mode,
+            "field": field,
+            "days": dict(grouped),
+            **meta,
+        }
+    )

@@ -100,6 +100,10 @@
       root.innerHTML = renderCalendarView(data);
       wireCalendarControls(root, data);
 
+      // Rehidrata cores de prazo no HTML recém-injetado
+      safe(() => window.applySavedTermColorsToBoard && window.applySavedTermColorsToBoard(root));
+
+
     } catch (e) {
       console.error("Erro ao carregar calendário:", e);
       root.innerHTML = `
@@ -247,25 +251,54 @@
   }
 
   /* ============================================================
+   * TERM STATUS resolver (ok|warn|overdue)
+   * ============================================================ */
+  function resolveTermStatus(card) {
+    const raw =
+      card?.term_status ??
+      card?.termStatus ??
+      card?.term?.status ??
+      card?.due_status ??
+      card?.dueStatus ??
+      card?.term ??
+      "";
+
+    const s = String(raw || "").trim().toLowerCase();
+
+    if (["ok", "emdia", "em_dia", "em dia", "green"].includes(s)) return "ok";
+    if (["warn", "avencer", "a_vencer", "a vencer", "yellow"].includes(s)) return "warn";
+    if (["overdue", "vencido", "red"].includes(s)) return "overdue";
+
+    return "";
+  }
+
+  /* ============================================================
    * CARD RENDER
-   * - month: pílula (sem imagem)
-   * - week: barra (com thumb quando tiver)
+   * - month: pílula (sem imagem) + bolinha com data-term-status
+   * - week: barra (com thumb quando tiver) + data-term-status
    * ============================================================ */
   function renderCalendarCard(card, viewMode) {
+    const id = card?.id ?? "";
     const title = (card && card.title) ? String(card.title) : "";
-    const color = (card && card.color) ? String(card.color) : "";
     const cover = (card && card.cover_url) ? String(card.cover_url) : "";
+
+    const termStatus = resolveTermStatus(card); // ok|warn|overdue|""
 
     if (viewMode === "week") {
       return `
         <button
           type="button"
           class="cm-cal-card cm-cal-card-week"
-          data-card-id="${card.id}"
-          style="${color ? `--cm-card-color:${color};` : ""}"
+          data-card-id="${escapeAttr(String(id))}"
           title="${escapeHtml(title)}"
         >
-          ${cover ? `<span class="cm-cal-thumb" style="background-image:url('${escapeAttr(cover)}')"></span>` : `<span class="cm-cal-thumb is-empty"></span>`}
+          <span class="cm-cal-bar" ${termStatus ? `data-term-status="${escapeAttr(termStatus)}"` : ""}></span>
+
+          ${cover
+            ? `<span class="cm-cal-thumb" style="background-image:url('${escapeAttr(cover)}')"></span>`
+            : `<span class="cm-cal-thumb is-empty"></span>`
+          }
+
           <span class="cm-cal-card-title">${escapeHtml(title)}</span>
         </button>
       `;
@@ -276,15 +309,21 @@
       <button
         type="button"
         class="cm-cal-card cm-cal-card-month"
-        data-card-id="${card.id}"
-        style="${color ? `--cm-card-color:${color};` : ""}"
+        data-card-id="${escapeAttr(String(id))}"
         title="${escapeHtml(title)}"
       >
-        <span class="cm-cal-dot"></span>
+        <span class="cm-cal-dot" ${termStatus ? `data-term-status="${escapeAttr(termStatus)}"` : ""}></span>
         <span class="cm-cal-card-title">${escapeHtml(title)}</span>
       </button>
     `;
   }
+
+
+
+
+
+
+
 
   function escapeHtml(s) {
     return String(s)
@@ -362,3 +401,6 @@
     renderCalendar();
   }
 })();
+
+
+
