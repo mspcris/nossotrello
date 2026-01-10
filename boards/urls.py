@@ -25,7 +25,7 @@ from .views.polling import board_poll
 from boards.views.modal_card_term import set_card_term_due, set_board_term_colors
 from boards.views.boards import toggle_aggregator_column
 from boards.views.boards import transfer_owner_start, transfer_owner_confirm
-
+from .views import calendar as calendar_views
 
 
 
@@ -163,6 +163,11 @@ urlpatterns = [
     name="transfer_owner_confirm",
     ),
 
+    # ============================================================
+    # BOARDS - CALENDÁRIO
+    # ============================================================
+    path("calendar/cards/", calendar_views.calendar_cards, name="calendar_cards"),
+    
     
 
     # ============================================================

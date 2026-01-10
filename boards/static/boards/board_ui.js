@@ -853,4 +853,79 @@ if (!window.__colorPopoverOutsideInstalled) {
     });
   }, true);
 })();
+
+
+// ===============================
+// CALENDAR MODE
+// ===============================
+
+const CalendarState = {
+  enabled: false,
+  mode: 'month', // month | week
+  field: 'due',  // due | start | warn
+  start: null,
+};
+
+function toggleCalendarMode() {
+  CalendarState.enabled = !CalendarState.enabled;
+
+  if (CalendarState.enabled) {
+    renderCalendar();
+  } else {
+    window.location.reload(); // volta pro modo normal
+  }
+}
+
+async function renderCalendar() {
+  const start = CalendarState.start || new Date().toISOString().slice(0,10);
+
+  const url = `/calendar/cards/?mode=${CalendarState.mode}&field=${CalendarState.field}&start=${start}`;
+  const res = await fetch(url);
+  const data = await res.json();
+
+  const root = document.querySelector('#board-root');
+  if (!root) return;
+
+  root.innerHTML = renderCalendarGrid(data);
+}
+
+function renderCalendarGrid(data) {
+  const days = data.days || {};
+  let html = `<div class="cm-calendar ${data.mode}">`;
+
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(data.start);
+    d.setDate(d.getDate() + i);
+    const key = d.toISOString().slice(0,10);
+
+    html += `
+      <div class="cm-calendar-day">
+        <div class="cm-calendar-date">${d.getDate()}</div>
+        ${(days[key] || []).map(renderCalendarCard).join("")}
+      </div>
+    `;
+  }
+
+  html += `</div>`;
+  return html;
+}
+
+function renderCalendarCard(card) {
+  return `
+    <div class="cm-calendar-card" data-card-id="${card.id}">
+      ${card.title}
+    </div>
+  `;
+}
+
+// hook do menu
+document.addEventListener('click', (e) => {
+  if (e.target?.id === 'cm-toggle-calendar') {
+    toggleCalendarMode();
+  }
+});
+
+
+
+
 //END boards/static/boards/board_ui.js
