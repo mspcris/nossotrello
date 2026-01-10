@@ -415,3 +415,113 @@
   text-shadow: 0 1px 2px rgba(0,0,0,.65);
   background: rgba(0,0,0,0.55);
 }
+
+/* ============================================================
+ * WEEK (mobile) — 3 dias visíveis + hint ← → + bordas indicando overflow
+ * ============================================================ */
+@media (max-width: 767px) {
+  .cm-week-wrap {
+    position: relative;
+  }
+
+  /* carrossel horizontal */
+  .cm-week-head,
+  .cm-week-cols {
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 10px;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .cm-week-head::-webkit-scrollbar,
+  .cm-week-cols::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* 3 dias por viewport: (100% - 2 gaps) / 3 */
+  .cm-week-headcell,
+  .cm-week-col {
+    flex: 0 0 calc((100% - 20px) / 3);
+    scroll-snap-align: start;
+  }
+
+  /* Hint */
+  .cm-week-hint {
+    width: fit-content;
+    margin: 8px 0 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.45);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .2px;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.5);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .15s ease;
+  }
+  .cm-week-wrap.has-x-overflow .cm-week-hint {
+    opacity: 1;
+  }
+  .cm-week-wrap.hint-dismissed .cm-week-hint {
+    opacity: 0;
+  }
+
+  /* “sombras” laterais: indicam que tem mais conteúdo pros lados */
+  .cm-week-wrap::before,
+  .cm-week-wrap::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 42px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .15s ease;
+    z-index: 2;
+  }
+  .cm-week-wrap::before {
+    left: 0;
+    background: linear-gradient(to right, rgba(0,0,0,0.35), rgba(0,0,0,0));
+  }
+  .cm-week-wrap::after {
+    right: 0;
+    background: linear-gradient(to left, rgba(0,0,0,0.35), rgba(0,0,0,0));
+  }
+  .cm-week-wrap.has-x-overflow:not(.is-at-start)::before {
+    opacity: 1;
+  }
+  .cm-week-wrap.has-x-overflow:not(.is-at-end)::after {
+    opacity: 1;
+  }
+}
+
+/* ============================================================
+ * MONTH (mobile) — deixa o hint sempre legível (se já existir)
+ * ============================================================ */
+@media (max-width: 767px) {
+  .cm-cal-month-hint {
+    width: fit-content;
+    margin: 8px 0 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.45);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .2px;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.5);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .15s ease;
+  }
+  .cm-cal-month-wrap.has-x-overflow .cm-cal-month-hint {
+    opacity: 1;
+  }
+  .cm-cal-month-wrap.hint-dismissed .cm-cal-month-hint {
+    opacity: 0;
+  }
+}

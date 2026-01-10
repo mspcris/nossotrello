@@ -168,9 +168,15 @@
 }
 
 
+
     window.addEventListener("resize", () => {
-    if (window.CalendarState?.active) fitCalendarRoot();
-  });
+  if (!window.CalendarState?.active) return;
+  fitCalendarRoot();
+  const r = document.getElementById("calendar-root");
+  r?.__cmMonthOverflowUpdate?.();
+  r?.__cmWeekOverflowUpdate?.();
+});
+
 
 
   /* ============================================================
@@ -338,51 +344,54 @@
 
 
   /* ============================================================
-   * WEEK (7 columns)
+   * WEEK (7 columns desk - 3 mobile)
    * ============================================================ */
-  function renderWeekView(data) {
-    const days = data.days || {};
+function renderWeekView(data) {
+  const days = data.days || {};
 
-    // preferir week_start vindo do backend
-    const startStr = data.week_start || data.grid_start || CalendarState.focus || ymd(new Date());
-    const start = parseYmd(startStr);
+  // preferir week_start vindo do backend
+  const startStr = data.week_start || data.grid_start || CalendarState.focus || ymd(new Date());
+  const start = parseYmd(startStr);
 
-    const dowNames = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+  const dowNames = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
-    let html = `<div class="cm-cal-week">`;
+  let html = `<div class="cm-cal-week">`;
+  html += `<div class="cm-week-wrap">`;
+  html += `<div class="cm-week-hint" aria-hidden="true">Arraste ← →</div>`;
 
-    html += `<div class="cm-week-head">`;
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(start);
-      d.setDate(d.getDate() + i);
-      html += `
-        <div class="cm-week-headcell">
-          <div class="cm-week-dow">${dowNames[d.getDay()]}</div>
-          <div class="cm-week-date">${d.getDate()}/${String(d.getMonth() + 1).padStart(2, "0")}</div>
-        </div>
-      `;
-    }
-    html += `</div>`;
-
-    html += `<div class="cm-week-cols">`;
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(start);
-      d.setDate(d.getDate() + i);
-      const key = ymd(d);
-
-      html += `
-        <div class="cm-week-col" data-day="${key}">
-          <div class="cm-week-cards">
-            ${(days[key] || []).map((card) => renderCalendarCard(card, "week")).join("")}
-          </div>
-        </div>
-      `;
-    }
-    html += `</div>`;
-
-    html += `</div>`;
-    return html;
+  html += `<div class="cm-week-head" data-week-head>`;
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(start);
+    d.setDate(d.getDate() + i);
+    html += `
+      <div class="cm-week-headcell">
+        <div class="cm-week-dow">${dowNames[d.getDay()]}</div>
+        <div class="cm-week-date">${d.getDate()}/${String(d.getMonth() + 1).padStart(2, "0")}</div>
+      </div>
+    `;
   }
+  html += `</div>`;
+
+  html += `<div class="cm-week-cols" data-week-cols>`;
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(start);
+    d.setDate(d.getDate() + i);
+    const key = ymd(d);
+
+    html += `
+      <div class="cm-week-col" data-day="${key}">
+        <div class="cm-week-cards">
+          ${(days[key] || []).map((card) => renderCalendarCard(card, "week")).join("")}
+        </div>
+      </div>
+    `;
+  }
+  html += `</div>`;
+
+  html += `</div>`; // .cm-week-wrap
+  html += `</div>`;
+  return html;
+}
 
   /* ============================================================
    * CARD RENDER
@@ -492,6 +501,7 @@
 
     // Mobile: sincroniza scroll horizontal do head com as colunas (semana)
     // Month mobile hint: liga se existir overflow horizontal e “some” após o primeiro scroll
+// Month: hint/overflow (mobile) — sem empilhar listeners globais
 try {
   const wrap = root.querySelector(".cm-cal-month-wrap");
   const scroller = root.querySelector("[data-cal-month-scroll]");
@@ -499,16 +509,92 @@ try {
     const update = () => {
       const hasOverflow = scroller.scrollWidth > (scroller.clientWidth + 4);
       wrap.classList.toggle("has-x-overflow", !!hasOverflow);
+      if (!hasOverflow) wrap.classList.remove("hint-dismissed");
     };
 
+    // expõe para o resize global (evita empilhar listeners)
+    root.__cmMonthOverflowUpdate = update;
+
     update();
-    window.addEventListener("resize", update);
 
     scroller.addEventListener("scroll", () => {
       if (scroller.scrollLeft > 10) wrap.classList.add("hint-dismissed");
     }, { passive: true });
+  } else {
+    root.__cmMonthOverflowUpdate = null;
   }
-} catch (_e) {}
+} catch (_e) {
+  root.__cmMonthOverflowUpdate = null;
+}
+
+// Week: carrossel (3 dias visíveis) + hint ← → + sync head/cols
+try {
+  const wrap = root.querySelector(".cm-week-wrap");
+  const head = root.querySelector("[data-week-head]");
+  const scroller = root.querySelector("[data-week-cols]");
+
+  if (wrap && head && scroller) {
+    let syncing = false;
+
+    const syncScroll = (from, to) => {
+      if (syncing) return;
+      syncing = true;
+      to.scrollLeft = from.scrollLeft;
+      requestAnimationFrame(() => { syncing = false; });
+    };
+
+    head.addEventListener("scroll", () => syncScroll(head, scroller), { passive: true });
+    scroller.addEventListener("scroll", () => syncScroll(scroller, head), { passive: true });
+
+    const updateEdges = () => {
+      const hasOverflow = scroller.scrollWidth > (scroller.clientWidth + 4);
+      wrap.classList.toggle("has-x-overflow", !!hasOverflow);
+
+      const max = Math.max(0, scroller.scrollWidth - scroller.clientWidth);
+      wrap.classList.toggle("is-at-start", scroller.scrollLeft <= 1);
+      wrap.classList.toggle("is-at-end", scroller.scrollLeft >= (max - 1));
+    };
+
+    // expõe para o resize global
+    root.__cmWeekOverflowUpdate = updateEdges;
+
+    let dismissed = false;
+    scroller.addEventListener("scroll", () => {
+      if (!dismissed && Math.abs(scroller.scrollLeft - (scroller.__cmWeekInitialX || 0)) > 12) {
+        dismissed = true;
+        wrap.classList.add("hint-dismissed");
+      }
+      updateEdges();
+    }, { passive: true });
+
+    // começa mostrando o “miolo” da semana (2 dias off-screen à esquerda + 2 à direita)
+    requestAnimationFrame(() => {
+      const isMobile = !!(window.matchMedia && window.matchMedia("(max-width: 767px)").matches);
+      if (isMobile) {
+        const cols = scroller.querySelectorAll(".cm-week-col");
+        if (cols && cols.length >= 5) {
+          const x = cols[2]?.offsetLeft || 0; // index 2 => 2 à esquerda + 2 à direita
+          scroller.__cmWeekInitialX = x;
+          scroller.scrollLeft = x;
+          head.scrollLeft = x;
+        } else {
+          scroller.__cmWeekInitialX = scroller.scrollLeft || 0;
+        }
+      } else {
+        scroller.__cmWeekInitialX = scroller.scrollLeft || 0;
+      }
+
+      updateEdges();
+    });
+
+    // update inicial
+    updateEdges();
+  } else {
+    root.__cmWeekOverflowUpdate = null;
+  }
+} catch (_e) {
+  root.__cmWeekOverflowUpdate = null;
+}
 
   }
 
