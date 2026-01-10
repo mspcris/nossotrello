@@ -398,3 +398,103 @@
     min-height: 56vh; /* dá área boa pros cards */
   }
 }
+
+
+/* ====== Shell do calendário: permite rolar vertical no mobile ====== */
+#calendar-root,
+.cm-calendar-shell {
+  height: 100%;
+}
+
+.cm-calendar-shell {
+  /* Se algum pai estiver travando, isso garante que o calendário role */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Em alguns layouts o body/board fica overflow hidden.
+   Isso impede rolagem se o calendário não tiver seu próprio scroll. */
+#calendar-root {
+  overflow: hidden; /* root não rola; quem rola é .cm-calendar-shell */
+}
+
+/* ====== MONTH: grid horizontal rolável + hint ====== */
+.cm-cal-month {
+  /* garante rolagem horizontal no mobile */
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+
+  /* melhora “pega” no touch */
+  touch-action: pan-x pan-y;
+
+  /* se você tiver gap/colunas fixas, o overflow aparece */
+  scroll-snap-type: x proximity;
+}
+
+/* cada dia pode fazer snap */
+.cm-cal-day {
+  scroll-snap-align: start;
+}
+
+/* Hint visual: gradiente + seta + texto (aparece só no mobile) */
+.cm-cal-month-wrap {
+  position: relative;
+}
+
+.cm-cal-month-hint {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .cm-cal-month-wrap .cm-cal-month-hint {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 10;
+
+    padding: 6px 10px;
+    border-radius: 999px;
+
+    /* “chip” discreto por cima */
+    background: rgba(0,0,0,0.35);
+    backdrop-filter: blur(6px);
+
+    font-size: 12px;
+    line-height: 1;
+    pointer-events: none;
+  }
+
+  /* sombra/gradiente na direita pra sugerir overflow */
+  .cm-cal-month-wrap::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 100%;
+    width: 42px;
+    pointer-events: none;
+    background: linear-gradient(to left, rgba(0,0,0,0.35), rgba(0,0,0,0));
+    border-radius: 12px;
+    opacity: 0;
+    transition: opacity .15s ease;
+  }
+
+  /* quando tem overflow horizontal, liga a dica */
+  .cm-cal-month-wrap.has-x-overflow::after {
+    opacity: 1;
+  }
+
+  .cm-cal-month-wrap.has-x-overflow .cm-cal-month-hint {
+    opacity: 1;
+  }
+
+  /* quando o usuário já rolou um pouco, a dica some (opcional) */
+  .cm-cal-month-wrap.hint-dismissed .cm-cal-month-hint {
+    opacity: 0;
+  }
+}

@@ -44,6 +44,48 @@
   }
 
   /* ============================================================
+   * URL HELPERS
+   * ============================================================ */
+  function getUrlParams() {
+    try { return new URLSearchParams(window.location.search); }
+    catch (_e) { return new URLSearchParams(); }
+  }
+
+  function setUrlParams(params, { replace = false } = {}) {
+    const url = new URL(window.location.href);
+    url.search = params.toString();
+    if (replace) history.replaceState({}, "", url.toString());
+    else history.pushState({}, "", url.toString());
+  }
+
+  function openCardInModal(cardId) {
+    try {
+      if (window.Modal && typeof window.Modal.openCard === "function") {
+        window.Modal.openCard(Number(cardId), true, null);
+        return true;
+      }
+    } catch (_e) {}
+    return false;
+  }
+
+  function reflectCardInUrl(cardId) {
+    const p = getUrlParams();
+    p.set("view", "calendar");
+    p.set("mode", CalendarState.mode || "month");
+    p.set("field", CalendarState.field || "due");
+    p.set("start", CalendarState.focus || ymd(new Date()));
+    p.set("card", String(cardId));
+    setUrlParams(p, { replace: false });
+  }
+
+  function clearCardFromUrl() {
+    const p = getUrlParams();
+    if (!p.get("card")) return;
+    p.delete("card");
+    setUrlParams(p, { replace: true });
+  }
+
+  /* ============================================================
    * URL SYNC (view=calendar)
    * ============================================================ */
   function syncCalendarUrl() {
@@ -54,11 +96,13 @@
       url.searchParams.set("mode", CalendarState.mode || "month");
       url.searchParams.set("field", CalendarState.field || "due");
       url.searchParams.set("start", CalendarState.focus || ymd(new Date()));
+      // mantém card (se existir) — deep link
     } else {
       url.searchParams.delete("view");
       url.searchParams.delete("mode");
       url.searchParams.delete("field");
       url.searchParams.delete("start");
+      url.searchParams.delete("card");
     }
 
     history.replaceState({}, "", url.toString());
@@ -100,6 +144,13 @@
     calendarRoot.classList.add("hidden");
     columns.classList.remove("hidden");
   }
+
+  /* ============================================================
+   * OPTIONAL: limpar card= quando o modal fecha (se você tiver evento)
+   * ============================================================ */
+  document.addEventListener("modal:closed", () => {
+    clearCardFromUrl();
+  });
 
   /* ============================================================
    * TOGGLE (Board <-> Calendar)
@@ -152,6 +203,13 @@
       // Rehidrata cores de prazo no HTML recém-injetado
       safe(() => window.applySavedTermColorsToBoard && window.applySavedTermColorsToBoard(root));
 
+      // Deep link: se veio ?card=..., abre o modal após renderizar
+      try {
+        const p = getUrlParams();
+        const cardId = Number(p.get("card") || 0);
+        if (cardId) setTimeout(() => openCardInModal(cardId), 0);
+      } catch (_e) {}
+
     } catch (e) {
       console.error("Erro ao carregar calendário:", e);
       root.innerHTML = `
@@ -165,26 +223,6 @@
       root.classList.remove("cm-cal-loading");
     }
   }
-
-  // Mobile: sincroniza scroll horizontal do head com as colunas (semana)
-try {
-  const head = root.querySelector(".cm-week-head");
-  const cols = root.querySelector(".cm-week-cols");
-  if (head && cols) {
-    let lock = false;
-
-    const sync = (from, to) => {
-      if (lock) return;
-      lock = true;
-      to.scrollLeft = from.scrollLeft;
-      requestAnimationFrame(() => { lock = false; });
-    };
-
-    head.addEventListener("scroll", () => sync(head, cols), { passive: true });
-    cols.addEventListener("scroll", () => sync(cols, head), { passive: true });
-  }
-} catch (_e) {}
-
 
   window.renderCalendar = renderCalendar;
 
@@ -232,38 +270,41 @@ try {
    * MONTH (grid 6x7)
    * ============================================================ */
   function renderMonthView(data) {
-    const days = data.days || {};
-    const total = 42;
+  const days = data.days || {};
+  const total = 42;
 
-    const gridStart = parseYmd(data.grid_start);
-    const focusYear = data.focus_year;
-    const focusMonth = data.focus_month; // 1..12
+  const gridStart = parseYmd(data.grid_start);
+  const focusYear = data.focus_year;
+  const focusMonth = data.focus_month; // 1..12
 
-    let html = `<div class="cm-cal-month">`;
+  let html = `<div class="cm-cal-month-wrap">`;
+  html += `<div class="cm-cal-month-hint">Arraste →</div>`;
+  html += `<div class="cm-cal-month" data-cal-month-scroll>`;
 
-    for (let i = 0; i < total; i++) {
-      const d = new Date(gridStart);
-      d.setDate(d.getDate() + i);
+  for (let i = 0; i < total; i++) {
+    const d = new Date(gridStart);
+    d.setDate(d.getDate() + i);
 
-      const key = ymd(d);
+    const key = ymd(d);
 
-      const inFocusMonth =
-        (d.getFullYear() === focusYear) &&
-        ((d.getMonth() + 1) === focusMonth);
+    const inFocusMonth =
+      (d.getFullYear() === focusYear) &&
+      ((d.getMonth() + 1) === focusMonth);
 
-      html += `
-        <div class="cm-cal-day ${inFocusMonth ? "" : "is-outside"}" data-day="${key}">
-          <div class="cm-cal-date">${d.getDate()}</div>
-          <div class="cm-cal-cards">
-            ${(days[key] || []).map((card) => renderCalendarCard(card, "month")).join("")}
-          </div>
+    html += `
+      <div class="cm-cal-day ${inFocusMonth ? "" : "is-outside"}" data-day="${key}">
+        <div class="cm-cal-date">${d.getDate()}</div>
+        <div class="cm-cal-cards">
+          ${(days[key] || []).map((card) => renderCalendarCard(card, "month")).join("")}
         </div>
-      `;
-    }
-
-    html += `</div>`;
-    return html;
+      </div>
+    `;
   }
+
+  html += `</div></div>`;
+  return html;
+}
+
 
   /* ============================================================
    * WEEK (7 columns)
@@ -371,7 +412,7 @@ try {
   /* ============================================================
    * WIRING
    * ============================================================ */
-  function wireCalendarControls(root, data) {
+  function wireCalendarControls(root, _data) {
     // navegação prev/next
     root.querySelectorAll("[data-cal-nav]").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -399,33 +440,47 @@ try {
       });
     }
 
-    // abrir card ao clicar
+    // abrir card ao clicar (SEM ir pra board)
     root.querySelectorAll(".cm-cal-card[data-card-id]").forEach((el) => {
-      el.addEventListener("click", () => {
+      el.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+
         const cardId = Number(el.getAttribute("data-card-id") || 0);
         if (!cardId) return;
 
-        // Integra com seu modal, se existir
-let opened = false;
+        const ok = openCardInModal(cardId);
 
-try {
-  if (window.Modal && typeof window.Modal.openCard === "function") {
-    window.Modal.openCard(cardId, true, null);
-    opened = true; // ✅ considera sucesso mesmo se openCard retornar undefined
-  }
-} catch (e) {
-  opened = false;
-}
+        // salva deep link do card no calendário
+        reflectCardInUrl(cardId);
 
-if (!opened) {
-  // fallback: navega para board com ?card=
-  try { window.location.search = `?card=${cardId}`; } catch (e) {}
-}
-
+        // retry leve (timing)
+        if (!ok) requestAnimationFrame(() => openCardInModal(cardId));
       });
     });
-  }
 
+    // Mobile: sincroniza scroll horizontal do head com as colunas (semana)
+    // Month mobile hint: liga se existir overflow horizontal e “some” após o primeiro scroll
+try {
+  const wrap = root.querySelector(".cm-cal-month-wrap");
+  const scroller = root.querySelector("[data-cal-month-scroll]");
+  if (wrap && scroller) {
+    const update = () => {
+      const hasOverflow = scroller.scrollWidth > (scroller.clientWidth + 4);
+      wrap.classList.toggle("has-x-overflow", !!hasOverflow);
+    };
+
+    update();
+    window.addEventListener("resize", update);
+
+    scroller.addEventListener("scroll", () => {
+      if (scroller.scrollLeft > 10) wrap.classList.add("hint-dismissed");
+    }, { passive: true });
+  }
+} catch (_e) {}
+
+  }
+  
   function shiftCalendarFocus(dir) {
     const focusStr = CalendarState.focus || ymd(new Date());
     const focus = parseYmd(focusStr);
@@ -439,6 +494,10 @@ if (!opened) {
     }
 
     CalendarState.focus = ymd(focus);
+
+    // ao trocar foco, mantém o calendário, mas normalmente limpa o card deep-link
+    clearCardFromUrl();
+
     syncCalendarUrl();
     renderCalendar();
   }
@@ -455,7 +514,7 @@ if (!opened) {
     renderCalendar();
   });
 
-  // Back/forward do browser (opcional, mas dá previsibilidade)
+  // Back/forward do browser
   window.addEventListener("popstate", () => {
     const opened = hydrateCalendarStateFromUrl();
     if (opened) {
@@ -468,13 +527,3 @@ if (!opened) {
   });
 
 })();
-
-
-
-
-
-
-
-
-
-
