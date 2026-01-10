@@ -31,22 +31,45 @@
     return `${a}<mark class="px-1 rounded bg-emerald-200/70 text-emerald-950">${b}</mark>${c}`;
   }
 
+  // ==========================
+  // NOVO: transforma HTML (rich text) em texto puro
+  // Motivo: não renderizar HTML no preview evita XSS e remove tags tipo <p>...
+  // ==========================
+  function stripHtmlToText(html) {
+    if (!html) return "";
+    try {
+      // DOMParser decodifica entidades e remove tags via textContent
+      const doc = new DOMParser().parseFromString(String(html), "text/html");
+      const text = (doc.body && doc.body.textContent) ? doc.body.textContent : "";
+      return text.replace(/\s+/g, " ").trim();
+    } catch (_e) {
+      // fallback simples: remove tags na marra (pior que DOMParser, mas evita quebrar)
+      return String(html).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+    }
+  }
+
   function ensureResultsBox(input) {
     let box = document.getElementById("home-search-results");
     if (box) return box;
 
     box = document.createElement("div");
     box.id = "home-search-results";
-    box.className =
-  [
-    "mt-2 w-full max-w-[980px] mx-auto",
-    "rounded-2xl border border-white/40 shadow-2xl",
-    "bg-white/92 backdrop-blur-md",     // mais opaco (contraste)
-    "ring-1 ring-black/10",
-    "px-4 py-4 hidden",
-    "relative z-[2200] pointer-events-auto"
-  ].join(" ");
+    box.className = [
+      // FIXO (não empurra o layout)
+      "fixed left-1/2 -translate-x-1/2",
+      "top-[88px]", // ajuste fino se seu header for maior/menor
+      "w-[min(980px,calc(100vw-2rem))]",
+      "max-h-[calc(100vh-120px)]",
+      "overflow-auto",
 
+      // VISUAL
+      "rounded-2xl border border-white/40 shadow-2xl",
+      "bg-white/95 backdrop-blur-md ring-1 ring-black/10",
+      "px-6 py-6 hidden",
+
+      // GARANTE clique acima do resto
+      "z-[9999] pointer-events-auto"
+    ].join(" ");
 
     const panel = input.closest(".cm-search-panel") || input.parentElement;
     if (panel && panel.parentElement) panel.parentElement.appendChild(box);
@@ -88,48 +111,40 @@
     </span>`;
   }
 
+  function renderResults(box, data, q) {
+    const cards = Array.isArray(data?.cards) ? data.cards : [];
+    const boards = Array.isArray(data?.boards) ? data.boards : [];
 
+    // Painel sempre legível (contraste alto)
+    box.classList.add(
+      "mt-3",
+      "rounded-2xl",
+      "border",
+      "border-white/40",
+      "shadow-2xl",
+      "bg-white/95",
+      "backdrop-blur-md",
+      "ring-1",
+      "ring-black/10",
+      "px-6",
+      "py-6"
+    );
 
-function renderResults(box, data, q) {
-  const cards = Array.isArray(data?.cards) ? data.cards : [];
-  const boards = Array.isArray(data?.boards) ? data.boards : [];
+    if (!cards.length && !boards.length) {
+      box.innerHTML = `
+        <div class="text-xl text-slate-800">
+          Nenhum resultado para <b class="text-slate-950">${esc(q)}</b>.
+        </div>`;
+      box.classList.remove("hidden");
+      hideHomeCardsAndGroups();
+      return;
+    }
 
-  // Painel sempre legível (contraste alto) mesmo com wallpaper/blur
-  // (mantém o "vidro", mas com opacidade suficiente)
-  box.classList.add(
-    "mt-3",
-    "rounded-2xl",
-    "border",
-    "border-white/40",
-    "shadow-2xl",
-    "bg-white/95",
-    "backdrop-blur-md",
-    "ring-1",
-    "ring-black/10",
-    "px-6",
-    "py-6"
-  );
-
-  // Fonte 2x maior do que o sugerido antes (padrão agora: base/xl)
-  // Observação: como é JS, a gente garante que os textos internos são escuros (não branco)
-  if (!cards.length && !boards.length) {
-    box.innerHTML = `
-      <div class="text-xl text-slate-800">
-        Nenhum resultado para <b class="text-slate-950">${esc(q)}</b>.
-      </div>`;
-    box.classList.remove("hidden");
-    hideHomeCardsAndGroups();
-    return;
-  }
-
-  const cardsHtml = cards.length
-    ? `
+    const cardsHtml = cards.length ? `
       <div class="mb-6">
         <div class="text-2xl font-extrabold text-slate-900 mb-4 tracking-wide">Cards</div>
         <div class="flex flex-col gap-3">
-          ${cards
-            .map(
-              (c) => `
+          ${cards.map((c) => `
             <button
               type="button"
               class="text-left w-full rounded-2xl px-6 py-5
@@ -152,42 +167,32 @@ function renderResults(box, data, q) {
 
               <div class="mt-3 text-lg text-slate-800">
                 <span class="font-extrabold">Quadro:</span> ${highlight(
-                  c.board_name || "#" + c.board_id,
+                  c.board_name || ("#" + c.board_id),
                   q
                 )}
                 <span class="mx-2 text-slate-400">•</span>
                 <span class="font-extrabold">Coluna:</span> ${highlight(
-                  c.column_title || "#" + c.column_id,
+                  c.column_title || ("#" + c.column_id),
                   q
                 )}
               </div>
 
-              ${
-                c.excerpt
-                  ? `
+              ${c.excerpt ? `
                 <div class="mt-3 text-lg text-slate-700 leading-relaxed">
-                  ${highlight(c.excerpt, q)}
+                  ${highlight(stripHtmlToText(c.excerpt), q)}
                 </div>
-              `
-                  : ""
-              }
+              ` : ""}
             </button>
-          `
-            )
-            .join("")}
+          `).join("")}
         </div>
       </div>
-    `
-    : "";
+    ` : "";
 
-  const boardsHtml = boards.length
-    ? `
+    const boardsHtml = boards.length ? `
       <div>
         <div class="text-2xl font-extrabold text-slate-900 mb-4 tracking-wide">Quadros</div>
         <div class="flex flex-col gap-3">
-          ${boards
-            .map(
-              (b) => `
+          ${boards.map((b) => `
             <a
               href="/board/${encodeURIComponent(b.id)}/"
               class="block rounded-2xl px-6 py-5
@@ -203,23 +208,15 @@ function renderResults(box, data, q) {
                 board #${esc(b.id)}
               </div>
             </a>
-          `
-            )
-            .join("")}
+          `).join("")}
         </div>
       </div>
-    `
-    : "";
+    ` : "";
 
-  box.innerHTML = cardsHtml + boardsHtml;
-  box.classList.remove("hidden");
-  hideHomeCardsAndGroups();
-}
-
-
-
-
-
+    box.innerHTML = cardsHtml + boardsHtml;
+    box.classList.remove("hidden");
+    hideHomeCardsAndGroups();
+  }
 
   function debounce(fn, wait) {
     let t = null;
@@ -257,7 +254,7 @@ function renderResults(box, data, q) {
       if (mySeq !== __seq) return;
 
       if (!resp.ok) {
-        box.innerHTML = `<div class="text-sm text-white/90">Erro na busca (${resp.status}).</div>`;
+        box.innerHTML = `<div class="text-xl text-slate-800">Erro na busca (${resp.status}).</div>`;
         box.classList.remove("hidden");
         hideHomeCardsAndGroups();
         return;
@@ -268,9 +265,9 @@ function renderResults(box, data, q) {
 
       renderResults(box, data, q);
     } catch (_e) {
-      const box = ensureResultsBox(inputEl);
-      box.innerHTML = `<div class="text-sm text-white/90">Falha de rede na busca.</div>`;
-      box.classList.remove("hidden");
+      const box2 = ensureResultsBox(inputEl);
+      box2.innerHTML = `<div class="text-xl text-slate-800">Falha de rede na busca.</div>`;
+      box2.classList.remove("hidden");
       hideHomeCardsAndGroups();
     }
   }, 220);
@@ -295,8 +292,7 @@ function renderResults(box, data, q) {
 
       // navega para o board e abre o modal via ?card
       window.location.href =
-  `/board/${encodeURIComponent(boardId)}/?card=${encodeURIComponent(cardId)}`;
-
+        `/board/${encodeURIComponent(boardId)}/?card=${encodeURIComponent(cardId)}`;
     }, true);
   }
 
