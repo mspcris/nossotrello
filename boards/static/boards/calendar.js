@@ -1,29 +1,5 @@
 /* boards/static/boards/calendar.js */
 
-/**
- * Calendar (Board)
- * - Alterna entre Board (colunas) e Calendário
- * - Carrega dados via /calendar/cards/
- * - Renderiza Mês (grid) e Semana (7 colunas full-height)
- * - Mês: card como “pílula” com stripe de cor (sem imagem)
- * - Semana: card como “barra” com cor + thumbnail (quando tiver)
- *
- * Contrato:
- * - window.BOARD_ID deve existir
- * - Deve existir #calendar-root e #columns-wrapper no DOM
- * - Backend deve retornar:
- *   {
- *     mode: "month"|"week",
- *     field: "due"|"start"|"warn",
- *     label: "Janeiro 2026",
- *     grid_start: "YYYY-MM-DD",
- *     focus_year: 2026,
- *     focus_month: 1,
- *     week_start: "YYYY-MM-DD",   // recomendado no modo week (se tiver)
- *     days: { "YYYY-MM-DD": [ {id,title,color,cover_url}, ... ] }
- *   }
- */
-
 (function () {
   /* ============================================================
    * STATE
@@ -48,6 +24,83 @@
     try { return fn(); } catch (_e) { return null; }
   }
 
+  function escapeHtml(s) {
+    return String(s)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function escapeAttr(s) {
+    // robusto pra atributos HTML entre aspas
+    return String(s)
+      .replaceAll("&", "&amp;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll("'", "&#039;");
+  }
+
+  /* ============================================================
+   * URL SYNC (view=calendar)
+   * ============================================================ */
+  function syncCalendarUrl() {
+    const url = new URL(window.location.href);
+
+    if (window.CalendarState && window.CalendarState.active) {
+      url.searchParams.set("view", "calendar");
+      url.searchParams.set("mode", CalendarState.mode || "month");
+      url.searchParams.set("field", CalendarState.field || "due");
+      url.searchParams.set("start", CalendarState.focus || ymd(new Date()));
+    } else {
+      url.searchParams.delete("view");
+      url.searchParams.delete("mode");
+      url.searchParams.delete("field");
+      url.searchParams.delete("start");
+    }
+
+    history.replaceState({}, "", url.toString());
+  }
+
+  function hydrateCalendarStateFromUrl() {
+    const url = new URL(window.location.href);
+    const view = url.searchParams.get("view");
+
+    if (view !== "calendar") return false;
+
+    CalendarState.active = true;
+
+    const mode = url.searchParams.get("mode");
+    const field = url.searchParams.get("field");
+    const start = url.searchParams.get("start");
+
+    CalendarState.mode = (mode === "week" || mode === "month") ? mode : "month";
+    CalendarState.field = (field === "due" || field === "start" || field === "warn") ? field : "due";
+    CalendarState.focus = start || ymd(new Date());
+
+    return true;
+  }
+
+  function showCalendarUI() {
+    const columns = document.getElementById("columns-wrapper");
+    const calendarRoot = document.getElementById("calendar-root");
+    if (!columns || !calendarRoot) return;
+
+    columns.classList.add("hidden");
+    calendarRoot.classList.remove("hidden");
+  }
+
+  function showBoardUI() {
+    const columns = document.getElementById("columns-wrapper");
+    const calendarRoot = document.getElementById("calendar-root");
+    if (!columns || !calendarRoot) return;
+
+    calendarRoot.classList.add("hidden");
+    columns.classList.remove("hidden");
+  }
+
   /* ============================================================
    * TOGGLE (Board <-> Calendar)
    * ============================================================ */
@@ -58,19 +111,15 @@
       const btn = e.target.closest('[data-action="toggle-calendar"]');
       if (!btn) return;
 
-      const columns = document.getElementById("columns-wrapper");
-      const calendarRoot = document.getElementById("calendar-root");
-      if (!columns || !calendarRoot) return;
-
       CalendarState.active = !CalendarState.active;
 
       if (CalendarState.active) {
-        columns.classList.add("hidden");
-        calendarRoot.classList.remove("hidden");
+        showCalendarUI();
+        syncCalendarUrl();
         renderCalendar();
       } else {
-        calendarRoot.classList.add("hidden");
-        columns.classList.remove("hidden");
+        showBoardUI();
+        syncCalendarUrl();
       }
     });
   }
@@ -102,7 +151,6 @@
 
       // Rehidrata cores de prazo no HTML recém-injetado
       safe(() => window.applySavedTermColorsToBoard && window.applySavedTermColorsToBoard(root));
-
 
     } catch (e) {
       console.error("Erro ao carregar calendário:", e);
@@ -162,7 +210,6 @@
 
   /* ============================================================
    * MONTH (grid 6x7)
-   * - Card: “pílula” com stripe colorido (sem imagem)
    * ============================================================ */
   function renderMonthView(data) {
     const days = data.days || {};
@@ -199,23 +246,19 @@
   }
 
   /* ============================================================
-   * WEEK (7 columns full-height)
-   * - Top row: Domingo, Segunda...
-   * - Columns: barras estilo board
+   * WEEK (7 columns)
    * ============================================================ */
   function renderWeekView(data) {
     const days = data.days || {};
 
-    // Preferir week_start se backend mandar; senão usa grid_start
+    // preferir week_start vindo do backend
     const startStr = data.week_start || data.grid_start || CalendarState.focus || ymd(new Date());
     const start = parseYmd(startStr);
 
     const dowNames = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
-    // header + columns
     let html = `<div class="cm-cal-week">`;
 
-    // Cabeçalho fixo da semana
     html += `<div class="cm-week-head">`;
     for (let i = 0; i < 7; i++) {
       const d = new Date(start);
@@ -229,7 +272,6 @@
     }
     html += `</div>`;
 
-    // Colunas (até o fim da página; scroll interno via CSS)
     html += `<div class="cm-week-cols">`;
     for (let i = 0; i < 7; i++) {
       const d = new Date(start);
@@ -251,102 +293,59 @@
   }
 
   /* ============================================================
-   * TERM STATUS resolver (ok|warn|overdue)
-   * ============================================================ */
-  function resolveTermStatus(card) {
-    const raw =
-      card?.term_status ??
-      card?.termStatus ??
-      card?.term?.status ??
-      card?.due_status ??
-      card?.dueStatus ??
-      card?.term ??
-      "";
-
-    const s = String(raw || "").trim().toLowerCase();
-
-    if (["ok", "emdia", "em_dia", "em dia", "green"].includes(s)) return "ok";
-    if (["warn", "avencer", "a_vencer", "a vencer", "yellow"].includes(s)) return "warn";
-    if (["overdue", "vencido", "red"].includes(s)) return "overdue";
-
-    return "";
-  }
-
-  /* ============================================================
    * CARD RENDER
-   * - month: pílula (sem imagem) + bolinha com data-term-status
-   * - week: barra (com thumb quando tiver) + data-term-status
    * ============================================================ */
-function renderCalendarCard(card, viewMode) {
-  const id = card?.id ?? "";
-  const title = (card && card.title) ? String(card.title) : "";
-  const cover = (card && card.cover_url) ? String(card.cover_url) : "";
+  function renderCalendarCard(card, viewMode) {
+    const id = card?.id ?? "";
+    const title = (card && card.title) ? String(card.title) : "";
+    const cover = (card && card.cover_url) ? String(card.cover_url) : "";
 
-  // ✅ estes 3 precisam ir pro DOM
-  const due = card?.due_date || "";
-  const warn = card?.warn_date || "";
-  const notify = (card?.due_notify === false || card?.due_notify === 0) ? "0" : "1";
+    // estes 3 precisam ir pro DOM (pra pintar prazo no client)
+    const due = card?.due_date || "";
+    const warn = card?.warn_date || "";
+    const notify = (card?.due_notify === false || card?.due_notify === 0) ? "0" : "1";
 
-  if (viewMode === "week") {
+    if (viewMode === "week") {
+      return `
+        <button
+          type="button"
+          class="cm-cal-card cm-cal-card-week"
+          data-card-id="${escapeAttr(String(id))}"
+          data-term-due="${escapeAttr(due)}"
+          data-term-warn="${escapeAttr(warn)}"
+          data-term-notify="${escapeAttr(notify)}"
+          title="${escapeHtml(title)}"
+        >
+          <span class="cm-cal-bar"></span>
+
+          ${
+            cover
+              ? `<span class="cm-cal-thumb">
+                   <img src="${escapeAttr(cover)}" alt="" loading="lazy" />
+                 </span>`
+              : `<span class="cm-cal-thumb is-empty"></span>`
+          }
+
+          <span class="cm-cal-card-title">${escapeHtml(title)}</span>
+        </button>
+      `;
+    }
+
+    // month
     return `
       <button
         type="button"
-        class="cm-cal-card cm-cal-card-week"
+        class="cm-cal-card cm-cal-card-month"
         data-card-id="${escapeAttr(String(id))}"
         data-term-due="${escapeAttr(due)}"
         data-term-warn="${escapeAttr(warn)}"
         data-term-notify="${escapeAttr(notify)}"
         title="${escapeHtml(title)}"
       >
-        <span class="cm-cal-bar"></span>
-
-        ${
-          cover
-            ? `<span class="cm-cal-thumb" style="background-image:url('${escapeAttr(cover)}')"></span>`
-            : `<span class="cm-cal-thumb is-empty"></span>`
-        }
-
+        <span class="cm-cal-dot"></span>
         <span class="cm-cal-card-title">${escapeHtml(title)}</span>
       </button>
     `;
-  }
-
-  // month
-  return `
-    <button
-      type="button"
-      class="cm-cal-card cm-cal-card-month"
-      data-card-id="${escapeAttr(String(id))}"
-      data-term-due="${escapeAttr(due)}"
-      data-term-warn="${escapeAttr(warn)}"
-      data-term-notify="${escapeAttr(notify)}"
-      title="${escapeHtml(title)}"
-    >
-      <span class="cm-cal-dot"></span>
-      <span class="cm-cal-card-title">${escapeHtml(title)}</span>
-    </button>
-  `;
-}
-
-
-
-
-
-
-
-
-  function escapeHtml(s) {
-    return String(s)
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
-  }
-
-  function escapeAttr(s) {
-    // suficiente pra url dentro de aspas simples
-    return String(s).replaceAll("'", "%27");
   }
 
   /* ============================================================
@@ -365,6 +364,7 @@ function renderCalendarCard(card, viewMode) {
     root.querySelectorAll("[data-cal-mode]").forEach((btn) => {
       btn.addEventListener("click", () => {
         CalendarState.mode = btn.getAttribute("data-cal-mode");
+        syncCalendarUrl();
         renderCalendar();
       });
     });
@@ -374,6 +374,7 @@ function renderCalendarCard(card, viewMode) {
     if (fieldSelect) {
       fieldSelect.addEventListener("change", () => {
         CalendarState.field = fieldSelect.value;
+        syncCalendarUrl();
         renderCalendar();
       });
     }
@@ -384,10 +385,13 @@ function renderCalendarCard(card, viewMode) {
         const cardId = Number(el.getAttribute("data-card-id") || 0);
         if (!cardId) return;
 
-        // Integra com seu modal, se existir
-        const opened = safe(() => window.Modal && typeof window.Modal.openCard === "function" && window.Modal.openCard(cardId, true, null));
+        const opened = safe(() =>
+          window.Modal &&
+          typeof window.Modal.openCard === "function" &&
+          window.Modal.openCard(cardId, true, null)
+        );
+
         if (!opened) {
-          // fallback: navega para board com ?card=
           safe(() => { window.location.search = `?card=${cardId}`; });
         }
       });
@@ -401,16 +405,38 @@ function renderCalendarCard(card, viewMode) {
     if (CalendarState.mode === "week") {
       focus.setDate(focus.getDate() + (dir === "next" ? 7 : -7));
     } else {
-      // month: trava dia 1 para não “pular mês”
       const m = focus.getMonth();
       focus.setDate(1);
       focus.setMonth(dir === "next" ? m + 1 : m - 1);
     }
 
     CalendarState.focus = ymd(focus);
+    syncCalendarUrl();
     renderCalendar();
   }
+
+  /* ============================================================
+   * BOOT: abre calendário via URL
+   * ============================================================ */
+  document.addEventListener("DOMContentLoaded", () => {
+    const shouldOpen = hydrateCalendarStateFromUrl();
+    if (!shouldOpen) return;
+
+    showCalendarUI();
+    syncCalendarUrl();
+    renderCalendar();
+  });
+
+  // Back/forward do browser (opcional, mas dá previsibilidade)
+  window.addEventListener("popstate", () => {
+    const opened = hydrateCalendarStateFromUrl();
+    if (opened) {
+      showCalendarUI();
+      renderCalendar();
+    } else {
+      CalendarState.active = false;
+      showBoardUI();
+    }
+  });
+
 })();
-
-
-
