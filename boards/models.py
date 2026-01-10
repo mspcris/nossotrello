@@ -211,8 +211,10 @@ class Card(models.Model):
 
 
     #+ ============================================================
-    #+PRAZOS (vencimento)
+    #+PRAZOS (vencimento) + DATA INÍCIO
     #+ ============================================================
+    
+    start_date = models.DateField(null=True, blank=True)   # ✅ DATA DE INÍCIO
     due_date = models.DateField(null=True, blank=True)
     due_warn_date = models.DateField(null=True, blank=True)
     due_notify = models.BooleanField(default=True)

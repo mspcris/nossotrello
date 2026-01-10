@@ -204,6 +204,17 @@ def _fmt_bool(v):
     return "Sim" if bool(v) else "Não"
 
 
+
+
+
+
+
+
+
+
+
+
+
 @login_required
 @require_POST
 def update_card(request, card_id):
@@ -222,6 +233,7 @@ def update_card(request, card_id):
     old_desc = (card.description or "").strip()
     old_tags_raw = card.tags or ""
 
+    old_start_date = card.start_date
     old_due_date = card.due_date
     old_due_warn_date = card.due_warn_date
     old_due_notify = bool(card.due_notify)
@@ -239,26 +251,27 @@ def update_card(request, card_id):
     new_tags_raw = request.POST.get("tags", old_tags_raw) or ""
 
     # ============================================================
-    # PRAZOS
+    # PRAZOS (inclui DATA DE INÍCIO)
     # ============================================================
+    start_date_raw = (request.POST.get("start_date") or "").strip()
     due_date_raw = (request.POST.get("due_date") or "").strip()
     due_warn_raw = (request.POST.get("due_warn_date") or "").strip()
     due_notify_raw = (request.POST.get("due_notify") or "").strip()
 
+    start_date = _parse_any_date(start_date_raw)
     due_date = _parse_any_date(due_date_raw)
     due_warn_date = _parse_any_date(due_warn_raw)
 
-    # checkbox: HTML costuma mandar "on"/"1" quando marcado.
-    # Seu template manda hidden due_notify=0 + checkbox due_notify=1.
     if due_notify_raw:
         due_notify = str(due_notify_raw).strip().lower() in ("1", "true", "on", "yes")
     else:
-        due_notify = True  # mantém seu comportamento atual
+        due_notify = True
 
     # regra: se due_date preenchida e warn vazio => default = due-5
     if due_date and not due_warn_date:
         due_warn_date = due_date - timedelta(days=5)
 
+    card.start_date = start_date
     card.due_date = due_date
     card.due_warn_date = due_warn_date
     card.due_notify = bool(due_notify)
@@ -279,12 +292,16 @@ def update_card(request, card_id):
     card.save()
 
     # ============================================================
-    # DIFFS pós-save (prazo) -> audit trail
+    # DIFFS pós-save
     # ============================================================
+    start_date_changed = (old_start_date != card.start_date)
     due_date_changed = (old_due_date != card.due_date)
     due_warn_changed = (old_due_warn_date != card.due_warn_date)
     due_notify_changed = (old_due_notify != bool(card.due_notify))
 
+    # ============================================================
+    # LOG — PRAZO
+    # ============================================================
     if due_date_changed or due_warn_changed or due_notify_changed:
         parts = [
             f"<p><strong>{actor}</strong> alterou o prazo do card.</p>",
@@ -294,33 +311,48 @@ def update_card(request, card_id):
         if due_date_changed:
             parts.append(
                 "<li><strong>Vencimento:</strong> "
-                f"{escape(_fmt_date_br(old_due_date))} → <strong>{escape(_fmt_date_br(card.due_date))}</strong></li>"
+                f"{escape(_fmt_date_br(old_due_date))} → "
+                f"<strong>{escape(_fmt_date_br(card.due_date))}</strong></li>"
             )
 
         if due_warn_changed:
             parts.append(
                 "<li><strong>Avisar em:</strong> "
-                f"{escape(_fmt_date_br(old_due_warn_date))} → <strong>{escape(_fmt_date_br(card.due_warn_date))}</strong></li>"
+                f"{escape(_fmt_date_br(old_due_warn_date))} → "
+                f"<strong>{escape(_fmt_date_br(card.due_warn_date))}</strong></li>"
             )
 
         if due_notify_changed:
             parts.append(
                 "<li><strong>Notificar com cores:</strong> "
-                f"{escape(_fmt_bool(old_due_notify))} → <strong>{escape(_fmt_bool(card.due_notify))}</strong></li>"
+                f"{escape(_fmt_bool(old_due_notify))} → "
+                f"<strong>{escape(_fmt_bool(card.due_notify))}</strong></li>"
             )
 
         parts.append("</ul>")
-
         _log_card(card, request, "".join(parts))
+
+    # ============================================================
+    # LOG — DATA DE INÍCIO (independente)
+    # ============================================================
+    if start_date_changed:
+        _log_card(
+            card,
+            request,
+            (
+                f"<p><strong>{actor}</strong> alterou a data de início.</p>"
+                "<ul style='margin:6px 0 0 18px;'>"
+                "<li><strong>Data de início:</strong> "
+                f"{escape(_fmt_date_br(old_start_date))} → "
+                f"<strong>{escape(_fmt_date_br(card.start_date))}</strong></li>"
+                "</ul>"
+            ),
+        )
 
     # ============================================================
     # CORES do board (badge de prazo)
     # ============================================================
-    has_due_color_fields = any(
-        k in request.POST for k in ("due_color_ok", "due_color_warn", "due_color_overdue")
-    )
-
-    if has_due_color_fields:
+    if any(k in request.POST for k in ("due_color_ok", "due_color_warn", "due_color_overdue")):
         posted_ok = (request.POST.get("due_color_ok") or "").strip()
         posted_warn = (request.POST.get("due_color_warn") or "").strip()
         posted_over = (request.POST.get("due_color_overdue") or "").strip()
@@ -342,124 +374,55 @@ def update_card(request, card_id):
         else:
             return JsonResponse({"error": "Cores inválidas/incompletas."}, status=400)
 
-    # ✅ version sempre sobe quando atualiza o card
+    # ============================================================
+    # VERSION
+    # ============================================================
     board.version += 1
     board.save(update_fields=["version"])
 
     # ============================================================
-    # MENÇÕES (texto bruto do POST)
+    # FALLBACK
     # ============================================================
-    logger = logging.getLogger(__name__)
-    try:
-        process_mentions_and_notify(
-            request=request,
-            board=board,
-            card=card,
-            source="description",
-            raw_text=raw_desc,
-        )
-    except Exception:
-        logger.exception("Erro ao processar menções na atualização de card.")
-
-    # ============================================================
-    # IMAGENS (base64 + já persistidas em /media/)
-    # ============================================================
-    referenced_paths = _extract_media_image_paths(card.description or "", folder="quill")
-    all_paths = list(dict.fromkeys((saved_paths or []) + (referenced_paths or [])))
-
-    if all_paths:
-        _ensure_attachments_and_activity_for_images(
-            card=card,
-            request=request,
-            relative_paths=all_paths,
-            actor=actor,
-            context_label="descrição",
-        )
-
-    # ============================================================
-    # LOGS (tags / descrição / título / fallback)
-    # ============================================================
-    if removed:
-        for t in removed:
-            _log_card(
-                card,
-                request,
-                f"<p><strong>{actor}</strong> removeu a etiqueta <strong>{escape(t)}</strong>.</p>",
-            )
-
-    if added:
-        for t in added:
-            _log_card(
-                card,
-                request,
-                f"<p><strong>{actor}</strong> adicionou a etiqueta <strong>{escape(t)}</strong>.</p>",
-            )
-
-    desc_changed = (old_desc or "") != ((card.description or "").strip())
-    title_changed = (old_title or "") != ((card.title or "").strip())
-
-    # ✅ FIX: before/after sempre definidos dentro do bloco correto
-    if desc_changed:
-        before = escape(_summarize_html(old_desc))
-        after = escape(_summarize_html(card.description))
-
-        _log_card(
-            card,
-            request,
-            (
-                f"<p><strong>{actor}</strong> alterou a descrição.</p>"
-                f"<div style='margin-top:6px'>"
-                f"<div class='cm-muted' style='margin-bottom:4px'>Antes:</div>"
-                f"<div style='padding:10px;border:1px solid rgba(15,23,42,0.10);border-radius:10px;background:rgba(255,255,255,0.35)'><em>{before}</em></div>"
-                f"</div>"
-                f"<div style='margin-top:10px'>"
-                f"<div class='cm-muted' style='margin-bottom:4px'>Depois:</div>"
-                f"<div style='padding:10px;border:1px solid rgba(15,23,42,0.10);border-radius:10px;background:rgba(255,255,255,0.35)'><strong>{after}</strong></div>"
-                f"</div>"
-            ),
-        )
-
-    if title_changed:
-        _log_card(
-            card,
-            request,
-            (
-                f"<p><strong>{actor}</strong> alterou o título de "
-                f"<strong>{escape(old_title)}</strong> para <strong>{escape(card.title)}</strong>.</p>"
-            ),
-        )
-
-    # ✅ fallback só se nada relevante mudou (inclui prazo agora)
     if not (
         removed
         or added
-        or desc_changed
-        or title_changed
-        or all_paths
+        or start_date_changed
         or due_date_changed
         or due_warn_changed
         or due_notify_changed
+        or (old_desc != (card.description or "").strip())
+        or (old_title != (card.title or "").strip())
+        or saved_paths
     ):
         _log_card(card, request, f"<p><strong>{actor}</strong> atualizou o card.</p>")
 
-    # ============================================================
-    # TERM STATUS (overlay)
-    # ============================================================
-    today = _date.today()
-    term_status = ""
-    if card.due_date and card.due_notify:
-        if card.due_date < today:
-            term_status = "overdue"
-        elif card.due_warn_date and today >= card.due_warn_date:
-            term_status = "warn"
-        else:
-            term_status = "ok"
-
     ctx = _card_modal_context(card)
-    ctx["term_status"] = term_status
     ctx["board_due_colors"] = getattr(board, "due_colors", {}) or {}
 
     return _render_card_modal(request, card, ctx)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
