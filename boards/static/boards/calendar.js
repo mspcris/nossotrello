@@ -385,15 +385,23 @@
         const cardId = Number(el.getAttribute("data-card-id") || 0);
         if (!cardId) return;
 
-        const opened = safe(() =>
-          window.Modal &&
-          typeof window.Modal.openCard === "function" &&
-          window.Modal.openCard(cardId, true, null)
-        );
+        // Integra com seu modal, se existir
+let opened = false;
 
-        if (!opened) {
-          safe(() => { window.location.search = `?card=${cardId}`; });
-        }
+try {
+  if (window.Modal && typeof window.Modal.openCard === "function") {
+    window.Modal.openCard(cardId, true, null);
+    opened = true; // ✅ considera sucesso mesmo se openCard retornar undefined
+  }
+} catch (e) {
+  opened = false;
+}
+
+if (!opened) {
+  // fallback: navega para board com ?card=
+  try { window.location.search = `?card=${cardId}`; } catch (e) {}
+}
+
       });
     });
   }
