@@ -1,200 +1,152 @@
-/* ======================================================================
-   boards/static/boards/calendar.js
+/* boards/static/boards/calendar.js */
 
-   Calendar UI (Mês / Semana) para Board Detail
-   - Renderiza calendário via endpoint /calendar/cards/
-   - Controla navegação (prev/next), modo (mês/semana) e campo (due/start/warn)
-   - Alterna visibilidade entre colunas e calendário via menu (drawer)
-
-   Contrato do backend (JSON):
-     {
-       mode: "month"|"week",
-       field: "due"|"start"|"warn",
-       days: { "YYYY-MM-DD": [{id,title,...}] },
-       grid_start: "YYYY-MM-DD",
-       grid_end: "YYYY-MM-DD",
-       focus_year: 2026,
-       focus_month: 1,
-       label: "janeiro 2026" | "Semana de 10/01/2026",
-       ...
-     }
-
-   Contrato do DOM:
-     - #calendar-root
-     - #columns-wrapper
-     - botão com [data-action="toggle-calendar"]
-     - window.BOARD_ID setado no template
-====================================================================== */
+/**
+ * Calendar (Board)
+ * - Alterna entre Board (colunas) e Calendário
+ * - Carrega dados via /calendar/cards/
+ * - Renderiza Mês (grid) e Semana (7 colunas full-height)
+ * - Mês: card como “pílula” com stripe de cor (sem imagem)
+ * - Semana: card como “barra” com cor + thumbnail (quando tiver)
+ *
+ * Contrato:
+ * - window.BOARD_ID deve existir
+ * - Deve existir #calendar-root e #columns-wrapper no DOM
+ * - Backend deve retornar:
+ *   {
+ *     mode: "month"|"week",
+ *     field: "due"|"start"|"warn",
+ *     label: "Janeiro 2026",
+ *     grid_start: "YYYY-MM-DD",
+ *     focus_year: 2026,
+ *     focus_month: 1,
+ *     week_start: "YYYY-MM-DD",   // recomendado no modo week (se tiver)
+ *     days: { "YYYY-MM-DD": [ {id,title,color,cover_url}, ... ] }
+ *   }
+ */
 
 (function () {
-  "use strict";
-
-  /* =======================
-     1) STATE (Single Source of Truth)
-  ======================= */
+  /* ============================================================
+   * STATE
+   * ============================================================ */
   window.CalendarState = window.CalendarState || {
     active: false,
-    mode: "month",  // "month" | "week"
-    field: "due",   // "due" | "start" | "warn"
-    focus: null     // "YYYY-MM-DD" (data foco)
+    mode: "month", // month | week
+    field: "due",  // due | start | warn
+    focus: null    // YYYY-MM-DD
   };
 
-  /* =======================
-     2) HELPERS
-  ======================= */
-  function isoToday() {
-    return new Date().toISOString().slice(0, 10);
-  }
-
-  function toDateUTC(isoDateStr) {
-    // Evita variação por timezone ao criar Date a partir de "YYYY-MM-DD"
-    return new Date(isoDateStr + "T00:00:00");
-  }
-
-  function fmtISO(d) {
+  function ymd(d) {
     return d.toISOString().slice(0, 10);
   }
 
-  function getEl(id) {
-    return document.getElementById(id);
+  function parseYmd(s) {
+    // força meia-noite local sem “pulo” de timezone
+    return new Date(s + "T00:00:00");
   }
 
-  function assertBoardId() {
-    const id = Number(window.BOARD_ID || 0);
-    if (!id) {
-      console.error("[calendar] window.BOARD_ID não definido. Verifique o BOOT GLOBAL no template.");
-      return 0;
-    }
-    return id;
+  function safe(fn) {
+    try { return fn(); } catch (_e) { return null; }
   }
 
-  /* =======================
-     3) PUBLIC API (opcional)
-     - Se no futuro quiser chamar calendar via console/integrações
-  ======================= */
-  window.CalendarUI = window.CalendarUI || {};
-  window.CalendarUI.render = renderCalendar;
-  window.CalendarUI.toggle = toggleCalendar;
-  window.CalendarUI.setMode = function (mode) {
-    window.CalendarState.mode = (mode === "week") ? "week" : "month";
-    renderCalendar();
-  };
-  window.CalendarUI.setField = function (field) {
-    window.CalendarState.field = field;
-    renderCalendar();
-  };
+  /* ============================================================
+   * TOGGLE (Board <-> Calendar)
+   * ============================================================ */
+  if (!window.__cmCalendarToggleInstalled) {
+    window.__cmCalendarToggleInstalled = true;
 
-  /* =======================
-     4) TOGGLE (Menu Drawer)
-     - Delegação global: funciona mesmo se o drawer for re-renderizado
-  ======================= */
-  document.addEventListener("click", function (e) {
-    const btn = e.target.closest('[data-action="toggle-calendar"]');
-    if (!btn) return;
-    toggleCalendar();
-  });
+    document.addEventListener("click", (e) => {
+      const btn = e.target.closest('[data-action="toggle-calendar"]');
+      if (!btn) return;
 
-  function toggleCalendar() {
-    const columns = getEl("columns-wrapper");
-    const calendarRoot = getEl("calendar-root");
-    if (!columns || !calendarRoot) {
-      console.error("[calendar] #columns-wrapper ou #calendar-root não encontrado no DOM.");
-      return;
-    }
+      const columns = document.getElementById("columns-wrapper");
+      const calendarRoot = document.getElementById("calendar-root");
+      if (!columns || !calendarRoot) return;
 
-    window.CalendarState.active = !window.CalendarState.active;
+      CalendarState.active = !CalendarState.active;
 
-    if (window.CalendarState.active) {
-      columns.classList.add("hidden");
-      calendarRoot.classList.remove("hidden");
-      renderCalendar();
-    } else {
-      calendarRoot.classList.add("hidden");
-      columns.classList.remove("hidden");
-    }
+      if (CalendarState.active) {
+        columns.classList.add("hidden");
+        calendarRoot.classList.remove("hidden");
+        renderCalendar();
+      } else {
+        calendarRoot.classList.add("hidden");
+        columns.classList.remove("hidden");
+      }
+    });
   }
 
-  /* =======================
-     5) FETCH + RENDER (core)
-  ======================= */
+  /* ============================================================
+   * FETCH + RENDER
+   * ============================================================ */
   async function renderCalendar() {
-    const boardId = assertBoardId();
-    if (!boardId) return;
+    const root = document.getElementById("calendar-root");
+    if (!root) return;
 
-    const focus = window.CalendarState.focus || isoToday();
-
-    const url =
-      `/calendar/cards/?board=${boardId}` +
-      `&mode=${encodeURIComponent(window.CalendarState.mode)}` +
-      `&field=${encodeURIComponent(window.CalendarState.field)}` +
-      `&start=${encodeURIComponent(focus)}`;
+    root.classList.add("cm-cal-loading");
 
     try {
-      const res = await fetch(url, {
-        method: "GET",
-        credentials: "same-origin",
-        headers: { "Accept": "application/json" }
-      });
+      const focus = CalendarState.focus || ymd(new Date());
+      const url =
+        `/calendar/cards/?board=${window.BOARD_ID}` +
+        `&mode=${CalendarState.mode}` +
+        `&field=${CalendarState.field}` +
+        `&start=${focus}`;
 
-      if (!res.ok) {
-        const txt = await res.text().catch(() => "");
-        console.error("[calendar] Erro HTTP:", res.status, txt);
-        return;
-      }
+      const res = await fetch(url, { credentials: "same-origin" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const data = await res.json();
 
-      const root = getEl("calendar-root");
-      if (!root) {
-        console.error("[calendar] #calendar-root não encontrado no DOM.");
-        return;
-      }
-
       root.innerHTML = renderCalendarView(data);
+      wireCalendarControls(root, data);
 
-      // Wiring precisa ocorrer após inserir HTML
-      wireCalendarControls(root);
-
-    } catch (err) {
-      console.error("[calendar] Falha ao buscar calendário:", err);
+    } catch (e) {
+      console.error("Erro ao carregar calendário:", e);
+      root.innerHTML = `
+        <div class="cm-calendar-shell">
+          <div class="cm-cal-error">
+            Erro ao carregar calendário. Veja o console.
+          </div>
+        </div>
+      `;
+    } finally {
+      root.classList.remove("cm-cal-loading");
     }
   }
 
-  /* =======================
-     6) VIEW (HTML render)
-  ======================= */
+  window.renderCalendar = renderCalendar;
+
+  /* ============================================================
+   * VIEW
+   * ============================================================ */
   function renderCalendarView(data) {
     return `
-      <div class="cm-calendar-shell">
+      <div class="cm-calendar-shell ${data.mode}">
         ${renderCalendarHeader(data)}
-        ${renderCalendarGrid(data)}
+        ${data.mode === "week" ? renderWeekView(data) : renderMonthView(data)}
       </div>
     `;
   }
 
   function renderCalendarHeader(data) {
     const isMonth = data.mode === "month";
-    const field = data.field || window.CalendarState.field;
+    const field = data.field;
 
     return `
       <div class="cm-calendar-header">
         <div class="cm-cal-left">
           <button class="cm-cal-nav" data-cal-nav="prev" type="button" aria-label="Anterior">‹</button>
-          <div class="cm-cal-title">${escapeHtml(data.label || "")}</div>
+          <div class="cm-cal-title">${data.label || ""}</div>
           <button class="cm-cal-nav" data-cal-nav="next" type="button" aria-label="Próximo">›</button>
         </div>
 
         <div class="cm-cal-right">
-          <div class="cm-cal-modes" role="group" aria-label="Modo do calendário">
-            <button type="button"
-                    class="cm-cal-mode ${isMonth ? "is-active" : ""}"
-                    data-cal-mode="month">Mês</button>
-            <button type="button"
-                    class="cm-cal-mode ${!isMonth ? "is-active" : ""}"
-                    data-cal-mode="week">Semana</button>
+          <div class="cm-cal-modes">
+            <button type="button" class="cm-cal-mode ${isMonth ? "is-active" : ""}" data-cal-mode="month">Mês</button>
+            <button type="button" class="cm-cal-mode ${!isMonth ? "is-active" : ""}" data-cal-mode="week">Semana</button>
           </div>
 
-          <select class="cm-cal-field" data-cal-field aria-label="Campo de data">
+          <select class="cm-cal-field" data-cal-field>
             <option value="due" ${field === "due" ? "selected" : ""}>Vencimento</option>
             <option value="start" ${field === "start" ? "selected" : ""}>Data de Início</option>
             <option value="warn" ${field === "warn" ? "selected" : ""}>Avisar em</option>
@@ -204,39 +156,36 @@
     `;
   }
 
-  function renderCalendarGrid(data) {
+  /* ============================================================
+   * MONTH (grid 6x7)
+   * - Card: “pílula” com stripe colorido (sem imagem)
+   * ============================================================ */
+  function renderMonthView(data) {
     const days = data.days || {};
-    const total = (data.mode === "week") ? 7 : 42;
+    const total = 42;
 
-    // backend agora manda grid_start (ISO)
-    const gridStartIso = data.grid_start;
-    if (!gridStartIso) {
-      console.error("[calendar] Backend não retornou grid_start. Verifique views/calendar.py.");
-      return `<div class="cm-calendar ${data.mode}"></div>`;
-    }
+    const gridStart = parseYmd(data.grid_start);
+    const focusYear = data.focus_year;
+    const focusMonth = data.focus_month; // 1..12
 
-    const gridStart = toDateUTC(gridStartIso);
-
-    // Para style "fora do mês" no modo mês
-    const focusYear = Number(data.focus_year || 0);
-    const focusMonth = Number(data.focus_month || 0); // 1..12
-
-    let html = `<div class="cm-calendar ${data.mode}">`;
+    let html = `<div class="cm-cal-month">`;
 
     for (let i = 0; i < total; i++) {
       const d = new Date(gridStart);
       d.setDate(d.getDate() + i);
 
-      const key = fmtISO(d);
+      const key = ymd(d);
 
       const inFocusMonth =
-        (data.mode === "week") ? true :
-        (d.getFullYear() === focusYear) && ((d.getMonth() + 1) === focusMonth);
+        (d.getFullYear() === focusYear) &&
+        ((d.getMonth() + 1) === focusMonth);
 
       html += `
-        <div class="cm-calendar-day ${inFocusMonth ? "" : "is-outside"}" data-day="${key}">
-          <div class="cm-calendar-date">${d.getDate()}</div>
-          ${(days[key] || []).map(renderCalendarCard).join("")}
+        <div class="cm-cal-day ${inFocusMonth ? "" : "is-outside"}" data-day="${key}">
+          <div class="cm-cal-date">${d.getDate()}</div>
+          <div class="cm-cal-cards">
+            ${(days[key] || []).map((card) => renderCalendarCard(card, "month")).join("")}
+          </div>
         </div>
       `;
     }
@@ -245,73 +194,171 @@
     return html;
   }
 
-  function renderCalendarCard(card) {
-    // Card mínimo por enquanto. Depois dá para enriquecer (status de prazo, cor, tags, clique abre modal etc.)
+  /* ============================================================
+   * WEEK (7 columns full-height)
+   * - Top row: Domingo, Segunda...
+   * - Columns: barras estilo board
+   * ============================================================ */
+  function renderWeekView(data) {
+    const days = data.days || {};
+
+    // Preferir week_start se backend mandar; senão usa grid_start
+    const startStr = data.week_start || data.grid_start || CalendarState.focus || ymd(new Date());
+    const start = parseYmd(startStr);
+
+    const dowNames = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+
+    // header + columns
+    let html = `<div class="cm-cal-week">`;
+
+    // Cabeçalho fixo da semana
+    html += `<div class="cm-week-head">`;
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start);
+      d.setDate(d.getDate() + i);
+      html += `
+        <div class="cm-week-headcell">
+          <div class="cm-week-dow">${dowNames[d.getDay()]}</div>
+          <div class="cm-week-date">${d.getDate()}/${String(d.getMonth() + 1).padStart(2, "0")}</div>
+        </div>
+      `;
+    }
+    html += `</div>`;
+
+    // Colunas (até o fim da página; scroll interno via CSS)
+    html += `<div class="cm-week-cols">`;
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start);
+      d.setDate(d.getDate() + i);
+      const key = ymd(d);
+
+      html += `
+        <div class="cm-week-col" data-day="${key}">
+          <div class="cm-week-cards">
+            ${(days[key] || []).map((card) => renderCalendarCard(card, "week")).join("")}
+          </div>
+        </div>
+      `;
+    }
+    html += `</div>`;
+
+    html += `</div>`;
+    return html;
+  }
+
+  /* ============================================================
+   * CARD RENDER
+   * - month: pílula (sem imagem)
+   * - week: barra (com thumb quando tiver)
+   * ============================================================ */
+  function renderCalendarCard(card, viewMode) {
+    const title = (card && card.title) ? String(card.title) : "";
+    const color = (card && card.color) ? String(card.color) : "";
+    const cover = (card && card.cover_url) ? String(card.cover_url) : "";
+
+    if (viewMode === "week") {
+      return `
+        <button
+          type="button"
+          class="cm-cal-card cm-cal-card-week"
+          data-card-id="${card.id}"
+          style="${color ? `--cm-card-color:${color};` : ""}"
+          title="${escapeHtml(title)}"
+        >
+          ${cover ? `<span class="cm-cal-thumb" style="background-image:url('${escapeAttr(cover)}')"></span>` : `<span class="cm-cal-thumb is-empty"></span>`}
+          <span class="cm-cal-card-title">${escapeHtml(title)}</span>
+        </button>
+      `;
+    }
+
+    // month
     return `
-      <div class="cm-calendar-card" data-card-id="${Number(card.id || 0)}">
-        ${escapeHtml(card.title || "")}
-      </div>
+      <button
+        type="button"
+        class="cm-cal-card cm-cal-card-month"
+        data-card-id="${card.id}"
+        style="${color ? `--cm-card-color:${color};` : ""}"
+        title="${escapeHtml(title)}"
+      >
+        <span class="cm-cal-dot"></span>
+        <span class="cm-cal-card-title">${escapeHtml(title)}</span>
+      </button>
     `;
   }
 
-  /* =======================
-     7) CONTROLS (navegação, modo, field)
-     - Usa delegação por container do calendário para não duplicar handlers
-  ======================= */
-  function wireCalendarControls(root) {
-    // Evita duplicar listeners a cada render
-    if (root.dataset.cmCalendarWired === "1") return;
-    root.dataset.cmCalendarWired = "1";
-
-    root.addEventListener("click", function (e) {
-      const navBtn = e.target.closest("[data-cal-nav]");
-      if (navBtn) {
-        const dir = navBtn.getAttribute("data-cal-nav"); // prev|next
-        shiftCalendarFocus(dir);
-        return;
-      }
-
-      const modeBtn = e.target.closest("[data-cal-mode]");
-      if (modeBtn) {
-        window.CalendarState.mode = modeBtn.getAttribute("data-cal-mode");
-        renderCalendar();
-        return;
-      }
-    });
-
-    root.addEventListener("change", function (e) {
-      const fieldSelect = e.target.closest("[data-cal-field]");
-      if (!fieldSelect) return;
-      window.CalendarState.field = fieldSelect.value;
-      renderCalendar();
-    });
-  }
-
-  function shiftCalendarFocus(dir) {
-    const current = window.CalendarState.focus || isoToday();
-    const focus = toDateUTC(current);
-
-    if (window.CalendarState.mode === "week") {
-      focus.setDate(focus.getDate() + (dir === "next" ? 7 : -7));
-    } else {
-      // month: mover mês e ancorar no dia 1 para não "pular"
-      focus.setDate(1);
-      focus.setMonth(focus.getMonth() + (dir === "next" ? 1 : -1));
-    }
-
-    window.CalendarState.focus = fmtISO(focus);
-    renderCalendar();
-  }
-
-  /* =======================
-     8) SAFE HTML
-  ======================= */
-  function escapeHtml(str) {
-    return String(str)
+  function escapeHtml(s) {
+    return String(s)
       .replaceAll("&", "&amp;")
       .replaceAll("<", "&lt;")
       .replaceAll(">", "&gt;")
       .replaceAll('"', "&quot;")
       .replaceAll("'", "&#039;");
+  }
+
+  function escapeAttr(s) {
+    // suficiente pra url dentro de aspas simples
+    return String(s).replaceAll("'", "%27");
+  }
+
+  /* ============================================================
+   * WIRING
+   * ============================================================ */
+  function wireCalendarControls(root, data) {
+    // navegação prev/next
+    root.querySelectorAll("[data-cal-nav]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const dir = btn.getAttribute("data-cal-nav"); // prev|next
+        shiftCalendarFocus(dir);
+      });
+    });
+
+    // modo mês/semana
+    root.querySelectorAll("[data-cal-mode]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        CalendarState.mode = btn.getAttribute("data-cal-mode");
+        renderCalendar();
+      });
+    });
+
+    // campo due/start/warn
+    const fieldSelect = root.querySelector("[data-cal-field]");
+    if (fieldSelect) {
+      fieldSelect.addEventListener("change", () => {
+        CalendarState.field = fieldSelect.value;
+        renderCalendar();
+      });
+    }
+
+    // abrir card ao clicar
+    root.querySelectorAll(".cm-cal-card[data-card-id]").forEach((el) => {
+      el.addEventListener("click", () => {
+        const cardId = Number(el.getAttribute("data-card-id") || 0);
+        if (!cardId) return;
+
+        // Integra com seu modal, se existir
+        const opened = safe(() => window.Modal && typeof window.Modal.openCard === "function" && window.Modal.openCard(cardId, true, null));
+        if (!opened) {
+          // fallback: navega para board com ?card=
+          safe(() => { window.location.search = `?card=${cardId}`; });
+        }
+      });
+    });
+  }
+
+  function shiftCalendarFocus(dir) {
+    const focusStr = CalendarState.focus || ymd(new Date());
+    const focus = parseYmd(focusStr);
+
+    if (CalendarState.mode === "week") {
+      focus.setDate(focus.getDate() + (dir === "next" ? 7 : -7));
+    } else {
+      // month: trava dia 1 para não “pular mês”
+      const m = focus.getMonth();
+      focus.setDate(1);
+      focus.setMonth(dir === "next" ? m + 1 : m - 1);
+    }
+
+    CalendarState.focus = ymd(focus);
+    renderCalendar();
   }
 })();

@@ -106,3 +106,246 @@
 .cm-calendar-day.is-outside .cm-calendar-card {
   opacity: 0.65;
 }
+
+/* boards/static/boards/calendar.css */
+
+/* Shell */
+.cm-calendar-shell {
+  width: 100%;
+  padding: 8px 10px;
+}
+
+.cm-cal-loading {
+  opacity: 0.85;
+}
+
+/* Header */
+.cm-calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.cm-cal-left { display: flex; align-items: center; gap: 10px; }
+.cm-cal-title {
+  font-weight: 700;
+  color: rgba(255,255,255,.92);
+  text-shadow: 0 1px 2px rgba(0,0,0,.35);
+}
+
+.cm-cal-nav {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.28);
+  background: rgba(0,0,0,.20);
+  color: rgba(255,255,255,.92);
+}
+
+.cm-cal-right { display: flex; align-items: center; gap: 10px; }
+
+.cm-cal-modes {
+  display: inline-flex;
+  border: 1px solid rgba(255,255,255,.25);
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(0,0,0,.18);
+}
+
+.cm-cal-mode {
+  padding: 8px 10px;
+  font-size: 12px;
+  color: rgba(255,255,255,.80);
+  background: transparent;
+  border: 0;
+}
+.cm-cal-mode.is-active {
+  background: rgba(255,255,255,.18);
+  color: rgba(255,255,255,.95);
+  font-weight: 700;
+}
+
+.cm-cal-field {
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.25);
+  background: rgba(0,0,0,.18);
+  color: rgba(255,255,255,.92);
+  padding: 0 10px;
+}
+
+/* ============================================================
+ * MONTH
+ * ============================================================ */
+.cm-cal-month {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.cm-cal-day {
+  position: relative;
+  min-height: 110px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.22);
+
+  /* NÃO branco puro: melhora contraste com cards */
+  background: rgba(255,255,255,.14);
+  backdrop-filter: blur(6px);
+
+  overflow: hidden;
+  padding: 8px;
+}
+
+.cm-cal-day.is-outside {
+  opacity: 0.55;
+}
+
+.cm-cal-date {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255,255,255,.92);
+  text-shadow: 0 1px 2px rgba(0,0,0,.35);
+  margin-bottom: 6px;
+}
+
+.cm-cal-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Card (month) = pílula com stripe */
+.cm-cal-card {
+  width: 100%;
+  text-align: left;
+  border: 0;
+  cursor: pointer;
+}
+
+.cm-cal-card-month {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  border-radius: 10px;
+  padding: 8px 10px;
+
+  /* Card mais visível */
+  background: rgba(0,0,0,.28);
+  color: rgba(255,255,255,.95);
+  box-shadow: 0 2px 10px rgba(0,0,0,.18);
+}
+
+.cm-cal-card-month .cm-cal-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 99px;
+  background: var(--cm-card-color, rgba(255,255,255,.55));
+  box-shadow: 0 0 0 3px rgba(0,0,0,.15);
+}
+
+.cm-cal-card-title {
+  font-size: 12px;
+  line-height: 1.2;
+  font-weight: 650;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* ============================================================
+ * WEEK (7 colunas até o final da página)
+ * ============================================================ */
+.cm-cal-week {
+  display: flex;
+  flex-direction: column;
+
+  /* Ocupa viewport (ajuste se seu header global for maior/menor) */
+  height: calc(100vh - 170px);
+  min-height: 420px;
+}
+
+.cm-week-head {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.cm-week-headcell {
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.22);
+  background: rgba(0,0,0,.18);
+  padding: 8px 10px;
+}
+
+.cm-week-dow {
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(255,255,255,.92);
+}
+.cm-week-date {
+  font-size: 12px;
+  color: rgba(255,255,255,.80);
+}
+
+.cm-week-cols {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  min-height: 0; /* importante pro scroll interno */
+}
+
+.cm-week-col {
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.22);
+  background: rgba(255,255,255,.14);
+  backdrop-filter: blur(6px);
+  padding: 8px;
+
+  min-height: 0; /* importante pro scroll interno */
+  overflow: hidden;
+}
+
+.cm-week-cards {
+  height: 100%;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 4px;
+}
+
+/* Card (week) = barra estilo board */
+.cm-cal-card-week {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  align-items: center;
+  gap: 10px;
+
+  border-radius: 12px;
+  padding: 10px 10px;
+
+  background: rgba(0,0,0,.30);
+  color: rgba(255,255,255,.95);
+  box-shadow: 0 2px 12px rgba(0,0,0,.18);
+
+  /* stripe lateral com cor */
+  border-left: 6px solid var(--cm-card-color, rgba(255,255,255,.35));
+}
+
+.cm-cal-thumb {
+  width: 44px;
+  height: 34px;
+  border-radius: 10px;
+  background-size: cover;
+  background-position: center;
+  border: 1px solid rgba(255,255,255,.18);
+}
+.cm-cal-thumb.is-empty {
+  background: rgba(255,255,255,.10);
+}
