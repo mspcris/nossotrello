@@ -38,14 +38,15 @@
     box = document.createElement("div");
     box.id = "home-search-results";
     box.className =
-      [
-        "mt-2 w-full max-w-[980px] mx-auto",
-        "rounded-2xl border border-white/25 shadow-2xl",
-        "bg-white/18 backdrop-blur-xl",
-        "ring-1 ring-white/30",
-        "px-3 py-3 hidden",
-        "relative z-[2200] pointer-events-auto"
-      ].join(" ");
+  [
+    "mt-2 w-full max-w-[980px] mx-auto",
+    "rounded-2xl border border-white/40 shadow-2xl",
+    "bg-white/92 backdrop-blur-md",     // mais opaco (contraste)
+    "ring-1 ring-black/10",
+    "px-4 py-4 hidden",
+    "relative z-[2200] pointer-events-auto"
+  ].join(" ");
+
 
     const panel = input.closest(".cm-search-panel") || input.parentElement;
     if (panel && panel.parentElement) panel.parentElement.appendChild(box);
@@ -87,84 +88,138 @@
     </span>`;
   }
 
-  function renderResults(box, data, q) {
-    const cards = Array.isArray(data?.cards) ? data.cards : [];
-    const boards = Array.isArray(data?.boards) ? data.boards : [];
 
-    if (!cards.length && !boards.length) {
-      box.innerHTML = `
-        <div class="text-sm text-white/90">
-          Nenhum resultado para <b class="text-white">${esc(q)}</b>.
-        </div>`;
-      box.classList.remove("hidden");
-      hideHomeCardsAndGroups();
-      return;
-    }
 
-    const cardsHtml = cards.length ? `
-      <div class="mb-3">
-        <div class="text-xs font-semibold text-white/90 mb-2 tracking-wide">Cards</div>
-        <div class="flex flex-col gap-2">
-          ${cards.map(c => `
+function renderResults(box, data, q) {
+  const cards = Array.isArray(data?.cards) ? data.cards : [];
+  const boards = Array.isArray(data?.boards) ? data.boards : [];
+
+  // Painel sempre legível (contraste alto) mesmo com wallpaper/blur
+  // (mantém o "vidro", mas com opacidade suficiente)
+  box.classList.add(
+    "mt-3",
+    "rounded-2xl",
+    "border",
+    "border-white/40",
+    "shadow-2xl",
+    "bg-white/95",
+    "backdrop-blur-md",
+    "ring-1",
+    "ring-black/10",
+    "px-6",
+    "py-6"
+  );
+
+  // Fonte 2x maior do que o sugerido antes (padrão agora: base/xl)
+  // Observação: como é JS, a gente garante que os textos internos são escuros (não branco)
+  if (!cards.length && !boards.length) {
+    box.innerHTML = `
+      <div class="text-xl text-slate-800">
+        Nenhum resultado para <b class="text-slate-950">${esc(q)}</b>.
+      </div>`;
+    box.classList.remove("hidden");
+    hideHomeCardsAndGroups();
+    return;
+  }
+
+  const cardsHtml = cards.length
+    ? `
+      <div class="mb-6">
+        <div class="text-2xl font-extrabold text-slate-900 mb-4 tracking-wide">Cards</div>
+        <div class="flex flex-col gap-3">
+          ${cards
+            .map(
+              (c) => `
             <button
               type="button"
-              class="text-left w-full rounded-xl px-3 py-2
-                     bg-white/25 hover:bg-white/35 transition
-                     border border-white/25 ring-1 ring-black/5
-                     shadow-md"
+              class="text-left w-full rounded-2xl px-6 py-5
+                     bg-white hover:bg-slate-50 transition
+                     border border-slate-200 ring-1 ring-black/5
+                     shadow-md hover:shadow-lg
+                     active:scale-[0.99]"
               data-card-id="${esc(c.id)}"
               data-board-id="${esc(c.board_id)}"
             >
-              <div class="flex items-center justify-between gap-2">
-                <div class="text-sm font-semibold text-white">
+              <div class="flex items-start justify-between gap-3">
+                <div class="text-xl font-extrabold text-slate-950 leading-snug">
                   ${highlight(c.title, q)}
                   ${badge(c.match_in)}
                 </div>
-                <div class="text-[11px] text-white/80">
+                <div class="text-lg font-semibold text-slate-600 whitespace-nowrap">
                   #${esc(c.id)}
                 </div>
               </div>
 
-              <div class="mt-0.5 text-xs text-white/85">
-                <span class="font-semibold">Quadro:</span> ${highlight(c.board_name || ("#" + c.board_id), q)}
-                <span class="mx-2 text-white/50">•</span>
-                <span class="font-semibold">Coluna:</span> ${highlight(c.column_title || ("#" + c.column_id), q)}
+              <div class="mt-3 text-lg text-slate-800">
+                <span class="font-extrabold">Quadro:</span> ${highlight(
+                  c.board_name || "#" + c.board_id,
+                  q
+                )}
+                <span class="mx-2 text-slate-400">•</span>
+                <span class="font-extrabold">Coluna:</span> ${highlight(
+                  c.column_title || "#" + c.column_id,
+                  q
+                )}
               </div>
 
-              ${c.excerpt ? `
-                <div class="mt-1 text-xs text-white/80 leading-snug">
+              ${
+                c.excerpt
+                  ? `
+                <div class="mt-3 text-lg text-slate-700 leading-relaxed">
                   ${highlight(c.excerpt, q)}
                 </div>
-              ` : ""}
+              `
+                  : ""
+              }
             </button>
-          `).join("")}
+          `
+            )
+            .join("")}
         </div>
       </div>
-    ` : "";
+    `
+    : "";
 
-    const boardsHtml = boards.length ? `
+  const boardsHtml = boards.length
+    ? `
       <div>
-        <div class="text-xs font-semibold text-white/90 mb-2 tracking-wide">Quadros</div>
-        <div class="flex flex-col gap-2">
-          ${boards.map(b => `
+        <div class="text-2xl font-extrabold text-slate-900 mb-4 tracking-wide">Quadros</div>
+        <div class="flex flex-col gap-3">
+          ${boards
+            .map(
+              (b) => `
             <a
               href="/board/${encodeURIComponent(b.id)}/"
-              class="block rounded-xl px-3 py-2
-                     bg-white/20 hover:bg-white/30 transition
-                     border border-white/25 shadow-md"
+              class="block rounded-2xl px-6 py-5
+                     bg-white hover:bg-slate-50 transition
+                     border border-slate-200 shadow-md hover:shadow-lg
+                     ring-1 ring-black/5
+                     active:scale-[0.99]"
             >
-              <div class="text-sm font-semibold text-white">${highlight(b.name, q)}</div>
-              <div class="text-[11px] text-white/75">board #${esc(b.id)}</div>
+              <div class="text-xl font-extrabold text-slate-950 leading-snug">
+                ${highlight(b.name, q)}
+              </div>
+              <div class="mt-2 text-lg font-semibold text-slate-600">
+                board #${esc(b.id)}
+              </div>
             </a>
-          `).join("")}
+          `
+            )
+            .join("")}
         </div>
       </div>
-    ` : "";
+    `
+    : "";
 
-    box.innerHTML = cardsHtml + boardsHtml;
-    box.classList.remove("hidden");
-    hideHomeCardsAndGroups();
-  }
+  box.innerHTML = cardsHtml + boardsHtml;
+  box.classList.remove("hidden");
+  hideHomeCardsAndGroups();
+}
+
+
+
+
+
 
   function debounce(fn, wait) {
     let t = null;
