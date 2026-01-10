@@ -28,3 +28,81 @@
 .cm-calendar-card:hover {
   background: #e2e8f0;
 }
+
+.cm-calendar-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cm-calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.10);
+  backdrop-filter: blur(8px);
+}
+
+.cm-cal-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cm-cal-title {
+  font-weight: 600;
+  letter-spacing: .2px;
+}
+
+.cm-cal-nav {
+  min-width: 36px;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.08);
+  cursor: pointer;
+}
+
+.cm-cal-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cm-cal-modes {
+  display: flex;
+  gap: 6px;
+}
+
+.cm-cal-mode {
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.08);
+  cursor: pointer;
+}
+
+.cm-cal-mode.is-active {
+  background: rgba(255,255,255,0.18);
+}
+
+.cm-cal-field {
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.08);
+  color: inherit;
+  padding: 0 10px;
+}
+
+.cm-calendar-day.is-outside {
+  opacity: 0.45;
+}
+
+.cm-calendar-day.is-outside .cm-calendar-card {
+  opacity: 0.65;
+}
