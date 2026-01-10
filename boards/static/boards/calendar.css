@@ -307,3 +307,94 @@
 }
 .cm-cal-thumb { overflow: hidden; border-radius: 10px; }
 .cm-cal-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+
+
+
+
+
+
+
+
+/* ============================================================
+ * MOBILE (<= 767px)
+ * ============================================================ */
+@media (max-width: 767px) {
+
+  .cm-calendar-shell {
+    padding: 8px 8px;
+    gap: 10px;
+  }
+
+  /* Header empilha para caber */
+  .cm-calendar-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .cm-cal-left, .cm-cal-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .cm-cal-title {
+    font-size: 14px;
+  }
+
+  .cm-cal-field {
+    width: 100%;
+  }
+
+  /* ============ MONTH (mobile) ============ */
+  /* Faz a grade “mais larga” e permite arrastar horizontalmente */
+  .cm-cal-month {
+    grid-template-columns: repeat(7, 120px);
+    width: max-content;
+  }
+
+  /* O container que segura a grade precisa permitir scroll-x.
+     Como você não tem um wrapper dedicado, a opção segura é liberar overflow-x no shell */
+  .cm-calendar-shell.month {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Células mais altas para toque */
+  .cm-cal-day {
+    min-height: 140px;
+  }
+
+  /* Cards no mês: aumenta hit-area */
+  .cm-cal-card-month {
+    padding: 10px 10px;
+  }
+
+  /* ============ WEEK (mobile) ============ */
+  /* Head e cols viram “carrossel” sincronizado visualmente */
+  .cm-week-head,
+  .cm-week-cols {
+    grid-auto-flow: column;
+    grid-auto-columns: 86vw; /* 1 dia por tela */
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    gap: 10px;
+  }
+
+  .cm-week-headcell,
+  .cm-week-col {
+    scroll-snap-align: start;
+  }
+
+  /* Semana não precisa forçar 100vh no mobile */
+  .cm-cal-week {
+    height: auto;
+    min-height: 0;
+  }
+
+  .cm-week-col {
+    min-height: 56vh; /* dá área boa pros cards */
+  }
+}

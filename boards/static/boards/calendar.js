@@ -166,6 +166,26 @@
     }
   }
 
+  // Mobile: sincroniza scroll horizontal do head com as colunas (semana)
+try {
+  const head = root.querySelector(".cm-week-head");
+  const cols = root.querySelector(".cm-week-cols");
+  if (head && cols) {
+    let lock = false;
+
+    const sync = (from, to) => {
+      if (lock) return;
+      lock = true;
+      to.scrollLeft = from.scrollLeft;
+      requestAnimationFrame(() => { lock = false; });
+    };
+
+    head.addEventListener("scroll", () => sync(head, cols), { passive: true });
+    cols.addEventListener("scroll", () => sync(cols, head), { passive: true });
+  }
+} catch (_e) {}
+
+
   window.renderCalendar = renderCalendar;
 
   /* ============================================================
@@ -448,3 +468,13 @@ if (!opened) {
   });
 
 })();
+
+
+
+
+
+
+
+
+
+
