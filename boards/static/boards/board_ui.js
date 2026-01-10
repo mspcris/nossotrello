@@ -70,6 +70,14 @@ document.body.addEventListener("htmx:afterSettle", applyReadonlyUI);
 // ============================================================
 // TERM COLORS (prazos) — computed client-side
 // ============================================================
+// ============================================================
+// TERM COLORS (prazos) — computed client-side
+// - Board: <li data-card-id ...>
+// - Calendar: <button class="cm-cal-card" data-card-id ...>
+// - Pinta:
+//   - Board: aplica tint + badge
+//   - Calendar: pinta .cm-cal-dot e/ou .cm-cal-bar dentro do card
+// ============================================================
 window.applySavedTermColorsToBoard = function (scope) {
   const root = scope || document;
 
@@ -77,7 +85,7 @@ window.applySavedTermColorsToBoard = function (scope) {
     ? window.BOARD_TERM_COLORS
     : {};
 
-  const cOk = colors.ok || "#16a34a";
+  const cOk   = colors.ok || "#16a34a";
   const cWarn = colors.warn || "#f59e0b";
   const cOver = colors.overdue || "#dc2626";
 
@@ -115,11 +123,11 @@ window.applySavedTermColorsToBoard = function (scope) {
   function setTint(cardEl, hexColor) {
     if (!cardEl || !hexColor) return;
     cardEl.style.setProperty("--term-rgb", hexToRgbStr(hexColor));
-    cardEl.style.setProperty("--term-opacity", "0.18"); // ✅ mesmo “peso” do glass do card
+    cardEl.style.setProperty("--term-opacity", "0.18");
   }
 
-
   function setBadge(badge, text, color) {
+    if (!badge) return;
     badge.textContent = text;
     badge.style.backgroundColor = color + "20";
     badge.style.color = color;
@@ -127,40 +135,74 @@ window.applySavedTermColorsToBoard = function (scope) {
     badge.classList.remove("hidden");
   }
 
-  root.querySelectorAll("li[data-card-id]").forEach((cardEl) => {
+  function paintCalendarChip(cardEl, color) {
+    // calendário: pinta dot e/ou barra dentro do card
+    const dot = cardEl.querySelector(".cm-cal-dot");
+    if (dot) {
+      dot.style.backgroundColor = color;
+      dot.style.borderColor = color;
+    }
+    const bar = cardEl.querySelector(".cm-cal-bar");
+    if (bar) {
+      bar.style.backgroundColor = color;
+      bar.style.borderColor = color;
+    }
+  }
+
+  // 🔑 agora pega board + calendário
+  const cardEls = root.querySelectorAll('li[data-card-id], .cm-cal-card[data-card-id]');
+
+  const t = todayUTC();
+
+  cardEls.forEach((cardEl) => {
+    const isCalendar = cardEl.classList && cardEl.classList.contains("cm-cal-card");
+
     const notify = (cardEl.getAttribute("data-term-notify") || "1") === "1";
-    const due = parseYMD(cardEl.getAttribute("data-term-due") || "");
+
+    const due  = parseYMD(cardEl.getAttribute("data-term-due") || "");
     const warn = parseYMD(cardEl.getAttribute("data-term-warn") || "");
 
-    const badge = cardEl.querySelector(".term-badge");
+    // Board badge (se existir)
+    const badge = !isCalendar ? cardEl.querySelector(".term-badge") : null;
 
     // sem prazo ou sem notify => neutro
     if (!notify || !due) {
-      clearTint(cardEl);
-      if (badge) badge.classList.add("hidden");
+      if (!isCalendar) {
+        clearTint(cardEl);
+        if (badge) badge.classList.add("hidden");
+      } else {
+        // calendário: não força nada
+      }
       return;
     }
-
-
-
-    const t = todayUTC();
 
     // status: overdue / warn / ok
     if (due.getTime() < t.getTime()) {
-      setTint(cardEl, cOver);
-      if (badge) setBadge(badge, "Vencido", cOver);
-      return;
-    }   
-
-    if (warn && t.getTime() >= warn.getTime()) {
-      setTint(cardEl, cWarn);
-      if (badge) setBadge(badge, "A vencer", cWarn);
+      if (!isCalendar) {
+        setTint(cardEl, cOver);
+        if (badge) setBadge(badge, "Vencido", cOver);
+      } else {
+        paintCalendarChip(cardEl, cOver);
+      }
       return;
     }
 
-    setTint(cardEl, cOk);
-    if (badge) setBadge(badge, "Em dia", cOk);
+    if (warn && t.getTime() >= warn.getTime()) {
+      if (!isCalendar) {
+        setTint(cardEl, cWarn);
+        if (badge) setBadge(badge, "A vencer", cWarn);
+      } else {
+        paintCalendarChip(cardEl, cWarn);
+      }
+      return;
+    }
 
+    if (!isCalendar) {
+      setTint(cardEl, cOk);
+      if (badge) setBadge(badge, "Em dia", cOk);
+    } else {
+      paintCalendarChip(cardEl, cOk);
+    }
   });
 };
 

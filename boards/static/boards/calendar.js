@@ -277,46 +277,56 @@
    * - month: pílula (sem imagem) + bolinha com data-term-status
    * - week: barra (com thumb quando tiver) + data-term-status
    * ============================================================ */
-  function renderCalendarCard(card, viewMode) {
-    const id = card?.id ?? "";
-    const title = (card && card.title) ? String(card.title) : "";
-    const cover = (card && card.cover_url) ? String(card.cover_url) : "";
+function renderCalendarCard(card, viewMode) {
+  const id = card?.id ?? "";
+  const title = (card && card.title) ? String(card.title) : "";
+  const cover = (card && card.cover_url) ? String(card.cover_url) : "";
 
-    const termStatus = resolveTermStatus(card); // ok|warn|overdue|""
+  // ✅ estes 3 precisam ir pro DOM
+  const due = card?.due_date || "";
+  const warn = card?.warn_date || "";
+  const notify = (card?.due_notify === false || card?.due_notify === 0) ? "0" : "1";
 
-    if (viewMode === "week") {
-      return `
-        <button
-          type="button"
-          class="cm-cal-card cm-cal-card-week"
-          data-card-id="${escapeAttr(String(id))}"
-          title="${escapeHtml(title)}"
-        >
-          <span class="cm-cal-bar" ${termStatus ? `data-term-status="${escapeAttr(termStatus)}"` : ""}></span>
-
-          ${cover
-            ? `<span class="cm-cal-thumb" style="background-image:url('${escapeAttr(cover)}')"></span>`
-            : `<span class="cm-cal-thumb is-empty"></span>`
-          }
-
-          <span class="cm-cal-card-title">${escapeHtml(title)}</span>
-        </button>
-      `;
-    }
-
-    // month
+  if (viewMode === "week") {
     return `
       <button
         type="button"
-        class="cm-cal-card cm-cal-card-month"
+        class="cm-cal-card cm-cal-card-week"
         data-card-id="${escapeAttr(String(id))}"
+        data-term-due="${escapeAttr(due)}"
+        data-term-warn="${escapeAttr(warn)}"
+        data-term-notify="${escapeAttr(notify)}"
         title="${escapeHtml(title)}"
       >
-        <span class="cm-cal-dot" ${termStatus ? `data-term-status="${escapeAttr(termStatus)}"` : ""}></span>
+        <span class="cm-cal-bar"></span>
+
+        ${
+          cover
+            ? `<span class="cm-cal-thumb" style="background-image:url('${escapeAttr(cover)}')"></span>`
+            : `<span class="cm-cal-thumb is-empty"></span>`
+        }
+
         <span class="cm-cal-card-title">${escapeHtml(title)}</span>
       </button>
     `;
   }
+
+  // month
+  return `
+    <button
+      type="button"
+      class="cm-cal-card cm-cal-card-month"
+      data-card-id="${escapeAttr(String(id))}"
+      data-term-due="${escapeAttr(due)}"
+      data-term-warn="${escapeAttr(warn)}"
+      data-term-notify="${escapeAttr(notify)}"
+      title="${escapeHtml(title)}"
+    >
+      <span class="cm-cal-dot"></span>
+      <span class="cm-cal-card-title">${escapeHtml(title)}</span>
+    </button>
+  `;
+}
 
 
 

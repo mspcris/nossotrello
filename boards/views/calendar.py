@@ -1,10 +1,8 @@
 # boards/views/calendar.py
 
-from __future__ import annotations
-
-from collections import defaultdict
 from datetime import date, timedelta
-import calendar
+from collections import defaultdict
+import calendar as pycalendar
 
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
@@ -19,19 +17,22 @@ def _start_of_week_sunday(d: date) -> date:
     return d - timedelta(days=(d.weekday() + 1) % 7)
 
 
-def _resolve_term_status(today: date, due_date: date | None, warn_date: date | None) -> str:
+def _compute_term_status(card: Card, today: date) -> str:
     """
-    Retorna: "ok" | "warn" | "overdue" | ""
-    Regra:
-      - sem due_date => ""
-      - hoje > due_date => overdue
-      - se warn_date e hoje >= warn_date => warn
-      - senão => ok
+    Term status (ok|warn|overdue) baseado em due_date / due_warn_date / due_notify.
+    Mesma regra aplicada no modal do card. :contentReference[oaicite:1]{index=1}
     """
-    if not due_date:
+    try:
+        due_date = getattr(card, "due_date", None)
+        warn_date = getattr(card, "due_warn_date", None)
+        due_notify = bool(getattr(card, "due_notify", True))
+    except Exception:
         return ""
 
-    if today > due_date:
+    if not due_date or not due_notify:
+        return ""
+
+    if due_date < today:
         return "overdue"
 
     if warn_date and today >= warn_date:
@@ -83,9 +84,8 @@ def calendar_cards(request):
             "focus": focus.isoformat(),
             "grid_start": start.isoformat(),
             "grid_end": end.isoformat(),
-            "week_start": week_start.isoformat(),
             "focus_year": focus.year,
-            "focus_month": focus.month,  # útil pro front manter consistência
+            "focus_month": focus.month,
             "label": f"Semana de {start.strftime('%d/%m/%Y')}",
         }
     else:
@@ -94,7 +94,7 @@ def calendar_cards(request):
         start = _start_of_week_sunday(first_of_month)
         end = start + timedelta(days=42)  # 6 semanas fixo
 
-        last_day = calendar.monthrange(focus.year, focus.month)[1]
+        last_day = pycalendar.monthrange(focus.year, focus.month)[1]
         month_start = first_of_month
         month_end = date(focus.year, focus.month, last_day)
 
@@ -141,8 +141,7 @@ def calendar_cards(request):
         .select_related("column", "column__board")
     )
 
-    grouped: dict[str, list[dict]] = defaultdict(list)
-
+    grouped = defaultdict(list)
     today = date.today()
 
     for card in qs:
@@ -158,15 +157,6 @@ def calendar_cards(request):
         start_date = getattr(card, "start_date", None)
         warn_date = getattr(card, "due_warn_date", None)
 
-        term_status = _resolve_term_status(today=today, due_date=due_date, warn_date=warn_date)
-
-        cover_url = ""
-        try:
-            if getattr(card, "cover_image", None):
-                cover_url = card.cover_image.url
-        except Exception:
-            cover_url = ""
-
         grouped[d.isoformat()].append(
             {
                 "id": card.id,
@@ -175,8 +165,7 @@ def calendar_cards(request):
                 "due_date": due_date.isoformat() if due_date else None,
                 "start_date": start_date.isoformat() if start_date else None,
                 "warn_date": warn_date.isoformat() if warn_date else None,
-                "term_status": term_status,
-                "cover_url": cover_url,
+                "term_status": _compute_term_status(card, today),  # ok|warn|overdue|""
             }
         )
 
