@@ -126,24 +126,52 @@
 
     return true;
   }
+    function fitCalendarRoot() {
+    const calendarRoot = document.getElementById("calendar-root");
+    if (!calendarRoot) return;
 
-  function showCalendarUI() {
+    const top = calendarRoot.getBoundingClientRect().top;
+    const paddingBottom = 12;
+    const h = Math.max(240, Math.floor(window.innerHeight - top - paddingBottom));
+
+    calendarRoot.style.height = h + "px";
+    calendarRoot.style.overflowY = "auto";
+    calendarRoot.style.overflowX = "hidden";
+    calendarRoot.style.webkitOverflowScrolling = "touch";
+  }
+
+
+    function showCalendarUI() {
     const columns = document.getElementById("columns-wrapper");
     const calendarRoot = document.getElementById("calendar-root");
     if (!columns || !calendarRoot) return;
 
     columns.classList.add("hidden");
     calendarRoot.classList.remove("hidden");
+
+    fitCalendarRoot();
   }
 
   function showBoardUI() {
-    const columns = document.getElementById("columns-wrapper");
-    const calendarRoot = document.getElementById("calendar-root");
-    if (!columns || !calendarRoot) return;
+  const columns = document.getElementById("columns-wrapper");
+  const calendarRoot = document.getElementById("calendar-root");
+  if (!columns || !calendarRoot) return;
 
-    calendarRoot.classList.add("hidden");
-    columns.classList.remove("hidden");
-  }
+  calendarRoot.classList.add("hidden");
+  columns.classList.remove("hidden");
+
+  // limpa estilos do calendário
+  calendarRoot.style.height = "";
+  calendarRoot.style.overflowY = "";
+  calendarRoot.style.overflowX = "";
+  calendarRoot.style.webkitOverflowScrolling = "";
+}
+
+
+    window.addEventListener("resize", () => {
+    if (window.CalendarState?.active) fitCalendarRoot();
+  });
+
 
   /* ============================================================
    * OPTIONAL: limpar card= quando o modal fecha (se você tiver evento)
@@ -181,6 +209,7 @@
   async function renderCalendar() {
     const root = document.getElementById("calendar-root");
     if (!root) return;
+        fitCalendarRoot();
 
     root.classList.add("cm-cal-loading");
 
@@ -199,6 +228,8 @@
 
       root.innerHTML = renderCalendarView(data);
       wireCalendarControls(root, data);
+      fitCalendarRoot();
+
 
       // Rehidrata cores de prazo no HTML recém-injetado
       safe(() => window.applySavedTermColorsToBoard && window.applySavedTermColorsToBoard(root));
@@ -480,7 +511,7 @@ try {
 } catch (_e) {}
 
   }
-  
+
   function shiftCalendarFocus(dir) {
     const focusStr = CalendarState.focus || ymd(new Date());
     const focus = parseYmd(focusStr);
