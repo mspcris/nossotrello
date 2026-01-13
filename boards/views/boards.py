@@ -330,61 +330,51 @@ def home_favorite_toggle(request, board_id):
 def board_detail(request, board_id):
     board = get_object_or_404(Board, id=board_id, is_deleted=False)
 
+    columns = (
+        board.columns
+        .filter(is_deleted=False)
+        .prefetch_related("cards")
+        .order_by("position")
+    )
+
+
     memberships_qs = board.memberships.select_related("user")
 
+    # Usuário não logado, board já compartilhado → login
+    if memberships_qs.exists() and not request.user.is_authenticated:
+        login_url = reverse("boards:login")
+        return redirect(f"{login_url}?next={request.path}")
+
     my_membership = None
-    can_leave_board = False
-    can_share_board = False
-    can_edit = False
-
-    if memberships_qs.exists():
-        if not request.user.is_authenticated:
-            return HttpResponse("Você não tem acesso a este quadro.", status=403)
-
+    if request.user.is_authenticated:
         my_membership = memberships_qs.filter(user=request.user).first()
-        if not my_membership:
-            return HttpResponse("Você não tem acesso a este quadro.", status=403)
 
-        can_share_board = (my_membership.role == BoardMembership.Role.OWNER)
-        can_edit = my_membership.role in {
-            BoardMembership.Role.OWNER,
-            BoardMembership.Role.EDITOR,
-        }
+    # Se logado mas sem acesso → futuramente entra request-access
+    if memberships_qs.exists() and request.user.is_authenticated and not my_membership:
+        return HttpResponse("Você não tem acesso a este quadro.", status=403)
 
-        if my_membership.role != BoardMembership.Role.OWNER:
-            can_leave_board = True
-        else:
-            owners_count = memberships_qs.filter(role=BoardMembership.Role.OWNER).count()
-            can_leave_board = owners_count > 1
-    else:
-        if request.user.is_authenticated and (board.created_by_id == request.user.id or request.user.is_staff):
-            can_share_board = True
-            can_edit = True  # legado: criador/staff edita
-
-    # ✅ SEMPRE definir columns (fora do if/else)
-    columns = (
-        board.columns.filter(is_deleted=False)
-        .order_by("position")
-        .prefetch_related(
-            Prefetch(
-                "cards",
-                queryset=Card.objects.filter(is_deleted=False).order_by("position"),
-            )
-        )
+    # =========================
+    # PERMISSÕES
+    # =========================
+    can_edit = bool(my_membership)
+    can_share_board = bool(
+        my_membership and my_membership.role == BoardMembership.Role.OWNER
+    )
+    can_leave_board = bool(
+        my_membership and my_membership.role != BoardMembership.Role.OWNER
     )
 
     # =========================
-    # BOARD MEMBERS (para a barra de avatares)
+    # BOARD MEMBERS (barra de avatares)
     # =========================
-    memberships = board.memberships.select_related("user").order_by("role", "user__username")
+    memberships = memberships_qs.order_by("role", "user__username")
 
     board_members = []
     for m in memberships:
         u = m.user
         try:
-            _ = u.profile  # tenta acessar
+            _ = u.profile
         except Exception:
-            # fallback seguro só para o template
             u._state.fields_cache["profile"] = SimpleNamespace(avatar=None)
 
         board_members.append(u)
@@ -402,6 +392,7 @@ def board_detail(request, board_id):
             "can_edit": can_edit,
         },
     )
+
 
 
 # ======================================================================
@@ -835,94 +826,81 @@ def remove_home_wallpaper(request):
 # ======================================================================
 # COMPARTILHAR BOARD
 # ======================================================================
-
-@require_http_methods(["GET", "POST"])
+@login_required
+@transaction.atomic
 def board_share(request, board_id):
-    if not request.user.is_authenticated:
-        return HttpResponse("Login necessário.", status=401)
-
     board = get_object_or_404(Board, id=board_id, is_deleted=False)
 
-    memberships_qs = board.memberships.select_related("user")
-    if memberships_qs.exists():
-        if not memberships_qs.filter(user=request.user, role=BoardMembership.Role.OWNER).exists():
-            return HttpResponse("Você não tem permissão para compartilhar este quadro.", status=403)
-    else:
-        if board.created_by_id != request.user.id and not request.user.is_staff:
-            return HttpResponse("Você não tem permissão para compartilhar este quadro.", status=403)
-
-    memberships = board.memberships.select_related("user").order_by("role", "user__username")
-
     if request.method == "GET":
-        return render(request, "boards/partials/board_share_form.html", {"board": board, "memberships": memberships})
-
-    actor = _actor_label(request)
-
-    identifier = (request.POST.get("identifier") or "").strip()
-    role = (request.POST.get("role") or BoardMembership.Role.VIEWER).strip().lower()
-
-    if role not in {
-        BoardMembership.Role.OWNER,
-        BoardMembership.Role.EDITOR,
-        BoardMembership.Role.VIEWER,
-    }:
-        role = BoardMembership.Role.VIEWER
-
-    if not identifier:
         return render(
-            request,
-            "boards/partials/board_share_form.html",
-            {"board": board, "memberships": memberships, "msg_error": "Informe e-mail ou username."},
-            status=400,
-        )
-
-    User = get_user_model()
-    target = User.objects.filter(Q(username__iexact=identifier) | Q(email__iexact=identifier)).first()
-
-    if not target:
-        return render(
-            request,
-            "boards/partials/board_share_form.html",
-            {"board": board, "memberships": memberships, "msg_error": "Usuário não encontrado."},
-            status=404,
-        )
-
-    if target.id == request.user.id:
-        return render(
-            request,
-            "boards/partials/board_share_form.html",
-            {"board": board, "memberships": memberships, "msg_error": "Você já é membro deste quadro."},
-            status=400,
-        )
-
-    obj, created = BoardMembership.objects.get_or_create(
-        board=board,
-        user=target,
-        defaults={"role": role},
-    )
-
-    if not created and obj.role != role:
-        obj.role = role
-        obj.save(update_fields=["role"])
-
-    _log_board(
-        board,
-        request,
-        f"<p><strong>{actor}</strong> compartilhou o quadro com <strong>{escape(target.email or target.get_username())}</strong> como <strong>{escape(role)}</strong>.</p>",
-    )
-
-    memberships = board.memberships.select_related("user").order_by("role", "user__username")
-
-    return render(
         request,
         "boards/partials/board_share_form.html",
         {
             "board": board,
-            "memberships": memberships,
-            "msg_success": f"Compartilhado com {escape(target.get_username())} ({escape(target.email or '-')}).",
         },
-        status=200,
     )
+
+    my_membership = BoardMembership.objects.filter(
+        board=board,
+        user=request.user,
+        role=BoardMembership.Role.OWNER,
+    ).first()
+
+    if not my_membership:
+        return JsonResponse({"error": "Sem permissão para compartilhar este quadro."}, status=403)
+
+    identifier = _normalize_email(request.POST.get("identifier"))
+    role = request.POST.get("role") or BoardMembership.Role.MEMBER
+
+    if "@" not in identifier:
+        return JsonResponse({"error": "E-mail inválido."}, status=400)
+
+    domain = identifier.split("@", 1)[1]
+    allowed_domains = getattr(settings, "INSTITUTIONAL_EMAIL_DOMAINS", [])
+
+    if domain not in allowed_domains:
+        return JsonResponse({
+            "error": "Este e-mail somente com autorização da direção da Camim."
+        }, status=400)
+
+    User = get_user_model()
+    user = User.objects.filter(email__iexact=identifier).first()
+
+    created_now = False
+    if not user:
+        user = User.objects.create(
+            username=identifier,
+            email=identifier,
+            is_active=True,
+        )
+        user.set_unusable_password()
+        user.save(update_fields=["password"])
+        created_now = True
+
+    membership, _ = BoardMembership.objects.get_or_create(
+        board=board,
+        user=user,
+        defaults={"role": role},
+    )
+
+    if created_now:
+        from . import FirstLoginPasswordResetForm
+
+        form = FirstLoginPasswordResetForm(data={"email": user.email})
+        if form.is_valid():
+            form.save(
+                request=request,
+                use_https=request.is_secure(),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                email_template_name="registration/invite_board_email.txt",
+                subject_template_name="registration/invite_board_subject.txt",
+                extra_email_context={
+                    "board": board,
+                    "inviter": request.user,
+                },
+            )
+
+    return JsonResponse({"success": True})
 
 
 @require_POST
@@ -1322,3 +1300,64 @@ def board_history_unread_count(request, board_id):
         qs = qs.filter(created_at__gt=last_seen)
 
     return JsonResponse({"unread": int(qs.count())})
+
+
+class BoardAccessRequest(models.Model):
+    board = models.ForeignKey(
+        "Board",
+        on_delete=models.CASCADE,
+        related_name="access_requests",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("board", "user")
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"{self.user} pediu acesso ao board {self.board}"
+
+
+@login_required
+@require_POST
+def request_board_access(request, board_id):
+    board = get_object_or_404(Board, id=board_id, is_deleted=False)
+
+    BoardAccessRequest.objects.get_or_create(
+        board=board,
+        user=request.user,
+    )
+
+    return JsonResponse({"success": True})
+
+
+@login_required
+@require_POST
+def approve_board_access(request, board_id, user_id):
+    board = get_object_or_404(Board, id=board_id, is_deleted=False)
+
+    my_membership = BoardMembership.objects.filter(
+        board=board,
+        user=request.user,
+        role=BoardMembership.Role.OWNER,
+    ).first()
+
+    if not my_membership:
+        return JsonResponse({"error": "Sem permissão."}, status=403)
+
+    user = get_object_or_404(get_user_model(), id=user_id)
+
+    BoardMembership.objects.get_or_create(
+        board=board,
+        user=user,
+        defaults={"role": BoardMembership.Role.MEMBER},
+    )
+
+    BoardAccessRequest.objects.filter(board=board, user=user).delete()
+
+    return JsonResponse({"success": True})
+# ======================================================================

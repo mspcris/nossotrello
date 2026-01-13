@@ -1,0 +1,12 @@
+Olá,
+
+{{ inviter.get_username }} convidou você para o quadro:
+
+{{ board.name }}
+
+Clique no link abaixo para definir sua senha e acessar o quadro:
+{{ protocol }}://{{ domain }}{% url 'boards:password_reset_confirm' uidb64=uid token=token %}
+
+Se você já tiver conta, basta fazer login normalmente.
+
+Equipe Camim

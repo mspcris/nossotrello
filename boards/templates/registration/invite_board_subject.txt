@@ -1,0 +1,1 @@
+Você foi convidado para o quadro {{ board.name }}

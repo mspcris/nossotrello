@@ -23,9 +23,14 @@ from .views import cards
 from .views.mentions import board_mentions
 from .views.polling import board_poll
 from boards.views.modal_card_term import set_card_term_due, set_board_term_colors
-from boards.views.boards import toggle_aggregator_column
-from boards.views.boards import transfer_owner_start, transfer_owner_confirm
 from .views import calendar as calendar_views
+from boards.views.boards import (
+    toggle_aggregator_column,
+    transfer_owner_start,
+    transfer_owner_confirm,
+    request_board_access,
+    approve_board_access,
+)
 
 
 
@@ -162,6 +167,19 @@ urlpatterns = [
     transfer_owner_confirm,
     name="transfer_owner_confirm",
     ),
+
+
+
+
+    path("boards/<int:board_id>/request-access/", request_board_access, name="board_request_access"),
+    path("boards/<int:board_id>/approve-access/<int:user_id>/", approve_board_access, name="board_approve_access"),
+    path(
+    "board/<int:board_id>/share/submit/",
+    views.board_share,
+    name="board_share_submit",
+    ),
+
+
 
     # ============================================================
     # BOARDS - CALENDÁRIO
