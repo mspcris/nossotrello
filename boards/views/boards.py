@@ -848,21 +848,22 @@ def remove_home_wallpaper(request):
 def board_share(request, board_id):
     board = get_object_or_404(Board, id=board_id, is_deleted=False)
 
-    # GET: abre modal
-    if request.method == "GET":
+    def render_modal(status=200, **ctx):
         memberships = (
             board.memberships
             .select_related("user")
             .order_by("role", "user__username")
         )
-        return render(
-            request,
-            "boards/partials/board_share_form.html",
-            {
-                "board": board,
-                "memberships": memberships,
-            },
-        )
+        base_ctx = {
+            "board": board,
+            "memberships": memberships,
+        }
+        base_ctx.update(ctx)
+        return render(request, "boards/partials/board_share_form.html", base_ctx, status=status)
+
+    # GET: abre modal
+    if request.method == "GET":
+        return render_modal()
 
     # POST: convida/compartilha
     my_membership = BoardMembership.objects.filter(
@@ -872,22 +873,23 @@ def board_share(request, board_id):
     ).first()
 
     if not my_membership:
-        return JsonResponse({"error": "Sem permissão para compartilhar este quadro."}, status=403)
+        # HTMX espera HTML. Sem 403 JSON aqui.
+        return render_modal(status=403, msg_error="Sem permissão para compartilhar este quadro.")
 
     identifier = _normalize_email(request.POST.get("identifier"))
     if not identifier or "@" not in identifier:
-        return JsonResponse({"error": "E-mail inválido."}, status=400)
+        return render_modal(status=400, msg_error="E-mail inválido.")
 
     # Gate de domínio (segurança)
     domain = identifier.split("@", 1)[1].strip().lower()
     allowed_domains = [d.strip().lower() for d in getattr(settings, "INSTITUTIONAL_EMAIL_DOMAINS", []) if d]
-    if domain not in allowed_domains:
-        return JsonResponse(
-            {"error": "Convites para este email exigem autorização da Direção da Camim."},
+    if allowed_domains and domain not in allowed_domains:
+        return render_modal(
             status=400,
+            msg_error="Convites para este email exigem autorização da Direção da Camim.",
         )
 
-    # Role (no seu model: OWNER/EDITOR/VIEWER)
+    # Role (viewer/editor/owner). (Mantém o seu contrato.)
     role = (request.POST.get("role") or "").strip().lower()
     if role not in {BoardMembership.Role.EDITOR, BoardMembership.Role.VIEWER, BoardMembership.Role.OWNER}:
         role = BoardMembership.Role.EDITOR
@@ -915,9 +917,10 @@ def board_share(request, board_id):
         },
     )
 
-    # se já existia membership, atualiza role (se quiser) + marca re-invite
+    # se já existia membership, atualiza role (se não for owner) + marca re-invite
     if not created:
         changed = False
+
         if membership.role != role and membership.role != BoardMembership.Role.OWNER:
             membership.role = role
             changed = True
@@ -929,7 +932,9 @@ def board_share(request, board_id):
         if changed:
             membership.save(update_fields=["role", "invited_at"])
 
-    # envia e-mail de convite (para existente e novo)
+    # Tenta enviar email, mas NÃO derruba o fluxo (sem 500).
+    email_failed = False
+    email_error_msg = ""
     try:
         from . import FirstLoginPasswordResetForm
 
@@ -946,10 +951,33 @@ def board_share(request, board_id):
                     "inviter": request.user,
                 },
             )
-    except Exception:
-        return JsonResponse({"error": "Falha ao enviar o e-mail de convite. Verifique SMTP/credenciais."}, status=500)
+        else:
+            # não gera 500: apenas sinaliza que não enviou
+            email_failed = True
+            email_error_msg = "Não foi possível preparar o e-mail de convite (form inválido)."
+    except Exception as e:
+        email_failed = True
+        # mensagem curta pro usuário, detalhe fica no terminal
+        email_error_msg = "Falha ao enviar o e-mail de convite. Verifique SMTP/credenciais."
 
-    return JsonResponse({"success": True, "created_user": created_now})
+        # loga no console do Django (pra você pegar o traceback completo)
+        try:
+            import logging
+            logging.getLogger(__name__).exception("board_share: falha ao enviar convite")
+        except Exception:
+            pass
+
+    # Sempre retorna HTML pro HTMX
+    if email_failed:
+        return render_modal(
+            status=200,
+            msg_error=f"Convite criado, mas o e-mail não foi enviado. {email_error_msg}",
+        )
+
+    return render_modal(
+        status=200,
+        msg_success=f"Convite enviado para {user.email}.",
+    )
 
 
 # ======================================================================
