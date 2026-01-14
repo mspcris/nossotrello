@@ -28,6 +28,12 @@ from django.utils import timezone
 from django.utils.html import escape
 from django.views.decorators.http import require_POST, require_http_methods
 
+from django.contrib.auth.tokens import default_token_generator
+from django.core.mail import EmailMultiAlternatives
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
+import logging
+
 from ..models import (
     CardLog,
     BoardActivityReadState,
@@ -837,19 +843,6 @@ def remove_home_wallpaper(request):
 
 
 
-# ======================================================================
-# COMPARTILHAR BOARD
-# ======================================================================
-
-from django.conf import settings
-from django.contrib.auth import get_user_model
-from django.contrib.auth.decorators import login_required
-from django.db import transaction
-from django.shortcuts import get_object_or_404, render
-from django.utils import timezone
-from django.views.decorators.http import require_http_methods
-import logging
-
 
 
 logger = logging.getLogger(__name__)
@@ -969,11 +962,11 @@ def board_share(request, board_id):
         # link de reset: usa a view padrão se existir no projeto
         # Ajuste o nome da URL caso o seu projeto use outro name.
         try:
-            reset_path = reverse("password_reset_confirm", kwargs={"uidb64": uidb64, "token": token})
+            reset_path = reverse("boards:password_reset_confirm", kwargs={"uidb64": uidb64, "token": token})
         except Exception:
             # fallback: se você não registrou as rotas padrão do auth
             # você pode criar uma rota e trocar aqui depois
-            reset_path = f"/reset/{uidb64}/{token}/"
+            reset_path = f"/accounts/reset/{uidb64}/{token}/"
 
         base_url = getattr(settings, "SITE_URL", "").strip()
         if not base_url:
