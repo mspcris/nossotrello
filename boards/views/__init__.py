@@ -127,5 +127,6 @@ def first_login(request):
 
 from .search import board_search  # noqa
 from .search import home_search
+from .boards import board_share_remove  # noqa
 
 #END boards/views/__init__.py

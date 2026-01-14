@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-md mx-auto mt-20 bg-white rounded-xl shadow p-6 text-center">
+  <h2 class="text-xl font-bold mb-2">
+    Você foi convidado para o quadro
+  </h2>
+
+  <p class="text-gray-600 mb-4">
+    <strong>{{ board.name }}</strong>
+  </p>
+
+  <p class="text-sm text-gray-500 mb-6">
+    Convite enviado para: <br>
+    <strong>{{ invited_email }}</strong>
+  </p>
+
+  <a
+    href="{% url 'boards:password_reset' %}?email={{ invited_email|urlencode }}"
+    class="inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+  >
+    Criar senha e acessar
+  </a>
+</div>
+{% endblock %}

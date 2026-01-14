@@ -146,6 +146,11 @@ class BoardMembership(models.Model):
         choices=Role.choices,
         default=Role.EDITOR,
     )
+
+    # ✅ convite/aceite (FORA do enum)
+    invited_at = models.DateTimeField(null=True, blank=True)
+    accepted_at = models.DateTimeField(null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -153,6 +158,7 @@ class BoardMembership(models.Model):
 
     def __str__(self):
         return f"{self.user} em {self.board} ({self.role})"
+
 
 
 # ============================================================
@@ -528,3 +534,27 @@ class BoardActivityReadState(models.Model):
 
     def __str__(self):
         return f"{self.user} leu {self.board} até {self.last_seen_at}"
+
+
+
+
+from django.conf import settings
+
+class BoardAccessRequest(models.Model):
+    board = models.ForeignKey(
+        "Board",
+        on_delete=models.CASCADE,
+        related_name="access_requests",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("board", "user")
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"{self.user.email} pediu acesso ao board {self.board.name}"

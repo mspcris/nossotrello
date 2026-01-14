@@ -67,48 +67,82 @@
           <span class="text-xs text-gray-500">{{ memberships|length }} pessoa(s)</span>
         </div>
 
-        <div class="space-y-2">
-          {% for m in memberships %}
-            <div class="flex items-center justify-between border rounded-lg px-3 py-2">
-              <div class="min-w-0">
-                <div class="font-semibold text-sm truncate">
-                  {{ m.user.get_username }}
-                  {% if m.user.id == request.user.id %}
-                    <span class="text-xs text-gray-500">(você)</span>
-                  {% endif %}
-                </div>
-                <div class="text-xs text-gray-500 truncate">{{ m.user.email|default:"-" }}</div>
-              </div>
-
-              <div class="flex items-center gap-2">
-                {% if m.role == "owner" %}
-                  <span class="text-xs px-2 py-1 rounded bg-gray-100 border">Dono</span>
-                {% elif m.role == "editor" %}
-                  <span class="text-xs px-2 py-1 rounded bg-blue-50 border">Pode editar</span>
-                {% else %}
-                  <span class="text-xs px-2 py-1 rounded bg-green-50 border">Leitor</span>
-                {% endif %}
+        
 
 
-                {% if m.user.id != request.user.id %}
-                  <form
-                    method="post"
-                    hx-post="{% url 'boards:board_share_remove' board.id m.user.id %}"
-                    hx-target="#share-modal"
-                    hx-swap="outerHTML"
-                  >
-                    {% csrf_token %}
-                    <button
-                      class="w-8 h-8 rounded bg-red-600 text-white hover:bg-red-700"
-                      title="Remover acesso"
-                      type="submit"
-                    >
-                      ✕
-                    </button>
-                  </form>
-                {% endif %}
-              </div>
-            </div>
+
+
+
+<div class="space-y-2">
+  {% for m in memberships %}
+    {# status: convidado pendente = invited_at setado e accepted_at vazio #}
+    {% with is_invited=m.invited_at and not m.accepted_at %}
+      <div class="flex items-center justify-between border rounded-lg px-3 py-2 {% if is_invited %}opacity-60{% endif %}">
+        <div class="min-w-0">
+          <div class="font-semibold text-sm truncate flex items-center gap-2">
+            <span class="truncate">{{ m.user.get_username }}</span>
+
+            {% if m.user.id == request.user.id %}
+              <span class="text-xs text-gray-500">(você)</span>
+            {% endif %}
+
+            {% if is_invited %}
+              <span class="text-xs px-2 py-0.5 rounded bg-gray-100 border text-gray-600">
+                Convidado (pendente)
+              </span>
+            {% elif m.accepted_at %}
+              <span class="text-xs text-gray-400">Ativo</span>
+            {% endif %}
+          </div>
+
+          <div class="text-xs text-gray-500 truncate">{{ m.user.email|default:"-" }}</div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          {% if m.role == "owner" %}
+            <span class="text-xs px-2 py-1 rounded bg-gray-100 border">Dono</span>
+          {% elif m.role == "editor" %}
+            <span class="text-xs px-2 py-1 rounded bg-blue-50 border">Pode editar</span>
+          {% else %}
+            <span class="text-xs px-2 py-1 rounded bg-green-50 border">Leitor</span>
+          {% endif %}
+
+          {% if m.user.id != request.user.id %}
+            <form
+              method="post"
+              hx-post="{% url 'boards:board_share_remove' board.id m.user.id %}"
+              hx-target="#share-modal"
+              hx-swap="outerHTML"
+            >
+              {% csrf_token %}
+              <button
+                class="w-8 h-8 rounded bg-red-600 text-white hover:bg-red-700"
+                title="Remover acesso"
+                type="submit"
+              >
+                ✕
+              </button>
+            </form>
+          {% endif %}
+        </div>
+      </div>
+    {% endwith %}
+  {% empty %}
+    <div class="text-sm text-gray-500">
+      Nenhum compartilhamento adicional ainda.
+    </div>
+  {% endfor %}
+</div>
+
+
+
+
+
+
+
+
+
+
           {% empty %}
             <div class="text-sm text-gray-500">
               Nenhum compartilhamento adicional ainda.
