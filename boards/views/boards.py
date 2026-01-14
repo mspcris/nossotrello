@@ -837,6 +837,23 @@ def remove_home_wallpaper(request):
 
 
 
+# ======================================================================
+# COMPARTILHAR BOARD
+# ======================================================================
+
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.contrib.auth.decorators import login_required
+from django.db import transaction
+from django.shortcuts import get_object_or_404, render
+from django.utils import timezone
+from django.views.decorators.http import require_http_methods
+import logging
+
+
+
+logger = logging.getLogger(__name__)
+
 
 # ======================================================================
 # COMPARTILHAR BOARD
@@ -859,13 +876,18 @@ def board_share(request, board_id):
             "memberships": memberships,
         }
         base_ctx.update(ctx)
-        return render(request, "boards/partials/board_share_form.html", base_ctx, status=status)
+        return render(
+            request,
+            "boards/partials/board_share_form.html",
+            base_ctx,
+            status=status,
+        )
 
     # GET: abre modal
     if request.method == "GET":
         return render_modal()
 
-    # POST: convida/compartilha
+    # POST: somente OWNER compartilha
     my_membership = BoardMembership.objects.filter(
         board=board,
         user=request.user,
@@ -873,14 +895,13 @@ def board_share(request, board_id):
     ).first()
 
     if not my_membership:
-        # HTMX espera HTML. Sem 403 JSON aqui.
         return render_modal(status=403, msg_error="Sem permissão para compartilhar este quadro.")
 
     identifier = _normalize_email(request.POST.get("identifier"))
     if not identifier or "@" not in identifier:
         return render_modal(status=400, msg_error="E-mail inválido.")
 
-    # Gate de domínio (segurança)
+    # Gate de domínio (se configurado)
     domain = identifier.split("@", 1)[1].strip().lower()
     allowed_domains = [d.strip().lower() for d in getattr(settings, "INSTITUTIONAL_EMAIL_DOMAINS", []) if d]
     if allowed_domains and domain not in allowed_domains:
@@ -889,16 +910,18 @@ def board_share(request, board_id):
             msg_error="Convites para este email exigem autorização da Direção da Camim.",
         )
 
-    # Role (viewer/editor/owner). (Mantém o seu contrato.)
+    # Role
     role = (request.POST.get("role") or "").strip().lower()
     if role not in {BoardMembership.Role.EDITOR, BoardMembership.Role.VIEWER, BoardMembership.Role.OWNER}:
         role = BoardMembership.Role.EDITOR
 
+    # Usuário (por e-mail)
     User = get_user_model()
     user = User.objects.filter(email__iexact=identifier).first()
 
-    created_now = False
+    created_user = False
     if not user:
+        # username precisa ser único; email como username funciona no seu modelo atual
         user = User.objects.create(
             username=identifier,
             email=identifier,
@@ -906,9 +929,9 @@ def board_share(request, board_id):
         )
         user.set_unusable_password()
         user.save(update_fields=["password"])
-        created_now = True
+        created_user = True
 
-    membership, created = BoardMembership.objects.get_or_create(
+    membership, created_membership = BoardMembership.objects.get_or_create(
         board=board,
         user=user,
         defaults={
@@ -917,8 +940,8 @@ def board_share(request, board_id):
         },
     )
 
-    # se já existia membership, atualiza role (se não for owner) + marca re-invite
-    if not created:
+    # Se já existia membership, atualiza role (se não for owner) e re-invite se pendente
+    if not created_membership:
         changed = False
 
         if membership.role != role and membership.role != BoardMembership.Role.OWNER:
@@ -932,42 +955,78 @@ def board_share(request, board_id):
         if changed:
             membership.save(update_fields=["role", "invited_at"])
 
-    # Tenta enviar email, mas NÃO derruba o fluxo (sem 500).
+    # ==========================================================
+    # EMAIL (robusto): gera link de "definir senha" (primeiro login)
+    # ==========================================================
     email_failed = False
     email_error_msg = ""
-    try:
-        from . import FirstLoginPasswordResetForm
 
-        form = FirstLoginPasswordResetForm(data={"email": user.email})
-        if form.is_valid():
-            form.save(
-                request=request,
-                use_https=request.is_secure(),
-                from_email=getattr(settings, "DEFAULT_FROM_EMAIL", None),
-                email_template_name="registration/invite_board_email.txt",
-                subject_template_name="registration/invite_board_subject.txt",
-                extra_email_context={
-                    "board": board,
-                    "inviter": request.user,
-                },
+    try:
+        # token padrão do Django
+        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+
+        # link de reset: usa a view padrão se existir no projeto
+        # Ajuste o nome da URL caso o seu projeto use outro name.
+        try:
+            reset_path = reverse("password_reset_confirm", kwargs={"uidb64": uidb64, "token": token})
+        except Exception:
+            # fallback: se você não registrou as rotas padrão do auth
+            # você pode criar uma rota e trocar aqui depois
+            reset_path = f"/reset/{uidb64}/{token}/"
+
+        base_url = getattr(settings, "SITE_URL", "").strip()
+        if not base_url:
+            scheme = "https" if request.is_secure() else "http"
+            base_url = f"{scheme}://{request.get_host()}"
+
+        reset_url = f"{base_url}{reset_path}"
+
+        subject = f"Convite para o quadro: {board.name}"
+
+        ctx = {
+            "board": board,
+            "inviter": request.user,
+            "user": user,
+            "reset_url": reset_url,
+            "created_user": created_user,
+            "membership": membership,
+        }
+
+        # Templates (se existirem); senão, fallback inline
+        try:
+            text_body = render_to_string("registration/invite_board_email.txt", ctx).strip()
+        except Exception:
+            text_body = (
+                f"Você foi convidado(a) para o quadro \"{board.name}\".\n\n"
+                f"Para acessar, defina sua senha no link:\n{reset_url}\n\n"
+                f"Convidado por: {request.user.email or request.user.get_username()}\n"
             )
-        else:
-            # não gera 500: apenas sinaliza que não enviou
-            email_failed = True
-            email_error_msg = "Não foi possível preparar o e-mail de convite (form inválido)."
+
+        try:
+            html_body = render_to_string("registration/invite_board_email.html", ctx)
+        except Exception:
+            html_body = None
+
+        msg = EmailMultiAlternatives(
+            subject=subject,
+            body=text_body,
+            from_email=getattr(settings, "DEFAULT_FROM_EMAIL", None),
+            to=[user.email],
+        )
+        if html_body:
+            msg.attach_alternative(html_body, "text/html")
+
+        msg.send(fail_silently=False)
+
     except Exception as e:
         email_failed = True
-        # mensagem curta pro usuário, detalhe fica no terminal
-        email_error_msg = "Falha ao enviar o e-mail de convite. Verifique SMTP/credenciais."
-
-        # loga no console do Django (pra você pegar o traceback completo)
+        email_error_msg = "Falha ao enviar o e-mail. Verifique SMTP/credenciais/DEFAULT_FROM_EMAIL."
         try:
-            import logging
-            logging.getLogger(__name__).exception("board_share: falha ao enviar convite")
+            logger.exception("board_share: falha ao enviar convite por email")
         except Exception:
             pass
 
-    # Sempre retorna HTML pro HTMX
     if email_failed:
         return render_modal(
             status=200,
@@ -978,6 +1037,9 @@ def board_share(request, board_id):
         status=200,
         msg_success=f"Convite enviado para {user.email}.",
     )
+
+
+
 
 
 # ======================================================================

@@ -76,7 +76,6 @@
         <div class="space-y-2">
           {% for m in memberships %}
 
-            {# status: convidado pendente = invited_at setado e accepted_at vazio #}
             {% if m.invited_at and not m.accepted_at %}
               <div class="flex items-center justify-between border rounded-lg px-3 py-2 opacity-60">
             {% else %}
