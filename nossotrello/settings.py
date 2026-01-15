@@ -32,7 +32,10 @@ def _env_csv(key: str, default_list: list[str]) -> list[str]:
     return [x.strip() for x in raw.split(",") if x.strip()]
 
 # Fallback = o que já existia no PROD (evita quebrar build/collectstatic)
-SECRET_KEY = (os.getenv("DJANGO_SECRET_KEY") or "").strip() or "django-insecure-*g97-4tr#q7%rz+b%)i_dgnocxt17ziww%x=7=zea_n$#i9%mj"
+SECRET_KEY = (os.getenv("DJANGO_SECRET_KEY") or "").strip()
+if not SECRET_KEY:
+    raise RuntimeError("DJANGO_SECRET_KEY não configurada")
+
 DEBUG = _env_bool("DEBUG", default=False)
 
 ALLOWED_HOSTS = _env_csv(
