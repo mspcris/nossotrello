@@ -4,9 +4,11 @@ Olá,
 
 {{ board.name }}
 
-Clique no link abaixo para definir sua senha e acessar o quadro:
-{{ protocol }}://{{ domain }}{% url 'boards:password_reset_confirm' uidb64=uid token=token %}
+Acesse o quadro:
+{{ board_url }}
 
-Se você já tiver conta, basta fazer login normalmente.
+Se você não lembra sua senha ou se é o primeiro acesso, clique aqui e crie/altere sua senha:
+{{ reset_url }}
 
-Equipe Camim
+Equipe Tarefas.Camim
+Por favor, não responda este e-mail. Ele foi enviado automaticamente a partir de um sistema de notificação.

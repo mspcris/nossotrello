@@ -26,7 +26,7 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import escape
-from django.views.decorators.http import require_POST, require_http_methods
+from django.views.decorators.http import require_POST, require_http_methods, require_http_methods
 
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import EmailMultiAlternatives
@@ -839,12 +839,6 @@ def remove_home_wallpaper(request):
     return HttpResponse('<script>location.reload()</script>')
 
 
-
-
-
-
-
-
 logger = logging.getLogger(__name__)
 
 
@@ -894,27 +888,33 @@ def board_share(request, board_id):
     if not identifier or "@" not in identifier:
         return render_modal(status=400, msg_error="E-mail inválido.")
 
-    # Gate de domínio (se configurado)
-    domain = identifier.split("@", 1)[1].strip().lower()
-    allowed_domains = [d.strip().lower() for d in getattr(settings, "INSTITUTIONAL_EMAIL_DOMAINS", []) if d]
-    if allowed_domains and domain not in allowed_domains:
-        return render_modal(
-            status=400,
-            msg_error="Convites para este email exigem autorização da Direção da Camim.",
-        )
-
     # Role
     role = (request.POST.get("role") or "").strip().lower()
     if role not in {BoardMembership.Role.EDITOR, BoardMembership.Role.VIEWER, BoardMembership.Role.OWNER}:
         role = BoardMembership.Role.EDITOR
 
+    # Política de domínio:
+    # - Interno (domínio permitido): pode criar user automaticamente (mesmo que nunca tenha logado)
+    # - Externo (fora do domínio): só pode compartilhar se o user já existir (criado manualmente pela Direção)
+    domain = identifier.split("@", 1)[1].strip().lower()
+    allowed_domains = [d.strip().lower() for d in getattr(settings, "INSTITUTIONAL_EMAIL_DOMAINS", []) if d]
+    is_internal = (not allowed_domains) or (domain in allowed_domains)
+
     # Usuário (por e-mail)
     User = get_user_model()
     user = User.objects.filter(email__iexact=identifier).first()
 
+    # Externo: não cria automaticamente; exige existir
+    if (not is_internal) and (not user):
+        return render_modal(
+            status=200,  # <- era 400
+            msg_error="Usuário não permitido para convite. Contate o adm.",
+        )
+
+
     created_user = False
     if not user:
-        # username precisa ser único; email como username funciona no seu modelo atual
+        # Interno: cria automaticamente
         user = User.objects.create(
             username=identifier,
             email=identifier,
@@ -949,23 +949,22 @@ def board_share(request, board_id):
             membership.save(update_fields=["role", "invited_at"])
 
     # ==========================================================
-    # EMAIL (robusto): gera link de "definir senha" (primeiro login)
+    # EMAIL (mantido como está no seu arquivo atual)
     # ==========================================================
     email_failed = False
     email_error_msg = ""
+    
+    should_email = created_membership or created_user or (membership.accepted_at is None)
+    if not should_email:
+        return render_modal(status=200, msg_success=f"Acesso atualizado para {user.email}.")
 
     try:
-        # token padrão do Django
         uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
         token = default_token_generator.make_token(user)
 
-        # link de reset: usa a view padrão se existir no projeto
-        # Ajuste o nome da URL caso o seu projeto use outro name.
         try:
             reset_path = reverse("boards:password_reset_confirm", kwargs={"uidb64": uidb64, "token": token})
         except Exception:
-            # fallback: se você não registrou as rotas padrão do auth
-            # você pode criar uma rota e trocar aqui depois
             reset_path = f"/accounts/reset/{uidb64}/{token}/"
 
         base_url = getattr(settings, "SITE_URL", "").strip()
@@ -975,6 +974,10 @@ def board_share(request, board_id):
 
         reset_url = f"{base_url}{reset_path}"
 
+        # >>> ADICIONE AQUI <<<
+        board_path = reverse("boards:board_detail", kwargs={"board_id": board.id})
+        board_url = f"{base_url}{board_path}?email={user.email}"
+
         subject = f"Convite para o quadro: {board.name}"
 
         ctx = {
@@ -982,19 +985,23 @@ def board_share(request, board_id):
             "inviter": request.user,
             "user": user,
             "reset_url": reset_url,
+            "board_url": board_url,
             "created_user": created_user,
             "membership": membership,
+            "uid": uidb64,   # se você for usar no template
+            "token": token,  # se você for usar no template
         }
 
-        # Templates (se existirem); senão, fallback inline
         try:
             text_body = render_to_string("registration/invite_board_email.txt", ctx).strip()
         except Exception:
             text_body = (
                 f"Você foi convidado(a) para o quadro \"{board.name}\".\n\n"
-                f"Para acessar, defina sua senha no link:\n{reset_url}\n\n"
+                f"Acesse o quadro:\n{board_url}\n\n"
+                f"Se você não lembra sua senha ou se é o primeiro acesso, clique aqui:\n{reset_url}\n\n"
                 f"Convidado por: {request.user.email or request.user.get_username()}\n"
             )
+
 
         try:
             html_body = render_to_string("registration/invite_board_email.html", ctx)
@@ -1012,7 +1019,7 @@ def board_share(request, board_id):
 
         msg.send(fail_silently=False)
 
-    except Exception as e:
+    except Exception:
         email_failed = True
         email_error_msg = "Falha ao enviar o e-mail. Verifique SMTP/credenciais/DEFAULT_FROM_EMAIL."
         try:
@@ -1030,8 +1037,6 @@ def board_share(request, board_id):
         status=200,
         msg_success=f"Convite enviado para {user.email}.",
     )
-
-
 
 
 
@@ -1082,7 +1087,6 @@ def transfer_owner_start(request, board_id):
         context["msg_error"] = "Você já é o titular atual."
         return render(request, "boards/partials/transfer_owner_modal.html", context, status=200)
 
-    # Gera código e guarda no cache por 10 min
     code = _gen_6digit_code()
     key = _transfer_cache_key(board.id, request.user.id)
 
@@ -1095,7 +1099,6 @@ def transfer_owner_start(request, board_id):
     }
     cache.set(key, payload, timeout=10 * 60)
 
-    # Envia email para OWNER atual
     try:
         subject = f"Código para transferir titularidade — {board.name}"
         body = (
@@ -1463,6 +1466,3 @@ def board_share_remove(request, board_id, user_id):
     )
 
     return JsonResponse({"success": True})
-
-
-# END boards/views/boards.py
