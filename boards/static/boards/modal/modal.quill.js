@@ -282,6 +282,123 @@ window.Modal.quill.init = function () {
 
 };
 
-  
+  // ============================================================
+  // IMG CLICK: abre qualquer imagem do Quill em nova aba
+  // (Descrição + Atividade + conteúdo renderizado)
+  // ============================================================
+  (function installQuillImageOpenInNewTab() {
+    if (window.__cmQuillImgOpenInstalled) return;
+    window.__cmQuillImgOpenInstalled = true;
+
+    document.addEventListener(
+      "click",
+      function (e) {
+        const img = e.target?.closest?.(
+          ".ql-editor img, .cm-quill img, #cm-activity-editor .ql-editor img, .cm-activity-content img"
+        );
+        if (!img) return;
+
+        const src = img.getAttribute("src");
+        if (!src) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+        window.open(src, "_blank", "noopener,noreferrer");
+      },
+      true
+    );
+  })();
+
+
+    // ============================================================
+  // Quill Descrição — Resize Handle (MVP)
+  // ============================================================
+  (function installQuillResizeHandle() {
+    if (window.__cmQuillResizeInstalled) return;
+    window.__cmQuillResizeInstalled = true;
+
+    function ensureHandle() {
+      const host = document.querySelector("#modal-body .cm-quill");
+      if (!host) return;
+
+      // quill container que vamos redimensionar
+      const container = host.querySelector(".ql-container");
+      if (!container) return;
+
+      // já tem handle?
+      if (container.querySelector(".cm-quill-resize-handle")) return;
+
+      // altura inicial razoável (se não tiver)
+      const h0 = container.getBoundingClientRect().height;
+      if (!h0 || h0 < 180) container.style.height = "240px";
+
+      const handle = document.createElement("div");
+      handle.className = "cm-quill-resize-handle";
+      handle.setAttribute("title", "Arraste para aumentar/reduzir");
+      handle.setAttribute("aria-label", "Redimensionar descrição");
+
+      container.style.position = "relative"; // ancora o handle
+      container.appendChild(handle);
+
+
+      let startY = 0;
+      let startH = 0;
+      let dragging = false;
+
+      function onDown(e) {
+        dragging = true;
+        startY = (e.touches ? e.touches[0].clientY : e.clientY);
+        startH = container.getBoundingClientRect().height;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        document.addEventListener("mousemove", onMove, true);
+        document.addEventListener("mouseup", onUp, true);
+        document.addEventListener("touchmove", onMove, { passive: false, capture: true });
+        document.addEventListener("touchend", onUp, true);
+      }
+
+      function onMove(e) {
+        if (!dragging) return;
+
+        const y = (e.touches ? e.touches[0].clientY : e.clientY);
+        const dy = y - startY;
+
+        const newH = Math.max(180, Math.min(700, startH + dy)); // limites MVP
+        container.style.height = `${newH}px`;
+
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      function onUp(e) {
+        dragging = false;
+
+        document.removeEventListener("mousemove", onMove, true);
+        document.removeEventListener("mouseup", onUp, true);
+        document.removeEventListener("touchmove", onMove, true);
+        document.removeEventListener("touchend", onUp, true);
+
+        e.preventDefault?.();
+        e.stopPropagation?.();
+      }
+
+      handle.addEventListener("mousedown", onDown, true);
+      handle.addEventListener("touchstart", onDown, { passive: false, capture: true });
+    }
+
+    // tenta quando o modal carrega e após swaps
+    document.addEventListener("DOMContentLoaded", () => setTimeout(ensureHandle, 0));
+    document.body.addEventListener("htmx:afterSwap", () => setTimeout(ensureHandle, 0));
+    document.body.addEventListener("htmx:afterSettle", () => setTimeout(ensureHandle, 0));
+    document.addEventListener("modal:closed", () => {}); // noop, mas mantém padrão
+
+    // tentativa inicial imediata (caso já esteja aberto)
+    setTimeout(ensureHandle, 0);
+  })();
+
+
+
 })();
 //END modal.quill.js

@@ -1,3 +1,5 @@
+/*modal.css*/
+
 /* ============================================================
    CM — ACTION DOCK (Mover / Duplicar / Copiar link)
    ============================================================ */
@@ -120,3 +122,191 @@
   overflow: auto;
   -webkit-overflow-scrolling: touch;
 }
+
+/* ============================================================
+   Quill (Descrição) — devolver "3 risquinhos" (resize vertical)
+   ============================================================ */
+
+/* O host criado em modal.quill.js tem class="cm-quill" */
+#modal-body .cm-quill .ql-container {
+  resize: vertical;          /* ✅ volta o “grip” */
+  overflow: auto;            /* obrigatório pro resize funcionar */
+  min-height: 180px;         /* ajuste mínimo para ficar usável */
+  max-height: 60vh;          /* evita estourar o modal */
+}
+
+/* A área de edição acompanha a altura do container */
+#modal-body .cm-quill .ql-editor {
+  min-height: 160px;
+}
+
+
+
+
+/* Quill: imagens coladas viram miniaturas clicáveis */
+.ql-editor img,
+.cm-quill-content img,
+.cm-activity-content img {
+  max-width: 220px;
+  max-height: 220px;
+  width: auto;
+  height: auto;
+  object-fit: cover;
+  border-radius: 10px;
+  cursor: pointer;
+  display: inline-block;
+}
+
+/* Se você quiser sempre “quadrado” fixo (thumbnail padrão) */
+.cm-thumb-square img,
+.ql-editor.cm-thumb-square img {
+  width: 220px;
+  height: 220px;
+  object-fit: cover;
+}
+
+/* Quill dentro do modal: imagens como miniatura */
+#modal-body .ql-editor img,
+#modal-body .cm-quill img,
+#modal-body .cm-activity-content img {
+  max-width: 220px;
+  max-height: 220px;
+  width: auto;
+  height: auto;
+  object-fit: cover;
+  border-radius: 10px;
+  cursor: pointer;
+  display: inline-block;
+}
+/* ============================================================
+   Quill Descrição — grip de resize (3 risquinhos)
+   ============================================================ */
+
+/* container do editor (não o editor em si) */
+#modal-body .cm-quill .ql-container.ql-snow{
+  position: relative;
+  resize: vertical;
+  overflow: auto;
+  min-height: 180px;
+  max-height: 60vh;
+}
+
+/* garante espaço pro grip não ficar colado */
+#modal-body .cm-quill .ql-container.ql-snow{
+  padding-bottom: 10px;
+}
+
+/* editor acompanha a altura */
+#modal-body .cm-quill .ql-editor{
+  min-height: 160px;
+}
+
+/* DEBUG visual (pode remover depois): deixa evidente a borda do container */
+#modal-body .cm-quill .ql-container.ql-snow{
+  outline: 1px dashed rgba(0,0,0,0.25);
+  outline-offset: -1px;
+}
+/* Se algum wrapper do bloco Descrição estiver cortando o canto do resize */
+#modal-body .cm-quill{
+  overflow: visible !important;
+}
+
+#modal-body .cm-quill .ql-container{
+  overflow: auto !important;
+}
+/* ============================================================
+   CM — Quill Resize Handle (MVP)
+   ============================================================ */
+
+#modal-body .cm-quill {
+  position: relative; /* ancora o handle */
+}
+
+#modal-body .cm-quill .cm-quill-resize-handle {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  width: 18px;
+  height: 18px;
+  cursor: ns-resize;
+  z-index: 30;
+  opacity: 0.75;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* desenha “3 risquinhos” */
+#modal-body .cm-quill .cm-quill-resize-handle::before {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 16px;
+  height: 16px;
+  background:
+    linear-gradient(135deg, transparent 55%, rgba(0,0,0,0.25) 56%, rgba(0,0,0,0.25) 58%, transparent 59%),
+    linear-gradient(135deg, transparent 35%, rgba(0,0,0,0.25) 36%, rgba(0,0,0,0.25) 38%, transparent 39%),
+    linear-gradient(135deg, transparent 15%, rgba(0,0,0,0.25) 16%, rgba(0,0,0,0.25) 18%, transparent 19%);
+  border-radius: 2px;
+}
+
+/* evita o handle “brigar” com o conteúdo */
+#modal-body .cm-quill .ql-container {
+  padding-bottom: 18px;
+}
+/* ============================================================
+   CM — Quill Resize Handle (MVP, hard override)
+   ============================================================ */
+
+#modal-body .cm-quill .ql-container {
+  position: relative; /* ancora */
+}
+
+#modal-body .cm-quill .ql-container .cm-quill-resize-handle{
+  position: absolute;
+  right: 8px;
+  bottom: 6px;
+
+  width: 22px;
+  height: 22px;
+
+  cursor: ns-resize;
+
+  z-index: 999999;            /* passa por cima de tudo */
+  pointer-events: auto;       /* garante clique */
+  opacity: 0.85;
+
+  user-select: none;
+  -webkit-user-select: none;
+
+  /* “hit area” maior e visível */
+  background: rgba(255,255,255,0.65);
+  border: 1px solid rgba(0,0,0,0.10);
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+}
+
+#modal-body .cm-quill .ql-container .cm-quill-resize-handle::before{
+  content: "";
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 12px;
+  height: 12px;
+  background:
+    linear-gradient(135deg, transparent 55%, rgba(0,0,0,0.28) 56%, rgba(0,0,0,0.28) 60%, transparent 61%),
+    linear-gradient(135deg, transparent 35%, rgba(0,0,0,0.28) 36%, rgba(0,0,0,0.28) 40%, transparent 41%),
+    linear-gradient(135deg, transparent 15%, rgba(0,0,0,0.28) 16%, rgba(0,0,0,0.28) 20%, transparent 21%);
+  border-radius: 2px;
+}
+
+/* espaço pra não “tampar” texto/caret */
+#modal-body .cm-quill .ql-editor{
+  padding-bottom: 26px;
+}
+
+
+#modal-body .cm-quill, 
+#modal-body .cm-quill * { overflow: visible !important; }
+
+/*end modal.css*/

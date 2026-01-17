@@ -1,3 +1,4 @@
+/*modal.genie.css*/
 /* Estado inicial (antes de abrir) */
 #card-modal-root {
   transform-origin: top left;
@@ -12,3 +13,4 @@
 #card-modal-root.genie-animating {
   pointer-events: none;
 }
+/*end modal.genie.css*/

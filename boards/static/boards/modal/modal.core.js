@@ -263,3 +263,4 @@
     root: getRootEl(),
   });
 })();
+// end boards/static/boards/modal/modal.core.js
