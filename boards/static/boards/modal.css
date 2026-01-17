@@ -414,5 +414,118 @@
 .cm-tag-list.delete-mode .cm-tag-remove {
   display: block;
 }
+/* ============================================================
+   CM — Font size selector (Modal)
+   - data-font="sm|md|lg" no .card-modal
+   ============================================================ */
+
+.card-modal {
+  --cm-modal-font-sm: 12px;  /* atual (menor) */
+  --cm-modal-font-md: 14px;  /* recomendado */
+  --cm-modal-font-lg: 16px;  /* grande */
+  --cm-modal-line: 1.55;
+
+  --cm-modal-font: var(--cm-modal-font-sm);
+}
+
+.card-modal[data-font="md"] { --cm-modal-font: var(--cm-modal-font-md); }
+.card-modal[data-font="lg"] { --cm-modal-font: var(--cm-modal-font-lg); }
+
+/* Alvos prioritários (onde dói mais na leitura) */
+.card-modal .cm-activity-content,
+.card-modal .cm-activity-content p,
+.card-modal .cm-activity-content li,
+.card-modal .cm-activity-content div,
+.card-modal .cm-activity-content span {
+  font-size: var(--cm-modal-font) !important;
+  line-height: var(--cm-modal-line) !important;
+}
+
+/* Editor "Nova atividade" (se existir) */
+.card-modal .cm-activity-editor,
+.card-modal .cm-activity-editor .ql-editor,
+.card-modal .cm-activity-editor textarea,
+.card-modal .cm-activity-editor input {
+  font-size: var(--cm-modal-font) !important;
+  line-height: var(--cm-modal-line) !important;
+}
+
+/* Descrição (Quill) — mantém conforto sem quebrar layout */
+#modal-body .cm-quill .ql-editor {
+  font-size: var(--cm-modal-font) !important;
+  line-height: var(--cm-modal-line) !important;
+}
+
+/* Botão AA (canto inferior esquerdo dentro do modal) */
+#cm-fontsize-dock {
+  position: fixed;
+  left: 22px;
+  bottom: 22px;
+  z-index: 10000;
+  pointer-events: none;
+}
+
+#cm-fontsize-dock .dock-wrap {
+  pointer-events: auto;
+  border-radius: 999px;
+  border: 1px solid var(--cm-border);
+  background: var(--cm-bg);
+  box-shadow: var(--cm-shadow);
+  padding: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#cm-fontsize-dock .dock-toggle {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  border: 1px solid var(--cm-border-2);
+  background: var(--cm-surface-2);
+  color: var(--cm-text);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: .90;
+  transition: transform .12s ease, opacity .12s ease, border-color .12s ease;
+  font-weight: 700;
+}
+
+#cm-fontsize-dock .dock-toggle:hover {
+  opacity: 1;
+  transform: translateY(-1px);
+  border-color: var(--cm-border);
+}
+
+#cm-fontsize-dock .dock-actions {
+  display: none;
+  gap: 8px;
+  align-items: center;
+}
+
+#cm-fontsize-dock.is-open .dock-actions {
+  display: inline-flex;
+}
+
+#cm-fontsize-dock .dock-action {
+  border-radius: 999px;
+  border: 1px solid var(--cm-border-2);
+  background: var(--cm-surface-2);
+  color: var(--cm-text);
+  cursor: pointer;
+  padding: 10px 12px;
+  font-size: 13px;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  transition: transform .12s ease, border-color .12s ease;
+}
+
+#cm-fontsize-dock .dock-action:hover {
+  transform: translateY(-1px);
+  border-color: var(--cm-border);
+}
 
 /*end modal.css*/

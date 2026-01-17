@@ -189,6 +189,10 @@
 
     state.isOpen = true;
     state.lastOpenedAt = Date.now();
+            // aplica preferência de fonte no modal
+    try { Modal.fontSize?.init?.(); } catch {}
+
+    
     log("open()");
     return true;
   };
@@ -226,6 +230,10 @@
       if (clearBody && body) body.innerHTML = "";
       if (clearUrl) clearCardFromUrl();
 
+            // remove dock AA
+      try { Modal.fontSize?.destroy?.(); } catch {}
+      
+
       document.dispatchEvent(new Event("modal:closed"));
     };
 
@@ -256,6 +264,87 @@
     log("close()");
     return true;
   };
+  // ============================================================
+  // CM — Font size selector (sm/md/lg) + localStorage
+  // ============================================================
+  (() => {
+    const KEY = "cm_modal_font_size"; // "sm" | "md" | "lg"
+    const DEFAULT = "sm";
+
+    function getCardModalEl() {
+      // O modal “real” costuma estar dentro do root (#card-modal-root)
+      const root = getRootEl();
+      if (!root) return null;
+      return root.querySelector(".card-modal");
+    }
+
+    function applyFont(size) {
+      const modalEl = getCardModalEl();
+      if (!modalEl) return;
+      modalEl.setAttribute("data-font", size);
+      try { localStorage.setItem(KEY, size); } catch {}
+    }
+
+    function currentFont() {
+      try {
+        return localStorage.getItem(KEY) || DEFAULT;
+      } catch {
+        return DEFAULT;
+      }
+    }
+
+    function ensureDock() {
+      if (document.getElementById("cm-fontsize-dock")) return;
+
+      const dock = document.createElement("div");
+      dock.id = "cm-fontsize-dock";
+      dock.innerHTML = `
+        <div class="dock-wrap">
+          <button class="dock-toggle" type="button" aria-label="Tamanho da fonte">AA</button>
+          <div class="dock-actions">
+            <button class="dock-action" type="button" data-size="sm">A</button>
+            <button class="dock-action" type="button" data-size="md">AA</button>
+            <button class="dock-action" type="button" data-size="lg">AAA</button>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(dock);
+
+      const toggle = dock.querySelector(".dock-toggle");
+      toggle.addEventListener("click", () => dock.classList.toggle("is-open"));
+
+      dock.querySelectorAll(".dock-action").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          applyFont(btn.getAttribute("data-size"));
+          dock.classList.remove("is-open");
+        });
+      });
+    }
+
+    function destroyDock() {
+      const dock = document.getElementById("cm-fontsize-dock");
+      if (dock) dock.remove();
+    }
+
+    // expõe no namespace do Modal (sem globals)
+    Modal.fontSize = {
+      init() {
+        ensureDock();
+        applyFont(currentFont());
+      },
+      destroy() {
+        destroyDock();
+      },
+      apply(size) {
+        applyFont(size);
+      },
+      get() {
+        return currentFont();
+      }
+    };
+  })();
+
 
   Modal.getElements = () => ({
     modal: getModalEl(),
