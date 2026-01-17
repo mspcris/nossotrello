@@ -1,4 +1,9 @@
-/* boards/static/boards/calendar.js */
+/* boards/static/boards/calendar.js
+   - Calendário + Drag & Drop no MESMO arquivo
+   - Remove dependência de calendar.drag.js
+   - Corrige o seletor do dia: usa data-day (seu markup), não data-date
+   - Re-binda drag SEMPRE após root.innerHTML = ...
+*/
 
 (function () {
   /* ============================================================
@@ -11,18 +16,9 @@
     focus: null    // YYYY-MM-DD
   };
 
-  function ymd(d) {
-    return d.toISOString().slice(0, 10);
-  }
-
-  function parseYmd(s) {
-    // força meia-noite local sem “pulo” de timezone
-    return new Date(s + "T00:00:00");
-  }
-
-  function safe(fn) {
-    try { return fn(); } catch (_e) { return null; }
-  }
+  function ymd(d) { return d.toISOString().slice(0, 10); }
+  function parseYmd(s) { return new Date(s + "T00:00:00"); }
+  function safe(fn) { try { return fn(); } catch (_e) { return null; } }
 
   function escapeHtml(s) {
     return String(s)
@@ -34,7 +30,6 @@
   }
 
   function escapeAttr(s) {
-    // robusto pra atributos HTML entre aspas
     return String(s)
       .replaceAll("&", "&amp;")
       .replaceAll('"', "&quot;")
@@ -96,7 +91,6 @@
       url.searchParams.set("mode", CalendarState.mode || "month");
       url.searchParams.set("field", CalendarState.field || "due");
       url.searchParams.set("start", CalendarState.focus || ymd(new Date()));
-      // mantém card (se existir) — deep link
     } else {
       url.searchParams.delete("view");
       url.searchParams.delete("mode");
@@ -111,7 +105,6 @@
   function hydrateCalendarStateFromUrl() {
     const url = new URL(window.location.href);
     const view = url.searchParams.get("view");
-
     if (view !== "calendar") return false;
 
     CalendarState.active = true;
@@ -126,7 +119,11 @@
 
     return true;
   }
-    function fitCalendarRoot() {
+
+  /* ============================================================
+   * LAYOUT
+   * ============================================================ */
+  function fitCalendarRoot() {
     const calendarRoot = document.getElementById("calendar-root");
     if (!calendarRoot) return;
 
@@ -140,51 +137,158 @@
     calendarRoot.style.webkitOverflowScrolling = "touch";
   }
 
-
-    function showCalendarUI() {
+  function showCalendarUI() {
     const columns = document.getElementById("columns-wrapper");
     const calendarRoot = document.getElementById("calendar-root");
     if (!columns || !calendarRoot) return;
 
     columns.classList.add("hidden");
     calendarRoot.classList.remove("hidden");
-
     fitCalendarRoot();
   }
 
   function showBoardUI() {
-  const columns = document.getElementById("columns-wrapper");
-  const calendarRoot = document.getElementById("calendar-root");
-  if (!columns || !calendarRoot) return;
+    const columns = document.getElementById("columns-wrapper");
+    const calendarRoot = document.getElementById("calendar-root");
+    if (!columns || !calendarRoot) return;
 
-  calendarRoot.classList.add("hidden");
-  columns.classList.remove("hidden");
+    calendarRoot.classList.add("hidden");
+    columns.classList.remove("hidden");
 
-  // limpa estilos do calendário
-  calendarRoot.style.height = "";
-  calendarRoot.style.overflowY = "";
-  calendarRoot.style.overflowX = "";
-  calendarRoot.style.webkitOverflowScrolling = "";
-}
+    calendarRoot.style.height = "";
+    calendarRoot.style.overflowY = "";
+    calendarRoot.style.overflowX = "";
+    calendarRoot.style.webkitOverflowScrolling = "";
+  }
 
+  window.addEventListener("resize", () => {
+    if (!window.CalendarState?.active) return;
+    fitCalendarRoot();
+    const r = document.getElementById("calendar-root");
+    r?.__cmMonthOverflowUpdate?.();
+    r?.__cmWeekOverflowUpdate?.();
+  });
 
-
-    window.addEventListener("resize", () => {
-  if (!window.CalendarState?.active) return;
-  fitCalendarRoot();
-  const r = document.getElementById("calendar-root");
-  r?.__cmMonthOverflowUpdate?.();
-  r?.__cmWeekOverflowUpdate?.();
-});
-
-
+  document.addEventListener("modal:closed", () => { clearCardFromUrl(); });
 
   /* ============================================================
-   * OPTIONAL: limpar card= quando o modal fecha (se você tiver evento)
+   * DRAG & DROP (FIXED)
+   * - IMPORTANTES:
+   *   1) usa data-day (seu HTML), não data-date
+   *   2) roda SEMPRE após render (root.innerHTML)
+   *   3) não depende de evento custom
    * ============================================================ */
-  document.addEventListener("modal:closed", () => {
-    clearCardFromUrl();
-  });
+  function initCalendarDrag(scope) {
+    const root = scope || document;
+
+    const cardSel = ".cm-cal-card[data-card-id]";
+    const daySel  = ".cm-cal-day[data-day]"; // ✅ FIX
+
+    let draggingCard = null;
+    let originDay = null;
+
+    function getActiveField() {
+      const sel = root.querySelector(".cm-cal-field");
+      return sel?.value || (window.CalendarState?.field || "due");
+    }
+
+    function getCSRF() {
+      return (
+        document.querySelector("input[name=csrfmiddlewaretoken]")?.value ||
+        document.querySelector("meta[name='csrf-token']")?.content ||
+        ""
+      );
+    }
+
+    function cardsBox(dayEl) {
+      if (!dayEl) return null;
+      return dayEl.querySelector?.(".cm-cal-cards") || dayEl;
+    }
+
+
+    function enableCard(card) {
+      if (card.dataset.cmDrag === "1") return;
+      card.dataset.cmDrag = "1";
+
+      card.setAttribute("draggable", "true");
+      card.style.cursor = "grab";
+
+      card.addEventListener("dragstart", (e) => {
+        draggingCard = card;
+        originDay = card.closest(daySel) || card.closest("[data-day]");
+        card.classList.add("is-dragging");
+        try { e.dataTransfer.setData("text/plain", card.dataset.cardId || ""); } catch (_) {}
+        e.dataTransfer.effectAllowed = "move";
+      });
+
+      card.addEventListener("dragend", () => {
+        card.classList.remove("is-dragging");
+        draggingCard = null;
+        originDay = null;
+      });
+    }
+
+    function enableDay(day) {
+      if (day.dataset.cmDrop === "1") return;
+      day.dataset.cmDrop = "1";
+
+      day.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        day.classList.add("is-drop-target");
+      });
+
+      day.addEventListener("dragleave", () => {
+        day.classList.remove("is-drop-target");
+      });
+
+      day.addEventListener("drop", async (e) => {
+        e.preventDefault();
+        day.classList.remove("is-drop-target");
+        if (!draggingCard || !originDay) return;
+
+        const newDate = day.dataset.day; // ✅ FIX
+        const cardId = draggingCard.dataset.cardId;
+        const field = getActiveField();
+        if (!newDate || !cardId) return;
+
+        // UI otimista
+        cardsBox(day).appendChild(draggingCard);
+
+        try {
+          const body = new URLSearchParams({ field, date: newDate });
+
+          const res = await fetch(`/card/${cardId}/calendar-date/`, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+              "X-CSRFToken": getCSRF(),
+              "X-Requested-With": "XMLHttpRequest",
+            },
+            body,
+          });
+
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data = await res.json().catch(() => null);
+          if (!data || data.ok !== true) throw new Error("Resposta inválida");
+        } catch (_err) {
+          // rollback
+          const rb = cardsBox(originDay);
+          if (rb) rb.appendChild(draggingCard);
+          alert("Erro ao alterar data do card.");
+        }
+      });
+    }
+
+    root.querySelectorAll(cardSel).forEach(enableCard);
+    root.querySelectorAll(daySel).forEach(enableDay);
+
+    // debug rápido (remova depois)
+    // console.log("[calendar] draggable?", root.querySelector(cardSel)?.draggable);
+  }
+
+  // opcional: expor pra console/debug
+  window.initCalendarDrag = initCalendarDrag;
 
   /* ============================================================
    * TOGGLE (Board <-> Calendar)
@@ -215,8 +319,8 @@
   async function renderCalendar() {
     const root = document.getElementById("calendar-root");
     if (!root) return;
-        fitCalendarRoot();
 
+    fitCalendarRoot();
     root.classList.add("cm-cal-loading");
 
     try {
@@ -229,18 +333,22 @@
 
       const res = await fetch(url, { credentials: "same-origin" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
       const data = await res.json();
 
       root.innerHTML = renderCalendarView(data);
+
+      // ✅ FIX PRINCIPAL: bind do drag após render
+      initCalendarDrag(root);
+
+      // controles/click do card
       wireCalendarControls(root, data);
+
       fitCalendarRoot();
 
-
-      // Rehidrata cores de prazo no HTML recém-injetado
+      // cores de prazo
       safe(() => window.applySavedTermColorsToBoard && window.applySavedTermColorsToBoard(root));
 
-      // Deep link: se veio ?card=..., abre o modal após renderizar
+      // deep link card
       try {
         const p = getUrlParams();
         const cardId = Number(p.get("card") || 0);
@@ -307,91 +415,88 @@
    * MONTH (grid 6x7)
    * ============================================================ */
   function renderMonthView(data) {
-  const days = data.days || {};
-  const total = 42;
+    const days = data.days || {};
+    const total = 42;
 
-  const gridStart = parseYmd(data.grid_start);
-  const focusYear = data.focus_year;
-  const focusMonth = data.focus_month; // 1..12
+    const gridStart = parseYmd(data.grid_start);
+    const focusYear = data.focus_year;
+    const focusMonth = data.focus_month; // 1..12
 
-  let html = `<div class="cm-cal-month-wrap">`;
-  html += `<div class="cm-cal-month-hint">Arraste →</div>`;
-  html += `<div class="cm-cal-month" data-cal-month-scroll>`;
+    let html = `<div class="cm-cal-month-wrap">`;
+    html += `<div class="cm-cal-month-hint">Arraste →</div>`;
+    html += `<div class="cm-cal-month" data-cal-month-scroll>`;
 
-  for (let i = 0; i < total; i++) {
-    const d = new Date(gridStart);
-    d.setDate(d.getDate() + i);
+    for (let i = 0; i < total; i++) {
+      const d = new Date(gridStart);
+      d.setDate(d.getDate() + i);
 
-    const key = ymd(d);
+      const key = ymd(d);
 
-    const inFocusMonth =
-      (d.getFullYear() === focusYear) &&
-      ((d.getMonth() + 1) === focusMonth);
+      const inFocusMonth =
+        (d.getFullYear() === focusYear) &&
+        ((d.getMonth() + 1) === focusMonth);
 
-    html += `
-      <div class="cm-cal-day ${inFocusMonth ? "" : "is-outside"}" data-day="${key}">
-        <div class="cm-cal-date">${d.getDate()}</div>
-        <div class="cm-cal-cards">
-          ${(days[key] || []).map((card) => renderCalendarCard(card, "month")).join("")}
+      html += `
+        <div class="cm-cal-day ${inFocusMonth ? "" : "is-outside"}" data-day="${key}">
+          <div class="cm-cal-date">${d.getDate()}</div>
+          <div class="cm-cal-cards">
+            ${(days[key] || []).map((card) => renderCalendarCard(card, "month")).join("")}
+          </div>
         </div>
-      </div>
-    `;
+      `;
+    }
+
+    html += `</div></div>`;
+    return html;
   }
-
-  html += `</div></div>`;
-  return html;
-}
-
 
   /* ============================================================
    * WEEK (7 columns desk - 3 mobile)
    * ============================================================ */
-function renderWeekView(data) {
-  const days = data.days || {};
+  function renderWeekView(data) {
+    const days = data.days || {};
+    const startStr = data.week_start || data.grid_start || CalendarState.focus || ymd(new Date());
+    const start = parseYmd(startStr);
 
-  // preferir week_start vindo do backend
-  const startStr = data.week_start || data.grid_start || CalendarState.focus || ymd(new Date());
-  const start = parseYmd(startStr);
+    const dowNames = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
-  const dowNames = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+    let html = `<div class="cm-cal-week">`;
+    html += `<div class="cm-week-wrap">`;
+    html += `<div class="cm-week-hint" aria-hidden="true">Arraste ← →</div>`;
 
-  let html = `<div class="cm-cal-week">`;
-  html += `<div class="cm-week-wrap">`;
-  html += `<div class="cm-week-hint" aria-hidden="true">Arraste ← →</div>`;
-
-  html += `<div class="cm-week-head" data-week-head>`;
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(start);
-    d.setDate(d.getDate() + i);
-    html += `
-      <div class="cm-week-headcell">
-        <div class="cm-week-dow">${dowNames[d.getDay()]}</div>
-        <div class="cm-week-date">${d.getDate()}/${String(d.getMonth() + 1).padStart(2, "0")}</div>
-      </div>
-    `;
-  }
-  html += `</div>`;
-
-  html += `<div class="cm-week-cols" data-week-cols>`;
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(start);
-    d.setDate(d.getDate() + i);
-    const key = ymd(d);
-
-    html += `
-      <div class="cm-week-col" data-day="${key}">
-        <div class="cm-week-cards">
-          ${(days[key] || []).map((card) => renderCalendarCard(card, "week")).join("")}
+    html += `<div class="cm-week-head" data-week-head>`;
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start);
+      d.setDate(d.getDate() + i);
+      html += `
+        <div class="cm-week-headcell">
+          <div class="cm-week-dow">${dowNames[d.getDay()]}</div>
+          <div class="cm-week-date">${d.getDate()}/${String(d.getMonth() + 1).padStart(2, "0")}</div>
         </div>
-      </div>
-    `;
-  }
-  html += `</div>`;
+      `;
+    }
+    html += `</div>`;
 
-  html += `</div>`; // .cm-week-wrap
-  html += `</div>`;
-  return html;
-}
+    html += `<div class="cm-week-cols" data-week-cols>`;
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start);
+      d.setDate(d.getDate() + i);
+      const key = ymd(d);
+
+      html += `
+        <div class="cm-week-col" data-day="${key}">
+          <div class="cm-week-cards">
+            ${(days[key] || []).map((card) => renderCalendarCard(card, "week")).join("")}
+          </div>
+        </div>
+      `;
+    }
+    html += `</div>`;
+
+    html += `</div>`;
+    html += `</div>`;
+    return html;
+  }
 
   /* ============================================================
    * CARD RENDER
@@ -401,7 +506,6 @@ function renderWeekView(data) {
     const title = (card && card.title) ? String(card.title) : "";
     const cover = (card && card.cover_url) ? String(card.cover_url) : "";
 
-    // estes 3 precisam ir pro DOM (pra pintar prazo no client)
     const due = card?.due_date || "";
     const warn = card?.warn_date || "";
     const notify = (card?.due_notify === false || card?.due_notify === 0) ? "0" : "1";
@@ -432,7 +536,6 @@ function renderWeekView(data) {
       `;
     }
 
-    // month
     return `
       <button
         type="button"
@@ -453,7 +556,6 @@ function renderWeekView(data) {
    * WIRING
    * ============================================================ */
   function wireCalendarControls(root, _data) {
-    // navegação prev/next
     root.querySelectorAll("[data-cal-nav]").forEach((btn) => {
       btn.addEventListener("click", () => {
         const dir = btn.getAttribute("data-cal-nav"); // prev|next
@@ -461,7 +563,6 @@ function renderWeekView(data) {
       });
     });
 
-    // modo mês/semana
     root.querySelectorAll("[data-cal-mode]").forEach((btn) => {
       btn.addEventListener("click", () => {
         CalendarState.mode = btn.getAttribute("data-cal-mode");
@@ -470,7 +571,6 @@ function renderWeekView(data) {
       });
     });
 
-    // campo due/start/warn
     const fieldSelect = root.querySelector("[data-cal-field]");
     if (fieldSelect) {
       fieldSelect.addEventListener("change", () => {
@@ -480,7 +580,7 @@ function renderWeekView(data) {
       });
     }
 
-    // abrir card ao clicar (SEM ir pra board)
+    // abrir card
     root.querySelectorAll(".cm-cal-card[data-card-id]").forEach((el) => {
       el.addEventListener("click", (ev) => {
         ev.preventDefault();
@@ -490,112 +590,96 @@ function renderWeekView(data) {
         if (!cardId) return;
 
         const ok = openCardInModal(cardId);
-
-        // salva deep link do card no calendário
         reflectCardInUrl(cardId);
-
-        // retry leve (timing)
         if (!ok) requestAnimationFrame(() => openCardInModal(cardId));
       });
     });
 
-    // Mobile: sincroniza scroll horizontal do head com as colunas (semana)
-    // Month mobile hint: liga se existir overflow horizontal e “some” após o primeiro scroll
-// Month: hint/overflow (mobile) — sem empilhar listeners globais
-try {
-  const wrap = root.querySelector(".cm-cal-month-wrap");
-  const scroller = root.querySelector("[data-cal-month-scroll]");
-  if (wrap && scroller) {
-    const update = () => {
-      const hasOverflow = scroller.scrollWidth > (scroller.clientWidth + 4);
-      wrap.classList.toggle("has-x-overflow", !!hasOverflow);
-      if (!hasOverflow) wrap.classList.remove("hint-dismissed");
-    };
-
-    // expõe para o resize global (evita empilhar listeners)
-    root.__cmMonthOverflowUpdate = update;
-
-    update();
-
-    scroller.addEventListener("scroll", () => {
-      if (scroller.scrollLeft > 10) wrap.classList.add("hint-dismissed");
-    }, { passive: true });
-  } else {
-    root.__cmMonthOverflowUpdate = null;
-  }
-} catch (_e) {
-  root.__cmMonthOverflowUpdate = null;
-}
-
-// Week: carrossel (3 dias visíveis) + hint ← → + sync head/cols
-try {
-  const wrap = root.querySelector(".cm-week-wrap");
-  const head = root.querySelector("[data-week-head]");
-  const scroller = root.querySelector("[data-week-cols]");
-
-  if (wrap && head && scroller) {
-    let syncing = false;
-
-    const syncScroll = (from, to) => {
-      if (syncing) return;
-      syncing = true;
-      to.scrollLeft = from.scrollLeft;
-      requestAnimationFrame(() => { syncing = false; });
-    };
-
-    head.addEventListener("scroll", () => syncScroll(head, scroller), { passive: true });
-    scroller.addEventListener("scroll", () => syncScroll(scroller, head), { passive: true });
-
-    const updateEdges = () => {
-      const hasOverflow = scroller.scrollWidth > (scroller.clientWidth + 4);
-      wrap.classList.toggle("has-x-overflow", !!hasOverflow);
-
-      const max = Math.max(0, scroller.scrollWidth - scroller.clientWidth);
-      wrap.classList.toggle("is-at-start", scroller.scrollLeft <= 1);
-      wrap.classList.toggle("is-at-end", scroller.scrollLeft >= (max - 1));
-    };
-
-    // expõe para o resize global
-    root.__cmWeekOverflowUpdate = updateEdges;
-
-    let dismissed = false;
-    scroller.addEventListener("scroll", () => {
-      if (!dismissed && Math.abs(scroller.scrollLeft - (scroller.__cmWeekInitialX || 0)) > 12) {
-        dismissed = true;
-        wrap.classList.add("hint-dismissed");
-      }
-      updateEdges();
-    }, { passive: true });
-
-    // começa mostrando o “miolo” da semana (2 dias off-screen à esquerda + 2 à direita)
-    requestAnimationFrame(() => {
-      const isMobile = !!(window.matchMedia && window.matchMedia("(max-width: 767px)").matches);
-      if (isMobile) {
-        const cols = scroller.querySelectorAll(".cm-week-col");
-        if (cols && cols.length >= 5) {
-          const x = cols[2]?.offsetLeft || 0; // index 2 => 2 à esquerda + 2 à direita
-          scroller.__cmWeekInitialX = x;
-          scroller.scrollLeft = x;
-          head.scrollLeft = x;
-        } else {
-          scroller.__cmWeekInitialX = scroller.scrollLeft || 0;
-        }
+    // overflow month/week (mantido como você tinha)
+    try {
+      const wrap = root.querySelector(".cm-cal-month-wrap");
+      const scroller = root.querySelector("[data-cal-month-scroll]");
+      if (wrap && scroller) {
+        const update = () => {
+          const hasOverflow = scroller.scrollWidth > (scroller.clientWidth + 4);
+          wrap.classList.toggle("has-x-overflow", !!hasOverflow);
+          if (!hasOverflow) wrap.classList.remove("hint-dismissed");
+        };
+        root.__cmMonthOverflowUpdate = update;
+        update();
+        scroller.addEventListener("scroll", () => {
+          if (scroller.scrollLeft > 10) wrap.classList.add("hint-dismissed");
+        }, { passive: true });
       } else {
-        scroller.__cmWeekInitialX = scroller.scrollLeft || 0;
+        root.__cmMonthOverflowUpdate = null;
       }
+    } catch (_e) {
+      root.__cmMonthOverflowUpdate = null;
+    }
 
-      updateEdges();
-    });
+    try {
+      const wrap = root.querySelector(".cm-week-wrap");
+      const head = root.querySelector("[data-week-head]");
+      const scroller = root.querySelector("[data-week-cols]");
 
-    // update inicial
-    updateEdges();
-  } else {
-    root.__cmWeekOverflowUpdate = null;
-  }
-} catch (_e) {
-  root.__cmWeekOverflowUpdate = null;
-}
+      if (wrap && head && scroller) {
+        let syncing = false;
 
+        const syncScroll = (from, to) => {
+          if (syncing) return;
+          syncing = true;
+          to.scrollLeft = from.scrollLeft;
+          requestAnimationFrame(() => { syncing = false; });
+        };
+
+        head.addEventListener("scroll", () => syncScroll(head, scroller), { passive: true });
+        scroller.addEventListener("scroll", () => syncScroll(scroller, head), { passive: true });
+
+        const updateEdges = () => {
+          const hasOverflow = scroller.scrollWidth > (scroller.clientWidth + 4);
+          wrap.classList.toggle("has-x-overflow", !!hasOverflow);
+
+          const max = Math.max(0, scroller.scrollWidth - scroller.clientWidth);
+          wrap.classList.toggle("is-at-start", scroller.scrollLeft <= 1);
+          wrap.classList.toggle("is-at-end", scroller.scrollLeft >= (max - 1));
+        };
+
+        root.__cmWeekOverflowUpdate = updateEdges;
+
+        let dismissed = false;
+        scroller.addEventListener("scroll", () => {
+          if (!dismissed && Math.abs(scroller.scrollLeft - (scroller.__cmWeekInitialX || 0)) > 12) {
+            dismissed = true;
+            wrap.classList.add("hint-dismissed");
+          }
+          updateEdges();
+        }, { passive: true });
+
+        requestAnimationFrame(() => {
+          const isMobile = !!(window.matchMedia && window.matchMedia("(max-width: 767px)").matches);
+          if (isMobile) {
+            const cols = scroller.querySelectorAll(".cm-week-col");
+            if (cols && cols.length >= 5) {
+              const x = cols[2]?.offsetLeft || 0;
+              scroller.__cmWeekInitialX = x;
+              scroller.scrollLeft = x;
+              head.scrollLeft = x;
+            } else {
+              scroller.__cmWeekInitialX = scroller.scrollLeft || 0;
+            }
+          } else {
+            scroller.__cmWeekInitialX = scroller.scrollLeft || 0;
+          }
+          updateEdges();
+        });
+
+        updateEdges();
+      } else {
+        root.__cmWeekOverflowUpdate = null;
+      }
+    } catch (_e) {
+      root.__cmWeekOverflowUpdate = null;
+    }
   }
 
   function shiftCalendarFocus(dir) {
@@ -611,16 +695,13 @@ try {
     }
 
     CalendarState.focus = ymd(focus);
-
-    // ao trocar foco, mantém o calendário, mas normalmente limpa o card deep-link
     clearCardFromUrl();
-
     syncCalendarUrl();
     renderCalendar();
   }
 
   /* ============================================================
-   * BOOT: abre calendário via URL
+   * BOOT
    * ============================================================ */
   document.addEventListener("DOMContentLoaded", () => {
     const shouldOpen = hydrateCalendarStateFromUrl();
@@ -631,7 +712,6 @@ try {
     renderCalendar();
   });
 
-  // Back/forward do browser
   window.addEventListener("popstate", () => {
     const opened = hydrateCalendarStateFromUrl();
     if (opened) {

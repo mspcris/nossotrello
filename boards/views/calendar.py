@@ -11,6 +11,17 @@ from django.utils.dateparse import parse_date
 from ..models import Card
 from .cards import _user_can_edit_board
 
+from django.http import JsonResponse, HttpResponseBadRequest, HttpResponseForbidden
+from django.views.decorators.http import require_POST
+
+from django.db import transaction
+
+from django.contrib.auth.decorators import login_required
+from django.utils.dateparse import parse_date
+
+from ..models import Card
+from .cards import _user_can_edit_board
+
 
 def _start_of_week_sunday(d: date) -> date:
     # domingo como início (compatível com o grid atual)
@@ -209,3 +220,57 @@ def calendar_cards(request):
             **meta,
         }
     )
+
+
+
+
+
+@login_required
+@require_POST
+def card_calendar_date_update(request, card_id):
+    field = (request.POST.get("field") or "").strip()
+    date_raw = (request.POST.get("date") or "").strip()
+
+    if field not in ("due", "start", "warn"):
+        return HttpResponseBadRequest("Campo inválido")
+
+    new_date = parse_date(date_raw)
+    if not new_date:
+        return HttpResponseBadRequest("Data inválida")
+
+    with transaction.atomic():
+        try:
+            card = (
+                Card.objects
+                .select_for_update()
+                .select_related("column", "column__board")
+                .get(id=card_id, is_deleted=False)
+            )
+        except Card.DoesNotExist:
+            return HttpResponseBadRequest("Card não encontrado")
+
+        board = card.column.board  # ✅ aqui é o board correto
+
+        # 🔐 permissão alinhada com o resto do board
+        if not _user_can_edit_board(request.user, board):
+            return HttpResponseForbidden("Sem permissão")
+
+        if field == "due":
+            card.due_date = new_date
+            fields_to_update = ["due_date"]
+        elif field == "start":
+            card.start_date = new_date
+            fields_to_update = ["start_date"]
+        else:  # warn
+            card.due_warn_date = new_date
+            fields_to_update = ["due_warn_date"]
+
+        # ✅ só inclui updated_at se existir no model
+        if hasattr(card, "updated_at"):
+            fields_to_update.append("updated_at")
+
+        card.save(update_fields=fields_to_update)
+
+    return JsonResponse({"ok": True})
+
+# END boards/views/calendar.py

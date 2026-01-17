@@ -211,6 +211,13 @@ urlpatterns = [
     # BOARDS — CALENDÁRIO
     # ============================================================
     path("calendar/cards/", calendar_views.calendar_cards, name="calendar_cards"),
+    path(
+    "card/<int:card_id>/calendar-date/",
+    calendar_views.card_calendar_date_update,
+    name="card_calendar_date_update",
+    ),
+
+
 
     # ============================================================
     # HOME GROUPS / FAVORITOS (agrupamentos pessoais)
