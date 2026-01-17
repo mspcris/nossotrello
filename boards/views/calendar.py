@@ -19,9 +19,8 @@ from django.db import transaction
 from django.contrib.auth.decorators import login_required
 from django.utils.dateparse import parse_date
 
-from ..models import Card
-from .cards import _user_can_edit_board
-
+from django.utils.html import escape
+from .helpers import _log_card, _actor_label
 
 def _start_of_week_sunday(d: date) -> date:
     # domingo como início (compatível com o grid atual)
@@ -225,6 +224,17 @@ def calendar_cards(request):
 
 
 
+# boards/views/calendar.py
+
+
+
+def _fmt_date_br(d):
+    try:
+        return d.strftime("%d/%m/%Y") if d else "—"
+    except Exception:
+        return "—"
+
+
 @login_required
 @require_POST
 def card_calendar_date_update(request, card_id):
@@ -249,27 +259,59 @@ def card_calendar_date_update(request, card_id):
         except Card.DoesNotExist:
             return HttpResponseBadRequest("Card não encontrado")
 
-        board = card.column.board  # ✅ aqui é o board correto
+        board = card.column.board
 
-        # 🔐 permissão alinhada com o resto do board
         if not _user_can_edit_board(request.user, board):
             return HttpResponseForbidden("Sem permissão")
 
+        # ============================================================
+        # SNAPSHOT (antes) + aplica 1 campo por vez
+        # ============================================================
+        old_val = None
+        label = ""
+
         if field == "due":
+            old_val = card.due_date
             card.due_date = new_date
+            label = "Vencimento"
             fields_to_update = ["due_date"]
         elif field == "start":
+            old_val = getattr(card, "start_date", None)
             card.start_date = new_date
+            label = "Data de Início"
             fields_to_update = ["start_date"]
         else:  # warn
+            old_val = card.due_warn_date
             card.due_warn_date = new_date
+            label = "Avisar em"
             fields_to_update = ["due_warn_date"]
 
-        # ✅ só inclui updated_at se existir no model
         if hasattr(card, "updated_at"):
             fields_to_update.append("updated_at")
 
         card.save(update_fields=fields_to_update)
+
+        # ============================================================
+        # AUDITORIA (Atividade) - só se realmente mudou
+        # ============================================================
+        if old_val != new_date:
+            actor = _actor_label(request)
+            before = _fmt_date_br(old_val)
+            after = _fmt_date_br(new_date)
+
+            html = (
+                f"<p><strong>{actor}</strong> alterou o prazo do card.</p>"
+                f"<ul style='margin:6px 0 0 18px;'>"
+                f"<li><strong>{escape(label)}:</strong> {escape(before)} → "
+                f"<strong>{escape(after)}</strong></li>"
+                f"</ul>"
+            )
+            _log_card(card, request, html)
+
+        # (recomendado) version bump p/ polling/sync
+        if hasattr(board, "version"):
+            board.version += 1
+            board.save(update_fields=["version"])
 
     return JsonResponse({"ok": True})
 
