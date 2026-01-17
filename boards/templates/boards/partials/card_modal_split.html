@@ -89,10 +89,12 @@
       <div class="cm-topbar">
         <div class="cm-bar" role="tablist" aria-label="Abas do card">
           <div class="cm-tabs">
-            <button type="button" class="cm-tabbtn is-active" data-cm-tab="desc">Descrição</button>
-            <button type="button" class="cm-tabbtn" data-cm-tab="tags">Etiquetas</button>
-            <button type="button" class="cm-tabbtn" data-cm-tab="check">Checklists</button>
-            <button type="button" class="cm-tabbtn" data-cm-tab="files">Anexos</button>
+            <button type="button" class="cm-tabbtn is-active" data-cm-tab="desc"> 📄 Descrição</button>
+            <button type="button" class="cm-tabbtn" data-cm-tab="tags"> 🏷️ Etiquetas</button>
+            <button type="button" class="cm-tabbtn" data-cm-tab="check"> ☑️ Checklists</button>
+            <button type="button" class="cm-tabbtn" data-cm-tab="files"> 📎 Anexos</button>
+            <button type="button" class="cm-tabbtn" data-cm-tab="track"> ⏱️ Track-time</button>
+
           </div>
 
           <div class="cm-actions" id="cm-actions">
@@ -469,6 +471,25 @@
         </div>
       </section>
 
+      <section class="cm-panel"
+         data-cm-panel="track"
+         role="tabpanel">
+
+  <div id="cm-tracktime-panel"
+       hx-get="{% url 'tracktime:card_panel' card.id %}"
+       hx-trigger="revealed"
+       hx-target="this"
+       hx-swap="innerHTML">
+
+    <div class="cm-card cm-muted">
+      Carregando Track-time…
+    </div>
+
+  </div>
+
+</section>
+
+
     </div>
 
     <!-- COLUNA DIREITA (40%) ✅ agora dentro do #cm-root -->
@@ -586,7 +607,7 @@
   if (!root) return;
 
   const cardId = (root.getAttribute("data-card-id") || "").trim() || "x";
-  const ALLOWED = ["desc", "tags", "check", "ativ", "files"];
+  const ALLOWED = ["desc", "tags", "check", "ativ", "files", "track"];
   const STORAGE_KEY = `cm_active_tab_${cardId}`;
 
   function clampTab(tab) {

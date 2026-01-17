@@ -1,0 +1,71 @@
+<div class="cm-card space-y-4">
+
+  <div class="flex items-center justify-between">
+    <h3 class="text-lg font-semibold">
+      ⏱ Track-time
+    </h3>
+  </div>
+
+  <form
+    hx-post="{% url 'tracktime:card_manual' card.id %}"
+    hx-target="#cm-tracktime-panel"
+    hx-swap="innerHTML"
+    class="grid grid-cols-1 md:grid-cols-2 gap-3"
+  >
+
+    <div>
+      <label class="cm-label">Projeto</label>
+      <select name="project" class="cm-input" required>
+        <option value="">— selecione —</option>
+        {% for p in projects %}
+          <option value="{{ p.id }}">{{ p.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label class="cm-label">Atividade</label>
+      <select name="activity_type" class="cm-input" required>
+        {% for a in activity_types %}
+          <option value="{{ a.id }}">{{ a.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label class="cm-label">Tempo (min)</label>
+      <input type="number"
+             name="minutes"
+             min="1"
+             class="cm-input"
+             placeholder="Ex: 30"
+             required>
+    </div>
+
+    <div class="flex items-end">
+      <button class="cm-btn primary">
+        Registrar
+      </button>
+    </div>
+
+  </form>
+
+  <div class="cm-muted">
+    Últimos lançamentos neste card
+  </div>
+
+  <div class="space-y-2">
+    {% for e in entries %}
+      <div class="cm-card">
+        <strong>{{ e.project.name }}</strong>
+        — {{ e.activity_type.name }}
+        · {{ e.minutes }} min
+      </div>
+    {% empty %}
+      <div class="cm-muted">
+        Nenhum lançamento ainda.
+      </div>
+    {% endfor %}
+  </div>
+
+</div>
