@@ -1,531 +1,78 @@
-/*modal.css*/
+/* modal.css */
+
+.is-hidden { display: none !important; }
+
+#cm-activity-composer { display: none; }
+#cm-activity-composer.is-open { display: block; }
+#cm-activity-gap { display: none; }
+#cm-activity-gap.is-open { display: block; }
 
 /* ============================================================
-   CM — ACTION DOCK (Mover / Duplicar / Copiar link)
-   ============================================================ */
-#cm-action-dock {
-  position: fixed;
-  right: 22px;
-  bottom: 22px;
-  z-index: 9999;
-
-  display: flex;
-  justify-content: flex-end;
-  pointer-events: none;
-}
-
-#cm-action-dock .dock-wrap {
-  pointer-events: auto;
-  border-radius: 999px;
-  border: 1px solid var(--cm-border);
-  background: var(--cm-bg);
-  box-shadow: var(--cm-shadow);
-
-  padding: 8px;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-/* botão principal */
-#cm-action-dock .dock-toggle {
-  width: 42px;
-  height: 42px;
-  border-radius: 999px;
-  border: 1px solid var(--cm-border-2);
-  background: var(--cm-surface-2);
-  color: var(--cm-text);
-  cursor: pointer;
-
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-
-  opacity: .88;
-  transition: transform .12s ease, opacity .12s ease, border-color .12s ease;
-}
-#cm-action-dock .dock-toggle:hover {
-  opacity: 1;
-  transform: translateY(-1px);
-  border-color: var(--cm-border);
-}
-
-/* ações */
-#cm-action-dock .dock-actions {
-  display: none;
-  gap: 8px;
-  align-items: center;
-}
-#cm-action-dock.is-open .dock-actions {
-  display: inline-flex;
-}
-
-#cm-action-dock .dock-action {
-  border-radius: 999px;
-  border: 1px solid var(--cm-border-2);
-  background: var(--cm-surface-2);
-  color: var(--cm-text);
-  cursor: pointer;
-  padding: 10px 12px;
-  font-size: 13px;
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
-  transition: transform .12s ease, border-color .12s ease;
-}
-#cm-action-dock .dock-action:hover {
-  transform: translateY(-1px);
-  border-color: var(--cm-border);
-}
-
-#cm-action-dock .dock-action .label {
-  display: none;
-  white-space: nowrap;
-}
-#cm-action-dock.is-open .dock-action .label {
-  display: inline;
-}
-
-#cm-action-dock-panel {
-  position: absolute;
-  right: 0;
-  bottom: 58px;
-  width: min(520px, calc(100vw - 48px));
-  border-radius: 14px;
-  border: 1px solid var(--cm-border);
-  background: var(--cm-surface);
-  box-shadow: var(--cm-shadow);
-  padding: 12px;
-  display: none;
-}
-#cm-action-dock-panel.is-open {
-  display: block;
-}
-
-@keyframes cmBoing {
-  0%   { transform: translateY(8px) scale(0.98); opacity: 0.0; }
-  70%  { transform: translateY(-2px) scale(1.01); opacity: 1.0; }
-  100% { transform: translateY(0) scale(1.00); opacity: 1.0; }
-}
-#cm-action-dock-panel.boing {
-  animation: cmBoing 220ms ease-out;
-}
-/* ================================
-   MODAL BASE (DESKTOP + GERAL)
-   ================================ */
-.card-modal {
-  width: min(1000px, 96vw);
-  max-height: min(86vh, 860px);
-}
-
-.card-modal-scroll {
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-/* ============================================================
-   Quill (Descrição) — devolver "3 risquinhos" (resize vertical)
+   CM — AA FONT SIZE (ÚNICO BLOCO - FINAL DO ARQUIVO)
+   Governança: #card-modal-root[data-font="sm|md|lg"]
    ============================================================ */
 
-/* O host criado em modal.quill.js tem class="cm-quill" */
-#modal-body .cm-quill .ql-container {
-  resize: vertical;          /* ✅ volta o “grip” */
-  overflow: auto;            /* obrigatório pro resize funcionar */
-  min-height: 180px;         /* ajuste mínimo para ficar usável */
-  max-height: 60vh;          /* evita estourar o modal */
+#card-modal-root{
+  --cm-aa-font-sm: 12px;
+  --cm-aa-font-md: 14px;
+  --cm-aa-font-lg: 16px;
+  --cm-aa-line: 1.55;
+
+  --cm-aa-font: var(--cm-aa-font-sm);
 }
 
-/* A área de edição acompanha a altura do container */
-#modal-body .cm-quill .ql-editor {
-  min-height: 160px;
+#card-modal-root[data-font="md"]{ --cm-aa-font: var(--cm-aa-font-md); }
+#card-modal-root[data-font="lg"]{ --cm-aa-font: var(--cm-aa-font-lg); }
+
+/* baseline tipográfico do modal inteiro */
+#card-modal-root,
+#card-modal-root *{
+  font-size: inherit;
+  line-height: inherit;
 }
 
-
-
-
-/* Quill: imagens coladas viram miniaturas clicáveis */
-.ql-editor img,
-.cm-quill-content img,
-.cm-activity-content img {
-  max-width: 220px;
-  max-height: 220px;
-  width: auto;
-  height: auto;
-  object-fit: cover;
-  border-radius: 10px;
-  cursor: pointer;
-  display: inline-block;
+#card-modal-root{
+  font-size: var(--cm-aa-font) !important;
+  line-height: var(--cm-aa-line) !important;
 }
 
-/* Se você quiser sempre “quadrado” fixo (thumbnail padrão) */
-.cm-thumb-square img,
-.ql-editor.cm-thumb-square img {
-  width: 220px;
-  height: 220px;
-  object-fit: cover;
+/* Form controls */
+#card-modal-root input,
+#card-modal-root textarea,
+#card-modal-root select,
+#card-modal-root button{
+  font-size: inherit !important;
+  line-height: inherit !important;
 }
 
-/* Quill dentro do modal: imagens como miniatura */
-#modal-body .ql-editor img,
-#modal-body .cm-quill img,
-#modal-body .cm-activity-content img {
-  max-width: 220px;
-  max-height: 220px;
-  width: auto;
-  height: auto;
-  object-fit: cover;
-  border-radius: 10px;
-  cursor: pointer;
-  display: inline-block;
-}
-/* ============================================================
-   Quill Descrição — grip de resize (3 risquinhos)
-   ============================================================ */
-
-/* container do editor (não o editor em si) */
-#modal-body .cm-quill .ql-container.ql-snow{
-  position: relative;
-  resize: vertical;
-  overflow: auto;
-  min-height: 180px;
-  max-height: 60vh;
+/* Labels/muted devem escalar */
+#card-modal-root .cm-label,
+#card-modal-root .cm-muted{
+  font-size: 0.92em !important;
+  line-height: inherit !important;
 }
 
-/* garante espaço pro grip não ficar colado */
-#modal-body .cm-quill .ql-container.ql-snow{
-  padding-bottom: 10px;
+/* ATIVIDADE: garante herança total */
+#card-modal-root .cm-activity,
+#card-modal-root #cm-activity-panel,
+#card-modal-root #cm-activity-panel *{
+  font-size: inherit !important;
+  line-height: inherit !important;
 }
 
-/* editor acompanha a altura */
-#modal-body .cm-quill .ql-editor{
-  min-height: 160px;
+/* Conteúdo renderizado */
+#card-modal-root .cm-activity-content,
+#card-modal-root .cm-activity-content *{
+  font-size: inherit !important;
+  line-height: inherit !important;
 }
 
-/* DEBUG visual (pode remover depois): deixa evidente a borda do container */
-#modal-body .cm-quill .ql-container.ql-snow{
-  outline: 1px dashed rgba(0,0,0,0.25);
-  outline-offset: -1px;
+/* Quill da atividade (Quill fixa px) */
+#card-modal-root .cm-activity-quill .ql-editor,
+#card-modal-root #cm-activity-editor .ql-editor,
+#card-modal-root .cm-activity-quill .ql-container,
+#card-modal-root #cm-activity-editor{
+  font-size: inherit !important;
+  line-height: inherit !important;
 }
-/* Se algum wrapper do bloco Descrição estiver cortando o canto do resize */
-#modal-body .cm-quill{
-  overflow: visible !important;
-}
-
-#modal-body .cm-quill .ql-container{
-  overflow: auto !important;
-}
-/* ============================================================
-   CM — Quill Resize Handle (MVP)
-   ============================================================ */
-
-#modal-body .cm-quill {
-  position: relative; /* ancora o handle */
-}
-
-#modal-body .cm-quill .cm-quill-resize-handle {
-  position: absolute;
-  right: 10px;
-  bottom: 8px;
-  width: 18px;
-  height: 18px;
-  cursor: ns-resize;
-  z-index: 30;
-  opacity: 0.75;
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-/* desenha “3 risquinhos” */
-#modal-body .cm-quill .cm-quill-resize-handle::before {
-  content: "";
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 16px;
-  height: 16px;
-  background:
-    linear-gradient(135deg, transparent 55%, rgba(0,0,0,0.25) 56%, rgba(0,0,0,0.25) 58%, transparent 59%),
-    linear-gradient(135deg, transparent 35%, rgba(0,0,0,0.25) 36%, rgba(0,0,0,0.25) 38%, transparent 39%),
-    linear-gradient(135deg, transparent 15%, rgba(0,0,0,0.25) 16%, rgba(0,0,0,0.25) 18%, transparent 19%);
-  border-radius: 2px;
-}
-
-/* evita o handle “brigar” com o conteúdo */
-#modal-body .cm-quill .ql-container {
-  padding-bottom: 18px;
-}
-/* ============================================================
-   CM — Quill Resize Handle (MVP, hard override)
-   ============================================================ */
-
-#modal-body .cm-quill .ql-container {
-  position: relative; /* ancora */
-}
-
-#modal-body .cm-quill .ql-container .cm-quill-resize-handle{
-  position: absolute;
-  right: 8px;
-  bottom: 6px;
-
-  width: 22px;
-  height: 22px;
-
-  cursor: ns-resize;
-
-  z-index: 999999;            /* passa por cima de tudo */
-  pointer-events: auto;       /* garante clique */
-  opacity: 0.85;
-
-  user-select: none;
-  -webkit-user-select: none;
-
-  /* “hit area” maior e visível */
-  background: rgba(255,255,255,0.65);
-  border: 1px solid rgba(0,0,0,0.10);
-  border-radius: 8px;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.12);
-}
-
-#modal-body .cm-quill .ql-container .cm-quill-resize-handle::before{
-  content: "";
-  position: absolute;
-  right: 6px;
-  bottom: 6px;
-  width: 12px;
-  height: 12px;
-  background:
-    linear-gradient(135deg, transparent 55%, rgba(0,0,0,0.28) 56%, rgba(0,0,0,0.28) 60%, transparent 61%),
-    linear-gradient(135deg, transparent 35%, rgba(0,0,0,0.28) 36%, rgba(0,0,0,0.28) 40%, transparent 41%),
-    linear-gradient(135deg, transparent 15%, rgba(0,0,0,0.28) 16%, rgba(0,0,0,0.28) 20%, transparent 21%);
-  border-radius: 2px;
-}
-
-/* espaço pra não “tampar” texto/caret */
-#modal-body .cm-quill .ql-editor{
-  padding-bottom: 26px;
-}
-/* ============================================================
-   CM — Descrição (Quill) — Resize MVP (handle flutuante)
-   ============================================================ */
-
-/* Mantém o editor com um tamanho inicial bom */
-#modal-body .cm-quill .ql-container.ql-snow{
-  height: 240px;          /* default */
-  min-height: 180px;
-  max-height: 60vh;       /* evita estourar o modal */
-  overflow: auto;
-}
-
-/* Handle flutuante (não depende de overflow do modal/quill) */
-.cm-desc-resize-grip{
-  position: fixed;
-  width: 26px;
-  height: 26px;
-  z-index: 2147483647; /* máximo prático */
-  cursor: ns-resize;
-  user-select: none;
-  -webkit-user-select: none;
-
-  background: rgba(255,255,255,0.70);
-  border: 1px solid rgba(0,0,0,0.12);
-  border-radius: 10px;
-  box-shadow: 0 10px 28px rgba(0,0,0,0.14);
-
-  display: none; /* JS liga/desliga */
-}
-
-.cm-desc-resize-grip::before{
-  content: "";
-  position: absolute;
-  right: 7px;
-  bottom: 7px;
-  width: 12px;
-  height: 12px;
-  background:
-    linear-gradient(135deg, transparent 55%, rgba(0,0,0,0.28) 56%, rgba(0,0,0,0.28) 60%, transparent 61%),
-    linear-gradient(135deg, transparent 35%, rgba(0,0,0,0.28) 36%, rgba(0,0,0,0.28) 40%, transparent 41%),
-    linear-gradient(135deg, transparent 15%, rgba(0,0,0,0.28) 16%, rgba(0,0,0,0.28) 20%, transparent 21%);
-}
-
-/* Atividade: toggle */
-.cm-activity-togglebar{
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 10px;
-}
-
-.is-hidden{
-  display: none !important;
-}
-/* ===============================
-   Catálogo de Etiquetas (MVP)
-================================ */
-
-.cm-tag-catalog {
-  margin-top: 10px;
-}
-
-.cm-tag-create {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.cm-tag-create input {
-  flex: 1;
-}
-
-.cm-tag-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.cm-tag-chip {
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: rgba(0,0,0,0.08);
-  cursor: pointer;
-  font-size: 12px;
-  position: relative;
-  user-select: none;
-}
-
-.cm-tag-chip:hover {
-  background: rgba(0,0,0,0.15);
-}
-
-.cm-tag-chip .cm-tag-remove {
-  display: none;
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #e11d48;
-  color: #fff;
-  font-size: 10px;
-  line-height: 16px;
-  text-align: center;
-  cursor: pointer;
-}
-
-.cm-tag-list.delete-mode .cm-tag-remove {
-  display: block;
-}
-/* ============================================================
-   CM — Font size selector (Modal)
-   - data-font="sm|md|lg" no .card-modal
-   ============================================================ */
-
-.card-modal {
-  --cm-modal-font-sm: 12px;  /* atual (menor) */
-  --cm-modal-font-md: 14px;  /* recomendado */
-  --cm-modal-font-lg: 16px;  /* grande */
-  --cm-modal-line: 1.55;
-
-  --cm-modal-font: var(--cm-modal-font-sm);
-}
-
-.card-modal[data-font="md"] { --cm-modal-font: var(--cm-modal-font-md); }
-.card-modal[data-font="lg"] { --cm-modal-font: var(--cm-modal-font-lg); }
-
-/* Alvos prioritários (onde dói mais na leitura) */
-.card-modal .cm-activity-content,
-.card-modal .cm-activity-content p,
-.card-modal .cm-activity-content li,
-.card-modal .cm-activity-content div,
-.card-modal .cm-activity-content span {
-  font-size: var(--cm-modal-font) !important;
-  line-height: var(--cm-modal-line) !important;
-}
-
-/* Editor "Nova atividade" (se existir) */
-.card-modal .cm-activity-editor,
-.card-modal .cm-activity-editor .ql-editor,
-.card-modal .cm-activity-editor textarea,
-.card-modal .cm-activity-editor input {
-  font-size: var(--cm-modal-font) !important;
-  line-height: var(--cm-modal-line) !important;
-}
-
-/* Descrição (Quill) — mantém conforto sem quebrar layout */
-#modal-body .cm-quill .ql-editor {
-  font-size: var(--cm-modal-font) !important;
-  line-height: var(--cm-modal-line) !important;
-}
-
-/* Botão AA (canto inferior esquerdo dentro do modal) */
-#cm-fontsize-dock {
-  position: fixed;
-  left: 22px;
-  bottom: 22px;
-  z-index: 10000;
-  pointer-events: none;
-}
-
-#cm-fontsize-dock .dock-wrap {
-  pointer-events: auto;
-  border-radius: 999px;
-  border: 1px solid var(--cm-border);
-  background: var(--cm-bg);
-  box-shadow: var(--cm-shadow);
-  padding: 8px;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-#cm-fontsize-dock .dock-toggle {
-  width: 42px;
-  height: 42px;
-  border-radius: 999px;
-  border: 1px solid var(--cm-border-2);
-  background: var(--cm-surface-2);
-  color: var(--cm-text);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  opacity: .90;
-  transition: transform .12s ease, opacity .12s ease, border-color .12s ease;
-  font-weight: 700;
-}
-
-#cm-fontsize-dock .dock-toggle:hover {
-  opacity: 1;
-  transform: translateY(-1px);
-  border-color: var(--cm-border);
-}
-
-#cm-fontsize-dock .dock-actions {
-  display: none;
-  gap: 8px;
-  align-items: center;
-}
-
-#cm-fontsize-dock.is-open .dock-actions {
-  display: inline-flex;
-}
-
-#cm-fontsize-dock .dock-action {
-  border-radius: 999px;
-  border: 1px solid var(--cm-border-2);
-  background: var(--cm-surface-2);
-  color: var(--cm-text);
-  cursor: pointer;
-  padding: 10px 12px;
-  font-size: 13px;
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
-  transition: transform .12s ease, border-color .12s ease;
-}
-
-#cm-fontsize-dock .dock-action:hover {
-  transform: translateY(-1px);
-  border-color: var(--cm-border);
-}
-
-/*end modal.css*/
+/* END modal.css */

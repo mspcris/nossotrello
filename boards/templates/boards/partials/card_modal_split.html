@@ -22,9 +22,11 @@
   </div>
 {% endif %}
 
+
 <style>
 /* ============================================================
-   CM MODAL (card_modal_body.html)
+   CM MODAL (card_modal_split.html) — INLINE “NEUTRO”
+   - NÃO trava font-size (AA governa via modal.css)
    ============================================================ */
 
 #cm-root{
@@ -32,15 +34,10 @@
   --cm-radius-sm: 10px;
   --cm-pad: 14px;
 
-
-
-    /* LIGHT MODE */
---cm-bg: rgba(255,255,255,0.58);        /* fundo do topbar/áreas fixas */
---cm-surface: rgba(255,255,255,0.62);   /* cartões */
---cm-surface-2: rgba(255,255,255,0.52); /* campos/áreas secundárias */
-
-
-
+  /* LIGHT MODE */
+  --cm-bg: rgba(255,255,255,0.58);
+  --cm-surface: rgba(255,255,255,0.62);
+  --cm-surface-2: rgba(255,255,255,0.52);
 
   --cm-border: rgba(15,23,42,0.12);
   --cm-border-2: rgba(15,23,42,0.08);
@@ -64,7 +61,6 @@
 /* ============================================================
    DARK MODE
    ============================================================ */
-
 #card-modal-root.theme-dark #cm-root,
 #card-modal-root.card-theme-dark #cm-root,
 html.dark #cm-root{
@@ -85,7 +81,6 @@ html.dark #cm-root{
 /* ============================================================
    BASE
    ============================================================ */
-
 .cm-wrap{
   padding: 16px;
   width: 100%;
@@ -118,20 +113,20 @@ html.dark #cm-root{
   box-shadow: var(--cm-shadow-sm);
   padding: var(--cm-pad);
 }
+
 .cm-panel .cm-card + .cm-card{
   margin-top: 14px;
 }
 
-
+/* ✅ NÃO trava em px */
 .cm-muted{
-  font-size: 12px;
+  font-size: 0.92em;
   color: var(--cm-muted) !important;
 }
 
 /* ============================================================
    TOPBAR / TABS / BUTTONS
    ============================================================ */
-
 .cm-topbar{
   position: sticky;
   top: 0;
@@ -157,10 +152,11 @@ html.dark #cm-root{
   overflow-x:auto;
 }
 
+/* ✅ NÃO trava em px */
 .cm-tabbtn{
   padding:8px 12px;
   border-radius:999px;
-  font-size:13px;
+  font-size: 0.95em;
   border:1px solid var(--cm-border-2);
   background:var(--cm-surface-2);
   cursor:pointer;
@@ -172,9 +168,8 @@ html.dark #cm-root{
 }
 
 /* ============================================================
-   PRAZO — OVERLAY FINAL (ÚNICO BLOCO VÁLIDO)
+   PRAZO — OVERLAY FINAL
    ============================================================ */
-
 #cm-root[data-term-notify="1"][data-term-status="ok"],
 #cm-root[data-term-notify="1"][data-term-status="warn"],
 #cm-root[data-term-notify="1"][data-term-status="overdue"]{
@@ -186,15 +181,13 @@ html.dark #cm-root{
   --cm-term-opacity: 0;
 }
 
-/* CM: desativar Salvar do topo (fica só o FloatSave) */
+/* CM: desativar Salvar do topo */
 #cm-actions,
 #cm-save-btn{
   display: none !important;
 }
 
-/* ============================================================
-   PRAZO — bolinha de cor ao lado do texto (OK/Alerta/Vencido)
-   ============================================================ */
+/* Prazo — bolinha */
 .cm-color-dot{
   width: 10px;
   height: 10px;
@@ -204,9 +197,7 @@ html.dark #cm-root{
   border: 1px solid var(--cm-border);
 }
 
-/* ============================================================
-   PANELS (abas) — mostrar somente o painel ativo
-   ============================================================ */
+/* Panels */
 .cm-panel{ display: none; }
 .cm-panel.is-active{ display: block; }
 
@@ -215,7 +206,7 @@ html.dark #cm-root{
 #cm-root[data-term-status="overdue"] { --cm-term-rgb: 220, 38, 38; }
 
 /* ============================================================
-   ACTION DOCK
+   ACTION DOCK (⋮)
    ============================================================ */
 #cm-action-dock{
   position: fixed;
@@ -225,9 +216,7 @@ html.dark #cm-root{
   pointer-events: auto;
 }
 
-#cm-action-dock .dock-wrap{
-  position: relative;
-}
+#cm-action-dock .dock-wrap{ position: relative; }
 
 #cm-action-dock .dock-toggle{
   display: inline-flex;
@@ -239,7 +228,6 @@ html.dark #cm-root{
   border: 1px solid rgba(255,255,255,0.35);
   background: rgba(0,0,0,0.45);
   color: #fff;
-  font-size: 22px;
   line-height: 1;
 }
 
@@ -257,8 +245,7 @@ html.dark #cm-root{
 }
 
 /* ============================================================
-   LAYOUT: SPLIT (atividade na lateral)  ✅ FIX
-   - o split agora fica DENTRO do #cm-root
+   LAYOUT: SPLIT
    ============================================================ */
 .cm-split{
   display:flex;
@@ -273,18 +260,13 @@ html.dark #cm-root{
 }
 
 .cm-activity{
-  border-left: 1px solid var(--cm-border);
-  background: linear-gradient(
-    180deg,
-    rgba(255,255,255,0.18),
-    rgba(255,255,255,0.06)
-  );
-}
-.cm-activity{
   width: 40%;
   min-width: 0;
   padding-left: 16px;
   box-sizing: border-box;
+
+  border-left: 1px solid var(--cm-border);
+  background: linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.06));
 }
 
 @media (max-width: 768px){
@@ -294,13 +276,10 @@ html.dark #cm-root{
 
 .cm-activity-panel{ display:block; }
 
-
-
-
 /* ============================================================
    QUILL — Nova Atividade (lado direito)
+   - NÃO fixa font-size (AA controla via modal.css)
    ============================================================ */
-
 .cm-activity-quill{
   border: 1px solid var(--cm-border);
   border-radius: var(--cm-radius);
@@ -308,14 +287,12 @@ html.dark #cm-root{
   overflow: hidden;
 }
 
-/* toolbar */
 .cm-activity-quill .ql-toolbar.ql-snow{
   border: 0;
   border-bottom: 1px solid var(--cm-border-2);
   background: transparent;
 }
 
-/* área editável */
 .cm-activity-quill .ql-container.ql-snow{
   border: 0;
   background: transparent;
@@ -323,7 +300,8 @@ html.dark #cm-root{
 
 .cm-activity-quill .ql-editor{
   min-height: 140px;
-  font-size: 14px;
+  font-size: inherit;
+  line-height: inherit;
   color: var(--cm-text);
 }
 
@@ -331,49 +309,42 @@ html.dark #cm-root{
   color: var(--cm-placeholder);
 }
 
-
-/* fallback: se Quill não inicializar, o div ainda aparece */
 #cm-activity-editor{
   min-height: 140px;
   padding: 10px;
+  font-size: inherit;
+  line-height: inherit;
 }
 
-
-
-/* vidro fosco (cards) */
+/* ============================================================
+   VIDRO FOSCO
+   ============================================================ */
 .cm-card{
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
 
-/* vidro fosco (topbar) */
 .cm-topbar{
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
 }
 
 .cm-card, .cm-topbar{
-  background-image: linear-gradient(
-    180deg,
-    rgba(255,255,255,0.35),
-    rgba(255,255,255,0.12)
-  );
+  background-image: linear-gradient(180deg, rgba(255,255,255,0.35), rgba(255,255,255,0.12));
 }
-/* separação entre composer e lista */
+
 .cm-activity .cm-activity-sep{
   height: 1px;
   background: rgba(15,23,42,0.10);
   margin: 12px 0;
 }
 
-/* lista com espaçamento padrão */
 #cm-activity-panel .cm-activity-list{
   display: flex;
   flex-direction: column;
-  gap: 12px; /* mesmo “feeling” do espaço Descrição->Prazo */
+  gap: 12px;
 }
 
-/* cada item como “card” */
 #cm-activity-panel .cm-activity-item{
   border: 1px solid var(--cm-border);
   background: var(--cm-surface);
@@ -382,14 +353,13 @@ html.dark #cm-root{
   box-shadow: var(--cm-shadow-sm);
 }
 
-/* data/horário mais discreto (opcional) */
 #cm-activity-panel .cm-activity-item .cm-activity-meta{
-  font-size: 12px;
+  font-size: inherit;
+  line-height: inherit;
   color: var(--cm-muted);
   margin-bottom: 6px;
 }
 
-/* o painel do modal, não os cards */
 #card-modal-root .modal-content,
 #modal .modal-content,
 #modal-body {
@@ -397,8 +367,10 @@ html.dark #cm-root{
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
 }
-
 </style>
+
+
+
 
 {# ✅ FIX: cm-root envolve TUDO (main + activity) #}
 <div class="cm-wrap"
