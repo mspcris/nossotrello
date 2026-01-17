@@ -51,7 +51,9 @@
     const checklistId = state.lastChecklistIdForQuickAdd;
     if (!checklistId) return;
 
-    const block = document.querySelector(`[data-checklist-id="${checklistId}"]`);
+    const block = document.querySelector(
+      `[data-checklist-id="${checklistId}"]`
+    );
     if (!block) return;
 
     const wrap = block.querySelector(".checklist-add");
@@ -82,25 +84,95 @@
 
     form.addEventListener("submit", () => {
       // limpa otimista (se falhar, o usuário digita de novo)
-      setTimeout(() => { input.value = ""; }, 0);
+      setTimeout(() => {
+        input.value = "";
+      }, 0);
     });
   }
 
+  // ============================================================
+  // HELPERS (CSRF + POST JSON)
+  // ============================================================
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(";").shift();
+    return "";
+  }
+
+  async function postJSON(url, payload) {
+    const csrftoken = getCookie("csrftoken");
+
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrftoken,
+        "X-Requested-With": "XMLHttpRequest",
+      },
+      credentials: "same-origin",
+      body: JSON.stringify(payload),
+    });
+
+    let data = null;
+    try {
+      data = await resp.json();
+    } catch (_e) {}
+
+    if (!resp.ok) {
+      const msg =
+        data && (data.error || data.detail)
+          ? data.error || data.detail
+          : `HTTP ${resp.status}`;
+      throw new Error(msg);
+    }
+    return data;
+  }
+
+  // ============================================================
+  // DnD (SortableJS) + persistência backend
+  // ============================================================
   function initChecklistDnD() {
     const container = document.getElementById("checklists-container");
-    if (!container || container.dataset.sortableApplied === "1") return;
-    container.dataset.sortableApplied = "1";
+    if (!container) return;
 
+    // Se Sortable não carregou, NÃO marque como aplicado.
+    // Assim, quando o script carregar depois, o init tenta de novo.
     if (!window.Sortable) return;
 
+    // Agora sim: evita duplicar bindings
+    if (container.dataset.sortableApplied === "1") return;
+    container.dataset.sortableApplied = "1";
+
+    // 1) Drag de checklists (blocos)
     new Sortable(container, {
       animation: 160,
       ghostClass: "drag-ghost",
       chosenClass: "drag-chosen",
       draggable: ".checklist-block",
       handle: ".checklist-drag",
+
+      onEnd: async () => {
+        const url = container.getAttribute("data-reorder-checklists-url");
+        if (!url) return;
+
+        const order = Array.from(
+          container.querySelectorAll(".checklist-block")
+        )
+          .map((el) => parseInt(el.getAttribute("data-checklist-id"), 10))
+          .filter(Boolean);
+
+        if (!order.length) return;
+
+        try {
+          await postJSON(url, { order });
+        } catch (e) {
+          console.error("checklists_reorder:", e);
+        }
+      },
     });
 
+    // 2) Drag de itens dentro de cada checklist
     container.querySelectorAll(".checklist-items").forEach((list) => {
       if (list.dataset.sortableApplied === "1") return;
       list.dataset.sortableApplied = "1";
@@ -112,10 +184,48 @@
         chosenClass: "drag-chosen",
         draggable: ".checklist-item",
         handle: ".checklist-item-handle",
+
+        onEnd: async () => {
+          const url = container.getAttribute("data-reorder-items-url");
+          if (!url) return;
+
+          // Monta updates para TODOS os itens (consistência total)
+          const updates = [];
+          container.querySelectorAll(".checklist-items").forEach((itemsWrap) => {
+            const checklistId = parseInt(
+              itemsWrap.getAttribute("data-checklist-id"),
+              10
+            );
+            if (!checklistId) return;
+
+            Array.from(itemsWrap.querySelectorAll(".checklist-item")).forEach(
+              (li, idx) => {
+                const itemId = parseInt(li.getAttribute("data-item-id"), 10);
+                if (!itemId) return;
+                updates.push({
+                  item_id: itemId,
+                  checklist_id: checklistId,
+                  position: idx,
+                });
+              }
+            );
+          });
+
+          if (!updates.length) return;
+
+          try {
+            await postJSON(url, { updates });
+          } catch (e) {
+            console.error("checklist_items_reorder:", e);
+          }
+        },
       });
     });
   }
 
+  // ============================================================
+  // PUBLIC INIT
+  // ============================================================
   Modal.checklists.init = function () {
     initChecklistUX(document);
     initChecklistCreateFormReset();
@@ -127,7 +237,11 @@
     const t = evt.target;
     if (!t) return;
 
-    if (t.id === "checklist-list" || t.id === "modal-body" || t.closest?.("#modal-body")) {
+    if (
+      t.id === "checklist-list" ||
+      t.id === "modal-body" ||
+      t.closest?.("#modal-body")
+    ) {
       initChecklistUX(t);
       initChecklistCreateFormReset();
       initChecklistDnD();

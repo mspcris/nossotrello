@@ -24,6 +24,7 @@ from .views.mentions import board_mentions
 from .views.polling import board_poll
 from .views import calendar as calendar_views
 from boards.views.modal_card_term import set_card_term_due, set_board_term_colors
+from boards.views import checklists as checklist_views
 
 # Views “de negócio” (boards/views/boards.py)
 from boards.views.boards import (
@@ -285,6 +286,30 @@ urlpatterns = [
         views.delete_attachment,
         name="delete_attachment",
     ),
+
+    # ============================================================
+    # CHECKLISTS (modal do card)
+    # ============================================================
+
+    # CRUD
+    path("card/<int:card_id>/checklist/add/", checklist_views.checklist_add, name="checklist_add"),
+    path("checklist/<int:checklist_id>/rename/", checklist_views.checklist_rename, name="checklist_rename"),
+    path("checklist/<int:checklist_id>/delete/", checklist_views.checklist_delete, name="checklist_delete"),
+
+    path("checklist/<int:checklist_id>/item/add/", checklist_views.checklist_add_item, name="checklist_add_item"),
+    path("checklist/item/<int:item_id>/toggle/", checklist_views.checklist_toggle_item, name="checklist_toggle_item"),
+    path("checklist/item/<int:item_id>/delete/", checklist_views.checklist_delete_item, name="checklist_delete_item"),
+    path("checklist/item/<int:item_id>/update/", checklist_views.checklist_update_item, name="checklist_update_item"),
+
+    # Reorder (DnD)
+    path("card/<int:card_id>/checklists/reorder/", checklist_views.checklists_reorder, name="checklists_reorder"),
+    path("card/<int:card_id>/checklist-items/reorder/", checklist_views.checklist_items_reorder, name="checklist_items_reorder"),
+
+    # Legado (se você ainda usa em algum lugar)
+    path("checklist/<int:checklist_id>/move/", checklist_views.checklist_move, name="checklist_move"),
+    path("checklist/item/<int:item_id>/move-up/", checklist_views.checklist_move_up, name="checklist_move_up"),
+    path("checklist/item/<int:item_id>/move-down/", checklist_views.checklist_move_down, name="checklist_move_down"),
+
 
     # ============================================================
     # CONTA / PERFIL (modal do usuário)
