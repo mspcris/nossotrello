@@ -300,11 +300,18 @@ html.dark #cm-root{
   margin-bottom: 6px;
 }
 
+
+.cm-tab-disabled {
+  opacity: 0.65;
+  cursor: help;
+}
+
 </style>
 
 {# cm-root (modal do card) #}
 <div class="cm-wrap"
      id="cm-root"
+     data-cm-mode="legacy"
      data-card-id="{{ card.id }}"
      data-cm-active="desc"
      data-tag-colors='{{ card.tag_colors|default_if_none:"{}"|escape }}'
@@ -319,7 +326,15 @@ html.dark #cm-root{
             <button type="button" class="cm-tabbtn" data-cm-tab="tags"> 🏷️ Etiquetas</button>
             <button type="button" class="cm-tabbtn" data-cm-tab="check"> ☑️ Checklists</button>
             <button type="button" class="cm-tabbtn" data-cm-tab="files"> 📎 Anexos</button>
-            <button type="button" class="cm-tabbtn" data-cm-tab="track"> ⏱️ Track-time</button>
+            <button
+  type="button"
+  class="cm-tabbtn cm-tab-disabled"
+  data-cm-action="track-legacy-info"
+  title="Track-time disponível apenas no modo novo"
+>
+  ⏱️ Track-time
+</button>
+
 
       </div>
 
@@ -730,23 +745,7 @@ html.dark #cm-root{
       </div>
     </div>
   </section>
-<section class="cm-panel"
-         data-cm-panel="track"
-         role="tabpanel">
 
-  <div id="cm-tracktime-panel"
-       hx-get="{% url 'tracktime:card_panel' card.id %}"
-       hx-trigger="revealed"
-       hx-target="this"
-       hx-swap="innerHTML">
-
-    <div class="cm-card cm-muted">
-      Carregando Track-time…
-    </div>
-
-  </div>
-
-</section>
 
     
 
@@ -821,7 +820,12 @@ html.dark #cm-root{
   if (!root) return;
 
   const cardId = (root.getAttribute("data-card-id") || "").trim() || "x";
-  const ALLOWED = ["desc", "tags", "check", "ativ", "files", "track"];
+  const MODE = root.dataset.cmMode || "legacy";
+
+  const ALLOWED = MODE === "legacy"
+    ? ["desc", "tags", "check", "ativ", "files"]
+    : ["desc", "tags", "check", "ativ", "files", "track"];
+
   const STORAGE_KEY = `cm_active_tab_${cardId}`;
 
   function clampTab(tab) {
@@ -895,6 +899,14 @@ html.dark #cm-root{
     window.__cmTabKeepBound = true;
 
     document.body.addEventListener("htmx:beforeRequest", function (evt) {
+      const r = document.getElementById("cm-root");
+      if (!r) return;
+
+      const mode = r.dataset.cmMode || "legacy";
+
+      /* 🔒 legado não mexe em track */
+      if (mode === "legacy") return;
+
       const r = document.getElementById("cm-root");
       if (!r) return;
       const cid = (r.getAttribute("data-card-id") || "").trim() || "x";
@@ -1411,4 +1423,35 @@ html.dark #cm-root{
   });
 })();
 </script>
+
+
+<script>
+(function () {
+  document.addEventListener("click", function (e) {
+    const btn = e.target.closest('[data-cm-action="track-legacy-info"]');
+    if (!btn) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    // UX simples, clara e honesta
+    if (window.showMessage) {
+      window.showMessage({
+        title: "Track-time",
+        message: "O controle de tempo está disponível apenas no modo novo do card.",
+        type: "info"
+      });
+      return;
+    }
+
+    // fallback universal
+    alert(
+      "⏱️ Track-time\n\n" +
+      "Esta funcionalidade está disponível apenas no modo novo do card.\n\n" +
+      "Clique em seu avatar e escolha o modo trello."
+    );
+  }, true);
+})();
+</script>
+
 {# END templates/boards/partials/card_modal_body.html (arquivo completo) #}

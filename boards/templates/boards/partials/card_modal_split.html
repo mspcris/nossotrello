@@ -1,4 +1,4 @@
-{# templates/boards/partials/card_modal_split.html (corrigido: cm-root envolve o split) #}
+{# templates/boards/partials/card_modal_split.html #}
 {% load tag_helpers %}
 
 {% if card.cover_image %}
@@ -22,13 +22,11 @@
   </div>
 {% endif %}
 
-
-
 <style>
 /* ============================================================
    LAYOUT: SPLIT (ÚNICO CSS INLINE PERMITIDO)
    Objetivo: manter “Atividade” à direita e o resto à esquerda
-   NÃO COLOCAR CSS AQUI! NÃO POR CSS AQUI! USAR MODAL.CSS, A MENOS QUE SEJA ALGO EXCLUSIVO DO MODAL SPLIT
+   NÃO COLOCAR CSS AQUI! USAR MODAL.CSS, A MENOS QUE SEJA EXCLUSIVO DO MODAL SPLIT
    ============================================================ */
 #cm-root .cm-split{
   display: flex;
@@ -40,7 +38,7 @@
 
 #cm-root .cm-main{
   flex: 1 1 auto;
-  min-width: 0; /* evita overflow em inputs/quill */
+  min-width: 0;
 }
 
 #cm-root .cm-activity{
@@ -50,11 +48,9 @@
   padding-left: 16px;
 }
 
-/* Responsivo: empilha no mobile */
+/* Responsivo */
 @media (max-width: 1024px){
-  #cm-root .cm-split{
-    flex-direction: column;
-  }
+  #cm-root .cm-split{ flex-direction: column; }
   #cm-root .cm-activity{
     flex-basis: auto;
     border-left: 0;
@@ -63,17 +59,12 @@
     padding-top: 16px;
   }
 }
-/* ============================================================
-   LAYOUT: SPLIT (ÚNICO CSS INLINE PERMITIDO)
-   Objetivo: manter “Atividade” à direita e o resto à esquerda
-   NÃO COLOCAR CSS AQUI! NÃO POR CSS AQUI! USAR MODAL.CSS, A MENOS QUE SEJA ALGO EXCLUSIVO DO MODAL SPLIT
-   ============================================================ */
+/* ============================================================ */
 </style>
 
-
-{# ✅ FIX: cm-root envolve TUDO (main + activity) #}
 <div class="cm-wrap"
      id="cm-root"
+     data-cm-mode="split"
      data-card-id="{{ card.id }}"
      data-cm-active="desc"
      data-tag-colors='{{ card.tag_colors|default_if_none:"{}"|escape }}'
@@ -82,10 +73,9 @@
 
   <div class="cm-split">
 
-    <!-- COLUNA ESQUERDA (60%) -->
+    <!-- COLUNA ESQUERDA -->
     <div class="cm-main">
 
-      {# Topbar (abas + salvar) #}
       <div class="cm-topbar">
         <div class="cm-bar" role="tablist" aria-label="Abas do card">
           <div class="cm-tabs">
@@ -94,7 +84,6 @@
             <button type="button" class="cm-tabbtn" data-cm-tab="check"> ☑️ Checklists</button>
             <button type="button" class="cm-tabbtn" data-cm-tab="files"> 📎 Anexos</button>
             <button type="button" class="cm-tabbtn" data-cm-tab="track"> ⏱️ Track-time</button>
-
           </div>
 
           <div class="cm-actions" id="cm-actions">
@@ -103,12 +92,10 @@
         </div>
       </div>
 
-      {# Tags fixas (fora das abas) #}
       <div id="cm-tags-wrap">
         {% include "boards/partials/card_tags_bar.html" %}
       </div>
 
-      {# Color picker de tag (form + popover) #}
       <form id="cm-tag-color-form"
             style="display:none !important;"
             method="post"
@@ -144,7 +131,6 @@
         {% csrf_token %}
       </form>
 
-      {# Form principal (descrição + tags + prazo + capa) #}
       <form id="cm-main-form"
             method="post"
             enctype="multipart/form-data"
@@ -153,408 +139,352 @@
             hx-swap="innerHTML">
         {% csrf_token %}
 
-        {# Aba: Descrição #}
-        <section class="cm-panel is-active" data-cm-panel="desc" role="tabpanel">
-          <div class="cm-card space-y-3">
-            <div>
-              <label class="cm-label">Título</label>
-              <input type="text" name="title" value="{{ card.title }}" class="cm-input">
-            </div>
+        <div id="cm-panels">
 
-            <div>
-              <label class="cm-label">Descrição</label>
-              <textarea name="description" class="cm-textarea">{{ card.description|default_if_none:"" }}</textarea>
-              <div class="cm-muted" style="margin-top:8px;">
-                
-              </div>
-            </div>
-          </div>
-
-          {# Prazo (fica na aba Descrição) #}
-          <div class="cm-card space-y-3" style="margin:10px 0;">
-            <div class="flex items-center justify-between gap-2 flex-wrap">
+          <!-- Aba: Descrição -->
+          <section class="cm-panel is-active" data-cm-panel="desc" role="tabpanel">
+            <div class="cm-card space-y-3">
               <div>
-                <div class="cm-label" style="margin:0;">Prazo</div>
-                <div class="cm-muted">
-                  Se preencher vencimento, o aviso vira obrigatório (default: 5 dias antes).
-                </div>
+                <label class="cm-label">Título</label>
+                <input type="text" name="title" value="{{ card.title }}" class="cm-input">
               </div>
 
-              <div class="flex items-center gap-3 flex-wrap">
-                <div class="flex items-center gap-3 flex-wrap">
-                  <label class="cm-muted cm-due-color" style="display:flex;align-items:center;gap:8px;">
-                    <input type="color" name="due_color_ok" value="{{ board_due_colors.ok|default:'#16a34a' }}">
-                    OK
-                    <span class="cm-color-dot" aria-hidden="true"></span>
-                  </label>
-
-                  <label class="cm-muted cm-due-color" style="display:flex;align-items:center;gap:8px;">
-                    <input type="color" name="due_color_warn" value="{{ board_due_colors.warn|default:'#f59e0b' }}">
-                    Alerta
-                    <span class="cm-color-dot" aria-hidden="true"></span>
-                  </label>
-
-                  <label class="cm-muted cm-due-color" style="display:flex;align-items:center;gap:8px;">
-                    <input type="color" name="due_color_overdue" value="{{ board_due_colors.overdue|default:'#dc2626' }}">
-                    Vencido
-                    <span class="cm-color-dot" aria-hidden="true"></span>
-                  </label>
-                </div>
+              <div>
+                <label class="cm-label">Descrição</label>
+                <textarea name="description" class="cm-textarea">{{ card.description|default_if_none:"" }}</textarea>
+                <div class="cm-muted" style="margin-top:8px;"></div>
               </div>
             </div>
 
+            <div class="cm-card space-y-3" style="margin:10px 0;">
+              <div class="flex items-center justify-between gap-2 flex-wrap">
+                <div>
+                  <div class="cm-label" style="margin:0;">Prazo</div>
+                  <div class="cm-muted">
+                    Se preencher vencimento, o aviso vira obrigatório (default: 5 dias antes).
+                  </div>
+                </div>
 
+                <div class="flex items-center gap-3 flex-wrap">
+                  <div class="flex items-center gap-3 flex-wrap">
+                    <label class="cm-muted cm-due-color" style="display:flex;align-items:center;gap:8px;">
+                      <input type="color" name="due_color_ok" value="{{ board_due_colors.ok|default:'#16a34a' }}">
+                      OK
+                      <span class="cm-color-dot" aria-hidden="true"></span>
+                    </label>
 
+                    <label class="cm-muted cm-due-color" style="display:flex;align-items:center;gap:8px;">
+                      <input type="color" name="due_color_warn" value="{{ board_due_colors.warn|default:'#f59e0b' }}">
+                      Alerta
+                      <span class="cm-color-dot" aria-hidden="true"></span>
+                    </label>
 
-
-
-
+                    <label class="cm-muted cm-due-color" style="display:flex;align-items:center;gap:8px;">
+                      <input type="color" name="due_color_overdue" value="{{ board_due_colors.overdue|default:'#dc2626' }}">
+                      Vencido
+                      <span class="cm-color-dot" aria-hidden="true"></span>
+                    </label>
+                  </div>
+                </div>
+              </div>
 
               <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div class="min-w-0">
+                  <div class="cm-label">Data de início</div>
+                  <div class="relative">
+                    <input type="text"
+                           id="cm-start-date-display"
+                           class="cm-input pr-10"
+                           inputmode="numeric"
+                           placeholder="DD/MM/AAAA"
+                           value="{% if card.start_date %}{{ card.start_date|date:'d/m/Y' }}{% endif %}">
 
-  <!-- DATA DE INÍCIO -->
-  <div class="min-w-0">
-    <div class="cm-label">Data de início</div>
+                    <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">📅</span>
 
-    <div class="relative">
-      <input type="text"
-             id="cm-start-date-display"
-             class="cm-input pr-10"
-             inputmode="numeric"
-             placeholder="DD/MM/AAAA"
-             value="{% if card.start_date %}{{ card.start_date|date:'d/m/Y' }}{% endif %}">
+                    <input type="date"
+                           id="cm-start-date-picker"
+                           class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 opacity-0 cursor-pointer z-10"
+                           value="{% if card.start_date %}{{ card.start_date|date:'Y-m-d' }}{% endif %}">
 
-      <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">📅</span>
+                    <input type="hidden"
+                           name="start_date"
+                           id="cm-start-date"
+                           value="{% if card.start_date %}{{ card.start_date|date:'Y-m-d' }}{% endif %}">
+                  </div>
+                </div>
 
-      <input type="date"
-             id="cm-start-date-picker"
-             class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 opacity-0 cursor-pointer z-10"
-             value="{% if card.start_date %}{{ card.start_date|date:'Y-m-d' }}{% endif %}">
+                <div class="min-w-0">
+                  <div class="cm-label">Vencimento</div>
+                  <div class="relative">
+                    <input type="text"
+                           id="cm-due-date-display"
+                           class="cm-input pr-10"
+                           inputmode="numeric"
+                           placeholder="DD/MM/AAAA"
+                           value="{% if card.due_date %}{{ card.due_date|date:'d/m/Y' }}{% endif %}">
 
-      <input type="hidden"
-             name="start_date"
-             id="cm-start-date"
-             value="{% if card.start_date %}{{ card.start_date|date:'Y-m-d' }}{% endif %}">
-    </div>
-  </div>
+                    <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">📅</span>
 
-  <!-- VENCIMENTO -->
-  <div class="min-w-0">
-    <div class="cm-label">Vencimento</div>
+                    <input type="date"
+                           id="cm-due-date-picker"
+                           class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 opacity-0 cursor-pointer z-10"
+                           value="{% if card.due_date %}{{ card.due_date|date:'Y-m-d' }}{% endif %}">
 
-    <div class="relative">
-      <input type="text"
-             id="cm-due-date-display"
-             class="cm-input pr-10"
-             inputmode="numeric"
-             placeholder="DD/MM/AAAA"
-             value="{% if card.due_date %}{{ card.due_date|date:'d/m/Y' }}{% endif %}">
+                    <input type="hidden"
+                           name="due_date"
+                           id="cm-due-date"
+                           value="{% if card.due_date %}{{ card.due_date|date:'Y-m-d' }}{% endif %}">
+                  </div>
+                </div>
 
-      <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">📅</span>
+                <div class="min-w-0">
+                  <div class="cm-label">Avisar em</div>
+                  <div class="relative">
+                    <input type="text"
+                           id="cm-due-warn-date-display"
+                           class="cm-input pr-10"
+                           inputmode="numeric"
+                           placeholder="DD/MM/AAAA"
+                           value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'d/m/Y' }}{% endif %}">
 
-      <input type="date"
-             id="cm-due-date-picker"
-             class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 opacity-0 cursor-pointer z-10"
-             value="{% if card.due_date %}{{ card.due_date|date:'Y-m-d' }}{% endif %}">
+                    <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">📅</span>
 
-      <input type="hidden"
-             name="due_date"
-             id="cm-due-date"
-             value="{% if card.due_date %}{{ card.due_date|date:'Y-m-d' }}{% endif %}">
-    </div>
-  </div>
+                    <input type="date"
+                           id="cm-due-warn-date-picker"
+                           class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 opacity-0 cursor-pointer z-10"
+                           value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'Y-m-d' }}{% endif %}">
 
-  <!-- AVISAR EM -->
-  <div class="min-w-0">
-    <div class="cm-label">Avisar em</div>
+                    <input type="hidden"
+                           name="due_warn_date"
+                           id="cm-due-warn-date"
+                           value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'Y-m-d' }}{% endif %}">
+                  </div>
+                </div>
+              </div>
 
-    <div class="relative">
-      <input type="text"
-             id="cm-due-warn-date-display"
-             class="cm-input pr-10"
-             inputmode="numeric"
-             placeholder="DD/MM/AAAA"
-             value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'d/m/Y' }}{% endif %}">
-
-      <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">📅</span>
-
-      <input type="date"
-             id="cm-due-warn-date-picker"
-             class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 opacity-0 cursor-pointer z-10"
-             value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'Y-m-d' }}{% endif %}">
-
-      <input type="hidden"
-             name="due_warn_date"
-             id="cm-due-warn-date"
-             value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'Y-m-d' }}{% endif %}">
-    </div>
-  </div>
-
-</div>
-
-
-
-
-
-
-
-
-
-            <div class="flex items-center gap-2">
-              <input type="hidden" name="due_notify" value="0">
-              <label class="cm-muted" style="display:flex;align-items:center;gap:8px;white-space:nowrap;">
-                <input type="checkbox"
-                       name="due_notify"
-                       value="1"
-                       {% if card.due_notify|default_if_none:True %}checked{% endif %}>
-                Notificar com cores
-              </label>
+              <div class="flex items-center gap-2">
+                <input type="hidden" name="due_notify" value="0">
+                <label class="cm-muted" style="display:flex;align-items:center;gap:8px;white-space:nowrap;">
+                  <input type="checkbox"
+                         name="due_notify"
+                         value="1"
+                         {% if card.due_notify|default_if_none:True %}checked{% endif %}>
+                  Notificar com cores
+                </label>
+              </div>
             </div>
-          </div>
 
-          {# Capa (fica na aba Descrição) #}
-          <div class="cm-card" style="margin-bottom:10px;">
-            <div class="flex items-center justify-between gap-2 flex-wrap">
+            <div class="cm-card" style="margin-bottom:10px;">
+              <div class="flex items-center justify-between gap-2 flex-wrap">
+                <div>
+                  <div class="cm-label" style="margin:0;">Capa do card</div>
+                  <div class="cm-muted">Dica: na aba Descrição, você pode colar uma imagem (Ctrl+V) para virar capa.</div>
+                </div>
+
+                <div class="flex gap-2 items-center">
+                  <button type="button"
+                          class="cm-btn"
+                          id="cm-cover-pick-btn"
+                          onclick="document.getElementById('cm-cover-file')?.click();">
+                    Escolher imagem…
+                  </button>
+
+                  <input type="file"
+                         id="cm-cover-file"
+                         name="cover"
+                         form="cm-cover-form"
+                         accept="image/*"
+                         style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;">
+                </div>
+              </div>
+
+              <div id="cm-cover-error"
+                   class="hidden mt-2 px-3 py-2 rounded-md text-sm border border-red-500/30 bg-red-500/10 text-red-200"></div>
+            </div>
+          </section>
+
+          <!-- Aba: Tags -->
+          <section class="cm-panel" data-cm-panel="tags" role="tabpanel">
+            <div class="cm-card space-y-3">
               <div>
-                <div class="cm-label" style="margin:0;">Capa do card</div>
-                <div class="cm-muted">Dica: na aba Descrição, você pode colar uma imagem (Ctrl+V) para virar capa.</div>
+                <label>Digite neste campo as etiquetas separadas por vírgula.</label>
+                <input type="text" name="tags" id="cm-tags-input" autocomplete="off"/>
+
+                <div class="cm-tag-catalog">
+                  <label>Cadastre etiquetas fixas para utilizar quando quiser. Digite uma por vêz e enter ou (incluir). Após, clique nelas para adicionar ao quadro.</label>
+
+                  <div class="cm-tag-create">
+                    <input type="text" id="cm-tag-new" placeholder="Digite a etiqueta"/>
+                    <button type="button" id="cm-tag-add">Incluir</button>
+                    <button type="button" id="cm-tag-delete-toggle">Excluir etiquetas</button>
+                  </div>
+
+                  <div class="cm-tag-list" id="cm-tag-list"></div>
+                </div>
               </div>
 
-              <div class="flex gap-2 items-center">
-                <button type="button"
-                        class="cm-btn"
-                        id="cm-cover-pick-btn"
-                        onclick="document.getElementById('cm-cover-file')?.click();">
-                  Escolher imagem…
-                </button>
-
-                <input type="file"
-                       id="cm-cover-file"
-                       name="cover"
-                       form="cm-cover-form"
-                       accept="image/*"
-                       style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;">
+              <div class="cm-muted">
+                Dica: as etiquetas ficam sempre visíveis no topo do modal (clique nelas para escolher a cor).
               </div>
             </div>
+          </section>
 
-            <div id="cm-cover-error"
-                 class="hidden mt-2 px-3 py-2 rounded-md text-sm border border-red-500/30 bg-red-500/10 text-red-200"></div>
-          </div>
-        </section>
+          <!-- Aba: Checklists -->
+          <section class="cm-panel" data-cm-panel="check" role="tabpanel">
+            <div class="cm-card space-y-3">
+              <form id="cm-checklist-create-form"
+                    method="post"
+                    hx-post="{% url 'boards:checklist_add' card.id %}"
+                    hx-target="#checklist-list"
+                    hx-swap="innerHTML">
+                {% csrf_token %}
+                <label class="cm-label">Novo checklist</label>
 
-        {# Aba: Tags #}
-        <section class="cm-panel" data-cm-panel="tags" role="tabpanel">
-          <div class="cm-card space-y-3">
-            <div>
-              <label>Digite neste campo as etiquetas separadas por vírgula.</label>
-<input
-  type="text"
-  name="tags"
-  id="cm-tags-input"
-  autocomplete="off"
-/>
+                <div class="flex gap-2">
+                  <input id="cm-checklist-create-input"
+                         type="text"
+                         name="title"
+                         class="cm-input"
+                         placeholder="Ex: Tarefas da semana">
+                  <button type="submit" class="cm-btn primary">
+                    <span class="underline font-semibold">A</span>dicionar
+                  </button>
+                </div>
+              </form>
 
-
-<div class="cm-tag-catalog">
-<label>Cadastre etiquetas fixas para utilizar quando quiser. Digite uma por vêz e enter ou (incluir). Após, clique nelas para adicionar ao quadro.</label>
-
-  <div class="cm-tag-create">
-    <input
-      type="text"
-      id="cm-tag-new"
-      placeholder="Digite a etiqueta"
-    />
-    <button type="button" id="cm-tag-add">Incluir</button>
-    <button type="button" id="cm-tag-delete-toggle">Excluir etiquetas</button>
-  </div>
-
-  <div class="cm-tag-list" id="cm-tag-list"></div>
-</div>
-
+              <div id="checklist-list" class="space-y-4">
+                {% include "boards/partials/checklist_list.html" with checklists=checklists %}
+              </div>
             </div>
+          </section>
 
-            <div class="cm-muted">
-              Dica: as etiquetas ficam sempre visíveis no topo do modal (clique nelas para escolher a cor).
+          <!-- Aba: Anexos -->
+          <section class="cm-panel" data-cm-panel="files" role="tabpanel">
+            <div class="cm-card space-y-3">
+              <div id="attachments-error"
+                   class="hidden mb-2 px-3 py-2 rounded-md text-sm border border-red-500/30 bg-red-500/10 text-red-200"></div>
+
+              <div>
+                <label class="cm-label">Enviar novo anexo clicando em 'Choose File' ou, se for uma imagem em print, CTRL-V. Você também pode arrastar o arquivo para o campo Choose File, segure por um segundo e solte</label>
+
+                <div class="flex gap-2 flex-wrap">
+                  <input type="text"
+                         id="attachment-desc"
+                         name="description"
+                         class="cm-input"
+                         style="max-width: 420px;"
+                         placeholder="Descrição do anexo (opcional)">
+
+                  <input type="file"
+                         name="file"
+                         id="attachment-file"
+                         class="cm-input"
+                         style="max-width: 520px;"
+                         hx-post="{% url 'boards:add_attachment' card.id %}"
+                         hx-target="#attachments-list"
+                         hx-swap="beforeend"
+                         hx-trigger="change"
+                         hx-encoding="multipart/form-data"
+                         hx-include="#attachment-desc, input[name='csrfmiddlewaretoken']"
+                         hx-on::after-request="
+                           if (event.detail && event.detail.successful) {
+                             htmx.ajax('GET', '{% url 'boards:activity_panel' card.id %}', '#cm-activity-panel');
+                             if (typeof window.refreshCardSnippet === 'function') { window.refreshCardSnippet({{ card.id }}); }
+                           }
+                         ">
+                </div>
+
+                <div class="cm-muted" style="margin-top:6px;">Limite: 50MB por arquivo.</div>
+              </div>
+
+              <div id="attachments-list" class="space-y-3">
+                {% for attachment in card.attachments.all %}
+                  {% include "boards/partials/attachment_item.html" %}
+                {% empty %}
+                  <div class="cm-muted">Nenhum anexo ainda.</div>
+                {% endfor %}
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+
+          <!-- Aba: Track-time -->
+          <section class="cm-panel" data-cm-panel="track" role="tabpanel">
+            <div id="cm-tracktime-panel"
+                 data-track-url="{% url 'tracktime:card_panel' card.id %}"
+                 data-track-loaded="0">
+              <div class="cm-card cm-muted">
+                Clique na aba Track-time para carregar…
+              </div>
+            </div>
+          </section>
+
+        </div>
       </form>
 
-      {# Floatbar #}
       <div id="cm-floatbar" class="cm-floatbar hidden" aria-live="polite">
         <div class="cm-floatbar-inner">
-  <button type="submit" form="cm-main-form" class="cm-btn primary" id="cm-float-save-btn">
-    <span class="underline font-semibold">S</span>alvar
-  </button>
-  <button type="button" class="cm-btn" id="cm-close-btn">Fechar</button>
-</div>
-
+          <button type="submit" form="cm-main-form" class="cm-btn primary" id="cm-float-save-btn">
+            <span class="underline font-semibold">S</span>alvar
+          </button>
+          <button type="button" class="cm-btn" id="cm-close-btn">Fechar</button>
+        </div>
       </div>
 
-      {# Aba: Checklists #}
-      <section class="cm-panel" data-cm-panel="check" role="tabpanel">
-        <div class="cm-card space-y-3">
-          <form id="cm-checklist-create-form"
-                method="post"
-                hx-post="{% url 'boards:checklist_add' card.id %}"
-                hx-target="#checklist-list"
-                hx-swap="innerHTML">
-            {% csrf_token %}
-            <label class="cm-label">Novo checklist</label>
-
-            <div class="flex gap-2">
-              <input id="cm-checklist-create-input"
-                     type="text"
-                     name="title"
-                     class="cm-input"
-                     placeholder="Ex: Tarefas da semana">
-              <button type="submit" class="cm-btn primary">
-              <span class="underline font-semibold">A</span>dicionar
-              </button> 
-            </div>
-          </form>
-
-          <div id="checklist-list" class="space-y-4">
-            {% include "boards/partials/checklist_list.html" with checklists=checklists %}
-          </div>
-        </div>
-      </section>
-
-      {# Aba: Anexos #}
-      <section class="cm-panel" data-cm-panel="files" role="tabpanel">
-        <div class="cm-card space-y-3">
-          <div id="attachments-error"
-               class="hidden mb-2 px-3 py-2 rounded-md text-sm border border-red-500/30 bg-red-500/10 text-red-200"></div>
-
-          <div>
-            <label class="cm-label">Enviar novo anexo clicando em 'Choose File' ou, se for uma imagem em print, CTRL-V. Você também pode arrastar o arquivo para o campo Choose File, segure por um segundo e solte</label>
-
-            <div class="flex gap-2 flex-wrap">
-              <input type="text"
-                     id="attachment-desc"
-                     name="description"
-                     class="cm-input"
-                     style="max-width: 420px;"
-                     placeholder="Descrição do anexo (opcional)">
-
-              <input type="file"
-       name="file"
-       id="attachment-file"
-       class="cm-input"
-       style="max-width: 520px;"
-       hx-post="{% url 'boards:add_attachment' card.id %}"
-       hx-target="#attachments-list"
-       hx-swap="beforeend"
-       hx-trigger="change"
-       hx-encoding="multipart/form-data"
-       hx-include="#attachment-desc, input[name='csrfmiddlewaretoken']"
-       hx-on::after-request="
-         if (event.detail && event.detail.successful) {
-           htmx.ajax('GET', '{% url 'boards:activity_panel' card.id %}', '#cm-activity-panel');
-           if (typeof window.refreshCardSnippet === 'function') { window.refreshCardSnippet({{ card.id }}); }
-         }
-       ">
-
-
-            </div>
-
-            <div class="cm-muted" style="margin-top:6px;">Limite: 50MB por arquivo.</div>
-          </div>
-
-          <div id="attachments-list" class="space-y-3">
-            {% for attachment in card.attachments.all %}
-              {% include "boards/partials/attachment_item.html" %}
-            {% empty %}
-              <div class="cm-muted">Nenhum anexo ainda.</div>
-            {% endfor %}
-          </div>
-        </div>
-      </section>
-
-      <section class="cm-panel"
-         data-cm-panel="track"
-         role="tabpanel">
-
-  <div id="cm-tracktime-panel"
-       hx-get="{% url 'tracktime:card_panel' card.id %}"
-       hx-trigger="revealed"
-       hx-target="this"
-       hx-swap="innerHTML">
-
-    <div class="cm-card cm-muted">
-      Carregando Track-time…
     </div>
 
-  </div>
-
-</section>
-
-
-    </div>
-
-    <!-- COLUNA DIREITA (40%) ✅ agora dentro do #cm-root -->
+    <!-- COLUNA DIREITA -->
     <aside class="cm-activity">
       <section class="cm-activity-panel" role="region">
 
-  <!-- BARRA: BOTÃO NOVA ATIVIDADE -->
-<div class="cm-activity-togglebar">
-  <button
-    type="button"
-    id="cm-activity-toggle"
-    class="cm-btn"
-    aria-expanded="false"
-    aria-controls="cm-activity-composer"
-  >
-    Nova Atividade
-  </button>
-</div>
+        <div class="cm-activity-togglebar">
+          <button type="button"
+                  id="cm-activity-toggle"
+                  class="cm-btn"
+                  aria-expanded="false"
+                  aria-controls="cm-activity-composer">
+            Nova Atividade
+          </button>
+        </div>
 
-<!-- CARD 1: NOVA ATIVIDADE (composer) - COMEÇA OCULTO -->
-<div id="cm-activity-composer" class="cm-card space-y-3 is-hidden">
-  <form
-    id="cm-activity-form"
-    method="post"
-    hx-post="{% url 'boards:add_activity' card.id %}"
-    hx-target="#cm-activity-panel"
-    hx-swap="innerHTML"
-  >
-    {% csrf_token %}
+        <div id="cm-activity-composer" class="cm-card space-y-3 is-hidden">
+          <form id="cm-activity-form"
+                method="post"
+                hx-post="{% url 'boards:add_activity' card.id %}"
+                hx-target="#cm-activity-panel"
+                hx-swap="innerHTML">
+            {% csrf_token %}
 
-    <div id="activity-error"
-         class="hidden mb-2 px-3 py-2 rounded-md text-sm border border-red-500/30 bg-red-500/10 text-red-200"></div>
+            <div id="activity-error"
+                 class="hidden mb-2 px-3 py-2 rounded-md text-sm border border-red-500/30 bg-red-500/10 text-red-200"></div>
 
-    <label class="cm-label">Nova atividade</label>
+            <label class="cm-label">Nova atividade</label>
 
-    <div class="cm-activity-quill">
-      <div id="cm-activity-editor"></div>
-    </div>
+            <div class="cm-activity-quill">
+              <div id="cm-activity-editor"></div>
+            </div>
 
-    <input type="hidden" name="content" id="cm-activity-content">
+            <input type="hidden" name="content" id="cm-activity-content">
 
-    <div class="flex gap-2">
-      <button type="submit" class="cm-btn primary"><span class="underline font-semibold">I</span>ncluir</button>
-      <button type="button" class="cm-btn" onclick="resetActivityQuill()">Limpar</button>
-    </div>
-  </form>
-</div>
+            <div class="flex gap-2">
+              <button type="submit" class="cm-btn primary"><span class="underline font-semibold">I</span>ncluir</button>
+              <button type="button" class="cm-btn" onclick="resetActivityQuill()">Limpar</button>
+            </div>
+          </form>
+        </div>
 
-<!-- ESPAÇO ENTRE OS DOIS BLOCOS -->
-<div id="cm-activity-gap" style="height: 10px;" class="is-hidden"></div>
+        <div id="cm-activity-gap" style="height: 10px;" class="is-hidden"></div>
 
-<!-- CARD 2: LISTA DE ATIVIDADES -->
-<div class="cm-card">
-  <div id="cm-activity-panel">
-    {% include "boards/partials/card_activity_panel.html" %}
-  </div>
-</div>
+        <div class="cm-card">
+          <div id="cm-activity-panel">
+            {% include "boards/partials/card_activity_panel.html" %}
+          </div>
+        </div>
 
-</section>
-
+      </section>
     </aside>
 
   </div>
 
-  {# Action dock #}
   <div id="cm-action-dock" aria-label="Ações do card">
     <div class="dock-wrap">
       <button type="button"
@@ -599,8 +529,6 @@
 
 </div>
 
-
-
 <script>
 (function () {
   const root = document.getElementById("cm-root");
@@ -622,14 +550,9 @@
   function setActiveTab(tab) {
     const t = clampTab(tab);
 
-    // Tenta usar o mecanismo existente (modal.tabs.js) via click (mantém tudo alinhado)
     const btn = root.querySelector(`.cm-tabbtn[data-cm-tab="${CSS.escape(t)}"]`);
-    if (btn) {
-      btn.click();
-      return;
-    }
+    if (btn) { btn.click(); return; }
 
-    // Fallback: alterna manualmente
     root.setAttribute("data-cm-active", t);
     root.dataset.cmActive = t;
 
@@ -641,9 +564,7 @@
       p.classList.toggle("is-active", p.getAttribute("data-cm-panel") === t);
     });
 
-    try {
-      root.dispatchEvent(new CustomEvent("cm:tabchange", { detail: { tab: t } }));
-    } catch (_e) {}
+    try { root.dispatchEvent(new CustomEvent("cm:tabchange", { detail: { tab: t } })); } catch (_e) {}
   }
 
   function hasStoredTab() {
@@ -659,30 +580,28 @@
     try { sessionStorage.setItem(STORAGE_KEY, clampTab(tab)); } catch (_e) {}
   }
 
-  // 1) TAB PERSISTENCE
-  // - Primeira abertura: força desc
-  // - Pós swaps (HTMX): restaura a aba salva
   (function initTabPersistence() {
     const initial = hasStoredTab() ? loadStoredTab() : "desc";
     storeTab(initial);
 
-    // Aplica após o DOM do modal estar pronto + scripts defer (cinto e suspensório)
     setTimeout(() => setActiveTab(initial), 0);
     setTimeout(() => setActiveTab(loadStoredTab()), 50);
 
-    // Persiste por evento central (emitido por modal.tabs.js)
     root.addEventListener("cm:tabchange", function (e) {
       const t = clampTab(e.detail && e.detail.tab);
       storeTab(t);
     });
 
-    // Global: captura requests/swap do HTMX sem depender deste script rodar de novo
     if (window.__cmTabKeepBound === true) return;
     window.__cmTabKeepBound = true;
 
-    document.body.addEventListener("htmx:beforeRequest", function (evt) {
+    document.body.addEventListener("htmx:beforeRequest", function () {
       const r = document.getElementById("cm-root");
       if (!r) return;
+
+      const mode = r.dataset.cmMode || "legacy";
+      if (mode === "legacy") return;
+
       const cid = (r.getAttribute("data-card-id") || "").trim() || "x";
       const key = `cm_active_tab_${cid}`;
       const t = clampTab(r.dataset.cmActive || r.getAttribute("data-cm-active") || "desc");
@@ -693,7 +612,6 @@
       const target = evt.target;
       if (!target) return;
 
-      // Quando trocar o body do modal, restaura a última aba
       if (target.id === "modal-body") {
         const r = document.getElementById("cm-root");
         if (!r) return;
@@ -722,7 +640,6 @@
     });
   })();
 
-  // 2) BLOQUEAR ENTER que submete form e “volta” para Descrição
   (function initPreventEnterSubmit() {
     const form = document.getElementById("cm-main-form");
     if (!form) return;
@@ -734,12 +651,10 @@
       const el = ev.target;
       if (!el) return;
 
-      // Em textarea, Enter é newline
       if (el.tagName === "TEXTAREA") return;
 
-      // Só bloqueia nos campos do CM (título/tags/datas)
       const shouldBlock = el.matches(
-        'input[name="title"], input[name="tags"], #cm-due-date-display, #cm-due-warn-date-display'
+        'input[name="title"], input[name="tags"], #cm-due-date-display, #cm-due-warn-date-display, #cm-start-date-display'
       );
 
       if (shouldBlock) {
@@ -750,7 +665,6 @@
     }, true);
   })();
 
-  // 3) FLOATBAR — aparece quando houver alterações em Desc/Tags
   (function initFloatbarDirty() {
     const form = document.getElementById("cm-main-form");
     const floatbar = document.getElementById("cm-floatbar");
@@ -806,7 +720,6 @@
     form.addEventListener("change", syncFloatbar, true);
     root.addEventListener("cm:tabchange", syncFloatbar);
 
-    // Reset baseline após salvar com sucesso
     form.addEventListener("htmx:afterRequest", function (evt) {
       if (evt.target !== form) return;
       if (!evt.detail || !evt.detail.successful) return;
@@ -814,7 +727,6 @@
       base = snapshot();
       syncFloatbar();
 
-      // refresh snippet (se existe)
       if (typeof window.refreshCardSnippet === "function") {
         try { window.refreshCardSnippet(cardId); } catch (_e) {}
       }
@@ -825,11 +737,8 @@
         e.preventDefault();
         e.stopPropagation();
         storeTab(getActiveTab());
-        try {
-          form.requestSubmit ? form.requestSubmit() : form.submit();
-        } catch (_e) {
-          try { form.submit(); } catch (_e2) {}
-        }
+        try { form.requestSubmit ? form.requestSubmit() : form.submit(); }
+        catch (_e) { try { form.submit(); } catch (_e2) {} }
       });
     }
 
@@ -844,7 +753,6 @@
     syncFloatbar();
   })();
 
-  // 4) DATAS — abrir picker + sincronizar BR/ISO (sem autosave)
   (function initDueDatePickers() {
     const form = document.getElementById("cm-main-form");
     if (!form) return;
@@ -913,16 +821,13 @@
         }
       });
 
-      display.addEventListener("click", function () {
-        openPicker(picker);
-      });
+      display.addEventListener("click", function () { openPicker(picker); });
 
-      const icon = display.parentElement?.querySelector("span");
-      if (icon) {
-        icon.addEventListener("click", function () {
-          openPicker(picker);
-        });
-      }
+      const icon = display.parentElement && display.parentElement.querySelector
+        ? display.parentElement.querySelector("span")
+        : null;
+
+      if (icon) { icon.addEventListener("click", function () { openPicker(picker); }); }
 
       picker.addEventListener("input", function () {
         const iso = String(picker.value || "").trim();
@@ -936,19 +841,17 @@
         display.value = iso ? formatISOtoBR(iso) : "";
       });
 
-      // inicial
       const iso0 = String(hidden.value || "").trim() || String(picker.value || "").trim();
       hidden.value = iso0;
       picker.value = iso0;
       display.value = iso0 ? formatISOtoBR(iso0) : "";
     }
-    
+
     wire("start-date");
     wire("due-date");
     wire("due-warn-date");
   })();
 
-  // 5) BOLINHAS DAS CORES (OK/Alerta/Vencido)
   (function initDueColorDots() {
     root.querySelectorAll("label.cm-due-color").forEach((label) => {
       const input = label.querySelector('input[type="color"]');
@@ -971,95 +874,73 @@
 })();
 </script>
 
-
 <script>
-  // ============================================================
-  // HOTKEYS (ALT+S / ALT+I / ALT+A) — Card Modal
-  // - ALT+S: salva (#cm-main-form)
-  // - ALT+I: vai para Atividade e inclui (#cm-activity-form)
-  // - ALT+A: vai para Checklists e adiciona (#cm-checklist-create-form)
-  // ============================================================
-  (function () {
-    const root = document.getElementById("cm-root");
-    if (!root) return;
+(function () {
+  const root = document.getElementById("cm-root");
+  if (!root) return;
 
-    if (root.dataset.cmHotkeysBound === "1") return;
-    root.dataset.cmHotkeysBound = "1";
+  if (root.dataset.cmHotkeysBound === "1") return;
+  root.dataset.cmHotkeysBound = "1";
 
-    function clampKey(e) {
-      const code = (e.code || "").toLowerCase();
-      if (code === "keys") return "s";
-      if (code === "keyi") return "i";
-      if (code === "keya") return "a";
-      return (e.key || "").toLowerCase();
-    }
+  function clampKey(e) {
+    const code = (e.code || "").toLowerCase();
+    if (code === "keys") return "s";
+    if (code === "keyi") return "i";
+    if (code === "keya") return "a";
+    return (e.key || "").toLowerCase();
+  }
 
-    function gotoTab(tab) {
-      const btn = root.querySelector(`.cm-tabbtn[data-cm-tab="${CSS.escape(tab)}"]`);
-      if (!btn) return false;
-      btn.click();
+  function gotoTab(tab) {
+    const btn = root.querySelector(`.cm-tabbtn[data-cm-tab="${CSS.escape(tab)}"]`);
+    if (!btn) return false;
+    btn.click();
+    return true;
+  }
+
+  function submitFormById(id) {
+    const form = document.getElementById(id);
+    if (!form) return false;
+
+    try {
+      if (form.requestSubmit) form.requestSubmit();
+      else form.submit();
       return true;
+    } catch (_e) {
+      try { form.submit(); return true; } catch (_e2) {}
+    }
+    return false;
+  }
+
+  root.addEventListener("keydown", function (e) {
+    if (!e.altKey) return;
+    if (e.ctrlKey || e.metaKey) return;
+
+    const k = clampKey(e);
+    if (k !== "s" && k !== "i" && k !== "a") return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (k === "s") { submitFormById("cm-main-form"); return; }
+
+    if (k === "i") {
+      gotoTab("ativ");
+      setTimeout(() => submitFormById("cm-activity-form"), 0);
+      return;
     }
 
-    function submitFormById(id) {
-      const form = document.getElementById(id);
-      if (!form) return false;
-
-      try {
-        if (form.requestSubmit) form.requestSubmit();
-        else form.submit();
-        return true;
-      } catch (_e) {
-        try { form.submit(); return true; } catch (_e2) {}
-      }
-      return false;
+    if (k === "a") {
+      gotoTab("check");
+      setTimeout(() => submitFormById("cm-checklist-create-form"), 0);
+      return;
     }
-
-    root.addEventListener("keydown", function (e) {
-      if (!e.altKey) return;
-      if (e.ctrlKey || e.metaKey) return;
-
-      const k = clampKey(e);
-      if (k !== "s" && k !== "i" && k !== "a") return;
-
-      // bloqueia o browser SEMPRE que for hotkey nosso
-      e.preventDefault();
-      e.stopPropagation();
-
-      // ALT+S => salvar
-      if (k === "s") {
-        submitFormById("cm-main-form");
-        return;
-      }
-
-      // ALT+I => incluir atividade
-      if (k === "i") {
-        gotoTab("ativ");
-        setTimeout(() => submitFormById("cm-activity-form"), 0);
-        return;
-      }
-
-      // ALT+A => adicionar checklist
-      if (k === "a") {
-        gotoTab("check");
-        setTimeout(() => submitFormById("cm-checklist-create-form"), 0);
-        return;
-      }
-    }, true);
-  })();
+  }, true);
+})();
 </script>
-
-
-
-
-
-
 
 <script>
 (function () {
-  function getRoot() {
-    return document.getElementById("cm-root");
-  }
+  function getRoot() { return document.getElementById("cm-root"); }
 
   function getActiveTab() {
     const r = getRoot();
@@ -1094,7 +975,6 @@
     return `print-${stamp}-${rnd}${ext}`;
   }
 
-  // PASTE: instala 1x global
   if (window.__cmAttachPasteBound !== true) {
     window.__cmAttachPasteBound = true;
 
@@ -1112,10 +992,7 @@
 
       let imgItem = null;
       for (const it of cd.items) {
-        if (it && it.kind === "file" && String(it.type || "").startsWith("image/")) {
-          imgItem = it;
-          break;
-        }
+        if (it && it.kind === "file" && String(it.type || "").startsWith("image/")) { imgItem = it; break; }
       }
       if (!imgItem) return;
 
@@ -1131,10 +1008,7 @@
 
       const desc = r.querySelector("#attachment-desc");
       const focused = document.activeElement === desc;
-      if (desc && !focused && !String(desc.value || "").trim()) {
-        desc.value = "Print (Ctrl+V)";
-      }
-
+      if (desc && !focused && !String(desc.value || "").trim()) { desc.value = "Print (Ctrl+V)"; }
 
       const dt = new DataTransfer();
       dt.items.add(file);
@@ -1145,7 +1019,6 @@
     }, true);
   }
 
-  // DRAG&DROP: instala por modal (re-render safe)
   function initAttachmentDragDrop() {
     const r = getRoot();
     if (!r) return;
@@ -1156,9 +1029,7 @@
     const fileInput = r.querySelector("#attachment-file");
     if (!fileInput) return;
 
-    function setDragUI(on) {
-      modalRoot.classList.toggle("cm-dragover", !!on);
-    }
+    function setDragUI(on) { modalRoot.classList.toggle("cm-dragover", !!on); }
 
     function onDragOver(e) {
       e.preventDefault();
@@ -1188,9 +1059,7 @@
     modalRoot.addEventListener("dragleave", () => setDragUI(false), true);
   }
 
-  function bootAttach() {
-    initAttachmentDragDrop();
-  }
+  function bootAttach() { initAttachmentDragDrop(); }
 
   document.addEventListener("DOMContentLoaded", bootAttach);
   document.body.addEventListener("htmx:afterSwap", function (evt) {
@@ -1226,7 +1095,6 @@
       setOpen(isHidden);
     });
 
-    // Após incluir atividade: fecha composer + limpa editor
     document.body.addEventListener("htmx:afterRequest", function (evt) {
       if (!evt.target || evt.target.id !== "cm-activity-form") return;
       if (!evt.detail || !evt.detail.successful) return;
@@ -1239,12 +1107,72 @@
   }
 
   document.addEventListener("DOMContentLoaded", bindActivityToggle);
-
-  // Se o modal for re-render via HTMX, rebind com segurança
   document.body.addEventListener("htmx:afterSwap", function (evt) {
     if (evt.target && evt.target.id === "modal-body") bindActivityToggle();
   });
 })();
 </script>
 
-{# END templates/boards/partials/card_modal_split.html (corrigido: cm-root envolve o split) #}
+<!-- TRACK-TIME (HOTFIX: não depende de cm:tabchange) -->
+<script>
+(function () {
+  function getRoot() { return document.getElementById("cm-root"); }
+
+  function loadTrack(root) {
+    if (!root) return;
+
+    const panel = root.querySelector("#cm-tracktime-panel");
+    if (!panel) return;
+
+    if (panel.getAttribute("data-track-loaded") === "1") return;
+
+    const url = (panel.getAttribute("data-track-url") || "").trim();
+    if (!url) return;
+
+    panel.setAttribute("data-track-loaded", "1");
+
+    if (window.htmx && typeof window.htmx.ajax === "function") {
+      window.htmx.ajax("GET", url, { target: "#cm-tracktime-panel", swap: "innerHTML" });
+      return;
+    }
+
+    fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" }, credentials: "same-origin" })
+      .then((r) => r.text())
+      .then((html) => { panel.innerHTML = html; })
+      .catch(() => {
+        panel.setAttribute("data-track-loaded", "0");
+        panel.innerHTML = '<div class="cm-card cm-muted">Falha ao carregar Track-time.</div>';
+      });
+  }
+
+  document.addEventListener("click", function (e) {
+    const root = getRoot();
+    if (!root) return;
+
+    const btn = e.target && e.target.closest ? e.target.closest('.cm-tabbtn[data-cm-tab]') : null;
+    if (!btn) return;
+
+    const tab = String(btn.getAttribute("data-cm-tab") || "").trim();
+    if (tab !== "track" && tab !== "tracktime") return;
+
+    setTimeout(() => loadTrack(root), 0);
+  }, true);
+
+  document.addEventListener("DOMContentLoaded", function () {
+    const root = getRoot();
+    if (!root) return;
+    const active = (root.getAttribute("data-cm-active") || root.dataset.cmActive || "desc").trim();
+    if (active === "track" || active === "tracktime") loadTrack(root);
+  });
+
+  document.body.addEventListener("htmx:afterSwap", function (evt) {
+    if (!evt.target || evt.target.id !== "modal-body") return;
+
+    const root = getRoot();
+    if (!root) return;
+    const active = (root.getAttribute("data-cm-active") || root.dataset.cmActive || "desc").trim();
+    if (active === "track" || active === "tracktime") loadTrack(root);
+  });
+})();
+</script>
+{# END templates/boards/partials/card_modal_split.html #}

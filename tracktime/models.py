@@ -93,7 +93,7 @@ class TimeEntry(models.Model):
     # Tempo efetivo (sempre preenchido)
     minutes = models.PositiveIntegerField(help_text="Tempo em minutos")
 
-    # Para timer (opcional no MVP, mas já preparado)
+    # Para timer
     started_at = models.DateTimeField(null=True, blank=True)
     ended_at = models.DateTimeField(null=True, blank=True)
 
@@ -121,12 +121,42 @@ class TimeEntry(models.Model):
         return f"{self.user} • {self.project} • {self.minutes}min"
 
     # =========================================================
+    # Estado do timer
+    # =========================================================
+
+    @property
+    def is_running(self) -> bool:
+        """
+        Retorna True se o timer estiver em execução.
+        """
+        return self.started_at is not None and self.ended_at is None
+
+    # =========================================================
     # Helpers
     # =========================================================
 
     @property
     def duration_hours(self) -> float:
         return round(self.minutes / 60, 2)
+
+    def stop(self):
+        """
+        Finaliza o timer atual e acumula os minutos.
+        NÃO cria novo registro.
+        NÃO perde minutos já existentes.
+        """
+        if not self.is_running:
+            return
+
+        end = timezone.now()
+        delta = end - self.started_at
+        extra_minutes = max(int(delta.total_seconds() // 60), 1)
+
+        self.minutes += extra_minutes
+        self.ended_at = end
+        self.started_at = None
+
+        self.save(update_fields=["minutes", "ended_at", "started_at"])
 
     @classmethod
     def create_manual(
@@ -170,7 +200,7 @@ class TimeEntry(models.Model):
         card_url_cache="",
     ):
         """
-        Criação via timer (start/stop).
+        Criação via timer (start/stop direto).
         """
         end = ended_at or timezone.now()
         delta = end - started_at
