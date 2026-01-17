@@ -414,11 +414,16 @@ html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !import
 
 /* Modal ocupa viewport; scroll único no body do modal */
 #card-modal-root.card-modal{
-  width: calc(100vw - (var(--modal-edge-gap) * 2)) !important;
-  max-width: calc(100vw - (var(--modal-edge-gap) * 2)) !important;
+  /* ✅ gap igual nos 4 lados, independente de JS */
+  position: fixed !important;
+  inset: var(--modal-edge-gap) !important;
 
-  height: calc(100vh - (var(--modal-edge-gap) * 2)) !important;
-  max-height: calc(100vh - (var(--modal-edge-gap) * 2)) !important;
+  /* ✅ não usa mais vw/vh + margin pra centralizar */
+  width: auto !important;
+  max-width: none !important;
+  height: auto !important;
+  max-height: none !important;
+  margin: 0 !important;
 
   display: flex;
   flex-direction: column;
@@ -429,16 +434,14 @@ html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !import
   border-radius: var(--modal-radius);
   overflow: hidden;
 
-  position: relative;
   isolation: isolate;
-
-  margin: 0 !important;
 
   box-shadow:
     0 18px 60px rgba(2, 6, 23, 0.22),
     0 2px 10px rgba(2, 6, 23, 0.10);
   border: 1px solid rgba(15, 23, 42, 0.10);
 }
+/* Cabeçalho */
 
 #card-modal-root .card-aero-header{
   width: 100%;
@@ -1047,11 +1050,18 @@ html.dark #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-
    MODAL — VISIBILIDADE APENAS (GENIE É JS)
    ============================================================ */
 #modal{
-  padding: var(--modal-edge-gap);
+  /*padding: var(--modal-edge-gap);*/
   opacity: 0;
   pointer-events: none;
   visibility: hidden;
   transition: opacity 160ms ease;
+  
+  
+  
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--modal-edge-gap);
 }
 #modal.modal-open{
   opacity: 1;

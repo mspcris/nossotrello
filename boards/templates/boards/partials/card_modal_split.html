@@ -245,36 +245,36 @@ html.dark #cm-root{
 }
 
 /* ============================================================
-   LAYOUT: SPLIT
+   LAYOUT: SPLIT (FORÇA PRIORIDADE)
    ============================================================ */
-.cm-split{
-  display:flex;
+#cm-root .cm-split{
+  display: flex;
   gap: 16px;
   height: 100%;
   min-height: 0;
 }
 
-.cm-main{
+/* Espaço no “miolo” de cada coluna (simetria) */
+#cm-root .cm-main{
   width: 60%;
   min-width: 0;
+
+  padding-right: 16px !important; /* espaço à direita da coluna esquerda */
+  padding-left: 16px !important;  /* ✅ espaço à esquerda (o que você pediu) */
+  box-sizing: border-box;
 }
 
-.cm-activity{
+#cm-root .cm-activity{
   width: 40%;
   min-width: 0;
-  padding-left: 16px;
+
+  padding-left: 16px !important;
+  padding-right: 16px !important; /* ✅ espelha do outro lado também */
   box-sizing: border-box;
 
   border-left: 1px solid var(--cm-border);
   background: linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.06));
 }
-
-@media (max-width: 768px){
-  .cm-split{ flex-direction: column; }
-  .cm-main, .cm-activity{ width: 100%; padding-left: 0; border-left: 0; }
-}
-
-.cm-activity-panel{ display:block; }
 
 /* ============================================================
    QUILL — Nova Atividade (lado direito)
