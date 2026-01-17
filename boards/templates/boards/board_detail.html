@@ -205,6 +205,8 @@
     </span>
   </div>
 
+
+  
   <!-- membros (direita) -->
   <div id="board-members-bar"
        class="board-members-bar flex items-center gap-1 shrink-0"
@@ -244,44 +246,52 @@
 
 
 
+
 {% if can_share_board and board.access_requests.exists %}
-  <div class="mt-4 border-t pt-3">
-    <h4 class="text-sm font-bold mb-2">
-      Solicitações de acesso
-    </h4>
-
-    <div class="space-y-2">
-      {% for req in board.access_requests.all %}
-        <div class="flex items-center justify-between border rounded px-3 py-2">
-          <div class="text-sm">
-            {{ req.user.email }}
-          </div>
-
-          <div class="flex gap-2">
-            <button
-              class="px-3 py-1 bg-green-600 text-white rounded"
-              hx-post="{% url 'boards:board_approve_access' board.id req.user.id %}"
-              hx-target="closest div"
-              hx-swap="outerHTML"
-            >
-              Aprovar
-            </button>
-
-            <button
-              class="px-3 py-1 bg-red-600 text-white rounded"
-              hx-post="{% url 'boards:board_deny_access' board.id req.user.id %}"
-              hx-target="closest div"
-              hx-swap="outerHTML"
-            >
-              Negar
-            </button>
-          </div>
+  <div class="cm-accessreq-wrap mt-4">
+    <div class="cm-accessreq-card">
+      <div class="cm-accessreq-head">
+        <h4 class="cm-accessreq-title">Solicitações de acesso</h4>
+        <div class="cm-accessreq-sub">
+          Pendências para este quadro (aprove ou negue).
         </div>
-      {% endfor %}
+      </div>
+
+      <div class="cm-accessreq-list">
+        {% for req in board.access_requests.all %}
+          <div class="cm-accessreq-row">
+            <div class="cm-accessreq-user">
+              <div class="cm-accessreq-email">{{ req.user.email }}</div>
+              <div class="cm-accessreq-meta">
+                solicitado em {{ req.created_at|date:"d/m/Y H:i" }}
+              </div>
+            </div>
+
+            <div class="cm-accessreq-actions">
+              <button
+                class="cm-btn cm-btn-ok"
+                hx-post="{% url 'boards:board_approve_access' board.id req.user.id %}"
+                hx-target="closest .cm-accessreq-row"
+                hx-swap="outerHTML"
+                hx-headers='{"X-CSRFToken":"{{ csrf_token }}"}'>
+                Aprovar
+              </button>
+
+              <button
+                class="cm-btn cm-btn-no"
+                hx-post="{% url 'boards:board_deny_access' board.id req.user.id %}"
+                hx-target="closest .cm-accessreq-row"
+                hx-swap="outerHTML"
+                hx-headers='{"X-CSRFToken":"{{ csrf_token }}"}'>
+                Negar
+              </button>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
     </div>
   </div>
 {% endif %}
-
 
 
 
@@ -406,12 +416,14 @@
       class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
       hx-post="{% url 'boards:board_request_access' board.id %}"
       hx-swap="none"
+      hx-headers='{"X-CSRFToken":"{{ csrf_token }}"}'
       hx-on="htmx:afterRequest: this.innerText='Pedido enviado'; this.disabled=true;"
     >
       Solicitar acesso
     </button>
   </div>
 {% endif %}
+
 
 
 

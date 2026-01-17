@@ -373,8 +373,20 @@ def board_detail(request, board_id):
             )
 
     # logado mas sem acesso
+        # logado mas sem acesso
     if memberships_qs.exists() and request.user.is_authenticated and not my_membership:
-        return HttpResponse("Você não tem acesso a este quadro.", status=403)
+        owner_membership = memberships_qs.filter(role=BoardMembership.Role.OWNER).select_related("user").first()
+        owner_user = owner_membership.user if owner_membership else None
+
+        return render(
+            request,
+            "boards/board_no_access.html",
+            {
+                "board": board,
+                "owner_user": owner_user,
+            },
+            status=403,
+        )
 
     can_edit = bool(my_membership)
     can_share_board = bool(my_membership and my_membership.role == BoardMembership.Role.OWNER)
@@ -392,6 +404,15 @@ def board_detail(request, board_id):
 
         board_members.append(u)
 
+    pending_access_requests = []
+    if can_share_board:
+        pending_access_requests = (
+            BoardAccessRequest.objects
+            .filter(board=board)
+            .select_related("user")
+            .order_by("-created_at")
+        )
+
     return render(
         request,
         "boards/board_detail.html",
@@ -403,6 +424,8 @@ def board_detail(request, board_id):
             "can_leave_board": can_leave_board,
             "can_share_board": can_share_board,
             "can_edit": can_edit,
+            "pending_access_requests": pending_access_requests,
+
         },
     )
 
@@ -1370,62 +1393,95 @@ def board_history_unread_count(request, board_id):
 def request_board_access(request, board_id):
     board = get_object_or_404(Board, id=board_id, is_deleted=False)
 
-    BoardAccessRequest.objects.get_or_create(
-        board=board,
-        user=request.user,
+    # Se já tem acesso, não faz nada
+    if BoardMembership.objects.filter(board=board, user=request.user).exists():
+        return JsonResponse({"success": True, "already_has_access": True})
+
+    # Campos do formulário
+    nome = (request.POST.get("nome") or "").strip()
+    posto = (request.POST.get("posto") or "").strip()
+    funcao = (request.POST.get("funcao") or "").strip()
+    telefone = (request.POST.get("telefone") or "").strip()
+    ramal = (request.POST.get("ramal") or "").strip()
+    email = (request.POST.get("email") or "").strip().lower()
+
+    # Validação mínima (como você pediu)
+    if not nome or not telefone or not email:
+        return JsonResponse(
+            {"success": False, "error": "Preencha Nome, Telefone e Email para solicitar autorização."},
+            status=400,
+        )
+
+    # Segurança: email do formulário deve bater com o do usuário logado
+    user_email = (request.user.email or "").strip().lower()
+    if user_email and email != user_email:
+        return JsonResponse(
+            {"success": False, "error": "O e-mail informado precisa ser o mesmo do seu login."},
+            status=400,
+        )
+
+    # Atualiza/garante profile (sem mexer no modelo BoardAccessRequest)
+    try:
+        profile = request.user.profile
+    except Exception:
+        from ..models import UserProfile
+        profile = UserProfile.objects.create(user=request.user)
+
+    # Mapeamento
+    profile.display_name = nome or profile.display_name
+    profile.posto = posto or profile.posto
+    profile.setor = funcao or profile.setor  # "função" mapeando para setor (ou crie campo depois no sprint 2)
+    profile.ramal = ramal or profile.ramal
+    profile.telefone = telefone or profile.telefone
+    profile.save(update_fields=["display_name", "posto", "setor", "ramal", "telefone"])
+
+    # Cria a solicitação
+    req_obj, created = BoardAccessRequest.objects.get_or_create(board=board, user=request.user)
+
+    # Descobre o dono
+    owner_membership = BoardMembership.objects.filter(board=board, role=BoardMembership.Role.OWNER).select_related("user").first()
+    owner_user = owner_membership.user if owner_membership else None
+
+    # Se não achou dono, devolve sucesso sem e-mail (evita quebrar)
+    if not owner_user or not (owner_user.email or "").strip():
+        return JsonResponse({"success": True, "created": created, "email_sent": False})
+
+    # Monta link para o dono abrir o quadro e aprovar
+    base_url = getattr(settings, "SITE_URL", "").strip()
+    if not base_url:
+        scheme = "https" if request.is_secure() else "http"
+        base_url = f"{scheme}://{request.get_host()}"
+
+    board_path = reverse("boards:board_detail", kwargs={"board_id": board.id})
+    board_url = f"{base_url}{board_path}"
+
+    # Email para o dono (simples, sprint 1)
+    subject = f"Solicitação de acesso — {board.name}"
+    body = (
+        f"Olá,\n\n"
+        f"{nome} solicitou acesso ao quadro \"{board.name}\".\n\n"
+        f"Contato:\n"
+        f"- Nome: {nome}\n"
+        f"- Posto: {posto or '-'}\n"
+        f"- Função: {funcao or '-'}\n"
+        f"- Telefone: {telefone}\n"
+        f"- Ramal: {ramal or '-'}\n"
+        f"- Email: {email}\n\n"
+        f"Para aprovar ou negar, abra o quadro:\n{board_url}\n"
     )
 
-    return JsonResponse({"success": True})
+    try:
+        send_mail(
+            subject=subject,
+            message=body,
+            from_email=getattr(settings, "DEFAULT_FROM_EMAIL", None),
+            recipient_list=[owner_user.email],
+            fail_silently=False,
+        )
+        return JsonResponse({"success": True, "created": created, "email_sent": True})
+    except Exception:
+        return JsonResponse({"success": True, "created": created, "email_sent": False})
 
-
-@login_required
-@require_POST
-def approve_board_access(request, board_id, user_id):
-    board = get_object_or_404(Board, id=board_id, is_deleted=False)
-
-    owner = BoardMembership.objects.filter(
-        board=board,
-        user=request.user,
-        role=BoardMembership.Role.OWNER,
-    ).first()
-
-    if not owner:
-        return JsonResponse({"error": "Sem permissão."}, status=403)
-
-    User = get_user_model()
-    user = get_object_or_404(User, id=user_id)
-
-    BoardMembership.objects.get_or_create(
-        board=board,
-        user=user,
-        defaults={"role": BoardMembership.Role.MEMBER},
-    )
-
-    BoardAccessRequest.objects.filter(board=board, user=user).delete()
-
-    return JsonResponse({"success": True})
-
-
-@login_required
-@require_POST
-def deny_board_access(request, board_id, user_id):
-    board = get_object_or_404(Board, id=board_id, is_deleted=False)
-
-    owner = BoardMembership.objects.filter(
-        board=board,
-        user=request.user,
-        role=BoardMembership.Role.OWNER,
-    ).first()
-
-    if not owner:
-        return JsonResponse({"error": "Sem permissão."}, status=403)
-
-    BoardAccessRequest.objects.filter(
-        board=board,
-        user_id=user_id,
-    ).delete()
-
-    return JsonResponse({"success": True})
 
 
 # ======================================================================
@@ -1466,3 +1522,96 @@ def board_share_remove(request, board_id, user_id):
     )
 
     return JsonResponse({"success": True})
+
+@login_required
+@require_POST
+@transaction.atomic
+def approve_board_access(request, board_id, user_id):
+    board = get_object_or_404(Board, id=board_id, is_deleted=False)
+
+    owner = BoardMembership.objects.filter(
+        board=board,
+        user=request.user,
+        role=BoardMembership.Role.OWNER,
+    ).first()
+    if not owner:
+        return JsonResponse({"error": "Sem permissão."}, status=403)
+
+    User = get_user_model()
+    user = get_object_or_404(User, id=user_id)
+
+    BoardMembership.objects.get_or_create(
+        board=board,
+        user=user,
+        defaults={"role": BoardMembership.Role.VIEWER},
+    )
+
+    BoardAccessRequest.objects.filter(board=board, user=user).delete()
+
+    # Email para solicitante
+    if (user.email or "").strip():
+        base_url = getattr(settings, "SITE_URL", "").strip()
+        if not base_url:
+            scheme = "https" if request.is_secure() else "http"
+            base_url = f"{scheme}://{request.get_host()}"
+
+        board_path = reverse("boards:board_detail", kwargs={"board_id": board.id})
+        board_url = f"{base_url}{board_path}"
+
+        try:
+            send_mail(
+                subject=f"Acesso aprovado — {board.name}",
+                message=(
+                    f"Olá,\n\n"
+                    f"Seu acesso ao quadro \"{board.name}\" foi aprovado.\n\n"
+                    f"Acesse aqui:\n{board_url}\n"
+                ),
+                from_email=getattr(settings, "DEFAULT_FROM_EMAIL", None),
+                recipient_list=[user.email],
+                fail_silently=False,
+            )
+        except Exception:
+            pass
+
+    return JsonResponse({"success": True})
+
+
+@login_required
+@require_POST
+@transaction.atomic
+def deny_board_access(request, board_id, user_id):
+    board = get_object_or_404(Board, id=board_id, is_deleted=False)
+
+    owner = BoardMembership.objects.filter(
+        board=board,
+        user=request.user,
+        role=BoardMembership.Role.OWNER,
+    ).first()
+    if not owner:
+        return JsonResponse({"error": "Sem permissão."}, status=403)
+
+    User = get_user_model()
+    user = get_object_or_404(User, id=user_id)
+
+    # Remove a solicitação pendente
+    BoardAccessRequest.objects.filter(board=board, user=user).delete()
+
+    # Email para solicitante (melhor esforço)
+    if (user.email or "").strip():
+        try:
+            send_mail(
+                subject=f"Acesso negado — {board.name}",
+                message=(
+                    f"Olá,\n\n"
+                    f"Infelizmente o dono do quadro \"{board.name}\" não autorizou seu acesso no momento.\n\n"
+                    f"Se você acha que isso é um engano, responda este e-mail ou contate o responsável pelo quadro."
+                ),
+                from_email=getattr(settings, "DEFAULT_FROM_EMAIL", None),
+                recipient_list=[user.email],
+                fail_silently=False,
+            )
+        except Exception:
+            pass
+
+    # Para o HTMX: some com a linha da solicitação
+    return HttpResponse("")

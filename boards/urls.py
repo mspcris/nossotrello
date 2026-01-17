@@ -22,17 +22,18 @@ from . import views
 from .views import cards
 from .views.mentions import board_mentions
 from .views.polling import board_poll
-from boards.views.modal_card_term import set_card_term_due, set_board_term_colors
 from .views import calendar as calendar_views
+from boards.views.modal_card_term import set_card_term_due, set_board_term_colors
+
+# Views “de negócio” (boards/views/boards.py)
 from boards.views.boards import (
     toggle_aggregator_column,
     transfer_owner_start,
     transfer_owner_confirm,
     request_board_access,
     approve_board_access,
+    deny_board_access,
 )
-
-
 
 app_name = "boards"
 
@@ -41,17 +42,18 @@ app_name = "boards"
 # ============================================================
 urlpatterns = [
     # ============================================================
-    # HOME
+    # HOME (lista de quadros)
     # ============================================================
     path("", views.index, name="boards_index"),
 
     # ============================================================
-    # AUTH / CONTAS (LOGIN / PRIMEIRO LOGIN / RECUPERAÇÃO SENHA)
+    # PERFIL PÚBLICO (rota curta por handle)
     # ============================================================
-    # perfil clicável
     path("u/<str:handle>/", views.public_profile, name="public_profile"),
 
-    # Login / Logout (usa templates em templates/registration/)
+    # ============================================================
+    # AUTH / CONTAS (login/logout/primeiro login/recuperação senha)
+    # ============================================================
     path(
         "accounts/login/",
         auth_views.LoginView.as_view(
@@ -65,13 +67,7 @@ urlpatterns = [
         auth_views.LogoutView.as_view(),
         name="logout",
     ),
-
-    # Primeiro login (view custom)
     path("accounts/first-login/", views.first_login, name="first_login"),
-
-    # Recuperação de senha
-    # - email_template_name: texto puro (evita aparecer <p> no Gmail)
-    # - html_email_template_name: HTML (para clientes que renderizam)
     path(
         "accounts/password_reset/",
         auth_views.PasswordResetView.as_view(
@@ -106,110 +102,139 @@ urlpatterns = [
         name="password_reset_complete",
     ),
 
-    # (Opcional) criação de usuário
+    # ============================================================
+    # ADMIN / USUÁRIOS (opcional)
+    # ============================================================
     path("users/create/", views.create_user, name="create_user"),
 
     # ============================================================
-    # BOARDS - QUADROS
+    # BOARDS — CRUD / VISUALIZAÇÃO / AÇÕES DE QUADRO
     # ============================================================
     path("board/add/", views.add_board, name="add_board"),
     path("board/<int:board_id>/", views.board_detail, name="board_detail"),
     path("board/<int:board_id>/search/", views.board_search, name="board_search"),
     path("board/<int:board_id>/rename/", views.rename_board, name="rename_board"),
     path("board/<int:board_id>/delete/", views.delete_board, name="delete_board"),
+    path("board/<int:board_id>/leave/", views.board_leave, name="board_leave"),
 
-    # Compartilhamento
+    # ============================================================
+    # BOARDS — COMPARTILHAMENTO (modal + remove membro)
+    # ============================================================
     path("board/<int:board_id>/share/", views.board_share, name="board_share"),
+    # (mantido se o front usa submit em rota separada; se não usa, pode remover)
+    path("board/<int:board_id>/share/submit/", views.board_share, name="board_share_submit"),
     path(
         "board/<int:board_id>/share/remove/<int:user_id>/",
         views.board_share_remove,
         name="board_share_remove",
     ),
-    path("board/<int:board_id>/leave/", views.board_leave, name="board_leave"),
 
-    # Colunas do board
+    # ============================================================
+    # BOARDS — ACESSO SEM CONVITE (solicitar / aprovar / negar)
+    #
+    # PADRÃO ÚNICO (sem duplicidade):
+    # - request-access
+    # - approve-access
+    # - deny-access
+    # ============================================================
+    path(
+        "boards/<int:board_id>/request-access/",
+        request_board_access,
+        name="board_request_access",
+    ),
+    path(
+        "boards/<int:board_id>/approve-access/<int:user_id>/",
+        approve_board_access,
+        name="board_approve_access",
+    ),
+    path(
+        "boards/<int:board_id>/deny-access/<int:user_id>/",
+        deny_board_access,
+        name="board_deny_access",
+    ),
+
+    # ============================================================
+    # BOARDS — COLUNAS (criar / reordenar)
+    # ============================================================
     path("board/<int:board_id>/add_column/", views.add_column, name="add_column"),
     path("board/<int:board_id>/columns/reorder/", views.reorder_columns, name="reorder_columns"),
 
-    # Wallpaper do board
+    # ============================================================
+    # BOARDS — WALLPAPER / CSS
+    # ============================================================
     path("board/<int:board_id>/wallpaper/", views.update_board_wallpaper, name="update_board_wallpaper"),
     path("board/<int:board_id>/wallpaper/remove/", views.remove_board_wallpaper, name="remove_board_wallpaper"),
     path("board/<int:board_id>/wallpaper.css", views.board_wallpaper_css, name="board_wallpaper_css"),
 
-    # Imagem do board
+    # ============================================================
+    # BOARDS — IMAGEM (capa do quadro)
+    # ============================================================
     path("board/<int:board_id>/image/", views.update_board_image, name="update_board_image"),
     path("board/<int:board_id>/image/remove/", views.remove_board_image, name="remove_board_image"),
 
-    # Search do board (se existir no seu views/__init__.py)
-
-    # board polling
+    # ============================================================
+    # BOARDS — POLLING (sincronização leve)
+    # ============================================================
     path("board/<int:board_id>/poll/", board_poll, name="board_poll"),
 
-    # board prazos
+    # ============================================================
+    # BOARDS — PRAZOS (term due + cores do board)
+    # ============================================================
     path("card/<int:card_id>/term-due/", set_card_term_due, name="set_card_term_due"),
     path("board/<int:board_id>/term-colors/", set_board_term_colors, name="set_board_term_colors"),
 
-    # board agregador de colunas
+    # ============================================================
+    # BOARDS — AGREGADOR DE COLUNAS
+    # ============================================================
     path(
-    "board/<int:board_id>/toggle-aggregator/",
-    toggle_aggregator_column,
-    name="toggle_aggregator_column",
+        "board/<int:board_id>/toggle-aggregator/",
+        toggle_aggregator_column,
+        name="toggle_aggregator_column",
     ),
-
-    # Transferência de titularidade (OWNER -> OWNER)
-    path(
-    "board/<int:board_id>/transfer_owner/start/",
-    transfer_owner_start,
-    name="transfer_owner_start",
-    ),
-    path(
-    "board/<int:board_id>/transfer_owner/confirm/",
-    transfer_owner_confirm,
-    name="transfer_owner_confirm",
-    ),
-
-
-
-
-    path("boards/<int:board_id>/request-access/", request_board_access, name="board_request_access"),
-    path("boards/<int:board_id>/approve-access/<int:user_id>/", approve_board_access, name="board_approve_access"),
-    path(
-    "board/<int:board_id>/share/submit/",
-    views.board_share,
-    name="board_share_submit",
-    ),
-
-
 
     # ============================================================
-    # BOARDS - CALENDÁRIO
+    # BOARDS — TRANSFERÊNCIA DE TITULARIDADE (OWNER -> OWNER)
+    # ============================================================
+    path(
+        "board/<int:board_id>/transfer_owner/start/",
+        transfer_owner_start,
+        name="transfer_owner_start",
+    ),
+    path(
+        "board/<int:board_id>/transfer_owner/confirm/",
+        transfer_owner_confirm,
+        name="transfer_owner_confirm",
+    ),
+
+    # ============================================================
+    # BOARDS — CALENDÁRIO
     # ============================================================
     path("calendar/cards/", calendar_views.calendar_cards, name="calendar_cards"),
-    
-    
 
     # ============================================================
-    # HOME GROUPS / FAVORITOS
+    # HOME GROUPS / FAVORITOS (agrupamentos pessoais)
     # ============================================================
     path("home/groups/create/", views.home_group_create, name="home_group_create"),
     path("home/groups/<int:group_id>/rename/", views.home_group_rename, name="home_group_rename"),
     path("home/groups/<int:group_id>/delete/", views.home_group_delete, name="home_group_delete"),
     path("home/groups/<int:group_id>/items/add/", views.home_group_item_add, name="home_group_item_add"),
-    path("home/groups/<int:group_id>/items/<int:board_id>/remove/", views.home_group_item_remove, name="home_group_item_remove"),
+    path(
+        "home/groups/<int:group_id>/items/<int:board_id>/remove/",
+        views.home_group_item_remove,
+        name="home_group_item_remove",
+    ),
     path("home/favorites/toggle/<int:board_id>/", views.home_favorite_toggle, name="home_favorite_toggle"),
     path("home/search/", views.home_search, name="home_search"),
 
-
-
     # ============================================================
-    # HOME WALLPAPER
+    # HOME WALLPAPER (papel de parede da home)
     # ============================================================
     path("home/wallpaper/", views.update_home_wallpaper, name="update_home_wallpaper"),
     path("home/wallpaper/remove/", views.remove_home_wallpaper, name="remove_home_wallpaper"),
     path("home/wallpaper.css", views.home_wallpaper_css, name="home_wallpaper_css"),
 
     # ============================================================
-    # COLUMNS
+    # COLUMNS (ações por coluna)
     # ============================================================
     path("column/<int:column_id>/add_card/", views.add_card, name="add_card"),
     path("column/<int:column_id>/delete/", views.delete_column, name="delete_column"),
@@ -217,10 +242,8 @@ urlpatterns = [
     path("column/<int:column_id>/theme/", views.set_column_theme, name="set_column_theme"),
     path("column/<int:column_id>/reorder_cards/", views.reorder_cards_in_column, name="reorder_cards_in_column"),
 
-
-
     # ============================================================
-    # CARDS
+    # CARDS (modal / CRUD / mover / anexos / atividade)
     # ============================================================
     path("card/<int:card_id>/modal/", views.card_modal, name="card_modal"),
     path("card/<int:card_id>/snippet/", views.card_snippet, name="card_snippet"),
@@ -228,11 +251,11 @@ urlpatterns = [
     path("card/<int:card_id>/update/", views.update_card, name="update_card"),
     path("card/<int:card_id>/delete/", views.delete_card, name="delete_card"),
 
-    # Etiquetas
+    # Tags
     path("cards/<int:card_id>/tag-color/", views.set_tag_color, name="set_tag_color"),
     path("card/<int:card_id>/remove_tag/", views.remove_tag, name="remove_tag"),
-    
-    # Vencimento do card
+
+    # Term (vencimento)
     path("cards/<int:card_id>/term-color/", views.set_term_color, name="set_term_color"),
     path("card/<int:card_id>/remove_term/", views.remove_term, name="remove_term"),
 
@@ -252,77 +275,40 @@ urlpatterns = [
     path("card/<int:card_id>/activity/add/", views.add_activity, name="add_activity"),
     path("quill/upload/", views.quill_upload, name="quill_upload"),
 
-    # Menções do board
+    # Menções (board)
     path("board/<int:board_id>/mentions/", board_mentions, name="board_mentions"),
 
-    # Anexos (múltiplos)
+    # Anexos
     path("card/<int:card_id>/attachments/add/", views.add_attachment, name="add_attachment"),
     path(
         "card/<int:card_id>/attachments/<int:attachment_id>/delete/",
         views.delete_attachment,
         name="delete_attachment",
     ),
-    
-
-
 
     # ============================================================
-    # CONTA / PERFIL (MODAL)
+    # CONTA / PERFIL (modal do usuário)
     # ============================================================
     path("account/modal/", views.account_modal, name="account_modal"),
     path("account/profile/update/", views.account_profile_update, name="account_profile_update"),
     path("account/password/change/", views.account_password_change, name="account_password_change"),
     path("account/avatar/update/", views.account_avatar_update, name="account_avatar_update"),
     path("account/avatar/choose/", views.account_avatar_choice_update, name="account_avatar_choice_update"),
-
-
-    # ============================================================
-    # PERFIL (READ-ONLY NO MODAL)
-    # ============================================================
-    path(
-    "users/<int:user_id>/profile/readonly/",
-    views.user_profile_readonly_modal,
-    name="user_profile_readonly_modal",
-    ),
     path("account/identity-label/update/", views.account_identity_label_update, name="account_identity_label_update"),
 
+    # ============================================================
+    # PERFIL READ-ONLY (modal ao clicar em avatar de outra pessoa)
+    # ============================================================
+    path(
+        "users/<int:user_id>/profile/readonly/",
+        views.user_profile_readonly_modal,
+        name="user_profile_readonly_modal",
+    ),
 
     # ============================================================
-    # CONTA / PERFIL (SOCIAL)
+    # HISTÓRICO / NÃO LIDOS
     # ============================================================
-    # path("u/<str:handle>/", views.public_profile, name="public_profile"),
-
-
-    # ============================================================
-    # CHECKLISTS (múltiplos por card)
-    # ============================================================
-    path("card/<int:card_id>/checklist/add/", views.checklist_add, name="checklist_add"),
-    path("checklist/<int:checklist_id>/rename/", views.checklist_rename, name="checklist_rename"),
-    path("checklist/<int:checklist_id>/delete/", views.checklist_delete, name="checklist_delete"),
-
-    # Reordenação
-    path("card/<int:card_id>/checklists/reorder/", views.checklists_reorder, name="checklists_reorder"),
-    path("card/<int:card_id>/checklist/items/reorder/", views.checklist_items_reorder, name="checklist_items_reorder"),
-
-    # Compat/legado
-    path("checklist/<int:checklist_id>/move/", views.checklist_move, name="checklist_move"),
-    path("checklist/item/<int:item_id>/move-up/", views.checklist_move_up, name="checklist_move_up"),
-    path("checklist/item/<int:item_id>/move-down/", views.checklist_move_down, name="checklist_move_down"),
-
-    # Itens do checklist
-    path("checklist/<int:checklist_id>/item/add/", views.checklist_add_item, name="checklist_add_item"),
-    path("checklist/item/<int:item_id>/toggle/", views.checklist_toggle_item, name="checklist_toggle_item"),
-    path("checklist/item/<int:item_id>/delete/", views.checklist_delete_item, name="checklist_delete_item"),
-    path("checklist/item/<int:item_id>/update/", views.checklist_update_item, name="checklist_update_item"),
-
-
-    # ============================================================
-    # ATIVIDADES 
-    # ============================================================
-
     path("board/<int:board_id>/history/", views.board_history_modal, name="board_history_modal"),
     path("board/<int:board_id>/history/unread-count/", views.board_history_unread_count, name="board_history_unread_count"),
-
 ]
-
-#END file boards/urls.py
+# END file boards/urls.py
