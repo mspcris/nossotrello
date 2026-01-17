@@ -378,11 +378,12 @@
       {# Floatbar #}
       <div id="cm-floatbar" class="cm-floatbar hidden" aria-live="polite">
         <div class="cm-floatbar-inner">
-          <button type="button" class="cm-btn" id="cm-close-btn">Fechar</button>
-          <button type="submit" form="cm-main-form" class="cm-btn primary" id="cm-float-save-btn">
-            <span class="underline font-semibold">S</span>alvar
-          </button>
-        </div>
+  <button type="submit" form="cm-main-form" class="cm-btn primary" id="cm-float-save-btn">
+    <span class="underline font-semibold">S</span>alvar
+  </button>
+  <button type="button" class="cm-btn" id="cm-close-btn">Fechar</button>
+</div>
+
       </div>
 
       {# Aba: Checklists #}
@@ -1173,4 +1174,53 @@
   });
 })();
 </script>
+
+<script>
+(function () {
+  function bindActivityToggle() {
+    const toggle = document.getElementById("cm-activity-toggle");
+    const composer = document.getElementById("cm-activity-composer");
+    const gap = document.getElementById("cm-activity-gap");
+
+    if (!toggle || !composer) return;
+    if (toggle.dataset.cmBound === "1") return;
+    toggle.dataset.cmBound = "1";
+
+    function setOpen(open) {
+      composer.classList.toggle("is-hidden", !open);
+      if (gap) gap.classList.toggle("is-hidden", !open);
+      toggle.setAttribute("aria-expanded", open ? "true" : "false");
+
+      if (open) {
+        const ed = document.getElementById("cm-activity-editor");
+        if (ed) ed.scrollIntoView({ block: "nearest" });
+      }
+    }
+
+    toggle.addEventListener("click", function () {
+      const isHidden = composer.classList.contains("is-hidden");
+      setOpen(isHidden);
+    });
+
+    // Após incluir atividade: fecha composer + limpa editor
+    document.body.addEventListener("htmx:afterRequest", function (evt) {
+      if (!evt.target || evt.target.id !== "cm-activity-form") return;
+      if (!evt.detail || !evt.detail.successful) return;
+
+      setOpen(false);
+      if (typeof window.resetActivityQuill === "function") {
+        try { window.resetActivityQuill(); } catch (_e) {}
+      }
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", bindActivityToggle);
+
+  // Se o modal for re-render via HTMX, rebind com segurança
+  document.body.addEventListener("htmx:afterSwap", function (evt) {
+    if (evt.target && evt.target.id === "modal-body") bindActivityToggle();
+  });
+})();
+</script>
+
 {# END templates/boards/partials/card_modal_split.html (corrigido: cm-root envolve o split) #}

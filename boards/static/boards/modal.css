@@ -1219,3 +1219,416 @@ html.dark #cm-root{
 }
 
 
+/* ============================================================
+   AAA — ATIVIDADE com fonte maior (sem mexer no resto)
+   - aumenta 1 step na Atividade
+   - respeita sm/md/lg (A/AA/AAA)
+   ============================================================ */
+
+/* 1) Definições específicas da Atividade */
+#card-modal-root{
+  --cm-aa-activity-font-sm: 14px; /* era 12 no geral */
+  --cm-aa-activity-font-md: 16px; /* era 14 no geral */
+  --cm-aa-activity-font-lg: 18px; /* AAA de verdade */
+  --cm-aa-activity-line: 1.60;
+
+  --cm-aa-activity-font: var(--cm-aa-activity-font-sm);
+}
+
+#card-modal-root[data-font="md"]{ --cm-aa-activity-font: var(--cm-aa-activity-font-md); }
+#card-modal-root[data-font="lg"]{ --cm-aa-activity-font: var(--cm-aa-activity-font-lg); }
+
+/* 2) Aplica na Atividade (conteúdo + editor) */
+#card-modal-root .cm-activity,
+#card-modal-root #cm-activity-panel,
+#card-modal-root #cm-activity-panel * ,
+#card-modal-root .cm-activity-content,
+#card-modal-root .cm-activity-content * ,
+#card-modal-root .cm-activity-quill,
+#card-modal-root .cm-activity-quill .ql-editor,
+#card-modal-root #cm-activity-editor,
+#card-modal-root #cm-activity-editor *{
+  font-size: var(--cm-aa-activity-font) !important;
+  line-height: var(--cm-aa-activity-line) !important;
+}
+
+/* 3) Garante que inline font-size do Quill não quebre o AAA */
+#card-modal-root .cm-activity-quill .ql-editor [style*="font-size"],
+#card-modal-root #cm-activity-editor .ql-editor [style*="font-size"]{
+  font-size: inherit !important;
+}
+
+
+
+
+/* ============================================================
+   BOTÕES DO MODAL — vidro fosco, retângulo arredondado,
+   hover/active claros (sem sair do padrão)
+   Alvos: Nova Atividade / Fechar / Salvar
+   ============================================================ */
+
+#card-modal-root{
+  --cm-btn-radius: 12px;
+  --cm-btn-pad-y: 10px;
+  --cm-btn-pad-x: 14px;
+
+  --cm-btn-bg: rgba(255,255,255,0.14);
+  --cm-btn-bg-hover: rgba(255,255,255,0.22);
+  --cm-btn-border: rgba(255,255,255,0.26);
+  --cm-btn-border-hover: rgba(255,255,255,0.40);
+
+  --cm-btn-text: rgba(15,23,42,0.92);
+  --cm-btn-shadow: 0 10px 22px rgba(2,6,23,0.14);
+  --cm-btn-shadow-hover: 0 14px 30px rgba(2,6,23,0.18);
+}
+
+/* Dark mode */
+#card-modal-root.theme-dark,
+#card-modal-root.card-theme-dark,
+html.dark #card-modal-root{
+  --cm-btn-bg: rgba(2,6,23,0.26);
+  --cm-btn-bg-hover: rgba(2,6,23,0.34);
+  --cm-btn-border: rgba(255,255,255,0.20);
+  --cm-btn-border-hover: rgba(255,255,255,0.34);
+  --cm-btn-text: rgba(241,245,249,0.94);
+  --cm-btn-shadow: 0 12px 26px rgba(0,0,0,0.28);
+  --cm-btn-shadow-hover: 0 16px 34px rgba(0,0,0,0.34);
+}
+
+/* Base: todos os cm-btn dentro do modal */
+#card-modal-root .cm-btn{
+  appearance: none;
+  border: 1px solid var(--cm-btn-border);
+  border-radius: var(--cm-btn-radius);
+  padding: var(--cm-btn-pad-y) var(--cm-btn-pad-x);
+  background: var(--cm-btn-bg);
+  color: var(--cm-btn-text);
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+
+  box-shadow: var(--cm-btn-shadow);
+  transition: transform .08s ease, box-shadow .18s ease, background .18s ease, border-color .18s ease;
+}
+
+#card-modal-root .cm-btn:hover{
+  background: var(--cm-btn-bg-hover);
+  border-color: var(--cm-btn-border-hover);
+  box-shadow: var(--cm-btn-shadow-hover);
+}
+
+#card-modal-root .cm-btn:active{
+  transform: scale(.98);
+}
+
+#card-modal-root .cm-btn:focus-visible{
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.28), var(--cm-btn-shadow-hover);
+}
+
+/* Primary: manter “Salvar” destacado, mas ainda glass */
+#card-modal-root .cm-btn.primary{
+  background: linear-gradient(180deg, rgba(37,99,235,0.20), rgba(37,99,235,0.10));
+  border-color: rgba(37,99,235,0.40);
+}
+
+#card-modal-root .cm-btn.primary:hover{
+  background: linear-gradient(180deg, rgba(37,99,235,0.28), rgba(37,99,235,0.14));
+  border-color: rgba(37,99,235,0.55);
+}
+
+/* Alvos explícitos (garantia de cobertura) */
+#card-modal-root #cm-activity-toggle,
+#card-modal-root #cm-close-btn,
+#card-modal-root #cm-float-save-btn{
+  border-radius: var(--cm-btn-radius);
+}
+
+/* Se algum desses botões estiver "sem cara de botão" por reset externo */
+#card-modal-root #cm-activity-toggle,
+#card-modal-root #cm-close-btn,
+#card-modal-root #cm-float-save-btn{
+  text-decoration: none !important;
+}
+
+/* Disabled */
+#card-modal-root .cm-btn:disabled{
+  opacity: .55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+
+/* ============================================================
+   NOVA ATIVIDADE — estado único por .is-hidden (anti rerender)
+   ============================================================ */
+#cm-activity-composer,
+#cm-activity-gap{
+  display: block;
+}
+
+#cm-activity-composer.is-hidden,
+#cm-activity-gap.is-hidden{
+  display: none !important;
+}
+
+
+
+/* ============================================================
+   QUILL — DARK MODE: toolbar/ícones legíveis + painel consistente
+   Aplica tanto no editor principal quanto no Nova Atividade
+   ============================================================ */
+
+/* 1) Painel do Quill (toolbar + container) */
+#card-modal-root.theme-dark .ql-toolbar.ql-snow,
+#card-modal-root.card-theme-dark .ql-toolbar.ql-snow,
+#card-modal-root.theme-dark .ql-container.ql-snow,
+#card-modal-root.card-theme-dark .ql-container.ql-snow{
+  background: rgba(2,6,23,0.55) !important;
+  border-color: rgba(255,255,255,0.16) !important;
+}
+
+/* separador entre toolbar e editor */
+#card-modal-root.theme-dark .ql-toolbar.ql-snow,
+#card-modal-root.card-theme-dark .ql-toolbar.ql-snow{
+  border-bottom: 1px solid rgba(255,255,255,0.14) !important;
+}
+
+/* 2) Botões/ícones do Quill (stroke/fill/opacidade) */
+#card-modal-root.theme-dark .ql-snow .ql-stroke,
+#card-modal-root.card-theme-dark .ql-snow .ql-stroke{
+  stroke: rgba(241,245,249,0.92) !important;
+}
+
+#card-modal-root.theme-dark .ql-snow .ql-fill,
+#card-modal-root.card-theme-dark .ql-snow .ql-fill{
+  fill: rgba(241,245,249,0.92) !important;
+}
+
+#card-modal-root.theme-dark .ql-snow .ql-picker,
+#card-modal-root.card-theme-dark .ql-snow .ql-picker{
+  color: rgba(241,245,249,0.92) !important;
+}
+
+/* 3) Hover/active: destaque claro (sem estourar) */
+#card-modal-root.theme-dark .ql-snow.ql-toolbar button:hover,
+#card-modal-root.card-theme-dark .ql-snow.ql-toolbar button:hover,
+#card-modal-root.theme-dark .ql-snow.ql-toolbar button.ql-active,
+#card-modal-root.card-theme-dark .ql-snow.ql-toolbar button.ql-active{
+  background: rgba(255,255,255,0.10) !important;
+  border-radius: 8px;
+}
+
+/* 4) Picker (dropdown) no dark */
+#card-modal-root.theme-dark .ql-snow .ql-picker-options,
+#card-modal-root.card-theme-dark .ql-snow .ql-picker-options{
+  background: rgba(2,6,23,0.95) !important;
+  border: 1px solid rgba(255,255,255,0.14) !important;
+  color: rgba(241,245,249,0.92) !important;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.40) !important;
+}
+
+#card-modal-root.theme-dark .ql-snow .ql-picker-item,
+#card-modal-root.card-theme-dark .ql-snow .ql-picker-item{
+  color: rgba(241,245,249,0.92) !important;
+}
+
+/* 5) Texto do editor */
+#card-modal-root.theme-dark .ql-editor,
+#card-modal-root.card-theme-dark .ql-editor{
+  color: rgba(241,245,249,0.94) !important;
+}
+#card-modal-root.theme-dark .ql-editor.ql-blank::before,
+#card-modal-root.card-theme-dark .ql-editor.ql-blank::before{
+  color: rgba(226,232,240,0.55) !important;
+}
+
+
+/* ============================================================
+   QUILL (Descrição) — container arredondado igual Nova Atividade
+   ============================================================ */
+
+/* Aplica o mesmo "shell" no Quill fora do bloco .cm-activity-quill */
+#card-modal-root #cm-root .ql-toolbar.ql-snow{
+  border: 1px solid var(--cm-border) !important;
+  border-bottom: 1px solid var(--cm-border-2) !important;
+  border-top-left-radius: var(--cm-radius) !important;
+  border-top-right-radius: var(--cm-radius) !important;
+  background: var(--cm-surface-2) !important;
+}
+
+#card-modal-root #cm-root .ql-container.ql-snow{
+  border: 1px solid var(--cm-border) !important;
+  border-top: 0 !important;
+  border-bottom-left-radius: var(--cm-radius) !important;
+  border-bottom-right-radius: var(--cm-radius) !important;
+  background: var(--cm-surface-2) !important;
+  overflow: hidden !important;
+}
+
+/* Garante que o editor respeite o arredondado */
+#card-modal-root #cm-root .ql-editor{
+  border-bottom-left-radius: var(--cm-radius) !important;
+  border-bottom-right-radius: var(--cm-radius) !important;
+}
+
+/* Dark: mantém legível e consistente com o painel */
+#card-modal-root.theme-dark #cm-root .ql-toolbar.ql-snow,
+#card-modal-root.card-theme-dark #cm-root .ql-toolbar.ql-snow,
+#card-modal-root.theme-dark #cm-root .ql-container.ql-snow,
+#card-modal-root.card-theme-dark #cm-root .ql-container.ql-snow{
+  background: rgba(2,6,23,0.55) !important;
+  border-color: rgba(255,255,255,0.16) !important;
+}
+
+
+/* ============================================================
+   TÍTULO NA BARRA SUPERIOR DO MODAL — maior e sempre legível
+   (header do modal: .card-aero-header)
+   ============================================================ */
+
+/* garante um “painel” atrás do título (sem mexer no resto) */
+#card-modal-root .card-aero-header{
+  position: relative;
+}
+
+/* título (alvo amplo: h1/h2/h3 + elementos comuns de header) */
+#card-modal-root .card-aero-header :is(h1,h2,h3,.card-title,.modal-title){
+  font-size: 16px !important;          /* sobe sem exagerar */
+  font-weight: 800 !important;
+  letter-spacing: 0.2px;
+  line-height: 1.1;
+  color: rgba(255,255,255,0.96) !important;
+
+  /* legibilidade em cima do glass/blur */
+  text-shadow:
+    0 1px 2px rgba(0,0,0,0.85),
+    0 6px 18px rgba(0,0,0,0.35);
+
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.28);        /* “chip” discreto */
+  border: 1px solid rgba(255,255,255,0.14);
+  display: inline-flex;
+  max-width: 92%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* dark: pode reduzir o fundo (já é escuro), mas mantém leitura */
+#card-modal-root.theme-dark .card-aero-header :is(h1,h2,h3,.card-title,.modal-title),
+#card-modal-root.card-theme-dark .card-aero-header :is(h1,h2,h3,.card-title,.modal-title){
+  background: rgba(0,0,0,0.18);
+  border-color: rgba(255,255,255,0.10);
+}
+
+/* compact: ainda legível em telas pequenas */
+@media (max-width: 1366px){
+  #card-modal-root .card-aero-header :is(h1,h2,h3,.card-title,.modal-title){
+    font-size: 15px !important;
+  }
+}
+
+
+/* ============================================================
+   HEADER DO MODAL — TÍTULO SEMPRE LEGÍVEL (qualquer tag)
+   - pega div/span que não eram h1/h2
+   - não afeta botões/ícones
+   ============================================================ */
+
+#card-modal-root .card-aero-header{
+  position: relative;
+}
+
+/* alvo: qualquer “texto” dentro do header que não seja botão/ícone */
+#card-modal-root .card-aero-header
+  :where(*:not(button):not(svg):not(path):not(i)):not(.theme-dot){
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  letter-spacing: .2px;
+  line-height: 1.15;
+
+  color: rgba(255,255,255,.96) !important;
+
+  text-shadow:
+    0 1px 2px rgba(0,0,0,.85),
+    0 8px 18px rgba(0,0,0,.35);
+
+  padding: 4px 10px;
+  border-radius: 999px;
+
+  background: rgba(0,0,0,.28);
+  border: 1px solid rgba(255,255,255,.14);
+
+  display: inline-flex;
+  max-width: 92%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* dark: reduz o fundo, mantém contraste */
+#card-modal-root.theme-dark .card-aero-header
+  :where(*:not(button):not(svg):not(path):not(i)):not(.theme-dot),
+#card-modal-root.card-theme-dark .card-aero-header
+  :where(*:not(button):not(svg):not(path):not(i)):not(.theme-dot){
+  background: rgba(0,0,0,.18);
+  border-color: rgba(255,255,255,.10);
+}
+
+/* compact */
+@media (max-width: 1366px){
+  #card-modal-root .card-aero-header
+    :where(*:not(button):not(svg):not(path):not(i)):not(.theme-dot){
+    font-size: 15px !important;
+  }
+}
+
+
+/* ============================================================
+   TÍTULO DO MODAL — FORÇA CONTRASTE + TAMANHO (pega onde estiver)
+   ============================================================ */
+
+/* 1) Dá contraste para a faixa do topo (onde o título aparece) */
+#modal :where(.card-aero-header, .modal-header, .modal-topbar, .modal-titlebar){
+  background: rgba(0,0,0,0.38) !important;  /* base para legibilidade */
+  border-bottom: 1px solid rgba(255,255,255,0.10) !important;
+}
+
+/* 2) Força o texto do título (qualquer tag comum), sem afetar botões/ícones */
+#modal :where(.card-aero-header, .modal-header, .modal-topbar, .modal-titlebar)
+  :where(h1,h2,h3,div,span,p){
+  font-size: 18px !important;
+  font-weight: 800 !important;
+  letter-spacing: .2px !important;
+  line-height: 1.15 !important;
+
+  color: rgba(255,255,255,0.96) !important;
+  text-shadow:
+    0 1px 2px rgba(0,0,0,0.90),
+    0 10px 24px rgba(0,0,0,0.40) !important;
+
+  /* “chip” discreto em volta do texto (sem blur) */
+  background: rgba(0,0,0,0.22) !important;
+  border: 1px solid rgba(255,255,255,0.14) !important;
+  border-radius: 999px !important;
+  padding: 4px 10px !important;
+
+  display: inline-flex !important;
+  max-width: 92% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+/* 3) Não “pinta” ícones/botões do header */
+#modal :where(.card-aero-header, .modal-header, .modal-topbar, .modal-titlebar)
+  :where(button,svg,path,i){
+  background: transparent !important;
+  border: 0 !important;
+  padding: initial;
+}
