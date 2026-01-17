@@ -119,27 +119,90 @@
   }
 
   // ============================================================
+  // UI: Toggle do composer "Nova Atividade"
+  // ============================================================
+  function getComposerEl() {
+    return document.getElementById("cm-activity-composer");
+  }
+
+  function getGapEl() {
+    return document.getElementById("cm-activity-gap");
+  }
+
+  function getToggleBtn() {
+    return document.getElementById("cm-activity-toggle");
+  }
+
+  function isComposerOpen() {
+    const el = getComposerEl();
+    return !!(el && !el.classList.contains("is-hidden"));
+  }
+
+  function openComposer() {
+    const composer = getComposerEl();
+    const gap = getGapEl();
+    const btn = getToggleBtn();
+    if (!composer) return;
+
+    composer.classList.remove("is-hidden");
+    if (gap) gap.classList.remove("is-hidden");
+    if (btn) btn.setAttribute("aria-expanded", "true");
+
+    // Só inicializa Quill quando abriu
+    ensureQuill();
+
+    // foco
+    try {
+      const q = window[STATE_KEY];
+      if (q && typeof q.focus === "function") q.focus();
+    } catch (_e) {}
+  }
+
+  function closeComposer() {
+    const composer = getComposerEl();
+    const gap = getGapEl();
+    const btn = getToggleBtn();
+    if (!composer) return;
+
+    composer.classList.add("is-hidden");
+    if (gap) gap.classList.add("is-hidden");
+    if (btn) btn.setAttribute("aria-expanded", "false");
+  }
+
+  document.addEventListener(
+    "click",
+    function (e) {
+      const btn = e.target?.closest?.("#cm-activity-toggle");
+      if (!btn) return;
+
+      if (isComposerOpen()) closeComposer();
+      else openComposer();
+    },
+    true
+  );
+
+  // ============================================================
   // Detectar se a aba ATIVIDADE está realmente ativa no DOM
   // (não confiar só em data-cm-active)
   // ============================================================
   function isActivityTabActive() {
-  const root = getRoot();
-  if (!root) return false;
+    const root = getRoot();
+    if (!root) return false;
 
-  // 1) layout com aba (card_modal_body)
-  const panel = root.querySelector('section[data-cm-panel="ativ"]');
-  if (panel && panel.classList.contains("is-active")) return true;
+    // 1) layout com aba (card_modal_body)
+    const panel = root.querySelector('section[data-cm-panel="ativ"]');
+    if (panel && panel.classList.contains("is-active")) return true;
 
-  const btn = root.querySelector('.cm-tabbtn[data-cm-tab="ativ"]');
-  if (btn && btn.classList.contains("is-active")) return true;
+    const btn = root.querySelector('.cm-tabbtn[data-cm-tab="ativ"]');
+    if (btn && btn.classList.contains("is-active")) return true;
 
-  if (root.getAttribute("data-cm-active") === "ativ") return true;
+    if (root.getAttribute("data-cm-active") === "ativ") return true;
 
-  // 2) layout split (card_modal_split): atividade sempre visível
-  return !!document.getElementById("cm-activity-editor");
-}
+    // 2) layout split (card_modal_split): atividade pode existir no DOM
+    return !!document.getElementById("cm-activity-editor");
+  }
   // ============================================================
-  
+
   function destroyQuillIfStale(elNow) {
     const q = window[STATE_KEY];
     const elPrev = window[STATE_EL_KEY];
@@ -168,6 +231,9 @@
   function ensureQuill() {
     if (typeof Quill === "undefined") return;
 
+    // ✅ não monta Quill quando composer está oculto
+    if (!isComposerOpen()) return;
+
     const el = document.getElementById("cm-activity-editor");
     if (!el) return;
 
@@ -178,7 +244,7 @@
 
     const quill = new Quill(el, {
       theme: "snow",
-      placeholder: "Escreva aqui...",
+      placeholder: "", // ✅ remove "Escreva aqui..."
       modules: {
         toolbar: [
           [{ header: [1, 2, 3, false] }],
@@ -246,10 +312,7 @@
 
         const a = tmp.querySelector("a[href]");
         const img = tmp.querySelector("img[src]");
-        const fileUrl =
-          (img && img.getAttribute("src")) ||
-          (a && a.getAttribute("href")) ||
-          "";
+        const fileUrl = (img && img.getAttribute("src")) || (a && a.getAttribute("href")) || "";
 
         const range = quill.getSelection(true) || { index: quill.getLength() };
 
@@ -287,14 +350,16 @@
   window.resetActivityQuill = resetEditor;
 
   function bindActivityForm() {
-    const form = document.getElementById("cm-activity-form") 
-          || document.querySelector('section[data-cm-panel="ativ"] form');
+    const form =
+      document.getElementById("cm-activity-form") ||
+      document.querySelector('section[data-cm-panel="ativ"] form');
     if (!form) return;
 
     if (form.dataset.cmBound === "1") return;
     form.dataset.cmBound = "1";
 
     form.addEventListener("htmx:configRequest", function (evt) {
+      // se o usuário submeteu, o composer está aberto
       ensureQuill();
       clearActivityError();
 
@@ -308,17 +373,20 @@
       if (evt.detail?.successful === true) {
         resetEditor();
         clearActivityError();
+        closeComposer(); // ✅ após incluir, volta a ocultar
       }
     });
   }
 
   function initActivityModule() {
-  if (!isActivityTabActive()) return;
+    if (!isActivityTabActive()) return;
 
-  ensureQuill();
-  bindActivityForm();
-}
+    // ✅ garante que o form esteja bindado mesmo com composer fechado
+    bindActivityForm();
 
+    // ✅ só monta Quill quando composer abrir
+    if (isComposerOpen()) ensureQuill();
+  }
 
   // ============================================================
   // GATILHO 1: click direto na aba "Atividade" (delegado)
@@ -353,9 +421,21 @@
     setTimeout(initActivityModule, 0);
     setTimeout(initActivityModule, 50);
     setTimeout(initActivityModule, 150); // ✅ último “tiro” quando CSS/layout estabiliza
+
+    // ✅ estado inicial: composer oculto (se existir no template)
+    setTimeout(function () {
+      const composer = getComposerEl();
+      const btn = getToggleBtn();
+      if (composer && !composer.classList.contains("is-hidden")) {
+        closeComposer();
+      } else if (btn) {
+        btn.setAttribute("aria-expanded", isComposerOpen() ? "true" : "false");
+      }
+    }, 0);
   }
 
   document.addEventListener("DOMContentLoaded", afterModalPaint);
+
   document.body.addEventListener("htmx:afterSettle", function (e) {
     const target = e.detail?.target || e.target;
     if (!target) return;

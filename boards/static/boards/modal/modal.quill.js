@@ -398,6 +398,159 @@ window.Modal.quill.init = function () {
     setTimeout(ensureHandle, 0);
   })();
 
+// ============================================================
+// Quill Descrição — Resize Grip (MVP robusto, fora do overflow)
+// ============================================================
+(function installDescResizeGripFloating() {
+  if (window.__cmDescGripInstalled) return;
+  window.__cmDescGripInstalled = true;
+
+  let grip = null;
+  let rafId = 0;
+
+  function getDescContainer() {
+    const root = document.getElementById("cm-root");
+    if (!root) return null;
+
+    // só quando a aba descrição estiver ativa
+    const active = root.getAttribute("data-cm-active") || root.dataset.cmActive;
+    if (active && active !== "desc") return null;
+
+    const host = document.querySelector("#modal-body .cm-quill");
+    if (!host) return null;
+
+    const container = host.querySelector(".ql-container");
+    return container || null;
+  }
+
+  function ensureGrip() {
+    if (grip && document.contains(grip)) return grip;
+
+    grip = document.createElement("div");
+    grip.className = "cm-desc-resize-grip";
+    grip.setAttribute("title", "Arraste para aumentar/reduzir");
+    grip.setAttribute("aria-label", "Redimensionar descrição");
+    document.body.appendChild(grip);
+
+    bindDrag(grip);
+    return grip;
+  }
+
+  function clamp(n, min, max) {
+    return Math.max(min, Math.min(max, n));
+  }
+
+  function positionGrip() {
+    const container = getDescContainer();
+    const g = ensureGrip();
+
+    if (!container) {
+      g.style.display = "none";
+      return;
+    }
+
+    const r = container.getBoundingClientRect();
+    // posiciona no canto inferior direito do container
+    const left = r.right - 30;
+    const top  = r.bottom - 30;
+
+    g.style.left = `${left}px`;
+    g.style.top = `${top}px`;
+    g.style.display = "block";
+  }
+
+  function schedulePosition() {
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(positionGrip);
+  }
+
+  function bindDrag(g) {
+    let dragging = false;
+    let startY = 0;
+    let startH = 0;
+    let container = null;
+
+    function onDown(e) {
+      container = getDescContainer();
+      if (!container) return;
+
+      dragging = true;
+      startY = (e.touches ? e.touches[0].clientY : e.clientY);
+      startH = container.getBoundingClientRect().height;
+
+      // garante height explícito (senão fica “auto” e dá efeito doido)
+      container.style.height = `${startH}px`;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      document.addEventListener("mousemove", onMove, true);
+      document.addEventListener("mouseup", onUp, true);
+      document.addEventListener("touchmove", onMove, { passive: false, capture: true });
+      document.addEventListener("touchend", onUp, true);
+    }
+
+    function onMove(e) {
+      if (!dragging || !container) return;
+
+      const y = (e.touches ? e.touches[0].clientY : e.clientY);
+      const dy = y - startY;
+
+      const vh = window.innerHeight || 800;
+      const maxH = clamp(Math.floor(vh * 0.60), 260, 900); // alinhado com seu max-height 60vh
+      const newH = clamp(startH + dy, 180, maxH);
+
+      container.style.height = `${newH}px`;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      schedulePosition();
+    }
+
+    function onUp(e) {
+      dragging = false;
+
+      document.removeEventListener("mousemove", onMove, true);
+      document.removeEventListener("mouseup", onUp, true);
+      document.removeEventListener("touchmove", onMove, true);
+      document.removeEventListener("touchend", onUp, true);
+
+      e?.preventDefault?.();
+      e?.stopPropagation?.();
+
+      schedulePosition();
+    }
+
+    g.addEventListener("mousedown", onDown, true);
+    g.addEventListener("touchstart", onDown, { passive: false, capture: true });
+  }
+
+  // reposiciona em tudo que mexe no layout do modal
+  function bindRepositionTriggers() {
+    // swaps do modal
+    document.body.addEventListener("htmx:afterSwap", schedulePosition);
+    document.body.addEventListener("htmx:afterSettle", schedulePosition);
+
+    // troca de abas
+    const root = document.getElementById("cm-root");
+    root?.addEventListener("cm:tabchange", schedulePosition);
+
+    // scroll dentro do modal (seu modal tem card-modal-scroll)
+    document.addEventListener("scroll", schedulePosition, true);
+    window.addEventListener("resize", schedulePosition);
+
+    // quando fechar modal, some com o grip
+    document.addEventListener("modal:closed", function () {
+      if (grip) grip.style.display = "none";
+    });
+  }
+
+  bindRepositionTriggers();
+
+  // primeira tentativa
+  setTimeout(schedulePosition, 0);
+})();
 
 
 })();

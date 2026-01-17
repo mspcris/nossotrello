@@ -780,44 +780,57 @@ html.dark #cm-root{
     <aside class="cm-activity">
       <section class="cm-activity-panel" role="region">
 
-  <!-- CARD 1: NOVA ATIVIDADE (composer) -->
-  <div class="cm-card space-y-3">
-    <form
-      id="cm-activity-form"
-      method="post"
-      hx-post="{% url 'boards:add_activity' card.id %}"
-      hx-target="#cm-activity-panel"
-      hx-swap="innerHTML"
-    >
-      {% csrf_token %}
+  <!-- BARRA: BOTÃO NOVA ATIVIDADE -->
+<div class="cm-activity-togglebar">
+  <button
+    type="button"
+    id="cm-activity-toggle"
+    class="cm-btn"
+    aria-expanded="false"
+    aria-controls="cm-activity-composer"
+  >
+    Nova Atividade
+  </button>
+</div>
 
-      <div id="activity-error"
-           class="hidden mb-2 px-3 py-2 rounded-md text-sm border border-red-500/30 bg-red-500/10 text-red-200"></div>
+<!-- CARD 1: NOVA ATIVIDADE (composer) - COMEÇA OCULTO -->
+<div id="cm-activity-composer" class="cm-card space-y-3 is-hidden">
+  <form
+    id="cm-activity-form"
+    method="post"
+    hx-post="{% url 'boards:add_activity' card.id %}"
+    hx-target="#cm-activity-panel"
+    hx-swap="innerHTML"
+  >
+    {% csrf_token %}
 
-      <label class="cm-label">Nova atividade</label>
+    <div id="activity-error"
+         class="hidden mb-2 px-3 py-2 rounded-md text-sm border border-red-500/30 bg-red-500/10 text-red-200"></div>
 
-      <div class="cm-activity-quill">
-        <div id="cm-activity-editor"></div>
-      </div>
+    <label class="cm-label">Nova atividade</label>
 
-      <input type="hidden" name="content" id="cm-activity-content">
-
-      <div class="flex gap-2">
-        <button type="submit" class="cm-btn primary"><span class="underline font-semibold">I</span>ncluir</button>
-        <button type="button" class="cm-btn" onclick="resetActivityQuill()">Limpar</button>
-      </div>
-    </form>
-  </div>
-
-  <!-- ESPAÇO ENTRE OS DOIS BLOCOS (igual “Descrição -> Prazo”) -->
-  <div style="height: 10px;"></div>
-
-  <!-- CARD 2: LISTA DE ATIVIDADES -->
-  <div class="cm-card">
-    <div id="cm-activity-panel">
-      {% include "boards/partials/card_activity_panel.html" %}
+    <div class="cm-activity-quill">
+      <div id="cm-activity-editor"></div>
     </div>
+
+    <input type="hidden" name="content" id="cm-activity-content">
+
+    <div class="flex gap-2">
+      <button type="submit" class="cm-btn primary"><span class="underline font-semibold">I</span>ncluir</button>
+      <button type="button" class="cm-btn" onclick="resetActivityQuill()">Limpar</button>
+    </div>
+  </form>
+</div>
+
+<!-- ESPAÇO ENTRE OS DOIS BLOCOS -->
+<div id="cm-activity-gap" style="height: 10px;" class="is-hidden"></div>
+
+<!-- CARD 2: LISTA DE ATIVIDADES -->
+<div class="cm-card">
+  <div id="cm-activity-panel">
+    {% include "boards/partials/card_activity_panel.html" %}
   </div>
+</div>
 
 </section>
 
