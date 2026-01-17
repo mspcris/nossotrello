@@ -1632,3 +1632,49 @@ html.dark #card-modal-root{
   border: 0 !important;
   padding: initial;
 }
+
+
+/* ============================================================
+   MODAL TOP — TÍTULO (breadcrumb) maior e sempre legível
+   Alvo real: #modal-breadcrumb (templates/base.html)
+   ============================================================ */
+
+#modal #modal-breadcrumb{
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  letter-spacing: .2px;
+  line-height: 1.15;
+
+  /* chip de contraste */
+  color: rgba(255,255,255,0.96) !important;
+  background: rgba(0,0,0,0.28) !important;
+  border: 1px solid rgba(255,255,255,0.14) !important;
+  border-radius: 999px !important;
+  padding: 4px 10px !important;
+
+  /* legibilidade em cima do blur */
+  text-shadow:
+    0 1px 2px rgba(0,0,0,0.90),
+    0 10px 24px rgba(0,0,0,0.35) !important;
+
+  /* mantém o truncate funcionando */
+  max-width: min(70vw, 820px);
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Dark: chip um pouco mais discreto, mantendo leitura */
+#modal.theme-dark #modal-breadcrumb,
+#modal.card-theme-dark #modal-breadcrumb,
+html.dark #modal #modal-breadcrumb{
+  background: rgba(0,0,0,0.20) !important;
+  border-color: rgba(255,255,255,0.10) !important;
+}
+
+/* telas menores */
+@media (max-width: 768px){
+  #modal #modal-breadcrumb{
+    font-size: 15px !important;
+    max-width: 62vw;
+  }
+}
