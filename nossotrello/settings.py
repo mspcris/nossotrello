@@ -73,7 +73,11 @@ DATABASES = {
 # ============================================================
 
 INSTALLED_APPS = [
-    # apps do projeto
+
+    # apps do projeto tracktime
+    'tracktime.apps.TracktimeConfig',
+
+    # apps do projeto boards nossotrello
     'boards.apps.BoardsConfig',
 
     # apps nativos

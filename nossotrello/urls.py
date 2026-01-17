@@ -26,7 +26,7 @@ urlpatterns = [
     # Admin
     path("admin/", admin.site.urls),
 
-    # App principal (boards)
+    # App principal (boards nossotrello)
     path("", include(("boards.urls", "boards"), namespace="boards")),
 
     # =========================================================
@@ -37,6 +37,13 @@ urlpatterns = [
         TemplateView.as_view(template_name="checktrello.html"),
         name="qa_checktrello",
     ),
+
+    # App tracktime
+    path("", include(("boards.urls", "boards"), namespace="boards")),
+    path("track-time/", include(("tracktime.urls", "tracktime"), namespace="tracktime")),
+
+
+
 ]
 
 # Media em desenvolvimento
@@ -47,3 +54,4 @@ if settings.DEBUG:
     )
 
     path("", include(("boards.urls", "boards"), namespace="boards")),
+    
