@@ -4,6 +4,7 @@
     (window.Modal && typeof window.Modal === "object") ? window.Modal : {};
   window.Modal = Modal;
 
+  // evita duplicidade
   if (Modal.__coreLoaded) return;
   Modal.__coreLoaded = true;
 
@@ -14,63 +15,235 @@
   const log = (...a) => DEBUG && console.log("[modal.core]", ...a);
   const warn = (...a) => DEBUG && console.warn("[modal.core]", ...a);
 
-  const state = Modal.state ||= {};
+  const state =
+    (Modal.state && typeof Modal.state === "object") ? Modal.state : {};
+  Modal.state = state;
+
   state.isOpen ??= false;
+  state.currentCardId ??= null;
+  state.lastOpenedAt ??= 0;
+  state.lastCardRect ??= null;
   state.lastFocusedEl ??= null;
 
-  /* ============================================================
-   * Helpers DOM
-   * ============================================================ */
-  const getModalEl = () => document.getElementById("modal");
-  const getRootEl  = () => document.getElementById("card-modal-root");
-  const getBodyEl  = () => document.getElementById("modal-body");
+  // ============================================================
+  // Helpers DOM
+  // ============================================================
+  function getModalEl() {
+    return document.getElementById("modal");
+  }
 
-  const isInsideModal = (el) => {
+  function getRootEl() {
+    return document.getElementById("card-modal-root");
+  }
+
+  function getBodyEl() {
+    return document.getElementById("modal-body");
+  }
+
+  function getCmRootEl() {
+    return document.getElementById("cm-root");
+  }
+
+  function isInsideModal(el) {
     const modal = getModalEl();
     return !!(modal && el && modal.contains(el));
-  };
+  }
 
-  const tryFocus = (el) => {
+  function tryFocus(el) {
     try {
-      el?.focus?.({ preventScroll: true });
-      return true;
-    } catch {
-      return false;
-    }
-  };
+      if (el && typeof el.focus === "function") {
+        el.focus({ preventScroll: true });
+        return true;
+      }
+    } catch {}
+    return false;
+  }
 
-  /* ============================================================
-   * Nova Atividade — TOGGLE (FONTE ÚNICA DE VERDADE)
-   * ============================================================ */
-  function initActivityToggle() {
+  function restoreFocusBeforeHide() {
+    const active = document.activeElement;
+    if (!isInsideModal(active)) return;
+
+    const last = state.lastFocusedEl;
+    if (last && document.contains(last) && !isInsideModal(last)) {
+      if (tryFocus(last)) return;
+    }
+
+    try {
+      document.body.tabIndex = document.body.tabIndex || -1;
+      tryFocus(document.body);
+    } catch {}
+  }
+
+  // ============================================================
+  // Inert (trava fundo sem travar modal)
+  // Regra: nunca aplicar inert em um ancestral do modal.
+  // ============================================================
+  function getModalTopContainer() {
+    const modal = getModalEl();
+    if (!modal) return null;
+
+    let node = modal;
+    while (node && node.parentElement && node.parentElement !== document.body) {
+      node = node.parentElement;
+    }
+    return node && node.parentElement === document.body ? node : null;
+  }
+
+  function applyInert(isOpen) {
+    const modal = getModalEl();
+    if (!modal) return;
+
+    const boardRoot = document.getElementById("board-root");
+    if (boardRoot && !boardRoot.contains(modal)) {
+      if (isOpen) boardRoot.setAttribute("inert", "");
+      else boardRoot.removeAttribute("inert");
+      return;
+    }
+
+    const top = getModalTopContainer();
+    if (!top) return;
+
+    const kids = Array.from(document.body.children || []);
+    for (const k of kids) {
+      if (k === top) continue;
+      if (isOpen) k.setAttribute("inert", "");
+      else k.removeAttribute("inert");
+    }
+  }
+
+  // ============================================================
+  // URL (?card=)
+  // ============================================================
+  function clearCardFromUrl() {
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("card");
+      history.replaceState(history.state || {}, "", url.toString());
+    } catch {}
+  }
+
+  // ============================================================
+  // CM — Nova Atividade (toggle do composer) — HTMX safe
+  // (IDs: #cm-activity-toggle, #cm-activity-composer, #cm-activity-gap)
+  // ============================================================
+  function initActivityComposerToggle() {
     const root = document.getElementById("cm-root");
     if (!root) return;
 
-    const btn = root.querySelector("#cm-activity-toggle");
-    const composer = root.querySelector("#cm-activity-composer");
-    const gap = root.querySelector("#cm-activity-gap");
+    // pega por document (não por query do root), pra não depender da estrutura
+    const btn = document.getElementById("cm-activity-toggle");
+    const composer = document.getElementById("cm-activity-composer");
+    const gap = document.getElementById("cm-activity-gap");
 
     if (!btn || !composer) return;
 
-    // evita múltiplos binds
-    if (btn.dataset.bound === "1") return;
-    btn.dataset.bound = "1";
+    // evita bind duplicado (por elemento)
+    if (btn.dataset.cmBound === "1") return;
+    btn.dataset.cmBound = "1";
 
-    // estado inicial: FECHADO
-    composer.classList.add("is-hidden");
-    gap?.classList.add("is-hidden");
+    // estado inicial: FECHADO (fonte única: is-open)
+    composer.classList.remove("is-open");
+    gap?.classList.remove("is-open");
     btn.setAttribute("aria-expanded", "false");
 
-    btn.addEventListener("click", () => {
-      const closed = composer.classList.toggle("is-hidden");
-      gap?.classList.toggle("is-hidden", closed);
-      btn.setAttribute("aria-expanded", closed ? "false" : "true");
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+
+      const open = composer.classList.toggle("is-open");
+      gap?.classList.toggle("is-open", open);
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
     });
   }
 
-  /* ============================================================
-   * OPEN
-   * ============================================================ */
+  // ============================================================
+  // Tabs — sempre abrir em "Descrição" (audit + force)
+  // ============================================================
+    function forceDescriptionTab() {
+    const modal = getModalEl();
+    const body = getBodyEl();
+    const scope = body || modal || document;
+    if (!scope) return false;
+
+    const norm = (s) =>
+      (s || "")
+        .trim()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+
+    const tabs = Array.from(
+      scope.querySelectorAll("[role='tab'], [data-tab], [data-target], a[href], button")
+    );
+
+    const descTab = tabs.find((el) => {
+      const text = norm(el.textContent);
+      const dt = norm(el.getAttribute("data-tab"));
+      const dtarget = norm(el.getAttribute("data-target"));
+      const aria = norm(el.getAttribute("aria-controls"));
+      const href = norm(el.getAttribute("href"));
+
+      return (
+        text.includes("descricao") ||
+        dt.includes("descricao") || dt.includes("description") ||
+        dtarget.includes("descricao") || dtarget.includes("description") ||
+        aria.includes("descricao") || aria.includes("description") ||
+        href.includes("#descricao") || href.includes("#description")
+      );
+    });
+
+    if (!descTab) {
+      warn("forceDescriptionTab(): não achou aba Descrição");
+      return false;
+    }
+
+    try {
+      descTab.click();
+      log("forceDescriptionTab(): clicked", (descTab.textContent || "").trim());
+      return true;
+    } catch (e) {
+      warn("forceDescriptionTab(): click falhou", e);
+      return false;
+    }
+  }
+
+
+  // ============================================================
+  // CM — Init do conteúdo do modal (HTMX safe)
+  // - AA (dock + data-font)
+  // - Nova Atividade (toggle)
+  // ============================================================
+  function initCardModalContent() {
+    // AA
+    try { Modal.fontSize?.init?.(); } catch {}
+
+    // Nova Atividade
+    try { initActivityComposerToggle?.(); } catch {}
+
+    // ✅ CHECKLIST DnD / UX
+    try { Modal.checklists?.init?.(); } catch {}
+
+    // Bind HTMX (uma vez) — sem forçar aba aqui (evita quebrar DnD)
+    if (!window.__cmModalContentInitBound) {
+      window.__cmModalContentInitBound = true;
+
+      document.body.addEventListener("htmx:afterSwap", (evt) => {
+        if (evt.target && evt.target.id === "modal-body") {
+          initCardModalContent();
+        }
+      });
+
+      document.body.addEventListener("htmx:afterSettle", (evt) => {
+        if (evt.target && evt.target.id === "modal-body") {
+          initCardModalContent();
+        }
+      });
+    }
+  }
+
+
+  // ============================================================
+  // OPEN
+  // ============================================================
   Modal.open = function () {
     const modal = getModalEl();
     const root = getRootEl();
@@ -80,83 +253,220 @@
       return false;
     }
 
+    // salva foco anterior
     state.lastFocusedEl = document.activeElement;
 
     modal.classList.add("modal-open");
     modal.setAttribute("aria-hidden", "false");
 
+    // trava o fundo (sem travar o modal)
+    applyInert(true);
+
+    const rect = state.lastCardRect;
+
+    // Genie (se tiver geometria do card)
+    if (rect) {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+
+      const rw = root.offsetWidth || 1;
+      const rh = root.offsetHeight || 1;
+
+      const scaleX = rect.width / rw;
+      const scaleY = rect.height / rh;
+
+      const translateX = rect.left + rect.width / 2 - vw / 2;
+      const translateY = rect.top + rect.height / 2 - vh / 2;
+
+      root.style.transition = "none";
+      root.style.transformOrigin = "center center";
+      root.style.transform =
+        `translate(${translateX}px, ${translateY}px) scale(${scaleX}, ${scaleY})`;
+      root.style.opacity = "0";
+
+      root.getBoundingClientRect();
+
+      requestAnimationFrame(() => {
+        root.style.transition =
+          "transform 420ms cubic-bezier(0.22, 1, 0.36, 1), opacity 200ms ease";
+        root.style.transform = "translate(0,0) scale(1)";
+        root.style.opacity = "1";
+      });
+    }
+
+    // foco dentro do modal
     requestAnimationFrame(() => {
-      tryFocus(
-        modal.querySelector(
-          "button.modal-top-x, [data-modal-close], button"
-        )
-      );
+      const closeBtn =
+        modal.querySelector("button.modal-top-x, [data-modal-close], #modal-top-x") ||
+        modal.querySelector("button, [tabindex]:not([tabindex='-1'])");
+      if (closeBtn) tryFocus(closeBtn);
     });
 
     state.isOpen = true;
+    state.lastOpenedAt = Date.now();
 
-    // AA
-    try { Modal.fontSize?.init?.(); } catch {}
-
-    // NOVA ATIVIDADE (AQUI É O LUGAR CERTO)
-    initActivityToggle();
+    // IMPORTANTE: conteúdo pode entrar via HTMX; roda init "logo depois"
+    setTimeout(() => {
+      try { initCardModalContent(); } catch {}
+    }, 0);
 
     log("open()");
     return true;
   };
 
-  /* ============================================================
-   * CLOSE
-   * ============================================================ */
-  Modal.close = function () {
+  // ============================================================
+  // CLOSE
+  // ============================================================
+  Modal.close = function ({ clearBody = true, clearUrl = true } = {}) {
     const modal = getModalEl();
+    const root = getRootEl();
     const body = getBodyEl();
 
-    modal?.classList.remove("modal-open");
-    modal?.setAttribute("aria-hidden", "true");
-
-    body && (body.innerHTML = "");
-
-    try { Modal.fontSize?.destroy?.(); } catch {}
+    const rect = state.lastCardRect;
 
     state.isOpen = false;
-    log("close()");
-  };
+    state.currentCardId = null;
 
-  /* ============================================================
-   * Font size (AA)
-   * ============================================================ */
-  (() => {
-    const KEY = "cm_modal_font_size";
-    const DEFAULT = "sm";
+    restoreFocusBeforeHide();
 
-    const applyFont = (size) => {
-      getRootEl()?.setAttribute("data-font", size);
-      getModalEl()?.setAttribute("data-font", size);
-      document.getElementById("cm-root")?.setAttribute("data-font", size);
-      localStorage.setItem(KEY, size);
+    const finalize = () => {
+      modal?.classList.remove("modal-open");
+      modal?.setAttribute("aria-hidden", "true");
+
+      applyInert(false);
+
+      if (root) {
+        root.style.transition = "";
+        root.style.transform = "";
+        root.style.opacity = "";
+      }
+
+      if (clearBody && body) body.innerHTML = "";
+      if (clearUrl) clearCardFromUrl();
+
+      try { Modal.fontSize?.destroy?.(); } catch {}
+
+      document.dispatchEvent(new Event("modal:closed"));
     };
 
-    const current = () => localStorage.getItem(KEY) || DEFAULT;
+    // Genie close (se tiver geometria)
+    if (rect && root && modal) {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+
+      const rw = root.offsetWidth || 1;
+      const rh = root.offsetHeight || 1;
+
+      const scaleX = rect.width / rw;
+      const scaleY = rect.height / rh;
+
+      const translateX = rect.left + rect.width / 2 - vw / 2;
+      const translateY = rect.top + rect.height / 2 - vh / 2;
+
+      root.style.transition = "transform 220ms ease, opacity 180ms ease";
+      root.style.transform =
+        `translate(${translateX}px, ${translateY}px) scale(${scaleX}, ${scaleY})`;
+      root.style.opacity = "0";
+
+      setTimeout(finalize, 240);
+    } else {
+      finalize();
+    }
+
+    log("close()");
+    return true;
+  };
+
+  // ============================================================
+  // CM — Font size selector (sm/md/lg) + localStorage
+  // - CSS alvo: #cm-root[data-font="sm|md|lg"]
+  // ============================================================
+  (() => {
+    const KEY = "cm_modal_font_size"; // "sm" | "md" | "lg"
+    const DEFAULT = "sm";
+
+    function currentFont() {
+      try {
+        return localStorage.getItem(KEY) || DEFAULT;
+      } catch {
+        return DEFAULT;
+      }
+    }
+
+    function applyFont(size) {
+      // FONTE ÚNICA DE VERDADE: #cm-root (é onde seu CSS está)
+      const cmRoot = getCmRootEl();
+      if (cmRoot) cmRoot.setAttribute("data-font", size);
+
+      // fallback (não atrapalha)
+      const modalRoot = getRootEl();
+      const modal = getModalEl();
+      if (modalRoot) modalRoot.setAttribute("data-font", size);
+      if (modal) modal.setAttribute("data-font", size);
+
+      try { localStorage.setItem(KEY, size); } catch {}
+    }
+
+    function ensureDock() {
+      // dock já existe?
+      if (document.getElementById("cm-fontsize-dock")) return;
+
+      const dock = document.createElement("div");
+      dock.id = "cm-fontsize-dock";
+      dock.innerHTML = `
+        <div class="dock-wrap">
+          <button class="dock-toggle" type="button" aria-label="Tamanho da fonte">AA</button>
+          <div class="dock-actions">
+            <button class="dock-action" type="button" data-size="sm">A</button>
+            <button class="dock-action" type="button" data-size="md">AA</button>
+            <button class="dock-action" type="button" data-size="lg">AAA</button>
+          </div>
+        </div>
+      `;
+
+      // DOCK DENTRO DO CM ROOT (pra CSS/posicionamento bater)
+      const host = getCmRootEl() || getModalEl() || document.body;
+      host.appendChild(dock);
+
+      const toggle = dock.querySelector(".dock-toggle");
+      toggle?.addEventListener("click", () => dock.classList.toggle("is-open"));
+
+      dock.querySelectorAll(".dock-action").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          applyFont(btn.getAttribute("data-size") || DEFAULT);
+          dock.classList.remove("is-open");
+        });
+      });
+    }
+
+    function destroyDock() {
+      const dock = document.getElementById("cm-fontsize-dock");
+      if (dock) dock.remove();
+    }
 
     Modal.fontSize = {
       init() {
-        applyFont(current());
+        ensureDock();
+        applyFont(currentFont());
       },
-      destroy() {},
+      destroy() {
+        destroyDock();
+      },
+      apply(size) {
+        applyFont(size || DEFAULT);
+      },
+      get() {
+        return currentFont();
+      }
     };
-
-    // HTMX — reaplica AA + toggle
-    if (!window.__cmAfterSwapBound) {
-      window.__cmAfterSwapBound = true;
-
-      document.body.addEventListener("htmx:afterSwap", (e) => {
-        if (e.target?.id === "modal-body") {
-          Modal.fontSize.init();
-          initActivityToggle();
-        }
-      });
-    }
   })();
 
+  // expõe (opcional)
+  Modal.getElements = () => ({
+    modal: getModalEl(),
+    body: getBodyEl(),
+    root: getRootEl(),
+    cmRoot: getCmRootEl(),
+  });
 })();
+// end boards/static/boards/modal/modal.core.js

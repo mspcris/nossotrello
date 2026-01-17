@@ -2,10 +2,106 @@
 
 .is-hidden { display: none !important; }
 
+/* Nova Atividade: fechado por padrão */
 #cm-activity-composer { display: none; }
-#cm-activity-composer.is-open { display: block; }
 #cm-activity-gap { display: none; }
+
+/* aberto quando o botão liga */
+#cm-activity-composer.is-open { display: block; }
 #cm-activity-gap.is-open { display: block; }
+
+/* ============================================================
+   Etiquetas — UI (chips) no modal
+   ============================================================ */
+
+#card-modal-root .cm-tag-catalog { margin-top: 10px; }
+
+#card-modal-root .cm-tag-create{
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+#card-modal-root .cm-tag-create input{ flex: 1; }
+
+#card-modal-root .cm-tag-list{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+#card-modal-root .cm-tag-chip{
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.08);
+  border: 1px solid rgba(0,0,0,0.10);
+  cursor: pointer;
+  font-size: 0.92em;          /* escala com AA */
+  line-height: 1.2;
+  position: relative;
+  user-select: none;
+}
+
+#card-modal-root .cm-tag-chip:hover{
+  background: rgba(0,0,0,0.13);
+}
+
+#card-modal-root .cm-tag-chip .cm-tag-remove{
+  display: none;
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #e11d48;
+  color: #fff;
+  font-size: 11px;
+  line-height: 16px;
+  text-align: center;
+  cursor: pointer;
+}
+
+#card-modal-root .cm-tag-list.delete-mode .cm-tag-remove{ display: block; }
+
+
+/* ============================================================
+   QUILL — obedecer AA (hard override)
+   ============================================================ */
+
+/* container snow + editor */
+#card-modal-root .ql-snow,
+#card-modal-root .ql-snow *{
+  font-size: inherit !important;
+  line-height: inherit !important;
+}
+
+/* editor (onde o texto fica) */
+#card-modal-root .ql-snow .ql-editor,
+#card-modal-root .ql-snow .ql-editor *{
+  font-size: inherit !important;
+  line-height: inherit !important;
+}
+
+/* toolbar/pickers */
+#card-modal-root .ql-snow .ql-toolbar,
+#card-modal-root .ql-snow .ql-toolbar *{
+  font-size: 0.95em !important;
+  line-height: 1.2 !important;
+}
+
+/* derruba font-size inline que o Quill coloca em spans */
+#card-modal-root .ql-editor [style*="font-size"]{
+  font-size: inherit !important;
+}
+
+/* fallback pro editor de atividade se Quill ainda não montou */
+#card-modal-root #cm-activity-editor,
+#card-modal-root #cm-activity-editor *{
+  font-size: inherit !important;
+  line-height: inherit !important;
+}
+
 
 /* ============================================================
    CM — AA FONT SIZE (ÚNICO BLOCO - FINAL DO ARQUIVO)
@@ -25,10 +121,9 @@
 #card-modal-root[data-font="lg"]{ --cm-aa-font: var(--cm-aa-font-lg); }
 
 /* baseline tipográfico do modal inteiro */
-#card-modal-root,
-#card-modal-root *{
-  font-size: inherit;
-  line-height: inherit;
+#card-modal-root{
+  font-size: var(--cm-aa-font) !important;
+  line-height: var(--cm-aa-line) !important;
 }
 
 #card-modal-root{
