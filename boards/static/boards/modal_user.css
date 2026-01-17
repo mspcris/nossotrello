@@ -1,0 +1,226 @@
+.profile-modal{
+  display:flex;
+  gap:16px;
+  align-items:stretch;
+  width:100%;
+  min-width:0;
+}
+
+.profile-modal__left{
+  flex:0 0 auto;
+  width:min(620px, 100%);
+  min-width:0;
+}
+
+.profile-modal__divider{
+  flex:0 0 1px;
+  background: linear-gradient(
+    to bottom,
+    rgba(255,255,255,0.0),
+    rgba(255,255,255,0.25),
+    rgba(255,255,255,0.0)
+  );
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.08);
+  border-radius:999px;
+}
+
+.profile-modal__right{
+  flex:1 1 auto;
+  min-width:0;
+  /* espaço da rede social */
+}
+
+.profile-social-placeholder{
+  height:100%;
+  border-radius:16px;
+  border:1px dashed rgba(255,255,255,0.20);
+  background: rgba(0,0,0,0.10);
+}
+
+/* mobile: empilha */
+@media (max-width: 900px){
+  .profile-modal{ flex-direction:column; }
+  .profile-modal__divider{ display:none; }
+  .profile-modal__left{ width:100%; }
+}
+
+
+/* =======================================================================
+   modal_user.css — escopo: somente #um-root
+   ======================================================================= */
+
+#um-root.um-root{
+  width: 100%;
+  min-width: 0;
+}
+
+/* Layout 2 colunas */
+#um-root .profile-modal{
+  display: flex;
+  gap: 16px;
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
+}
+
+#um-root .profile-modal__left{
+  flex: 0 0 auto;
+  width: min(620px, 100%);
+  min-width: 0;
+}
+
+#um-root .profile-modal__divider{
+  flex: 0 0 1px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to bottom,
+    rgba(255,255,255,0.0),
+    rgba(255,255,255,0.22),
+    rgba(255,255,255,0.0)
+  );
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.08);
+}
+
+#um-root .profile-modal__right{
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+#um-root .profile-social-placeholder{
+  height: 100%;
+  min-height: 380px;
+  border-radius: 16px;
+  border: 1px dashed rgba(255,255,255,0.20);
+  background: rgba(0,0,0,0.10);
+  padding: 14px;
+}
+
+#um-root .profile-social-placeholder__title{
+  font-weight: 700;
+  font-size: 14px;
+  opacity: 0.9;
+  margin-bottom: 6px;
+}
+
+#um-root .profile-social-placeholder__hint{
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+/* Header: alinhamento à esquerda, conta à direita */
+#um-root .um-header{
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+#um-root .um-ident{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+#um-root .um-account{
+  text-align: right;
+}
+
+/* Tabs: mantém padrão, só evita quebrar layout */
+#um-root .um-tabs{
+  margin-bottom: 12px;
+}
+
+/* Preferências + ações alinhadas à esquerda */
+#um-root .um-pref{
+  text-align: left;
+}
+
+#um-root .um-actions{
+  display: flex;
+  justify-content: flex-start;
+}
+
+/* Mobile: empilha e esconde divisor */
+@media (max-width: 900px){
+  #um-root .profile-modal{
+    flex-direction: column;
+  }
+  #um-root .profile-modal__divider{
+    display: none;
+  }
+  #um-root .profile-modal__left{
+    width: 100%;
+  }
+  #um-root .profile-social-placeholder{
+    min-height: 240px;
+  }
+}
+
+
+/* ===== LAYOUT 2 COLUNAS (ESQ / DIR) ===== */
+#um-root .um-layout{
+  display:flex;
+  align-items:stretch;
+  gap:18px;
+  width:100%;
+  min-width:0;
+}
+
+#um-root .um-left{
+  flex: 0 0 auto;
+  width: min(760px, 100%);
+  min-width: 0;
+}
+
+/* divisor vertical “estiloso” */
+#um-root .um-divider{
+  flex: 0 0 1px;
+  align-self: stretch;
+  border-radius: 999px;
+  background: linear-gradient(
+    to bottom,
+    rgba(255,255,255,0.0),
+    rgba(255,255,255,0.28),
+    rgba(255,255,255,0.0)
+  );
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.10);
+}
+
+#um-root .um-right{
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* caixa placeholder da rede social */
+#um-root .um-social{
+  height: 100%;
+  min-height: 420px;              /* já ocupa o “espaço sobrando” */
+  border-radius: 18px;
+  border: 1px dashed rgba(255,255,255,0.24);
+  background: rgba(0,0,0,0.10);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  padding: 16px;
+}
+
+#um-root .um-social-title{
+  font-weight: 700;
+  font-size: 14px;
+  opacity: 0.9;
+  margin-bottom: 6px;
+}
+
+#um-root .um-social-sub{
+  font-size: 12px;
+  opacity: 0.70;
+}
+
+/* mobile: empilha */
+@media (max-width: 980px){
+  #um-root .um-layout{ flex-direction: column; }
+  #um-root .um-divider{ display:none; }
+  #um-root .um-left{ width: 100%; }
+  #um-root .um-social{ min-height: 260px; }
+}

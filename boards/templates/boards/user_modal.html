@@ -1,360 +1,400 @@
 {# templates/boards/user_modal.html #}
 {% load static %}
 
-<div id="um-root" class="p-4" data-active-tab="{{ active_tab|default:'profile' }}">
+<div id="um-root" class="p-4 um-root" data-active-tab="{{ active_tab|default:'profile' }}">
 
-  <div class="flex items-start justify-between gap-4 mb-4">
-    <div class="flex items-center gap-3">
-      
-      
-      
-      {# FOTO AVATAR #}
+  <div class="um-layout">
+    <!-- =========================================================
+         LEFT (perfil/config)
+         ========================================================= -->
+    <div class="um-left">
 
-<div class="h-28 w-28 rounded-full overflow-hidden border border-white/40 bg-white/70 flex items-center justify-center">
-  {% if profile.avatar %}
-    <img id="um-avatar-img" src="{{ profile.avatar.url }}" class="h-full w-full object-contain" alt="Avatar">
-  {% elif profile.avatar_choice %}
-    <img id="um-avatar-img" src="{% static 'images/avatar/' %}{{ profile.avatar_choice }}" class="h-full w-full object-contain" alt="Avatar">
-  {% else %}
-    <img id="um-avatar-img" src="{% static 'images/logo-camim.png' %}" class="h-full w-full object-contain" alt="Logo">
-  {% endif %}
-</div>
-
-
-      
-
-
-
-
-      <div class="min-w-0">
-        {# IDENTITY TOGGLE (clicável) #}
-        <button
-          type="button"
-          id="um-identity-toggle"
-          class="text-left"
-          data-display-name="{{ profile.display_name|default:'' }}"
-          data-email="{{ request.user.email|default:'' }}"
-          data-handle="{% if profile.handle %}@{{ profile.handle }}{% else %}{% endif %}"
-          data-current="{{ profile.preferred_identity_label|default:'display_name' }}"
-          title="Clique para alternar (Nome / Email / Handle) à ser exibid na board"
-        >
-          <div id="um-identity-primary" class="text-lg font-semibold leading-tight truncate">
-            {# texto inicial (server-side) #}
-            {% if profile.preferred_identity_label == 'email' %}
-              {{ request.user.email|default:profile.display_name }}
-            {% elif profile.preferred_identity_label == 'handle' and profile.handle %}
-              @{{ profile.handle }}
+      <!-- Header (avatar + identidade + conta) -->
+      <div class="um-header">
+        <div class="um-ident">
+          <div class="h-28 w-28 rounded-full overflow-hidden border border-white/40 bg-white/70 flex items-center justify-center">
+            {% if profile.avatar %}
+              <img id="um-avatar-img" src="{{ profile.avatar.url }}" class="h-full w-full object-contain" alt="Avatar">
+            {% elif profile.avatar_choice %}
+              <img id="um-avatar-img" src="{% static 'images/avatar/' %}{{ profile.avatar_choice }}" class="h-full w-full object-contain" alt="Avatar">
             {% else %}
-              {{ profile.display_name|default:request.user.email }}
+              <img id="um-avatar-img" src="{% static 'images/logo-camim.png' %}" class="h-full w-full object-contain" alt="Logo">
             {% endif %}
           </div>
 
-          <div class="text-xs opacity-70" id="um-identity-hint">
-            Clique para alternar (Nome / Email / Handle)
+          <div class="min-w-0">
+            <button
+              type="button"
+              id="um-identity-toggle"
+              class="text-left"
+              data-display-name="{{ profile.display_name|default:'' }}"
+              data-email="{{ request.user.email|default:'' }}"
+              data-handle="{% if profile.handle %}@{{ profile.handle }}{% else %}{% endif %}"
+              data-current="{{ profile.preferred_identity_label|default:'display_name' }}"
+              title="Clique para alternar (Nome / Email / Handle) à ser exibido na board"
+            >
+              <div id="um-identity-primary" class="text-lg font-semibold leading-tight truncate">
+                {% if profile.preferred_identity_label == 'email' %}
+                  {{ request.user.email|default:profile.display_name }}
+                {% elif profile.preferred_identity_label == 'handle' and profile.handle %}
+                  @{{ profile.handle }}
+                {% else %}
+                  {{ profile.display_name|default:request.user.email }}
+                {% endif %}
+              </div>
+
+              <div class="text-xs opacity-70" id="um-identity-hint">
+                Clique para alternar (Nome / Email / Handle)
+              </div>
+            </button>
+
+            {% if request.user.email %}
+              <div class="text-sm opacity-80 truncate">{{ request.user.email }}</div>
+            {% endif %}
+
+            <div class="text-sm opacity-80 truncate">
+              {% if profile.handle %}@{{ profile.handle }}{% endif %}
+            </div>
           </div>
-        </button>
+        </div>
 
-        {# linhas secundárias (mantidas) #}
-        {% if request.user.email %}
-          <div class="text-sm opacity-80 truncate">{{ request.user.email }}</div>
-        {% endif %}
-
-        <div class="text-sm opacity-80 truncate">
-          {% if profile.handle %}@{{ profile.handle }}{% endif %}
+        <div class="um-account text-right">
+          <div class="text-xs opacity-70">Conta</div>
+          <div class="text-sm font-semibold">{{ request.user.email }}</div>
         </div>
       </div>
-    </div>
 
-    <div class="text-right">
-      <div class="text-xs opacity-70">Conta</div>
-      <div class="text-sm font-semibold">{{ request.user.email }}</div>
-    </div>
-  </div>
+      <!-- Tabs -->
+      <div class="flex flex-wrap gap-2 mb-4 um-tabs">
+        <button
+          type="button"
+          data-um-tab="profile"
+          class="px-3 py-1 rounded border bg-white/70 hover:bg-white {% if active_tab == 'profile' %} font-semibold {% endif %}"
+          onclick="window.umOpenTab('profile')"
+        >Perfil</button>
 
-  <!-- Tabs -->
-  <div class="flex flex-wrap gap-2 mb-4">
-    <button
-      type="button"
-      data-um-tab="profile"
-      class="px-3 py-1 rounded border bg-white/70 hover:bg-white {% if active_tab == 'profile' %} font-semibold {% endif %}"
-      onclick="window.umOpenTab('profile')"
-    >Perfil</button>
+        <button
+          type="button"
+          data-um-tab="password"
+          class="px-3 py-1 rounded border bg-white/70 hover:bg-white {% if active_tab == 'password' %} font-semibold {% endif %}"
+          onclick="window.umOpenTab('password')"
+        >Senha</button>
 
-    <button
-      type="button"
-      data-um-tab="password"
-      class="px-3 py-1 rounded border bg-white/70 hover:bg-white {% if active_tab == 'password' %} font-semibold {% endif %}"
-      onclick="window.umOpenTab('password')"
-    >Senha</button>
+        <button
+          type="button"
+          data-um-tab="avatar"
+          class="px-3 py-1 rounded border bg-white/70 hover:bg-white {% if active_tab == 'avatar' %} font-semibold {% endif %}"
+          onclick="window.umOpenTab('avatar')"
+        >Foto</button>
+      </div>
 
-    <button
-      type="button"
-      data-um-tab="avatar"
-      class="px-3 py-1 rounded border bg-white/70 hover:bg-white {% if active_tab == 'avatar' %} font-semibold {% endif %}"
-      onclick="window.umOpenTab('avatar')"
-    >Foto</button>
-  </div>
-
-  <!-- Alerts -->
-  {% if ok.profile %}
-    <div class="mb-3 text-sm bg-green-50 border border-green-200 text-green-800 rounded px-3 py-2">{{ ok.profile }}</div>
-  {% endif %}
-  {% if ok.password %}
-    <div class="mb-3 text-sm bg-green-50 border border-green-200 text-green-800 rounded px-3 py-2">{{ ok.password }}</div>
-  {% endif %}
-  {% if ok.avatar %}
-    <div class="mb-3 text-sm bg-green-50 border border-green-200 text-green-800 rounded px-3 py-2">{{ ok.avatar }}</div>
-  {% endif %}
-
-  <!-- Panels -->
-  <div id="um-panels">
-
-    <!-- Perfil -->
-    <div id="um-panel-profile" style="{% if active_tab != 'profile' %}display:none{% endif %}">
-      <form
-        method="post"
-        action="{% url 'boards:account_profile_update' %}"
-        hx-post="{% url 'boards:account_profile_update' %}"
-        hx-target="#modal-body"
-        hx-swap="innerHTML"
-        class="bg-white/60 border border-gray-200 rounded-xl p-4"
-      >
-        {% csrf_token %}
-        <div class="grid gap-3">
-
-          <div>
-            <label class="block text-sm font-semibold mb-1">Nome de usuário (amigável)</label>
-            <input name="display_name" value="{{ profile.display_name }}" class="w-full border rounded px-3 py-2" placeholder="Ex: Cristiano">
-            {% if errors.display_name %}
-              <div class="mt-1 text-sm text-red-700">{{ errors.display_name }}</div>
-            {% endif %}
-          </div>
-
-          <div>
-            <label class="block text-sm font-semibold mb-1">Handle (para @marcar)</label>
-            <input name="handle" value="{{ profile.handle }}" class="w-full border rounded px-3 py-2" placeholder="ex: cristiano (sem @)">
-            <div class="mt-1 text-xs opacity-70">Permitido: letras minúsculas, números, _ e .</div>
-            {% if errors.handle %}
-              <div class="mt-1 text-sm text-red-700">{{ errors.handle }}</div>
-            {% endif %}
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-
-            <div>
-              <label class="block text-sm font-semibold mb-1">Posto</label>
-              <input name="posto" value="{{ profile.posto }}" class="w-full border rounded px-3 py-2" placeholder="-">
-              {% if errors.posto %}
-                <div class="mt-1 text-sm text-red-700">{{ errors.posto }}</div>
-              {% endif %}
-            </div>
-
-            <div>
-              <label class="block text-sm font-semibold mb-1">Setor</label>
-              <input name="setor" value="{{ profile.setor }}" class="w-full border rounded px-3 py-2" placeholder="-">
-              {% if errors.setor %}
-                <div class="mt-1 text-sm text-red-700">{{ errors.setor }}</div>
-              {% endif %}
-            </div>
-
-            <div>
-              <label class="block text-sm font-semibold mb-1">Ramal</label>
-              <input name="ramal" value="{{ profile.ramal }}" class="w-full border rounded px-3 py-2" placeholder="-">
-              {% if errors.ramal %}
-                <div class="mt-1 text-sm text-red-700">{{ errors.ramal }}</div>
-              {% endif %}
-            </div>
-
-            <div>
-              <label class="block text-sm font-semibold mb-1">Telefone</label>
-              <input name="telefone" value="{{ profile.telefone }}" class="w-full border rounded px-3 py-2" placeholder="-">
-              {% if errors.telefone %}
-                <div class="mt-1 text-sm text-red-700">{{ errors.telefone }}</div>
-              {% endif %}
-            </div>
-
-          </div>
-
-<div class="mt-4 border-t pt-4">
-  <label class="flex items-center gap-3">
-    <input
-      type="checkbox"
-      name="activity_sidebar"
-      value="1"
-      {% if profile.activity_sidebar %}checked{% endif %}
-      class="h-4 w-4"
-    >
-    <span class="text-sm">
-      Mostrar <strong>Atividade na lateral do modal</strong> (estilo Trello)
-    </span>
-  </label>
-  <div class="text-xs opacity-70 mt-1">
-    Divide o modal em duas colunas (60/40) com a atividade sempre visível.
-  </div>
-</div>
-
-
-          <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded w-fit">Salvar</button>
-        </div>
-      </form>
-    </div>
-
-    <!-- Senha -->
-    <div id="um-panel-password" style="{% if active_tab != 'password' %}display:none{% endif %}">
-      <form
-        method="post"
-        action="{% url 'boards:account_password_change' %}"
-        hx-post="{% url 'boards:account_password_change' %}"
-        hx-target="#modal-body"
-        hx-swap="innerHTML"
-        class="bg-white/60 border border-gray-200 rounded-xl p-4"
-      >
-        {% csrf_token %}
-        <div class="grid gap-3">
-          <div>
-            <label class="block text-sm font-semibold mb-1">Senha atual</label>
-            <input type="password" name="current_password" class="w-full border rounded px-3 py-2" autocomplete="current-password">
-            {% if errors.current_password %}
-              <div class="mt-1 text-sm text-red-700">{{ errors.current_password }}</div>
-            {% endif %}
-          </div>
-
-          <div>
-            <label class="block text-sm font-semibold mb-1">Nova senha</label>
-            <input type="password" name="new_password1" class="w-full border rounded px-3 py-2" autocomplete="new-password">
-            {% if errors.new_password1 %}
-              <div class="mt-1 text-sm text-red-700">{{ errors.new_password1 }}</div>
-            {% endif %}
-          </div>
-
-          <div>
-            <label class="block text-sm font-semibold mb-1">Confirmar nova senha</label>
-            <input type="password" name="new_password2" class="w-full border rounded px-3 py-2" autocomplete="new-password">
-            {% if errors.new_password2 %}
-              <div class="mt-1 text-sm text-red-700">{{ errors.new_password2 }}</div>
-            {% endif %}
-          </div>
-
-          <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded w-fit">Alterar senha</button>
-        </div>
-      </form>
-    </div>
-
-    <!-- Foto -->
-    <div id="um-panel-avatar" style="{% if active_tab != 'avatar' %}display:none{% endif %}">
-
-      {# ================== PRESETS (avatar_choice) ================== #}
-      {% if avatar_presets %}
-        <form
-          id="um-avatar-presets-form"
-          method="post"
-          action="{% url 'boards:account_avatar_choice_update' %}"
-          hx-post="{% url 'boards:account_avatar_choice_update' %}"
-          hx-target="#modal-body"
-          hx-swap="innerHTML"
-          class="bg-white/60 border border-gray-200 rounded-xl p-4 mb-3"
-        >
-          {% csrf_token %}
-
-          <div class="text-sm font-semibold mb-2">Escolher um avatar</div>
-          <div class="text-xs opacity-70 mb-3">Clique em um avatar e depois confirme.</div>
-
-          <div id="um-avatar-grid" class="flex flex-wrap gap-2">
-            {% for f in avatar_presets %}
-              {% with rid="um-avatar-"|add:forloop.counter|stringformat:"s" %}
-                <label for="{{ rid }}" class="cursor-pointer block">
-                  <input
-                    id="{{ rid }}"
-                    type="radio"
-                    name="avatar_choice"
-                    value="{{ f }}"
-                    class="sr-only"
-                    {% if profile.avatar_choice == f %}checked{% endif %}
-                  >
-                  <img
-                    src="{% static 'images/avatar/' %}{{ f }}"
-                    alt="{{ f }}"
-                    class="um-avatar-item h-14 w-14 rounded-xl object-cover border border-white/40"
-                    data-avatar="{{ f }}"
-                  >
-                </label>
-              {% endwith %}
-            {% endfor %}
-          </div>
-
-          {% if errors.avatar_choice %}
-            <div class="mt-2 text-sm text-red-700">{{ errors.avatar_choice }}</div>
-          {% endif %}
-
-          <button type="submit" class="mt-3 px-4 py-2 bg-blue-600 text-white rounded w-fit">
-            Usar este avatar
-          </button>
-        </form>
-
-        <script>
-          (function () {
-            const grid = document.getElementById("um-avatar-grid");
-            if (!grid) return;
-
-            function refreshSelected() {
-              const checked = grid.querySelector("input[name='avatar_choice']:checked");
-              const chosen = checked ? checked.value : null;
-
-              grid.querySelectorAll(".um-avatar-item").forEach((img) => {
-                const isOn = chosen && img.dataset.avatar === chosen;
-                img.classList.toggle("ring-2", isOn);
-                img.classList.toggle("ring-blue-600", isOn);
-                img.classList.toggle("border-blue-600", isOn);
-              });
-            }
-
-            grid.addEventListener("click", (e) => {
-              const img = e.target.closest(".um-avatar-item");
-              if (!img) return;
-
-              const label = img.closest("label");
-              const inputId = label && label.getAttribute("for");
-              const radio = inputId ? document.getElementById(inputId) : null;
-
-              if (radio) {
-                radio.checked = true;
-                refreshSelected();
-              }
-            });
-
-            refreshSelected();
-          })();
-        </script>
+      <!-- Alerts -->
+      {% if ok.profile %}
+        <div class="mb-3 text-sm bg-green-50 border border-green-200 text-green-800 rounded px-3 py-2">{{ ok.profile }}</div>
+      {% endif %}
+      {% if ok.password %}
+        <div class="mb-3 text-sm bg-green-50 border border-green-200 text-green-800 rounded px-3 py-2">{{ ok.password }}</div>
+      {% endif %}
+      {% if ok.avatar %}
+        <div class="mb-3 text-sm bg-green-50 border border-green-200 text-green-800 rounded px-3 py-2">{{ ok.avatar }}</div>
       {% endif %}
 
-      <form
-        method="post"
-        action="{% url 'boards:account_avatar_update' %}"
-        hx-post="{% url 'boards:account_avatar_update' %}"
-        hx-target="#modal-body"
-        hx-swap="innerHTML"
-        hx-encoding="multipart/form-data"
-        enctype="multipart/form-data"
-        class="bg-white/60 border border-gray-200 rounded-xl p-4"
-      >
-        {% csrf_token %}
-        <div class="grid gap-3">
-          <div>
-            <label class="block text-sm font-semibold mb-1">Nova foto</label>
-            <input type="file" name="avatar" accept="image/*" class="w-full border rounded px-3 py-2 bg-white">
-            {% if errors.avatar %}
-              <div class="mt-1 text-sm text-red-700">{{ errors.avatar }}</div>
-            {% endif %}
-            <div class="mt-1 text-xs opacity-70">Limite recomendado: 5MB.</div>
-          </div>
+      <!-- Panels -->
+      <div id="um-panels">
 
-          <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded w-fit">Salvar foto</button>
+        <!-- ===================== PERFIL ===================== -->
+        <div id="um-panel-profile" style="{% if active_tab != 'profile' %}display:none{% endif %}">
+          <form
+            method="post"
+            action="{% url 'boards:account_profile_update' %}"
+            hx-post="{% url 'boards:account_profile_update' %}"
+            hx-target="#modal-body"
+            hx-swap="innerHTML"
+            class="bg-white/60 border border-gray-200 rounded-xl p-4"
+          >
+            {% csrf_token %}
+            <div class="grid gap-3">
+
+              <div>
+                <label class="block text-sm font-semibold mb-1">Nome de usuário (amigável)</label>
+                <input name="display_name" value="{{ profile.display_name }}" class="w-full border rounded px-3 py-2" placeholder="Ex: Cristiano">
+                {% if errors.display_name %}
+                  <div class="mt-1 text-sm text-red-700">{{ errors.display_name }}</div>
+                {% endif %}
+              </div>
+
+              <div>
+                <label class="block text-sm font-semibold mb-1">Handle (para @marcar)</label>
+                <input name="handle" value="{{ profile.handle }}" class="w-full border rounded px-3 py-2" placeholder="ex: cristiano (sem @)">
+                <div class="mt-1 text-xs opacity-70">Permitido: letras minúsculas, números, _ e .</div>
+                {% if errors.handle %}
+                  <div class="mt-1 text-sm text-red-700">{{ errors.handle }}</div>
+                {% endif %}
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+                <div>
+                  <label class="block text-sm font-semibold mb-1">Posto</label>
+                  <select name="posto" class="w-full border rounded px-3 py-2">
+                    <option value="" {% if not profile.posto %}selected{% endif %}>-</option>
+
+                    <option value="Realengo"        {% if profile.posto == "Realengo" %}selected{% endif %}>Realengo</option>
+                    <option value="Campinho"        {% if profile.posto == "Campinho" %}selected{% endif %}>Campinho</option>
+                    <option value="Anchieta"        {% if profile.posto == "Anchieta" %}selected{% endif %}>Anchieta</option>
+                    <option value="Jacarepaguá"     {% if profile.posto == "Jacarepaguá" %}selected{% endif %}>Jacarepaguá</option>
+                    <option value="Campo Grande"    {% if profile.posto == "Campo Grande" %}selected{% endif %}>Campo Grande</option>
+                    <option value="Nova Iguaçu"     {% if profile.posto == "Nova Iguaçu" %}selected{% endif %}>Nova Iguaçu</option>
+                    <option value="Bangu"           {% if profile.posto == "Bangu" %}selected{% endif %}>Bangu</option>
+                    <option value="Nilópolis"       {% if profile.posto == "Nilópolis" %}selected{% endif %}>Nilópolis</option>
+                    <option value="Del Castilho"    {% if profile.posto == "Del Castilho" %}selected{% endif %}>Del Castilho</option>
+                    <option value="X Campo Grande"  {% if profile.posto == "X Campo Grande" %}selected{% endif %}>X Campo Grande</option>
+                    <option value="Madureira"       {% if profile.posto == "Madureira" %}selected{% endif %}>Madureira</option>
+                    <option value="Rio das Pedras"  {% if profile.posto == "Rio das Pedras" %}selected{% endif %}>Rio das Pedras</option>
+                    <option value="Y Campo Grande"  {% if profile.posto == "Y Campo Grande" %}selected{% endif %}>Y Campo Grande</option>
+                  </select>
+
+                  {% if errors.posto %}
+                    <div class="mt-1 text-sm text-red-700">{{ errors.posto }}</div>
+                  {% endif %}
+                </div>
+
+                <div>
+                  <label class="block text-sm font-semibold mb-1">Setor</label>
+                  <input name="setor" value="{{ profile.setor }}" class="w-full border rounded px-3 py-2" placeholder="-">
+                  {% if errors.setor %}
+                    <div class="mt-1 text-sm text-red-700">{{ errors.setor }}</div>
+                  {% endif %}
+                </div>
+
+                <div>
+                  <label class="block text-sm font-semibold mb-1">Ramal</label>
+                  <input name="ramal" value="{{ profile.ramal }}" class="w-full border rounded px-3 py-2" placeholder="-">
+                  {% if errors.ramal %}
+                    <div class="mt-1 text-sm text-red-700">{{ errors.ramal }}</div>
+                  {% endif %}
+                </div>
+
+                <div>
+                  <label class="block text-sm font-semibold mb-1">Telefone</label>
+                  <input
+                    id="um-telefone"
+                    name="telefone"
+                    value="{{ profile.telefone }}"
+                    class="w-full border rounded px-3 py-2"
+                    placeholder="+55 (21) 123-456-789"
+                    inputmode="tel"
+                    autocomplete="tel"
+                  >
+                  {% if errors.telefone %}
+                    <div class="mt-1 text-sm text-red-700">{{ errors.telefone }}</div>
+                  {% endif %}
+                </div>
+
+              </div>
+
+              <div class="mt-4 border-t pt-4 um-pref">
+                <label class="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    name="activity_sidebar"
+                    value="1"
+                    {% if profile.activity_sidebar %}checked{% endif %}
+                    class="h-4 w-4"
+                  >
+                  <span class="text-sm">
+                    Mostrar <strong>Atividade na lateral do modal</strong> (estilo Trello)
+                  </span>
+                </label>
+                <div class="text-xs opacity-70 mt-1">
+                  Divide o modal em duas colunas (60/40) com a atividade sempre visível.
+                </div>
+              </div>
+
+              <div class="mt-3 um-actions">
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded w-fit">Salvar</button>
+              </div>
+
+            </div>
+          </form>
         </div>
-      </form>
-    </div>
 
-  </div>
-</div>
+        <!-- ===================== SENHA ===================== -->
+        <div id="um-panel-password" style="{% if active_tab != 'password' %}display:none{% endif %}">
+          <form
+            method="post"
+            action="{% url 'boards:account_password_change' %}"
+            hx-post="{% url 'boards:account_password_change' %}"
+            hx-target="#modal-body"
+            hx-swap="innerHTML"
+            class="bg-white/60 border border-gray-200 rounded-xl p-4"
+          >
+            {% csrf_token %}
+            <div class="grid gap-3">
+              <div>
+                <label class="block text-sm font-semibold mb-1">Senha atual</label>
+                <input type="password" name="current_password" class="w-full border rounded px-3 py-2" autocomplete="current-password">
+                {% if errors.current_password %}
+                  <div class="mt-1 text-sm text-red-700">{{ errors.current_password }}</div>
+                {% endif %}
+              </div>
+
+              <div>
+                <label class="block text-sm font-semibold mb-1">Nova senha</label>
+                <input type="password" name="new_password1" class="w-full border rounded px-3 py-2" autocomplete="new-password">
+                {% if errors.new_password1 %}
+                  <div class="mt-1 text-sm text-red-700">{{ errors.new_password1 }}</div>
+                {% endif %}
+              </div>
+
+              <div>
+                <label class="block text-sm font-semibold mb-1">Confirmar nova senha</label>
+                <input type="password" name="new_password2" class="w-full border rounded px-3 py-2" autocomplete="new-password">
+                {% if errors.new_password2 %}
+                  <div class="mt-1 text-sm text-red-700">{{ errors.new_password2 }}</div>
+                {% endif %}
+              </div>
+
+              <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded w-fit">Alterar senha</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- ===================== FOTO ===================== -->
+        <div id="um-panel-avatar" style="{% if active_tab != 'avatar' %}display:none{% endif %}">
+
+          {% if avatar_presets %}
+            <form
+              id="um-avatar-presets-form"
+              method="post"
+              action="{% url 'boards:account_avatar_choice_update' %}"
+              hx-post="{% url 'boards:account_avatar_choice_update' %}"
+              hx-target="#modal-body"
+              hx-swap="innerHTML"
+              class="bg-white/60 border border-gray-200 rounded-xl p-4 mb-3"
+            >
+              {% csrf_token %}
+
+              <div class="text-sm font-semibold mb-2">Escolher um avatar</div>
+              <div class="text-xs opacity-70 mb-3">Clique em um avatar e depois confirme.</div>
+
+              <div id="um-avatar-grid" class="flex flex-wrap gap-2">
+                {% for f in avatar_presets %}
+                  {% with rid="um-avatar-"|add:forloop.counter|stringformat:"s" %}
+                    <label for="{{ rid }}" class="cursor-pointer block">
+                      <input
+                        id="{{ rid }}"
+                        type="radio"
+                        name="avatar_choice"
+                        value="{{ f }}"
+                        class="sr-only"
+                        {% if profile.avatar_choice == f %}checked{% endif %}
+                      >
+                      <img
+                        src="{% static 'images/avatar/' %}{{ f }}"
+                        alt="{{ f }}"
+                        class="um-avatar-item h-14 w-14 rounded-xl object-cover border border-white/40"
+                        data-avatar="{{ f }}"
+                      >
+                    </label>
+                  {% endwith %}
+                {% endfor %}
+              </div>
+
+              {% if errors.avatar_choice %}
+                <div class="mt-2 text-sm text-red-700">{{ errors.avatar_choice }}</div>
+              {% endif %}
+
+              <button type="submit" class="mt-3 px-4 py-2 bg-blue-600 text-white rounded w-fit">
+                Usar este avatar
+              </button>
+            </form>
+
+            <script>
+              (function () {
+                const grid = document.getElementById("um-avatar-grid");
+                if (!grid) return;
+
+                function refreshSelected() {
+                  const checked = grid.querySelector("input[name='avatar_choice']:checked");
+                  const chosen = checked ? checked.value : null;
+
+                  grid.querySelectorAll(".um-avatar-item").forEach((img) => {
+                    const isOn = chosen && img.dataset.avatar === chosen;
+                    img.classList.toggle("ring-2", isOn);
+                    img.classList.toggle("ring-blue-600", isOn);
+                    img.classList.toggle("border-blue-600", isOn);
+                  });
+                }
+
+                grid.addEventListener("click", (e) => {
+                  const img = e.target.closest(".um-avatar-item");
+                  if (!img) return;
+
+                  const label = img.closest("label");
+                  const inputId = label && label.getAttribute("for");
+                  const radio = inputId ? document.getElementById(inputId) : null;
+
+                  if (radio) {
+                    radio.checked = true;
+                    refreshSelected();
+                  }
+                });
+
+                refreshSelected();
+              })();
+            </script>
+          {% endif %}
+
+          <form
+            method="post"
+            action="{% url 'boards:account_avatar_update' %}"
+            hx-post="{% url 'boards:account_avatar_update' %}"
+            hx-target="#modal-body"
+            hx-swap="innerHTML"
+            hx-encoding="multipart/form-data"
+            enctype="multipart/form-data"
+            class="bg-white/60 border border-gray-200 rounded-xl p-4"
+          >
+            {% csrf_token %}
+            <div class="grid gap-3">
+              <div>
+                <label class="block text-sm font-semibold mb-1">Nova foto</label>
+                <input type="file" name="avatar" accept="image/*" class="w-full border rounded px-3 py-2 bg-white">
+                {% if errors.avatar %}
+                  <div class="mt-1 text-sm text-red-700">{{ errors.avatar }}</div>
+                {% endif %}
+                <div class="mt-1 text-xs opacity-70">Limite recomendado: 5MB.</div>
+              </div>
+
+              <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded w-fit">Salvar foto</button>
+            </div>
+          </form>
+        </div>
+
+      </div> <!-- /um-panels -->
+
+    </div> <!-- /um-left -->
+
+    <!-- Divider -->
+    <div class="um-divider" aria-hidden="true"></div>
+
+    <!-- =========================================================
+         RIGHT (rede social futura)
+         ========================================================= -->
+    <aside class="um-right">
+      <div class="um-social">
+        <div class="um-social-title">Espaço social</div>
+        <div class="um-social-sub">
+          Esta área será a “rede social” do usuário (visível para outros).
+        </div>
+      </div>
+    </aside>
+
+  </div> <!-- /um-layout -->
+
+</div> <!-- /um-root -->
+
 
 {# FORM HIDDEN: salva preferred_identity_label #}
 <form
@@ -402,12 +442,11 @@
     const cur = (input.value || "display_name").trim();
     const nxt = next(cur);
 
-    // atualiza UI imediatamente
     const txt = textFor(nxt) || textFor("display_name") || textFor("email") || "";
     if (txt) primary.textContent = txt;
 
-    // atualiza hidden e persiste via HTMX
     input.value = nxt;
+
     try {
       window.htmx.trigger(form, "submit");
     } catch (_e) {
@@ -429,4 +468,40 @@
       if (panels[k]) panels[k].style.display = (k === tab) ? "block" : "none";
     });
   };
+</script>
+
+<script>
+(function () {
+  const input = document.getElementById("um-telefone");
+  if (!input) return;
+
+  if (input.dataset.umMaskBound === "1") return;
+  input.dataset.umMaskBound = "1";
+
+  function maskBRPhone(value){
+    const digits = String(value || "").replace(/\D+/g, "").slice(0, 13); // 55 + 11
+    let d = digits;
+
+    const has55 = d.startsWith("55");
+    if (has55) d = d.slice(2);
+
+    const dd = d.slice(0, 2);
+    const p1 = d.slice(2, 5);
+    const p2 = d.slice(5, 8);
+    const p3 = d.slice(8, 11);
+
+    let out = has55 ? "+55" : "";
+    if (dd) out += ` (${dd})`;
+    if (p1) out += ` ${p1}`;
+    if (p2) out += `-${p2}`;
+    if (p3) out += `-${p3}`;
+    return out.trim();
+  }
+
+  input.addEventListener("input", function () {
+    const cur = input.value;
+    const masked = maskBRPhone(cur);
+    if (cur !== masked) input.value = masked;
+  });
+})();
 </script>
