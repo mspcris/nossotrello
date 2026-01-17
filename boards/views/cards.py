@@ -215,9 +215,46 @@ def _fmt_bool(v):
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 @login_required
 @require_POST
 def update_card(request, card_id):
+    """
+    Arquivo: boards/views/cards.py
+    Substituir a função inteira.
+
+    O que esta versão garante:
+    - Loga na Atividade quando mudar TÍTULO
+    - Loga na Atividade quando mudar DESCRIÇÃO (com resumo Antes/Depois)
+    - Mantém seus logs atuais de prazo / data início / etc.
+    - Fallback só quando realmente nada relevante mudou
+    """
+    from django.utils.html import strip_tags
+    from django.utils.html import escape
+
+    def _summarize_html(html: str, limit: int = 220) -> str:
+        txt = strip_tags(html or "").strip()
+        if len(txt) > limit:
+            return txt[:limit].rstrip() + "…"
+        return txt
+
+    def _norm(s: str) -> str:
+        return (s or "").strip()
+
     card = get_object_or_404(Card, id=card_id)
     actor = _actor_label(request)
     board = card.column.board
@@ -229,8 +266,8 @@ def update_card(request, card_id):
     # ============================================================
     # SNAPSHOT (antes)
     # ============================================================
-    old_title = (card.title or "").strip()
-    old_desc = (card.description or "").strip()
+    old_title = _norm(card.title)
+    old_desc = _norm(card.description)
     old_tags_raw = card.tags or ""
 
     old_start_date = card.start_date
@@ -241,12 +278,12 @@ def update_card(request, card_id):
     # ============================================================
     # UPDATE: título / descrição / tags
     # ============================================================
-    new_title = (request.POST.get("title", card.title) or "").strip()
+    new_title = _norm(request.POST.get("title", card.title))
     card.title = new_title
 
-    raw_desc = (request.POST.get("description", card.description or "") or "").strip()
+    raw_desc = _norm(request.POST.get("description", card.description or ""))
     new_desc_html, saved_paths = _save_base64_images_to_media(raw_desc, folder="quill")
-    card.description = (new_desc_html or "").strip()
+    card.description = _norm(new_desc_html)
 
     new_tags_raw = request.POST.get("tags", old_tags_raw) or ""
 
@@ -294,10 +331,54 @@ def update_card(request, card_id):
     # ============================================================
     # DIFFS pós-save
     # ============================================================
+    title_changed = (old_title != _norm(card.title))
+    desc_changed = (old_desc != _norm(card.description))
+
     start_date_changed = (old_start_date != card.start_date)
     due_date_changed = (old_due_date != card.due_date)
     due_warn_changed = (old_due_warn_date != card.due_warn_date)
     due_notify_changed = (old_due_notify != bool(card.due_notify))
+
+    # ============================================================
+    # LOG — TÍTULO
+    # ============================================================
+    if title_changed:
+        _log_card(
+            card,
+            request,
+            (
+                f"<p><strong>{actor}</strong> alterou o título.</p>"
+                "<ul style='margin:6px 0 0 18px;'>"
+                "<li><strong>Título:</strong> "
+                f"{escape(old_title)} → "
+                f"<strong>{escape(_norm(card.title))}</strong></li>"
+                "</ul>"
+            ),
+        )
+
+    # ============================================================
+    # LOG — DESCRIÇÃO
+    # (Resumo do conteúdo; evita jogar HTML gigante no log)
+    # ============================================================
+    if desc_changed:
+        before = escape(_summarize_html(old_desc))
+        after = escape(_summarize_html(card.description))
+
+        _log_card(
+            card,
+            request,
+            (
+                f"<p><strong>{actor}</strong> alterou a descrição.</p>"
+                "<div style='margin-top:6px'>"
+                "<div style='font-size:12px;opacity:.75;margin-bottom:4px'>Antes:</div>"
+                f"<div style='padding:10px;border:1px solid rgba(15,23,42,0.10);border-radius:10px;background:rgba(255,255,255,0.35)'><em>{before}</em></div>"
+                "</div>"
+                "<div style='margin-top:10px'>"
+                "<div style='font-size:12px;opacity:.75;margin-bottom:4px'>Depois:</div>"
+                f"<div style='padding:10px;border:1px solid rgba(15,23,42,0.10);border-radius:10px;background:rgba(255,255,255,0.35)'><strong>{after}</strong></div>"
+                "</div>"
+            ),
+        )
 
     # ============================================================
     # LOG — PRAZO
@@ -381,28 +462,24 @@ def update_card(request, card_id):
     board.save(update_fields=["version"])
 
     # ============================================================
-    # FALLBACK
+    # FALLBACK (só se nada relevante mudou)
     # ============================================================
     if not (
         removed
         or added
+        or title_changed
+        or desc_changed
         or start_date_changed
         or due_date_changed
         or due_warn_changed
         or due_notify_changed
-        or (old_desc != (card.description or "").strip())
-        or (old_title != (card.title or "").strip())
         or saved_paths
     ):
         _log_card(card, request, f"<p><strong>{actor}</strong> atualizou o card.</p>")
 
     ctx = _card_modal_context(card)
     ctx["board_due_colors"] = getattr(board, "due_colors", {}) or {}
-
     return _render_card_modal(request, card, ctx)
-
-
-
 
 
 
