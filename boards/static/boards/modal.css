@@ -1,27 +1,685 @@
-/* modal.css */
+/* =======================================================================
+   MODAL.CSS — CONSOLIDADO (SEM DUPLICIDADES)
+   Objetivo:
+   - Modal cabe em qualquer viewport
+   - Scroll interno único
+   - Conteúdo não vaza
+   - Temas sem concorrência (glass/dark)
+   - Blur proibido nos filhos (somente no ::before do root)
+   ======================================================================= */
 
-.is-hidden { display: none !important; }
 
-/* Nova Atividade: fechado por padrão */
-#cm-activity-composer { display: none; }
-#cm-activity-gap { display: none; }
+/* =======================================================================
+   [0] TOKENS DO MODAL (somente o que é do modal)
+   ======================================================================= */
+:root{
+  --modal-edge-gap: 10px;
+  --modal-radius: 16px;
+  --modal-pad-x: 20px;
+  --modal-pad-y: 18px;
 
-/* aberto quando o botão liga */
-#cm-activity-composer.is-open { display: block; }
-#cm-activity-gap.is-open { display: block; }
+  /* vidro (aplicado SOMENTE no ::before do #card-modal-root.modal-glass) */
+  --glass-bg: rgba(255, 255, 255, 0.95);
+  --glass-blur: blur(12px) saturate(140%);
 
-/* ============================================================
-   Etiquetas — UI (chips) no modal
-   ============================================================ */
+  /* bordas/sombras */
+  --border-dark: rgba(255,255,255,0.14);
+  --shadow-thumb: rgba(0,0,0,0.25);
 
-#card-modal-root .cm-tag-catalog { margin-top: 10px; }
+  /* capa no modal */
+  --card-cover-modal-h: clamp(110px, 14vh, 180px);
+  --card-cover-bg: rgba(0,0,0,0.10);
+}
+
+
+/* =======================================================================
+   [1] VISIBILIDADE DO MODAL (GENIE É JS)
+   ======================================================================= */
+#modal{
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transition: opacity 160ms ease;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--modal-edge-gap);
+}
+
+#modal.modal-open{
+  opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
+}
+
+/* util */
+.is-hidden{ display: none !important; }
+
+
+/* =======================================================================
+   [2] MODAL — ARQUITETURA ROBUSTA (fullscreen estável)
+   ======================================================================= */
+#card-modal-root,
+#card-modal-root *{ box-sizing: border-box; }
+
+/* Root ocupa viewport; scroll único no body do modal */
+#card-modal-root.card-modal{
+  position: fixed !important;
+  inset: var(--modal-edge-gap) !important;
+
+  width: auto !important;
+  max-width: none !important;
+  height: auto !important;
+  max-height: none !important;
+  margin: 0 !important;
+
+  display: flex;
+  flex-direction: column;
+
+  min-width: 0;
+  min-height: 0;
+
+  border-radius: var(--modal-radius);
+  overflow: hidden;
+
+  isolation: isolate;
+
+  box-shadow:
+    0 18px 60px rgba(2, 6, 23, 0.22),
+    0 2px 10px rgba(2, 6, 23, 0.10);
+  border: 1px solid rgba(15, 23, 42, 0.10);
+}
+
+/* Cabeçalho (contenção) */
+#card-modal-root .card-aero-header{
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+  padding-right: 10px;
+}
+
+/* Scroll único */
+#modal-body.card-modal-scroll,
+#card-modal-root .card-modal-scroll{
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+
+  width: 100%;
+  max-width: 100%;
+
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  scrollbar-gutter: stable;
+  padding: var(--modal-pad-y) var(--modal-pad-x);
+  scroll-padding-bottom: 96px;
+}
+
+#card-modal-root .card-modal-scroll::-webkit-scrollbar{ width: 10px; }
+#card-modal-root .card-modal-scroll::-webkit-scrollbar-thumb{
+  background: var(--shadow-thumb);
+  border-radius: 10px;
+}
+
+/* Contenção geral */
+#card-modal-root input,
+#card-modal-root textarea,
+#card-modal-root select,
+#card-modal-root form,
+#card-modal-root .card-tab-panel{
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* Quill contido */
+#card-modal-root #quill-editor,
+#card-modal-root #quill-editor-ativ,
+#card-modal-root .ql-container{
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+/* Toolbar: dropdown acima do resto */
+#card-modal-root .ql-toolbar{
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: visible !important;
+  position: relative;
+  z-index: 30;
+}
+#card-modal-root .ql-toolbar .ql-picker-options{ z-index: 9999; }
+
+#card-modal-root .ql-toolbar.ql-snow{
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 6px;
+  padding: 6px 8px !important;
+}
+#card-modal-root .ql-toolbar.ql-snow .ql-formats{ margin-right: 6px !important; }
+
+#card-modal-root .ql-editor,
+#card-modal-root .ql-editor *{
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Mídia contida */
+#card-modal-root img,
+#card-modal-root video,
+#card-modal-root iframe,
+#card-modal-root canvas{
+  max-width: 100% !important;
+  height: auto;
+}
+
+/* Atividade em 2 colunas */
+#card-modal-root .card-activity-layout{
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+  width: 100%;
+  min-width: 0;
+}
+#card-modal-root .card-activity-layout > *{
+  min-width: 0;
+  max-width: 100%;
+}
+@media (max-width: 1024px){
+  #card-modal-root .card-activity-layout{
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Checklist/histórico: overflow local quando necessário */
+#card-tab-check,
+#ativ-historico-panel{
+  overflow: auto;
+}
+
+
+/* =======================================================================
+   [3] THEME MODEL ÚNICO (root)
+   Padrão oficial: #card-modal-root.theme-glass | #card-modal-root.theme-dark
+   Compat: card-theme-white/aero/dark viram alias.
+   ======================================================================= */
+
+/* ALIAS */
+#card-modal-root.card-theme-white,
+#card-modal-root.card-theme-aero{
+  /* trata como glass */
+}
+#card-modal-root.card-theme-dark{
+  /* trata como dark */
+}
+
+/* GLASS (claro) */
+#card-modal-root.theme-glass,
+#card-modal-root.card-theme-white,
+#card-modal-root.card-theme-aero{
+  color: #0f172a !important;
+  --glass-bg: rgba(255,255,255,0.985);
+  --glass-blur: blur(10px) saturate(130%);
+}
+
+/* DARK */
+#card-modal-root.theme-dark,
+#card-modal-root.card-theme-dark{
+  color: rgba(241,245,249,0.95) !important;
+  --glass-bg: rgba(0,0,0,0.86);
+  --glass-blur: blur(12px) saturate(130%);
+  border: 1px solid rgba(255,255,255,0.12) !important;
+}
+
+/* Inputs no dark */
+#card-modal-root.theme-dark input,
+#card-modal-root.theme-dark textarea,
+#card-modal-root.theme-dark select,
+#card-modal-root.theme-dark .ql-container,
+#card-modal-root.theme-dark .ql-editor,
+#card-modal-root.card-theme-dark input,
+#card-modal-root.card-theme-dark textarea,
+#card-modal-root.card-theme-dark select,
+#card-modal-root.card-theme-dark .ql-container,
+#card-modal-root.card-theme-dark .ql-editor{
+  background: rgba(20,20,20,0.55) !important;
+  border: 1px solid rgba(255,255,255,0.14) !important;
+  color: rgba(241,245,249,0.95) !important;
+}
+
+#card-modal-root.theme-dark label,
+#card-modal-root.card-theme-dark label{
+  color: rgba(241,245,249,0.85) !important;
+}
+
+
+/* =======================================================================
+   [4] VIDRO (base) + FIX DEFINITIVO: BACKDROP-FILTER BLEED (Chromium)
+   - blur só no ::before
+   - filhos SEM blur (hard rule)
+   ======================================================================= */
+
+/* não aplicar blur no container */
+.modal-glass{
+  background: transparent !important;
+  border: 1px solid rgba(255, 255, 255, 0.40) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+#card-modal-root.modal-glass{
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--modal-radius);
+}
+
+#card-modal-root.modal-glass::before{
+  content: "";
+  position: absolute;
+  inset: 0;
+
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+}
+
+#card-modal-root.modal-glass > *{
+  position: relative;
+  z-index: 1;
+}
+
+/* HARD RULE: dentro do modal ninguém usa blur */
+#card-modal-root *{
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+
+/* =======================================================================
+   [5] SAVE BAR — sticky top
+   ======================================================================= */
+.card-savebar{
+  position: sticky;
+  top: 0;
+  z-index: 20;
+
+  padding: 6px 8px;
+  margin: 6px 0 8px 0;
+  border-radius: 10px;
+
+  background: rgba(255,255,255,0.82);
+  border: 1px solid rgba(0,0,0,0.10);
+}
+
+.card-savebar.hidden{ display: none !important; }
+
+#card-modal-root.theme-dark .card-savebar,
+#card-modal-root.card-theme-dark .card-savebar{
+  background: rgba(0,0,0,0.40);
+  border: 1px solid rgba(255,255,255,0.12);
+}
+
+#card-modal-root .card-savebar button{
+  padding: 6px 10px !important;
+  font-size: 0.92rem !important;
+}
+
+
+/* =======================================================================
+   [6] DOTS (troca de tema)
+   ======================================================================= */
+.theme-dot{
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.65);
+  cursor: pointer;
+  transition: 0.2s;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+}
+.theme-dot:hover{
+  transform: scale(1.15);
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.45);
+}
+
+
+/* =======================================================================
+   [7] MINI-ABAS ATIVIDADE (mantém modelo original)
+   ======================================================================= */
+#card-modal-root .ativ-subtab-wrap{ width: 100%; min-width: 0; }
+#card-modal-root .ativ-subtab-radio{
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+#card-modal-root .ativ-subtab-buttons{
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  margin-bottom: 12px;
+  width: 100%;
+  min-width: 0;
+}
+#card-modal-root .ativ-subtab-btn{
+  padding: 8px 16px;
+  background: rgba(255,255,255,0.25);
+  border-radius: 8px 8px 0 0;
+  cursor: pointer;
+  transition: 0.2s ease;
+  user-select: none;
+}
+#card-modal-root .ativ-subtab-btn:hover{ background: rgba(255,255,255,0.40); }
+#card-modal-root .ativ-subtab-views{ width: 100%; min-width: 0; }
+#card-modal-root .ativ-view{ display: none; width: 100%; min-width: 0; }
+
+#card-modal-root #ativ-tab-new:checked ~ .ativ-subtab-buttons label[for="ativ-tab-new"],
+#card-modal-root #ativ-tab-hist:checked ~ .ativ-subtab-buttons label[for="ativ-tab-hist"]{
+  background: rgba(255,255,255,0.60) !important;
+  border-bottom: 2px solid #444 !important;
+}
+#card-modal-root #ativ-tab-new:checked ~ .ativ-subtab-views .ativ-view-new{ display: block; }
+#card-modal-root #ativ-tab-hist:checked ~ .ativ-subtab-views .ativ-view-hist{ display: block; }
+
+
+/* =======================================================================
+   [8] ATIVIDADE — estilo compacto + legibilidade no dark
+   ======================================================================= */
+.activity-panel{
+  padding: 8px !important;
+  border-radius: 10px !important;
+  background: rgba(255, 255, 255, 0.55) !important;
+  border: 1px solid rgba(160, 160, 160, 0.25) !important;
+  overflow-y: auto !important;
+}
+
+.activity-item{
+  padding: 6px 10px !important;
+  border-radius: 8px !important;
+  background: rgba(255, 255, 255, 0.75) !important;
+  border: 1px solid rgba(200, 200, 200, 0.35) !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+}
+
+.activity-meta{
+  font-size: 0.70rem !important;
+  margin-bottom: 2px !important;
+  color: #555 !important;
+}
+
+.activity-content{
+  font-size: 0.80rem !important;
+  line-height: 1.25rem !important;
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.activity-item pre,
+.activity-item code{
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+  background: transparent !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+}
+
+#activity-panel-wrapper{
+  padding: 8px !important;
+  margin: 0 !important;
+  height: auto !important;
+  overflow-y: auto !important;
+}
+
+.activity-panel > *{
+  margin-top: 6px !important;
+  margin-bottom: 6px !important;
+}
+
+/* HOTFIX: atividade legível no modal dark */
+#card-modal-root.theme-dark .activity-panel,
+#card-modal-root.card-theme-dark .activity-panel{
+  background: rgba(0, 0, 0, 0.45) !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  color: rgba(241,245,249,0.95) !important;
+}
+#card-modal-root.theme-dark .activity-item,
+#card-modal-root.card-theme-dark .activity-item{
+  background: rgba(0, 0, 0, 0.60) !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  color: rgba(241,245,249,0.95) !important;
+}
+#card-modal-root.theme-dark .activity-meta,
+#card-modal-root.card-theme-dark .activity-meta{
+  color: rgba(226, 232, 240, 0.75) !important;
+}
+#card-modal-root.theme-dark .activity-content,
+#card-modal-root.card-theme-dark .activity-content{
+  color: rgba(241,245,249,0.95) !important;
+}
+/* se vier style inline de background branco */
+#card-modal-root.theme-dark .activity-panel [style*="background"],
+#card-modal-root.card-theme-dark .activity-panel [style*="background"]{
+  background: transparent !important;
+}
+
+
+/* =======================================================================
+   [9] FIX: <code>/<pre> legível no MODAL DARK
+   ======================================================================= */
+#card-modal-root.theme-dark :where(code, pre),
+#card-modal-root.card-theme-dark :where(code, pre){
+  color: rgba(241,245,249,0.95) !important;
+}
+
+/* inline code */
+#card-modal-root.theme-dark code,
+#card-modal-root.card-theme-dark code{
+  background: rgba(255,255,255,0.10) !important;
+  border: 1px solid rgba(255,255,255,0.14) !important;
+  border-radius: 6px;
+  padding: 0.12em 0.35em;
+}
+
+/* code block */
+#card-modal-root.theme-dark pre,
+#card-modal-root.card-theme-dark pre{
+  background: rgba(0,0,0,0.35) !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  border-radius: 10px;
+  padding: 10px 12px;
+  overflow-x: auto;
+}
+#card-modal-root.theme-dark pre code,
+#card-modal-root.card-theme-dark pre code{
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0;
+}
+
+
+/* =======================================================================
+   [10] CONTRASTE — FIX (robusto)
+   ======================================================================= */
+/* Caso CLARO: modal aberto e root não está em dark */
+html:not(.dark) #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-dark){
+  color: #111 !important;
+}
+html:not(.dark) #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-dark)
+:where(p,span,small,li,dt,dd,label,pre,code,h1,h2,h3,h4,h5,h6){
+  color: #111 !important;
+}
+html:not(.dark) #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-dark)
+:where(input,textarea,select,.ql-container,.ql-editor){
+  color: #111 !important;
+}
+html:not(.dark) #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-dark)
+:where(input,textarea)::placeholder{
+  color: rgba(0,0,0,0.55) !important;
+}
+
+/* Fallback DARK: se html.dark mas root não está em theme-dark */
+html.dark #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-dark){
+  color: rgba(241,245,249,0.95) !important;
+}
+html.dark #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-dark)
+:where(p,span,small,li,dt,dd,label,pre,code,h1,h2,h3,h4,h5,h6){
+  color: rgba(241,245,249,0.95) !important;
+}
+html.dark #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-dark)
+:where(input,textarea,select,.ql-container,.ql-editor){
+  color: rgba(241,245,249,0.95) !important;
+}
+html.dark #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-dark)
+:where(input,textarea)::placeholder{
+  color: rgba(226,232,240,0.55) !important;
+}
+
+
+/* =======================================================================
+   [11] REMOVER BARRA DE ABAS DO TOPO
+   ======================================================================= */
+#card-modal-root #card-tabs{ display: none !important; }
+/* compat */
+#card-modal-root.cm-mode #card-tabs{ display: none !important; }
+
+/* Opção B (remover header/capa) — manter comentado
+#card-modal-root .card-aero-header{ display: none !important; }
+*/
+
+
+/* =======================================================================
+   [12] CAPA/IMAGEM — MODAL
+   ======================================================================= */
+#card-modal-root .card-cover-wrap{
+  max-height: var(--card-cover-modal-h) !important;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  width: 100%;
+}
+#card-modal-root .card-cover-img{
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  background: var(--card-cover-bg) !important;
+  display: block;
+}
+#card-modal-root .card-cover-img:not(img){
+  background-size: contain !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-color: var(--card-cover-bg) !important;
+}
+#card-modal-root .card-cover-img{ cursor: zoom-in; }
+
+
+/* =======================================================================
+   [13] X DO MODAL — metalizado
+   ======================================================================= */
+#modal .modal-top-x{
+  position: relative;
+
+  width: auto;
+  height: auto;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+
+  padding: 8px 10px;
+
+  color: transparent !important;
+  font-size: 0 !important;
+  line-height: 0 !important;
+
+  cursor: pointer;
+  transition: transform .18s ease, filter .18s ease;
+  will-change: transform, filter;
+}
+#modal .modal-top-x::after{ content: none !important; }
+#modal .modal-top-x::before{
+  content: "✖";
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1;
+
+  background: linear-gradient(
+    115deg,
+    #ffffff 0%,
+    #9aa7ff 18%,
+    #ffffff 32%,
+    #ffb7f2 50%,
+    #ffffff 68%,
+    #a7f3ff 82%,
+    #ffffff 100%
+  );
+  background-size: 220% 220%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+
+  filter:
+    drop-shadow(0 1px 1px rgba(0,0,0,0.85))
+    drop-shadow(0 0 10px rgba(255,255,255,0.25));
+
+  animation: modalXMetal 2.4s linear infinite;
+}
+@keyframes modalXMetal{
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+#modal .modal-top-x:hover{
+  transform: scale(1.12);
+  filter:
+    drop-shadow(0 0 10px rgba(255,255,255,0.55))
+    drop-shadow(0 0 22px rgba(170,140,255,0.65))
+    drop-shadow(0 0 34px rgba(255,170,220,0.40));
+}
+#modal .modal-top-x:focus-visible{
+  outline: none;
+  filter:
+    drop-shadow(0 0 10px rgba(255,255,255,0.55))
+    drop-shadow(0 0 24px rgba(120,220,255,0.35));
+}
+
+
+/* =======================================================================
+   [14] NOVA ATIVIDADE — fechado por padrão (CM)
+   ======================================================================= */
+#cm-activity-composer{ display: none; }
+#cm-activity-gap{ display: none; }
+#cm-activity-composer.is-open{ display: block; }
+#cm-activity-gap.is-open{ display: block; }
+
+
+/* =======================================================================
+   [15] ETIQUETAS — UI (chips) no modal (CM)
+   ======================================================================= */
+#card-modal-root .cm-tag-catalog{ margin-top: 10px; }
 
 #card-modal-root .cm-tag-create{
   display: flex;
   gap: 8px;
   margin-bottom: 8px;
 }
-
 #card-modal-root .cm-tag-create input{ flex: 1; }
 
 #card-modal-root .cm-tag-list{
@@ -36,12 +694,11 @@
   background: rgba(0,0,0,0.08);
   border: 1px solid rgba(0,0,0,0.10);
   cursor: pointer;
-  font-size: 0.92em;          /* escala com AA */
+  font-size: 0.92em;
   line-height: 1.2;
   position: relative;
   user-select: none;
 }
-
 #card-modal-root .cm-tag-chip:hover{
   background: rgba(0,0,0,0.13);
 }
@@ -61,333 +718,504 @@
   text-align: center;
   cursor: pointer;
 }
-
 #card-modal-root .cm-tag-list.delete-mode .cm-tag-remove{ display: block; }
 
 
+/* =======================================================================
+   [16] CM (card_modal_split.html) — INLINE (SEM SPLIT)
+   Tokens + UI base (sem mexer no layout split)
+   ======================================================================= */
 
+/* TOKENS (fonte única de verdade p/ CM) */
+#cm-root{
+  --cm-radius: 14px;
+  --cm-radius-sm: 10px;
+  --cm-pad: 14px;
 
+  /* LIGHT */
+  --cm-bg: rgba(255,255,255,0.58);
+  --cm-surface: rgba(255,255,255,0.62);
+  --cm-surface-2: rgba(255,255,255,0.52);
 
+  --cm-border: rgba(15,23,42,0.12);
+  --cm-border-2: rgba(15,23,42,0.08);
+  --cm-text: rgba(15,23,42,0.92);
+  --cm-muted: rgba(15,23,42,0.62);
+  --cm-placeholder: rgba(15,23,42,0.45);
 
+  --cm-link: #2563eb;
+  --cm-link-hover: #1d4ed8;
 
+  --cm-accent: rgb(37 99 235);
+  --cm-accent-2: rgba(37,99,235,0.12);
+  --cm-danger: rgb(220 38 38);
 
+  --cm-shadow: 0 10px 30px rgba(2,6,23,0.10);
+  --cm-shadow-sm: 0 6px 18px rgba(2,6,23,0.08);
 
+  --cm-focus: rgba(37,99,235,0.35);
+  --cm-ring: 0 0 0 3px rgba(37,99,235,0.22);
 
-
-
-
-
-
-
-
-
-
-/* ============================================================
-   THEME TOKENS (fonte única de verdade)
-   - aplique em #modal (ou #cm-root) via data-theme
-   ============================================================ */
-
-#modal {
-  --cm-bg: #f4f5f7;        /* Trello-ish */
-  --cm-surface: #ffffff;   /* cards */
-  --cm-surface-2: #f9fafb; /* inputs */
-   /* inputs/áreas secundárias */
-  --cm-border: rgba(9,30,66,.12);
-  --cm-text: #172b4d;
-  --cm-muted: #6b778c;
-  --cm-shadow: 0 8px 24px rgba(9,30,66,.12);
-
-  /* “aero” (só usado no modo aero) */
-  --cm-glass: rgba(255,255,255,.72);
-  --cm-glass-strong: rgba(255,255,255,.88);
-  --cm-backdrop: blur(10px) saturate(130%);
+  /* overlay de prazo */
+  --cm-term-rgb: 0,0,0;
+  --cm-term-opacity: 0;
 }
 
-/* DARK: escuro bonito (não chapado) */
-#modal[data-theme="dark"] {
-  --cm-bg: #0f141a;
-  --cm-surface: #161c24;
-  --cm-surface-2: #1b2330;
-  --cm-border: rgba(255,255,255,.08);
-  --cm-text: #e6edf3;
-  --cm-muted: rgba(230,237,243,.65);
-  --cm-shadow: 0 10px 30px rgba(0,0,0,.45);
-
-  --cm-glass: rgba(22,28,36,.70);
-  --cm-glass-strong: rgba(22,28,36,.88);
-  --cm-backdrop: blur(12px) saturate(125%);
-}
-
-/* AERO: mantém “glass” sem virar branco sólido */
-#modal[data-theme="aero"] {
-  --cm-bg: rgba(244,245,247,.70);
-  --cm-surface: var(--cm-glass-strong);
-  --cm-surface-2: var(--cm-glass);
-  --cm-border: rgba(9,30,66,.14);
-  --cm-text: #172b4d;
-  --cm-muted: #5e6c84;
-  --cm-shadow: 0 10px 30px rgba(9,30,66,.20);
-}
-
-
-
-/* Fundo do modal */
-#modal-body.card-modal-scroll,
-#modal #card-modal-root,
-#modal .cm-mode {
-  background: var(--cm-bg) !important;
-  color: var(--cm-text);
-}
-
-/* Painéis/caixas principais */
-#modal .panel,
-#modal .box,
-#modal .section,
-#modal .modal-section,
-#modal .card {
-  background: var(--cm-surface);
-  border: 1px solid var(--cm-border);
-  box-shadow: var(--cm-shadow);
-  border-radius: 12px;
-}
-
-/* Inputs/áreas internas */
-#modal input,
-#modal select,
-#modal textarea,
-#modal .editor,
-#modal .ql-container,
-#modal .ql-toolbar {
-  background: var(--cm-surface-2);
-  color: var(--cm-text);
-  border-color: var(--cm-border);
-}
-
-/* Texto secundário */
-#modal .muted,
-#modal .help,
-#modal small,
-#modal label {
-  color: var(--cm-muted);
-}
-
-/* Tabs */
-#modal .tabs,
-#modal .tablist,
-#modal [role="tablist"] {
-  background: transparent;
-}
-
-#modal [role="tab"],
-#modal .tab,
-#modal .tabs button {
-  background: transparent;
-  border: 1px solid var(--cm-border);
-  color: var(--cm-text);
-  border-radius: 999px;
-}
-
-#modal [role="tab"][aria-selected="true"],
-#modal .tab.active,
-#modal .tabs button.active {
-  background: var(--cm-surface);
-}
-
-#modal[data-theme="aero"] .panel,
-#modal[data-theme="aero"] .box,
-#modal[data-theme="aero"] .section,
-#modal[data-theme="aero"] .modal-section,
-#modal[data-theme="aero"] .card {
-  background: var(--cm-glass-strong);
-  backdrop-filter: var(--cm-backdrop);
-  -webkit-backdrop-filter: var(--cm-backdrop);
-}
-
-#modal[data-theme="aero"] input,
-#modal[data-theme="aero"] textarea,
-#modal[data-theme="aero"] .ql-container,
-#modal[data-theme="aero"] .ql-toolbar {
-  background: var(--cm-glass);
-  backdrop-filter: var(--cm-backdrop);
-  -webkit-backdrop-filter: var(--cm-backdrop);
-}
-
-
-
-
-
-
-
-
-
-
-
-
-/* ============================================================
-   QUILL — obedecer AA (hard override)
-   ============================================================ */
-
-/* container snow + editor */
-#card-modal-root .ql-snow,
-#card-modal-root .ql-snow *{
-  font-size: inherit !important;
-  line-height: inherit !important;
-}
-
-/* editor (onde o texto fica) */
-#card-modal-root .ql-snow .ql-editor,
-#card-modal-root .ql-snow .ql-editor *{
-  font-size: inherit !important;
-  line-height: inherit !important;
-}
-
-/* toolbar/pickers */
-#card-modal-root .ql-snow .ql-toolbar,
-#card-modal-root .ql-snow .ql-toolbar *{
-  font-size: 0.95em !important;
-  line-height: 1.2 !important;
-}
-
-/* derruba font-size inline que o Quill coloca em spans */
-#card-modal-root .ql-editor [style*="font-size"]{
-  font-size: inherit !important;
-}
-
-/* fallback pro editor de atividade se Quill ainda não montou */
-#card-modal-root #cm-activity-editor,
-#card-modal-root #cm-activity-editor *{
-  font-size: inherit !important;
-  line-height: inherit !important;
-}
-
-
-/* ============================================================
-   CM — AA FONT SIZE (ÚNICO BLOCO - FINAL DO ARQUIVO)
-   Governança: #card-modal-root[data-font="sm|md|lg"]
-   ============================================================ */
-
-#card-modal-root{
-  --cm-aa-font-sm: 12px;
-  --cm-aa-font-md: 14px;
-  --cm-aa-font-lg: 16px;
-  --cm-aa-line: 1.55;
-
-  --cm-aa-font: var(--cm-aa-font-sm);
-}
-
-#card-modal-root[data-font="md"]{ --cm-aa-font: var(--cm-aa-font-md); }
-#card-modal-root[data-font="lg"]{ --cm-aa-font: var(--cm-aa-font-lg); }
-
-/* baseline tipográfico do modal inteiro */
-#card-modal-root{
-  font-size: var(--cm-aa-font) !important;
-  line-height: var(--cm-aa-line) !important;
-}
-
-#card-modal-root{
-  font-size: var(--cm-aa-font) !important;
-  line-height: var(--cm-aa-line) !important;
-}
-
-/* Form controls */
-#card-modal-root input,
-#card-modal-root textarea,
-#card-modal-root select,
-#card-modal-root button{
-  font-size: inherit !important;
-  line-height: inherit !important;
-}
-
-/* Labels/muted devem escalar */
-#card-modal-root .cm-label,
-#card-modal-root .cm-muted{
-  font-size: 0.92em !important;
-  line-height: inherit !important;
-}
-
-/* ATIVIDADE: garante herança total */
-#card-modal-root .cm-activity,
-#card-modal-root #cm-activity-panel,
-#card-modal-root #cm-activity-panel *{
-  font-size: inherit !important;
-  line-height: inherit !important;
-}
-
-/* Conteúdo renderizado */
-#card-modal-root .cm-activity-content,
-#card-modal-root .cm-activity-content *{
-  font-size: inherit !important;
-  line-height: inherit !important;
-}
-
-/* Quill da atividade (Quill fixa px) */
-#card-modal-root .cm-activity-quill .ql-editor,
-#card-modal-root #cm-activity-editor .ql-editor,
-#card-modal-root .cm-activity-quill .ql-container,
-#card-modal-root #cm-activity-editor{
-  font-size: inherit !important;
-  line-height: inherit !important;
-}
-
-
-
-
-
-#modal-body {
-  background: transparent !important;
-}
+/* DARK tokens */
 #card-modal-root.theme-dark #cm-root,
 #card-modal-root.card-theme-dark #cm-root,
 html.dark #cm-root{
-  --cm-bg: #0f141a;
-  --cm-surface: #161c24;
-  --cm-surface-2: #1b2330;
-
-  --cm-border: rgba(255,255,255,0.10);
-  --cm-border-2: rgba(255,255,255,0.08);
-
-  --cm-text: rgba(230,237,243,0.95);
-  --cm-muted: rgba(230,237,243,0.70);
-  --cm-placeholder: rgba(230,237,243,0.55);
-
+  --cm-bg: rgba(2,6,23,0.55);
+  --cm-surface: rgba(2,6,23,0.62);
+  --cm-surface-2: rgba(15,23,42,0.56);
+  --cm-border: rgba(255,255,255,0.14);
+  --cm-border-2: rgba(255,255,255,0.10);
+  --cm-text: rgba(241,245,249,0.94);
+  --cm-muted: rgba(226,232,240,0.72);
+  --cm-placeholder: rgba(226,232,240,0.52);
   --cm-accent: rgb(96 165 250);
+  --cm-shadow: 0 14px 40px rgba(0,0,0,0.35);
+  --cm-shadow-sm: 0 10px 26px rgba(0,0,0,0.30);
+  --cm-ring: 0 0 0 3px rgba(59,130,246,0.25);
 
-  --cm-shadow: 0 16px 44px rgba(0,0,0,0.55);
-  --cm-shadow-sm: 0 12px 30px rgba(0,0,0,0.45);
-  --cm-ring: 0 0 0 3px rgba(59,130,246,0.28);
+  --cm-link: #93c5fd;
+  --cm-link-hover: #bfdbfe;
+
+  --cm-focus: rgba(147,197,253,0.35);
 }
-/* ============================================================
-   VIDRO FOSCO
-   ============================================================ */
-/* ============================================================
-   VIDRO FOSCO — SOMENTE AERO
-   (evita “dark ridículo” e “light lavado”)
-   ============================================================ */
-#card-modal-root.theme-aero #cm-root .cm-card,
-#card-modal-root.theme-aero #cm-root .cm-topbar{
-  backdrop-filter: blur(12px) saturate(130%);
-  -webkit-backdrop-filter: blur(12px) saturate(130%);
-  background-image: linear-gradient(
-    180deg,
-    rgba(255,255,255,0.35),
-    rgba(255,255,255,0.12)
-  );
-}
-.cm-main{
-  width: 60%;
+
+/* BASE */
+.cm-wrap{
+  padding: 16px;
+  width: 100%;
   min-width: 0;
-  padding-right: 16px;   /* ✅ espelho do lado direito */
-  box-sizing: border-box; /* ✅ garante que não estoura largura */
+  color: var(--cm-text) !important;
+  position: relative;
+  overflow: hidden;
 }
 
-@media (max-width: 768px){
-  .cm-split{ flex-direction: column; }
-  .cm-main, .cm-activity{
-    width: 100%;
-    padding-left: 0;
-    padding-right: 0; /* ✅ */
-    border-left: 0;
+/* overlay do prazo */
+#cm-root::before{
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--cm-radius);
+  background: rgba(var(--cm-term-rgb), var(--cm-term-opacity));
+  pointer-events: none;
+  z-index: 0;
+}
+#cm-root > *{
+  position: relative;
+  z-index: 1;
+}
+
+/* cards/painéis */
+.cm-card{
+  border-radius: var(--cm-radius);
+  border: 1px solid var(--cm-border);
+  background: var(--cm-surface);
+  box-shadow: var(--cm-shadow-sm);
+  padding: var(--cm-pad);
+  color: var(--cm-text);
+}
+.cm-panel .cm-card + .cm-card{ margin-top: 14px; }
+.cm-muted{
+  font-size: 0.92em;
+  color: var(--cm-muted) !important;
+}
+
+/* TOPBAR / TABS */
+.cm-topbar{
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  border-radius: var(--cm-radius);
+  border: 1px solid var(--cm-border);
+  background: var(--cm-bg);
+  box-shadow: var(--cm-shadow);
+  padding: 10px;
+  margin-bottom: 8px;
+}
+
+.cm-bar{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+}
+
+.cm-tabs{
+  display:flex;
+  gap: 8px;
+  flex: 1;
+  overflow-x: auto;
+}
+
+.cm-tabbtn{
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 0.95em;
+  border: 1px solid var(--cm-border-2);
+  background: var(--cm-surface-2);
+  color: var(--cm-text);
+  cursor: pointer;
+  user-select: none;
+}
+.cm-tabbtn.is-active{
+  background: linear-gradient(180deg, rgba(37,99,235,0.16), rgba(37,99,235,0.10));
+  border-color: rgba(37,99,235,0.38);
+}
+
+/* PANELS */
+.cm-panel{ display: none; }
+.cm-panel.is-active{ display: block; }
+
+/* PRAZO — overlay final */
+#cm-root[data-term-notify="1"][data-term-status="ok"],
+#cm-root[data-term-notify="1"][data-term-status="warn"],
+#cm-root[data-term-notify="1"][data-term-status="overdue"]{
+  --cm-term-opacity: 0.12;
+}
+#cm-root:not([data-term-notify="1"]),
+#cm-root[data-term-notify="0"]{
+  --cm-term-opacity: 0;
+}
+
+#cm-root[data-term-status="ok"]{ --cm-term-rgb: 22, 163, 74; }
+#cm-root[data-term-status="warn"]{ --cm-term-rgb: 245, 158, 11; }
+#cm-root[data-term-status="overdue"]{ --cm-term-rgb: 220, 38, 38; }
+
+/* CM: desativar Salvar do topo */
+#cm-actions,
+#cm-save-btn{ display: none !important; }
+
+/* bolinha */
+.cm-color-dot{
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  display: inline-block;
+  background: transparent;
+  border: 1px solid var(--cm-border);
+}
+
+/* Inputs / foco */
+#card-modal-root #cm-root .cm-input,
+#card-modal-root #cm-root .cm-textarea,
+#card-modal-root #cm-root .cm-select{
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--cm-border);
+  background: var(--cm-surface-2);
+  color: var(--cm-text);
+  padding: 10px 12px;
+  outline: none;
+}
+#card-modal-root #cm-root .cm-textarea{ min-height: 220px; }
+#card-modal-root #cm-root .cm-input:focus,
+#card-modal-root #cm-root .cm-textarea:focus,
+#card-modal-root #cm-root .cm-select:focus{
+  box-shadow: 0 0 0 3px var(--cm-focus);
+  border-color: rgba(37,99,235,0.55);
+}
+
+/* Links */
+#card-modal-root #cm-root a{
+  color: var(--cm-link);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+#card-modal-root #cm-root a:hover{ color: var(--cm-link-hover); }
+
+/* Checklist: garante leitura */
+#card-modal-root #cm-root #checklist-list,
+#card-modal-root #cm-root #checklist-list *{
+  color: var(--cm-text);
+}
+#card-modal-root #cm-root #checklist-list input,
+#card-modal-root #cm-root #checklist-list textarea,
+#card-modal-root #cm-root #checklist-list select{
+  background: var(--cm-surface-2);
+  border-color: var(--cm-border);
+}
+
+/* Checklist: blindagem */
+#card-modal-root #cm-root .checklist-input{
+  color: var(--cm-text) !important;
+}
+#card-modal-root #cm-root .checklist-input::placeholder{
+  color: var(--cm-muted) !important;
+}
+
+/* CHECKLIST — layout robusto (GRID) */
+#card-modal-root #checklist-list,
+#card-modal-root .checklists-container,
+#card-modal-root .checklist-block,
+#card-modal-root .checklist-head{
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+#card-modal-root .checklist-items{
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+#card-modal-root .checklist-item-handle{
+  font-size: 14px;
+  width: 18px;
+  text-align: center;
+  line-height: 1;
+  user-select: none;
+}
+#card-modal-root .checklist-item input[type="checkbox"]{
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+}
+#card-modal-root .checklist-item-text{
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+}
+#card-modal-root .checklist-item-remove{
+  justify-self: end;
+  white-space: nowrap;
+}
+#card-modal-root .checklist-item.is-done{ opacity: 0.6; }
+#card-modal-root .checklist-item.is-done .checklist-item-text{ text-decoration: line-through; }
+#card-modal-root .checklist-item.is-done input[type="checkbox"]{ opacity: 1; }
+#card-modal-root .checklist-item{
+  display: grid;
+  grid-template-columns: 18px 16px minmax(0, 1fr) auto;
+  column-gap: 10px;
+  align-items: start;
+  padding: 6px 0;
+  width: 100%;
+  max-width: 100%;
+  transition: opacity .15s ease, background .15s ease;
+}
+
+/* Action dock (⋮) */
+#cm-action-dock{
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 999999;
+  pointer-events: auto;
+}
+#cm-action-dock .dock-wrap{ position: relative; }
+#cm-action-dock .dock-toggle{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.35);
+  background: rgba(0,0,0,0.45);
+  color: #fff;
+  line-height: 1;
+}
+#cm-dock-actions{
+  position: absolute;
+  right: 0;
+  bottom: 52px;
+  z-index: 999999;
+}
+
+/* Drag & drop de anexo no modal */
+#card-modal-root.cm-dragover #cm-root .cm-wrap{
+  outline: 2px dashed var(--cm-focus);
+  outline-offset: 6px;
+}
+
+/* QUILL — Nova Atividade */
+.cm-activity-quill{
+  border: 1px solid var(--cm-border);
+  border-radius: var(--cm-radius);
+  background: var(--cm-surface-2);
+  overflow: hidden;
+}
+.cm-activity-quill .ql-toolbar.ql-snow{
+  border: 0;
+  border-bottom: 1px solid var(--cm-border-2);
+  background: transparent;
+}
+.cm-activity-quill .ql-container.ql-snow{
+  border: 0;
+  background: transparent;
+}
+.cm-activity-quill .ql-editor{
+  min-height: 140px;
+  font-size: inherit;
+  line-height: inherit;
+  color: var(--cm-text);
+}
+.cm-activity-quill .ql-editor.ql-blank::before{
+  color: var(--cm-placeholder);
+}
+#cm-activity-editor{
+  min-height: 140px;
+  padding: 10px;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+/* Atividade (itens) — sem mexer no layout split */
+.cm-activity .cm-activity-sep{
+  height: 1px;
+  background: rgba(15,23,42,0.10);
+  margin: 12px 0;
+}
+#cm-activity-panel .cm-activity-list{
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+#cm-activity-panel .cm-activity-item{
+  border: 1px solid var(--cm-border);
+  background: var(--cm-surface);
+  border-radius: var(--cm-radius);
+  padding: 12px;
+  box-shadow: var(--cm-shadow-sm);
+}
+#cm-activity-panel .cm-activity-item .cm-activity-meta{
+  font-size: inherit;
+  line-height: inherit;
+  color: var(--cm-muted);
+  margin-bottom: 6px;
+}
+
+
+/* =======================================================================
+   [17] BACKDROP DO CORPO DO MODAL (leve, sem blur)
+   - blur interno é proibido (hard rule)
+   ======================================================================= */
+#card-modal-root .modal-content,
+#modal .modal-content,
+#modal-body{
+  background: rgba(255,255,255,0.55);
+}
+
+
+/* =======================================================================
+   [18] COMPACT MODE — 1366x768
+   ======================================================================= */
+@media (max-width: 1366px) and (max-height: 768px){
+  #card-modal-root{ font-size: 14px; }
+
+  #card-modal-root .card-aero-header{
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
   }
+
+  #card-modal-root .theme-dot{
+    width: 14px;
+    height: 14px;
+  }
+
+  #card-modal-root label{
+    font-size: 0.85rem !important;
+    margin-bottom: 4px !important;
+  }
+
+  #card-modal-root input,
+  #card-modal-root textarea,
+  #card-modal-root select{
+    padding: 6px 10px !important;
+    font-size: 0.90rem !important;
+  }
+
+  #card-modal-root .card-modal-scroll{ padding: 12px 14px; }
+
+  #card-modal-root #quill-editor .ql-editor{ min-height: 140px; }
+  #card-modal-root #quill-editor-ativ .ql-editor{ min-height: 110px; }
 }
 
-/* END modal.css */
+
+/* =======================================================================
+   [19] FULLSCREEN MOBILE (crítico de ordem)
+   ======================================================================= */
+@media (max-width: 767px){
+  #modal{
+    padding: 0 !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+  }
+
+  #card-modal-root{
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+  }
+
+  #modal-body{
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    overflow: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  html, body{ overflow-x: hidden !important; }
+  #modal, #modal *{ box-sizing: border-box; }
+}
+
+
+/* =======================================================================
+   [20] Z-INDEX / CLICK SAFETY (sem quebrar estado fechado)
+   ======================================================================= */
+#modal{
+  z-index: 99999 !important;
+}
+#card-modal-root,
+#modal-body{
+  pointer-events: auto !important;
+}
+
+
+
+
+/* =======================================================================
+   PRAZO — FAIXA SOMENTE NO TOPO DO MODAL (SEM PINTAR FUNDO)
+   Implementação robusta: inset box-shadow no #card-modal-root.card-modal
+   ======================================================================= */
+
+/* mata qualquer tentativa anterior de pseudo-elemento de faixa */
+#card-modal-root::before,
+#card-modal-root .card-aero-header::before{
+  content: none !important;
+}
+
+/* cor default (sem notificação) */
+#card-modal-root.card-modal{
+  --termbar: transparent;
+}
+
+/* define a cor via :has() olhando o estado do #cm-root */
+#card-modal-root.card-modal:has(#cm-root[data-term-notify="1"][data-term-status="ok"]){
+  --termbar: rgba(22, 163, 74, 0.90);
+}
+#card-modal-root.card-modal:has(#cm-root[data-term-notify="1"][data-term-status="warn"]){
+  --termbar: rgba(245, 158, 11, 0.92);
+}
+#card-modal-root.card-modal:has(#cm-root[data-term-notify="1"][data-term-status="overdue"]){
+  --termbar: rgba(220, 38, 38, 0.92);
+}
+
+/* aplica a faixa (10px) SEM alterar layout, SEM overlay */
+#card-modal-root.card-modal{
+  box-shadow:
+    inset 0 10px 0 var(--termbar),
+    0 18px 60px rgba(2, 6, 23, 0.22),
+    0 2px 10px rgba(2, 6, 23, 0.10) !important;
+}
+
+
