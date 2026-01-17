@@ -373,6 +373,21 @@ html.dark #cm-root{
     rgba(255,255,255,0.12)
   );
 }
+.cm-main{
+  width: 60%;
+  min-width: 0;
+  padding-right: 16px;   /* ✅ espelho do lado direito */
+  box-sizing: border-box; /* ✅ garante que não estoura largura */
+}
 
+@media (max-width: 768px){
+  .cm-split{ flex-direction: column; }
+  .cm-main, .cm-activity{
+    width: 100%;
+    padding-left: 0;
+    padding-right: 0; /* ✅ */
+    border-left: 0;
+  }
+}
 
 /* END modal.css */
