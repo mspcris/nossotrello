@@ -333,9 +333,10 @@ class UserProfile(models.Model):
     )
 
     activity_sidebar = models.BooleanField(
-        default=False,
+        default=True,
         help_text="Mostrar atividade fixa na lateral do modal do card (estilo Trello)",
     )
+        
 
     avatar_choice = models.CharField(max_length=60, blank=True, default="")
     display_name = models.CharField(max_length=120, blank=True, default="")
