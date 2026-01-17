@@ -673,8 +673,28 @@ html.dark #cm-root{
         <section class="cm-panel" data-cm-panel="tags" role="tabpanel">
           <div class="cm-card space-y-3">
             <div>
-              <label class="cm-label">Etiquetas (separadas por vírgula)</label>
-              <input type="text" name="tags" value="{{ card.tags|default_if_none:"" }}" class="cm-input">
+              <label>Cadastre as etiquetas, depois clique nelas</label>
+<input
+  type="text"
+  name="tags"
+  id="cm-tags-input"
+  autocomplete="off"
+/>
+
+<div class="cm-tag-catalog">
+  <div class="cm-tag-create">
+    <input
+      type="text"
+      id="cm-tag-new"
+      placeholder="Digite a etiqueta"
+    />
+    <button type="button" id="cm-tag-add">Incluir</button>
+    <button type="button" id="cm-tag-delete-toggle">Excluir etiquetas</button>
+  </div>
+
+  <div class="cm-tag-list" id="cm-tag-list"></div>
+</div>
+
             </div>
 
             <div class="cm-muted">

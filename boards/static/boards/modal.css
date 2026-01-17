@@ -357,5 +357,62 @@
 .is-hidden{
   display: none !important;
 }
+/* ===============================
+   Catálogo de Etiquetas (MVP)
+================================ */
+
+.cm-tag-catalog {
+  margin-top: 10px;
+}
+
+.cm-tag-create {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.cm-tag-create input {
+  flex: 1;
+}
+
+.cm-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cm-tag-chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.08);
+  cursor: pointer;
+  font-size: 12px;
+  position: relative;
+  user-select: none;
+}
+
+.cm-tag-chip:hover {
+  background: rgba(0,0,0,0.15);
+}
+
+.cm-tag-chip .cm-tag-remove {
+  display: none;
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #e11d48;
+  color: #fff;
+  font-size: 10px;
+  line-height: 16px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.cm-tag-list.delete-mode .cm-tag-remove {
+  display: block;
+}
 
 /*end modal.css*/
