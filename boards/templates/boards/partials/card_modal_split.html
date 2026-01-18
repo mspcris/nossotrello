@@ -59,30 +59,7 @@
     padding-top: 16px;
   }
 }
-/* ============================================================ */
 
-/* MVP: esconder legacy “A AA AAA” (sem remover JS) */
-#modal-body .legacy-tag-catalog,
-#modal-body .tag-catalog-legacy,
-#modal-body [data-legacy-tags="1"] {
-  display: none !important;
-}
-
-/* HOTFIX: mata texto solto tipo "AA / A AA AAA" dentro do body do modal */
-#cm-root > .cm-split > .cm-main {
-  position: relative;
-  font-size: inherit;
-}
-
-/* esconder somente nós que NÃO estão dentro de cards/containers conhecidos */
-#cm-root > .cm-split > .cm-main > :not(.cm-topbar):not(#cm-tags-wrap):not(form):not(#cm-floatbar):not(.cm-card):not(.cm-wrap):not(.cm-split):not(script):not(style) {
-  display: none !important;
-}
-
-/* fallback mais agressivo (se o "AA" estiver fora do cm-main) */
-#modal-body > :not(#cm-root):not(script):not(style) {
-  display: none !important;
-}
 </style>
 
 <div class="cm-wrap"
