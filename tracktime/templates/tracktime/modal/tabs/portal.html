@@ -1,10 +1,11 @@
 {# tracktime/templates/tracktime/modal/tabs/portal.html #}
 
-<div class="tt-container" style="margin:0; padding:0;">
+<div id="tt-portal-tab-root" class="tt-container" style="margin:0; padding:0;">
   <div class="tt-section">
     <div class="tt-title">Projetos</div>
 
-    <form method="post" class="tt-input-row">
+    {# ✅ posta na própria tab #}
+    <form method="post" action="{% url 'tracktime:tab_portal' %}" class="tt-input-row tt-ajax-form">
       {% csrf_token %}
       <input name="project_name" placeholder="Nome do projeto" autocomplete="off">
       <button type="submit">Adicionar</button>
@@ -14,11 +15,15 @@
       {% for p in projects %}
         <div class="tt-chip {% if not p.is_active %}inactive{% endif %}">
           {{ p.name }}
-          <form method="post" action="{% url 'tracktime:toggle_project' p.id %}">
+
+          <form method="post" action="{% url 'tracktime:toggle_project' p.id %}" class="tt-ajax-form">
             {% csrf_token %}
-            <button title="Toggle">×</button>
+            <input type="hidden" name="next" value="{% url 'tracktime:tab_portal' %}">
+            <button title="Toggle" type="submit">×</button>
           </form>
         </div>
+      {% empty %}
+        <div class="tt-muted">Nenhum projeto ainda.</div>
       {% endfor %}
     </div>
   </div>
@@ -26,7 +31,8 @@
   <div class="tt-section">
     <div class="tt-title">Atividades</div>
 
-    <form method="post" class="tt-input-row">
+    {# ✅ posta na própria tab #}
+    <form method="post" action="{% url 'tracktime:tab_portal' %}" class="tt-input-row tt-ajax-form">
       {% csrf_token %}
       <input name="activity_name" placeholder="Nome da atividade" autocomplete="off">
       <button type="submit">Adicionar</button>
@@ -36,12 +42,59 @@
       {% for a in activities %}
         <div class="tt-chip {% if not a.is_active %}inactive{% endif %}">
           {{ a.name }}
-          <form method="post" action="{% url 'tracktime:toggle_activity' a.id %}">
+
+          <form method="post" action="{% url 'tracktime:toggle_activity' a.id %}" class="tt-ajax-form">
             {% csrf_token %}
-            <button title="Toggle">×</button>
+            <input type="hidden" name="next" value="{% url 'tracktime:tab_portal' %}">
+            <button title="Toggle" type="submit">×</button>
           </form>
         </div>
+      {% empty %}
+        <div class="tt-muted">Nenhuma atividade ainda.</div>
       {% endfor %}
     </div>
   </div>
 </div>
+
+<script>
+(function () {
+  // ✅ binding global (não morre quando a tab troca o HTML)
+  if (window.__TT_PORTAL_TAB_BOUND__) return;
+  window.__TT_PORTAL_TAB_BOUND__ = true;
+
+  async function submitAjax(form) {
+    const action = form.getAttribute("action") || window.location.href;
+    const fd = new FormData(form);
+
+    const res = await fetch(action, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+      body: fd,
+    });
+
+    if (!res.ok) return;
+
+    const html = await res.text();
+
+    // ✅ troca apenas o root da tab (sem depender de script executar de novo)
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const freshRoot = doc.getElementById("tt-portal-tab-root");
+    const currentRoot = document.getElementById("tt-portal-tab-root");
+
+    if (freshRoot && currentRoot) {
+      currentRoot.replaceWith(freshRoot);
+    }
+  }
+
+  document.addEventListener("submit", function (e) {
+    const form = e.target && e.target.closest && e.target.closest("form.tt-ajax-form");
+    if (!form) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    submitAjax(form);
+  }, true);
+})();
+</script>

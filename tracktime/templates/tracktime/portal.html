@@ -23,7 +23,8 @@
         <strong>Projetos</strong>
       </div>
 
-      <form method="post" class="flex gap-2 mb-4">
+      {# POST explícito para a própria página #}
+      <form method="post" action="{% url 'tracktime:portal' %}" class="flex gap-2 mb-4">
         {% csrf_token %}
         <input class="tt-input" name="project_name" placeholder="Nome do projeto" required>
         <button class="tt-btn tt-btn-primary" type="submit">Adicionar</button>
@@ -37,8 +38,10 @@
               {% if not p.is_active %}<span class="tt-muted">(inativo)</span>{% endif %}
             </div>
 
+            {# ✅ next garante voltar para esta página após toggle #}
             <form method="post" action="{% url 'tracktime:toggle_project' p.id %}">
               {% csrf_token %}
+              <input type="hidden" name="next" value="{% url 'tracktime:portal' %}">
               <button class="tt-btn" type="submit">
                 {% if p.is_active %}Desativar{% else %}Ativar{% endif %}
               </button>
@@ -55,7 +58,8 @@
         <strong>Atividades</strong>
       </div>
 
-      <form method="post" class="flex gap-2 mb-4">
+      {# POST explícito para a própria página #}
+      <form method="post" action="{% url 'tracktime:portal' %}" class="flex gap-2 mb-4">
         {% csrf_token %}
         <input class="tt-input" name="activity_name" placeholder="Nome da atividade" required>
         <button class="tt-btn tt-btn-primary" type="submit">Adicionar</button>
@@ -69,8 +73,10 @@
               {% if not a.is_active %}<span class="tt-muted">(inativo)</span>{% endif %}
             </div>
 
+            {# ✅ next garante voltar para esta página após toggle #}
             <form method="post" action="{% url 'tracktime:toggle_activity' a.id %}">
               {% csrf_token %}
+              <input type="hidden" name="next" value="{% url 'tracktime:portal' %}">
               <button class="tt-btn" type="submit">
                 {% if a.is_active %}Desativar{% else %}Ativar{% endif %}
               </button>
@@ -86,3 +92,4 @@
 
 </div>
 {% endblock %}
+{# END tracktime/templates/tracktime/portal.html #}

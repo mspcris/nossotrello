@@ -273,6 +273,16 @@ def portal(request):
     )
 
 
+def _redirect_back(request, fallback_url_name: str):
+    nxt = request.POST.get("next") or request.GET.get("next")
+    if nxt:
+        return redirect(nxt)
+    ref = request.META.get("HTTP_REFERER")
+    if ref:
+        return redirect(ref)
+    return redirect(reverse(fallback_url_name))
+
+
 @login_required
 def toggle_project(request, pk):
     if request.method != "POST":
@@ -282,8 +292,7 @@ def toggle_project(request, pk):
     p.is_active = not p.is_active
     p.save(update_fields=["is_active"])
 
-    return redirect("tracktime:portal")
-
+    return _redirect_back(request, "tracktime:portal")
 
 @login_required
 def toggle_activity(request, pk):
@@ -294,7 +303,8 @@ def toggle_activity(request, pk):
     a.is_active = not a.is_active
     a.save(update_fields=["is_active"])
 
-    return redirect("tracktime:portal")
+    return _redirect_back(request, "tracktime:portal")
+
 
 
 # ============================================================
@@ -356,11 +366,28 @@ def tracktime_modal(request):
 def tracktime_tab_portal(request):
     projects = Project.objects.all().order_by("name")
     activities = ActivityType.objects.all().order_by("name")
+
+    if request.method == "POST":
+        if "project_name" in request.POST:
+            name = (request.POST.get("project_name") or "").strip()
+            if name:
+                Project.objects.create(name=name)
+
+        if "activity_name" in request.POST:
+            name = (request.POST.get("activity_name") or "").strip()
+            if name:
+                ActivityType.objects.create(name=name)
+
+        # Recarrega a própria tab (sem redirect para a página /tracktime/)
+        projects = Project.objects.all().order_by("name")
+        activities = ActivityType.objects.all().order_by("name")
+
     return render(
         request,
         "tracktime/modal/tabs/portal.html",
         {"projects": projects, "activities": activities},
     )
+
 
 
 @login_required
