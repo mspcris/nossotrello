@@ -116,8 +116,9 @@
   <!-- BOARD POLLING sync cols (se você realmente usa isso globalmente) -->
   <script defer src="{% static 'boards/modal/board.poll.js' %}"></script>
 
-<!-- MODAL dock -->
+<!-- MODAL dock 
   <script defer src="{% static 'boards/modal/modal.dock.js' %}"></script>
+-->
   
   <!-- CSS dinâmico -->
   {% block extra_css %}{% endblock %}
@@ -308,15 +309,18 @@
 
 <li>
   <a
-  href="#"
-  hx-get="/track-time/modal/"
-  hx-target="#cm-modal-root"
-  hx-swap="innerHTML"
-  onclick="return false;"
->
-  🕒 Track-time
-</a>
+    class="nt-link"
+    href="{% url 'tracktime:modal' %}"
+    hx-get="{% url 'tracktime:modal' %}"
+    hx-target="#modal-body"
+    hx-swap="innerHTML"
+    hx-on:htmx:afterSwap="window.Modal?.open?.()"
+  >
+    ⏱ Track-time
+  </a>
 </li>
+
+
 
 
           

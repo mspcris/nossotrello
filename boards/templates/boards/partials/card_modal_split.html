@@ -60,6 +60,29 @@
   }
 }
 /* ============================================================ */
+
+/* MVP: esconder legacy “A AA AAA” (sem remover JS) */
+#modal-body .legacy-tag-catalog,
+#modal-body .tag-catalog-legacy,
+#modal-body [data-legacy-tags="1"] {
+  display: none !important;
+}
+
+/* HOTFIX: mata texto solto tipo "AA / A AA AAA" dentro do body do modal */
+#cm-root > .cm-split > .cm-main {
+  position: relative;
+  font-size: inherit;
+}
+
+/* esconder somente nós que NÃO estão dentro de cards/containers conhecidos */
+#cm-root > .cm-split > .cm-main > :not(.cm-topbar):not(#cm-tags-wrap):not(form):not(#cm-floatbar):not(.cm-card):not(.cm-wrap):not(.cm-split):not(script):not(style) {
+  display: none !important;
+}
+
+/* fallback mais agressivo (se o "AA" estiver fora do cm-main) */
+#modal-body > :not(#cm-root):not(script):not(style) {
+  display: none !important;
+}
 </style>
 
 <div class="cm-wrap"
@@ -131,6 +154,14 @@
         {% csrf_token %}
       </form>
 
+      <form id="cm-checklist-create-form"
+            method="post"
+            hx-post="{% url 'boards:checklist_add' card.id %}"
+            hx-target="#checklist-list"
+            hx-swap="innerHTML">
+        {% csrf_token %}
+      </form>
+
       <form id="cm-main-form"
             method="post"
             enctype="multipart/form-data"
@@ -198,7 +229,6 @@
                            inputmode="numeric"
                            placeholder="DD/MM/AAAA"
                            value="{% if card.start_date %}{{ card.start_date|date:'d/m/Y' }}{% endif %}">
-
                     <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">📅</span>
 
                     <input type="date"
@@ -222,7 +252,6 @@
                            inputmode="numeric"
                            placeholder="DD/MM/AAAA"
                            value="{% if card.due_date %}{{ card.due_date|date:'d/m/Y' }}{% endif %}">
-
                     <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">📅</span>
 
                     <input type="date"
@@ -246,7 +275,6 @@
                            inputmode="numeric"
                            placeholder="DD/MM/AAAA"
                            value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'d/m/Y' }}{% endif %}">
-
                     <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">📅</span>
 
                     <input type="date"
@@ -332,25 +360,24 @@
           <!-- Aba: Checklists -->
           <section class="cm-panel" data-cm-panel="check" role="tabpanel">
             <div class="cm-card space-y-3">
-              <form id="cm-checklist-create-form"
-                    method="post"
-                    hx-post="{% url 'boards:checklist_add' card.id %}"
-                    hx-target="#checklist-list"
-                    hx-swap="innerHTML">
-                {% csrf_token %}
+              <div class="space-y-3">
                 <label class="cm-label">Novo checklist</label>
 
                 <div class="flex gap-2">
                   <input id="cm-checklist-create-input"
                          type="text"
                          name="title"
+                         form="cm-checklist-create-form"
                          class="cm-input"
                          placeholder="Ex: Tarefas da semana">
-                  <button type="submit" class="cm-btn primary">
+
+                  <button type="submit"
+                          form="cm-checklist-create-form"
+                          class="cm-btn primary">
                     <span class="underline font-semibold">A</span>dicionar
                   </button>
                 </div>
-              </form>
+              </div>
 
               <div id="checklist-list" class="space-y-4">
                 {% include "boards/partials/checklist_list.html" with checklists=checklists %}
@@ -365,12 +392,15 @@
                    class="hidden mb-2 px-3 py-2 rounded-md text-sm border border-red-500/30 bg-red-500/10 text-red-200"></div>
 
               <div>
-                <label class="cm-label">Enviar novo anexo clicando em 'Choose File' ou, se for uma imagem em print, CTRL-V. Você também pode arrastar o arquivo para o campo Choose File, segure por um segundo e solte</label>
+                <label class="cm-label">
+                  Enviar novo anexo clicando em 'Choose File' ou, se for uma imagem em print, CTRL-V. Você também pode arrastar o arquivo para o campo Choose File, segure por um segundo e solte
+                </label>
 
+                <!-- wrapper flex RESTAURADO (isso mantém o DOM válido e o layout split funcionando) -->
                 <div class="flex gap-2 flex-wrap">
                   <input type="text"
                          id="attachment-desc"
-                         name="description"
+                         name="attachment_description"
                          class="cm-input"
                          style="max-width: 420px;"
                          placeholder="Descrição do anexo (opcional)">
@@ -528,6 +558,7 @@
   </div>
 
 </div>
+
 
 <script>
 (function () {
@@ -705,9 +736,14 @@
       const fd = new FormData(form);
       const obj = {};
       WATCH.forEach((k) => { obj[k] = ""; });
+      const seen = new Set();
       for (const [k, v] of fd.entries()) {
-        if (WATCH.includes(k)) obj[k] = String(v ?? "");
+        if (!WATCH.includes(k)) continue;
+        if (seen.has(k)) continue;
+        obj[k] = String(v ?? "");
+        seen.add(k);
       }
+
       return obj;
     }
 
@@ -936,7 +972,13 @@
     e.preventDefault();
     e.stopPropagation();
 
-    if (k === "s") { submitFormById("cm-main-form"); return; }
+    if (k === "s") {
+      const btn = document.getElementById("cm-save-btn") || document.getElementById("cm-float-save-btn");
+      if (btn) { btn.click(); return; }
+      submitFormById("cm-main-form");
+      return;
+    }
+
 
     if (k === "i") {
       gotoTab("ativ");

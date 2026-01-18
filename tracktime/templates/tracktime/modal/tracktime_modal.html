@@ -1,21 +1,111 @@
 {# tracktime/templates/tracktime/modal/tracktime_modal.html #}
 {% load static %}
 
-<div class="cm-modal-root">
+<div id="cm-root" class="cm-modal-root">
+  <!-- HEADER -->
   <div class="cm-modal-header">
     <div class="cm-modal-title">Track-time</div>
-    <button class="cm-modal-close" type="button" data-cm-modal-close>×</button>
+    <button class="cm-modal-close" type="button" data-cm-modal-close aria-label="Fechar">×</button>
   </div>
 
-  <div class="cm-modal-tabs" style="display:flex; gap:8px; padding: 10px 12px;">
-    <button class="tt-btn tt-btn-primary" hx-get="{% url 'tracktime:tab_live' %}" hx-target="#tt-modal-body" hx-swap="innerHTML">Ao vivo</button>
-    <button class="tt-btn" hx-get="{% url 'tracktime:tab_week' %}" hx-target="#tt-modal-body" hx-swap="innerHTML">Semana</button>
-    <button class="tt-btn" hx-get="{% url 'tracktime:tab_month' %}" hx-target="#tt-modal-body" hx-swap="innerHTML">Mês</button>
-    <button class="tt-btn" hx-get="{% url 'tracktime:tab_portal' %}" hx-target="#tt-modal-body" hx-swap="innerHTML">Cadastros</button>
+  <!-- TABS -->
+  <div class="cm-modal-tabs" style="display:flex; gap:8px; padding: 10px 12px; flex-wrap: wrap;">
+    <button
+      type="button"
+      class="tt-tab tt-btn tt-btn-primary"
+      data-tt-tab="live"
+      hx-get="{% url 'tracktime:tab_live' %}"
+      hx-target="#tt-tab-body"
+      hx-swap="innerHTML"
+    >
+      Ao vivo
+    </button>
+
+    <button
+      type="button"
+      class="tt-tab tt-btn"
+      data-tt-tab="week"
+      hx-get="{% url 'tracktime:tab_week' %}"
+      hx-target="#tt-tab-body"
+      hx-swap="innerHTML"
+    >
+      Semana
+    </button>
+
+    <button
+      type="button"
+      class="tt-tab tt-btn"
+      data-tt-tab="month"
+      hx-get="{% url 'tracktime:tab_month' %}"
+      hx-target="#tt-tab-body"
+      hx-swap="innerHTML"
+    >
+      Mês
+    </button>
+
+    <button
+      type="button"
+      class="tt-tab tt-btn"
+      data-tt-tab="portal"
+      hx-get="{% url 'tracktime:tab_portal' %}"
+      hx-target="#tt-tab-body"
+      hx-swap="innerHTML"
+    >
+      Cadastros
+    </button>
   </div>
 
-  <div id="tt-modal-body" class="cm-modal-body" style="padding: 12px;">
-    {# Default: Ao vivo #}
-    <div hx-get="{% url 'tracktime:tab_live' %}" hx-trigger="load" hx-target="#tt-modal-body" hx-swap="innerHTML"></div>
+  <!-- BODY -->
+  <div id="tt-tab-body" class="cm-modal-body" style="padding: 12px;">
+    {# default = Ao vivo #}
+    <div
+      hx-get="{% url 'tracktime:tab_live' %}"
+      hx-trigger="load"
+      hx-target="#tt-tab-body"
+      hx-swap="innerHTML"
+    ></div>
   </div>
 </div>
+
+<script>
+(function () {
+  const root = document.getElementById("cm-root");
+  if (!root) return;
+
+  function setActive(tabName) {
+    root.querySelectorAll(".tt-tab").forEach((btn) => {
+      const isActive = (btn.dataset.ttTab === tabName);
+      btn.classList.toggle("tt-btn-primary", isActive);
+      btn.classList.toggle("tt-btn", true);
+    });
+    try { root.dataset.ttActiveTab = tabName; } catch(e) {}
+  }
+
+  // click -> já marca visualmente antes do HTMX terminar
+  root.addEventListener("click", (e) => {
+    const btn = e.target.closest(".tt-tab");
+    if (!btn) return;
+    setActive(btn.dataset.ttTab || "live");
+  });
+
+  // quando o HTMX pedir algo vindo de um botão tab, garante seleção
+  document.body.addEventListener("htmx:beforeRequest", (e) => {
+    const elt = e.detail.elt;
+    if (!elt) return;
+    const btn = elt.closest?.(".tt-tab");
+    if (!btn) return;
+    setActive(btn.dataset.ttTab || "live");
+  });
+
+  // fallback: se o conteúdo carregar por "load", mantém live ativo
+  document.body.addEventListener("htmx:afterSwap", (e) => {
+    if (e.detail.target && e.detail.target.id === "tt-tab-body") {
+      const current = root.dataset.ttActiveTab || "live";
+      setActive(current);
+    }
+  });
+
+  // init
+  setActive("live");
+})();
+</script>

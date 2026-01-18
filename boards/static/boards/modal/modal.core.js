@@ -214,7 +214,7 @@
   // ============================================================
   function initCardModalContent() {
     // AA
-    try { Modal.fontSize?.init?.(); } catch {}
+    //try { Modal.fontSize?.init?.(); } catch {}
 
     // Nova Atividade
     try { initActivityComposerToggle?.(); } catch {}
@@ -343,8 +343,9 @@
 
       if (clearBody && body) body.innerHTML = "";
       if (clearUrl) clearCardFromUrl();
-
-      try { Modal.fontSize?.destroy?.(); } catch {}
+      
+      //  AA destroy
+      //try { Modal.fontSize?.destroy?.(); } catch {}
 
       document.dispatchEvent(new Event("modal:closed"));
     };
@@ -381,85 +382,85 @@
   // CM — Font size selector (sm/md/lg) + localStorage
   // - CSS alvo: #cm-root[data-font="sm|md|lg"]
   // ============================================================
-  (() => {
-    const KEY = "cm_modal_font_size"; // "sm" | "md" | "lg"
-    const DEFAULT = "sm";
+  // (() => {
+  //   const KEY = "cm_modal_font_size"; // "sm" | "md" | "lg"
+  //   const DEFAULT = "sm";
 
-    function currentFont() {
-      try {
-        return localStorage.getItem(KEY) || DEFAULT;
-      } catch {
-        return DEFAULT;
-      }
-    }
+  //   function currentFont() {
+  //     try {
+  //       return localStorage.getItem(KEY) || DEFAULT;
+  //     } catch {
+  //       return DEFAULT;
+  //     }
+  //   }
 
-    function applyFont(size) {
-      // FONTE ÚNICA DE VERDADE: #cm-root (é onde seu CSS está)
-      const cmRoot = getCmRootEl();
-      if (cmRoot) cmRoot.setAttribute("data-font", size);
+  //   function applyFont(size) {
+  //     // FONTE ÚNICA DE VERDADE: #cm-root (é onde seu CSS está)
+  //     const cmRoot = getCmRootEl();
+  //     if (cmRoot) cmRoot.setAttribute("data-font", size);
 
-      // fallback (não atrapalha)
-      const modalRoot = getRootEl();
-      const modal = getModalEl();
-      if (modalRoot) modalRoot.setAttribute("data-font", size);
-      if (modal) modal.setAttribute("data-font", size);
+  //     // fallback (não atrapalha)
+  //     const modalRoot = getRootEl();
+  //     const modal = getModalEl();
+  //     if (modalRoot) modalRoot.setAttribute("data-font", size);
+  //     if (modal) modal.setAttribute("data-font", size);
 
-      try { localStorage.setItem(KEY, size); } catch {}
-    }
+  //     try { localStorage.setItem(KEY, size); } catch {}
+  //   }
 
-    function ensureDock() {
-      // dock já existe?
-      if (document.getElementById("cm-fontsize-dock")) return;
+  //   function ensureDock() {
+  //     // dock já existe?
+  //     if (document.getElementById("cm-fontsize-dock")) return;
 
-      const dock = document.createElement("div");
-      dock.id = "cm-fontsize-dock";
-      dock.innerHTML = `
-        <div class="dock-wrap">
-          <button class="dock-toggle" type="button" aria-label="Tamanho da fonte">AA</button>
-          <div class="dock-actions">
-            <button class="dock-action" type="button" data-size="sm">A</button>
-            <button class="dock-action" type="button" data-size="md">AA</button>
-            <button class="dock-action" type="button" data-size="lg">AAA</button>
-          </div>
-        </div>
-      `;
+  //     const dock = document.createElement("div");
+  //     dock.id = "cm-fontsize-dock";
+  //     dock.innerHTML = `
+  //       <div class="dock-wrap">
+  //         <button class="dock-toggle" type="button" aria-label="Tamanho da fonte">AA</button>
+  //         <div class="dock-actions">
+  //           <button class="dock-action" type="button" data-size="sm">A</button>
+  //           <button class="dock-action" type="button" data-size="md">AA</button>
+  //           <button class="dock-action" type="button" data-size="lg">AAA</button>
+  //         </div>
+  //       </div>
+  //     `;
 
-      // DOCK DENTRO DO CM ROOT (pra CSS/posicionamento bater)
-      const host = getCmRootEl() || getModalEl() || document.body;
-      host.appendChild(dock);
+  //     // DOCK DENTRO DO CM ROOT (pra CSS/posicionamento bater)
+  //     const host = getCmRootEl() || getModalEl() || document.body;
+  //     host.appendChild(dock);
 
-      const toggle = dock.querySelector(".dock-toggle");
-      toggle?.addEventListener("click", () => dock.classList.toggle("is-open"));
+  //     const toggle = dock.querySelector(".dock-toggle");
+  //     toggle?.addEventListener("click", () => dock.classList.toggle("is-open"));
 
-      dock.querySelectorAll(".dock-action").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          applyFont(btn.getAttribute("data-size") || DEFAULT);
-          dock.classList.remove("is-open");
-        });
-      });
-    }
+  //     dock.querySelectorAll(".dock-action").forEach((btn) => {
+  //       btn.addEventListener("click", () => {
+  //         applyFont(btn.getAttribute("data-size") || DEFAULT);
+  //         dock.classList.remove("is-open");
+  //       });
+  //     });
+  //   }
 
-    function destroyDock() {
-      const dock = document.getElementById("cm-fontsize-dock");
-      if (dock) dock.remove();
-    }
+  //   function destroyDock() {
+  //     const dock = document.getElementById("cm-fontsize-dock");
+  //     if (dock) dock.remove();
+  //   }
 
-    Modal.fontSize = {
-      init() {
-        ensureDock();
-        applyFont(currentFont());
-      },
-      destroy() {
-        destroyDock();
-      },
-      apply(size) {
-        applyFont(size || DEFAULT);
-      },
-      get() {
-        return currentFont();
-      }
-    };
-  })();
+  //   Modal.fontSize = {
+  //     init() {
+  //       ensureDock();
+  //       applyFont(currentFont());
+  //     },
+  //     destroy() {
+  //       destroyDock();
+  //     },
+  //     apply(size) {
+  //       applyFont(size || DEFAULT);
+  //     },
+  //     get() {
+  //       return currentFont();
+  //     }
+  //   };
+  // })();
 
   // expõe (opcional)
   Modal.getElements = () => ({
