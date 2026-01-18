@@ -221,74 +221,114 @@
   }
 
   function cardHTML(it) {
-    const mmss = formatMMSS(it.elapsed_seconds);
-    const startHHMM = formatStart(it.started_at || null);
+  const mmss = formatMMSS(it.elapsed_seconds);
+  const startHHMM = formatStart(it.started_at || null);
 
-    const user = esc(it.user);
-    const boardName = esc(it.board_name || "");
-    const title = esc(it.card_title || "(sem título)");
+  const user = esc(it.user);
+  const handle = esc(it.user_handle || "");
+  const avatar = esc(it.user_avatar_url || "");
 
-    const url = it.card_url ? esc(it.card_url) : "";
-    const titleNode = url
-      ? `<a href="${url}" target="_blank" rel="noopener">${title}</a>`
-      : `<span>${title}</span>`;
+  const boardName = esc(it.board_name || "");
+  const title = esc(it.card_title || "(sem título)");
 
-    const cover = it.card_cover ? esc(it.card_cover) : "";
-    const coverNode = cover
-      ? `<img src="${cover}" alt="">`
-      : `<div class="tt-cover-fallback">CARD</div>`;
+  const url = it.card_url ? esc(it.card_url) : "";
+  const titleNode = url
+    ? `<a href="${url}" target="_blank" rel="noopener">${title}</a>`
+    : `<span>${title}</span>`;
 
-    const hasChecklist = !!it.has_checklist;
-    const hasAttachments = !!it.has_attachments;
+  const cover = it.card_cover ? esc(it.card_cover) : "";
+  const coverNode = cover
+    ? `<img src="${cover}" alt="">`
+    : `<div class="tt-cover-fallback">CARD</div>`;
 
-    const descText = stripHtml(it.card_description);
-    const descPreview = descText ? esc(descText.slice(0, 140)) : "(sem descrição)";
+  const hasChecklist = !!it.has_checklist;
+  const hasAttachments = !!it.has_attachments;
 
-    const checklistBadge = `<span class="tt-badge">☑ Checklist: ${hasChecklist ? "✓" : "–"}</span>`;
-    const attachBadge = `<span class="tt-badge">📎 Anexo: ${hasAttachments ? "✓" : "–"}</span>`;
+  const descText = stripHtml(it.card_description);
+  const descPreview = descText ? esc(descText.slice(0, 140)) : "(sem descrição)";
 
-    const descBlock = `
-      <div class="tt-desc">
-        <div class="tt-desc-text">${descPreview}</div>
-      </div>
-    `;
+  const checklistBadge = `<span class="tt-badge">☑ Checklist: ${hasChecklist ? "✓" : "–"}</span>`;
+  const attachBadge = `<span class="tt-badge">📎 Anexo: ${hasAttachments ? "✓" : "–"}</span>`;
 
-
-    const initial = user ? esc(user[0].toUpperCase()) : "U";
-
-    return `
-      <div class="tt-card">
-        <div class="tt-cover">${coverNode}</div>
-
-        <div class="tt-body">
-          <div class="tt-row">
-            <div class="tt-user tt-left">
-              <div class="tt-user-dot">${initial}</div>
-              <div class="tt-user-name" title="${user}">${user}</div>
-            </div>
-
-            <div class="tt-times">
-              <div class="tt-mmss">${mmss}</div>
-              ${startHHMM ? `<div class="tt-start">Início: ${startHHMM}</div>` : `<div class="tt-start">&nbsp;</div>`}
-            </div>
-          </div>
-
-          <div class="tt-meta">
-            ${boardName ? `<div class="tt-board">📋 ${boardName}</div>` : ``}
-            <div class="tt-title">${titleNode}</div>
-            ${url ? `<div class="tt-muted" style="font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">🔗 ${url}</div>` : ``}
-          </div>
-
-          <div class="tt-badges">
-            ${checklistBadge}
-            ${attachBadge}
-          </div>
-
-          ${descBlock}
-        </div>
-      </div>
-    `;
+  function fmtDate(iso) {
+    if (!iso) return "";
+    try {
+      const d = new Date(iso);
+      return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${String(d.getFullYear()).slice(-2)}`;
+    } catch (_) {
+      return "";
+    }
   }
+
+  const dStart = fmtDate(it.start_date);
+  const dWarn = fmtDate(it.warn_date);
+  const dDue = fmtDate(it.due_date);
+
+  const datesBadges =
+    (dStart || dWarn || dDue)
+      ? `
+        <div class="tt-badges">
+          ${dStart ? `<span class="tt-badge">📅 Início: ${esc(dStart)}</span>` : ``}
+          ${dWarn  ? `<span class="tt-badge">⚠ Aviso: ${esc(dWarn)}</span>` : ``}
+          ${dDue   ? `<span class="tt-badge">⛔ Venc.: ${esc(dDue)}</span>` : ``}
+        </div>
+      `
+      : ``;
+
+  const descBlock = `
+    <div class="tt-desc">
+      <div class="tt-desc-text">${descPreview}</div>
+    </div>
+  `;
+
+  const initial = user ? esc(user[0].toUpperCase()) : "U";
+
+  const avatarNode = avatar
+    ? `<img src="${avatar}" alt="" style="width:22px;height:22px;border-radius:999px;object-fit:cover;" />`
+    : `<div class="tt-user-dot">${initial}</div>`;
+
+  const handleNode = handle
+    ? `<div class="tt-muted" style="font-size:11px; line-height:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">@${handle}</div>`
+    : ``;
+
+  return `
+    <div class="tt-card">
+      <div class="tt-cover">${coverNode}</div>
+
+      <div class="tt-body">
+        <div class="tt-row">
+          <div class="tt-user tt-left">
+            ${avatarNode}
+            <div style="min-width:0;">
+              <div class="tt-user-name" title="${user}">${user}</div>
+              ${handleNode}
+            </div>
+          </div>
+
+          <div class="tt-times">
+            <div class="tt-mmss">${mmss}</div>
+            ${startHHMM ? `<div class="tt-start">Início: ${startHHMM}</div>` : `<div class="tt-start">&nbsp;</div>`}
+          </div>
+        </div>
+
+        <div class="tt-meta">
+          ${boardName ? `<div class="tt-board">📋 ${boardName}</div>` : ``}
+          <div class="tt-title">${titleNode}</div>
+          ${url ? `<div class="tt-muted" style="font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">🔗 ${url}</div>` : ``}
+        </div>
+
+        <div class="tt-badges">
+          ${checklistBadge}
+          ${attachBadge}
+        </div>
+
+        ${datesBadges}
+        ${descBlock}
+      </div>
+    </div>
+  `;
+}
+
 
   function render(data) {
     const root = document.getElementById("tt-live-list");

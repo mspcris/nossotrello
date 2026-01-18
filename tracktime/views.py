@@ -385,10 +385,16 @@ def tracktime_live_json(request):
 
     qs = (
         TimeEntry.objects
-        .filter(ended_at__isnull=True, board_id__isnull=False, card_id__isnull=False, started_at__isnull=False)
-        .select_related("user")
+        .filter(
+            ended_at__isnull=True,
+            board_id__isnull=False,
+            card_id__isnull=False,
+            started_at__isnull=False,
+        )
+        .select_related("user", "user__profile")
         .order_by("-started_at")
     )
+
 
     by_board = {}
     boards_cache = {}
@@ -460,6 +466,35 @@ def tracktime_live_json(request):
                 card_cover = cover_field.url
             except Exception:
                 card_cover = None
+        from django.templatetags.static import static as static_url
+
+        profile = getattr(e.user, "profile", None)
+
+        # identidade (nome amigável / email / handle)
+        user_display = (getattr(e.user, "get_full_name", lambda: "")() or "").strip()
+        if profile and getattr(profile, "display_name", ""):
+            user_display = (profile.display_name or "").strip() or user_display
+
+        if not user_display:
+            user_display = (getattr(e.user, "email", "") or "Usuário").strip()
+
+        user_handle = ""
+        if profile and getattr(profile, "handle", None):
+            user_handle = (profile.handle or "").strip()
+
+        # avatar
+        user_avatar_url = ""
+        if profile:
+            av = getattr(profile, "avatar", None)
+            if av and getattr(av, "url", None):
+                user_avatar_url = av.url
+            elif getattr(profile, "avatar_choice", ""):
+                user_avatar_url = static_url(f"images/avatar/{profile.avatar_choice}")
+
+        # datas do card
+        start_date = getattr(card, "start_date", None)
+        warn_date = getattr(card, "due_warn_date", None)
+        due_date = getattr(card, "due_date", None)
 
         by_board[board_key]["items"].append({
             "entry_id": e.id,
@@ -469,11 +504,23 @@ def tracktime_live_json(request):
             "card_cover": card_cover,
             "card_description": card_description,
             "started_at": e.started_at.isoformat(),
+
             "has_checklist": card.checklists.exists(),
             "has_attachments": card.attachments.exists(),
-            "user": name,
+
+            # ✅ usuário completo
+            "user": user_display,
+            "user_handle": user_handle,
+            "user_avatar_url": user_avatar_url,
+
+            # ✅ datas do card
+            "start_date": start_date.isoformat() if start_date else None,
+            "warn_date": warn_date.isoformat() if warn_date else None,
+            "due_date": due_date.isoformat() if due_date else None,
+
             "elapsed_seconds": elapsed,
         })
+
 
     # Ordena: boards por nome, itens por maior tempo
     boards = sorted(by_board.values(), key=lambda x: (x.get("board_name") or "").lower())
