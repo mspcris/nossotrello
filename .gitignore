@@ -123,3 +123,38 @@ staticfiles/
 *.sqlite3-journal
 *.db
 *.db-journal
+
+# ============================================
+# ZIP Files
+# ============================================
+*.zip
+*.tar.gz
+*.rar
+*.7z
+*.tar.bz2
+*.tar.xz
+*.tgz
+*.tbz2
+*.txz
+*.gz
+*.Z
+*.xz
+*.bz2
+*.7zip
+*.zst
+*.zstd
+*.lz
+*.lzma
+*.lz4
+*.sz
+*.zpaq
+*.zoo
+*.arc
+*.arj
+*.cab
+*.dmg
+*.iso
+*.img
+*.vhd
+*.vmdk
+*.qcow2
