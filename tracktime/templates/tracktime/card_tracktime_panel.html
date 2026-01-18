@@ -1,55 +1,54 @@
 <div class="cm-card space-y-3">
-
   <strong>Track-time</strong>
 
-<form
-  hx-post="{% url 'tracktime:card_start' card.id %}"
-  hx-target="#cm-tracktime-panel"
-  hx-swap="innerHTML"
-  class="flex gap-2 flex-wrap"
->
+  {% if running %}
+    <form
+      method="post"
+      hx-post="{% url 'tracktime:card_stop' card.id %}"
+      hx-target="#cm-tracktime-panel"
+      hx-swap="innerHTML"
+      class="flex gap-2 flex-wrap"
+    >
+      {% csrf_token %}
+      <button type="submit">Stop</button>
+    </form>
+  {% else %}
+    <form
+      method="post"
+      hx-post="{% url 'tracktime:card_start' card.id %}"
+      hx-target="#cm-tracktime-panel"
+      hx-swap="innerHTML"
+      class="flex gap-2 flex-wrap"
+    >
+      {% csrf_token %}
 
-    <select name="project" required>
-  {% for p in projects %}
-    <option value="{{ p.id }}">{{ p.name }}</option>
-  {% endfor %}
-</select>
+      <select name="project" required>
+        {% for p in projects %}
+          <option value="{{ p.id }}">{{ p.name }}</option>
+        {% endfor %}
+      </select>
 
+      <select name="activity_type" required>
+        {% for a in activities %}
+          <option value="{{ a.id }}">{{ a.name }}</option>
+        {% endfor %}
+      </select>
 
-    <select name="activity_type" required>
-  {% for a in activities %}
-    <option value="{{ a.id }}">{{ a.name }}</option>
-  {% endfor %}
-</select>
-
-
-    {% if running %}
-<form
-  method="post"
-  hx-post="{% url 'tracktime:card_stop' card.id %}"
-  hx-target="#cm-tracktime-panel"
-  hx-swap="innerHTML"
->
-  {% csrf_token %}
-  <button type="submit">Stop</button>
-</form>
-
-        Stop
-      </button>
-    {% else %}
       <button type="submit">Start</button>
-    {% endif %}
-  </form>
+    </form>
+  {% endif %}
 
   <form
+    method="post"
     hx-post="{% url 'tracktime:card_manual' card.id %}"
     hx-target="#cm-tracktime-panel"
     hx-swap="innerHTML"
     class="flex gap-2"
   >
+    {% csrf_token %}
     <input type="number" name="minutes" placeholder="Minutos" min="1" required>
     <input type="hidden" name="project">
-    <input type="hidden" name="activity">
+    <input type="hidden" name="activity_type">
     <button type="submit">Manual</button>
   </form>
 
@@ -73,23 +72,23 @@
   {% endif %}
 </div>
 
-
-
-
 <script>
 (function () {
   const panel = document.getElementById("cm-tracktime-panel");
   if (!panel) return;
 
-  panel.addEventListener("change", function () {
+  function syncHidden() {
     const project = panel.querySelector('select[name="project"]')?.value;
-    const activity = panel.querySelector('select[name="activity"]')?.value;
+    const activity = panel.querySelector('select[name="activity_type"]')?.value;
 
     const mp = panel.querySelector('input[name="project"][type="hidden"]');
-    const ma = panel.querySelector('input[name="activity"][type="hidden"]');
+    const ma = panel.querySelector('input[name="activity_type"][type="hidden"]');
 
     if (mp) mp.value = project || "";
     if (ma) ma.value = activity || "";
-  });
+  }
+
+  panel.addEventListener("change", syncHidden);
+  syncHidden();
 })();
 </script>

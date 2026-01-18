@@ -7,6 +7,7 @@ from django.contrib.auth.decorators import login_required
 
 from .models import Project, ActivityType, TimeEntry
 from boards.models import Card
+from django.urls import reverse
 
 
 @login_required
@@ -66,12 +67,15 @@ def card_tracktime_start(request, card_id):
         project_id=project_id,
         activity_type_id=activity_id,
         card_id=card.id,
-        board_id=card.board_id,  # ✅ FK direta
+        board_id=card.column.board_id,  # ✅ board via column
         card_title_cache=card.title,
-        card_url_cache=request.build_absolute_uri(card.get_absolute_url()),
+        card_url_cache=request.build_absolute_uri(
+            reverse("boards:card_modal", args=[card.id])
+        ),
         started_at=timezone.now(),
         minutes=0,
     )
+
 
     return card_tracktime_panel(request, card_id)
 
@@ -124,10 +128,13 @@ def card_tracktime_manual(request, card_id):
         started_at=timezone.now(),
         ended_at=timezone.now(),
         card_id=card.id,
-        board_id=card.board_id,  # ✅ FK direta
+        board_id=card.column.board_id,  # ✅ board via column
         card_title_cache=card.title,
-        card_url_cache=request.build_absolute_uri(card.get_absolute_url()),
+        card_url_cache=request.build_absolute_uri(
+            reverse("boards:card_modal", args=[card.id])
+        ),
     )
+
 
     return card_tracktime_panel(request, card_id)
 
