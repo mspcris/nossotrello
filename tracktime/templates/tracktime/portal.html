@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="tt-container">
+
+  <h2>⏱ Track-time</h2>
+
+  <!-- PROJETOS -->
+  <div class="tt-section">
+    <div class="tt-title">Projetos</div>
+
+    <form method="post" class="tt-input-row">
+      {% csrf_token %}
+      <input
+        name="project_name"
+        list="project-suggestions"
+        placeholder="Nome do projeto"
+        autocomplete="off"
+      >
+      <button type="submit">Adicionar</button>
+    </form>
+
+    <datalist id="project-suggestions">
+      {% for p in projects %}
+        <option value="{{ p.name }}">
+      {% endfor %}
+    </datalist>
+
+    <div class="tt-chip-list">
+      {% for p in projects %}
+        <div class="tt-chip {% if not p.is_active %}inactive{% endif %}">
+          {{ p.name }}
+          <form
+            method="post"
+            action="{% url 'tracktime:toggle_project' p.id %}"
+          >
+            {% csrf_token %}
+            <button title="Desativar">×</button>
+          </form>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ATIVIDADES -->
+  <div class="tt-section">
+    <div class="tt-title">Atividades</div>
+
+    <form method="post" class="tt-input-row">
+      {% csrf_token %}
+      <input
+        name="activity_name"
+        list="activity-suggestions"
+        placeholder="Nome da atividade"
+        autocomplete="off"
+      >
+      <button type="submit">Adicionar</button>
+    </form>
+
+    <datalist id="activity-suggestions">
+      {% for a in activities %}
+        <option value="{{ a.name }}">
+      {% endfor %}
+    </datalist>
+
+    <div class="tt-chip-list">
+      {% for a in activities %}
+        <div class="tt-chip {% if not a.is_active %}inactive{% endif %}">
+          {{ a.name }}
+          <form
+            method="post"
+            action="{% url 'tracktime:toggle_activity' a.id %}"
+          >
+            {% csrf_token %}
+            <button title="Desativar">×</button>
+          </form>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

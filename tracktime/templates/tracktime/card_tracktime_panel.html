@@ -1,24 +1,95 @@
-{# tracktime/templates/tracktime/card_tracktime_panel.html #}
+<div class="cm-card space-y-3">
 
-<div class="cm-panel is-active" data-cm-panel="track">
-  <div class="cm-section">
-    <h3>Track-time</h3>
+  <strong>Track-time</strong>
 
-    <div class="cm-muted" style="margin-top: 6px;">
-      MVP: painel carregou. Próximo passo: selects + lançamentos.
-    </div>
+<form
+  hx-post="{% url 'tracktime:card_start' card.id %}"
+  hx-target="#cm-tracktime-panel"
+  hx-swap="innerHTML"
+  class="flex gap-2 flex-wrap"
+>
 
-    <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
-      <button class="btn" type="button" disabled>Start</button>
-      <button class="btn" type="button" disabled>Stop</button>
-      <button class="btn" type="button" disabled>Manual</button>
-    </div>
+    <select name="project" required>
+      <option value="">Projeto</option>
+      {% for p in projects %}
+        <option value="{{ p.id }}">{{ p.name }}</option>
+      {% endfor %}
+    </select>
 
-    <div style="margin-top: 12px;">
-      <div class="cm-muted">Últimos lançamentos (placeholder)</div>
-      <div class="cm-box" style="margin-top: 6px; padding: 10px;">
-        Nenhum lançamento ainda.
-      </div>
-    </div>
-  </div>
+    <select name="activity" required>
+      <option value="">Atividade</option>
+      {% for a in activities %}
+        <option value="{{ a.id }}">{{ a.name }}</option>
+      {% endfor %}
+    </select>
+
+    {% if running %}
+<form
+  method="post"
+  hx-post="{% url 'tracktime:card_stop' card.id %}"
+  hx-target="#cm-tracktime-panel"
+  hx-swap="innerHTML"
+>
+  {% csrf_token %}
+  <button type="submit">Stop</button>
+</form>
+
+        Stop
+      </button>
+    {% else %}
+      <button type="submit">Start</button>
+    {% endif %}
+  </form>
+
+  <form
+    hx-post="{% url 'tracktime:card_manual' card.id %}"
+    hx-target="#cm-tracktime-panel"
+    hx-swap="innerHTML"
+    class="flex gap-2"
+  >
+    <input type="number" name="minutes" placeholder="Minutos" min="1" required>
+    <input type="hidden" name="project">
+    <input type="hidden" name="activity">
+    <button type="submit">Manual</button>
+  </form>
+
+  <hr>
+
+  <strong>Últimos lançamentos</strong>
+
+  {% if entries %}
+    <ul class="space-y-1">
+      {% for e in entries %}
+        <li>
+          {{ e.user }} —
+          {{ e.project.name }} /
+          {{ e.activity_type.name }} —
+          {{ e.minutes }} min
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <div class="cm-muted">Nenhum lançamento ainda.</div>
+  {% endif %}
 </div>
+
+
+
+
+<script>
+(function () {
+  const panel = document.getElementById("cm-tracktime-panel");
+  if (!panel) return;
+
+  panel.addEventListener("change", function () {
+    const project = panel.querySelector('select[name="project"]')?.value;
+    const activity = panel.querySelector('select[name="activity"]')?.value;
+
+    const mp = panel.querySelector('input[name="project"][type="hidden"]');
+    const ma = panel.querySelector('input[name="activity"][type="hidden"]');
+
+    if (mp) mp.value = project || "";
+    if (ma) ma.value = activity || "";
+  });
+})();
+</script>

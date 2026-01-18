@@ -551,7 +551,22 @@
     const t = clampTab(tab);
 
     const btn = root.querySelector(`.cm-tabbtn[data-cm-tab="${CSS.escape(t)}"]`);
-    if (btn) { btn.click(); return; }
+    if (btn) {
+      root.setAttribute("data-cm-active", t);
+      root.dataset.cmActive = t;
+
+      root.querySelectorAll(".cm-tabbtn[data-cm-tab]").forEach((b) => {
+        b.classList.toggle("is-active", b.getAttribute("data-cm-tab") === t);
+      });
+
+      root.querySelectorAll(".cm-panel[data-cm-panel]").forEach((p) => {
+        p.classList.toggle("is-active", p.getAttribute("data-cm-panel") === t);
+      });
+
+      try { root.dispatchEvent(new CustomEvent("cm:tabchange", { detail: { tab: t } })); } catch (_e) {}
+      return;
+    }
+
 
     root.setAttribute("data-cm-active", t);
     root.dataset.cmActive = t;
@@ -1149,8 +1164,12 @@
     const root = getRoot();
     if (!root) return;
 
-    const btn = e.target && e.target.closest ? e.target.closest('.cm-tabbtn[data-cm-tab]') : null;
+    const el = (e.target && e.target.nodeType === 1) ? e.target : e.target?.parentElement;
+    const btn = el && typeof el.closest === "function"
+      ? el.closest(".cm-tabbtn[data-cm-tab]")
+      : null;
     if (!btn) return;
+
 
     const tab = String(btn.getAttribute("data-cm-tab") || "").trim();
     if (tab !== "track" && tab !== "tracktime") return;

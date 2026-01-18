@@ -50,6 +50,8 @@
   <link rel="stylesheet" href="{% static 'boards/nossotrello_drawer.css' %}">
   <link rel="stylesheet" href="{% static 'boards/columns.css' %}">
   <link rel="stylesheet" href="{% static 'boards/auth.css' %}">
+  <link rel="stylesheet" href="{% static 'tracktime/tracktime.css' %}">
+
 
   <!-- QUILL -->
   <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
@@ -94,6 +96,7 @@
   <script defer src="{% static 'boards/modal/modal.htmx.js' %}"></script>
 
   <!-- Modal features -->
+  <script defer src="{% static 'boards/modal/modal.tabs.js' %}"></script>
   <script defer src="{% static 'boards/modal/modal.quill.js' %}"></script>
   <script defer src="{% static 'boards/modal/modal.acitivity_quill.js' %}"></script>
   <script defer src="{% static 'boards/modal/modal.tags.js' %}"></script>
@@ -303,6 +306,11 @@
 
           </li>
 
+<li>
+  <a href="{% url 'tracktime:portal' %}">
+    ⏱ Track-time
+  </a>
+</li>
 
 
           

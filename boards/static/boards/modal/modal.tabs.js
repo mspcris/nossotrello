@@ -2,93 +2,77 @@
 // - Delegado (não depende de bind por swap)
 // - Alterna painéis por data-cm-tab / data-cm-panel
 // - Mantém estado em data-cm-active + dataset.cmActive
-// - Dispara "cm:tabchange" (para módulos como activity_quill, tracktime, etc.)
+// - Dispara "cm:tabchange"
 
 (function () {
-  const STATE_KEY = "__cmTabsDelegatedBound";
-
-  function getRoot() {
-    return document.getElementById("cm-root");
-  }
-
   function activate(root, tab) {
-    if (!root) return;
+    if (!root || !tab) return;
 
-    const t = String(tab || "").trim() || "desc";
+    root.setAttribute("data-cm-active", tab);
+    root.dataset.cmActive = tab;
 
-    // estado
-    root.setAttribute("data-cm-active", t);
-    root.dataset.cmActive = t;
-
-    // tabs
     root.querySelectorAll(".cm-tabbtn[data-cm-tab]").forEach((b) => {
-      b.classList.toggle("is-active", (b.getAttribute("data-cm-tab") || "").trim() === t);
+      b.classList.toggle("is-active", b.getAttribute("data-cm-tab") === tab);
     });
 
-    // panels
     root.querySelectorAll(".cm-panel[data-cm-panel]").forEach((p) => {
-      p.classList.toggle("is-active", (p.getAttribute("data-cm-panel") || "").trim() === t);
+      p.classList.toggle("is-active", p.getAttribute("data-cm-panel") === tab);
     });
 
-    // integra com módulos
     try {
-      root.dispatchEvent(new CustomEvent("cm:tabchange", { detail: { tab: t } }));
+      root.dispatchEvent(new CustomEvent("cm:tabchange", { detail: { tab } }));
     } catch (_e) {}
   }
 
-  // Boot: garante que o painel inicial bate com data-cm-active
-  function boot() {
-    const root = getRoot();
-    if (!root) return;
+  function getClosestTabBtn(target) {
+    if (!target) return null;
 
-    const initial =
-      (root.getAttribute("data-cm-active") || root.dataset.cmActive || "desc").trim() || "desc";
+    // Se target for Text node ou algo sem closest, sobe para parentElement
+    const el = target.nodeType === 1 ? target : target.parentElement;
+    if (!el || typeof el.closest !== "function") return null;
 
-    activate(root, initial);
+    return el.closest(".cm-tabbtn[data-cm-tab]");
   }
 
   // Click delegado (funciona mesmo após HTMX swap)
-  function bindDelegatedClickOnce() {
-    if (document.body.dataset[STATE_KEY] === "1") return;
-    document.body.dataset[STATE_KEY] = "1";
+  document.addEventListener(
+    "click",
+    function (e) {
+      const btn = getClosestTabBtn(e.target);
+      if (!btn) return;
 
-    document.addEventListener(
-      "click",
-      function (e) {
-        const btn = e.target && e.target.closest
-          ? e.target.closest(".cm-tabbtn[data-cm-tab]")
-          : null;
-        if (!btn) return;
+      // Se for “pseudo-aba”/disabled, não troca painel
+      if (btn.classList.contains("cm-tab-disabled")) return;
 
-        // Se for “pseudo-aba”/disabled, não troca painel
-        if (btn.classList.contains("cm-tab-disabled") || btn.hasAttribute("data-cm-action")) {
-          return;
-        }
+      const root = btn.closest("#cm-root");
+      if (!root) return;
 
-        const root = btn.closest("#cm-root");
-        if (!root) return;
+      const tab = (btn.getAttribute("data-cm-tab") || "").trim();
+      if (!tab) return;
 
-        const tab = (btn.getAttribute("data-cm-tab") || "").trim();
-        if (!tab) return;
+      e.preventDefault();
+      e.stopPropagation();
 
-        e.preventDefault();
-        e.stopPropagation();
+      activate(root, tab);
+    },
+    true
+  );
 
-        activate(root, tab);
-      },
-      true
-    );
+  // Boot: garante que o painel inicial bate com data-cm-active
+  function boot(root) {
+    if (!root) return;
+    const initial =
+      (root.getAttribute("data-cm-active") || root.dataset.cmActive || "desc").trim() || "desc";
+    activate(root, initial);
   }
 
   document.addEventListener("DOMContentLoaded", function () {
-    bindDelegatedClickOnce();
-    boot();
+    boot(document.getElementById("cm-root"));
   });
 
   document.body.addEventListener("htmx:afterSwap", function (e) {
     if (e.target && e.target.id === "modal-body") {
-      // não precisa rebind (delegado), só re-sincroniza estado/painel
-      boot();
+      boot(document.getElementById("cm-root"));
     }
   });
 })();
