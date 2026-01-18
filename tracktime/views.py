@@ -2,6 +2,7 @@ from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponseBadRequest
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
+from urllib3 import request
 
 from .models import Project, ActivityType, TimeEntry
 from boards.models import Card
@@ -48,7 +49,7 @@ def card_tracktime_start(request, card_id):
     card = get_object_or_404(Card, id=card_id)
 
     project_id = request.POST.get("project")
-    activity_id = request.POST.get("activity")
+    activity_id = request.POST.get("activity_type")
 
     if not project_id or not activity_id:
         return HttpResponseBadRequest("Projeto e atividade são obrigatórios")
@@ -64,7 +65,7 @@ def card_tracktime_start(request, card_id):
         project_id=project_id,
         activity_type_id=activity_id,
         card_id=card.id,
-        board_id=card.list.board.id,
+        board_id=card.list.boardid,
         card_title_cache=card.title,
         card_url_cache=request.build_absolute_uri(card.get_absolute_url()),
         started_at=timezone.now(),
@@ -100,7 +101,7 @@ def card_tracktime_manual(request, card_id):
     card = get_object_or_404(Card, id=card_id)
 
     project_id = request.POST.get("project")
-    activity_id = request.POST.get("activity")
+    activity_id = request.POST.get("activity_type")
     minutes = request.POST.get("minutes")
 
     if not project_id or not activity_id or not minutes:

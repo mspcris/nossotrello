@@ -10,18 +10,18 @@
 >
 
     <select name="project" required>
-      <option value="">Projeto</option>
-      {% for p in projects %}
-        <option value="{{ p.id }}">{{ p.name }}</option>
-      {% endfor %}
-    </select>
+  {% for p in projects %}
+    <option value="{{ p.id }}">{{ p.name }}</option>
+  {% endfor %}
+</select>
 
-    <select name="activity" required>
-      <option value="">Atividade</option>
-      {% for a in activities %}
-        <option value="{{ a.id }}">{{ a.name }}</option>
-      {% endfor %}
-    </select>
+
+    <select name="activity_type" required>
+  {% for a in activities %}
+    <option value="{{ a.id }}">{{ a.name }}</option>
+  {% endfor %}
+</select>
+
 
     {% if running %}
 <form
