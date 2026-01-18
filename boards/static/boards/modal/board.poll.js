@@ -197,7 +197,11 @@
       const li = document.querySelector(`li[data-card-id="${cardId}"]`);
       if (!li) return;
 
-      const meta = li.querySelector(".term-badge")?.parentElement || li; // tenta grudar na área meta
+      const meta =
+        li.querySelector(".term-badge")?.closest(".card-item")?.querySelector(".mt-2") ||
+        li.querySelector(".term-badge")?.parentElement ||
+        li;
+
       const badge = document.createElement("span");
       badge.className = "tt-board-badge";
       badge.title = (arr || []).map(x => `${x.user} — ${formatMMSS(x.elapsed_seconds)}`).join("\n");

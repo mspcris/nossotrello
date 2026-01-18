@@ -248,6 +248,18 @@
 
 
 
+<button
+  type="button"
+  id="tt-jump-btn"
+  class="hidden ml-2 p-2 rounded bg-white/70 border border-white/30 shadow hover:bg-white transition"
+  title="Ir para meu card em track-time"
+  aria-label="Ir para meu card em track-time"
+>
+  ⏱
+</button>
+
+
+
         <form method="post" action="{% url 'boards:logout' %}" class="inline">
           {% csrf_token %}
           <button type="submit"
@@ -733,6 +745,71 @@ window.addEventListener("popstate", () => {
   } catch(e) {}
 });
 </script>
+
+
+
+<!-- Track-time jump button -->
+<script>
+(function () {
+  const btn = document.getElementById("tt-jump-btn");
+  if (!btn) return;
+
+  async function refresh() {
+    try {
+      const res = await fetch("/track-time/me/running.json", {
+        method: "GET",
+        credentials: "same-origin",
+        headers: {
+          "X-Requested-With": "XMLHttpRequest",
+          "Accept": "application/json"
+        },
+        cache: "no-store",
+      });
+
+      if (!res.ok) {
+        // se deu erro, não mostra
+        btn.classList.add("hidden");
+        btn.dataset.boardId = "";
+        btn.dataset.cardId = "";
+        return;
+      }
+
+      const data = await res.json();
+      if (!data || !data.running || !data.board_id || !data.card_id) {
+        btn.classList.add("hidden");
+        btn.dataset.boardId = "";
+        btn.dataset.cardId = "";
+        return;
+      }
+
+      btn.dataset.boardId = String(data.board_id);
+      btn.dataset.cardId = String(data.card_id);
+      btn.classList.remove("hidden");
+    } catch (e) {
+      btn.classList.add("hidden");
+      btn.dataset.boardId = "";
+      btn.dataset.cardId = "";
+    }
+  }
+
+  btn.addEventListener("click", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const boardId = btn.dataset.boardId;
+    const cardId = btn.dataset.cardId;
+    if (!boardId || !cardId) return;
+
+    window.location.href = `/board/${boardId}/?card=${cardId}`;
+  });
+
+  document.addEventListener("DOMContentLoaded", refresh);
+
+  // opcional: revalida de tempos em tempos (se o usuário inicia/para track em outra aba)
+  setInterval(refresh, 15000);
+})();
+</script>
+
 
 
 

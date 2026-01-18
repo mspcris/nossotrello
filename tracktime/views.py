@@ -6,12 +6,11 @@ from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
 from django.conf import settings
-
 from django.core.mail import send_mail
-
 from .models import Project, ActivityType, TimeEntry
 from boards.models import Card
 from boards.models import Board
+from .models import TimeEntry
 
 
 def _format_mmss(seconds: int) -> str:
@@ -475,3 +474,34 @@ def tracktime_tab_week(request):
 def tracktime_tab_month(request):
     # MVP placeholder (próxima entrega: agregação por mês)
     return render(request, "tracktime/modal/tabs/month.html", {})
+
+
+
+@login_required
+def me_running_json(request):
+    """
+    Retorna o card/board do timer rodando do usuário logado (se existir).
+    """
+    e = (
+        TimeEntry.objects
+        .filter(
+            user=request.user,
+            ended_at__isnull=True,
+            board_id__isnull=False,
+            card_id__isnull=False,
+            started_at__isnull=False,
+        )
+        .order_by("-started_at")
+        .only("board_id", "card_id", "started_at")
+        .first()
+    )
+
+    if not e:
+        return JsonResponse({"running": False})
+
+    return JsonResponse({
+        "running": True,
+        "board_id": int(e.board_id),
+        "card_id": int(e.card_id),
+        "ts": timezone.now().isoformat(),
+    })

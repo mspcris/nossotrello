@@ -58,12 +58,11 @@
     {{ card.title }}
   </div>
 
-  {# META (TERM BADGE + DATA VENCIMENTO) #}
-  <div class="mt-2 flex items-center gap-2">
-    {# este badge é preenchido/mostrado via JS (Em dia / A vencer / Vencido) #}
+  {# META (TERM BADGE + DATA VENCIMENTO + TRACKTIME) #}
+<div class="mt-2 flex flex-col items-start gap-1">
+  <div class="flex items-center gap-2 flex-wrap">
     <span class="term-badge hidden text-[10px] font-semibold px-2 py-0.5 rounded-md border"></span>
 
-    {# ✅ exibe vencimento em DD/MM/AAAA quando existir #}
     {% if card.due_date %}
       <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md border bg-white/60">
         {{ card.due_date|date:"d/m/Y" }}
@@ -71,6 +70,9 @@
     {% endif %}
   </div>
 
-</li>
+  {# ✅ linha dedicada pro tracktime #}
+  <div class="tt-slot"></div>
+</div>
+
 
 {# END templates/boards/partials/card_item.html #}

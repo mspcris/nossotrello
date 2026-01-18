@@ -2,15 +2,33 @@
 (() => {
   if (!window.Modal || window.Modal.tags) return;
 
+  // Auditoria: ative com:
+  // localStorage.setItem("DEBUG_TAGS","1"); location.reload();
+  // ou abra a URL com ?debug_tags=1
+  const DEBUG =
+    localStorage.getItem("DEBUG_TAGS") === "1" ||
+    new URLSearchParams(location.search).get("debug_tags") === "1";
+
+  const log = (...a) => DEBUG && console.log("[modal.tags]", ...a);
+  const warn = (...a) => DEBUG && console.warn("[modal.tags]", ...a);
+
   function getCSRFToken() {
-    return document.querySelector('input[name="csrfmiddlewaretoken"]')?.value || "";
+    return (
+      document.querySelector("meta[name='csrf-token']")?.content ||
+      document.querySelector('input[name="csrfmiddlewaretoken"]')?.value ||
+      ""
+    );
   }
 
   function safeJsonParse(s, fallback) {
-    try { return JSON.parse(s); } catch (_e) { return fallback; }
+    try {
+      return JSON.parse(s);
+    } catch (_e) {
+      return fallback;
+    }
   }
 
-  function getModalRoot() {
+  function getModalRootFallback() {
     const modalBody = document.getElementById("modal-body");
     if (modalBody) {
       const inModal = modalBody.querySelector("#cm-root");
@@ -20,25 +38,12 @@
     return all && all.length ? all[all.length - 1] : null;
   }
 
-  function positionPopover(popover, root, anchorEl) {
-    if (!popover || !root || !anchorEl) return;
-
-    // garante âncora pro absolute
-    const cs = window.getComputedStyle(root);
-    if (cs.position === "static") root.style.position = "relative";
-
-    const a = anchorEl.getBoundingClientRect();
-    const r = root.getBoundingClientRect();
-
-    const left = Math.max(12, a.left - r.left);
-    const top = Math.max(12, a.bottom - r.top + 8);
-
-    popover.style.left = `${left}px`;
-    popover.style.top = `${top}px`;
+  function getRootFrom(el) {
+    return el?.closest?.("#cm-root") || getModalRootFallback();
   }
 
   function getColorForTag(root, btn, tag) {
-    const raw = root.getAttribute("data-tag-colors") || "{}";
+    const raw = root?.getAttribute?.("data-tag-colors") || "{}";
     const colors = safeJsonParse(raw, {});
     return (
       (colors && colors[tag]) ||
@@ -48,107 +53,186 @@
   }
 
   function setRootColor(root, tag, color) {
+    if (!root) return;
     const rawColors = root.getAttribute("data-tag-colors") || "{}";
     const colors = safeJsonParse(rawColors, {});
     colors[tag] = color;
     root.setAttribute("data-tag-colors", JSON.stringify(colors));
   }
 
+  function positionPopover(popover, _root, anchorEl) {
+    if (!popover || !anchorEl) return;
 
-    // clique em tag: delegação global (resistente a HTMX swap)
+    // usa viewport: não sofre com overflow hidden nem stacking context do cm-root
+    const a = anchorEl.getBoundingClientRect();
+    const left = Math.max(12, a.left);
+    const top = Math.max(12, a.bottom + 8);
+
+    popover.style.position = "fixed";
+    popover.style.left = `${left}px`;
+    popover.style.top = `${top}px`;
+    popover.style.zIndex = "99999";
+  }
+
+
+  function getPopoverEl(root) {
+    // popover fica dentro do cm-root
+    return root?.querySelector?.("#cm-tag-color-popover") || document.getElementById("cm-tag-color-popover");
+  }
+
+  function closePopover() {
+    const pop = document.getElementById("cm-tag-color-popover");
+    if (!pop) return;
+    pop.classList.add("hidden");
+  }
+
+  function openPopoverForButton(btn) {
+    const root = getRootFrom(btn);
+    if (!root) {
+      warn("openPopoverForButton: sem #cm-root para o botão", btn);
+      return false;
+    }
+
+    const pop = getPopoverEl(root);
+    const pick = root.querySelector("#cm-tag-color-picker");
+    const tInp = root.querySelector("#cm-tag-color-tag");
+    const cInp = root.querySelector("#cm-tag-color-value");
+
+    if (!pop || !pick || !tInp || !cInp) {
+      warn("openPopoverForButton: faltando elementos", {
+        pop: !!pop,
+        pick: !!pick,
+        tInp: !!tInp,
+        cInp: !!cInp,
+      });
+      return false;
+    }
+
+    const tag = (btn.dataset.tag || "").trim();
+    if (!tag) {
+      warn("openPopoverForButton: botão sem data-tag", btn);
+      return false;
+    }
+
+    const color = getColorForTag(root, btn, tag);
+
+    tInp.value = tag;
+    pick.value = color;
+    cInp.value = color;
+
+    // CRÍTICO: posiciona relativo ao #cm-root (não ao modal) para não clipar no overflow:hidden
+    // Teleporta o popover para fora do cm-root para não ser clipado por overflow/stacking context
+    const modalContainer =
+      document.getElementById("card-modal-root") ||
+      document.getElementById("modal") ||
+      document.body;
+
+    if (modalContainer && pop.parentElement !== modalContainer) {
+      modalContainer.appendChild(pop);
+    }
+
+    positionPopover(pop, root, btn);
+    pop.classList.remove("hidden");
+
+
+    log("popover aberto", { tag, color });
+    return true;
+  }
+
+  // ============================================================
+  // Delegation global (não depende de HTMX, não duplica)
+  // ============================================================
   if (!window.__cmTagsDelegatedClickBound) {
     window.__cmTagsDelegatedClickBound = true;
 
     document.addEventListener(
       "click",
       function (e) {
-        const r = getModalRoot();
-        if (!r) return;
+        // Só considera cliques na área de tags
+        const inTagsArea = e.target?.closest?.("#cm-tags-wrap, #cm-tags-bar");
 
-        const btn = e.target?.closest?.(".cm-tag-btn[data-tag]");
-        if (!btn) return;
-        if (!r.contains(btn)) return;
+        // Botão de tag (padrão do seu template card_tags_bar.html)
+        const btn =
+          e.target?.closest?.("button.cm-tag-btn[data-tag]") ||
+          e.target?.closest?.("#cm-tags-bar button[data-tag]");
 
-        const pop = r.querySelector("#cm-tag-color-popover");
-        const pick = r.querySelector("#cm-tag-color-picker");
-        const tInp = r.querySelector("#cm-tag-color-tag");
-        const cInp = r.querySelector("#cm-tag-color-value");
-        if (!pop || !pick || !tInp || !cInp) return;
+        // Auditoria quando clica na área mas não casa o seletor
+        if (!btn) {
+          if (DEBUG && inTagsArea) {
+            log("click dentro da área de tags, mas não encontrei botão de tag", e.target);
+          }
+          return;
+        }
+
+        // garante que é dentro do modal
+        const modalRoot = document.getElementById("card-modal-root") || document.getElementById("modal");
+        if (modalRoot && !modalRoot.contains(btn)) {
+          if (DEBUG) log("botão de tag fora do modal (ignorado)", btn);
+          return;
+        }
 
         e.preventDefault();
         e.stopPropagation();
 
-        const tag = (btn.dataset.tag || "").trim();
-        if (!tag) return;
+        const ok = openPopoverForButton(btn);
+        if (DEBUG && !ok) warn("openPopoverForButton retornou false");
+      },
+      true
+    );
 
-        const color = getColorForTag(r, btn, tag);
+    // Auditoria extra (opcional): ajuda a descobrir se o click não está chegando no botão
+    if (DEBUG && !window.__cmTagsAuditBound) {
+      window.__cmTagsAuditBound = true;
 
-        tInp.value = tag;
-        pick.value = color;
-        cInp.value = color;
+      document.addEventListener(
+        "pointerdown",
+        function (e) {
+          const area = e.target?.closest?.("#cm-tags-wrap, #cm-tags-bar");
+          if (!area) return;
+          log("pointerdown na área de tags:", e.target);
+        },
+        true
+      );
+    }
+  }
 
-        positionPopover(pop, r, btn);
-        pop.classList.remove("hidden");
+  if (!window.__cmTagsOutsideClickBound) {
+    window.__cmTagsOutsideClickBound = true;
+
+    // Fecha ao clicar fora
+    document.addEventListener(
+      "click",
+      function (e) {
+        const pop = document.getElementById("cm-tag-color-popover");
+        if (!pop || pop.classList.contains("hidden")) return;
+
+        if (e.target?.closest?.("#cm-tag-color-popover")) return;
+        if (e.target?.closest?.("button.cm-tag-btn[data-tag]")) return;
+        if (e.target?.closest?.("#cm-tags-bar button[data-tag]")) return;
+
+        closePopover();
+      },
+      true
+    );
+
+    // Fecha com ESC
+    document.addEventListener(
+      "keydown",
+      function (e) {
+        if (e.key === "Escape") closePopover();
       },
       true
     );
   }
 
-  // fecha ao clicar fora
-  if (!window.__cmTagsOutsideClickBound) {
-    window.__cmTagsOutsideClickBound = true;
-
-    document.addEventListener(
-      "click",
-      function (e) {
-        const btn = e.target?.closest?.(".cm-tag-btn[data-tag]");
-        if (!btn) return;
-
-        const modalBody = document.getElementById("modal-body");
-        if (!modalBody || !modalBody.contains(btn)) return;
-
-        const cmRoot = getModalRoot(); // ainda útil p/ ler data-tag-colors
-        if (!cmRoot) return;
-
-        const pop = document.getElementById("cm-tag-color-popover");
-        const pick = document.getElementById("cm-tag-color-picker");
-        const tInp = document.getElementById("cm-tag-color-tag");
-        const cInp = document.getElementById("cm-tag-color-value");
-        if (!pop || !pick || !tInp || !cInp) return;
-
-        e.preventDefault();
-        e.stopPropagation();
-
-        const tag = (btn.dataset.tag || "").trim();
-        if (!tag) return;
-
-        const color = getColorForTag(cmRoot, btn, tag);
-
-        tInp.value = tag;
-        pick.value = color;
-        cInp.value = color;
-
-        // posiciona relativo ao container do popover (offsetParent)
-        const anchor = btn.getBoundingClientRect();
-        const parent = (pop.offsetParent || modalBody).getBoundingClientRect();
-
-        const left = Math.max(12, anchor.left - parent.left);
-        const top = Math.max(12, anchor.bottom - parent.top + 8);
-
-        pop.style.left = `${left}px`;
-        pop.style.top = `${top}px`;
-
-        pop.classList.remove("hidden");
-      },
-      true
-    );
-
-  
-
-  
+  // ============================================================
+  // Core (picker/save/cancel) — roda a cada swap do modal
+  // ============================================================
   window.Modal.tags = {
+    __version: "2026-01-18-debuggable",
+
     init() {
-      const root = getModalRoot();
+      const root = getModalRootFallback();
       if (!root) return;
 
       const tagsWrap = root.querySelector("#cm-tags-wrap");
@@ -161,76 +245,30 @@
       const inputTag = root.querySelector("#cm-tag-color-tag");
       const inputColor = root.querySelector("#cm-tag-color-value");
 
-      if (!popover || !picker || !btnCancel || !btnSave || !form || !inputTag || !inputColor) return;
+      if (!popover || !picker || !btnCancel || !btnSave || !form || !inputTag || !inputColor) {
+        if (DEBUG) {
+          warn("init(): faltando elementos do core", {
+            popover: !!popover,
+            picker: !!picker,
+            btnCancel: !!btnCancel,
+            btnSave: !!btnSave,
+            form: !!form,
+            inputTag: !!inputTag,
+            inputColor: !!inputColor,
+          });
+        }
+        return;
+      }
 
       // evita binds duplicados do núcleo (picker/save/cancel)
       if (root.dataset.cmTagsCoreBound === "1") return;
       root.dataset.cmTagsCoreBound = "1";
 
-      function closePopover() {
+      function closeLocal() {
         popover.classList.add("hidden");
       }
 
-      // clique em tag: delegação global (resistente a HTMX swap)
-      if (!window.__cmTagsDelegatedClickBound) {
-        window.__cmTagsDelegatedClickBound = true;
-
-        document.addEventListener(
-          "click",
-          function (e) {
-            const r = getModalRoot();
-            if (!r) return;
-
-            const btn = e.target?.closest?.(".cm-tag-btn[data-tag]");
-            if (!btn) return;
-            if (!r.contains(btn)) return;
-
-            const pop = r.querySelector("#cm-tag-color-popover");
-            const pick = r.querySelector("#cm-tag-color-picker");
-            const tInp = r.querySelector("#cm-tag-color-tag");
-            const cInp = r.querySelector("#cm-tag-color-value");
-            if (!pop || !pick || !tInp || !cInp) return;
-
-            e.preventDefault();
-            e.stopPropagation();
-
-            const tag = (btn.dataset.tag || "").trim();
-            if (!tag) return;
-
-            const color = getColorForTag(r, btn, tag);
-
-            tInp.value = tag;
-            pick.value = color;
-            cInp.value = color;
-
-            positionPopover(pop, r, btn);
-            pop.classList.remove("hidden");
-          },
-          true
-        );
-      }
-
-      // fecha ao clicar fora
-      if (!window.__cmTagsOutsideClickBound) {
-        window.__cmTagsOutsideClickBound = true;
-
-        document.addEventListener(
-          "click",
-          function (e) {
-            const pop = document.getElementById("cm-tag-color-popover");
-            if (!pop || pop.classList.contains("hidden")) return;
-
-            if (!pop || pop.classList.contains("hidden")) return;
-
-            if (e.target?.closest?.("#cm-tag-color-popover") || e.target?.closest?.(".cm-tag-btn")) return;
-
-            pop.classList.add("hidden");
-          },
-          true
-        );
-      }
-
-      // mantém toggle legado (qualquer [data-tag] que não seja a tag do topo)
+      // mantém toggle legado (qualquer [data-tag] que não seja botão de tag)
       root.querySelectorAll("[data-tag]:not(.cm-tag-btn)").forEach((el) => {
         if (el.dataset.cmLegacyBound === "1") return;
         el.dataset.cmLegacyBound = "1";
@@ -252,7 +290,7 @@
         btnCancel.dataset.cmBound = "1";
         btnCancel.addEventListener("click", function (e) {
           e.preventDefault();
-          closePopover();
+          closeLocal();
         });
       }
 
@@ -263,7 +301,7 @@
         btnSave.addEventListener("click", async function (e) {
           e.preventDefault();
 
-          const r = getModalRoot();
+          const r = getModalRootFallback();
           if (!r) return;
 
           const tag = (inputTag.value || "").trim();
@@ -292,7 +330,7 @@
 
             if (res.status === 403) {
               const data403 = await res.json().catch(() => ({}));
-              closePopover();
+              closeLocal();
               alert(data403?.error || "Somente leitura.");
               return;
             }
@@ -340,7 +378,8 @@
 
             // atualiza estado local
             setRootColor(r, tag, color);
-            closePopover();
+
+            closeLocal();
           } catch (err) {
             alert(err?.message || "Erro ao salvar cor.");
           }
@@ -348,5 +387,6 @@
       }
     },
   };
+
+  log("loaded", window.Modal.tags.__version);
 })();
-// END boards/static/boards/modal/modal.tags.js

@@ -6,6 +6,8 @@ app_name = "tracktime"
 urlpatterns = [
     # painel do card
     path("cards/<int:card_id>/track-time/", views.card_tracktime_panel, name="card_panel"),
+    path("me/running.json", views.me_running_json, name="me_running_json"),
+
 
     # ações
     path("cards/<int:card_id>/track-time/start/", views.card_tracktime_start, name="card_start"),
