@@ -1,8 +1,9 @@
-from django.shortcuts import render, get_object_or_404
+# tracktime/views.py
+
+from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponseBadRequest
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
-from urllib3 import request
 
 from .models import Project, ActivityType, TimeEntry
 from boards.models import Card
@@ -44,7 +45,7 @@ def card_tracktime_panel(request, card_id):
 @login_required
 def card_tracktime_start(request, card_id):
     if request.method != "POST":
-        return HttpResponseBadRequest()
+        return HttpResponseBadRequest("POST required")
 
     card = get_object_or_404(Card, id=card_id)
 
@@ -54,7 +55,7 @@ def card_tracktime_start(request, card_id):
     if not project_id or not activity_id:
         return HttpResponseBadRequest("Projeto e atividade são obrigatórios")
 
-    # impede dois timers ativos
+    # 1 timer ativo por usuário (fecha qualquer outro)
     TimeEntry.objects.filter(
         user=request.user,
         ended_at__isnull=True,
@@ -65,7 +66,7 @@ def card_tracktime_start(request, card_id):
         project_id=project_id,
         activity_type_id=activity_id,
         card_id=card.id,
-        board_id=card.list.boardid,
+        board_id=card.board_id,  # ✅ FK direta
         card_title_cache=card.title,
         card_url_cache=request.build_absolute_uri(card.get_absolute_url()),
         started_at=timezone.now(),
@@ -78,7 +79,7 @@ def card_tracktime_start(request, card_id):
 @login_required
 def card_tracktime_stop(request, card_id):
     if request.method != "POST":
-        return HttpResponseBadRequest()
+        return HttpResponseBadRequest("POST required")
 
     entry = (
         TimeEntry.objects
@@ -96,7 +97,7 @@ def card_tracktime_stop(request, card_id):
 @login_required
 def card_tracktime_manual(request, card_id):
     if request.method != "POST":
-        return HttpResponseBadRequest()
+        return HttpResponseBadRequest("POST required")
 
     card = get_object_or_404(Card, id=card_id)
 
@@ -108,19 +109,22 @@ def card_tracktime_manual(request, card_id):
         return HttpResponseBadRequest("Dados incompletos")
 
     try:
-        minutes = int(minutes)
+        minutes_int = int(minutes)
     except ValueError:
+        return HttpResponseBadRequest("Minutos inválidos")
+
+    if minutes_int <= 0:
         return HttpResponseBadRequest("Minutos inválidos")
 
     TimeEntry.objects.create(
         user=request.user,
         project_id=project_id,
         activity_type_id=activity_id,
-        minutes=minutes,
+        minutes=minutes_int,
         started_at=timezone.now(),
         ended_at=timezone.now(),
         card_id=card.id,
-        board_id=card.list.board.id,
+        board_id=card.board_id,  # ✅ FK direta
         card_title_cache=card.title,
         card_url_cache=request.build_absolute_uri(card.get_absolute_url()),
     )
@@ -128,10 +132,9 @@ def card_tracktime_manual(request, card_id):
     return card_tracktime_panel(request, card_id)
 
 
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect
-from .models import Project, ActivityType
-
+# =========================
+# Portal (cadastros MVP)
+# =========================
 
 @login_required
 def portal(request):
@@ -140,12 +143,12 @@ def portal(request):
 
     if request.method == "POST":
         if "project_name" in request.POST:
-            name = request.POST.get("project_name").strip()
+            name = (request.POST.get("project_name") or "").strip()
             if name:
                 Project.objects.create(name=name)
 
         if "activity_name" in request.POST:
-            name = request.POST.get("activity_name").strip()
+            name = (request.POST.get("activity_name") or "").strip()
             if name:
                 ActivityType.objects.create(name=name)
 
@@ -163,17 +166,24 @@ def portal(request):
 
 @login_required
 def toggle_project(request, pk):
-    if request.method == "POST":
-        p = get_object_or_404(Project, pk=pk)
-        p.is_active = not p.is_active
-        p.save()
+    if request.method != "POST":
+        return HttpResponseBadRequest("POST required")
+
+    p = get_object_or_404(Project, pk=pk)
+    p.is_active = not p.is_active
+    p.save(update_fields=["is_active"])
+
     return redirect("tracktime:portal")
 
 
 @login_required
 def toggle_activity(request, pk):
-    if request.method == "POST":
-        a = get_object_or_404(ActivityType, pk=pk)
-        a.is_active = not a.is_active
-        a.save()
+    if request.method != "POST":
+        return HttpResponseBadRequest("POST required")
+
+    a = get_object_or_404(ActivityType, pk=pk)
+    a.is_active = not a.is_active
+    a.save(update_fields=["is_active"])
+
     return redirect("tracktime:portal")
+# =========================
