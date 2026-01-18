@@ -1,0 +1,57 @@
+<div class="tt-card">
+
+  {% if card.cover %}
+    <div class="tt-cover">
+      <img src="{{ card.cover }}" alt="Capa do card">
+    </div>
+  {% endif %}
+
+  <div class="tt-body">
+
+    <!-- USUÁRIO -->
+    <div class="tt-user">
+      <img src="{{ user.avatar }}" class="tt-avatar">
+      <div>
+        <strong>{{ user.name }}</strong><br>
+        <span class="tt-muted">@{{ user.nickname }}</span>
+      </div>
+    </div>
+
+    <!-- CONTEXTO -->
+    <div class="tt-context">
+      <div class="tt-board">{{ board.name }}</div>
+      <div class="tt-card-title">{{ card.title }}</div>
+      <a href="{{ card.url }}" class="tt-link" target="_blank">
+        {{ card.url }}
+      </a>
+    </div>
+
+    <!-- TRACK -->
+    <div class="tt-track">
+      <div>⏱ {{ track.started_at|date:"H:i" }}</div>
+      <div class="tt-elapsed">{{ track.elapsed }}</div>
+    </div>
+
+    <!-- FLAGS -->
+    <div class="tt-flags">
+      <span class="{{ card.has_checklist|yesno:'on,off' }}">☑ Checklist</span>
+      <span class="{{ card.has_attachments|yesno:'on,off' }}">📎 Anexos</span>
+    </div>
+
+    <!-- DATAS -->
+    <div class="tt-dates">
+      {% if card.dates.start %}<span>📅 {{ card.dates.start|date:"d/m/Y" }}</span>{% endif %}
+      {% if card.dates.warn %}<span>⚠ {{ card.dates.warn|date:"d/m/Y" }}</span>{% endif %}
+      {% if card.dates.due %}<span>⛔ {{ card.dates.due|date:"d/m/Y" }}</span>{% endif %}
+    </div>
+
+    <!-- DESCRIÇÃO -->
+    {% if card.description %}
+      <details class="tt-desc">
+        <summary>📝 Descrição</summary>
+        <div>{{ card.description|linebreaksbr }}</div>
+      </details>
+    {% endif %}
+
+  </div>
+</div>

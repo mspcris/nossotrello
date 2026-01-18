@@ -7,10 +7,9 @@ from django.contrib.auth.decorators import login_required
 from django.urls import reverse
 from django.conf import settings
 from django.core.mail import send_mail
+
 from .models import Project, ActivityType, TimeEntry
-from boards.models import Card
-from boards.models import Board
-from .models import TimeEntry
+from boards.models import Card, Board
 
 
 def _format_mmss(seconds: int) -> str:
@@ -19,6 +18,29 @@ def _format_mmss(seconds: int) -> str:
     ss = seconds % 60
     return f"{mm}:{ss:02d}"
 
+
+def _can_view_board(user, board) -> bool:
+    """
+    Regra de leitura:
+    - superuser vê tudo
+    - board com memberships: basta estar na membership
+    - fallback legado: criador do board
+    """
+    if not user or not getattr(user, "is_authenticated", False):
+        return False
+    if getattr(user, "is_superuser", False):
+        return True
+
+    memberships_qs = getattr(board, "memberships", None)
+    if memberships_qs is not None:
+        return memberships_qs.filter(user=user).exists()
+
+    return bool(getattr(board, "created_by_id", None) == user.id)
+
+
+# ============================================================
+# Card modal tracktime (existente)
+# ============================================================
 
 @login_required
 def card_tracktime_panel(request, card_id):
@@ -83,7 +105,6 @@ def card_tracktime_start(request, card_id):
 
     project_id = request.POST.get("project")
     activity_id = request.POST.get("activity_type")
-
     if not project_id or not activity_id:
         return HttpResponseBadRequest("Projeto e atividade são obrigatórios")
 
@@ -100,14 +121,15 @@ def card_tracktime_start(request, card_id):
         project_id=project_id,
         activity_type_id=activity_id,
         card_id=card.id,
-        board_id=card.column.board_id,  # ✅ via column
+        board_id=card.column.board_id,
         card_title_cache=card.title,
-        card_url_cache=request.build_absolute_uri(reverse("boards:card_modal", args=[card.id])),
+        card_url_cache=request.build_absolute_uri(
+            reverse("boards:card_modal", args=[card.id])
+        ),
         started_at=now,
         minutes=0,
     )
 
-    # janela de confirmação
     entry.set_confirmation_window(now=now)
     entry.save(update_fields=["confirm_due_at", "auto_stop_at"])
 
@@ -162,9 +184,11 @@ def card_tracktime_manual(request, card_id):
         started_at=timezone.now(),
         ended_at=timezone.now(),
         card_id=card.id,
-        board_id=card.column.board_id,  # ✅ via column
+        board_id=card.column.board_id,
         card_title_cache=card.title,
-        card_url_cache=request.build_absolute_uri(reverse("boards:card_modal", args=[card.id])),
+        card_url_cache=request.build_absolute_uri(
+            reverse("boards:card_modal", args=[card.id])
+        ),
     )
 
     return card_tracktime_panel(request, card_id)
@@ -172,9 +196,6 @@ def card_tracktime_manual(request, card_id):
 
 @login_required
 def card_tracktime_confirm_extend(request, card_id):
-    """
-    CTA do modal: "Ainda estou na tarefa (+1h)".
-    """
     if request.method != "POST":
         return HttpResponseBadRequest("POST required")
 
@@ -192,48 +213,40 @@ def card_tracktime_confirm_extend(request, card_id):
 
 
 def tracktime_confirm_link(request, entry_id, token):
-    """
-    Link do e-mail: confirma +1h.
-    Não exige login, mas se estiver logado com outro usuário, bloqueia.
-    """
     entry = get_object_or_404(TimeEntry, id=entry_id)
 
     if request.user.is_authenticated and request.user != entry.user:
         return HttpResponseForbidden("Acesso negado")
 
     if not entry.is_running:
-        # já parou
         return redirect("boards:board_detail", board_id=entry.board_id or 0)
 
     if not entry.check_confirmation_token(token):
         return HttpResponseForbidden("Token inválido ou expirado")
 
-    # uso único
     entry.confirmation_token_hash = ""
     entry.extend_one_hour(now=timezone.now())
 
-    # redireciona para o board abrindo o card no tab tracktime
     board_id = entry.board_id
     card_id = entry.card_id
 
     if not board_id and card_id:
         try:
-            c = Card.objects.get(id=card_id)
+            c = Card.objects.select_related("column").get(id=card_id)
             board_id = c.column.board_id
         except Exception:
             board_id = None
 
     if not board_id:
-        # fallback
         return redirect("/")
 
     url = reverse("boards:board_detail", kwargs={"board_id": board_id})
     return redirect(f"{url}?card={card_id}&tab=tracktime")
 
 
-# =========================
+# ============================================================
 # Portal (cadastros MVP)
-# =========================
+# ============================================================
 
 @login_required
 def portal(request):
@@ -256,10 +269,7 @@ def portal(request):
     return render(
         request,
         "tracktime/portal.html",
-        {
-            "projects": projects,
-            "activities": activities,
-        },
+        {"projects": projects, "activities": activities},
     )
 
 
@@ -287,29 +297,15 @@ def toggle_activity(request, pk):
     return redirect("tracktime:portal")
 
 
-
-def _can_view_board(user, board) -> bool:
-    if not user or not getattr(user, "is_authenticated", False):
-        return False
-    if getattr(user, "is_superuser", False):
-        return True
-
-    memberships_qs = getattr(board, "memberships", None)
-    if memberships_qs is None:
-        return False
-
-    # board compartilhado: basta estar na membership
-    if memberships_qs.exists():
-        return memberships_qs.filter(user=user).exists()
-
-    # board legado: somente criador
-    return bool(getattr(board, "created_by_id", None) == user.id)
-
+# ============================================================
+# Board running badge (NÃO é o live modal)
+# ============================================================
 
 @login_required
 def board_running(request, board_id: int):
     """
     Retorna timers rodando no board, para desenhar badge em tempo real.
+    Saída: { "cards": { "<card_id>": [ {user, elapsed_seconds}, ...] } }
     """
     board = get_object_or_404(Board, id=board_id)
     if not _can_view_board(request.user, board):
@@ -324,11 +320,11 @@ def board_running(request, board_id: int):
         .only("id", "card_id", "started_at", "user__email", "user__first_name", "user__last_name")
     )
 
-    # agrupa por card
     cards = {}
     for e in qs:
         if not e.card_id or not e.started_at:
             continue
+
         elapsed = int((now - e.started_at).total_seconds())
 
         name = (getattr(e.user, "get_full_name", lambda: "")() or "").strip()
@@ -347,31 +343,12 @@ def board_running(request, board_id: int):
     })
 
 
-from django.http import JsonResponse, HttpResponseForbidden
-from django.template.loader import render_to_string
-from boards.models import Board
-from django.db.models import Q
-
-def _can_view_board(user, board) -> bool:
-    if not user.is_authenticated:
-        return False
-    if getattr(user, "is_superuser", False):
-        return True
-
-    memberships_qs = getattr(board, "memberships", None)
-    if memberships_qs is not None:
-        return memberships_qs.filter(user=user).exists()
-
-    # fallback legado (se existir)
-    return bool(getattr(board, "created_by_id", None) == user.id)
-
+# ============================================================
+# Modal Tracktime (abas)
+# ============================================================
 
 @login_required
 def tracktime_modal(request):
-    """
-    Container do modal com abas.
-    O conteúdo das abas é carregado via HTMX para manter padrão do app.
-    """
     return render(request, "tracktime/modal/tracktime_modal.html", {})
 
 
@@ -388,9 +365,6 @@ def tracktime_tab_portal(request):
 
 @login_required
 def tracktime_tab_live(request):
-    """
-    Aba HTML (lista vazia + container). A lista é preenchida via polling em JSON.
-    """
     return render(request, "tracktime/modal/tabs/live.html", {})
 
 
@@ -398,29 +372,35 @@ def tracktime_tab_live(request):
 def tracktime_live_json(request):
     """
     Retorna timers ativos em tempo real, filtrando para boards que o user pode ver.
-    MVP: busca por board_id e valida acesso board a board.
+    Formato:
+    {
+      "ts": "...",
+      "boards": [
+        {"board_id": 31, "board_name": "...", "items":[...]}
+      ]
+    }
     """
     now = timezone.now()
+    from django.urls import reverse
 
-    # Puxa todos os running (otimização MVP: dá para limitar por boards do usuário depois)
     qs = (
         TimeEntry.objects
-        .filter(ended_at__isnull=True, board_id__isnull=False)
+        .filter(ended_at__isnull=True, board_id__isnull=False, card_id__isnull=False, started_at__isnull=False)
         .select_related("user")
-        .only("id", "board_id", "card_id", "started_at", "card_title_cache", "card_url_cache",
-              "user__email", "user__first_name", "user__last_name")
         .order_by("-started_at")
     )
 
-    # Agrupa por board e filtra por permissão
     by_board = {}
     boards_cache = {}
 
     for e in qs:
         board_id = e.board_id
-        if not board_id or not e.card_id or not e.started_at:
+        card_id = e.card_id
+
+        if not board_id or not card_id:
             continue
 
+        # cache board + permissão (barato)
         if board_id not in boards_cache:
             try:
                 b = Board.objects.get(id=board_id)
@@ -435,46 +415,82 @@ def tracktime_live_json(request):
         if not _can_view_board(request.user, board):
             continue
 
+        # ✅ pega o card aqui (sem isso dá 500)
+        try:
+            card = (
+                Card.objects
+                .select_related("column", "column__board")
+                .prefetch_related("checklists", "attachments")
+                .get(id=card_id)
+            )
+        except Card.DoesNotExist:
+            continue
+
+        # por segurança: board real do card (não confia só no cache)
+        board = card.column.board
+        if not _can_view_board(request.user, board):
+            continue
+
         elapsed = int((now - e.started_at).total_seconds())
 
         name = (getattr(e.user, "get_full_name", lambda: "")() or "").strip()
         if not name:
             name = (getattr(e.user, "email", "") or "Usuário").strip()
 
-        by_board.setdefault(str(board_id), {
-            "board_id": board_id,
-            "board_name": getattr(board, "name", f"Board {board_id}"),
+        board_key = str(board.id)
+
+        by_board.setdefault(board_key, {
+            "board_id": board.id,
+            "board_name": board.name,
             "items": []
         })
 
-        by_board[str(board_id)]["items"].append({
+        # ✅ link correto (abre o board com card=...)
+        board_url = reverse("boards:board_detail", kwargs={"board_id": board.id})
+        card_url = f"{board_url}?card={card.id}"
+
+        # descrição (evita AttributeError se o campo não existir)
+        card_description = (getattr(card, "description", None) or "").strip()
+
+        # capa (evita AttributeError / storage)
+        card_cover = None
+        cover_field = getattr(card, "cover_image", None)
+        if cover_field:
+            try:
+                card_cover = cover_field.url
+            except Exception:
+                card_cover = None
+
+        by_board[board_key]["items"].append({
             "entry_id": e.id,
-            "card_id": e.card_id,
-            "card_title": e.card_title_cache or "(sem título)",
-            "card_url": e.card_url_cache or "",
+            "card_id": card.id,
+            "card_title": card.title,
+            "card_url": card_url,
+            "card_cover": card_cover,
+            "card_description": card_description,
+            "started_at": e.started_at.isoformat(),
+            "has_checklist": card.checklists.exists(),
+            "has_attachments": card.attachments.exists(),
             "user": name,
             "elapsed_seconds": elapsed,
         })
 
     # Ordena: boards por nome, itens por maior tempo
-    boards = sorted(by_board.values(), key=lambda x: x["board_name"].lower())
+    boards = sorted(by_board.values(), key=lambda x: (x.get("board_name") or "").lower())
     for b in boards:
-        b["items"].sort(key=lambda it: it["elapsed_seconds"], reverse=True)
+        b["items"].sort(key=lambda it: it.get("elapsed_seconds", 0), reverse=True)
 
     return JsonResponse({"ts": now.isoformat(), "boards": boards})
 
 
 @login_required
 def tracktime_tab_week(request):
-    # MVP placeholder (próxima entrega: agregação por semana)
     return render(request, "tracktime/modal/tabs/week.html", {})
 
 
 @login_required
 def tracktime_tab_month(request):
-    # MVP placeholder (próxima entrega: agregação por mês)
     return render(request, "tracktime/modal/tabs/month.html", {})
-
 
 
 @login_required

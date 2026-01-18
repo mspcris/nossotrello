@@ -1,13 +1,12 @@
+#tracktime/models.py
+
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
 import hashlib
 import secrets
 
-
-
 User = settings.AUTH_USER_MODEL
-
 
 class Project(models.Model):
     """
@@ -307,3 +306,6 @@ class TimeEntry(models.Model):
                 "confirmation_token_hash",
             ]
         )
+
+
+#END tracktime/models.py

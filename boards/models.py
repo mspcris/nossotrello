@@ -559,3 +559,6 @@ class BoardAccessRequest(models.Model):
 
     def __str__(self):
         return f"{self.user.email} pediu acesso ao board {self.board.name}"
+
+
+# END boards/models.py

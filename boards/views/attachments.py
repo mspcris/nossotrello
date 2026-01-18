@@ -6,6 +6,7 @@ from django.utils.html import escape
 from django.contrib.auth.decorators import login_required
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
+from urllib3 import request
 
 from ..permissions import can_edit_board
 from ..models import Card, CardAttachment
@@ -83,7 +84,10 @@ def add_attachment(request, card_id):
         return HttpResponse("Nenhum arquivo enviado", status=400)
 
     uploaded = request.FILES["file"]
-    desc = (request.POST.get("description") or "").strip()
+    # ✅ evita conflito com o name="description" do card (aba Descrição)
+    # prioridade: attachment_description (novo). fallback: description (legado).
+    desc = (request.POST.get("attachment_description") or request.POST.get("description") or "").strip()
+
 
     attachment = CardAttachment.objects.create(
         card=card,

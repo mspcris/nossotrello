@@ -1,32 +1,212 @@
 {# tracktime/templates/tracktime/modal/tabs/live.html #}
 
-<div class="cm-card" style="padding: 12px;">
-  <div style="display:flex; justify-content: space-between; align-items:center; gap:10px;">
-    <div>
-      <strong>Ao vivo</strong>
-      <div class="tt-muted">Atualiza automaticamente a cada 5s.</div>
+<div id="tracktime-live-tab" class="tt-live">
+  <div class="tt-live-header">
+    <div class="tt-live-title">
+      <div style="font-weight:900;">Ao vivo</div>
+      <div class="tt-muted" style="font-size:12px;">Atualiza automaticamente a cada 5s.</div>
     </div>
-    <button class="tt-btn" type="button" onclick="window.TTLive && window.TTLive.refresh && window.TTLive.refresh()">Atualizar</button>
+
+    <button type="button" class="btn btn-sm" id="tt-live-refresh-btn">
+      Atualizar
+    </button>
+  </div>
+
+  {# ✅ IMPORTANTE: esse ID existe e é o alvo do JS (evita o insertBefore/null) #}
+  <div id="tt-live-list" class="tt-live-list">
+    <div class="tt-muted">Carregando...</div>
   </div>
 </div>
 
-<div id="tt-live-list" class="cm-card" style="padding: 12px; margin-top: 10px;">
-  <div class="tt-muted">Carregando…</div>
-</div>
+<style>
+  /* ====== layout geral ====== */
+  .tt-live { width: 100%; }
+  .tt-live-header {
+    display:flex; align-items:center; justify-content:space-between;
+    gap: 12px; margin-bottom: 12px;
+  }
+  .tt-muted { opacity:.75; }
+
+  /* ====== grid dos cards (4 colunas, cresce para baixo) ====== */
+  .tt-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+  }
+  @media (max-width: 1200px) {
+    .tt-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+  @media (max-width: 900px) {
+    .tt-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 560px) {
+    .tt-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ====== cartão ====== */
+  .tt-card {
+    border: 1px solid rgba(255,255,255,.10);
+    border-radius: 14px;
+    overflow: hidden;
+    background: rgba(0,0,0,.10);
+  }
+
+  .tt-cover {
+    width: 100%;
+    height: 120px;
+    background: rgba(255,255,255,.08);
+    position: relative;
+    overflow: hidden;
+  }
+  .tt-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display:block;
+    filter: saturate(1.05);
+  }
+  .tt-cover-fallback {
+    width:100%; height:100%;
+    display:flex; align-items:center; justify-content:center;
+    font-weight:900; letter-spacing:.4px;
+    opacity:.8;
+  }
+
+  .tt-body { padding: 10px 12px 12px; display:flex; flex-direction:column; gap:10px; }
+
+  .tt-row { display:flex; align-items:center; justify-content:space-between; gap:10px; min-width:0; }
+  .tt-left { min-width:0; }
+
+  .tt-user {
+    display:flex; align-items:center; gap:8px; min-width:0;
+  }
+  .tt-user-dot {
+    width: 22px; height: 22px; border-radius: 999px;
+    background: rgba(255,255,255,.14);
+    display:flex; align-items:center; justify-content:center;
+    font-size: 12px; font-weight: 900;
+    flex: 0 0 auto;
+  }
+  .tt-user-name {
+    font-weight: 800;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    max-width: 100%;
+  }
+
+  .tt-times {
+    text-align:right;
+    font-variant-numeric: tabular-nums;
+    flex: 0 0 auto;
+  }
+  .tt-times .tt-mmss {
+    font-weight: 950;
+    font-size: 14px;
+  }
+  .tt-times .tt-start {
+    opacity:.75;
+    font-size: 11px;
+  }
+
+  .tt-meta {
+    display:flex; flex-direction:column; gap:4px;
+    min-width:0;
+  }
+  .tt-board {
+    font-size: 12px;
+    opacity: .85;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .tt-title a, .tt-title span {
+    font-weight: 900;
+    text-decoration: none;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    display:block;
+  }
+
+  .tt-badges {
+    display:flex; align-items:center; gap:8px; flex-wrap: wrap;
+    font-size: 12px;
+  }
+  .tt-badge {
+    display:inline-flex; align-items:center; gap:6px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,.10);
+    background: rgba(255,255,255,.06);
+    font-weight: 800;
+  }
+
+  /* ===== descrição colapsável ===== */
+  .tt-desc {
+    border-top: 1px dashed rgba(255,255,255,.10);
+    padding-top: 10px;
+  }
+  .tt-desc summary {
+    cursor:pointer;
+    user-select:none;
+    font-weight: 900;
+    list-style: none;
+    display:flex; align-items:center; justify-content:space-between;
+    gap: 10px;
+  }
+  .tt-desc summary::-webkit-details-marker { display:none; }
+
+  .tt-desc-text {
+    margin-top: 8px;
+    opacity:.9;
+    font-size: 12px;
+    line-height: 1.35;
+    display: -webkit-box;
+    -webkit-line-clamp: 6; /* preview */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: break-word;
+  }
+  details[open] .tt-desc-text {
+    -webkit-line-clamp: unset;
+    overflow: visible;
+    display:block;
+  }
+
+  .tt-empty {
+    padding: 10px 12px;
+    border: 1px dashed rgba(255,255,255,.14);
+    border-radius: 12px;
+    opacity: .8;
+  }
+</style>
 
 <script>
 (function () {
+  function pad2(n){ return String(n).padStart(2,"0"); }
+
   function formatMMSS(seconds) {
     const s = Math.max(0, Number(seconds || 0));
     const mm = Math.floor(s / 60);
     const ss = Math.floor(s % 60);
-    return `${mm}:${String(ss).padStart(2, "0")}`;
+    return `${mm}:${pad2(ss)}`;
   }
 
-  function esc(s) {
+  function formatStart(tsIso) {
+    if (!tsIso) return "";
+    try {
+      const d = new Date(tsIso);
+      return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+    } catch (_) {
+      return "";
+    }
+  }
+
+    function esc(s) {
     return String(s || "").replace(/[&<>"']/g, (c) => ({
       "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
     }[c]));
+  }
+
+  function stripHtml(html) {
+    const div = document.createElement("div");
+    div.innerHTML = String(html || "");
+    return (div.textContent || div.innerText || "").trim();
   }
 
   async function fetchLive() {
@@ -40,61 +220,124 @@
     return await res.json();
   }
 
+  function cardHTML(it) {
+    const mmss = formatMMSS(it.elapsed_seconds);
+    const startHHMM = formatStart(it.started_at || null);
+
+    const user = esc(it.user);
+    const boardName = esc(it.board_name || "");
+    const title = esc(it.card_title || "(sem título)");
+
+    const url = it.card_url ? esc(it.card_url) : "";
+    const titleNode = url
+      ? `<a href="${url}" target="_blank" rel="noopener">${title}</a>`
+      : `<span>${title}</span>`;
+
+    const cover = it.card_cover ? esc(it.card_cover) : "";
+    const coverNode = cover
+      ? `<img src="${cover}" alt="">`
+      : `<div class="tt-cover-fallback">CARD</div>`;
+
+    const hasChecklist = !!it.has_checklist;
+    const hasAttachments = !!it.has_attachments;
+
+    const descText = stripHtml(it.card_description);
+    const descPreview = descText ? esc(descText.slice(0, 140)) : "(sem descrição)";
+
+    const checklistBadge = `<span class="tt-badge">☑ Checklist: ${hasChecklist ? "✓" : "–"}</span>`;
+    const attachBadge = `<span class="tt-badge">📎 Anexo: ${hasAttachments ? "✓" : "–"}</span>`;
+
+    const descBlock = `
+      <div class="tt-desc">
+        <div class="tt-desc-text">${descPreview}</div>
+      </div>
+    `;
+
+
+    const initial = user ? esc(user[0].toUpperCase()) : "U";
+
+    return `
+      <div class="tt-card">
+        <div class="tt-cover">${coverNode}</div>
+
+        <div class="tt-body">
+          <div class="tt-row">
+            <div class="tt-user tt-left">
+              <div class="tt-user-dot">${initial}</div>
+              <div class="tt-user-name" title="${user}">${user}</div>
+            </div>
+
+            <div class="tt-times">
+              <div class="tt-mmss">${mmss}</div>
+              ${startHHMM ? `<div class="tt-start">Início: ${startHHMM}</div>` : `<div class="tt-start">&nbsp;</div>`}
+            </div>
+          </div>
+
+          <div class="tt-meta">
+            ${boardName ? `<div class="tt-board">📋 ${boardName}</div>` : ``}
+            <div class="tt-title">${titleNode}</div>
+            ${url ? `<div class="tt-muted" style="font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">🔗 ${url}</div>` : ``}
+          </div>
+
+          <div class="tt-badges">
+            ${checklistBadge}
+            ${attachBadge}
+          </div>
+
+          ${descBlock}
+        </div>
+      </div>
+    `;
+  }
+
   function render(data) {
     const root = document.getElementById("tt-live-list");
     if (!root) return;
 
     const boards = (data && data.boards) || [];
-    if (!boards.length) {
-      root.innerHTML = `<div class="tt-muted">Nenhum timer rodando agora.</div>`;
+    const items = [];
+
+    // Normaliza: junta tudo em uma grid única (4 colunas), mas preserva board_name por item
+    for (const b of boards) {
+      const bn = b.board_name || "";
+      for (const it of (b.items || [])) {
+        it.board_name = bn;
+        items.push(it);
+      }
+    }
+
+    if (!items.length) {
+      root.innerHTML = `<div class="tt-empty">Nenhum timer rodando agora.</div>`;
       return;
     }
 
-    let html = "";
-    for (const b of boards) {
-      html += `<div style="margin-bottom: 12px;">
-        <div style="font-weight: 900; margin-bottom: 8px;">${esc(b.board_name)}</div>
-        <div style="display:flex; flex-direction: column; gap: 8px;">`;
-
-      for (const it of (b.items || [])) {
-        const t = formatMMSS(it.elapsed_seconds);
-        const cardTitle = esc(it.card_title);
-        const user = esc(it.user);
-
-        // Prioriza card_url_cache; se não tiver, deixa sem link (MVP)
-        const link = it.card_url ? `<a href="${esc(it.card_url)}" target="_blank" rel="noopener">${cardTitle}</a>` : cardTitle;
-
-        html += `<div style="display:flex; justify-content: space-between; gap:10px; border:1px solid rgba(255,255,255,.10); border-radius: 12px; padding: 10px;">
-          <div style="min-width:0;">
-            <div style="font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${link}</div>
-            <div class="tt-muted">${user}</div>
-          </div>
-          <div style="font-weight:900; font-variant-numeric: tabular-nums;">${t}</div>
-        </div>`;
-      }
-
-      html += `</div></div>`;
-    }
-
-    root.innerHTML = html;
+    root.innerHTML = `<div class="tt-grid">${items.map(cardHTML).join("")}</div>`;
   }
 
   async function refresh() {
     try {
       const data = await fetchLive();
       if (data) render(data);
-    } catch (_) {}
+    } catch (_) {
+      // silencioso (MVP)
+    }
   }
 
+  // API pública
   window.TTLive = window.TTLive || {};
   window.TTLive.refresh = refresh;
 
+  // bind botão
+  const btn = document.getElementById("tt-live-refresh-btn");
+  if (btn) btn.addEventListener("click", refresh);
+
+  // start
   refresh();
   const timer = setInterval(refresh, 5000);
 
-  // Se o modal fechar e esse DOM sumir, evita timer zumbi
+  // evita timer zumbi quando modal some
   const obs = new MutationObserver(() => {
-    if (!document.getElementById("tt-live-list")) {
+    if (!document.getElementById("tracktime-live-tab")) {
       clearInterval(timer);
       obs.disconnect();
     }
