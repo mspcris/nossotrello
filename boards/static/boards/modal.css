@@ -1678,3 +1678,16 @@ html.dark #modal #modal-breadcrumb{
     max-width: 62vw;
   }
 }
+
+/* Aba Etiquetas */
+#cm-root #cm-tags-input,
+#cm-root #cm-tag-new {
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 12px;
+}
+
+#cm-root .cm-tag-create button,
+#cm-root .cm-btn {
+  border-radius: 12px;
+}

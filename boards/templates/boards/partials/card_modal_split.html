@@ -336,19 +336,36 @@
             <div class="cm-card space-y-3">
               <div>
                 <label>Digite neste campo as etiquetas separadas por vírgula.</label>
-                <input type="text" name="tags" id="cm-tags-input" autocomplete="off"/>
+                
+                  <textarea
+                    name="tags"
+                    id="cm-tags-input"
+                    class="cm-input"
+                    rows="2"
+                    autocomplete="off"
+                    style="min-height:56px; resize:vertical;"
+                    placeholder="Digite as etiquetas separadas por vírgula"></textarea>
 
-                <div class="cm-tag-catalog">
-                  <label>Cadastre etiquetas fixas para utilizar quando quiser. Digite uma por vêz e enter ou (incluir). Após, clique nelas para adicionar ao quadro.</label>
+                  <div class="cm-tag-catalog">
+                    <label>Cadastre etiquetas fixas para utilizar quando quiser. Digite uma por vez e Enter (ou clique em Incluir). Após, clique nelas para adicionar ao quadro.</label>
 
-                  <div class="cm-tag-create">
-                    <input type="text" id="cm-tag-new" placeholder="Digite a etiqueta"/>
-                    <button type="button" id="cm-tag-add">Incluir</button>
-                    <button type="button" id="cm-tag-delete-toggle">Excluir etiquetas</button>
+                    <div class="cm-tag-create flex gap-2 items-center flex-wrap">
+                      <input
+                        type="text"
+                        id="cm-tag-new"
+                        class="cm-input"
+                        style="min-height:44px; border-radius:12px;"
+                        placeholder="Digite a etiqueta"/>
+
+                      <button type="button" id="cm-tag-add" class="cm-btn primary">Incluir</button>
+                      <button type="button" id="cm-tag-delete-toggle" class="cm-btn">Excluir etiquetas</button>
+                    </div>
+
+                    <div class="cm-tag-list" id="cm-tag-list"></div>
                   </div>
 
-                  <div class="cm-tag-list" id="cm-tag-list"></div>
-                </div>
+
+
               </div>
 
               <div class="cm-muted">

@@ -2,6 +2,19 @@
 // boards/static/boards/modal/modal.tag_catalog.js
 // ============================================================
 (function () {
+  if (!window.Modal) window.Modal = {};
+  if (window.Modal.tagCatalog) return;
+
+  function getModalRoot() {
+    const modalBody = document.getElementById("modal-body");
+    if (modalBody) {
+      const r = modalBody.querySelector("#cm-root");
+      if (r) return r;
+    }
+    const all = document.querySelectorAll("#cm-root");
+    return all && all.length ? all[all.length - 1] : null;
+  }
+
   function getBoardId() {
     const m = location.pathname.match(/\/board\/(\d+)/);
     return m ? m[1] : "global";
@@ -12,25 +25,23 @@
   }
 
   function loadTags() {
-    try {
-      return JSON.parse(localStorage.getItem(storageKey()) || "[]");
-    } catch {
-      return [];
-    }
+    try { return JSON.parse(localStorage.getItem(storageKey()) || "[]"); }
+    catch (_e) { return []; }
   }
 
   function saveTags(tags) {
-    localStorage.setItem(storageKey(), JSON.stringify(tags));
+    try { localStorage.setItem(storageKey(), JSON.stringify(tags)); }
+    catch (_e) {}
   }
 
-  function renderTags() {
-    const list = document.getElementById("cm-tag-list");
+  function renderTags(root) {
+    const list = root?.querySelector("#cm-tag-list");
     if (!list) return;
 
     const tags = loadTags();
     list.innerHTML = "";
 
-    tags.forEach(tag => {
+    tags.forEach((tag) => {
       const chip = document.createElement("div");
       chip.className = "cm-tag-chip";
       chip.textContent = tag;
@@ -41,24 +52,24 @@
 
       remove.onclick = (e) => {
         e.stopPropagation();
-        const next = tags.filter(t => t !== tag);
+        const next = tags.filter((t) => t !== tag);
         saveTags(next);
-        renderTags();
+        renderTags(root);
       };
 
-      chip.onclick = () => addTagToInput(tag);
+      chip.onclick = () => addTagToInput(root, tag);
       chip.appendChild(remove);
       list.appendChild(chip);
     });
   }
 
-  function addTagToInput(tag) {
-    const input = document.getElementById("cm-tags-input");
+  function addTagToInput(root, tag) {
+    const input = root?.querySelector("#cm-tags-input");
     if (!input) return;
 
-    const current = input.value
+    const current = String(input.value || "")
       .split(",")
-      .map(t => t.trim())
+      .map((t) => t.trim())
       .filter(Boolean);
 
     if (current.includes(tag)) return;
@@ -69,42 +80,42 @@
   }
 
   function init() {
-    const addBtn = document.getElementById("cm-tag-add");
-    const newInput = document.getElementById("cm-tag-new");
-    const deleteToggle = document.getElementById("cm-tag-delete-toggle");
-    const list = document.getElementById("cm-tag-list");
+    const root = getModalRoot();
+    if (!root) return;
+
+    const addBtn = root.querySelector("#cm-tag-add");
+    const newInput = root.querySelector("#cm-tag-new");
+    const deleteToggle = root.querySelector("#cm-tag-delete-toggle");
+    const list = root.querySelector("#cm-tag-list");
 
     if (!addBtn || !newInput || !list) return;
 
-    // -------- função única ----------
+    // evita bind duplicado por root
+    if (root.dataset.cmTagCatalogBound === "1") return;
+    root.dataset.cmTagCatalogBound = "1";
+
     function addTag() {
-      const value = newInput.value.trim();
+      const value = String(newInput.value || "").trim();
       if (!value) return;
 
       const tags = loadTags();
       if (!tags.includes(value)) {
         tags.push(value);
         saveTags(tags);
-        renderTags();
+        renderTags(root);
       }
       newInput.value = "";
     }
 
-    // botão Incluir
     addBtn.onclick = addTag;
 
-    // toggle excluir
     if (deleteToggle) {
-      deleteToggle.onclick = () => {
-        list.classList.toggle("delete-mode");
-      };
+      deleteToggle.onclick = () => list.classList.toggle("delete-mode");
     }
 
-    renderTags();
+    renderTags(root);
 
-    // -----------------------------------------
-    // ENTER GLOBAL (solução definitiva)
-    // -----------------------------------------
+    // ENTER GLOBAL (uma vez só)
     if (!window.__cmTagCatalogEnterBound) {
       window.__cmTagCatalogEnterBound = true;
 
@@ -113,21 +124,30 @@
         function (e) {
           if (e.key !== "Enter") return;
 
+          const r = getModalRoot();
+          if (!r) return;
+
           const target = e.target;
           if (!target || target.id !== "cm-tag-new") return;
 
           e.preventDefault();
           e.stopPropagation();
 
-          addTag();
+          // reusa o addTag do root atual (sem depender de closure antiga)
+          const btn = r.querySelector("#cm-tag-add");
+          if (btn) btn.click();
         },
-        true // 🔑 CAPTURE: antes do form/HTMX
+        true
       );
     }
   }
 
+  window.Modal.tagCatalog = { init };
+
   document.addEventListener("DOMContentLoaded", init);
-  document.body.addEventListener("htmx:afterSwap", init);
+  document.body.addEventListener("htmx:afterSwap", function (e) {
+    if (e?.target?.id === "modal-body") init();
+  });
 })();
 // ============================================================
 // end boards/static/boards/modal/modal.tag_catalog.js

@@ -1,5 +1,6 @@
 # boards/views/cards.py
 
+from asyncio.log import logger
 import json
 import os
 import re
@@ -276,10 +277,31 @@ def update_card(request, card_id):
     old_due_notify = bool(card.due_notify)
 
     # ============================================================
+    # UPDATE: logging inicial
+    # ============================================================
+    posted_title = request.POST.get("title", None)
+    posted_titles = request.POST.getlist("title")
+    logger.warning(
+        "[update_card] card_id=%s keys=%s title(get)=%r titles(getlist)=%r",
+        card_id,
+        sorted(list(request.POST.keys())),
+        posted_title,
+        posted_titles,
+    )
+
+
+    # ============================================================
     # UPDATE: título / descrição / tags
     # ============================================================
-    new_title = _norm(request.POST.get("title", card.title))
+    # pega TODOS os "title" enviados (evita ambiguidade com checklist)
+    titles = [(_norm(x)) for x in request.POST.getlist("title") if _norm(x)]
+
+    # prioridade: aliases > primeiro title não-vazio > mantém o atual
+    posted_title = _norm(request.POST.get("card_title") or request.POST.get("cm_title") or "")
+    new_title = posted_title or (titles[0] if titles else old_title)
+
     card.title = new_title
+
 
     raw_desc = _norm(request.POST.get("description", card.description or ""))
     new_desc_html, saved_paths = _save_base64_images_to_media(raw_desc, folder="quill")
@@ -327,6 +349,7 @@ def update_card(request, card_id):
     # SAVE CARD
     # ============================================================
     card.save()
+    card.refresh_from_db(fields=["title", "description", "tags", "start_date", "due_date", "due_warn_date", "due_notify"])
 
     # ============================================================
     # DIFFS pós-save
