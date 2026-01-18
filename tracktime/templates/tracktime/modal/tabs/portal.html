@@ -1,0 +1,47 @@
+{# tracktime/templates/tracktime/modal/tabs/portal.html #}
+
+<div class="tt-container" style="margin:0; padding:0;">
+  <div class="tt-section">
+    <div class="tt-title">Projetos</div>
+
+    <form method="post" class="tt-input-row">
+      {% csrf_token %}
+      <input name="project_name" placeholder="Nome do projeto" autocomplete="off">
+      <button type="submit">Adicionar</button>
+    </form>
+
+    <div class="tt-chip-list">
+      {% for p in projects %}
+        <div class="tt-chip {% if not p.is_active %}inactive{% endif %}">
+          {{ p.name }}
+          <form method="post" action="{% url 'tracktime:toggle_project' p.id %}">
+            {% csrf_token %}
+            <button title="Toggle">×</button>
+          </form>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="tt-section">
+    <div class="tt-title">Atividades</div>
+
+    <form method="post" class="tt-input-row">
+      {% csrf_token %}
+      <input name="activity_name" placeholder="Nome da atividade" autocomplete="off">
+      <button type="submit">Adicionar</button>
+    </form>
+
+    <div class="tt-chip-list">
+      {% for a in activities %}
+        <div class="tt-chip {% if not a.is_active %}inactive{% endif %}">
+          {{ a.name }}
+          <form method="post" action="{% url 'tracktime:toggle_activity' a.id %}">
+            {% csrf_token %}
+            <button title="Toggle">×</button>
+          </form>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>

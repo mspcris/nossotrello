@@ -1,0 +1,21 @@
+{# tracktime/templates/tracktime/modal/tracktime_modal.html #}
+{% load static %}
+
+<div class="cm-modal-root">
+  <div class="cm-modal-header">
+    <div class="cm-modal-title">Track-time</div>
+    <button class="cm-modal-close" type="button" data-cm-modal-close>×</button>
+  </div>
+
+  <div class="cm-modal-tabs" style="display:flex; gap:8px; padding: 10px 12px;">
+    <button class="tt-btn tt-btn-primary" hx-get="{% url 'tracktime:tab_live' %}" hx-target="#tt-modal-body" hx-swap="innerHTML">Ao vivo</button>
+    <button class="tt-btn" hx-get="{% url 'tracktime:tab_week' %}" hx-target="#tt-modal-body" hx-swap="innerHTML">Semana</button>
+    <button class="tt-btn" hx-get="{% url 'tracktime:tab_month' %}" hx-target="#tt-modal-body" hx-swap="innerHTML">Mês</button>
+    <button class="tt-btn" hx-get="{% url 'tracktime:tab_portal' %}" hx-target="#tt-modal-body" hx-swap="innerHTML">Cadastros</button>
+  </div>
+
+  <div id="tt-modal-body" class="cm-modal-body" style="padding: 12px;">
+    {# Default: Ao vivo #}
+    <div hx-get="{% url 'tracktime:tab_live' %}" hx-trigger="load" hx-target="#tt-modal-body" hx-swap="innerHTML"></div>
+  </div>
+</div>

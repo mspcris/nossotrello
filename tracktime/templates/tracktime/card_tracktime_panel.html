@@ -1,17 +1,16 @@
-{# Track-time panel (HTMX) #}
+{# tracktime/templates/tracktime/card_tracktime_panel.html #}
 
 <style>
   /* Escopo local para não “vazar” no resto do app */
   .tt-grid { display:grid; grid-template-columns: 1fr 1fr; gap: .5rem; align-items: center; }
   .tt-row { display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; }
-  .tt-grow { flex: 1 1 auto; min-width: 180px; }
   .tt-btn {
     appearance: none;
     border: 1px solid rgba(255,255,255,.25);
     background: rgba(255,255,255,.08);
-    padding: .45rem .8rem;
-    border-radius: .5rem;
-    font-weight: 600;
+    padding: .55rem .95rem;
+    border-radius: .65rem;
+    font-weight: 700;
     cursor: pointer;
     line-height: 1;
   }
@@ -20,14 +19,19 @@
   .tt-btn-danger { border-color: rgba(255,90,90,.55); background: rgba(255,90,90,.18); }
   .tt-input, .tt-select {
     width: 100%;
-    padding: .45rem .55rem;
-    border-radius: .5rem;
+    padding: .55rem .65rem;
+    border-radius: .65rem;
     border: 1px solid rgba(255,255,255,.18);
     background: rgba(255,255,255,.06);
   }
   .tt-right { display:flex; justify-content:flex-end; gap:.5rem; align-items:center; }
-  .tt-timer { font-variant-numeric: tabular-nums; opacity: .9; }
   .tt-muted { opacity: .75; font-size: .9em; }
+  .tt-box-warn {
+    border: 1px solid rgba(255,200,0,.35);
+    background: rgba(255,200,0,.08);
+    padding: 12px;
+    border-radius: 12px;
+  }
 </style>
 
 <div
@@ -41,32 +45,55 @@
 >
   <div class="tt-row" style="justify-content: space-between;">
     <strong>Track-time</strong>
-
     {% if running %}
-      <div class="tt-timer">
-        {# Contador simples (sem JS): minutos desde started_at #}
-        {% if running.started_at %}
-          {% with delta=now|date:"U"|add:"0" %}
-          {% endwith %}
-        {% endif %}
-        <span class="tt-muted">Rodando</span>
-      </div>
+      <span class="tt-muted">Rodando</span>
     {% else %}
       <span class="tt-muted">Parado</span>
     {% endif %}
   </div>
 
   {% if running %}
-    <form
-      method="post"
-      hx-post="{% url 'tracktime:card_stop' card.id %}"
-      hx-target="#cm-tracktime-panel"
-      hx-swap="innerHTML"
-      class="tt-right"
-    >
-      {% csrf_token %}
-      <button type="submit" class="tt-btn tt-btn-danger">Stop</button>
-    </form>
+    <div class="tt-row" style="justify-content: space-between;">
+      <div>
+        <div><strong>Rodando</strong></div>
+        <div class="cm-muted">Tempo: {{ elapsed_mmss }}</div>
+      </div>
+
+      <form
+        method="post"
+        hx-post="{% url 'tracktime:card_stop' card.id %}"
+        hx-target="#cm-tracktime-panel"
+        hx-swap="innerHTML"
+      >
+        {% csrf_token %}
+        <button type="submit" class="tt-btn tt-btn-danger">Stop</button>
+      </form>
+    </div>
+
+    {% if confirm_needed %}
+      <div class="tt-box-warn">
+        <div style="font-weight: 900; margin-bottom: 6px;">Você ainda está nessa tarefa?</div>
+        <div class="cm-muted" style="margin-bottom: 10px;">
+          Se você não confirmar, vamos parar automaticamente em <strong>{{ auto_stop_mmss }}</strong>.
+        </div>
+
+        <form
+          method="post"
+          hx-post="{% url 'tracktime:card_confirm_extend' card.id %}"
+          hx-target="#cm-tracktime-panel"
+          hx-swap="innerHTML"
+        >
+          {% csrf_token %}
+          <button
+            type="submit"
+            style="width:100%;padding:14px 16px;border-radius:14px;border:1px solid rgba(80,180,255,.55);background:rgba(80,180,255,.22);font-weight:900;font-size:18px;"
+          >
+            Ainda estou na tarefa (+1h)
+          </button>
+        </form>
+      </div>
+    {% endif %}
+
   {% else %}
     <form
       method="post"
@@ -98,7 +125,7 @@
       </div>
     </form>
 
-    {# Manual só quando NÃO está running #}
+    {# Manual só quando NÃO está rodando #}
     <form
       method="post"
       hx-post="{% url 'tracktime:card_manual' card.id %}"
@@ -107,6 +134,7 @@
       class="tt-grid"
     >
       {% csrf_token %}
+
       <div>
         <input type="number" name="minutes" placeholder="Minutos" min="1" required class="tt-input">
       </div>

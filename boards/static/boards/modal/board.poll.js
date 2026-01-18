@@ -87,6 +87,9 @@
 
     const list = getColumnsList();
     if (!list) return;
+    
+    // track-time badges (independe de changed)
+    tickTrackTimeBadges(boardId);
 
     if (shouldPause()) return;
     if (inFlight) return;
@@ -166,4 +169,74 @@
       setTimeout(() => { tick(); }, 30);
     }
   });
+
+    // ============================================================
+  // Track-time badges (MVP) — throttle 5s
+  // ============================================================
+  let __ttLastFetchMs = 0;
+  const TT_FETCH_EVERY_MS = 5000;
+
+  function formatMMSS(seconds) {
+    const s = Math.max(0, Number(seconds || 0));
+    const mm = Math.floor(s / 60);
+    const ss = Math.floor(s % 60);
+    return `${mm}:${String(ss).padStart(2, "0")}`;
+  }
+
+  function clearTrackBadges(scope) {
+    const root = scope || document;
+    root.querySelectorAll(".tt-board-badge").forEach((el) => el.remove());
+  }
+
+  function applyTrackBadges(payload) {
+    const cards = payload?.cards || {};
+    // remove tudo e redesenha (MVP simples)
+    clearTrackBadges(document);
+
+    Object.entries(cards).forEach(([cardId, arr]) => {
+      const li = document.querySelector(`li[data-card-id="${cardId}"]`);
+      if (!li) return;
+
+      const meta = li.querySelector(".term-badge")?.parentElement || li; // tenta grudar na área meta
+      const badge = document.createElement("span");
+      badge.className = "tt-board-badge";
+      badge.title = (arr || []).map(x => `${x.user} — ${formatMMSS(x.elapsed_seconds)}`).join("\n");
+
+      const dot = document.createElement("span");
+      dot.className = "tt-board-badge-dot";
+
+      // texto curto: “2 em track · 12:34”
+      const first = (arr && arr[0]) ? ` · ${formatMMSS(arr[0].elapsed_seconds)}` : "";
+      badge.appendChild(dot);
+      badge.appendChild(document.createTextNode(`${arr.length} em track${first}`));
+
+      // coloca no meta (ao lado do prazo)
+      if (meta && meta !== li) {
+        meta.appendChild(badge);
+      } else {
+        li.appendChild(badge);
+      }
+    });
+  }
+
+  async function tickTrackTimeBadges(boardId) {
+    const nowMs = Date.now();
+    if (nowMs - __ttLastFetchMs < TT_FETCH_EVERY_MS) return;
+    __ttLastFetchMs = nowMs;
+
+    try {
+      const res = await fetch(`/track-time/boards/${boardId}/running/`, {
+        method: "GET",
+        credentials: "same-origin",
+        headers: { "X-Requested-With": "XMLHttpRequest", "Accept": "application/json" },
+        cache: "no-store",
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      applyTrackBadges(data);
+    } catch (_) {
+      // silencioso
+    }
+  }
+  // integra ao loop principal
 })();

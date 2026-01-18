@@ -1,0 +1,104 @@
+{# tracktime/templates/tracktime/modal/tabs/live.html #}
+
+<div class="cm-card" style="padding: 12px;">
+  <div style="display:flex; justify-content: space-between; align-items:center; gap:10px;">
+    <div>
+      <strong>Ao vivo</strong>
+      <div class="tt-muted">Atualiza automaticamente a cada 5s.</div>
+    </div>
+    <button class="tt-btn" type="button" onclick="window.TTLive && window.TTLive.refresh && window.TTLive.refresh()">Atualizar</button>
+  </div>
+</div>
+
+<div id="tt-live-list" class="cm-card" style="padding: 12px; margin-top: 10px;">
+  <div class="tt-muted">Carregando…</div>
+</div>
+
+<script>
+(function () {
+  function formatMMSS(seconds) {
+    const s = Math.max(0, Number(seconds || 0));
+    const mm = Math.floor(s / 60);
+    const ss = Math.floor(s % 60);
+    return `${mm}:${String(ss).padStart(2, "0")}`;
+  }
+
+  function esc(s) {
+    return String(s || "").replace(/[&<>"']/g, (c) => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+    }[c]));
+  }
+
+  async function fetchLive() {
+    const res = await fetch("{% url 'tracktime:live_json' %}", {
+      method: "GET",
+      credentials: "same-origin",
+      headers: { "Accept": "application/json", "X-Requested-With": "XMLHttpRequest" },
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  }
+
+  function render(data) {
+    const root = document.getElementById("tt-live-list");
+    if (!root) return;
+
+    const boards = (data && data.boards) || [];
+    if (!boards.length) {
+      root.innerHTML = `<div class="tt-muted">Nenhum timer rodando agora.</div>`;
+      return;
+    }
+
+    let html = "";
+    for (const b of boards) {
+      html += `<div style="margin-bottom: 12px;">
+        <div style="font-weight: 900; margin-bottom: 8px;">${esc(b.board_name)}</div>
+        <div style="display:flex; flex-direction: column; gap: 8px;">`;
+
+      for (const it of (b.items || [])) {
+        const t = formatMMSS(it.elapsed_seconds);
+        const cardTitle = esc(it.card_title);
+        const user = esc(it.user);
+
+        // Prioriza card_url_cache; se não tiver, deixa sem link (MVP)
+        const link = it.card_url ? `<a href="${esc(it.card_url)}" target="_blank" rel="noopener">${cardTitle}</a>` : cardTitle;
+
+        html += `<div style="display:flex; justify-content: space-between; gap:10px; border:1px solid rgba(255,255,255,.10); border-radius: 12px; padding: 10px;">
+          <div style="min-width:0;">
+            <div style="font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${link}</div>
+            <div class="tt-muted">${user}</div>
+          </div>
+          <div style="font-weight:900; font-variant-numeric: tabular-nums;">${t}</div>
+        </div>`;
+      }
+
+      html += `</div></div>`;
+    }
+
+    root.innerHTML = html;
+  }
+
+  async function refresh() {
+    try {
+      const data = await fetchLive();
+      if (data) render(data);
+    } catch (_) {}
+  }
+
+  window.TTLive = window.TTLive || {};
+  window.TTLive.refresh = refresh;
+
+  refresh();
+  const timer = setInterval(refresh, 5000);
+
+  // Se o modal fechar e esse DOM sumir, evita timer zumbi
+  const obs = new MutationObserver(() => {
+    if (!document.getElementById("tt-live-list")) {
+      clearInterval(timer);
+      obs.disconnect();
+    }
+  });
+  obs.observe(document.body, { childList: true, subtree: true });
+})();
+</script>

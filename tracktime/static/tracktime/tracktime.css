@@ -102,3 +102,59 @@
   opacity: 1;
   color: red;
 }
+
+/* tracktime/static/tracktime/tracktime.css */
+
+/* Painel do card */
+.tt-btn {
+  appearance: none;
+  border: 1px solid rgba(255,255,255,.25);
+  background: rgba(255,255,255,.08);
+  padding: .55rem .95rem;
+  border-radius: .65rem;
+  font-weight: 800;
+  cursor: pointer;
+  line-height: 1;
+}
+.tt-btn:hover { background: rgba(255,255,255,.12); }
+.tt-btn-primary { border-color: rgba(80,180,255,.55); background: rgba(80,180,255,.18); }
+.tt-btn-danger { border-color: rgba(255,90,90,.55); background: rgba(255,90,90,.18); }
+
+.tt-input, .tt-select {
+  width: 100%;
+  padding: .55rem .65rem;
+  border-radius: .65rem;
+  border: 1px solid rgba(255,255,255,.18);
+  background: rgba(255,255,255,.06);
+}
+
+.tt-muted { opacity: .75; font-size: .9em; }
+
+.tt-box-warn {
+  border: 1px solid rgba(255,200,0,.35);
+  background: rgba(255,200,0,.08);
+  padding: 12px;
+  border-radius: 12px;
+}
+
+/* Badge no card (board realtime) */
+.tt-board-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(80,180,255,.45);
+  background: rgba(80,180,255,.18);
+  color: inherit;
+  white-space: nowrap;
+}
+
+.tt-board-badge-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(80,180,255,.95);
+}

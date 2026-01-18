@@ -307,9 +307,15 @@
           </li>
 
 <li>
-  <a href="{% url 'tracktime:portal' %}">
-    ⏱ Track-time
-  </a>
+  <a
+  href="#"
+  hx-get="/track-time/modal/"
+  hx-target="#cm-modal-root"
+  hx-swap="innerHTML"
+  onclick="return false;"
+>
+  🕒 Track-time
+</a>
 </li>
 
 

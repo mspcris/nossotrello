@@ -1,83 +1,87 @@
+{# tracktime/templates/tracktime/portal.html #}
 {% extends "base.html" %}
 {% load static %}
 
+{% block title %}Track-time{% endblock %}
+
 {% block content %}
-<div class="tt-container">
+<div class="max-w-[1200px] mx-auto px-4 py-6">
 
-  <h2>⏱ Track-time</h2>
-
-  <!-- PROJETOS -->
-  <div class="tt-section">
-    <div class="tt-title">Projetos</div>
-
-    <form method="post" class="tt-input-row">
-      {% csrf_token %}
-      <input
-        name="project_name"
-        list="project-suggestions"
-        placeholder="Nome do projeto"
-        autocomplete="off"
-      >
-      <button type="submit">Adicionar</button>
-    </form>
-
-    <datalist id="project-suggestions">
-      {% for p in projects %}
-        <option value="{{ p.name }}">
-      {% endfor %}
-    </datalist>
-
-    <div class="tt-chip-list">
-      {% for p in projects %}
-        <div class="tt-chip {% if not p.is_active %}inactive{% endif %}">
-          {{ p.name }}
-          <form
-            method="post"
-            action="{% url 'tracktime:toggle_project' p.id %}"
-          >
-            {% csrf_token %}
-            <button title="Desativar">×</button>
-          </form>
-        </div>
-      {% endfor %}
+  <div class="cm-card p-5">
+    <div class="flex items-center justify-between gap-3">
+      <div>
+        <h1 class="text-2xl font-extrabold">Track-time</h1>
+        <div class="tt-muted">MVP — cadastros e visibilidade.</div>
+      </div>
     </div>
   </div>
 
-  <!-- ATIVIDADES -->
-  <div class="tt-section">
-    <div class="tt-title">Atividades</div>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
 
-    <form method="post" class="tt-input-row">
-      {% csrf_token %}
-      <input
-        name="activity_name"
-        list="activity-suggestions"
-        placeholder="Nome da atividade"
-        autocomplete="off"
-      >
-      <button type="submit">Adicionar</button>
-    </form>
+    <div class="cm-card p-5">
+      <div class="flex items-center justify-between mb-3">
+        <strong>Projetos</strong>
+      </div>
 
-    <datalist id="activity-suggestions">
-      {% for a in activities %}
-        <option value="{{ a.name }}">
-      {% endfor %}
-    </datalist>
+      <form method="post" class="flex gap-2 mb-4">
+        {% csrf_token %}
+        <input class="tt-input" name="project_name" placeholder="Nome do projeto" required>
+        <button class="tt-btn tt-btn-primary" type="submit">Adicionar</button>
+      </form>
 
-    <div class="tt-chip-list">
-      {% for a in activities %}
-        <div class="tt-chip {% if not a.is_active %}inactive{% endif %}">
-          {{ a.name }}
-          <form
-            method="post"
-            action="{% url 'tracktime:toggle_activity' a.id %}"
-          >
-            {% csrf_token %}
-            <button title="Desativar">×</button>
-          </form>
-        </div>
-      {% endfor %}
+      <div class="space-y-2">
+        {% for p in projects %}
+          <div class="flex items-center justify-between gap-2">
+            <div class="text-sm font-semibold">
+              {{ p.name }}
+              {% if not p.is_active %}<span class="tt-muted">(inativo)</span>{% endif %}
+            </div>
+
+            <form method="post" action="{% url 'tracktime:toggle_project' p.id %}">
+              {% csrf_token %}
+              <button class="tt-btn" type="submit">
+                {% if p.is_active %}Desativar{% else %}Ativar{% endif %}
+              </button>
+            </form>
+          </div>
+        {% empty %}
+          <div class="tt-muted">Nenhum projeto ainda.</div>
+        {% endfor %}
+      </div>
     </div>
+
+    <div class="cm-card p-5">
+      <div class="flex items-center justify-between mb-3">
+        <strong>Atividades</strong>
+      </div>
+
+      <form method="post" class="flex gap-2 mb-4">
+        {% csrf_token %}
+        <input class="tt-input" name="activity_name" placeholder="Nome da atividade" required>
+        <button class="tt-btn tt-btn-primary" type="submit">Adicionar</button>
+      </form>
+
+      <div class="space-y-2">
+        {% for a in activities %}
+          <div class="flex items-center justify-between gap-2">
+            <div class="text-sm font-semibold">
+              {{ a.name }}
+              {% if not a.is_active %}<span class="tt-muted">(inativo)</span>{% endif %}
+            </div>
+
+            <form method="post" action="{% url 'tracktime:toggle_activity' a.id %}">
+              {% csrf_token %}
+              <button class="tt-btn" type="submit">
+                {% if a.is_active %}Desativar{% else %}Ativar{% endif %}
+              </button>
+            </form>
+          </div>
+        {% empty %}
+          <div class="tt-muted">Nenhuma atividade ainda.</div>
+        {% endfor %}
+      </div>
+    </div>
+
   </div>
 
 </div>

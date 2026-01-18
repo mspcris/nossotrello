@@ -1,6 +1,9 @@
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
+import hashlib
+import secrets
+
 
 
 User = settings.AUTH_USER_MODEL
@@ -96,6 +99,16 @@ class TimeEntry(models.Model):
     # Para timer
     started_at = models.DateTimeField(null=True, blank=True)
     ended_at = models.DateTimeField(null=True, blank=True)
+
+    # ===== Ciclo de confirmação (timer longo) =====
+    confirm_due_at = models.DateTimeField(null=True, blank=True)
+    auto_stop_at = models.DateTimeField(null=True, blank=True)
+
+    confirmation_sent_at = models.DateTimeField(null=True, blank=True)
+    confirmation_token_hash = models.CharField(max_length=128, blank=True, default="")
+
+    last_confirmed_at = models.DateTimeField(null=True, blank=True)
+    confirm_cycle = models.PositiveIntegerField(default=0)
 
     # ===== Referência ao card (cache) =====
     board_id = models.PositiveIntegerField(null=True, blank=True)
@@ -217,4 +230,80 @@ class TimeEntry(models.Model):
             card_id=card_id,
             card_title_cache=card_title_cache or "",
             card_url_cache=card_url_cache or "",
+        )
+
+
+    # =========================================================
+    # Confirmação / extensões do timer
+    # =========================================================
+
+    def set_confirmation_window(self, *, now=None):
+        """
+        Define a janela:
+        - pedir confirmação em 1h
+        - auto-stop em 1h15m
+        """
+        now = now or timezone.now()
+        self.confirm_due_at = now + timezone.timedelta(hours=1)
+        self.auto_stop_at = now + timezone.timedelta(hours=1, minutes=15)
+
+    def needs_confirmation(self, *, now=None) -> bool:
+        now = now or timezone.now()
+        return (
+            self.is_running
+            and self.confirm_due_at is not None
+            and now >= self.confirm_due_at
+            and (self.auto_stop_at is None or now < self.auto_stop_at)
+        )
+
+    def is_past_auto_stop(self, *, now=None) -> bool:
+        now = now or timezone.now()
+        return self.is_running and self.auto_stop_at is not None and now >= self.auto_stop_at
+
+    def _hash_token(self, raw: str) -> str:
+        return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+    def generate_confirmation_token(self) -> str:
+        """
+        Gera token de uso único (armazenando apenas hash).
+        """
+        raw = secrets.token_urlsafe(32)
+        self.confirmation_token_hash = self._hash_token(raw)
+        return raw
+
+    def check_confirmation_token(self, raw: str) -> bool:
+        if not raw or not self.confirmation_token_hash:
+            return False
+        return self._hash_token(raw) == self.confirmation_token_hash
+
+    def extend_one_hour(self, *, now=None):
+        """
+        Confirma + estende por mais 1h, rearmando o ciclo.
+        """
+        now = now or timezone.now()
+
+        # Se não está rodando, não faz nada
+        if not self.is_running:
+            return
+
+        self.confirm_cycle = (self.confirm_cycle or 0) + 1
+        self.last_confirmed_at = now
+
+        # Rearma janela a partir de agora (não do started_at)
+        self.confirm_due_at = now + timezone.timedelta(hours=1)
+        self.auto_stop_at = now + timezone.timedelta(hours=1, minutes=15)
+
+        # Permite novo e-mail no próximo ciclo
+        self.confirmation_sent_at = None
+        self.confirmation_token_hash = ""
+
+        self.save(
+            update_fields=[
+                "confirm_cycle",
+                "last_confirmed_at",
+                "confirm_due_at",
+                "auto_stop_at",
+                "confirmation_sent_at",
+                "confirmation_token_hash",
+            ]
         )
