@@ -1691,3 +1691,24 @@ html.dark #modal #modal-breadcrumb{
 #cm-root .cm-btn {
   border-radius: 12px;
 }
+
+
+/* ============================================================
+   ANEXOS – ampliar área de drag & drop (split modal)
+   ============================================================ */
+#cm-root [data-cm-panel="files"] .cm-input {
+  min-height: 96px;          /* ~2x o padrão */
+  display: flex;
+  align-items: center;
+}
+
+/* input[type=file] precisa parecer uma área dropável */
+#cm-root [data-cm-panel="files"] input[type="file"].cm-input {
+  padding: 24px;
+  cursor: pointer;
+}
+
+/* Descrição acompanha a altura para manter harmonia visual */
+#cm-root [data-cm-panel="files"] #attachment-desc {
+  resize: vertical;          /* opcional, UX friendly */
+}

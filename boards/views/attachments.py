@@ -5,6 +5,7 @@ from django.views.decorators.http import require_POST
 from django.utils.html import escape
 from django.contrib.auth.decorators import login_required
 from django.template.loader import render_to_string
+from django.utils.html import strip_tags
 
 from ..permissions import can_edit_board
 from ..models import Card, CardAttachment
@@ -29,7 +30,7 @@ def delete_attachment(request, card_id, attachment_id):
 
     file_name = (attachment.file.name or "")
     pretty_name = file_name.split("/")[-1] if file_name else "arquivo"
-    desc = (attachment.description or "").strip()
+    desc = strip_tags((attachment.description or "")).strip()
 
     should_delete_file = file_name.startswith("attachments/")
 
@@ -137,6 +138,7 @@ def add_attachment(request, card_id):
         f'<div id="attachments-list" hx-swap-oob="innerHTML">{full_list_inner}</div>'
     )
 
-    return HttpResponse(attachment_html + oob_refresh, content_type="text/html")
+    return HttpResponse(oob_refresh, content_type="text/html")
+
 
 # END boards/views/attachments.py

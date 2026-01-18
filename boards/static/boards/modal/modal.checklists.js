@@ -73,22 +73,39 @@
     state.lastChecklistIdForQuickAdd = null;
   }
 
-  function initChecklistCreateFormReset() {
-    // Form de "Novo checklist" fica no painel check.
-    // A lista atualiza (#checklist-list), então limpamos o input manualmente após request.
+    function initChecklistCreateEnterSubmit() {
     const form = document.getElementById("cm-checklist-create-form");
     const input = document.getElementById("cm-checklist-create-input");
     if (!form || !input) return;
-    if (form.dataset.binded === "1") return;
-    form.dataset.binded = "1";
 
-    form.addEventListener("submit", () => {
-      // limpa otimista (se falhar, o usuário digita de novo)
-      setTimeout(() => {
-        input.value = "";
-      }, 0);
+    if (input.dataset.enterBound === "1") return;
+    input.dataset.enterBound = "1";
+
+    input.addEventListener("keydown", (e) => {
+      // Enter simples = adicionar checklist
+      if (e.key !== "Enter") return;
+      if (e.isComposing) return; // IME
+      if (e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      const title = (input.value || "").trim();
+      if (!title) return;
+
+      // requestSubmit preserva HTMX (hx-post) e inclui o input via atributo form=""
+      if (typeof form.requestSubmit === "function") {
+        form.requestSubmit();
+        return;
+      }
+
+      // fallback (raro)
+      if (window.htmx) {
+        window.htmx.trigger(form, "submit");
+      }
     });
   }
+
 
   // ============================================================
   // HELPERS (CSRF + POST JSON)
@@ -223,14 +240,32 @@
     });
   }
 
+
+
+  
+  function initChecklistCreateFormReset() {
+  const form = document.getElementById("cm-checklist-create-form");
+  if (!form) return;
+
+  if (form.dataset.resetBound === "1") return;
+  form.dataset.resetBound = "1";
+
+  form.addEventListener("htmx:afterRequest", () => {
+    const input = form.querySelector("input, textarea");
+    if (input) input.value = "";
+  });
+}
+
   // ============================================================
   // PUBLIC INIT
   // ============================================================
   Modal.checklists.init = function () {
     initChecklistUX(document);
     initChecklistCreateFormReset();
+    initChecklistCreateEnterSubmit();
     initChecklistDnD();
   };
+
 
   // Rebind em swaps HTMX (checklist-list e modal-body)
   document.body.addEventListener("htmx:afterSwap", (evt) => {
@@ -244,6 +279,7 @@
     ) {
       initChecklistUX(t);
       initChecklistCreateFormReset();
+      initChecklistCreateEnterSubmit();
       initChecklistDnD();
       reopenQuickAddIfNeeded();
     }
