@@ -595,3 +595,90 @@ def me_running_json(request):
         "card_id": int(e.card_id),
         "ts": timezone.now().isoformat(),
     })
+
+
+@login_required
+def card_tracktime_panel_running_slot(request, card_id):
+    card = get_object_or_404(Card, id=card_id)
+
+    running = (
+        TimeEntry.objects
+        .filter(card_id=card.id, user=request.user, ended_at__isnull=True)
+        .first()
+    )
+
+    now = timezone.now()
+    elapsed_seconds = 0
+    confirm_needed = False
+    confirm_due_in = None
+    auto_stop_in = None
+
+    if running and running.started_at:
+        elapsed_seconds = int((now - running.started_at).total_seconds())
+        confirm_needed = running.needs_confirmation(now=now)
+
+        if running.confirm_due_at:
+            confirm_due_in = int((running.confirm_due_at - now).total_seconds())
+        if running.auto_stop_at:
+            auto_stop_in = int((running.auto_stop_at - now).total_seconds())
+
+    return render(
+        request,
+        "tracktime/partials/card_tracktime_running_slot.html",
+        {
+            "card": card,
+            "running": running,
+            "elapsed_seconds": elapsed_seconds,
+            "elapsed_mmss": _format_mmss(elapsed_seconds),
+            "confirm_needed": confirm_needed,
+            "confirm_due_in": confirm_due_in,
+            "auto_stop_in": auto_stop_in,
+            "auto_stop_mmss": _format_mmss(auto_stop_in) if auto_stop_in is not None else None,
+        },
+    )
+
+from django.utils import timezone
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
+from django.contrib.auth.decorators import login_required
+
+@login_required
+def card_elapsed_json(request, card_id: int):
+    """
+    Retorna o timer rodando do usuário.
+    Se estiver rodando em OUTRO card, informa isso (pra não ficar '—' infinito).
+    """
+    now = timezone.now()
+
+    running = (
+        TimeEntry.objects
+        .filter(user=request.user, ended_at__isnull=True, started_at__isnull=False)
+        .order_by("-started_at")
+        .first()
+    )
+
+    if not running:
+        return JsonResponse({"running": False, "reason": "no_running"})
+
+    # se está rodando mas em outro card, avisa
+    running_card_id = int(running.card_id or 0)
+    if running_card_id != int(card_id):
+        return JsonResponse({
+            "running": True,
+            "in_this_card": False,
+            "running_card_id": running_card_id,
+            "reason": "running_other_card",
+        })
+
+    elapsed_seconds = int((now - running.started_at).total_seconds())
+    started_local = timezone.localtime(running.started_at)
+    started_hhmm = started_local.strftime("%H:%M")
+
+    return JsonResponse({
+        "running": True,
+        "in_this_card": True,
+        "started_hhmm": started_hhmm,
+        "elapsed_mmss": _format_mmss(elapsed_seconds),
+        "elapsed_seconds": elapsed_seconds,
+        "ts": now.isoformat(),
+    })

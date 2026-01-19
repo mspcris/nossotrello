@@ -1,0 +1,64 @@
+{# tracktime/templates/tracktime/partials/card_tracktime_running_slot.html #}
+
+{% if running %}
+  <div class="tt-row" style="justify-content: space-between;">
+    <div>
+      <div><strong>Rodando</strong></div>
+      {# ⚠️ remove “Tempo: {{ elapsed_mmss }}” fixo #}
+      <div class="cm-muted">Acompanhe o tempo no centro.</div>
+    </div>
+
+    <form
+      method="post"
+      hx-post="{% url 'tracktime:card_stop' card.id %}"
+      hx-target="#cm-tracktime-panel"
+      hx-swap="innerHTML"
+    >
+      {% csrf_token %}
+      <button type="submit" class="tt-btn tt-btn-danger">Stop</button>
+    </form>
+  </div>
+
+  {# ✅ Spinner central + texto dentro (atualiza via JSON, sem swap de DOM) #}
+  <div class="tt-elapsed-center">
+    <div
+      id="tt-elapsed-box"
+      class="tt-loader-wrap"
+      data-url="{% url 'tracktime:card_elapsed_json' card.id %}"
+      aria-live="polite"
+    >
+      <div class="tt-loader"></div>
+
+      <div class="tt-loader-text">
+        <div class="tt-muted" style="font-size:12px;">Atualizando…</div>
+        <div id="tt-elapsed-line" style="margin-top:8px; font-weight:900; font-size:12px; line-height:1.25;">
+          —
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if confirm_needed %}
+    <div class="tt-box-warn">
+      <div style="font-weight: 900; margin-bottom: 6px;">Você ainda está nessa tarefa?</div>
+      <div class="cm-muted" style="margin-bottom: 10px;">
+        Se você não confirmar, vamos parar automaticamente em <strong>{{ auto_stop_mmss }}</strong>.
+      </div>
+
+      <form
+        method="post"
+        hx-post="{% url 'tracktime:card_confirm_extend' card.id %}"
+        hx-target="#cm-tracktime-panel"
+        hx-swap="innerHTML"
+      >
+        {% csrf_token %}
+        <button
+          type="submit"
+          style="width:100%;padding:14px 16px;border-radius:14px;border:1px solid rgba(80,180,255,.55);background:rgba(80,180,255,.22);font-weight:900;font-size:18px;"
+        >
+          Ainda estou na tarefa (+1h)
+        </button>
+      </form>
+    </div>
+  {% endif %}
+{% endif %}

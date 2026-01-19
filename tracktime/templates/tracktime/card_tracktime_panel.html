@@ -32,69 +32,58 @@
     padding: 12px;
     border-radius: 12px;
   }
+
+  /* ===== Spinner central (no espaço do modal) ===== */
+  .tt-elapsed-center {
+    display:flex;
+    justify-content:center;
+    padding: 14px 0 6px;
+  }
+  .tt-loader-wrap {
+    position: relative;
+    width: 180px;
+    height: 180px;
+  }
+  .tt-loader {
+    position:absolute;
+    inset:0;
+    border: 8px solid rgba(255,255,255,.12);
+    border-top: 8px solid rgba(80,180,255,.65);
+    border-radius: 50%;
+    animation: ttspin 1s linear infinite;
+  }
+  .tt-loader-text {
+    position:absolute;
+    inset:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding: 18px;
+  }
+  @keyframes ttspin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
 </style>
 
-<div
-  class="cm-card space-y-3"
-  {% if running %}
-    hx-get="{% url 'tracktime:card_panel' card.id %}"
-    hx-trigger="every 5s"
-    hx-target="#cm-tracktime-panel"
-    hx-swap="innerHTML"
-  {% endif %}
->
+<div class="cm-card space-y-3">
+
   <div class="tt-row" style="justify-content: space-between;">
     <strong>Track-time</strong>
-    {% if running %}
-      <span class="tt-muted">Rodando</span>
-    {% else %}
-      <span class="tt-muted">Parado</span>
-    {% endif %}
+    <span id="tt-running-badge" class="tt-muted">
+      {% if running %}Rodando{% else %}Parado{% endif %}
+    </span>
   </div>
 
-  {% if running %}
-    <div class="tt-row" style="justify-content: space-between;">
-      <div>
-        <div><strong>Rodando</strong></div>
-        <div class="cm-muted">Tempo: {{ elapsed_mmss }}</div>
-      </div>
+  {# ====== SLOT (SEM hx-get / SEM polling de DOM) ====== #}
+  <div id="tt-running-slot">
+    {% include "tracktime/partials/card_tracktime_running_slot.html" %}
+  </div>
 
-      <form
-        method="post"
-        hx-post="{% url 'tracktime:card_stop' card.id %}"
-        hx-target="#cm-tracktime-panel"
-        hx-swap="innerHTML"
-      >
-        {% csrf_token %}
-        <button type="submit" class="tt-btn tt-btn-danger">Stop</button>
-      </form>
-    </div>
-
-    {% if confirm_needed %}
-      <div class="tt-box-warn">
-        <div style="font-weight: 900; margin-bottom: 6px;">Você ainda está nessa tarefa?</div>
-        <div class="cm-muted" style="margin-bottom: 10px;">
-          Se você não confirmar, vamos parar automaticamente em <strong>{{ auto_stop_mmss }}</strong>.
-        </div>
-
-        <form
-          method="post"
-          hx-post="{% url 'tracktime:card_confirm_extend' card.id %}"
-          hx-target="#cm-tracktime-panel"
-          hx-swap="innerHTML"
-        >
-          {% csrf_token %}
-          <button
-            type="submit"
-            style="width:100%;padding:14px 16px;border-radius:14px;border:1px solid rgba(80,180,255,.55);background:rgba(80,180,255,.22);font-weight:900;font-size:18px;"
-          >
-            Ainda estou na tarefa (+1h)
-          </button>
-        </form>
-      </div>
-    {% endif %}
-
-  {% else %}
+  {# ====== FORMULÁRIOS (só quando NÃO está rodando) ====== #}
+  {% if not running %}
     <form
       method="post"
       hx-post="{% url 'tracktime:card_start' card.id %}"
@@ -105,7 +94,7 @@
       {% csrf_token %}
 
       <div>
-        <select name="project" required class="tt-select">
+        <select id="tt-project" name="project" required class="tt-select">
           {% for p in projects %}
             <option value="{{ p.id }}">{{ p.name }}</option>
           {% endfor %}
@@ -113,7 +102,7 @@
       </div>
 
       <div>
-        <select name="activity_type" required class="tt-select">
+        <select id="tt-activity" name="activity_type" required class="tt-select">
           {% for a in activities %}
             <option value="{{ a.id }}">{{ a.name }}</option>
           {% endfor %}
@@ -172,18 +161,146 @@
   const panel = document.getElementById("cm-tracktime-panel");
   if (!panel) return;
 
-  function syncHidden() {
-    const project = panel.querySelector('select[name="project"]')?.value;
-    const activity = panel.querySelector('select[name="activity_type"]')?.value;
+  // =========================
+  // 1) Hidden sync (só 1x por painel)
+  // =========================
+  if (panel.dataset.ttSyncBound !== "1") {
+    panel.dataset.ttSyncBound = "1";
 
-    const mp = panel.querySelector('input[name="project"][type="hidden"]');
-    const ma = panel.querySelector('input[name="activity_type"][type="hidden"]');
+    function syncHidden() {
+      const project = panel.querySelector('#tt-project')?.value;
+      const activity = panel.querySelector('#tt-activity')?.value;
 
-    if (mp) mp.value = project || "";
-    if (ma) ma.value = activity || "";
+      const mp = panel.querySelector('input[name="project"][type="hidden"]');
+      const ma = panel.querySelector('input[name="activity_type"][type="hidden"]');
+
+      if (mp) mp.value = project || "";
+      if (ma) ma.value = activity || "";
+    }
+
+    panel.addEventListener("change", syncHidden);
+    syncHidden();
   }
 
-  panel.addEventListener("change", syncHidden);
-  syncHidden();
+  // =========================
+  // 2) Elapsed updater (pode reiniciar após HTMX swap)
+  // =========================
+  function hhmmToHhMm(hhmm) {
+    const s = String(hhmm || "");
+    const m = s.match(/^(\d{2}):(\d{2})$/);
+    if (!m) return s;
+    return `${m[1]}h${m[2]}m`;
+  }
+
+  // guarda o timer no próprio painel (pra matar/recriar)
+  function stopTimer() {
+    const id = panel.dataset.ttElapsedTimerId;
+    if (id) {
+      clearInterval(Number(id));
+      delete panel.dataset.ttElapsedTimerId;
+    }
+  }
+
+  async function refreshElapsed(url, line) {
+    try {
+      const res = await fetch(url, {
+        method: "GET",
+        credentials: "same-origin",
+        headers: { "Accept": "application/json", "X-Requested-With": "XMLHttpRequest" },
+        cache: "no-store",
+      });
+
+      if (!res.ok) {
+        line.textContent = `Falha HTTP (${res.status})`;
+        return;
+      }
+
+      // proteção contra HTML (redirect/login) retornando 200
+      const ct = (res.headers.get("content-type") || "").toLowerCase();
+      if (!ct.includes("application/json")) {
+        line.textContent = "Resposta não é JSON (ver login/redirect).";
+        return;
+      }
+
+      const data = await res.json();
+
+      if (!data) {
+        line.textContent = "Falha ao ler JSON.";
+        return;
+      }
+
+      if (!data.running) {
+        line.textContent = "Aguardando iniciar…";
+        return;
+      }
+
+      if (data.running && data.in_this_card === false) {
+        line.textContent = `Timer rodando em outro card (#${data.running_card_id}).`;
+        return;
+      }
+
+      const started = hhmmToHhMm(data.started_hhmm);
+      const mmss = String(data.elapsed_mmss || "");
+      line.textContent = `${started} • ${mmss}`;
+    } catch (_) {
+      line.textContent = "Erro no fetch.";
+    }
+  }
+
+  function initElapsedBox() {
+    const wrap = panel.querySelector("#tt-elapsed-box");
+    const line = panel.querySelector("#tt-elapsed-line");
+
+    // não tem spinner neste estado (ex: not running)
+    if (!wrap || !line) {
+      stopTimer();
+      return;
+    }
+
+    // evita duplicar init no mesmo elemento após swaps
+    if (wrap.dataset.ttBound === "1") return;
+    wrap.dataset.ttBound = "1";
+
+    const url = wrap.dataset.url;
+    if (!url) {
+      line.textContent = "Sem URL do JSON.";
+      return;
+    }
+
+    // sempre reinicia o timer ao montar o box (evita timer zumbi)
+    stopTimer();
+
+    // primeira leitura imediata
+    refreshElapsed(url, line);
+
+    // intervalo (não mexe no DOM do modal, só no texto)
+    const t = setInterval(() => refreshElapsed(url, line), 5000);
+    panel.dataset.ttElapsedTimerId = String(t);
+
+    // mata timer se o painel sair do DOM
+    const obs = new MutationObserver(() => {
+      if (!document.body.contains(panel)) {
+        stopTimer();
+        obs.disconnect();
+      }
+    });
+    obs.observe(document.body, { childList: true, subtree: true });
+  }
+
+  // init inicial
+  initElapsedBox();
+
+  // re-init após HTMX swap (start/stop remonta o painel)
+  document.body.addEventListener("htmx:afterSwap", function (ev) {
+    if (ev.target && (ev.target.id === "cm-tracktime-panel" || ev.target.closest?.("#cm-tracktime-panel"))) {
+      initElapsedBox();
+    }
+  });
+
+  document.body.addEventListener("htmx:afterSettle", function (ev) {
+    if (ev.target && (ev.target.id === "cm-tracktime-panel" || ev.target.closest?.("#cm-tracktime-panel"))) {
+      initElapsedBox();
+    }
+  });
 })();
 </script>
