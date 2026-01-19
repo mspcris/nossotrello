@@ -705,195 +705,318 @@ if (!window.__colorPopoverOutsideInstalled) {
 
 // Fim alterar nome da coluna
 
-// ============================================================
-// ADD CARD UX: boing + autofocus + click-outside cancel
-// ============================================================
-(function () {
-  function qs(sel, root = document) { return root.querySelector(sel); }
 
-  function closeAllAddCardForms(exceptForm = null) {
-    document.querySelectorAll("[id^='form-top-col-'], [id^='form-col-']").forEach((wrap) => {
-      // se tiver um form e não for o except, limpa
-      const form = wrap.querySelector("form[data-add-card-form]");
-      if (!form) return;
-      if (exceptForm && form === exceptForm) return;
-      wrap.innerHTML = "";
-    });
-  }
 
-  function focusAddCardInput(scope) {
-    const root = scope || document;
-    const input = root.querySelector("form[data-add-card-form] input[name='title']");
-    if (input) {
-      input.focus();
-      input.select?.();
-    }
-  }
 
-  function boing(wrapper, where) {
-    if (!wrapper) return;
-    wrapper.classList.remove("boing-down", "boing-up");
-    wrapper.classList.add(where === "top" ? "boing-down" : "boing-up");
-    // reinicia animação
-    void wrapper.offsetWidth;
-    wrapper.classList.add("boing-run");
-    setTimeout(() => wrapper.classList.remove("boing-run"), 220);
-  }
 
-  // 1) Quando HTMX inserir o form, fecha os outros + foca + boing
-  document.body.addEventListener("htmx:afterSwap", (evt) => {
-    const target = evt.target;
-    if (!target) return;
 
-    // top wrapper ou bottom wrapper
-    const isAddCardWrap =
-      (target.id && (target.id.startsWith("form-top-col-") || target.id.startsWith("form-col-")));
 
-    if (!isAddCardWrap) return;
-
-    const form = target.querySelector("form[data-add-card-form]");
-    if (!form) return;
-
-    const where = form.getAttribute("data-where") || "bottom";
-
-    closeAllAddCardForms(form);   // só deixa 1 aberto
-    boing(target, where);
-    focusAddCardInput(target);
-  });
-
-  // 2) Após submit bem-sucedido: fecha o form
-  document.body.addEventListener("htmx:afterRequest", (evt) => {
-    const elt = evt.detail?.elt;
-    if (!elt) return;
-
-    const form = elt.closest?.("form[data-add-card-form]");
-    if (!form) return;
-
-    if (evt.detail?.successful) {
-      const wrap =
-        form.closest("[id^='form-top-col-']") ||
-        form.closest("[id^='form-col-']");
-      if (wrap) wrap.innerHTML = "";
-    }
-  });
-
-  // 3) Click outside cancela
-  document.addEventListener("click", (e) => {
-    const clickedForm = e.target.closest?.("form[data-add-card-form]");
-    const clickedAddBtn = e.target.closest?.("button[hx-get*='add_card']");
-
-    if (clickedForm || clickedAddBtn) return;
-
-    closeAllAddCardForms(null);
-  }, true);
-})();
 
 // =========================
-// ADD CARD UX (top/bottom)
+// ADD CARD UX (top/bottom) — ENTER + SCROLL + CLOSE FORM (SOURCE OF TRUTH)
 // =========================
 (function () {
-  function qs(sel, root = document) { return root.querySelector(sel); }
+  if (window.__cmAddCardUXInstalled) return;
+  window.__cmAddCardUXInstalled = true;
+
   function qsa(sel, root = document) { return Array.from(root.querySelectorAll(sel)); }
 
-  function closeFormsInColumn(columnId) {
-    const top = document.getElementById(`form-top-col-${columnId}`);
-    const bottom = document.getElementById(`form-col-${columnId}`);
+  function isAddCardForm(el) {
+    return !!(el && el.matches && el.matches("form[data-add-card-form]"));
+  }
+
+  function getWhereFromForm(formEl) {
+    return String(formEl?.getAttribute("data-where") || "bottom").toLowerCase();
+  }
+
+  function getColIdFromForm(formEl) {
+    const v = formEl?.getAttribute("data-column-id");
+    return v ? String(v) : "";
+  }
+
+  function getColumnElById(colId) {
+    if (!colId) return null;
+    return document.querySelector(`.column-item[data-column-id="${colId}"], [data-column-id="${colId}"]`);
+  }
+
+  function closeFormsInColumn(colId) {
+    if (!colId) return;
+    const top = document.getElementById(`form-top-col-${colId}`);
+    const bottom = document.getElementById(`form-col-${colId}`);
     if (top) top.innerHTML = "";
     if (bottom) bottom.innerHTML = "";
   }
 
-  function focusTitleInput(scopeEl) {
-    const inp = scopeEl ? qs("input[name='title']", scopeEl) : null;
+  function closeOppositeContainer(colId, where) {
+    if (!colId) return;
+    if (where === "top") {
+      const bottom = document.getElementById(`form-col-${colId}`);
+      if (bottom) bottom.innerHTML = "";
+    } else {
+      const top = document.getElementById(`form-top-col-${colId}`);
+      if (top) top.innerHTML = "";
+    }
+  }
+
+  function findCardsScrollerByColId(colId) {
+    const col = getColumnElById(colId);
+    if (!col) return null;
+    return (
+      col.querySelector("#cards-col-" + colId) ||
+      col.querySelector("[id^='cards-col-']") ||
+      col.querySelector("[data-card-list]") ||
+      col.querySelector("ul") ||
+      col.querySelector("ol") ||
+      null
+    );
+  }
+
+  function boing(colEl, where) {
+    if (!colEl) return;
+    colEl.classList.remove("boing-top", "boing-bottom");
+    if (where === "top") colEl.classList.add("boing-top");
+    else colEl.classList.add("boing-bottom");
+    window.setTimeout(() => colEl.classList.remove("boing-top", "boing-bottom"), 260);
+  }
+
+  function focusTitleInput(formEl) {
+    if (!formEl) return;
+
+    const inp =
+      formEl.querySelector("input[name='title'], textarea[name='title']") ||
+      formEl.querySelector("input[type='text'], input:not([type]), textarea");
+
     if (!inp) return;
-    // micro delay para garantir layout pronto
+
     requestAnimationFrame(() => {
-      inp.focus();
+      try {
+        // evita "puxar" a coluna
+        inp.focus({ preventScroll: true });
+      } catch (_e) {
+        // fallback (browser antigo)
+        inp.focus();
+      }
       inp.select?.();
     });
   }
 
-  function boing(columnEl, where) {
-    if (!columnEl) return;
-    columnEl.classList.remove("boing-top", "boing-bottom");
+  // -------------------------
+  // Scroll lock (vence reset tardio)
+  // -------------------------
+  const scrollLocks = new Map(); // colId -> token
 
-    // dispara animação
-    if (where === "top") columnEl.classList.add("boing-top");
-    else columnEl.classList.add("boing-bottom");
+  function setScroll(colId, where) {
+    const scroller = findCardsScrollerByColId(colId);
+    if (!scroller) return;
 
-    // remove classe depois (permite retrigger)
-    window.setTimeout(() => {
-      columnEl.classList.remove("boing-top", "boing-bottom");
-    }, 260);
+    if (where === "top") scroller.scrollTop = 0;
+    else scroller.scrollTop = scroller.scrollHeight;
   }
 
-  // Quando o HTMX inserir o FORM (GET do +Card)
-  document.body.addEventListener("htmx:afterSwap", function (e) {
-    const target = e.target;
+  function lockScroll(colId, where, ms = 700) {
+    if (!colId) return;
 
-    // form foi inserido em algum container?
-    const form = target?.querySelector?.("[data-add-card-form]") || (target?.matches?.("[data-add-card-form]") ? target : null);
-    if (!form) return;
+    // token pra cancelar locks antigos
+    const token = (scrollLocks.get(colId) || 0) + 1;
+    scrollLocks.set(colId, token);
 
-    const colId = form.getAttribute("data-column-id");
-    const where = (form.getAttribute("data-where") || "bottom").toLowerCase();
+    const start = Date.now();
 
-    // garante 1 form por coluna: fecha ambos e recoloca o atual (já está na DOM, então só fecha o "outro")
-    // aqui a gente fecha o container oposto
-    if (colId) {
-      if (where === "top") {
-        const bottom = document.getElementById(`form-col-${colId}`);
-        if (bottom) bottom.innerHTML = "";
+    function tick() {
+      // cancelado por lock novo
+      if (scrollLocks.get(colId) !== token) return;
+
+      // aplica no frame (garante pós-layout)
+      setScroll(colId, where);
+
+      if (Date.now() - start < ms) {
+        requestAnimationFrame(tick);
       } else {
-        const top = document.getElementById(`form-top-col-${colId}`);
-        if (top) top.innerHTML = "";
+        // fim do lock
+        if (scrollLocks.get(colId) === token) scrollLocks.delete(colId);
       }
     }
 
-    // boing na coluna inteira
-    const columnEl = form.closest("[data-column-id]");
-    boing(columnEl, where);
+    // 2 rAF pra pegar altura final antes de começar o lock
+    requestAnimationFrame(() => requestAnimationFrame(tick));
+  }
 
-    // focus no title
+  // -------------------------
+  // ENTER SUBMIT (bind no FORM)
+  // -------------------------
+  function bindEnterOnForm(formEl) {
+    if (!formEl) return;
+    if (formEl.dataset.enterBound === "1") return;
+    formEl.dataset.enterBound = "1";
+
+    formEl.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      if (e.isComposing) return;
+      if (e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) return;
+
+      const t = e.target;
+      if (!t || !(t.matches?.("input, textarea"))) return;
+
+      const field =
+        formEl.querySelector("input[name='title'], textarea[name='title']") ||
+        formEl.querySelector("input[type='text'], input:not([type]), textarea");
+
+      const title = (field?.value || "").trim();
+      if (!title) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (typeof formEl.requestSubmit === "function") formEl.requestSubmit();
+      else formEl.submit();
+    }, true);
+  }
+
+  // fallback global (só 1x)
+  if (!window.__cmAddCardEnterGlobalInstalled) {
+    window.__cmAddCardEnterGlobalInstalled = true;
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      if (e.isComposing) return;
+      if (e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) return;
+
+      const el = e.target;
+      if (!el || !(el.matches?.("input, textarea"))) return;
+
+      const form = el.closest?.("form[data-add-card-form]");
+      if (!form) return;
+
+      const title = (el.value || "").trim();
+      if (!title) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (typeof form.requestSubmit === "function") form.requestSubmit();
+      else form.submit();
+    }, true);
+  }
+
+  // -------------------------
+  // intenção (não depende do form existir depois)
+  // -------------------------
+  const pending = { byCol: new Map() };
+
+  function rememberIntent(colId, where) {
+    if (!colId) return;
+    pending.byCol.set(colId, { where: (where || "bottom"), stamp: Date.now() });
+  }
+
+  function touchedBoardFromTarget(target) {
+    return (
+      !!target?.closest?.("#columns-list") ||
+      target?.id === "columns-list" ||
+      !!target?.closest?.(".column-item[data-column-id]") ||
+      !!target?.matches?.("[id^='cards-col-'], .column-item[data-column-id]")
+    );
+  }
+
+  // -------------------------
+  // HTMX: form inserido (GET do +Card)
+  // -------------------------
+  document.body.addEventListener("htmx:afterSwap", (e) => {
+    const target = e.detail?.target || e.target || null;
+
+    const form =
+      target?.querySelector?.("form[data-add-card-form]") ||
+      (target?.matches?.("form[data-add-card-form]") ? target : null);
+
+    if (!form) return;
+
+    const colId = getColIdFromForm(form);
+    const where = getWhereFromForm(form);
+
+    closeOppositeContainer(colId, where);
+
+    const colEl = getColumnElById(colId) || form.closest("[data-column-id]");
+    boing(colEl, where);
+
+    bindEnterOnForm(form);
+
+    // ordem correta: scroll primeiro, foco depois (evita o "puxa e volta")
+    lockScroll(colId, where, 500);
     focusTitleInput(form);
   });
 
-  // Quando o HTMX adicionar o CARD (POST do form)
-  document.body.addEventListener("htmx:afterRequest", function (e) {
+  // -------------------------
+  // HTMX: antes do POST
+  // -------------------------
+  document.body.addEventListener("htmx:beforeRequest", (e) => {
     const elt = e.detail?.elt;
-    if (!elt || elt.tagName !== "FORM") return;
-    if (!elt.matches("[data-add-card-form]")) return;
+    if (!isAddCardForm(elt)) return;
 
-    // depois de criar, o seu column_item já limpa o container via hx-on
-    // aqui só garantimos um "boing" final e foco removido
-    const where = (elt.getAttribute("data-where") || "bottom").toLowerCase();
-    const columnEl = elt.closest("[data-column-id]");
-    boing(columnEl, where);
+    const colId = getColIdFromForm(elt);
+    const where = getWhereFromForm(elt);
+
+    rememberIntent(colId, where);
   });
 
-  // Clique fora cancela (capture)
-  document.addEventListener("click", function (e) {
-    // se clicou dentro de um form, não cancela
-    const insideForm = e.target.closest?.("[data-add-card-form]");
+  // -------------------------
+  // HTMX: swap do board (fecha + trava scroll)
+  // -------------------------
+  document.body.addEventListener("htmx:afterSwap", (e) => {
+    const target = e.detail?.target || e.target || null;
+    if (!touchedBoardFromTarget(target)) return;
+
+    for (const [colId, info] of pending.byCol.entries()) {
+      if (Date.now() - (info.stamp || 0) > 8000) {
+        pending.byCol.delete(colId);
+        continue;
+      }
+
+      closeFormsInColumn(colId);
+
+      // trava forte: resolve o "desce e depois sobe"
+      lockScroll(colId, info.where, 900);
+
+      const colEl = getColumnElById(colId);
+      boing(colEl, info.where);
+
+      pending.byCol.delete(colId);
+    }
+  });
+
+  // -------------------------
+  // HTMX: depois do request (limpa input se ainda existir)
+  // -------------------------
+  document.body.addEventListener("htmx:afterRequest", (e) => {
+    const elt = e.detail?.elt;
+    if (!isAddCardForm(elt)) return;
+
+    const field =
+      elt.querySelector("input[name='title'], textarea[name='title']") ||
+      elt.querySelector("input[type='text'], input:not([type]), textarea");
+
+    if (field) field.value = "";
+  });
+
+  // -------------------------
+  // Cancelamento: clique fora / ESC
+  // -------------------------
+  document.addEventListener("click", (e) => {
+    const insideForm = e.target.closest?.("form[data-add-card-form]");
     if (insideForm) return;
 
-    // se clicou num botão + Card, não cancela (evita “piscar”)
-    const isAddBtn = e.target.closest?.("button") && (e.target.closest("button")?.textContent || "").includes("+ Card");
+    const btn = e.target.closest?.("button");
+    const txt = (btn?.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+    const isAddBtn = !!btn && (txt.includes("+ card") || txt.includes("+card"));
     if (isAddBtn) return;
 
-    // fecha todos os forms abertos
-    qsa("#form-top-col-[id], [id^='form-top-col-'], [id^='form-col-']").forEach(() => {});
     qsa("[id^='form-top-col-'], [id^='form-col-']").forEach((c) => {
       if (c && c.innerHTML.trim()) c.innerHTML = "";
     });
   }, true);
 
-  // ESC cancela
-  document.addEventListener("keydown", function (e) {
+  document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
     qsa("[id^='form-top-col-'], [id^='form-col-']").forEach((c) => {
       if (c && c.innerHTML.trim()) c.innerHTML = "";
     });
   }, true);
 })();
-
-//END boards/static/boards/board_ui.js

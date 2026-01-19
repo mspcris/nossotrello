@@ -1776,4 +1776,110 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 
+
+
+
+
+<script>
+(function () {
+  if (window.__cmBoardPanInstalled) return;
+  window.__cmBoardPanInstalled = true;
+
+  const wrap = document.getElementById("columns-wrapper");
+  if (!wrap) return;
+
+  // evita “seleção de texto” enquanto arrasta
+  function setGrabbing(on) {
+    wrap.classList.toggle("cm-grabbing", !!on);
+    wrap.style.cursor = on ? "grabbing" : "";
+    wrap.style.userSelect = on ? "none" : "";
+  }
+
+  // Só faz pan quando o clique é no “fundo” (não em cards/inputs/botões)
+  function isInteractiveTarget(t) {
+    if (!t) return false;
+    return !!t.closest(
+      "a,button,input,textarea,select,[contenteditable='true']," +
+      ".cm-cal-card,.checklist-item,.modal,.column-header,li[data-card-id]"
+    );
+  }
+
+  // estado
+  let down = false;
+  let startX = 0;
+  let startLeft = 0;
+  let didMove = false;
+
+  // threshold pra não bloquear click simples
+  const MOVE_PX = 6;
+
+  wrap.addEventListener("pointerdown", (e) => {
+    // botão esquerdo (mouse) ou touch/pen
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+
+    // não brigar com drag de cards/colunas nem interações
+    if (window.__isDraggingCard) return;
+    if (isInteractiveTarget(e.target)) return;
+
+    down = true;
+    didMove = false;
+
+    startX = e.clientX;
+    startLeft = wrap.scrollLeft;
+
+    // captura para continuar recebendo move
+    try { wrap.setPointerCapture(e.pointerId); } catch (_e) {}
+
+    setGrabbing(true);
+  });
+
+  wrap.addEventListener("pointermove", (e) => {
+    if (!down) return;
+    if (window.__isDraggingCard) return;
+
+    const dx = e.clientX - startX;
+    if (!didMove && Math.abs(dx) >= MOVE_PX) didMove = true;
+
+    // pan: arrastar para a direita move o conteúdo para a esquerda (scrollLeft diminui)
+    wrap.scrollLeft = startLeft - dx;
+
+    // se está arrastando, previne seleção/drag nativo
+    if (didMove) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, { passive: false });
+
+  function endPan(e) {
+    if (!down) return;
+
+    down = false;
+
+    try { wrap.releasePointerCapture(e.pointerId); } catch (_e) {}
+    setGrabbing(false);
+
+    // se houve movimento, cancela click subsequente (evita abrir card sem querer)
+    if (didMove) {
+      const cancelClickOnce = (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        wrap.removeEventListener("click", cancelClickOnce, true);
+      };
+      wrap.addEventListener("click", cancelClickOnce, true);
+    }
+  }
+
+  wrap.addEventListener("pointerup", endPan);
+  wrap.addEventListener("pointercancel", endPan);
+
+})();
+</script>
+
+<style>
+  /* opcional: cursor de “mão” quando passar no fundo */
+  #columns-wrapper:not(.cm-grabbing) {
+    cursor: grab;
+  }
+</style>
+
 {% endblock content %}
