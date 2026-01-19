@@ -257,6 +257,12 @@ INSTITUTIONAL_EMAIL_DOMAINS = _env_csv(
 )
 
 # ============================================================
+# URL base pública do sistema (para links em e-mails / tarefas sem request)
+# ============================================================
+SITE_URL = (os.getenv("SITE_URL") or "http://localhost:8000").strip().rstrip("/")
+
+
+# ============================================================
 # CACHE (Redis) — necessário para fluxos multi-instância (homolog/prod)
 # ============================================================
 
