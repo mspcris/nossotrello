@@ -599,4 +599,42 @@ header { position: relative; z-index: 50; }
 }
 
 
+@keyframes col-belly {
+  0%   { transform: none; }
+  30%  { transform: none; }
+  50%  { transform: none; }
+  100% { transform: none; }
+}
+
+/* “engorda” real: mexe no width/flex-basis */
+.column-item.col-belly {
+  animation: col-belly-width 260ms ease-out;
+  will-change: flex-basis, width;
+}
+
+@keyframes col-belly-width {
+  0%   { flex-basis: var(--col-base, 250px); }
+  45%  { flex-basis: calc(var(--col-base, 250px) + 36px); }
+  100% { flex-basis: var(--col-base, 250px); }
+}
+
+
+.column-item.col-belly::before {
+  content: "";
+  position: absolute;
+  inset: -6px -10px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.10);
+  filter: blur(0.2px);
+  transform: scaleX(1.02);
+  pointer-events: none;
+}
+
+
+#columns-wrapper .column-item{
+  flex: 0 0 var(--col-base, 240px);
+  width: var(--col-base, 240px);
+  position: relative;
+}
+
 /* end board_detail.css 

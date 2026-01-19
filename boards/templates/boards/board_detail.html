@@ -915,6 +915,12 @@
 
 
 
+
+
+
+
+
+
 <script>
   // ============================================================
   // SORTABLE (cards) — drag & drop de cards entre colunas
@@ -928,7 +934,6 @@
     const boardRoot = boardRoots.length ? boardRoots[boardRoots.length - 1] : null;
     const canEdit = (boardRoot?.getAttribute("data-can-edit") === "1");
     if (!canEdit) return;
-
 
     // todas as listas de cards por coluna
     const lists = Array.from(document.querySelectorAll('[id^="cards-col-"]'));
@@ -986,23 +991,36 @@
       }
     }
 
-
     function afterLocalMoveUpdateUI() {
-  try {
-    requestAnimationFrame(() => {
-      const input = document.getElementById("board-filter");
-      const q = (input?.value || "").trim();
-      if (typeof applyBoardFilter === "function") applyBoardFilter(q);
+      try {
+        requestAnimationFrame(() => {
+          const input = document.getElementById("board-filter");
+          const q = (input?.value || "").trim();
+          if (typeof applyBoardFilter === "function") applyBoardFilter(q);
 
-      // recalcula por DOM
-      refreshCounters();
-      window.updateAggregatorCounts?.();
+          // recalcula por DOM
+          refreshCounters();
+          window.updateAggregatorCounts?.();
+        });
+      } catch (e) {}
+    }
 
-    });
-  } catch (e) {}
-}
+    // ============================================================
+    // COLUMN "BELLY" (empurra as outras colunas)
+    // ============================================================
+    function getColumnItemFromList(listEl) {
+      return listEl?.closest?.(".column-item[data-column-id]") || null;
+    }
 
+    function triggerColumnBelly(colEl) {
+      if (!colEl) return;
 
+      colEl.classList.remove("col-belly");
+      void colEl.offsetWidth; // reflow para retrigger
+      colEl.classList.add("col-belly");
+
+      window.setTimeout(() => colEl.classList.remove("col-belly"), 320);
+    }
 
     lists.forEach((listEl) => {
       // evita re-aplicar
@@ -1014,18 +1032,17 @@
       // - tolerância de movimento antes de considerar “drag”
       // - fallback melhora consistência em alguns Androids
       const mobileDnD = isCoarsePointer
-  ? {
-      delay: 280,
-      delayOnTouchOnly: true,
-      touchStartThreshold: 10,
-      fallbackOnBody: true
-    }
-  : {
-      delay: 0,
-      delayOnTouchOnly: false,
-      touchStartThreshold: 0
-    };
-
+        ? {
+            delay: 280,
+            delayOnTouchOnly: true,
+            touchStartThreshold: 10,
+            fallbackOnBody: true
+          }
+        : {
+            delay: 0,
+            delayOnTouchOnly: false,
+            touchStartThreshold: 0
+          };
 
       new Sortable(listEl, {
         group: "cards",
@@ -1049,41 +1066,47 @@
 
         onStart: () => { window.__isDraggingCard = true; },
 
-onEnd: (evt) => {
-  window.__isDraggingCard = false;
-  afterLocalMoveUpdateUI(); // ✅ garante update sempre (origem/destino)
-},
+        onEnd: (evt) => {
+          window.__isDraggingCard = false;
+          afterLocalMoveUpdateUI(); // ✅ garante update sempre (origem/destino)
+        },
 
-onAdd: (evt) => {
-  const item = evt.item;
-  const cardId = resolveCardIdFromItem(item);
-  const newColumnId = resolveColumnIdFromList(evt.to);
-  const newPosition = Number(evt.newIndex || 0);
+        onAdd: (evt) => {
+          // ✅ barriga na coluna destino
+          triggerColumnBelly(getColumnItemFromList(evt.to));
 
-  if (!cardId || !newColumnId) return;
+          const item = evt.item;
+          const cardId = resolveCardIdFromItem(item);
+          const newColumnId = resolveColumnIdFromList(evt.to);
+          const newPosition = Number(evt.newIndex || 0);
 
-  afterLocalMoveUpdateUI(); // destino
-  postMove({ cardId, newColumnId, newPosition });
-},
+          if (!cardId || !newColumnId) return;
 
-onUpdate: (evt) => {
-  const item = evt.item;
-  const cardId = resolveCardIdFromItem(item);
-  const newColumnId = resolveColumnIdFromList(evt.to);
-  const newPosition = Number(evt.newIndex || 0);
+          afterLocalMoveUpdateUI(); // destino
+          postMove({ cardId, newColumnId, newPosition });
+        },
 
-  if (!cardId || !newColumnId) return;
+        onUpdate: (evt) => {
+          // ✅ barriga na coluna (mesma coluna)
+          triggerColumnBelly(getColumnItemFromList(evt.to));
 
-  afterLocalMoveUpdateUI(); // mesma coluna
-  postMove({ cardId, newColumnId, newPosition });
-},
+          const item = evt.item;
+          const cardId = resolveCardIdFromItem(item);
+          const newColumnId = resolveColumnIdFromList(evt.to);
+          const newPosition = Number(evt.newIndex || 0);
 
-onRemove: (evt) => {
-  afterLocalMoveUpdateUI(); // ✅ origem (quando sai para outra coluna)
-},
+          if (!cardId || !newColumnId) return;
 
+          afterLocalMoveUpdateUI(); // mesma coluna
+          postMove({ cardId, newColumnId, newPosition });
+        },
 
+        onRemove: (evt) => {
+          // ✅ opcional: barriga na coluna origem quando o card sai
+          triggerColumnBelly(getColumnItemFromList(evt.from));
 
+          afterLocalMoveUpdateUI(); // ✅ origem (quando sai para outra coluna)
+        },
       });
     });
   };
@@ -1091,6 +1114,20 @@ onRemove: (evt) => {
   document.addEventListener("DOMContentLoaded", window.initSortable);
   document.body.addEventListener("htmx:afterSwap", window.initSortable);
 </script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 <script>

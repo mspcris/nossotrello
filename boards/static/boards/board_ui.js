@@ -1020,3 +1020,37 @@ if (!window.__colorPopoverOutsideInstalled) {
     });
   }, true);
 })();
+
+
+(function () {
+  if (window.__cmColumnBellyInstalled) return;
+  window.__cmColumnBellyInstalled = true;
+
+  function triggerBelly(colEl) {
+    if (!colEl) return;
+
+    colEl.classList.remove("col-belly");
+    // força reflow para retrigger
+    void colEl.offsetWidth;
+    colEl.classList.add("col-belly");
+
+    window.setTimeout(() => colEl.classList.remove("col-belly"), 300);
+  }
+
+  // Caso 1: HTMX swap quando move card (server render)
+  document.body.addEventListener("htmx:afterSwap", (e) => {
+    const target = e.detail?.target || e.target;
+    const colEl = target?.closest?.("[data-column-id]");
+    if (!colEl) return;
+    // heurística: só anima se swap tocou uma lista de cards
+    if (target?.matches?.("[id^='cards-col-']") || target?.closest?.("[id^='cards-col-']")) {
+      triggerBelly(colEl);
+    }
+  });
+
+  // Caso 2: sortable/drag client-side (se existir evento de drop)
+  document.addEventListener("card:dropped", (e) => {
+    // você dispara esse evento no seu drag/drop quando soltar o card
+    triggerBelly(e.detail?.columnEl);
+  });
+})();
