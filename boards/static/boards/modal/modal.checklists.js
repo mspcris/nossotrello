@@ -150,49 +150,88 @@
   // DnD (SortableJS) + persistência backend
   // ============================================================
   function initChecklistDnD() {
-    const container = document.getElementById("checklists-container");
-    if (!container) return;
+  // 1) achar o container real (robusto)
+  const container =
+    document.getElementById("checklists-container") ||
+    document.getElementById("checklist-list") ||
+    document.querySelector("[data-reorder-checklists-url]") ||
+    document.querySelector("[data-reorder-items-url]");
 
-    // Se Sortable não carregou, NÃO marque como aplicado.
-    // Assim, quando o script carregar depois, o init tenta de novo.
-    if (!window.Sortable) return;
+  if (!container) {
+    console.warn("[checklists] container not found");
+    return;
+  }
 
-    // Agora sim: evita duplicar bindings
-    if (container.dataset.sortableApplied === "1") return;
-    container.dataset.sortableApplied = "1";
+  if (!window.Sortable) {
+    console.warn("[checklists] Sortable not loaded");
+    return;
+  }
 
-    // 1) Drag de checklists (blocos)
-    new Sortable(container, {
-      animation: 160,
-      ghostClass: "drag-ghost",
-      chosenClass: "drag-chosen",
-      draggable: ".checklist-block",
-      handle: ".checklist-drag",
+  // Se o HTMX re-render trocou o DOM, esse dataset é novo.
+  // Mesmo assim, não trave o init se algo falhou antes.
+  if (container.dataset.sortableApplied === "1") return;
 
-      onEnd: async () => {
-        const url = container.getAttribute("data-reorder-checklists-url");
-        if (!url) return;
+  const checklistBlockSel = ".checklist-block";
+  const checklistListSel = ".checklist-items";
 
-        const order = Array.from(
-          container.querySelectorAll(".checklist-block")
-        )
-          .map((el) => parseInt(el.getAttribute("data-checklist-id"), 10))
-          .filter(Boolean);
+  // Handles: aceite variações do template
+  const checklistHandleSel = ".checklist-drag, .checklist-handle, [data-checklist-drag]";
+  const itemHandleSel = ".item-drag, .checklist-item-handle, [data-item-drag]";
 
-        if (!order.length) return;
+  const blocks = container.querySelectorAll(checklistBlockSel);
+  const lists = container.querySelectorAll(checklistListSel);
 
-        try {
-          await postJSON(url, { order });
-        } catch (e) {
-          console.error("checklists_reorder:", e);
-        }
-      },
-    });
+  console.log("[checklists] initDnD", {
+    blocks: blocks.length,
+    lists: lists.length,
+    hasReorderChecklistsUrl: !!container.getAttribute("data-reorder-checklists-url"),
+    hasReorderItemsUrl: !!container.getAttribute("data-reorder-items-url"),
+  });
 
-    // 2) Drag de itens dentro de cada checklist
-    container.querySelectorAll(".checklist-items").forEach((list) => {
+  // Não marque applied antes de terminar com sucesso.
+  try {
+    // 2) Drag de checklists (blocos)
+    if (blocks.length) {
+      new Sortable(container, {
+        animation: 160,
+        ghostClass: "drag-ghost",
+        chosenClass: "drag-chosen",
+        draggable: checklistBlockSel,
+        handle: checklistHandleSel,
+
+        // importante quando há elementos interativos
+        forceFallback: true,
+        fallbackOnBody: true,
+        fallbackTolerance: 6,
+
+        onEnd: async () => {
+          const url = container.getAttribute("data-reorder-checklists-url");
+          if (!url) return;
+
+          const order = Array.from(container.querySelectorAll(checklistBlockSel))
+            .map((el) => parseInt(el.getAttribute("data-checklist-id"), 10))
+            .filter(Boolean);
+
+          if (!order.length) return;
+
+          try {
+            await postJSON(url, { order });
+          } catch (e) {
+            console.error("checklists_reorder:", e);
+          }
+        },
+      });
+    }
+
+    // 3) Drag de itens dentro de cada checklist
+    lists.forEach((list) => {
       if (list.dataset.sortableApplied === "1") return;
-      list.dataset.sortableApplied = "1";
+
+      // se não achar handle nenhum, loga (isso explica “nem inicia”)
+      const anyHandle = list.querySelector(itemHandleSel);
+      if (!anyHandle) {
+        console.warn("[checklists] item handle not found in list", list);
+      }
 
       new Sortable(list, {
         group: "checklist-items",
@@ -200,32 +239,26 @@
         ghostClass: "drag-ghost",
         chosenClass: "drag-chosen",
         draggable: ".checklist-item",
-        handle: ".checklist-item-handle",
+        handle: itemHandleSel,
+
+        forceFallback: true,
+        fallbackOnBody: true,
+        fallbackTolerance: 6,
 
         onEnd: async () => {
           const url = container.getAttribute("data-reorder-items-url");
           if (!url) return;
 
-          // Monta updates para TODOS os itens (consistência total)
           const updates = [];
-          container.querySelectorAll(".checklist-items").forEach((itemsWrap) => {
-            const checklistId = parseInt(
-              itemsWrap.getAttribute("data-checklist-id"),
-              10
-            );
+          container.querySelectorAll(checklistListSel).forEach((itemsWrap) => {
+            const checklistId = parseInt(itemsWrap.getAttribute("data-checklist-id"), 10);
             if (!checklistId) return;
 
-            Array.from(itemsWrap.querySelectorAll(".checklist-item")).forEach(
-              (li, idx) => {
-                const itemId = parseInt(li.getAttribute("data-item-id"), 10);
-                if (!itemId) return;
-                updates.push({
-                  item_id: itemId,
-                  checklist_id: checklistId,
-                  position: idx,
-                });
-              }
-            );
+            Array.from(itemsWrap.querySelectorAll(".checklist-item")).forEach((li, idx) => {
+              const itemId = parseInt(li.getAttribute("data-item-id"), 10);
+              if (!itemId) return;
+              updates.push({ item_id: itemId, checklist_id: checklistId, position: idx });
+            });
           });
 
           if (!updates.length) return;
@@ -237,9 +270,16 @@
           }
         },
       });
-    });
-  }
 
+      list.dataset.sortableApplied = "1";
+    });
+
+    container.dataset.sortableApplied = "1";
+  } catch (e) {
+    console.error("[checklists] initDnD failed:", e);
+    // não marca applied -> permite tentar de novo
+  }
+}
 
 
   
