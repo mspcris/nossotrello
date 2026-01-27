@@ -1,21 +1,24 @@
 <!--card_tags_bar.html-->
-
 {% load tag_helpers %}
 {% with tag_colors=card.tag_colors|default:"{}" %}
   {% if card.tags %}
-    <div id="cm-tags-bar" class="px-3 pb-2">
+    <div id="cm-tags-bar" class="px-3 pb-2 relative z-50">
       <div class="flex flex-wrap gap-2">
         {% for tag in card.tags|split_tags %}
           {% with color=tag|tag_color:tag_colors %}
             <button
               type="button"
-              class="px-2 py-1 rounded-md text-xs font-semibold border cm-tag-btn"
+              class="px-2 py-1 rounded-md text-xs font-semibold border cm-tag-btn relative z-60"
               data-tag="{{ tag|escape }}"
-              data-fallback-color="{{ color }}"
-              style="background-color: {{ color }}20; color: {{ color }}; border-color: {{ color }};">
+              style="
+                background-color: {{ color }}20;
+                color: {{ color }};
+                border-color: {{ color }};
+              "
+              onclick="window.cmOpenTagColor(this)"
+            >
               {{ tag }}
             </button>
-            
           {% endwith %}
         {% endfor %}
       </div>

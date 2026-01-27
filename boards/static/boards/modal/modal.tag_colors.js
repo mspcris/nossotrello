@@ -1,106 +1,40 @@
-// modal.tag_colors.js — Cor das TAGs no CM modal
-// - Lê JSON de data-tag-colors no #cm-root
-// - Aplica em #cm-tags-wrap button[data-tag]
-// - Usa form hidden #cm-tag-color-form + color input #cm-tag-color-picker (se existirem)
-// Baseado no applySavedTagColors + initTagColorPicker do card_modal_body.html.
+//boards/static/boards/modal/modal.tag_colors.js
 
 (function () {
   function getRoot() {
     return document.getElementById("cm-root");
   }
 
-  function applySavedTagColors(root) {
-    if (!root) return;
+  window.cmOpenTagColor = function (btn) {
+    const root = getRoot();
+    if (!root || !btn) return;
 
-    let colors = {};
-    try {
-      const raw = root.getAttribute("data-tag-colors") || "{}";
-      colors = JSON.parse(raw);
-      if (!colors || typeof colors !== "object") colors = {};
-    } catch (_e) {
-      colors = {};
-    }
+    const tag = btn.getAttribute("data-tag");
+    if (!tag) return;
 
-    const wrap = root.querySelector("#cm-tags-wrap");
-    if (!wrap) return;
-
-    wrap.querySelectorAll("button[data-tag]").forEach((btn) => {
-      const tag = btn.getAttribute("data-tag");
-      const c = colors[tag];
-      if (!c) return;
-
-      btn.style.backgroundColor = c + "20";
-      btn.style.color = c;
-      btn.style.borderColor = c;
-    });
-  }
-
-  function initTagColorPicker(root) {
-    if (!root) return;
-    if (root.dataset.cmTagColorBound === "1") return;
-    root.dataset.cmTagColorBound = "1";
-
-    const wrap = root.querySelector("#cm-tags-wrap");
-    const form = root.querySelector("#cm-tag-color-form");
+    const picker = root.querySelector("#cm-tag-color-picker");
     const inpTag = root.querySelector("#cm-tag-color-tag");
     const inpColor = root.querySelector("#cm-tag-color-value");
-    const picker = root.querySelector("#cm-tag-color-picker");
+    const form = root.querySelector("#cm-tag-color-form");
 
-    // se o template ainda não tiver esses elementos, só não faz nada
-    if (!wrap || !form || !inpTag || !inpColor || !picker) return;
+    if (!picker || !inpTag || !inpColor || !form) return;
 
-    let currentTag = "";
+    inpTag.value = tag;
 
-    wrap.addEventListener("click", function (e) {
-      const btn = e.target.closest("button[data-tag]");
-      if (!btn) return;
+    // garante mudança SEMPRE
+    picker.value = inpColor.value || "#000000";
+    picker.click();
 
-      currentTag = btn.getAttribute("data-tag") || "";
-      if (!currentTag) return;
-
-      // default visual
-      picker.value = "#3b82f6";
-      picker.click();
-    });
-
-    picker.addEventListener("change", function () {
-      if (!currentTag) return;
-
-      inpTag.value = currentTag;
+    picker.onchange = function () {
       inpColor.value = picker.value;
-
       try {
         form.requestSubmit();
-      } catch (_e) {
+      } catch {
         form.submit();
       }
-    });
-  }
-
-  // expõe pro resto do modal (seu activity_quill chama isso após swap)
-  window.applySavedTagColorsToModal = function (root) {
-    applySavedTagColors(root || getRoot());
+    };
   };
-
-  function boot() {
-    const root = getRoot();
-    initTagColorPicker(root);
-    applySavedTagColors(root);
-  }
-
-  document.addEventListener("DOMContentLoaded", boot);
-
-  document.body.addEventListener("htmx:afterSwap", function (e) {
-    const t = e.target;
-    if (!t) return;
-
-    // reinit completo quando troca modal-body
-    if (t.id === "modal-body") boot();
-
-    // quando a barra de tags for re-renderizada, reaplica cores
-    if (t.id === "cm-tags-wrap") {
-      const root = getRoot();
-      applySavedTagColors(root);
-    }
-  });
 })();
+
+
+//END boards/static/boards/modal/modal.tag_colors.js
