@@ -1926,26 +1926,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
 <script>
 /**
- * Atualiza badges de unread SEM quebrar layout nem modal
- * - Não roda no bootstrap
+ * Atualiza badges de unread (FONTE ÚNICA = POLL)
+ * - Executa imediatamente na abertura da página
  * - Não recria DOM
- * - Só altera texto/classe
+ * - Só altera texto/classe quando muda
  * - Ignora cards inexistentes
+ * - Não interfere no modal
  */
 (function () {
   if (window.__cardUnreadPollInstalled) return;
   window.__cardUnreadPollInstalled = true;
 
-  let bootstrapped = false;
-
   async function refreshCardUnreadBadges() {
-    // 🔒 respeita backend no primeiro load
-    if (!bootstrapped) {
-      bootstrapped = true;
-      return;
-    }
-
-    // 🔒 não roda se modal estiver aberto
+    // 🔒 não roda se o modal estiver aberto
     if (document.getElementById("modal-body")) return;
 
     try {
@@ -1970,7 +1963,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const cardId = cardEl.getAttribute("data-card-id");
         const n = Number(map[cardId] || 0);
 
-        // 🔑 só muda se realmente mudou
+        // 🔑 só altera se houve mudança real
         const prev = Number(badge.textContent || 0);
         if (n === prev) return;
 
@@ -1988,15 +1981,21 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  document.addEventListener("DOMContentLoaded", refreshCardUnreadBadges);
+  // 🚀 EXECUÇÃO IMEDIATA NA ABERTURA DA PÁGINA
+  document.addEventListener("DOMContentLoaded", () => {
+    refreshCardUnreadBadges();
+  });
+
+  // 🔄 reidrata após swaps
   document.body.addEventListener("htmx:afterSwap", refreshCardUnreadBadges);
+
+  // 🔁 ao fechar modal (quando backend marca como lido)
   document.addEventListener("modal:closed", refreshCardUnreadBadges);
 
-  setInterval(refreshCardUnreadBadges, 30000);
+  // ⏱️ polling contínuo
+  setInterval(refreshCardUnreadBadges, 5000);
 })();
 </script>
-
-
 
 
 

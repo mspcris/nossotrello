@@ -16,7 +16,7 @@ const UNREAD_FETCH_EVERY_MS = 150000; // 30s é mais que suficiente para     atu
   window.__BOARD_POLL_INSTALLED__ = true;
 
   // Ajuste fino: se quiser sobrescrever via console/localStorage futuramente
-  const POLL_MS = Number(window.BOARD_POLL_MS || 45000); //15s é mais que suficiente para atualizar cards na board
+  const POLL_MS = Number(window.BOARD_POLL_MS || 200000); //2min é mais que suficiente para atualizar cards na board
 
   function getBoardId() {
     // prioridade: window.BOARD_ID (setado no board_detail)
@@ -153,13 +153,20 @@ const UNREAD_FETCH_EVERY_MS = 150000; // 30s é mais que suficiente para     atu
 
   // 1) DOM pronto
   document.addEventListener("DOMContentLoaded", () => {
-    bootstrapHydrate();
-    setTimeout(bootstrapHydrate, 50);
-    setTimeout(bootstrapHydrate, 250);
+  const boardId = getBoardId();
 
-    syncUnreadBadge(getBoardId()); // leitura imediata
-    loop();
-  });
+  bootstrapHydrate();
+  setTimeout(bootstrapHydrate, 50);
+  setTimeout(bootstrapHydrate, 250);
+
+  // 🔑 CHAMADA IMEDIATA (SEM ESPERAR POLL)
+  syncUnreadBadge(boardId);
+  syncCardUnreadBadges(boardId);
+
+  // depois entra no loop normal
+  loop();
+});
+
 
   // 2) LOAD completo (Ctrl+F5 costuma evidenciar timing diferente)
   window.addEventListener("load", () => {
@@ -192,7 +199,7 @@ document.addEventListener("visibilitychange", () => {
   // Track-time badges (MVP) — throttle 5s
   // ============================================================
   let __ttLastFetchMs = 0;
-  const TT_FETCH_EVERY_MS = 60000;
+  const TT_FETCH_EVERY_MS = 20000;
 
   function formatMMSS(seconds) {
     const s = Math.max(0, Number(seconds || 0));
@@ -293,31 +300,46 @@ document.addEventListener("visibilitychange", () => {
 
 
 async function syncCardUnreadBadges(boardId) {
-  const res = await fetch(`/board/${boardId}/cards/unread-activity/`, {
-    credentials: "same-origin",
-    cache: "no-store",
-  });
-  if (!res.ok) return;
+  if (!boardId) return;
 
-  const data = await res.json();
-  const map = data.cards || {};
+  try {
+    const res = await fetch(`/board/${boardId}/cards/unread-activity/`, {
+      credentials: "same-origin",
+      cache: "no-store",
+      headers: { "Accept": "application/json" }
+    });
 
-  document.querySelectorAll("[data-card-id]").forEach((el) => {
-    const cardId = el.dataset.cardId;
-    let badge = el.querySelector(".card-unread-badge");
-    const count = map[cardId] || 0;
+    if (!res.ok) return;
 
-    if (count > 0) {
-      if (!badge) {
-        badge = document.createElement("span");
-        badge.className = "card-unread-badge";
-        el.appendChild(badge);
+    const data = await res.json();
+    const map = data.cards || {};
+
+    document.querySelectorAll("li[data-card-id]").forEach((cardEl) => {
+      const cardId = cardEl.dataset.cardId;
+      const count = Number(map[cardId] || 0);
+
+      let badge = cardEl.querySelector(".card-unread-badge");
+
+      if (count > 0) {
+        if (!badge) {
+          badge = document.createElement("span");
+          badge.className =
+            "card-unread-badge absolute top-1 left-1 z-10 " +
+            "min-w-[18px] h-[18px] px-1 text-[10px] font-bold " +
+            "rounded-full bg-red-600 text-white flex items-center justify-center";
+
+          cardEl.style.position ||= "relative";
+          cardEl.appendChild(badge);
+        }
+
+        badge.textContent = count;
+      } else {
+        badge?.remove();
       }
-      badge.textContent = count;
-    } else {
-      badge?.remove();
-    }
-  });
+    });
+  } catch (e) {
+    console.warn("syncCardUnreadBadges failed", e);
+  }
 }
 
 })();
