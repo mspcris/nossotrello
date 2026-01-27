@@ -35,19 +35,16 @@
     </div>
   {% endif %}
 
-  {# BADGE — LINHA FIXA, SEM ABSOLUTE #}
-  {% if card.unread_count %}
-    <div class="mb-2">
-      <span
-        data-card-unread-badge
-        class="inline-flex items-center justify-center
-               min-w-[18px] h-[18px]
-               px-1 text-[10px] font-bold
-               rounded-full bg-red-600 text-white">
-        {{ card.unread_count }}
-      </span>
-    </div>
-  {% endif %}
+  {# 🔴 BADGE — CONTROLADO 100% PELO POLL (BACKEND NEUTRO) #}
+  <div class="mb-2">
+    <span
+      data-card-unread-badge
+      class="hidden inline-flex items-center justify-center
+             min-w-[18px] h-[18px]
+             px-1 text-[10px] font-bold
+             rounded-full bg-red-600 text-white">
+    </span>
+  </div>
 
   {# TAGS #}
   {% if card.tags %}
