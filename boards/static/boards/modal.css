@@ -1713,3 +1713,18 @@ html.dark #modal #modal-breadcrumb{
   resize: vertical;          /* opcional, UX friendly */
 }
 
+/* 🔒 A topbar NÃO deve capturar cliques fora dos botões */
+.cm-topbar {
+  pointer-events: none;
+}
+
+/* 🔓 Mas os botões da topbar continuam funcionando */
+.cm-topbar * {
+  pointer-events: auto;
+}
+
+/* 🔓 Garante que as etiquetas sempre recebam clique */
+#cm-tags-wrap,
+#cm-tags-wrap * {
+  pointer-events: auto;
+}
