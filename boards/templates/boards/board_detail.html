@@ -1920,9 +1920,21 @@ document.addEventListener("DOMContentLoaded", () => {
 </style>
 
 
-
 <script>
+/**
+ * Guarda para NÃO sobrescrever o HTML renderizado pelo backend
+ * na primeira carga da página.
+ */
+window.__cardUnreadBootstrapDone = false;
+
 async function refreshCardUnreadBadges() {
+
+  // ⛔ PRIMEIRA EXECUÇÃO: respeita o estado inicial do backend
+  if (!window.__cardUnreadBootstrapDone) {
+    window.__cardUnreadBootstrapDone = true;
+    return;
+  }
+
   try {
     const resp = await fetch(
       `/board/${window.BOARD_ID}/cards/unread-activity/`,
@@ -1960,7 +1972,7 @@ async function refreshCardUnreadBadges() {
   }
 }
 
-// primeira carga
+// primeira carga (NÃO apaga badges iniciais)
 document.addEventListener("DOMContentLoaded", refreshCardUnreadBadges);
 
 // reaplica após HTMX
@@ -1972,6 +1984,7 @@ document.addEventListener("modal:closed", refreshCardUnreadBadges);
 // polling leve (ex: 30s)
 setInterval(refreshCardUnreadBadges, 30000);
 </script>
+
 
 
 

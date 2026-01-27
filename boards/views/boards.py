@@ -413,6 +413,49 @@ def board_detail(request, board_id):
             .order_by("-created_at")
         )
 
+    # ============================================================
+    # UNREAD ACTIVITY COUNT (pré-carregamento da board)
+    # ============================================================
+    unread_activity_count = 0
+
+    if request.user.is_authenticated:
+        st = BoardActivityReadState.objects.filter(
+            board=board,
+            user=request.user,
+        ).first()
+
+        last_seen = st.last_seen_at if st and st.last_seen_at else None
+
+        qs = CardLog.objects.filter(
+            card__column__board=board,
+            card__is_deleted=False,
+        )
+
+        if last_seen:
+            qs = qs.filter(created_at__gt=last_seen)
+
+        # ignora ações do próprio usuário
+        actor_label = _actor_label(request)
+        if actor_label:
+            qs = qs.exclude(content__icontains=actor_label)
+
+        unread_activity_count = qs.count()
+    
+    # ============================================================
+    # UNREAD POR CARD (BOOTSTRAP INICIAL)
+    # ============================================================
+    unread_by_card = {}
+
+    if request.user.is_authenticated:
+        data = (
+            qs.values("card_id")
+            .annotate(c=models.Count("id"))
+            .values_list("card_id", "c")
+        )
+        unread_by_card = {card_id: c for card_id, c in data}
+
+
+
     return render(
         request,
         "boards/board_detail.html",
@@ -425,9 +468,12 @@ def board_detail(request, board_id):
             "can_share_board": can_share_board,
             "can_edit": can_edit,
             "pending_access_requests": pending_access_requests,
-
+            "unread_activity_count": unread_activity_count,
+            "unread_by_card": unread_by_card,
         },
     )
+
+
 
 
 # ======================================================================

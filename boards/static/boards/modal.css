@@ -1728,3 +1728,43 @@ html.dark #modal #modal-breadcrumb{
 #cm-tags-wrap * {
   pointer-events: auto;
 }
+
+
+.card-unread-badge {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  pointer-events: none;
+  z-index: 20;
+}
+
+
+.card-unread-badge {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 9999px;
+  background-color: #dc2626;
+  color: #ffffff;
+
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+
+  z-index: 50;           /* 🔑 acima da imagem */
+  pointer-events: none;
+}
+
+#columns-wrapper li[data-card-id] > *:not(.card-unread-badge) {
+  position: relative;
+  z-index: 1;
+}
