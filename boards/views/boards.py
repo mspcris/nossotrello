@@ -440,7 +440,7 @@ def board_detail(request, board_id):
             qs = qs.exclude(content__icontains=actor_label)
 
         unread_activity_count = qs.count()
-    
+
     # ============================================================
     # UNREAD POR CARD (BOOTSTRAP INICIAL)
     # ============================================================
@@ -454,7 +454,17 @@ def board_detail(request, board_id):
         )
         unread_by_card = {card_id: c for card_id, c in data}
 
-
+    # ============================================================
+    # ✅ FIX: INJETAR A CONTAGEM NO OBJETO CARD ANTES DO 1º RENDER
+    # (assim o template do card já nasce com o número, sem esperar poll/js)
+    # ============================================================
+    try:
+        for col in columns:
+            # col.cards é o RelatedManager prefetchado por .prefetch_related("cards")
+            for c in col.cards.all():
+                c.unread_count = int(unread_by_card.get(c.id, 0) or 0)
+    except Exception:
+        pass
 
     return render(
         request,

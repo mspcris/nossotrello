@@ -1,4 +1,3 @@
-{# templates/boards/partials/card_item.html #}
 {% load tag_helpers %}
 
 <li
@@ -9,20 +8,19 @@
   data-term-due="{% if card.due_date %}{{ card.due_date|date:'Y-m-d' }}{% endif %}"
   data-term-warn="{% if card.due_warn_date %}{{ card.due_warn_date|date:'Y-m-d' }}{% endif %}"
   data-term-notify="{{ card.due_notify|default_if_none:True|yesno:'1,0' }}"
-  class="card-item p-3 bg-white/80 rounded-xl shadow-sm mb-3 cursor-pointer relative overflow-hidden"
+  class="card-item p-3 bg-white/80 rounded-xl shadow-sm mb-3 cursor-pointer overflow-hidden"
 >
-
 
   {# EXCLUIR #}
   <button
     type="button"
-    class="delete-card-btn hidden absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded z-20"
+    class="delete-card-btn hidden absolute top-1 right-1 z-30
+           bg-red-600 text-white text-xs px-2 py-1 rounded"
     onpointerdown="event.stopPropagation();"
     onclick="event.stopPropagation();"
     hx-post="{% url 'boards:delete_card' card.id %}"
     hx-target="#card-{{ card.id }}"
-    hx-swap="outerHTML"
-  >
+    hx-swap="outerHTML">
     X
   </button>
 
@@ -37,12 +35,19 @@
     </div>
   {% endif %}
 
-
-  <span
-  class="card-unread-badge"
-  data-card="{{ card.id }}">
-</span>
-
+  {# BADGE — LINHA FIXA, SEM ABSOLUTE #}
+  {% if card.unread_count %}
+    <div class="mb-2">
+      <span
+        data-card-unread-badge
+        class="inline-flex items-center justify-center
+               min-w-[18px] h-[18px]
+               px-1 text-[10px] font-bold
+               rounded-full bg-red-600 text-white">
+        {{ card.unread_count }}
+      </span>
+    </div>
+  {% endif %}
 
   {# TAGS #}
   {% if card.tags %}
@@ -52,8 +57,9 @@
           <span
             data-tag="{{ tag }}"
             class="text-xs font-semibold px-2 py-1 rounded-md"
-            style="background-color: {{ color }}20; color: {{ color }}; border: 1px solid {{ color }};"
-          >
+            style="background-color: {{ color }}20;
+                   color: {{ color }};
+                   border: 1px solid {{ color }};">
             {{ tag }}
           </span>
         {% endwith %}
@@ -66,21 +72,19 @@
     {{ card.title }}
   </div>
 
-  {# META (TERM BADGE + DATA VENCIMENTO + TRACKTIME) #}
-<div class="mt-2 flex flex-col items-start gap-1">
-  <div class="flex items-center gap-2 flex-wrap">
-    <span class="term-badge hidden text-[10px] font-semibold px-2 py-0.5 rounded-md border"></span>
+  {# META #}
+  <div class="mt-2 flex flex-col items-start gap-1">
+    <div class="flex items-center gap-2 flex-wrap">
+      <span class="term-badge hidden text-[10px] font-semibold px-2 py-0.5 rounded-md border"></span>
 
-    {% if card.due_date %}
-      <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md border bg-white/60">
-        {{ card.due_date|date:"d/m/Y" }}
-      </span>
-    {% endif %}
+      {% if card.due_date %}
+        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md border bg-white/60">
+          {{ card.due_date|date:"d/m/Y" }}
+        </span>
+      {% endif %}
+    </div>
+
+    <div class="tt-slot"></div>
   </div>
 
-  {# ✅ linha dedicada pro tracktime #}
-  <div class="tt-slot"></div>
-</div>
-
-
-{# END templates/boards/partials/card_item.html #}
+</li>
