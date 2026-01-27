@@ -5,12 +5,18 @@
 // - Rehidrata JS (HTMX + Sortable + TagColors) após swap
 // - Garante “bootstrap” no load (resolve o caso: só funciona após abrir/fechar modal)
 // ============================================================
+
+let __lastUnreadCount = null;
+let __lastUnreadFetchMs = 0;
+const UNREAD_FETCH_EVERY_MS = 150000; // 30s é mais que suficiente para     atualiazar o indicador de atividade
+
+
 (function () {
   if (window.__BOARD_POLL_INSTALLED__) return;
   window.__BOARD_POLL_INSTALLED__ = true;
 
   // Ajuste fino: se quiser sobrescrever via console/localStorage futuramente
-  const POLL_MS = Number(window.BOARD_POLL_MS || 1500);
+  const POLL_MS = Number(window.BOARD_POLL_MS || 45000); //15s é mais que suficiente para atualizar cards na board
 
   function getBoardId() {
     // prioridade: window.BOARD_ID (setado no board_detail)
@@ -88,8 +94,13 @@
     const list = getColumnsList();
     if (!list) return;
     
-    // track-time badges (independe de changed)
+    // ✅ sincroniza badge (throttle protege)
+    // badges de atividade
+    syncUnreadBadge(boardId);
+    syncCardUnreadBadges(boardId); // 🔴 FALTAVA ISSO
+    // track-time
     tickTrackTimeBadges(boardId);
+
 
     if (shouldPause()) return;
     if (inFlight) return;
@@ -142,11 +153,11 @@
 
   // 1) DOM pronto
   document.addEventListener("DOMContentLoaded", () => {
-    // rehidrata imediatamente + após pequeno delay (pega casos de ordem de scripts)
     bootstrapHydrate();
     setTimeout(bootstrapHydrate, 50);
     setTimeout(bootstrapHydrate, 250);
 
+    syncUnreadBadge(getBoardId()); // leitura imediata
     loop();
   });
 
@@ -157,24 +168,31 @@
   });
 
   // 3) Ao fechar o modal: destrava e “força” rehidratação + um tick rápido
-  document.addEventListener("modal:closed", () => {
-    bootstrapHydrate();
-    setTimeout(() => { tick(); }, 30);
-  });
+document.addEventListener("modal:closed", () => {
+  bootstrapHydrate();
+  syncUnreadBadge(getBoardId());
+  setTimeout(() => { tick(); }, 30);
+});
+
+
+  
 
   // 4) Quando a aba volta a ficar visível
-  document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) {
-      bootstrapHydrate();
-      setTimeout(() => { tick(); }, 30);
-    }
-  });
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) {
+    bootstrapHydrate();
+    syncUnreadBadge(getBoardId());
+    setTimeout(() => { tick(); }, 30);
+  }
+});
+
+
 
     // ============================================================
   // Track-time badges (MVP) — throttle 5s
   // ============================================================
   let __ttLastFetchMs = 0;
-  const TT_FETCH_EVERY_MS = 5000;
+  const TT_FETCH_EVERY_MS = 60000;
 
   function formatMMSS(seconds) {
     const s = Math.max(0, Number(seconds || 0));
@@ -243,4 +261,65 @@
     }
   }
   // integra ao loop principal
+
+
+  async function syncUnreadBadge(boardId) {
+  const now = Date.now();
+  if (now - __lastUnreadFetchMs < UNREAD_FETCH_EVERY_MS) return;
+  __lastUnreadFetchMs = now;
+
+  try {
+    const res = await fetch(`/board/${boardId}/history/unread-count/`, {
+      credentials: "same-origin",
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+      cache: "no-store",
+    });
+    if (!res.ok) return;
+
+    const data = await res.json();
+    const unread = Number(data.unread || 0);
+
+    if (unread === __lastUnreadCount) return;
+    __lastUnreadCount = unread;
+
+    const badge = document.getElementById("drawer-unread-badge");
+    if (!badge) return;
+
+    badge.textContent = unread > 0 ? unread : "";
+    badge.classList.toggle("hidden", unread === 0);
+  } catch (_) {}
+}
+
+
+
+async function syncCardUnreadBadges(boardId) {
+  const res = await fetch(`/board/${boardId}/cards/unread-activity/`, {
+    credentials: "same-origin",
+    cache: "no-store",
+  });
+  if (!res.ok) return;
+
+  const data = await res.json();
+  const map = data.cards || {};
+
+  document.querySelectorAll("[data-card-id]").forEach((el) => {
+    const cardId = el.dataset.cardId;
+    let badge = el.querySelector(".card-unread-badge");
+    const count = map[cardId] || 0;
+
+    if (count > 0) {
+      if (!badge) {
+        badge = document.createElement("span");
+        badge.className = "card-unread-badge";
+        el.appendChild(badge);
+      }
+      badge.textContent = count;
+    } else {
+      badge?.remove();
+    }
+  });
+}
+
 })();
+
+

@@ -6,9 +6,17 @@ from django.shortcuts import render, get_object_or_404
 from django.views.decorators.http import require_POST, require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.template.loader import render_to_string
+from django.db.models import Count, Q
+from django.utils import timezone
 
 from ..permissions import can_edit_board
-from ..models import Card, CardAttachment
+from ..models import (
+    Board,
+    Card,
+    CardAttachment,
+    CardLog,
+    CardSeen,
+)
 from .helpers import (
     _actor_html,
     _log_card,
@@ -17,6 +25,8 @@ from .helpers import (
     _extract_media_image_paths,
     process_mentions_and_notify,
 )
+
+
 
 
 @login_required
@@ -140,4 +150,50 @@ def add_activity(request, card_id):
 @require_POST
 def quill_upload(request):
     return JsonResponse({"error": "Not implemented"}, status=501)
+
+
+
+# boards/views/activity.py
+
+
+@login_required
+def cards_unread_activity(request, board_id):
+    board = Board.objects.filter(id=board_id).first()
+    if not board:
+        return JsonResponse({"cards": {}})
+
+    # segurança básica
+    if not board.memberships.filter(user=request.user).exists():
+        return JsonResponse({"cards": {}})
+
+    # mapa: card_id -> last_seen_at
+    seen_map = {
+        cs.card_id: cs.last_seen_at
+        for cs in CardSeen.objects.filter(
+            user=request.user,
+            card__column__board=board,
+        )
+    }
+
+    # logs que NÃO são do próprio usuário
+    logs = (
+        CardLog.objects
+        .filter(card__column__board=board)
+        .exclude(content__icontains=request.user.email)
+    )
+
+    counts = {}
+
+    for log in logs.select_related("card"):
+        last_seen = seen_map.get(log.card_id)
+        if last_seen and log.created_at <= last_seen:
+            continue
+
+        counts[log.card_id] = counts.get(log.card_id, 0) + 1
+
+    return JsonResponse({"cards": counts})
+
+
 # END boards/views/activity.py
+
+

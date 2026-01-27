@@ -5,8 +5,8 @@ from django.db.models import Count, Prefetch
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
-
-from ..models import Board, Column, Card
+from django.utils import timezone
+from ..models import Board, Column, Card, CardLog, CardSeen
 
 
 @login_required
@@ -73,5 +73,44 @@ def board_poll(request, board_id):
     )
     resp["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     return resp
+
+
+
+
+
+@login_required
+def unread_activity_per_card(request, board_id):
+    board = get_object_or_404(Board, id=board_id)
+
+    # segurança
+    if not board.memberships.filter(user=request.user).exists():
+        return JsonResponse({"error": "forbidden"}, status=403)
+
+    cards = Card.objects.filter(
+        column__board=board,
+        is_deleted=False
+    ).only("id")
+
+    seen_map = {
+        cs.card_id: cs.last_seen_at
+        for cs in CardSeen.objects.filter(user=request.user, card__in=cards)
+    }
+
+    result = {}
+
+    for card in cards:
+        last_seen = seen_map.get(card.id, timezone.make_aware(timezone.datetime.min))
+
+        count = (
+            CardLog.objects
+            .filter(card=card, created_at__gt=last_seen)
+            .exclude(actor=request.user)
+            .count()
+        )
+
+        if count > 0:
+            result[str(card.id)] = count
+
+    return JsonResponse({"cards": result})
 
 # END boards/views/polling.py

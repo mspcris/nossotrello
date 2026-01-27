@@ -1919,4 +1919,60 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 </style>
 
+
+
+<script>
+async function refreshCardUnreadBadges() {
+  try {
+    const resp = await fetch(
+      `/board/${window.BOARD_ID}/cards/unread-activity/`,
+      {
+        method: "GET",
+        credentials: "same-origin",
+        headers: { "Accept": "application/json" }
+      }
+    );
+
+    if (!resp.ok) return;
+
+    const data = await resp.json();
+    const map = data.cards || {};
+
+    // percorre TODOS os cards renderizados
+    document.querySelectorAll("li[data-card-id]").forEach(cardEl => {
+      const cardId = cardEl.getAttribute("data-card-id");
+      const badge = cardEl.querySelector("[data-card-unread-badge]");
+      if (!badge) return;
+
+      const n = Number(map[cardId] || 0);
+
+      if (n > 0) {
+        badge.textContent = n;
+        badge.classList.remove("hidden");
+      } else {
+        badge.textContent = "";
+        badge.classList.add("hidden");
+      }
+    });
+
+  } catch (e) {
+    console.warn("Erro ao atualizar badges de card", e);
+  }
+}
+
+// primeira carga
+document.addEventListener("DOMContentLoaded", refreshCardUnreadBadges);
+
+// reaplica após HTMX
+document.body.addEventListener("htmx:afterSwap", refreshCardUnreadBadges);
+
+// reaplica ao fechar modal (quando marca como visto)
+document.addEventListener("modal:closed", refreshCardUnreadBadges);
+
+// polling leve (ex: 30s)
+setInterval(refreshCardUnreadBadges, 30000);
+</script>
+
+
+
 {% endblock content %}

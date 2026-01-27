@@ -39,7 +39,7 @@ from .helpers import (
 from ..permissions import can_edit_board  # noqa: F401
 
 from ..forms import CardForm
-from ..models import Board, BoardMembership, Card, CardAttachment, Column
+from ..models import Board, BoardMembership, Card, CardAttachment, Column, CardSeen
 # regra: se due_date preenchida => warn obrigatória
 from datetime import timedelta
 from django.utils.html import strip_tags
@@ -859,7 +859,25 @@ def _summarize_html(html: str, limit: int = 220) -> str:
 @login_required
 def card_modal(request, card_id):
     card = get_object_or_404(Card, id=card_id, is_deleted=False)
-    return _render_card_modal(request, card)
+
+    # ============================================================
+    # READ MARK — marca o card como visto pelo usuário
+    # ============================================================
+    CardSeen.objects.update_or_create(
+        card=card,
+        user=request.user,
+        defaults={"last_seen_at": timezone.now()},
+    )
+
+    # ✅ LOGS ORDENADOS (mais novos primeiro)
+    logs = card.logs.order_by("-created_at")
+
+    ctx = _card_modal_context(card)
+    ctx["logs"] = logs
+
+    return _render_card_modal(request, card, ctx)
+
+
 
 
 

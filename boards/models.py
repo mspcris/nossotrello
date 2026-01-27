@@ -3,6 +3,7 @@
 from django.conf import settings
 from django.db import models
 from django.core.validators import RegexValidator
+from django.utils import timezone
 
 
 # ============================================================
@@ -250,15 +251,30 @@ class Card(models.Model):
 # ============================================================
 class CardLog(models.Model):
     card = models.ForeignKey(Card, related_name="logs", on_delete=models.CASCADE)
+
+    actor = models.ForeignKey(   # ✅ NOVO
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="card_logs",
+    )
+
     content = models.TextField(blank=True)
     attachment = models.FileField(upload_to="logs/", blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
-    class Meta:
-        ordering = ["-created_at"]
 
-    def __str__(self):
-        return f"Log do card {self.card.id} em {self.created_at}"
+# ============================================================
+# CARD BADGED
+# ============================================================
+class CardSeen(models.Model):
+    card = models.ForeignKey(Card, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    last_seen_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        unique_together = ("card", "user")
 
 
 # ============================================================
@@ -559,6 +575,8 @@ class BoardAccessRequest(models.Model):
 
     def __str__(self):
         return f"{self.user.email} pediu acesso ao board {self.board.name}"
+
+
 
 
 # END boards/models.py

@@ -1377,11 +1377,21 @@ def board_history_unread_count(request, board_id):
     st = BoardActivityReadState.objects.filter(board=board, user=request.user).first()
     last_seen = st.last_seen_at if st and st.last_seen_at else None
 
-    qs = CardLog.objects.filter(card__column__board=board, card__is_deleted=False)
+    qs = CardLog.objects.filter(
+        card__column__board=board,
+        card__is_deleted=False,
+    )
+
     if last_seen:
         qs = qs.filter(created_at__gt=last_seen)
 
-    return JsonResponse({"unread": int(qs.count())})
+    # 🔴 REGRA-CHAVE: ignora logs do próprio usuário
+    actor_label = _actor_label(request)
+    if actor_label:
+        qs = qs.exclude(content__icontains=actor_label)
+
+    return JsonResponse({"unread": qs.count()})
+
 
 
 # ======================================================================

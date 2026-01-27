@@ -8,7 +8,9 @@
 
   <div id="activity-panel-wrapper"
        class="activity-panel space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-    {% for log in card.logs.all %}
+  
+       {% for log in logs %}
+
       <div class="activity-item p-3 rounded-xl border shadow-sm
             bg-[var(--cm-surface)] border-[var(--cm-border)]
             backdrop-blur-md [-webkit-backdrop-filter:blur(12px)]">
@@ -36,3 +38,4 @@
     {% endfor %}
   </div>
 </div>
+<!-- END CARD_ACTIVITY_PANEL.HTML -->

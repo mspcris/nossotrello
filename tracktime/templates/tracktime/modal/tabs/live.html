@@ -373,7 +373,11 @@
 
   // start
   refresh();
-  const timer = setInterval(refresh, 5000);
+  const timer = setInterval(() => {
+      if (document.hidden) return;
+      refresh();
+    }, 120000);
+
 
   // evita timer zumbi quando modal some
   const obs = new MutationObserver(() => {

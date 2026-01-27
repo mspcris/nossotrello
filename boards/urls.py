@@ -35,6 +35,8 @@ from boards.views.boards import (
     approve_board_access,
     deny_board_access,
 )
+from .views.activity import cards_unread_activity
+
 
 app_name = "boards"
 
@@ -282,6 +284,16 @@ urlpatterns = [
     path("card/<int:card_id>/activity/panel/", views.activity_panel, name="activity_panel"),
     path("card/<int:card_id>/activity/add/", views.add_activity, name="add_activity"),
     path("quill/upload/", views.quill_upload, name="quill_upload"),
+
+
+
+    path(
+        "board/<int:board_id>/cards/unread-activity/",
+        cards_unread_activity,
+        name="cards_unread_activity",
+    ),
+
+
 
     # Menções (board)
     path("board/<int:board_id>/mentions/", board_mentions, name="board_mentions"),
