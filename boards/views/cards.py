@@ -394,14 +394,36 @@ def update_card(request, card_id):
                 f"<p><strong>{actor}</strong> alterou a descrição.</p>"
                 "<div style='margin-top:6px'>"
                 "<div style='font-size:12px;opacity:.75;margin-bottom:4px'>Antes:</div>"
-                f"<div style='padding:10px;border:1px solid rgba(15,23,42,0.10);border-radius:10px;background:rgba(255,255,255,0.35)'><em>{before}</em></div>"
+                f"<div style='padding:10px;border:1px solid rgba(15,23,42,0.10);"
+                "border-radius:10px;background:rgba(255,255,255,0.35)'>"
+                f"<em>{before}</em></div>"
                 "</div>"
                 "<div style='margin-top:10px'>"
                 "<div style='font-size:12px;opacity:.75;margin-bottom:4px'>Depois:</div>"
-                f"<div style='padding:10px;border:1px solid rgba(15,23,42,0.10);border-radius:10px;background:rgba(255,255,255,0.35)'><strong>{after}</strong></div>"
+                f"<div style='padding:10px;border:1px solid rgba(15,23,42,0.10);"
+                "border-radius:10px;background:rgba(255,255,255,0.35)'>"
+                f"<strong>{after}</strong></div>"
                 "</div>"
             ),
         )
+
+        # ============================================================
+        # MENÇÕES — DESCRIÇÃO (Escolha A)
+        # Notifica usuários mencionados na edição da descrição
+        # ============================================================
+        try:
+            process_mentions_and_notify(
+                request=request,
+                board=board,
+                card=card,
+                source="description",
+                raw_text=raw_desc,
+            )
+        except Exception:
+            pass
+
+
+
 
     # ============================================================
     # LOG — PRAZO
