@@ -124,16 +124,17 @@
   border-radius: 10px;
 }
 
-/* Contenção geral */
-#card-modal-root input,
-#card-modal-root textarea,
-#card-modal-root select,
-#card-modal-root form,
-#card-modal-root .card-tab-panel{
+/* Contenção geral (somente no CM para não inflar telas antigas) */
+#card-modal-root #cm-root input,
+#card-modal-root #cm-root textarea,
+#card-modal-root #cm-root select,
+#card-modal-root #cm-root form,
+#card-modal-root #cm-root .card-tab-panel{
   width: 100%;
   max-width: 100%;
   min-width: 0;
 }
+
 
 /* Quill contido */
 #card-modal-root #quill-editor,
@@ -910,7 +911,11 @@ html.dark #cm-root{
   padding: 10px 12px;
   outline: none;
 }
-#card-modal-root #cm-root .cm-textarea{ min-height: 220px; }
+/* padrão mais compacto */
+#card-modal-root #cm-root .cm-textarea{ min-height: 120px; }
+
+/* descrição (Quill) já controla altura pelo card; não precisa min-height aqui */
+
 #card-modal-root #cm-root .cm-input:focus,
 #card-modal-root #cm-root .cm-textarea:focus,
 #card-modal-root #cm-root .cm-select:focus{
@@ -1466,7 +1471,7 @@ html.dark #card-modal-root{
   border-bottom-left-radius: var(--cm-radius) !important;
   border-bottom-right-radius: var(--cm-radius) !important;
   background: var(--cm-surface-2) !important;
-  overflow: hidden !important;
+  
 }
 
 /* Garante que o editor respeite o arredondado */
@@ -1483,156 +1488,6 @@ html.dark #card-modal-root{
   background: rgba(2,6,23,0.55) !important;
   border-color: rgba(255,255,255,0.16) !important;
 }
-
-
-/* ============================================================
-   TÍTULO NA BARRA SUPERIOR DO MODAL — maior e sempre legível
-   (header do modal: .card-aero-header)
-   ============================================================ */
-
-/* garante um “painel” atrás do título (sem mexer no resto) */
-#card-modal-root .card-aero-header{
-  position: relative;
-}
-
-/* título (alvo amplo: h1/h2/h3 + elementos comuns de header) */
-#card-modal-root .card-aero-header :is(h1,h2,h3,.card-title,.modal-title){
-  font-size: 16px !important;          /* sobe sem exagerar */
-  font-weight: 800 !important;
-  letter-spacing: 0.2px;
-  line-height: 1.1;
-  color: rgba(255,255,255,0.96) !important;
-
-  /* legibilidade em cima do glass/blur */
-  text-shadow:
-    0 1px 2px rgba(0,0,0,0.85),
-    0 6px 18px rgba(0,0,0,0.35);
-
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: rgba(0,0,0,0.28);        /* “chip” discreto */
-  border: 1px solid rgba(255,255,255,0.14);
-  display: inline-flex;
-  max-width: 92%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* dark: pode reduzir o fundo (já é escuro), mas mantém leitura */
-#card-modal-root.theme-dark .card-aero-header :is(h1,h2,h3,.card-title,.modal-title),
-#card-modal-root.card-theme-dark .card-aero-header :is(h1,h2,h3,.card-title,.modal-title){
-  background: rgba(0,0,0,0.18);
-  border-color: rgba(255,255,255,0.10);
-}
-
-/* compact: ainda legível em telas pequenas */
-@media (max-width: 1366px){
-  #card-modal-root .card-aero-header :is(h1,h2,h3,.card-title,.modal-title){
-    font-size: 15px !important;
-  }
-}
-
-
-/* ============================================================
-   HEADER DO MODAL — TÍTULO SEMPRE LEGÍVEL (qualquer tag)
-   - pega div/span que não eram h1/h2
-   - não afeta botões/ícones
-   ============================================================ */
-
-#card-modal-root .card-aero-header{
-  position: relative;
-}
-
-/* alvo: qualquer “texto” dentro do header que não seja botão/ícone */
-#card-modal-root .card-aero-header
-  :where(*:not(button):not(svg):not(path):not(i)):not(.theme-dot){
-  font-size: 16px !important;
-  font-weight: 800 !important;
-  letter-spacing: .2px;
-  line-height: 1.15;
-
-  color: rgba(255,255,255,.96) !important;
-
-  text-shadow:
-    0 1px 2px rgba(0,0,0,.85),
-    0 8px 18px rgba(0,0,0,.35);
-
-  padding: 4px 10px;
-  border-radius: 999px;
-
-  background: rgba(0,0,0,.28);
-  border: 1px solid rgba(255,255,255,.14);
-
-  display: inline-flex;
-  max-width: 92%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* dark: reduz o fundo, mantém contraste */
-#card-modal-root.theme-dark .card-aero-header
-  :where(*:not(button):not(svg):not(path):not(i)):not(.theme-dot),
-#card-modal-root.card-theme-dark .card-aero-header
-  :where(*:not(button):not(svg):not(path):not(i)):not(.theme-dot){
-  background: rgba(0,0,0,.18);
-  border-color: rgba(255,255,255,.10);
-}
-
-/* compact */
-@media (max-width: 1366px){
-  #card-modal-root .card-aero-header
-    :where(*:not(button):not(svg):not(path):not(i)):not(.theme-dot){
-    font-size: 15px !important;
-  }
-}
-
-
-/* ============================================================
-   TÍTULO DO MODAL — FORÇA CONTRASTE + TAMANHO (pega onde estiver)
-   ============================================================ */
-
-/* 1) Dá contraste para a faixa do topo (onde o título aparece) */
-#modal :where(.card-aero-header, .modal-header, .modal-topbar, .modal-titlebar){
-  background: rgba(0,0,0,0.38) !important;  /* base para legibilidade */
-  border-bottom: 1px solid rgba(255,255,255,0.10) !important;
-}
-
-/* 2) Força o texto do título (qualquer tag comum), sem afetar botões/ícones */
-#modal :where(.card-aero-header, .modal-header, .modal-topbar, .modal-titlebar)
-  :where(h1,h2,h3,div,span,p){
-  font-size: 18px !important;
-  font-weight: 800 !important;
-  letter-spacing: .2px !important;
-  line-height: 1.15 !important;
-
-  color: rgba(255,255,255,0.96) !important;
-  text-shadow:
-    0 1px 2px rgba(0,0,0,0.90),
-    0 10px 24px rgba(0,0,0,0.40) !important;
-
-  /* “chip” discreto em volta do texto (sem blur) */
-  background: rgba(0,0,0,0.22) !important;
-  border: 1px solid rgba(255,255,255,0.14) !important;
-  border-radius: 999px !important;
-  padding: 4px 10px !important;
-
-  display: inline-flex !important;
-  max-width: 92% !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  white-space: nowrap !important;
-}
-
-/* 3) Não “pinta” ícones/botões do header */
-#modal :where(.card-aero-header, .modal-header, .modal-topbar, .modal-titlebar)
-  :where(button,svg,path,i){
-  background: transparent !important;
-  border: 0 !important;
-  padding: initial;
-}
-
 
 /* ============================================================
    MODAL TOP — TÍTULO (breadcrumb) maior e sempre legível
@@ -1729,16 +1584,6 @@ html.dark #modal #modal-breadcrumb{
   pointer-events: auto;
 }
 
-
-.card-unread-badge {
-  position: absolute;
-  bottom: 8px;
-  right: 8px;
-  pointer-events: none;
-  z-index: 20;
-}
-
-
 .card-unread-badge {
   position: absolute;
   bottom: 8px;
@@ -1767,4 +1612,70 @@ html.dark #modal #modal-breadcrumb{
 #columns-wrapper li[data-card-id] > *:not(.card-unread-badge) {
   position: relative;
   z-index: 1;
+}
+
+
+
+/* ============================================================
+   QUILL — DESCRIÇÃO (AUTO-GROW CANÔNICO)
+   Objetivo:
+   - Descrição cresce com o conteúdo
+   - Sem scroll interno no editor
+   - Quem rola é o modal (scroll único)
+   ============================================================ */
+
+/* Card da descrição NÃO pode ter height fixo */
+#cm-root .cm-panel[data-cm-panel="desc"] .cm-card{
+  display: flex;
+  flex-direction: column;
+
+  height: auto !important;
+  min-height: 260px;
+  max-height: none !important;
+
+  resize: none !important;
+  overflow: visible !important; /* wrapper pode crescer */
+}
+
+/* Toolbar ok */
+#cm-root .cm-panel[data-cm-panel="desc"] .ql-toolbar.ql-snow{
+  flex: 0 0 auto;
+}
+
+/* Container do Quill: altura será controlada via JS */
+#cm-root .cm-panel[data-cm-panel="desc"] .ql-container.ql-snow{
+  flex: 0 0 auto;
+
+  /* JS vai controlar a altura */
+  height: 80px;
+  min-height: 60px;
+  max-height: none;
+
+  overflow: hidden !important; /* sem scroll interno */
+}
+
+
+/* Editor: cresce com conteúdo (JS garante que container acompanha) */
+#cm-root .cm-panel[data-cm-panel="desc"] .ql-editor{
+  height: auto !important;
+  overflow: hidden !important; /* evita o texto “passar” por cima do Prazo */
+}
+
+
+
+/* QUILL — Descrição: editor sempre ancorado no topo e preenchendo */
+#cm-root .cm-panel[data-cm-panel="desc"] .ql-container.ql-snow{
+  display: block !important;
+}
+
+#cm-root .cm-panel[data-cm-panel="desc"] .ql-editor{
+  display: block !important;
+  height: auto !important;
+  min-height: 0 !important;
+
+  /* 🔑 garante topo (se algum ancestor virar flex) */
+  align-self: flex-start !important;
+
+  /* padding padrão do Quill (evita “colar” no topo) */
+  padding-top: 12px !important;
 }

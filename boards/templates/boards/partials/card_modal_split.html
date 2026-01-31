@@ -159,7 +159,11 @@
 
               <div>
                 <label class="cm-label">Descrição</label>
-                <textarea name="description" class="cm-textarea">{{ card.description|default_if_none:"" }}</textarea>
+                <textarea
+  name="description"
+  class="cm-textarea cm-textarea-resizable"
+>{{ card.description|default_if_none:"" }}</textarea>
+
                 <div class="cm-muted" style="margin-top:8px;"></div>
               </div>
             </div>
