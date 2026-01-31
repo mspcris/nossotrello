@@ -1625,17 +1625,25 @@ html.dark #modal #modal-breadcrumb{
    ============================================================ */
 
 /* Card da descrição NÃO pode ter height fixo */
-#cm-root .cm-panel[data-cm-panel="desc"] .cm-card{
+/* Só o card que tem o Quill (Descrição) pode ter “layout especial” */
+#cm-root .cm-panel[data-cm-panel="desc"] .cm-card:has(.cm-quill),
+#cm-root .cm-panel[data-cm-panel="desc"] .cm-card:has(.ql-toolbar){
   display: flex;
   flex-direction: column;
 
   height: auto !important;
-  min-height: 260px;
+  min-height: 0 !important;     /* 🔑 não força cards a ficarem gigantes */
   max-height: none !important;
 
   resize: none !important;
-  overflow: visible !important; /* wrapper pode crescer */
+  overflow: visible !important;
 }
+
+/* Garantia extra: cards comuns (Prazo/Capa) ficam compactos */
+#cm-root .cm-panel[data-cm-panel="desc"] .cm-card{
+  min-height: 0 !important;
+}
+
 
 /* Toolbar ok */
 #cm-root .cm-panel[data-cm-panel="desc"] .ql-toolbar.ql-snow{
@@ -1678,4 +1686,38 @@ html.dark #modal #modal-breadcrumb{
 
   /* padding padrão do Quill (evita “colar” no topo) */
   padding-top: 12px !important;
+}
+
+
+
+
+/* ============================================================
+   HOTFIX — PRAZO + CAPA (compactar sem tocar no Quill/Descrição)
+   Colar NO FINAL do modal.css
+   ============================================================ */
+
+/* 1) Prazo: impedir card de “esticar” e criar vazio */
+#cm-root [data-cm-panel="term"] .cm-card,
+#cm-root [data-cm-panel="prazo"] .cm-card{
+  height: auto !important;
+  min-height: 0 !important;
+  align-self: flex-start !important;
+}
+
+/* 2) Capa (files): reverter o “dropzone gigante” */
+#cm-root [data-cm-panel="files"] .cm-input{
+  min-height: 44px !important;
+  display: block !important;
+  align-items: initial !important;
+}
+
+#cm-root [data-cm-panel="files"] input[type="file"].cm-input{
+  padding: 10px 12px !important; /* volta pro padrão */
+  cursor: pointer;
+}
+
+/* 3) (opcional) Descrição do anexo não inflar */
+#cm-root [data-cm-panel="files"] #attachment-desc{
+  min-height: 44px !important;
+  resize: vertical;
 }
