@@ -22,8 +22,6 @@
   </div>
 {% endif %}
 
-
-
 {# cm-root (modal do card) #}
 <div class="cm-wrap"
      id="cm-root"
@@ -39,19 +37,22 @@
     <div class="cm-bar" role="tablist" aria-label="Abas do card">
       <div class="cm-tabs">
         <button type="button" class="cm-tabbtn is-active" data-cm-tab="desc"> 📄 Descrição</button>
-            <button type="button" class="cm-tabbtn" data-cm-tab="tags"> 🏷️ Etiquetas</button>
-            <button type="button" class="cm-tabbtn" data-cm-tab="check"> ☑️ Checklists</button>
-            <button type="button" class="cm-tabbtn" data-cm-tab="files"> 📎 Anexos</button>
-            <button
-  type="button"
-  class="cm-tabbtn cm-tab-disabled"
-  data-cm-action="track-legacy-info"
-  title="Track-time disponível apenas no modo novo"
->
-  ⏱️ Track-time
-</button>
+        <button type="button" class="cm-tabbtn" data-cm-tab="tags"> 🏷️ Etiquetas</button>
+        <button type="button" class="cm-tabbtn" data-cm-tab="check"> ☑️ Checklists</button>
 
+        {# ✅ ABA ATIVIDADE (estava faltando o botão no legado) #}
+        <button type="button" class="cm-tabbtn" data-cm-tab="ativ"> 📝 Atividade</button>
 
+        <button type="button" class="cm-tabbtn" data-cm-tab="files"> 📎 Anexos</button>
+
+        <button
+          type="button"
+          class="cm-tabbtn cm-tab-disabled"
+          data-cm-action="track-legacy-info"
+          title="Track-time disponível apenas no modo novo"
+        >
+          ⏱️ Track-time
+        </button>
       </div>
 
       <div class="cm-actions" id="cm-actions">
@@ -121,9 +122,7 @@
         <div>
           <label class="cm-label">Descrição</label>
           <textarea name="description" class="cm-textarea">{{ card.description|default_if_none:"" }}</textarea>
-          <div class="cm-muted" style="margin-top:8px;">
-           
-          </div>
+          <div class="cm-muted" style="margin-top:8px;"></div>
         </div>
       </div>
 
@@ -160,103 +159,87 @@
           </div>
         </div>
 
-
-
-
-
-
-
-
-
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
 
-  <!-- DATA DE INÍCIO -->
-  <div class="min-w-0">
-    <div class="cm-label">Data de início</div>
+          <!-- DATA DE INÍCIO -->
+          <div class="min-w-0">
+            <div class="cm-label">Data de início</div>
 
-    <div class="relative">
-      <input type="text"
-             id="cm-start-date-display"
-             class="cm-input pr-10"
-             inputmode="numeric"
-             placeholder="DD/MM/AAAA"
-             value="{% if card.start_date %}{{ card.start_date|date:'d/m/Y' }}{% endif %}">
+            <div class="relative">
+              <input type="text"
+                     id="cm-start-date-display"
+                     class="cm-input pr-10"
+                     inputmode="numeric"
+                     placeholder="DD/MM/AAAA"
+                     value="{% if card.start_date %}{{ card.start_date|date:'d/m/Y' }}{% endif %}">
 
-      <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">📅</span>
+              <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">📅</span>
 
-      <input type="date"
-             id="cm-start-date-picker"
-             class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 opacity-0 cursor-pointer z-10"
-             value="{% if card.start_date %}{{ card.start_date|date:'Y-m-d' }}{% endif %}">
+              <input type="date"
+                     id="cm-start-date-picker"
+                     class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 opacity-0 cursor-pointer z-10"
+                     value="{% if card.start_date %}{{ card.start_date|date:'Y-m-d' }}{% endif %}">
 
-      <input type="hidden"
-             name="start_date"
-             id="cm-start-date"
-             value="{% if card.start_date %}{{ card.start_date|date:'Y-m-d' }}{% endif %}">
-    </div>
-  </div>
+              <input type="hidden"
+                     name="start_date"
+                     id="cm-start-date"
+                     value="{% if card.start_date %}{{ card.start_date|date:'Y-m-d' }}{% endif %}">
+            </div>
+          </div>
 
-  <!-- VENCIMENTO -->
-  <div class="min-w-0">
-    <div class="cm-label">Vencimento</div>
+          <!-- VENCIMENTO -->
+          <div class="min-w-0">
+            <div class="cm-label">Vencimento</div>
 
-    <div class="relative">
-      <input type="text"
-             id="cm-due-date-display"
-             class="cm-input pr-10"
-             inputmode="numeric"
-             placeholder="DD/MM/AAAA"
-             value="{% if card.due_date %}{{ card.due_date|date:'d/m/Y' }}{% endif %}">
+            <div class="relative">
+              <input type="text"
+                     id="cm-due-date-display"
+                     class="cm-input pr-10"
+                     inputmode="numeric"
+                     placeholder="DD/MM/AAAA"
+                     value="{% if card.due_date %}{{ card.due_date|date:'d/m/Y' }}{% endif %}">
 
-      <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">📅</span>
+              <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">📅</span>
 
-      <input type="date"
-             id="cm-due-date-picker"
-             class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 opacity-0 cursor-pointer z-10"
-             value="{% if card.due_date %}{{ card.due_date|date:'Y-m-d' }}{% endif %}">
+              <input type="date"
+                     id="cm-due-date-picker"
+                     class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 opacity-0 cursor-pointer z-10"
+                     value="{% if card.due_date %}{{ card.due_date|date:'Y-m-d' }}{% endif %}">
 
-      <input type="hidden"
-             name="due_date"
-             id="cm-due-date"
-             value="{% if card.due_date %}{{ card.due_date|date:'Y-m-d' }}{% endif %}">
-    </div>
-  </div>
+              <input type="hidden"
+                     name="due_date"
+                     id="cm-due-date"
+                     value="{% if card.due_date %}{{ card.due_date|date:'Y-m-d' }}{% endif %}">
+            </div>
+          </div>
 
-  <!-- AVISAR EM -->
-  <div class="min-w-0">
-    <div class="cm-label">Avisar em</div>
+          <!-- AVISAR EM -->
+          <div class="min-w-0">
+            <div class="cm-label">Avisar em</div>
 
-    <div class="relative">
-      <input type="text"
-             id="cm-due-warn-date-display"
-             class="cm-input pr-10"
-             inputmode="numeric"
-             placeholder="DD/MM/AAAA"
-             value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'d/m/Y' }}{% endif %}">
+            <div class="relative">
+              <input type="text"
+                     id="cm-due-warn-date-display"
+                     class="cm-input pr-10"
+                     inputmode="numeric"
+                     placeholder="DD/MM/AAAA"
+                     value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'d/m/Y' }}{% endif %}">
 
-      <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">📅</span>
+              <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">📅</span>
 
-      <input type="date"
-             id="cm-due-warn-date-picker"
-             class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 opacity-0 cursor-pointer z-10"
-             value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'Y-m-d' }}{% endif %}">
+              <input type="date"
+                     id="cm-due-warn-date-picker"
+                     class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 opacity-0 cursor-pointer z-10"
+                     value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'Y-m-d' }}{% endif %}">
 
-      <input type="hidden"
-             name="due_warn_date"
-             id="cm-due-warn-date"
-             value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'Y-m-d' }}{% endif %}">
-    </div>
-  </div>
+              <input type="hidden"
+                     name="due_warn_date"
+                     id="cm-due-warn-date"
+                     value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'Y-m-d' }}{% endif %}">
+            </div>
+          </div>
 
-</div>
-
-
-
-
-
-
-
-
+        </div>
 
         <div class="flex items-center gap-2">
           <input type="hidden" name="due_notify" value="0">
@@ -305,26 +288,26 @@
       <div class="cm-card space-y-3">
         <div>
           <label>Cadastre as etiquetas, depois clique nelas</label>
-<input
-  type="text"
-  name="tags"
-  id="cm-tags-input"
-  autocomplete="off"
-/>
+          <input
+            type="text"
+            name="tags"
+            id="cm-tags-input"
+            autocomplete="off"
+          />
 
-<div class="cm-tag-catalog">
-  <div class="cm-tag-create">
-    <input
-      type="text"
-      id="cm-tag-new"
-      placeholder="Digite a etiqueta"
-    />
-    <button type="button" id="cm-tag-add">Incluir</button>
-    <button type="button" id="cm-tag-delete-toggle">Excluir etiquetas</button>
-  </div>
+          <div class="cm-tag-catalog">
+            <div class="cm-tag-create">
+              <input
+                type="text"
+                id="cm-tag-new"
+                placeholder="Digite a etiqueta"
+              />
+              <button type="button" id="cm-tag-add">Incluir</button>
+              <button type="button" id="cm-tag-delete-toggle">Excluir etiquetas</button>
+            </div>
 
-  <div class="cm-tag-list" id="cm-tag-list"></div>
-</div>
+            <div class="cm-tag-list" id="cm-tag-list"></div>
+          </div>
 
         </div>
 
@@ -340,7 +323,7 @@
     <div class="cm-floatbar-inner">
       <button type="button" class="cm-btn" id="cm-close-btn">Fechar</button>
       <button type="submit" form="cm-main-form" class="cm-btn primary" id="cm-float-save-btn"><span class="underline font-semibold">S</span>alvar
-</button>
+      </button>
     </div>
   </div>
 
@@ -362,7 +345,7 @@
                  class="cm-input"
                  placeholder="Ex: Tarefas da semana">
           <button type="submit" class="cm-btn primary">
-          <span class="underline font-semibold">A</span>dicionar
+            <span class="underline font-semibold">A</span>dicionar
           </button>
 
         </div>
@@ -377,47 +360,49 @@
   {# Aba: Atividade #}
   <section class="cm-panel" data-cm-panel="ativ" role="tabpanel">
 
-  <!-- CARD 1: NOVA ATIVIDADE (composer) -->
-  <div class="cm-card space-y-3">
-    <form
-      id="cm-activity-form"
-      method="post"
-      hx-post="{% url 'boards:add_activity' card.id %}"
-      hx-target="#cm-activity-panel"
-      hx-swap="innerHTML"
-    >
-      {% csrf_token %}
+    <!-- CARD 1: NOVA ATIVIDADE (composer) -->
+    <div class="cm-card space-y-3">
+      <form
+        id="cm-activity-form"
+        method="post"
+        action="{% url 'boards:add_activity' card.id %}"
+      >
+        {% csrf_token %}
 
-      <div id="activity-error"
-           class="hidden mb-2 px-3 py-2 rounded-md text-sm border border-red-500/30 bg-red-500/10 text-red-200"></div>
+        <div id="activity-error"
+             class="hidden mb-2 px-3 py-2 rounded-md text-sm border border-red-500/30 bg-red-500/10 text-red-200"></div>
 
-      <label class="cm-label">Nova atividade</label>
+        <label class="cm-label">Nova atividade (Somente Texto)</label>
 
-      <div id="cm-activity-editor"
-           class="cm-textarea"
-           style="min-height:140px;"></div>
+        <textarea
+          name="content"
+          id="cm-activity-content"
+          class="cm-textarea"
+          style="min-height:140px;"
+          placeholder="Digite aqui..."></textarea>
 
-      <input type="hidden" name="content" id="cm-activity-content">
+        <div class="flex gap-2">
+          {# ✅ volta a ser submit para ALT+I e para funcionar sem depender de JS legado #}
+          <button type="submit" class="cm-btn primary">
+            <span class="underline font-semibold">I</span>ncluir
+          </button>
 
-      <div class="flex gap-2">
-        <button type="submit" class="cm-btn primary"><span class="underline font-semibold">I</span>ncluir</button>
-        <button type="button" class="cm-btn" onclick="resetActivityQuill()">Limpar</button>
-      </div>
-    </form>
-  </div>
-
-  <!-- ESPAÇO ENTRE OS DOIS BLOCOS -->
-  <div style="height: 10px;"></div>
-
-  <!-- CARD 2: LISTA DE ATIVIDADES -->
-  <div class="cm-card">
-    <div id="cm-activity-panel">
-      {% include "boards/partials/card_activity_panel.html" %}
+          <button type="button" class="cm-btn" onclick="document.getElementById('cm-activity-content').value=''">Limpar</button>
+        </div>
+      </form>
     </div>
-  </div>
 
-</section>
+    <!-- ESPAÇO ENTRE OS DOIS BLOCOS -->
+    <div style="height: 10px;"></div>
 
+    <!-- CARD 2: LISTA DE ATIVIDADES -->
+    <div class="cm-card">
+      <div id="cm-activity-panel">
+        {% include "boards/partials/card_activity_panel.html" %}
+      </div>
+    </div>
+
+  </section>
 
   {# Aba: Anexos #}
   <section class="cm-panel" data-cm-panel="files" role="tabpanel">
@@ -462,71 +447,51 @@
     </div>
   </section>
 
-
-    
-
-
-
-
-
-
-
-
-
-
-
   {# Action dock #}
-<div id="cm-action-dock" aria-label="Ações do card">
-  <div class="dock-wrap">
-    <!-- TOGGLE (⋮) -->
-    <button type="button"
-            id="cm-dock-toggle"
-            class="dock-toggle"
-            aria-expanded="false"
-            aria-haspopup="true"
-            aria-controls="cm-dock-menu">
-      ⋮
-    </button>
-
-    <!-- MENU -->
-    <div id="cm-dock-menu" class="hidden" role="menu" aria-label="Menu de ações">
+  <div id="cm-action-dock" aria-label="Ações do card">
+    <div class="dock-wrap">
+      <!-- TOGGLE (⋮) -->
       <button type="button"
-              class="dock-action"
-              id="cm-dock-duplicate"
-              role="menuitem"
-              data-url-duplicate="{% url 'boards:duplicate_card' card.id %}">
-        <span>📄</span> <span class="label">Duplicar</span>
+              id="cm-dock-toggle"
+              class="dock-toggle"
+              aria-expanded="false"
+              aria-haspopup="true"
+              aria-controls="cm-dock-menu">
+        ⋮
       </button>
 
-      <button type="button"
-              class="dock-action"
-              id="cm-dock-move"
-              role="menuitem"
-              data-url-move="{% url 'boards:card_move_options' card.id %}">
-        <span>↔️</span> <span class="label">Mover</span>
-      </button>
+      <!-- MENU -->
+      <div id="cm-dock-menu" class="hidden" role="menu" aria-label="Menu de ações">
+        <button type="button"
+                class="dock-action"
+                id="cm-dock-duplicate"
+                role="menuitem"
+                data-url-duplicate="{% url 'boards:duplicate_card' card.id %}">
+          <span>📄</span> <span class="label">Duplicar</span>
+        </button>
 
-      <button type="button"
-              class="dock-action"
-              id="cm-dock-copylink"
-              role="menuitem">
-        <span>🔗</span> <span class="label">Copiar link</span>
-      </button>
+        <button type="button"
+                class="dock-action"
+                id="cm-dock-move"
+                role="menuitem"
+                data-url-move="{% url 'boards:card_move_options' card.id %}">
+          <span>↔️</span> <span class="label">Mover</span>
+        </button>
+
+        <button type="button"
+                class="dock-action"
+                id="cm-dock-copylink"
+                role="menuitem">
+          <span>🔗</span> <span class="label">Copiar link</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- PAINEL (Mover) -->
+    <div id="cm-action-dock-panel" role="dialog" aria-label="Painel de ação" class="hidden">
+      <div id="cm-dock-panel-body"></div>
     </div>
   </div>
-
-  <!-- PAINEL (Mover) -->
-  <div id="cm-action-dock-panel" role="dialog" aria-label="Painel de ação" class="hidden">
-    <div id="cm-dock-panel-body"></div>
-  </div>
-</div>
-
-
-
-
-
-
-
 
 </div>
 
@@ -547,10 +512,6 @@
   function clampTab(tab) {
     const t = String(tab || "").trim();
     return ALLOWED.includes(t) ? t : "desc";
-  }
-
-  function getActiveTab() {
-    return clampTab(root.getAttribute("data-cm-active") || root.dataset.cmActive || "desc");
   }
 
   function setActiveTab(tab) {
@@ -594,23 +555,18 @@
   }
 
   // 1) TAB PERSISTENCE
-  // - Primeira abertura: força desc
-  // - Pós swaps (HTMX): restaura a aba salva
   (function initTabPersistence() {
     const initial = hasStoredTab() ? loadStoredTab() : "desc";
     storeTab(initial);
 
-    // Aplica após o DOM do modal estar pronto + scripts defer (cinto e suspensório)
     setTimeout(() => setActiveTab(initial), 0);
     setTimeout(() => setActiveTab(loadStoredTab()), 50);
 
-    // Persiste por evento central (emitido por modal.tabs.js)
     root.addEventListener("cm:tabchange", function (e) {
       const t = clampTab(e.detail && e.detail.tab);
       storeTab(t);
     });
 
-    // Global: captura requests/swap do HTMX sem depender deste script rodar de novo
     if (window.__cmTabKeepBound === true) return;
     window.__cmTabKeepBound = true;
 
@@ -619,8 +575,6 @@
       if (!r) return;
 
       const mode = r.dataset.cmMode || "legacy";
-
-      /* 🔒 legado não mexe em track */
       if (mode === "legacy") return;
 
       const cid = (r.getAttribute("data-card-id") || "").trim() || "x";
@@ -630,12 +584,10 @@
       try { sessionStorage.setItem(key, t); } catch (_e) {}
     });
 
-
     document.body.addEventListener("htmx:afterSwap", function (evt) {
       const target = evt.target;
       if (!target) return;
 
-      // Quando trocar o body do modal, restaura a última aba
       if (target.id === "modal-body") {
         const r = document.getElementById("cm-root");
         if (!r) return;
@@ -676,10 +628,8 @@
       const el = ev.target;
       if (!el) return;
 
-      // Em textarea, Enter é newline
       if (el.tagName === "TEXTAREA") return;
 
-      // Só bloqueia nos campos do CM (título/tags/datas)
       const shouldBlock = el.matches(
         'input[name="title"], input[name="tags"], #cm-due-date-display, #cm-due-warn-date-display'
       );
@@ -692,7 +642,7 @@
     }, true);
   })();
 
-    // 3) FLOATBAR — aparece quando houver alterações em Desc/Tags (LEGACY)
+  // 3) FLOATBAR — aparece quando houver alterações em Desc/Tags (LEGACY)
   (function initFloatbarDirty() {
     const form = document.getElementById("cm-main-form");
     const floatbar = document.getElementById("cm-floatbar");
@@ -768,7 +718,7 @@
       });
     }
 
-    sync(); // inicial (deve ficar hidden)
+    sync();
   })();
 
   // 4) DATAS — abrir picker + sincronizar BR/ISO (sem autosave)
@@ -863,13 +813,12 @@
         display.value = iso ? formatISOtoBR(iso) : "";
       });
 
-      // inicial
       const iso0 = String(hidden.value || "").trim() || String(picker.value || "").trim();
       hidden.value = iso0;
       picker.value = iso0;
       display.value = iso0 ? formatISOtoBR(iso0) : "";
     }
-    
+
     wire("start-date");
     wire("due-date");
     wire("due-warn-date");
@@ -898,14 +847,9 @@
 })();
 </script>
 
-
-
 <script>
   // ============================================================
   // HOTKEYS (ALT+S / ALT+I / ALT+A) — Card Modal
-  // - ALT+S: salva (#cm-main-form)
-  // - ALT+I: vai para Atividade e inclui (#cm-activity-form)
-  // - ALT+A: vai para Checklists e adiciona (#cm-checklist-create-form)
   // ============================================================
   (function () {
     const root = document.getElementById("cm-root");
@@ -950,24 +894,20 @@
       const k = clampKey(e);
       if (k !== "s" && k !== "i" && k !== "a") return;
 
-      // bloqueia o browser SEMPRE que for hotkey nosso
       e.preventDefault();
       e.stopPropagation();
 
-      // ALT+S => salvar
       if (k === "s") {
         submitFormById("cm-main-form");
         return;
       }
 
-      // ALT+I => incluir atividade
       if (k === "i") {
         gotoTab("ativ");
         setTimeout(() => submitFormById("cm-activity-form"), 0);
         return;
       }
 
-      // ALT+A => adicionar checklist
       if (k === "a") {
         gotoTab("check");
         setTimeout(() => submitFormById("cm-checklist-create-form"), 0);
@@ -977,9 +917,91 @@
   })();
 </script>
 
+<script>
+/*
+  ✅ FIX LEGADO (INLINE, SEM MEXER NO JS GLOBAL):
+  - O legado tinha interceptação antiga do submit (Quill).
+  - Aqui garantimos o mínimo: ao submeter a atividade, fazemos POST via fetch com headers de HTMX,
+    e atualizamos #cm-activity-panel com o HTML retornado.
+  - Não encosta no modal novo porque exige data-cm-mode="legacy".
+*/
+(function () {
+  const root = document.getElementById("cm-root");
+  if (!root) return;
+  if ((root.dataset.cmMode || "").trim() !== "legacy") return;
 
+  const form = document.getElementById("cm-activity-form");
+  const panel = document.getElementById("cm-activity-panel");
+  const errorBox = document.getElementById("activity-error");
+  const textarea = document.getElementById("cm-activity-content");
 
+  if (!form || !panel) return;
+  if (form.dataset.cmLegacyBound === "1") return;
+  form.dataset.cmLegacyBound = "1";
 
+  function showError(msg) {
+    if (!errorBox) return;
+    errorBox.textContent = msg || "Falha ao incluir atividade.";
+    errorBox.classList.remove("hidden");
+  }
+
+  function hideError() {
+    if (!errorBox) return;
+    errorBox.classList.add("hidden");
+    errorBox.textContent = "";
+  }
+
+  form.addEventListener("submit", async function (ev) {
+    // mata QUALQUER interceptador legado antes de dar ruim
+    ev.preventDefault();
+    ev.stopImmediatePropagation();
+    hideError();
+
+    const url = (form.getAttribute("action") || "").trim();
+    if (!url) {
+      showError("URL de inclusão não definida.");
+      return;
+    }
+
+    const fd = new FormData(form);
+
+    // evita submit vazio (mínimo de UX)
+    const content = String(fd.get("content") || "").trim();
+    if (!content) {
+      showError("Digite algo antes de incluir.");
+      return;
+    }
+
+    try {
+      const resp = await fetch(url, {
+        method: "POST",
+        body: fd,
+        credentials: "same-origin",
+        headers: {
+          "HX-Request": "true",
+          "X-Requested-With": "XMLHttpRequest"
+        }
+      });
+
+      const html = await resp.text();
+
+      if (!resp.ok) {
+        // se o backend devolver HTML de erro, pelo menos mostra a mensagem
+        showError("Não foi possível incluir a atividade.");
+        return;
+      }
+
+      // Atualiza o painel com o HTML retornado
+      panel.innerHTML = html;
+
+      // limpa textarea
+      if (textarea) textarea.value = "";
+    } catch (_e) {
+      showError("Erro de rede ao incluir atividade.");
+    }
+  }, true);
+})();
+</script>
 
 <script>
 (function () {
@@ -1020,7 +1042,6 @@
     return `print-${stamp}-${rnd}${ext}`;
   }
 
-  // PASTE: instala 1x global
   if (window.__cmAttachPasteBound !== true) {
     window.__cmAttachPasteBound = true;
 
@@ -1061,7 +1082,6 @@
         desc.value = "Print (Ctrl+V)";
       }
 
-
       const dt = new DataTransfer();
       dt.items.add(file);
 
@@ -1071,7 +1091,6 @@
     }, true);
   }
 
-  // DRAG&DROP: instala por modal (re-render safe)
   function initAttachmentDragDrop() {
     const r = getRoot();
     if (!r) return;
@@ -1125,7 +1144,6 @@
 })();
 </script>
 
-
 <script>
 (function () {
   document.addEventListener("click", function (e) {
@@ -1135,7 +1153,6 @@
     e.preventDefault();
     e.stopPropagation();
 
-    // UX simples, clara e honesta
     if (window.showMessage) {
       window.showMessage({
         title: "Track-time",
@@ -1145,7 +1162,6 @@
       return;
     }
 
-    // fallback universal
     alert(
       "⏱️ Track-time\n\n" +
       "Esta funcionalidade está disponível apenas no modo novo do card.\n\n" +
