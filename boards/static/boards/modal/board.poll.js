@@ -298,16 +298,29 @@ document.addEventListener("visibilitychange", () => {
 }
 
 
-
 async function syncCardUnreadBadges(boardId) {
   if (!boardId) return;
 
-  // ✅ Respeita preferência do usuário (sem badge no card)
-  // Se a flag não existir, assume "ligado" (backward-compatible).
+  // ✅ Respeita preferência do usuário
+  // Se desmarcado: zera e esconde todos os badges do card
   if (window.USER_ACTIVITY_COUNTS === false) {
-    document.querySelectorAll(".card-unread-badge").forEach((el) => el.remove());
+    document.querySelectorAll("[data-card-unread-badge]").forEach((badge) => {
+      badge.textContent = "";
+      badge.classList.add("hidden");
+    });
+
+    // limpeza de legado (se existir badge antigo criado por JS)
+    document.querySelectorAll(".card-unread-badge").forEach((el) => {
+      if (!el.hasAttribute("data-card-unread-badge")) el.remove();
+    });
+
     return;
   }
+
+  // limpeza de legado (evita duplicar badges antigos)
+  document.querySelectorAll(".card-unread-badge").forEach((el) => {
+    if (!el.hasAttribute("data-card-unread-badge")) el.remove();
+  });
 
   try {
     const res = await fetch(`/board/${boardId}/cards/unread-activity/`, {
@@ -321,27 +334,19 @@ async function syncCardUnreadBadges(boardId) {
     const data = await res.json();
     const map = data.cards || {};
 
-    document.querySelectorAll("li[data-card-id]").forEach((cardEl) => {
-      const cardId = cardEl.dataset.cardId;
-      const count = Number(map[cardId] || 0);
+    document.querySelectorAll('li[data-card-id]').forEach((cardEl) => {
+      const badge = cardEl.querySelector("[data-card-unread-badge]");
+      if (!badge) return;
 
-      let badge = cardEl.querySelector(".card-unread-badge");
+      const cardId = cardEl.getAttribute("data-card-id");
+      const n = Number(map[cardId] || 0);
 
-      if (count > 0) {
-        if (!badge) {
-          badge = document.createElement("span");
-          badge.className =
-            "card-unread-badge absolute top-1 left-1 z-10 " +
-            "min-w-[18px] h-[18px] px-1 text-[10px] font-bold " +
-            "rounded-full bg-red-600 text-white flex items-center justify-center";
-
-          cardEl.style.position ||= "relative";
-          cardEl.appendChild(badge);
-        }
-
-        badge.textContent = count;
+      if (n > 0) {
+        badge.textContent = String(n);
+        badge.classList.remove("hidden");
       } else {
-        badge?.remove();
+        badge.textContent = "";
+        badge.classList.add("hidden");
       }
     });
   } catch (e) {

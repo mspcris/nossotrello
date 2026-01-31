@@ -1292,8 +1292,9 @@
 </script>
 
 <script>
-  window.USER_ACTIVITY_COUNTS = {{ request.user.userprofile.activity_counts|yesno:"true,false" }};
+  window.USER_ACTIVITY_COUNTS = {{ request.user.profile.activity_counts|yesno:"true,false" }};
 </script>
+
 
 
 
