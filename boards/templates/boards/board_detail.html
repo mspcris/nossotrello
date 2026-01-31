@@ -173,9 +173,12 @@
           hx-target="#modal-body" hx-swap="innerHTML"
           hx-on="htmx:beforeRequest: try{ if(window.Modal&&Modal.open){Modal.open();} }catch(e){}">
     Histórico do quadro
-    <span id="board-history-badge"
-          class="ml-2 inline-flex items-center justify-center text-xs font-semibold
-                 rounded-full px-2 py-0.5 bg-red-600 text-white hidden">0</span>
+    {% if request.user.is_authenticated and request.user.profile.activity_counts %}
+  <span id="board-history-badge"
+        class="ml-2 inline-flex items-center justify-center text-xs font-semibold
+               rounded-full px-2 py-0.5 bg-red-600 text-white hidden">0</span>
+{% endif %}
+
   </button>
 </li>
 
@@ -1722,7 +1725,7 @@ document.addEventListener("DOMContentLoaded", () => {
 })();
 </script>
 
-
+{% if request.user.is_authenticated and request.user.profile.activity_counts %}
 <script>
 (function () {
   async function refreshBoardHistoryBadge() {
@@ -1773,6 +1776,8 @@ document.addEventListener("DOMContentLoaded", () => {
   window.refreshBoardHistoryBadge = refreshBoardHistoryBadge;
 })();
 </script>
+{% endif %}
+
 
 
 
@@ -1923,6 +1928,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 
+{% if request.user.is_authenticated and request.user.profile.activity_counts %}
 
 <script>
 /**
@@ -1997,6 +2003,7 @@ document.addEventListener("DOMContentLoaded", () => {
 })();
 </script>
 
+{% endif %}
 
 
 

@@ -180,11 +180,14 @@
         class="relative text-gray-900 bg-white/80 border border-gray-400 rounded-md px-3 py-2 shadow hover:bg-white transition"
         aria-label="Abrir menu">
   ☰
+  {% if request.user.is_authenticated and request.user.profile.activity_counts %}
   <span id="drawer-unread-badge"
         class="absolute -top-2 -right-2 hidden min-w-[18px] h-[18px] px-1
                rounded-full text-[11px] leading-[18px] text-white bg-red-600 text-center">
     0
   </span>
+{% endif %}
+
 </button>
 
 
