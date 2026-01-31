@@ -228,7 +228,197 @@
     }
   }
 
-  function ensureQuill() {
+
+
+
+    // ============================================================
+  // AUTO-GROW (mesmo comportamento da Descrição)
+  // - sem scroll interno no editor
+  // - quem rola é o modal (scroll único)
+  // ============================================================
+  function getModalScrollContainer() {
+    return (
+      document.querySelector("#modal-body.card-modal-scroll") ||
+      document.querySelector("#modal-body") ||
+      document.querySelector("#card-modal-root .card-modal-scroll")
+    );
+  }
+
+
+
+
+
+
+  function autoGrowQuill(quill, opts = {}) {
+    const min = Number(opts.min ?? 140);
+    const max = Number(opts.max ?? 3000);
+
+    const editor = quill?.root;
+    if (!editor) return;
+
+    const container = editor.closest(".ql-container");
+    if (!container) return;
+
+    const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+
+    function getManualMinHeight() {
+      const v = parseInt(container.dataset.cmManualMinHeight || "0", 10);
+      return Number.isFinite(v) ? v : 0;
+    }
+
+    function resetInternalScroll() {
+      try {
+        editor.scrollTop = 0;
+        container.scrollTop = 0;
+      } catch (_e) {}
+    }
+
+    function apply() {
+      // Layout previsível
+      container.style.setProperty("display", "block", "important");
+      container.style.setProperty("max-height", "none", "important");
+
+      // ✅ EVITA “scroll invisível”: não clipar o conteúdo
+      container.style.setProperty("overflow", "visible", "important");
+
+      editor.style.setProperty("display", "block", "important");
+      editor.style.setProperty("height", "auto", "important");
+      editor.style.setProperty("min-height", "0", "important");
+
+      // ✅ placeholder/texto não pode ser cortado
+      editor.style.setProperty("overflow", "visible", "important");
+      // ✅ respiro no fundo (evita a última linha encostar na borda)
+      editor.style.setProperty("padding-bottom", "14px", "important");
+
+
+      const bottomPad = 14; // precisa bater com o padding-bottom acima
+      const needed = (editor.scrollHeight || 0) + bottomPad;
+
+      const manualMin = getManualMinHeight();
+      const target = clamp(Math.max(min, manualMin, needed), min, max);
+
+      container.style.setProperty("height", `${target}px`, "important");
+
+      // ✅ O Quill pode ajustar scrollTop depois do seu cálculo.
+      // Então zera em 2 frames para “ganhar” do Quill.
+      requestAnimationFrame(() => {
+        resetInternalScroll();
+        requestAnimationFrame(resetInternalScroll);
+      });
+
+      try { window.dispatchEvent(new Event("resize")); } catch (_e) {}
+    }
+
+    // digitação / enter / deletar
+    quill.on("text-change", () => {
+      apply();
+      requestAnimationFrame(apply);
+    });
+
+    // movimentar cursor também pode disparar scroll interno
+    quill.on("selection-change", () => {
+      resetInternalScroll();
+      requestAnimationFrame(resetInternalScroll);
+    });
+
+    // imagens carregando mudam altura depois
+    editor.addEventListener("load", () => requestAnimationFrame(apply), true);
+
+    // inicial
+    requestAnimationFrame(apply);
+    setTimeout(apply, 0);
+
+    quill.__autoGrowApply = apply;
+    return apply;
+  }
+
+
+
+
+
+
+
+
+
+
+  // ============================================================
+  // Pós-submit: remove "Nenhuma atividade ainda" e força refresh do painel
+  // ============================================================
+  function removeActivityEmptyState() {
+    const host =
+      document.getElementById("cm-activity-panel") ||
+      document.getElementById("activity-panel-wrapper") ||
+      document;
+
+    const nodes = host.querySelectorAll("*");
+    for (const n of nodes) {
+      const t = (n.textContent || "").trim();
+      if (t === "Nenhuma atividade ainda.") {
+        n.remove();
+        break;
+      }
+    }
+  }
+
+  function refreshActivityPanel() {
+    // tenta achar um container com hx-get para dar refresh de verdade
+    const hxHost =
+      document.querySelector("#cm-activity-panel[hx-get]") ||
+      document.querySelector("#cm-activity-panel [hx-get]") ||
+      document.querySelector("#activity-panel-wrapper[hx-get]") ||
+      document.querySelector("#activity-panel-wrapper [hx-get]");
+
+    if (!hxHost) return;
+
+    const url = hxHost.getAttribute("hx-get");
+    if (!url) return;
+
+    if (window.htmx && typeof window.htmx.ajax === "function") {
+      try {
+        window.htmx.ajax("GET", url, {
+          target: hxHost,
+          swap: hxHost.getAttribute("hx-swap") || "innerHTML",
+        });
+      } catch (_e) {}
+    }
+  }
+
+  function applyPostSuccessActivityUI(responseText) {
+    removeActivityEmptyState();
+
+    // se o backend estiver devolvendo um snippet de item, tenta inserir
+    const html = String(responseText || "").trim();
+    if (html) {
+      const list =
+        document.querySelector("#cm-activity-panel .cm-activity-list") ||
+        document.querySelector("#activity-panel-wrapper .cm-activity-list") ||
+        document.querySelector("#cm-activity-panel") ||
+        document.querySelector("#activity-panel-wrapper");
+
+      const looksLikeItem =
+        html.includes("cm-activity-item") ||
+        html.includes("activity-item") ||
+        html.includes("cm-activity-content") ||
+        html.includes("atividade");
+
+      if (list && looksLikeItem) {
+        try {
+          list.insertAdjacentHTML("afterbegin", html);
+          return;
+        } catch (_e) {}
+      }
+    }
+
+    // fallback robusto: faz refresh via hx-get
+    refreshActivityPanel();
+  }
+
+
+
+
+
+
+    function ensureQuill() {
     if (typeof Quill === "undefined") return;
 
     // ✅ não monta Quill quando composer está oculto
@@ -242,7 +432,9 @@
 
     const boardId = getBoardIdFromUrl();
 
-    const quill = new Quill(el, {
+    const modalScroll = getModalScrollContainer();
+
+    const quillOptions = {
       theme: "snow",
       placeholder: "", // ✅ remove "Escreva aqui..."
       modules: {
@@ -255,10 +447,20 @@
         ],
         mention: makeMentionConfig(boardId),
       },
-    });
+    };
+
+    // ✅ scroll único do modal (evita scroll interno fantasma)
+    if (modalScroll) quillOptions.scrollingContainer = modalScroll;
+
+    const quill = new Quill(el, quillOptions);
 
     window[STATE_KEY] = quill;
     window[STATE_EL_KEY] = el;
+
+    // ✅ AUTO-GROW (Atividade) — mesmo comportamento da Descrição
+    const container = quill.root.closest(".ql-container");
+    if (container) delete container.dataset.cmManualMinHeight;
+    autoGrowQuill(quill, { min: 140, max: 3000 });
 
     // ✅ COLAR IMAGEM
     quill.root.addEventListener("paste", async function (e) {
@@ -320,15 +522,23 @@
           quill.insertEmbed(range.index, "image", fileUrl);
           quill.insertText(range.index + 1, "\n");
           quill.setSelection(range.index + 2);
+
+          // ✅ re-aplica auto-grow depois do embed
+          try { quill.__autoGrowApply?.(); } catch (_e) {}
+          try { requestAnimationFrame(() => quill.__autoGrowApply?.()); } catch (_e) {}
         } else {
           quill.insertText(range.index, "[anexo criado]\n");
           quill.setSelection(range.index + 14);
+
+          try { quill.__autoGrowApply?.(); } catch (_e) {}
+          try { requestAnimationFrame(() => quill.__autoGrowApply?.()); } catch (_e) {}
         }
       } catch (err) {
         showActivityError(err?.message || "Erro ao colar imagem na atividade.");
       }
     });
   }
+
 
   function syncToHidden() {
     const quill = window[STATE_KEY];
@@ -349,7 +559,7 @@
 
   window.resetActivityQuill = resetEditor;
 
-  function bindActivityForm() {
+    function bindActivityForm() {
     const form =
       document.getElementById("cm-activity-form") ||
       document.querySelector('section[data-cm-panel="ativ"] form');
@@ -371,6 +581,12 @@
 
     form.addEventListener("htmx:afterRequest", function (evt) {
       if (evt.detail?.successful === true) {
+        // ✅ corrige “Nenhuma atividade ainda” sem F5
+        try {
+          const resp = evt.detail?.xhr?.responseText || "";
+          applyPostSuccessActivityUI(resp);
+        } catch (_e) {}
+
         resetEditor();
         clearActivityError();
         closeComposer(); // ✅ após incluir, volta a ocultar

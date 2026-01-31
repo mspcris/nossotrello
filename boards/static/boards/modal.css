@@ -1721,3 +1721,97 @@ html.dark #modal #modal-breadcrumb{
   min-height: 44px !important;
   resize: vertical;
 }
+
+
+
+/* ============================================================
+   ATIVIDADE (LISTA/HISTÓRICO) — NÃO ESTICAR CARDS
+   Objetivo:
+   - cada atividade ocupa só o necessário (auto)
+   - sem “vazios” gigantes
+   - texto fica no topo, não “ancorado” no fundo
+   ============================================================ */
+
+#card-modal-root #cm-activity-panel,
+#card-modal-root #activity-panel-wrapper{
+  align-content: flex-start !important;
+}
+
+/* garante que a lista NÃO seja grid com rows 1fr e nem flex com stretch estranho */
+#card-modal-root #cm-activity-panel .cm-activity-list,
+#card-modal-root #activity-panel-wrapper .cm-activity-list{
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+}
+
+/* mata qualquer height/min-height herdado que esteja inflando os itens */
+#card-modal-root #cm-activity-panel .cm-activity-item,
+#card-modal-root #activity-panel-wrapper .cm-activity-item,
+#card-modal-root #cm-activity-panel .activity-item,
+#card-modal-root #activity-panel-wrapper .activity-item{
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+
+  /* se o template estiver usando flex e “space-between”, isso elimina o “texto no fundo” */
+  display: block !important;
+}
+
+/* garante que o conteúdo interno não force altura */
+#card-modal-root #cm-activity-panel .cm-activity-content,
+#card-modal-root #activity-panel-wrapper .cm-activity-content,
+#card-modal-root #cm-activity-panel .activity-content,
+#card-modal-root #activity-panel-wrapper .activity-content{
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  margin: 0 !important;
+}
+
+
+/* ============================================================
+   ATIVIDADE (LISTA/HISTÓRICO) — KILL STRETCH (flex/grid)
+   - impede items de virarem 1fr / flex:1
+   - força empilhamento no topo
+   ============================================================ */
+
+/* 1) o container da lista não pode distribuir espaço vertical */
+#card-modal-root #cm-activity-panel .cm-activity-list,
+#card-modal-root #activity-panel-wrapper .cm-activity-list{
+  justify-content: flex-start !important;
+  align-content: flex-start !important;
+}
+
+/* 2) cada item precisa ser “auto”, nunca “flex:1” */
+#card-modal-root #cm-activity-panel .cm-activity-item,
+#card-modal-root #activity-panel-wrapper .cm-activity-item,
+#card-modal-root #cm-activity-panel .activity-item,
+#card-modal-root #activity-panel-wrapper .activity-item{
+  flex: 0 0 auto !important;        /* 🔑 mata flex-grow */
+  align-self: stretch !important;
+}
+
+/* 3) se algum wrapper estiver em GRID com rows 1fr, força auto */
+#card-modal-root #cm-activity-panel .cm-activity-list{
+  grid-auto-rows: auto !important;
+}
+
+/* 4) se o item (ou filhos) estiverem como flex + space-between, neutraliza */
+#card-modal-root #cm-activity-panel .cm-activity-item,
+#card-modal-root #activity-panel-wrapper .cm-activity-item{
+  display: block !important;
+}
+
+#card-modal-root #cm-activity-panel .cm-activity-item > *,
+#card-modal-root #activity-panel-wrapper .cm-activity-item > *{
+  flex: 0 0 auto !important;
+}
+
+/* 5) por segurança, não deixar conteúdo “empurrar” altura via min-height */
+#card-modal-root #cm-activity-panel .cm-activity-meta,
+#card-modal-root #cm-activity-panel .cm-activity-content,
+#card-modal-root #activity-panel-wrapper .activity-meta,
+#card-modal-root #activity-panel-wrapper .activity-content{
+  min-height: 0 !important;
+}
