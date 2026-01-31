@@ -302,6 +302,13 @@ document.addEventListener("visibilitychange", () => {
 async function syncCardUnreadBadges(boardId) {
   if (!boardId) return;
 
+  // ✅ Respeita preferência do usuário (sem badge no card)
+  // Se a flag não existir, assume "ligado" (backward-compatible).
+  if (window.USER_ACTIVITY_COUNTS === false) {
+    document.querySelectorAll(".card-unread-badge").forEach((el) => el.remove());
+    return;
+  }
+
   try {
     const res = await fetch(`/board/${boardId}/cards/unread-activity/`, {
       credentials: "same-origin",

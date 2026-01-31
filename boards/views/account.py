@@ -149,11 +149,18 @@ def account_profile_update(request):
     # ------------------------------------------------------------
     # Preferência: Atividade fixa na lateral do modal
     # ------------------------------------------------------------
-    if "activity_sidebar" in request.POST:
-        prof.activity_sidebar = True
-    else:
-        prof.activity_sidebar = False
+    # ------------------------------------------------------------
+    # CHECKBOXES: desmarcado não vem no POST -> tem que virar False
+    # Regra: se o form de perfil foi submetido, sempre recalcula os flags.
+    # ------------------------------------------------------------
+    prof.activity_sidebar = ("activity_sidebar" in request.POST)
+    prof.activity_counts  = (request.POST.get("activity_counts") == "1")
+
+
+
     update_fields.append("activity_sidebar")
+    update_fields.append("activity_counts")
+
 
 
     if errors:

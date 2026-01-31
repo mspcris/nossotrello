@@ -216,11 +216,16 @@
 
 
               <label class="inline-flex items-center gap-2 text-sm mt-3">
-  <input type="checkbox"
-         name="activity_counts"
-         {% if request.user.profile.activity_counts %}checked{% endif %}>
-  <span>Mostrar Contador de Atividades</span>
-</label>
+                <!-- garante envio quando desmarcado -->
+               
+
+                <input type="checkbox"
+                      name="activity_counts"
+                      value="1"
+                      {% if profile.activity_counts %}checked{% endif %}>
+                <span>Mostrar Contador de Atividades</span>
+              </label>
+
 
 <p class="text-xs text-gray-500 mt-1">
   Desmarcado: oculta os contadores (pílulas) no card e no menu.
