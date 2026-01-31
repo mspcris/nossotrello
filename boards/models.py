@@ -353,6 +353,11 @@ class UserProfile(models.Model):
         help_text="Mostrar atividade fixa na lateral do modal do card (estilo Trello)",
     )
         
+    activity_counts = models.BooleanField(
+        default=True,
+        help_text="Mostrar contadores de atividade (comentários/itens) no modal do card",
+    )
+
 
     avatar_choice = models.CharField(max_length=60, blank=True, default="")
     display_name = models.CharField(max_length=120, blank=True, default="")
