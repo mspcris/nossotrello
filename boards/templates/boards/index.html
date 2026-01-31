@@ -144,40 +144,40 @@
     {% endif %}
   </div>
 
-  <script>
-    (function () {
-      const toggleBtn = document.getElementById("toggle-delete-mode");
-      let deleteMode = false;
+<script>
+  (function () {
+    let deleteMode = false;
+    const toggleBtn = document.getElementById("toggle-delete-mode");
 
-      toggleBtn?.addEventListener("click", () => {
-        deleteMode = !deleteMode;
+    function applyDeleteMode(on) {
+      deleteMode = on;
 
-        document.querySelectorAll(".delete-button").forEach(btn => {
-          btn.classList.toggle("hidden", !deleteMode);
-        });
-
-        if (toggleBtn) {
-          toggleBtn.innerText = deleteMode ? "Sair do modo de exclusão" : "Excluir quadros";
-        }
+      document.querySelectorAll(".board-card").forEach(card => {
+        card.classList.toggle("delete-mode", deleteMode);
       });
 
-      document.body.addEventListener("htmx:afterRequest", function () {
-        if (!deleteMode) return;
+      if (toggleBtn) {
+        toggleBtn.innerText = deleteMode ? "Sair do modo de exclusão" : "Excluir quadros";
+      }
+    }
 
-        deleteMode = false;
+    toggleBtn?.addEventListener("click", (e) => {
+      e.preventDefault();
+      applyDeleteMode(!deleteMode);
+    });
 
-        document.querySelectorAll(".delete-button").forEach(btn => {
-          btn.classList.add("hidden");
-        });
+    // Depois de excluir um quadro (HTMX), desliga o modo para não ficar “armado”
+    document.body.addEventListener("htmx:afterRequest", function () {
+      if (deleteMode) applyDeleteMode(false);
+    });
 
-        if (toggleBtn) toggleBtn.innerText = "Excluir quadros";
-      });
+    // Evita estado “travado” ao voltar pelo cache do browser
+    window.addEventListener("pageshow", function (event) {
+      if (event.persisted) window.location.reload();
+    });
+  })();
+</script>
 
-      window.addEventListener("pageshow", function (event) {
-        if (event.persisted) window.location.reload();
-      });
-    })();
-  </script>
 
   <script>
     window.HOME_GROUPS = [
