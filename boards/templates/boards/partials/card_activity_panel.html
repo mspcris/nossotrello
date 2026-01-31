@@ -2,40 +2,39 @@
 {% load tag_helpers %}
 
 <div id="card-activity-panel" class="flex flex-col">
-  <div class="flex items-center justify-between mb-3">
+  <div class="flex items-center justify-between mb-1">
     <h3 class="text-lg font-semibold">Atividade</h3>
   </div>
 
-  <div id="activity-panel-wrapper"
-       class="activity-panel space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-  
-       {% for log in logs %}
+  <div id="activity-panel-wrapper" class="activity-panel max-h-[60vh] overflow-y-auto pr-2">
+    <div class="cm-activity-list space-y-1">
+      {% for log in card.logs.all|dictsortreversed:"created_at" %}
 
-      <div class="activity-item p-3 rounded-xl border shadow-sm
-            bg-[var(--cm-surface)] border-[var(--cm-border)]
-            backdrop-blur-md [-webkit-backdrop-filter:blur(12px)]">
+        <div class="activity-item px-3 py-2 rounded-xl border shadow-sm
+                    bg-[var(--cm-surface)] border-[var(--cm-border)]">
 
-        <div class="activity-meta text-xs text-gray-500 mb-2">
-          {{ log.created_at|date:"d/m/Y H:i" }}
+          <div class="activity-meta text-[11px] text-gray-500 mb-1 leading-none">
+            {{ log.created_at|date:"d/m/Y H:i" }}
+          </div>
+
+          <div class="activity-content text-sm leading-snug">
+            {% if log.attachment %}
+              <p class="mb-1">
+                <strong>Anexo:</strong>
+                <a href="{{ log.attachment.url }}" target="_blank" class="text-blue-600 underline">
+                  {{ log.attachment.name|cut:"attachments/" }}
+                </a>
+              </p>
+            {% endif %}
+            {{ log.content|safe }}
+          </div>
         </div>
 
-        <div class="activity-content text-sm leading-relaxed whitespace-normal prose prose-sm max-w-none">
-
-          {% if log.attachment %}
-            <p class="mb-1">
-              <strong>Anexo:</strong>
-              <a href="{{ log.attachment.url }}" target="_blank" class="text-blue-600 underline">
-                {{ log.attachment.name|cut:"attachments/" }}
-              </a>
-            </p>
-          {% endif %}
-
-          {{ log.content|safe }}
-        </div>
-      </div>
-    {% empty %}
-      <p class="text-gray-400 text-sm">Nenhuma atividade ainda.</p>
-    {% endfor %}
+      {% empty %}
+        <p class="text-gray-400 text-sm">Nenhuma atividade ainda.</p>
+      {% endfor %}
+    </div>
   </div>
 </div>
+
 <!-- END CARD_ACTIVITY_PANEL.HTML -->

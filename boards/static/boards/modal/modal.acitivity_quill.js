@@ -384,34 +384,32 @@
   }
 
   function applyPostSuccessActivityUI(responseText) {
-    removeActivityEmptyState();
+  removeActivityEmptyState();
 
-    // se o backend estiver devolvendo um snippet de item, tenta inserir
-    const html = String(responseText || "").trim();
-    if (html) {
-      const list =
-        document.querySelector("#cm-activity-panel .cm-activity-list") ||
-        document.querySelector("#activity-panel-wrapper .cm-activity-list") ||
-        document.querySelector("#cm-activity-panel") ||
-        document.querySelector("#activity-panel-wrapper");
+  const html = String(responseText || "").trim();
+  if (!html) return;
 
-      const looksLikeItem =
-        html.includes("cm-activity-item") ||
-        html.includes("activity-item") ||
-        html.includes("cm-activity-content") ||
-        html.includes("atividade");
-
-      if (list && looksLikeItem) {
-        try {
-          list.insertAdjacentHTML("afterbegin", html);
-          return;
-        } catch (_e) {}
-      }
-    }
-
-    // fallback robusto: faz refresh via hx-get
-    refreshActivityPanel();
+  // 1) Se o backend devolveu o painel inteiro, substitui o painel (anti-duplicação)
+  const panel = document.getElementById("card-activity-panel");
+  if (panel && (html.includes('id="card-activity-panel"') || html.includes('id="activity-panel-wrapper"'))) {
+    panel.outerHTML = html;
+    return;
   }
+
+  // 2) Se devolveu só um item, insere no topo da lista
+  const list =
+    document.querySelector("#activity-panel-wrapper .cm-activity-list") ||
+    document.querySelector("#cm-activity-panel .cm-activity-list");
+
+  const looksLikeItem = html.includes("activity-item") || html.includes("cm-activity-item");
+
+  if (list && looksLikeItem) {
+    try {
+      list.insertAdjacentHTML("afterbegin", html);
+      return;
+    } catch (_e) {}
+  }
+}
 
 
 
@@ -629,6 +627,97 @@
       setTimeout(initActivityModule, 50);
     }
   });
+
+
+    // ============================================================
+  // ATIVIDADE (LISTA) — limpar espaços “fantasmas” do HTML do log
+  // Remove <p><br></p>, <p>&nbsp;</p> e blocos vazios no começo/fim
+  // ============================================================
+  function cleanupActivityLogSpacing() {
+    try {
+      const wrapper =
+        document.getElementById("activity-panel-wrapper") ||
+        document.querySelector("#cm-activity-panel") ||
+        document.querySelector("#activity-panel-wrapper");
+
+      if (!wrapper) return;
+
+      const contentBlocks = wrapper.querySelectorAll(
+        ".activity-content, .cm-activity-content"
+      );
+
+      const isEmptyParagraph = (p) => {
+        if (!p) return true;
+
+        // Texto “visível” (remove espaços e NBSP unicode)
+        const txt = (p.textContent || "").replace(/\u00A0/g, " ").trim();
+
+        // HTML interno “normalizado” (remove whitespace e &nbsp;)
+        const html = (p.innerHTML || "")
+          .replace(/\u00A0/g, " ")
+          .replace(/&nbsp;/gi, " ")
+          .replace(/\s+/g, "")
+          .toLowerCase();
+
+        // Casos clássicos do Quill
+        if (html === "" || html === "<br>" || html === "<br/>" || html === "<br/>") return true;
+
+        // Se não tem texto e só tem BR(s)
+        if (txt === "") {
+          const onlyBr =
+            p.querySelectorAll("*").length === p.querySelectorAll("br").length &&
+            p.querySelectorAll("br").length >= 1;
+          if (onlyBr) return true;
+        }
+
+        // Ex.: <p>&nbsp;</p> ou <p> </p>
+        if (txt === "" && html === "") return true;
+
+        return false;
+      };
+
+      contentBlocks.forEach((block) => {
+        // 1) Remove todos os <p> vazios do bloco
+        const ps = Array.from(block.querySelectorAll("p"));
+        ps.forEach((p) => {
+          if (isEmptyParagraph(p)) p.remove();
+        });
+
+        // 2) Remove <br> solto que sobrou no começo/fim do bloco
+        const killEdgeBr = () => {
+          // início
+          while (block.firstChild) {
+            const n = block.firstChild;
+            if (n.nodeType === 3 && (n.textContent || "").trim() === "") {
+              n.remove();
+              continue;
+            }
+            if (n.nodeType === 1 && n.tagName === "BR") {
+              n.remove();
+              continue;
+            }
+            break;
+          }
+
+          // fim
+          while (block.lastChild) {
+            const n = block.lastChild;
+            if (n.nodeType === 3 && (n.textContent || "").trim() === "") {
+              n.remove();
+              continue;
+            }
+            if (n.nodeType === 1 && n.tagName === "BR") {
+              n.remove();
+              continue;
+            }
+            break;
+          }
+        };
+
+        killEdgeBr();
+      });
+    } catch (_e) {}
+  }
 
   // ============================================================
   // GATILHO 3: modal renderizado / swaps do HTMX
