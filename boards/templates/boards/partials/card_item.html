@@ -27,6 +27,15 @@
   {# CAPA #}
   {% if card.cover_image %}
     <div class="-mx-3 -mt-3 mb-2 card-cover-wrap">
+      <!-- Fundo espelhado (blur) -->
+      <div
+        class="card-cover-blur"
+        style="
+          background-image: url('{{ card.cover_image.url }}');
+        ">
+      </div>
+
+      <!-- Imagem principal (não corta) -->
       <img
         src="{{ card.cover_image.url }}"
         alt="Capa do card"
@@ -34,6 +43,7 @@
         loading="lazy">
     </div>
   {% endif %}
+
 
 
   {# 🔴 BADGE — CONTROLADO 100% PELO POLL (BACKEND NEUTRO) #}

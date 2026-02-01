@@ -672,59 +672,45 @@ pre {
 
 
 /* ============================================================
-   IMAGEM DO QUADRO DENTRO DA BOARD - CENTRALIZADA 
+   IMAGEM DO QUADRO DENTRO DA BOARD - CENTRALIZADA - Header
    ============================================================ */
-.cm-header-board-cover {
-  width: 120px;
-  height: 48px;
-  border-radius: 999px;
-  overflow: hidden;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  background: rgba(255,255,255,0.25);
-  border: 1px solid rgba(255,255,255,0.35);
-}
-
-.cm-header-board-cover-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.cm-header-board-cover-fallback {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #0f172a;
-  padding: 0 12px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-
 .cm-header-board-cover{
-  height: 56px;
-  width: 224px;
+  position: relative;
+  height: 48px;   /* menor que 56 */
+  width: 200px;   /* menor que 224 */
   border-radius: 16px;
   overflow: hidden;
+  background: rgba(255,255,255,0.12);
 }
 
 @media (min-width: 768px){
   .cm-header-board-cover{
-    height: 80px;
-    width: 420px;
+    height: 64px;  /* menor que 80 */
+    width: 340px;  /* menor que 420 */
     border-radius: 18px;
   }
 }
 
+.cm-header-board-cover-blur{
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  transform: scaleX(-1) scale(1.15);
+  filter: blur(12px);
+  opacity: 0.9;
+  pointer-events: none;
+}
+
 .cm-header-board-cover-img{
+  position: relative;
+  z-index: 1;
   height: 100%;
   width: 100%;
-  object-fit: cover;
+  object-fit: contain; /* não corta */
   display: block;
+  pointer-events: none;
+  user-select: none;
 }
 
 
@@ -741,6 +727,42 @@ pre {
 
 
 
+
+
+
+/* ============================================================
+   IMAGEM DO CARD DENTRO DA BOARD
+   ============================================================ */
+/* Thumb da capa do card (coluna) */
+.card-cover-wrap{
+  position: relative;
+  height: var(--card-cover-thumb-h);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--card-cover-bg);
+}
+
+.card-cover-blur{
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  transform: scaleX(-1) scale(1.15);
+  filter: blur(12px);
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.card-cover-img{
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: contain; /* mesmo comportamento da home */
+  display: block;
+  pointer-events: none;
+  user-select: none;
+}
 
 
 

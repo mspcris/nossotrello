@@ -193,18 +193,25 @@
     <div class="cm-header-center flex items-center justify-center">
       {% block header_center %}
         {% if board.cover_image %}
-          <div class="cm-header-board-cover">
-            <img
-              src="{{ board.cover_image.url }}"
-              alt="{{ board.name }}"
-              class="cm-header-board-cover-img"
-            >
-          </div>
-        {% else %}
-          <div class="cm-header-board-cover cm-header-board-cover-fallback">
-            {{ board.name }}
-          </div>
-        {% endif %}
+        <div class="cm-header-board-cover">
+          <div
+            class="cm-header-board-cover-blur"
+            style="background-image: url('{{ board.cover_image.url }}');"
+          ></div>
+
+          <img
+            src="{{ board.cover_image.url }}"
+            alt="{{ board.name }}"
+            class="cm-header-board-cover-img"
+            loading="lazy"
+          >
+        </div>
+      {% else %}
+        <div class="cm-header-board-cover cm-header-board-cover-fallback">
+          {{ board.name }}
+        </div>
+      {% endif %}
+
       {% endblock %}
     </div>
 
