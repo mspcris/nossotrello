@@ -923,6 +923,8 @@ async function toggleAudioRecording(quill) {
         try {
           const resp = evt.detail?.xhr?.responseText || "";
           applyPostSuccessActivityUI(resp);
+          try { cleanupActivityLogSpacing(); } catch (_e) {}
+
         } catch (_e) {}
 
         resetEditor();
@@ -1077,7 +1079,15 @@ async function toggleAudioRecording(quill) {
       } else if (btn) {
         btn.setAttribute("aria-expanded", isComposerOpen() ? "true" : "false");
       }
+
+      // ✅ limpeza quando o DOM já está "assentado"
+      try { cleanupActivityLogSpacing(); } catch (_e) {}
     }, 0);
+
+    // ✅ mais um tiro um pouco depois (garante pós-font/CSS)
+    setTimeout(function () {
+      try { cleanupActivityLogSpacing(); } catch (_e) {}
+    }, 120);
   }
 
   document.addEventListener("DOMContentLoaded", afterModalPaint);
@@ -1111,7 +1121,9 @@ async function toggleAudioRecording(quill) {
     // ✅ e garante rebind do form mesmo que não esteja na aba ainda
     setTimeout(bindActivityForm, 0);
   });
+
 })();
+
 
 // ============================================================
 // END /boards/static/modal/modal.acitivity_quill.js

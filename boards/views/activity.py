@@ -81,6 +81,13 @@ def activity_panel(request, card_id):
     )
 
 
+
+
+
+
+
+
+
 @login_required
 @require_POST
 def add_activity(request, card_id):
@@ -105,13 +112,37 @@ def add_activity(request, card_id):
 
     html, saved_paths = _save_base64_images_to_media(raw, folder="quill")
 
+    def _trim_quill_empty_blocks(s: str) -> str:
+        s = (s or "").strip()
+
+        # remove blocos vazios no começo/fim (padrão Quill)
+        # <p><br></p>, <p><br/></p>, <p>&nbsp;</p>, etc.
+        s = re.sub(
+            r'^(?:\s*<p>(?:\s|&nbsp;|<br\s*/?>)*</p>\s*)+',
+            "",
+            s,
+            flags=re.I,
+        )
+        s = re.sub(
+            r'(?:\s*<p>(?:\s|&nbsp;|<br\s*/?>)*</p>\s*)+$',
+            "",
+            s,
+            flags=re.I,
+        )
+
+        return s.strip()
+
+    clean_html = _trim_quill_empty_blocks(html)
+    if not clean_html:
+        return HttpResponse("Conteúdo vazio", status=400)
+
     # ✅ Agora: atividade “normal” vira CardLog puro (sem wrapper).
     # ✅ Resposta (reply) também vira CardLog puro com reply_to.
     CardLog.objects.create(
         card=card,
         actor=request.user,
         reply_to=parent_log if parent_log else None,
-        content=html,
+        content=clean_html,
         attachment=None,
     )
 
@@ -137,7 +168,7 @@ def add_activity(request, card_id):
     except Exception:
         pass
 
-    referenced_paths = _extract_media_image_paths(html or "", folder="quill")
+    referenced_paths = _extract_media_image_paths(clean_html or "", folder="quill")
     all_paths = list(dict.fromkeys((saved_paths or []) + (referenced_paths or [])))
 
     if all_paths:
@@ -150,7 +181,7 @@ def add_activity(request, card_id):
         )
 
     # garante anexos também para imagens já existentes em /media/quill/
-    img_urls = re.findall(r'src=(["\'])([^"\']+)\1', html, flags=re.IGNORECASE)
+    img_urls = re.findall(r'src=(["\'])([^"\']+)\1', clean_html, flags=re.IGNORECASE)
     for _q, url in img_urls:
         if "/media/quill/" not in (url or ""):
             continue
@@ -211,6 +242,15 @@ def add_activity(request, card_id):
     )
 
     return HttpResponse(activity_html + oob_html)
+
+
+
+
+
+
+
+
+
 
 
 @require_POST
