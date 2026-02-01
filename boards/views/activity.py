@@ -6,7 +6,7 @@ from django.shortcuts import render, get_object_or_404
 from django.views.decorators.http import require_POST, require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.template.loader import render_to_string
-from django.db.models import Count, Q
+from django.db.models import Prefetch
 from django.utils import timezone
 
 from ..permissions import can_edit_board
@@ -19,7 +19,6 @@ from ..models import (
 )
 from .helpers import (
     _actor_html,
-    _log_card,
     _save_base64_images_to_media,
     _ensure_attachments_and_activity_for_images,
     _extract_media_image_paths,
@@ -27,6 +26,26 @@ from .helpers import (
 )
 
 
+def _safe_user_handle_or_email(u):
+    """
+    Preferir @handle quando existir; fallback para email.
+    """
+    try:
+        h = getattr(getattr(u, "profile", None), "handle", None)
+        h = (h or "").strip()
+        if h:
+            return f"@{h}"
+    except Exception:
+        pass
+
+    try:
+        e = (getattr(u, "email", "") or "").strip()
+        if e:
+            return e
+    except Exception:
+        pass
+
+    return ""
 
 
 @login_required
@@ -42,7 +61,24 @@ def activity_panel(request, card_id):
         if not memberships_qs.filter(user=request.user).exists():
             return HttpResponse("Você não tem acesso a este quadro.", status=403)
 
-    return render(request, "boards/partials/card_activity_panel.html", {"card": card})
+    parents = (
+        card.logs
+        .filter(reply_to__isnull=True)
+        .select_related("actor")
+        .prefetch_related(
+            Prefetch(
+                "replies",
+                queryset=CardLog.objects.select_related("actor").order_by("created_at"),
+            )
+        )
+        .order_by("-created_at")
+    )
+
+    return render(
+        request,
+        "boards/partials/card_activity_panel.html",
+        {"card": card, "logs": parents},
+    )
 
 
 @login_required
@@ -55,31 +91,48 @@ def add_activity(request, card_id):
     if not can_edit_board(request.user, board):
         return HttpResponse("Somente leitura.", status=403)
 
-    actor = _actor_html(request)
-
     raw = (request.POST.get("content") or "").strip()
     if not raw:
         return HttpResponse("Conteúdo vazio", status=400)
 
+    reply_to_id = (request.POST.get("reply_to") or "").strip()
+    parent_log = None
+    if reply_to_id:
+        try:
+            parent_log = card.logs.select_related("actor").filter(id=reply_to_id).first()
+        except Exception:
+            parent_log = None
+
     html, saved_paths = _save_base64_images_to_media(raw, folder="quill")
 
-    _log_card(
-        card,
-        request,
-        f"<p><strong>{actor}</strong> adicionou uma atividade:</p>{html}",
+    # ✅ Agora: atividade “normal” vira CardLog puro (sem wrapper).
+    # ✅ Resposta (reply) também vira CardLog puro com reply_to.
+    CardLog.objects.create(
+        card=card,
+        actor=request.user,
+        reply_to=parent_log if parent_log else None,
+        content=html,
         attachment=None,
     )
+
     board.version += 1
     board.save(update_fields=["version"])
 
     # menções: @handle e emails no texto bruto
+    # ✅ Se for reply: notifica o autor original via mentions (sem poluir o HTML salvo)
     try:
+        raw_for_mentions = raw
+        if parent_log and parent_log.actor:
+            who = _safe_user_handle_or_email(parent_log.actor)
+            if who:
+                raw_for_mentions = f"{who} {raw}"
+
         process_mentions_and_notify(
             request=request,
             board=board,
             card=card,
             source="activity",
-            raw_text=raw,
+            raw_text=raw_for_mentions,
         )
     except Exception:
         pass
@@ -92,7 +145,7 @@ def add_activity(request, card_id):
             card=card,
             request=request,
             relative_paths=all_paths,
-            actor=actor,
+            actor=_actor_html(request),
             context_label="atividade",
         )
 
@@ -118,9 +171,22 @@ def add_activity(request, card_id):
         pass
 
     # 1) Atualiza painel de atividade (target do hx-post)
+    parents = (
+        card.logs
+        .filter(reply_to__isnull=True)
+        .select_related("actor")
+        .prefetch_related(
+            Prefetch(
+                "replies",
+                queryset=CardLog.objects.select_related("actor").order_by("created_at"),
+            )
+        )
+        .order_by("-created_at")
+    )
+
     activity_html = render_to_string(
         "boards/partials/card_activity_panel.html",
-        {"card": card},
+        {"card": card, "logs": parents},
         request=request,
     )
 
@@ -150,10 +216,6 @@ def add_activity(request, card_id):
 @require_POST
 def quill_upload(request):
     return JsonResponse({"error": "Not implemented"}, status=501)
-
-
-
-# boards/views/activity.py
 
 
 @login_required
@@ -192,8 +254,3 @@ def cards_unread_activity(request, board_id):
         counts[log.card_id] = counts.get(log.card_id, 0) + 1
 
     return JsonResponse({"cards": counts})
-
-
-# END boards/views/activity.py
-
-

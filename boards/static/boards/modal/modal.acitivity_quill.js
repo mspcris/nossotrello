@@ -413,6 +413,89 @@
 
 
 
+  // ============================================================
+  // REPLY (Responder)
+  // - botão ↩ no item da atividade seta reply_to
+  // - mostra label "@crisss está respondendo @fulano."
+  // ============================================================
+  function ensureReplyFields(form) {
+    if (!form) return { input: null, label: null };
+
+    let input = document.getElementById("cm-activity-reply-to");
+    if (!input) {
+      input = document.createElement("input");
+      input.type = "hidden";
+      input.name = "reply_to";
+      input.id = "cm-activity-reply-to";
+      input.value = "";
+      form.appendChild(input);
+    }
+
+    let label = document.getElementById("cm-activity-reply-label");
+    if (!label) {
+      label = document.createElement("div");
+      label.id = "cm-activity-reply-label";
+      label.className = "hidden text-xs text-gray-600 mb-2";
+      // tenta inserir perto do editor
+      const composer = document.getElementById("cm-activity-composer") || form;
+      composer.insertBefore(label, composer.firstChild);
+    }
+
+    return { input, label };
+  }
+
+  function clearReplyContext() {
+    const form =
+      document.getElementById("cm-activity-form") ||
+      document.querySelector('section[data-cm-panel="ativ"] form');
+
+    if (!form) return;
+
+    const { input, label } = ensureReplyFields(form);
+    if (input) input.value = "";
+    if (label) {
+      label.textContent = "";
+      label.classList.add("hidden");
+    }
+  }
+
+  document.addEventListener(
+    "click",
+    function (e) {
+      const btn = e.target?.closest?.(".cm-activity-reply-btn");
+      if (!btn) return;
+
+      const replyTo = (btn.getAttribute("data-reply-to") || "").trim();
+      const replyUser = (btn.getAttribute("data-reply-user") || "").trim();
+
+      const form =
+        document.getElementById("cm-activity-form") ||
+        document.querySelector('section[data-cm-panel="ativ"] form');
+
+      if (!form) return;
+
+      // abre o composer (precisa do seu openComposer/ensureQuill)
+      openComposer();
+
+      const { input, label } = ensureReplyFields(form);
+      if (input) input.value = replyTo;
+
+      // label (sem trazer o texto original pro editor)
+      const me = "@crisss";
+      if (label) {
+        label.textContent = `${me} está respondendo ${replyUser}.`;
+        label.classList.remove("hidden");
+      }
+
+      // foco no editor
+      try {
+        ensureQuill();
+        const q = window[STATE_KEY];
+        if (q && typeof q.focus === "function") q.focus();
+      } catch (_e) {}
+    },
+    true
+  );
 
 
 
@@ -819,15 +902,20 @@ async function toggleAudioRecording(quill) {
     form.dataset.cmBound = "1";
 
     form.addEventListener("htmx:configRequest", function (evt) {
-      // se o usuário submeteu, o composer está aberto
       ensureQuill();
       clearActivityError();
 
+      const { input } = ensureReplyFields(form);
+      const replyTo = (input?.value || "").trim();
+
       const html = syncToHidden();
+
       if (evt.detail && evt.detail.parameters) {
         evt.detail.parameters["content"] = html;
+        if (replyTo) evt.detail.parameters["reply_to"] = replyTo;
       }
     });
+
 
     form.addEventListener("htmx:afterRequest", function (evt) {
       if (evt.detail?.successful === true) {
@@ -839,6 +927,7 @@ async function toggleAudioRecording(quill) {
 
         resetEditor();
         clearActivityError();
+        clearReplyContext();
         closeComposer(); // ✅ após incluir, volta a ocultar
       }
     });

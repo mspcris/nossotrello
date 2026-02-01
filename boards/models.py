@@ -262,6 +262,13 @@ class CardLog(models.Model):
         on_delete=models.SET_NULL,
         related_name="card_logs",
     )
+    reply_to = models.ForeignKey(
+        "self",
+        related_name="replies",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+    )
 
     content = models.TextField(blank=True)
     attachment = models.FileField(upload_to="logs/", blank=True, null=True)
