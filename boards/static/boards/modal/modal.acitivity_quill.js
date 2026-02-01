@@ -416,126 +416,378 @@
 
 
 
-    function ensureQuill() {
-    if (typeof Quill === "undefined") return;
+function ensureQuill() {
+  if (typeof Quill === "undefined") return;
 
-    // ✅ não monta Quill quando composer está oculto
-    if (!isComposerOpen()) return;
+  // não monta Quill quando composer está oculto
+  if (!isComposerOpen()) return;
 
-    const el = document.getElementById("cm-activity-editor");
-    if (!el) return;
+  const el = document.getElementById("cm-activity-editor");
+  if (!el) return;
 
-    destroyQuillIfStale(el);
-    if (window[STATE_KEY]) return;
+  destroyQuillIfStale(el);
+  if (window[STATE_KEY]) return;
 
-    const boardId = getBoardIdFromUrl();
+  const boardId = getBoardIdFromUrl();
+  const modalScroll = getModalScrollContainer();
 
-    const modalScroll = getModalScrollContainer();
+  const quillOptions = {
+    theme: "snow",
+    placeholder: "",
+    modules: {
+      toolbar: [
+        [{ header: [1, 2, 3, false] }],
+        ["bold", "italic", "underline", "strike"],
+        [{ list: "ordered" }, { list: "bullet" }],
+        ["link", "image", "audio"],
+        ["clean"],
+      ],
+      mention: makeMentionConfig(boardId),
+    },
+  };
 
-    const quillOptions = {
-      theme: "snow",
-      placeholder: "", // ✅ remove "Escreva aqui..."
-      modules: {
-        toolbar: [
-          [{ header: [1, 2, 3, false] }],
-          ["bold", "italic", "underline", "strike"],
-          [{ list: "ordered" }, { list: "bullet" }],
-          ["link", "image"],
-          ["clean"],
-        ],
-        mention: makeMentionConfig(boardId),
-      },
-    };
+  if (modalScroll) quillOptions.scrollingContainer = modalScroll;
 
-    // ✅ scroll único do modal (evita scroll interno fantasma)
-    if (modalScroll) quillOptions.scrollingContainer = modalScroll;
+  const quill = new Quill(el, quillOptions);
 
-    const quill = new Quill(el, quillOptions);
+  // ✅ BIND “duro” no botão de áudio (click + touchstart) e estado “gravando”
+  try {
+    const tb = quill.getModule("toolbar");
+    const btn = tb?.container?.querySelector?.(".ql-audio");
 
-    window[STATE_KEY] = quill;
-    window[STATE_EL_KEY] = el;
+    if (btn) {
+      btn.setAttribute("type", "button");
+      btn.setAttribute("title", "Gravar áudio");
+      btn.setAttribute("aria-label", "Gravar áudio");
+      btn.classList.toggle("is-recording", !!window.__cmAudioRec.recording);
 
-    // ✅ AUTO-GROW (Atividade) — mesmo comportamento da Descrição
-    const container = quill.root.closest(".ql-container");
-    if (container) delete container.dataset.cmManualMinHeight;
-    autoGrowQuill(quill, { min: 140, max: 3000 });
-
-    // ✅ COLAR IMAGEM
-    quill.root.addEventListener("paste", async function (e) {
-      try {
-        const items = e.clipboardData?.items || [];
-        let file = null;
-
-        for (const item of items) {
-          if (item.type && item.type.startsWith("image/")) {
-            file = item.getAsFile();
-            break;
-          }
-        }
-
-        if (!file) return;
-
+      const fire = (e) => {
         e.preventDefault();
-        clearActivityError();
+        e.stopPropagation();
+        toggleAudioRecording(quill);
+      };
 
-        const cardId = getCardId();
-        if (!cardId) throw new Error("cardId ausente.");
-
-        const uploadUrl = `/card/${cardId}/attachments/add/`;
-
-        const form = new FormData();
-        form.append("file", file);
-        form.append("description", "Imagem colada na atividade");
-
-        const res = await fetch(uploadUrl, {
-          method: "POST",
-          credentials: "same-origin",
-          headers: {
-            "X-CSRFToken": getCSRF(),
-            "X-Requested-With": "XMLHttpRequest",
-          },
-          body: form,
-        });
-
-        if (!res.ok) {
-          const t = await res.text().catch(() => "");
-          throw new Error(t || `Upload falhou (${res.status}).`);
-        }
-
-        const html = await res.text();
-
-        const list = document.getElementById("attachments-list");
-        if (list) list.insertAdjacentHTML("beforeend", html);
-
-        const tmp = document.createElement("div");
-        tmp.innerHTML = html;
-
-        const a = tmp.querySelector("a[href]");
-        const img = tmp.querySelector("img[src]");
-        const fileUrl = (img && img.getAttribute("src")) || (a && a.getAttribute("href")) || "";
-
-        const range = quill.getSelection(true) || { index: quill.getLength() };
-
-        if (fileUrl) {
-          quill.insertEmbed(range.index, "image", fileUrl);
-          quill.insertText(range.index + 1, "\n");
-          quill.setSelection(range.index + 2);
-
-          // ✅ re-aplica auto-grow depois do embed
-          try { quill.__autoGrowApply?.(); } catch (_e) {}
-          try { requestAnimationFrame(() => quill.__autoGrowApply?.()); } catch (_e) {}
-        } else {
-          quill.insertText(range.index, "[anexo criado]\n");
-          quill.setSelection(range.index + 14);
-
-          try { quill.__autoGrowApply?.(); } catch (_e) {}
-          try { requestAnimationFrame(() => quill.__autoGrowApply?.()); } catch (_e) {}
-        }
-      } catch (err) {
-        showActivityError(err?.message || "Erro ao colar imagem na atividade.");
+      // remove binds antigos (click + touchstart) se o DOM reusar
+      if (btn.__cmAudioHandlers?.click) {
+        btn.removeEventListener("click", btn.__cmAudioHandlers.click, true);
       }
-    });
+      if (btn.__cmAudioHandlers?.touch) {
+        btn.removeEventListener("touchstart", btn.__cmAudioHandlers.touch, true);
+      }
+
+      btn.addEventListener("click", fire, true);
+      btn.addEventListener("touchstart", fire, { passive: false, capture: true });
+
+      btn.__cmAudioHandlers = { click: fire, touch: fire };
+    } else {
+      console.warn("[activity-audio] .ql-audio não encontrado");
+    }
+  } catch (e) {
+    console.error("[activity-audio] erro ao bindar botão", e);
   }
+
+  // handler do toolbar (mantém compatibilidade com o mecanismo do Quill)
+  try {
+    const toolbar = quill.getModule("toolbar");
+    if (toolbar) toolbar.addHandler("audio", () => toggleAudioRecording(quill));
+  } catch (_e) {}
+
+  window[STATE_KEY] = quill;
+  window[STATE_EL_KEY] = el;
+
+  // auto-grow
+  const container = quill.root.closest(".ql-container");
+  if (container) delete container.dataset.cmManualMinHeight;
+  autoGrowQuill(quill, { min: 140, max: 3000 });
+}
+
+
+
+
+
+
+
+
+// ============================================================
+// AUDIO (Gravação + Upload como anexo + Inserção de link no Quill)
+// ============================================================
+window.__cmAudioRec = window.__cmAudioRec || {
+  recording: false,
+  recorder: null,
+  stream: null,
+  chunks: [],
+};
+
+function isAndroidUA() {
+  const ua = (navigator.userAgent || "").toLowerCase();
+  return ua.includes("android");
+}
+
+function isIOSUA() {
+  const ua = (navigator.userAgent || "").toLowerCase();
+  return /iphone|ipad|ipod/.test(ua);
+}
+
+function isMobileUA() {
+  return isAndroidUA() || isIOSUA();
+}
+
+function notifyActivityError(msg) {
+  const box = document.getElementById("activity-error");
+  if (box) {
+    box.textContent = msg || "";
+    box.classList.toggle("hidden", !msg);
+    return;
+  }
+  if (msg) {
+    console.error("[activity-audio]", msg);
+    try { alert(msg); } catch (_e) {}
+  }
+}
+
+function getAudioButtonElFromQuill(quill) {
+  const toolbar = quill?.getModule?.("toolbar");
+  return toolbar?.container?.querySelector?.(".ql-audio") || null;
+}
+
+function setAudioButtonRecordingUI(quill, isOn) {
+  const btn = getAudioButtonElFromQuill(quill);
+  if (!btn) return;
+  btn.classList.toggle("is-recording", !!isOn);
+  btn.setAttribute("title", isOn ? "Gravando… clique para parar" : "Gravar áudio");
+  btn.setAttribute("aria-label", isOn ? "Gravando… clique para parar" : "Gravar áudio");
+}
+
+function pickAudioMimeType() {
+  const candidates = [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/ogg;codecs=opus",
+    "audio/ogg",
+  ];
+  for (const c of candidates) {
+    try {
+      if (window.MediaRecorder && MediaRecorder.isTypeSupported(c)) return c;
+    } catch (_e) {}
+  }
+  return "";
+}
+
+function fileExtFromMime(mime) {
+  const m = (mime || "").toLowerCase();
+  if (m.includes("ogg")) return "ogg";
+  if (m.includes("webm")) return "webm";
+  return "webm";
+}
+
+async function uploadFileAndInsertLink(quill, file, description) {
+  const cardId = getCardId();
+  if (!cardId) throw new Error("cardId ausente.");
+
+  const uploadUrl = `/card/${cardId}/attachments/add/`;
+
+  const form = new FormData();
+  form.append("file", file);
+  form.append("description", description || "Áudio gravado na atividade");
+
+  const res = await fetch(uploadUrl, {
+    method: "POST",
+    credentials: "same-origin",
+    headers: {
+      "X-CSRFToken": getCSRF(),
+      "X-Requested-With": "XMLHttpRequest",
+    },
+    body: form,
+  });
+
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(t || `Upload falhou (${res.status}).`);
+  }
+
+  const html = await res.text();
+
+  const list = document.getElementById("attachments-list");
+  if (list) list.insertAdjacentHTML("beforeend", html);
+
+  const tmp = document.createElement("div");
+  tmp.innerHTML = html;
+
+  const a = tmp.querySelector("a[href]");
+  const img = tmp.querySelector("img[src]");
+  const fileUrl = (img && img.getAttribute("src")) || (a && a.getAttribute("href")) || "";
+
+  const range = quill.getSelection(true) || { index: quill.getLength() };
+
+  if (fileUrl) {
+    quill.insertText(range.index, "🎤 Áudio", { link: fileUrl });
+    quill.insertText(range.index + 7, "\n");
+    quill.setSelection(range.index + 8);
+  } else {
+    quill.insertText(range.index, "[áudio anexado]\n");
+    quill.setSelection(range.index + 15);
+  }
+}
+
+function ensureAudioFileInput() {
+  let input = document.getElementById("cm-audio-capture-input");
+  if (input) return input;
+
+  input = document.createElement("input");
+  input.type = "file";
+  input.accept = "audio/*";
+  input.id = "cm-audio-capture-input";
+  input.style.display = "none";
+
+  document.body.appendChild(input);
+  return input;
+}
+
+/**
+ * Ajusta capture APENAS no mobile.
+ * - Android: "microphone" costuma funcionar melhor.
+ * - iOS: "user" ou sem capture varia; mantemos "user" como tentativa.
+ * - Desktop: remove capture (evita quebrar picker/fluxo).
+ */
+function configureCaptureAttribute(input) {
+  try { input.removeAttribute("capture"); } catch (_e) {}
+
+  if (!isMobileUA()) return;
+
+  if (isAndroidUA()) {
+    try { input.setAttribute("capture", "microphone"); } catch (_e) {}
+  } else {
+    // iOS (não testado por você): tentativa conservadora
+    try { input.setAttribute("capture", "user"); } catch (_e) {}
+  }
+}
+
+async function startAudioRecording(quill) {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    throw new Error("Gravação não suportada (getUserMedia indisponível).");
+  }
+
+  // getUserMedia exige https (exceto localhost)
+  const isSecure = (location.protocol === "https:" || location.hostname === "localhost");
+  if (!isSecure) {
+    throw new Error("Gravação exige HTTPS para acessar o microfone.");
+  }
+
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  const mimeType = pickAudioMimeType();
+
+  let recorder;
+  try {
+    recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+  } catch (_e) {
+    recorder = new MediaRecorder(stream);
+  }
+
+  window.__cmAudioRec.stream = stream;
+  window.__cmAudioRec.recorder = recorder;
+  window.__cmAudioRec.chunks = [];
+
+  recorder.ondataavailable = (e) => {
+    if (e.data && e.data.size > 0) window.__cmAudioRec.chunks.push(e.data);
+  };
+
+  recorder.start();
+  window.__cmAudioRec.recording = true;
+  setAudioButtonRecordingUI(quill, true);
+}
+
+async function stopAudioRecordingAndUpload(quill) {
+  const rec = window.__cmAudioRec.recorder;
+  if (!rec) return;
+
+  const mime = rec.mimeType || "";
+  await new Promise((resolve) => {
+    rec.onstop = resolve;
+    rec.stop();
+  });
+
+  const blob = new Blob(window.__cmAudioRec.chunks, { type: mime || "audio/webm" });
+
+  try { window.__cmAudioRec.stream?.getTracks?.().forEach((t) => t.stop()); } catch (_e) {}
+
+  window.__cmAudioRec.recording = false;
+  window.__cmAudioRec.recorder = null;
+  window.__cmAudioRec.stream = null;
+  window.__cmAudioRec.chunks = [];
+  setAudioButtonRecordingUI(quill, false);
+
+  const ext = fileExtFromMime(mime);
+  const ts = new Date().toISOString().replace(/[:.]/g, "-");
+  const file = new File([blob], `audio-${ts}.${ext}`, { type: mime || "audio/webm" });
+
+  await uploadFileAndInsertLink(quill, file, "Áudio gravado na atividade");
+}
+
+async function fallbackCaptureAudioFile(quill) {
+  const input = ensureAudioFileInput();
+  configureCaptureAttribute(input);
+
+  input.value = "";
+  input.onchange = async () => {
+    try {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      await uploadFileAndInsertLink(quill, file, "Áudio enviado na atividade");
+    } catch (err) {
+      notifyActivityError(err?.message || "Erro ao enviar áudio.");
+    }
+  };
+
+  input.click();
+}
+
+async function toggleAudioRecording(quill) {
+  try {
+    clearActivityError?.();
+
+    const hasGetUserMedia = !!navigator.mediaDevices?.getUserMedia;
+    const isSecure = (location.protocol === "https:" || location.hostname === "localhost");
+
+    // Se não tiver caminho “real” de gravação, cai no fallback (Android em HTTP/IP local, Safari, etc.)
+    if (!hasGetUserMedia || !isSecure || !window.MediaRecorder) {
+      await fallbackCaptureAudioFile(quill);
+      return;
+    }
+
+    if (!window.__cmAudioRec.recording) {
+      await startAudioRecording(quill);
+    } else {
+      await stopAudioRecordingAndUpload(quill);
+    }
+  } catch (err) {
+    setAudioButtonRecordingUI(quill, false);
+
+    window.__cmAudioRec.recording = false;
+    try { window.__cmAudioRec.stream?.getTracks?.().forEach((t) => t.stop()); } catch (_e) {}
+
+    window.__cmAudioRec.stream = null;
+    window.__cmAudioRec.recorder = null;
+    window.__cmAudioRec.chunks = [];
+
+    notifyActivityError(err?.message || "Erro ao gravar/enviar áudio.");
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
   function syncToHidden() {
