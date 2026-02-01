@@ -159,13 +159,14 @@
 
 
 
-
-<!-- Header --><header class="cm-header w-full px-4 py-3">
+<!-- Header -->
+<header class="cm-header w-full px-4 py-3">
   <div
-    class="cm-header-bar relative grid gap-3
+    class="cm-header-bar relative grid items-center gap-3
            mx-auto w-full max-w-[1400px] rounded-xl
            bg-emerald-900/70 backdrop-blur-md border border-white/30 shadow
-           px-4 py-3"
+           px-4 py-3
+           grid-cols-[260px_1fr_260px]"
   >
     <!-- ESQUERDA -->
     <div class="flex items-center gap-3 w-[260px]">
@@ -188,36 +189,26 @@
       </div>
     </div>
 
-    <!-- CENTRO — IMAGEM DO QUADRO (CRAVADA) -->
-<div class="cm-header-center flex items-center justify-center">
-{% block header_center %}
-  {% if board.cover_image %}
-    <div class="cm-header-board-cover">
-      <img
-        src="{{ board.cover_image.url }}"
-        alt="{{ board.name }}"
-        class="cm-header-board-cover-img"
-      >
-    </div>
-  {% else %}
-    <div class="cm-header-board-cover cm-header-board-cover-fallback">
-      {{ board.name }}
-    </div>
-  {% endif %}
-{% endblock %}
-
-</div>
-
-
-
-
-
-    
+    <!-- CENTRO -->
+    <div class="cm-header-center flex items-center justify-center">
+      {% block header_center %}
+        {% if board.cover_image %}
+          <div class="cm-header-board-cover">
+            <img
+              src="{{ board.cover_image.url }}"
+              alt="{{ board.name }}"
+              class="cm-header-board-cover-img"
+            >
+          </div>
+        {% else %}
+          <div class="cm-header-board-cover cm-header-board-cover-fallback">
+            {{ board.name }}
+          </div>
+        {% endif %}
+      {% endblock %}
     </div>
 
-
-
-    <!-- DIREITA -->
+    <!-- DIREITA (volta pra dentro da barra verde) -->
     <div class="flex items-center justify-end gap-3 w-[260px]">
       {% if request.user.is_authenticated %}
         {% with prof=request.user.profile %}
@@ -254,19 +245,15 @@
              class="h-12 w-12 rounded-full object-cover border border-white/50 shadow">
       </a>
 
-
       <button
-  type="button"
-  id="header-search-toggle"
-  class="p-2 rounded-full bg-white/70 border border-white/40 shadow hover:bg-white transition"
-  aria-label="Buscar no quadro"
-  title="Buscar"
->
-  🔍
-</button>
-
-
-
+        type="button"
+        id="header-search-toggle"
+        class="p-2 rounded-full bg-white/70 border border-white/40 shadow hover:bg-white transition"
+        aria-label="Buscar no quadro"
+        title="Buscar"
+      >
+        🔍
+      </button>
     </div>
   </div>
 
@@ -280,6 +267,12 @@
     </div>
   </div>
 </header>
+
+
+
+
+
+
 
 
 <!-- SEARCH OVERLAY (DESKTOP) -->

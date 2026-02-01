@@ -7,7 +7,7 @@
    DENSIDADE GLOBAL
    ============================================================ */
 
-html { font-size: 75%; }  /*16px -> 12px*/ 
+html { font-size: 85%; }  /*16px -> 12px*/ 
 
 body {
   font-size: 1rem;
@@ -15,8 +15,8 @@ body {
 }
 
  /*Opcional (Chromium): manter 100%*/ 
-@supports (zoom: 1) {
-  body { zoom: 1; }
+@supports (zoom: 0.5) {
+  body { zoom: 0.8; }
 }
 
 
@@ -702,7 +702,35 @@ pre {
 }
 
 
+.cm-header-board-cover{
+  height: 56px;
+  width: 224px;
+  border-radius: 16px;
+  overflow: hidden;
+}
 
+@media (min-width: 768px){
+  .cm-header-board-cover{
+    height: 80px;
+    width: 420px;
+    border-radius: 18px;
+  }
+}
+
+.cm-header-board-cover-img{
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+
+/*ZOOM DA IMAGEM DO CARD*/
+:root{
+  --card-cover-thumb-h: 140px; /* altura no card da coluna */
+  --card-cover-modal-h: clamp(110px, 14vh, 180px);
+  --card-cover-bg: rgba(0,0,0,0.10);
+}
 
 
 

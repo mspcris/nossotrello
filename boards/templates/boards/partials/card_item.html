@@ -26,14 +26,15 @@
 
   {# CAPA #}
   {% if card.cover_image %}
-    <div class="-mx-3 -mt-3 mb-2">
+    <div class="-mx-3 -mt-3 mb-2 card-cover-wrap">
       <img
         src="{{ card.cover_image.url }}"
         alt="Capa do card"
-        class="w-full h-20 object-cover"
+        class="card-cover-img"
         loading="lazy">
     </div>
   {% endif %}
+
 
   {# 🔴 BADGE — CONTROLADO 100% PELO POLL (BACKEND NEUTRO) #}
   <div class="mb-2">
