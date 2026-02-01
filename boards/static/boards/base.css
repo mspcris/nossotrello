@@ -6,17 +6,25 @@
 /* ============================================================
    DENSIDADE GLOBAL
    ============================================================ */
-html { font-size: 75%; } /* 16px -> 12px */
+
+html { font-size: 75%; }  /*16px -> 12px*/ 
 
 body {
   font-size: 1rem;
   line-height: 1.35;
 }
 
-/* Opcional (Chromium): manter 100% */
+ /*Opcional (Chromium): manter 100%*/ 
 @supports (zoom: 1) {
   body { zoom: 1; }
 }
+
+
+
+/*
+html { font-size: 16px; }
+body { font-size: 0.75rem; }
+*/
 
 /* =======================================================================
    TOKENS GERAIS (NÃO MODAL)
@@ -197,14 +205,14 @@ header {
   z-index: 61;
 }
 
-/* Desktop: busca no centro */
-@media (min-width: 768px) {
-  .cm-header-search {
-    display: flex;
-    justify-content: center;
-    flex: 1;
-  }
+
+
+.cm-header > .flex {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
 }
+
 
 /* Mobile: busca na linha 2 */
 @media (max-width: 767px) {
@@ -647,10 +655,28 @@ pre {
   background-repeat: no-repeat;
 }
 
-/* Header search hide */
-body:not(.is-home):not(.has-header-search) .cm-header-search {
-  display: none;
+
+
+
+
+
+
+
+
+
+
+
+
+
+header {
+  position: sticky;
+  top: 0;
+  z-index: 60;
 }
+
+
+
+
 
 /* =======================================================================
    FIM DO BASE.CSS CONSOLIDADO

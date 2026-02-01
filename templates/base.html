@@ -158,140 +158,94 @@
 
 
 
-<!-- Header -->
-<header class="cm-header w-full px-4 py-3">
+<!-- Header --><header class="cm-header w-full px-4 py-3">
+  <div
+    class="cm-header-bar relative grid gap-3
+           mx-auto w-full max-w-[1400px] rounded-xl
+           bg-emerald-900/70 backdrop-blur-md border border-white/30 shadow
+           px-4 py-3"
+  >
+    <!-- ESQUERDA -->
+    <div class="flex items-center gap-3 w-[260px]">
+      <button id="menuToggle" type="button"
+              class="relative text-gray-900 bg-white/80 border border-gray-400 rounded-md px-3 py-2 shadow hover:bg-white transition"
+              aria-label="Abrir menu">
+        ☰
+        {% if request.user.is_authenticated and request.user.profile.activity_counts %}
+        <span id="drawer-unread-badge"
+              class="absolute -top-2 -right-2 hidden min-w-[18px] h-[18px] px-1
+                     rounded-full text-[11px] leading-[18px] text-white bg-red-600 text-center">0</span>
+        {% endif %}
+      </button>
 
-    <!-- =====================================================
-       DESKTOP / LANDSCAPE  (>= md) — 100% ORIGINAL
-       ===================================================== -->
-    <!-- DESKTOP / LANDSCAPE (>= md) -->
-   <div class="flex flex-wrap md:flex-nowrap relative items-center justify-between gap-3
-            mx-auto w-full max-w-[1400px] rounded-xl
-            bg-emerald-900/70 backdrop-blur-md border border-white/30 shadow
-            px-4 py-3">
-
-
-
-<!-- ESQUERDA (hamburguer + logo centralizada no corredor até a busca) -->
-<div class="flex items-center gap-3 w-[260px]">
-  <!-- Hamburguer -->
-  <button id="menuToggle"
-        type="button"
-        class="relative text-gray-900 bg-white/80 border border-gray-400 rounded-md px-3 py-2 shadow hover:bg-white transition"
-        aria-label="Abrir menu">
-  ☰
-  {% if request.user.is_authenticated and request.user.profile.activity_counts %}
-  <span id="drawer-unread-badge"
-        class="absolute -top-2 -right-2 hidden min-w-[18px] h-[18px] px-1
-               rounded-full text-[11px] leading-[18px] text-white bg-red-600 text-center">
-    0
-  </span>
-{% endif %}
-
-</button>
-
-
-  <!-- “corredor” que sobra: logo fica CENTRALIZADA aqui -->
-  <div class="flex-1 flex justify-center">
-    <a href="{% url 'boards:boards_index' %}" class="select-none">
-      <img src="{% static brand_logo %}"
-           alt="LOGOMARCA"
-           class="h-14 w-14 rounded-full object-cover border border-white/40 shadow">
-    </a>
-  </div>
-</div>
-      {% block header_left %}{% endblock %}
-
-
-
-
-
+      <div class="flex-1 flex justify-center">
+        <a href="{% url 'boards:boards_index' %}" class="select-none">
+          <img src="{% static brand_logo %}" alt="LOGOMARCA"
+               class="h-14 w-14 rounded-full object-cover border border-white/40 shadow">
+        </a>
+      </div>
+    </div>
 
     <!-- CENTRO -->
-    <div class="flex-1 flex justify-center">
-      
-
-      <div class="cm-header-search">
-  <div id="header-search-slot" class="w-full max-w-[920px]">
-    <div class="w-full rounded-2xl bg-white/35 backdrop-blur-md border border-white/30 shadow px-4 py-2">
-      {% block header_right_under_logo %}{% endblock %}
-    </div>
-  </div>
-</div>
-
+    <div class="cm-header-search">
+      <div id="header-search-slot" class="w-full max-w-[920px] mx-auto">
+        <div class="w-full rounded-2xl bg-white/35 backdrop-blur-md border border-white/30 shadow px-4 py-2">
+          {% block header_right_under_logo %}{% endblock %}
+        </div>
+      </div>
     </div>
 
     <!-- DIREITA -->
-    <div class="flex items-center justify-end gap-3 min-w-[220px]">
+    <div class="flex items-center justify-end gap-3 w-[260px]">
       {% if request.user.is_authenticated %}
-        
+        {% with prof=request.user.profile %}
+        <button type="button" id="cm-identity-toggle" class="text-left"
+                data-display-name="{{ prof.display_name|default:'' }}"
+                data-email="{{ request.user.email|default:'' }}"
+                data-handle="{% if prof.handle %}@{{ prof.handle }}{% endif %}">
+          <span id="cm-identity-label" class="text-sm bg-white/70 px-2 py-1 rounded">
+            {% if prof.preferred_identity_label == 'email' %}
+              {{ request.user.email|default:prof.display_name }}
+            {% elif prof.preferred_identity_label == 'handle' and prof.handle %}
+              @{{ prof.handle }}
+            {% else %}
+              {{ prof.display_name|default:request.user.email }}
+            {% endif %}
+          </span>
+        </button>
+        {% endwith %}
 
-{% with prof=request.user.profile %}
-<button
-  type="button"
-  id="cm-identity-toggle"
-  class="text-left"
-  data-display-name="{{ prof.display_name|default:'' }}"
-  data-email="{{ request.user.email|default:'' }}"
-  data-handle="{% if prof.handle %}@{{ prof.handle }}{% else %}{% endif %}"
-  title="Clique para alternar (Nome / Email / Handle)"
->
-  <span id="cm-identity-label" class="text-sm bg-white/70 px-2 py-1 rounded">
-    {% if prof.preferred_identity_label == 'email' %}
-      {{ request.user.email|default:prof.display_name }}
-    {% elif prof.preferred_identity_label == 'handle' and prof.handle %}
-      @{{ prof.handle }}
-    {% else %}
-      {{ prof.display_name|default:request.user.email }}
-    {% endif %}
-  </span>
-</button>
-{% endwith %}
-
-
-
-
-<button
-  type="button"
-  id="tt-jump-btn"
-  class="hidden ml-2 p-2 rounded bg-white/70 border border-white/30 shadow hover:bg-white transition"
-  title="Ir para meu card em track-time"
-  aria-label="Ir para meu card em track-time"
->
-  ⏱
-</button>
-
-
+        <button type="button" id="tt-jump-btn"
+                class="hidden ml-2 p-2 rounded bg-white/70 border border-white/30 shadow hover:bg-white transition"
+                title="Ir para meu card em track-time" aria-label="Ir para meu card em track-time">⏱</button>
 
         <form method="post" action="{% url 'boards:logout' %}" class="inline">
           {% csrf_token %}
           <button type="submit"
-                  class="text-sm px-3 py-1 rounded bg-emerald-600 text-white shadow hover:bg-emerald-700 transition">
-            Sair
-          </button>
+                  class="text-sm px-3 py-1 rounded bg-emerald-600 text-white shadow hover:bg-emerald-700 transition">Sair</button>
         </form>
       {% endif %}
 
       <a href="#" id="open-user-settings" class="block">
-        <img
-          src="{% if user_avatar_url %}{{ user_avatar_url }}{% else %}{% static brand_logo %}{% endif %}"
-          alt="Perfil"
-          class="h-12 w-12 rounded-full object-cover border border-white/50 shadow">
+        <img src="{% if user_avatar_url %}{{ user_avatar_url }}{% else %}{% static brand_logo %}{% endif %}"
+             alt="Perfil"
+             class="h-12 w-12 rounded-full object-cover border border-white/50 shadow">
       </a>
-
     </div>
   </div>
 
-
-<!-- 1 / 2 / 3 / Auto (DESKTOP) — centralizado -->
-<div class="w-full flex justify-center mt-3 md:hidden">
-  <div class="boards-cols-switch" role="group" aria-label="Colunas">
-    <button type="button" class="bcs-btn" data-cols="1">1</button>
-    <button type="button" class="bcs-btn" data-cols="2">2</button>
-    <button type="button" class="bcs-btn" data-cols="3">3</button>
-    <button type="button" class="bcs-btn" data-cols="auto">Auto</button>
+  <!-- switch mobile pode ficar aqui fora do bar -->
+  <div class="w-full flex justify-center mt-3 md:hidden">
+    <div class="boards-cols-switch" role="group" aria-label="Colunas">
+      <button type="button" class="bcs-btn" data-cols="1">1</button>
+      <button type="button" class="bcs-btn" data-cols="2">2</button>
+      <button type="button" class="bcs-btn" data-cols="3">3</button>
+      <button type="button" class="bcs-btn" data-cols="auto">Auto</button>
+    </div>
   </div>
-</div>
+</header>
+
+
 
 
 
