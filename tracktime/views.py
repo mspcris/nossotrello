@@ -7,7 +7,6 @@ from django.contrib.auth.decorators import login_required
 from django.urls import reverse
 from django.conf import settings
 from django.core.mail import send_mail
-
 from .models import Project, ActivityType, TimeEntry
 from boards.models import Card, Board
 
@@ -44,10 +43,23 @@ def _can_view_board(user, board) -> bool:
 
 @login_required
 def card_tracktime_panel(request, card_id):
-    card = get_object_or_404(Card, id=card_id)
+    card = get_object_or_404(
+        Card.objects.select_related("column__board"),
+        id=card_id
+    )
+    if not _can_view_board(request.user, card.column.board):
+        return HttpResponseForbidden("Sem acesso ao board deste card")
 
-    projects = Project.objects.filter(is_active=True).order_by("name")
-    activities = ActivityType.objects.filter(is_active=True).order_by("name")
+    projects = Project.objects.filter(
+        created_by=request.user,
+        is_active=True
+    ).order_by("name")
+
+    activities = ActivityType.objects.filter(
+        created_by=request.user,
+        is_active=True
+    ).order_by("name")
+
 
     entries = (
         TimeEntry.objects
@@ -101,25 +113,54 @@ def card_tracktime_start(request, card_id):
     if request.method != "POST":
         return HttpResponseBadRequest("POST required")
 
-    card = get_object_or_404(Card, id=card_id)
+    card = get_object_or_404(
+        Card.objects.select_related("column__board"),
+        id=card_id
+    )
 
-    project_id = request.POST.get("project")
-    activity_id = request.POST.get("activity_type")
+    # ✅ segurança: só quem vê o board pode trackear no card
+    if not _can_view_board(request.user, card.column.board):
+        return HttpResponseForbidden("Sem acesso ao board deste card")
+
+    project_id = (request.POST.get("project") or "").strip()
+    activity_id = (request.POST.get("activity") or "").strip()
+
     if not project_id or not activity_id:
         return HttpResponseBadRequest("Projeto e atividade são obrigatórios")
 
-    # 1 timer ativo por usuário (fecha qualquer outro)
-    TimeEntry.objects.filter(
+    project = get_object_or_404(
+        Project,
+        pk=project_id,
+        created_by=request.user,
+        is_active=True
+    )
+
+    activity = get_object_or_404(
+        ActivityType,
+        pk=activity_id,
+        created_by=request.user,
+        is_active=True
+    )
+
+    # ✅ 1 timer ativo por usuário (fecha corretamente, acumulando minutos)
+    running_qs = TimeEntry.objects.filter(
         user=request.user,
         ended_at__isnull=True,
-    ).update(ended_at=timezone.now())
+    ).order_by("-started_at")
+
+    for r in running_qs:
+        try:
+            r.stop()
+        except Exception:
+            # fallback duro: ao menos encerra
+            TimeEntry.objects.filter(pk=r.pk).update(ended_at=timezone.now())
 
     now = timezone.now()
 
     entry = TimeEntry.objects.create(
         user=request.user,
-        project_id=project_id,
-        activity_type_id=activity_id,
+        project_id=project.id,
+        activity_type_id=activity.id,
         card_id=card.id,
         board_id=card.column.board_id,
         card_title_cache=card.title,
@@ -159,11 +200,18 @@ def card_tracktime_manual(request, card_id):
     if request.method != "POST":
         return HttpResponseBadRequest("POST required")
 
-    card = get_object_or_404(Card, id=card_id)
+    card = get_object_or_404(
+        Card.objects.select_related("column__board"),
+        id=card_id
+    )
 
-    project_id = request.POST.get("project")
-    activity_id = request.POST.get("activity_type")
-    minutes = request.POST.get("minutes")
+    # ✅ segurança: só quem vê o board pode trackear no card
+    if not _can_view_board(request.user, card.column.board):
+        return HttpResponseForbidden("Sem acesso ao board deste card")
+
+    project_id = (request.POST.get("project") or "").strip()
+    activity_id = (request.POST.get("activity") or "").strip()
+    minutes = (request.POST.get("minutes") or "").strip()
 
     if not project_id or not activity_id or not minutes:
         return HttpResponseBadRequest("Dados incompletos")
@@ -176,13 +224,29 @@ def card_tracktime_manual(request, card_id):
     if minutes_int <= 0:
         return HttpResponseBadRequest("Minutos inválidos")
 
+    project = get_object_or_404(
+        Project,
+        pk=project_id,
+        created_by=request.user,
+        is_active=True
+    )
+
+    activity = get_object_or_404(
+        ActivityType,
+        pk=activity_id,
+        created_by=request.user,
+        is_active=True
+    )
+
+    now = timezone.now()
+
     TimeEntry.objects.create(
         user=request.user,
-        project_id=project_id,
-        activity_type_id=activity_id,
+        project_id=project.id,
+        activity_type_id=activity.id,
         minutes=minutes_int,
-        started_at=timezone.now(),
-        ended_at=timezone.now(),
+        started_at=now,
+        ended_at=now,
         card_id=card.id,
         board_id=card.column.board_id,
         card_title_cache=card.title,
@@ -250,26 +314,29 @@ def tracktime_confirm_link(request, entry_id, token):
 
 @login_required
 def portal(request):
-    projects = Project.objects.all().order_by("name")
-    activities = ActivityType.objects.all().order_by("name")
+    projects = Project.objects.filter(created_by=request.user).order_by("name")
+    activities = ActivityType.objects.filter(created_by=request.user).order_by("name")
 
     if request.method == "POST":
         if "project_name" in request.POST:
             name = (request.POST.get("project_name") or "").strip()
             if name:
-                Project.objects.create(name=name)
+                Project.objects.create(name=name, created_by=request.user)
 
         if "activity_name" in request.POST:
             name = (request.POST.get("activity_name") or "").strip()
             if name:
-                ActivityType.objects.create(name=name)
+                ActivityType.objects.create(name=name, created_by=request.user)
 
         return redirect("tracktime:portal")
 
     return render(
         request,
         "tracktime/portal.html",
-        {"projects": projects, "activities": activities},
+        {
+            "projects": projects,
+            "activities": activities,
+        },
     )
 
 
@@ -288,7 +355,7 @@ def toggle_project(request, pk):
     if request.method != "POST":
         return HttpResponseBadRequest("POST required")
 
-    p = get_object_or_404(Project, pk=pk)
+    p = get_object_or_404(Project, pk=pk, created_by=request.user)
     p.is_active = not p.is_active
     p.save(update_fields=["is_active"])
 
@@ -299,7 +366,7 @@ def toggle_activity(request, pk):
     if request.method != "POST":
         return HttpResponseBadRequest("POST required")
 
-    a = get_object_or_404(ActivityType, pk=pk)
+    a = get_object_or_404(ActivityType, pk=pk, created_by=request.user)
     a.is_active = not a.is_active
     a.save(update_fields=["is_active"])
 
@@ -364,23 +431,22 @@ def tracktime_modal(request):
 
 @login_required
 def tracktime_tab_portal(request):
-    projects = Project.objects.all().order_by("name")
-    activities = ActivityType.objects.all().order_by("name")
+    projects = Project.objects.filter(created_by=request.user).order_by("name")
+    activities = ActivityType.objects.filter(created_by=request.user).order_by("name")
 
     if request.method == "POST":
         if "project_name" in request.POST:
             name = (request.POST.get("project_name") or "").strip()
             if name:
-                Project.objects.create(name=name)
+                Project.objects.create(name=name, created_by=request.user)
 
         if "activity_name" in request.POST:
             name = (request.POST.get("activity_name") or "").strip()
             if name:
-                ActivityType.objects.create(name=name)
+                ActivityType.objects.create(name=name, created_by=request.user)
 
-        # Recarrega a própria tab (sem redirect para a página /tracktime/)
-        projects = Project.objects.all().order_by("name")
-        activities = ActivityType.objects.all().order_by("name")
+        projects = Project.objects.filter(created_by=request.user).order_by("name")
+        activities = ActivityType.objects.filter(created_by=request.user).order_by("name")
 
     return render(
         request,
@@ -637,10 +703,6 @@ def card_tracktime_panel_running_slot(request, card_id):
         },
     )
 
-from django.utils import timezone
-from django.http import JsonResponse
-from django.shortcuts import get_object_or_404
-from django.contrib.auth.decorators import login_required
 
 @login_required
 def card_elapsed_json(request, card_id: int):

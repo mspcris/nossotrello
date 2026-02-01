@@ -20,6 +20,14 @@ class Project(models.Model):
 
     is_active = models.BooleanField(default=True)
 
+    created_by = models.ForeignKey(
+    settings.AUTH_USER_MODEL,
+    on_delete=models.SET_NULL,
+    null=True,
+    blank=True,
+    related_name="tracktime_projects_created",
+)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -36,6 +44,15 @@ class ActivityType(models.Model):
 
     name = models.CharField(max_length=120, unique=True)
     is_active = models.BooleanField(default=True)
+
+    created_by = models.ForeignKey(
+    settings.AUTH_USER_MODEL,
+    on_delete=models.SET_NULL,
+    null=True,
+    blank=True,
+    related_name="tracktime_activity_types_created",
+)
+
 
     # FUTURO (fora do MVP)
     is_billable = models.BooleanField(default=False)
