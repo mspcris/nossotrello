@@ -761,43 +761,54 @@ header { position: relative; z-index: 50; }
    IMAGEM DO CARD DENTRO DA BOARD
    ============================================================ */
 /* Thumb da capa do card (coluna) */
-.card-cover-wrap{
+/* Thumb da capa do card (coluna) */
+#columns-wrapper li[data-card-id] .card-cover-wrap{
   position: relative;
   height: var(--card-cover-thumb-h);
   border-radius: 14px;
   overflow: hidden;
   background: var(--card-cover-bg);
+
+  /* 🔑 palco centralizado (igual Home) */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.card-cover-blur{
+/* fundo blur (não interfere no centrado) */
+#columns-wrapper li[data-card-id] .card-cover-blur{
   position: absolute;
   inset: 0;
   background-size: cover;
-  background-position: center;
+  background-position: center center;
   transform: scaleX(-1) scale(1.15);
   filter: blur(12px);
   opacity: 0.9;
   pointer-events: none;
+  z-index: 0;
 }
 
-.card-cover-img{
+/* imagem nítida centralizada, sem “forçar canvas 100%” */
+#columns-wrapper li[data-card-id] img.card-cover-img{
   position: relative;
   z-index: 1;
-  width: 100%;
-  height: 100%;
-  object-fit: contain; /* mesmo comportamento da home */
+
+  width: auto !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+
+  object-fit: contain !important;
+  object-position: center center !important;
+
   display: block;
-  pointer-events: none;
-  user-select: none;
 }
-
-
-.cm-cover__img{
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: contain;                          /* não corta */
-  object-position: center center !important;    /* centraliza */
+#columns-wrapper li[data-card-id] .card-cover-wrap{
+  margin-left: -12px;   /* equivale a -mx-3 */
+  margin-right: -12px;
+  margin-top: -12px;    /* equivale a -mt-3 */
+  border-top-left-radius: 14px;
+  border-top-right-radius: 14px;
 }
 
 
