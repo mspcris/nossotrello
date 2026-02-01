@@ -224,6 +224,28 @@
   </div>
 
 
+
+
+  {% block header_center %}
+  {% if board and board.image %}
+    <div class="h-10 w-24 rounded-lg overflow-hidden border border-white/40 bg-white/20 shadow">
+      <img
+        src="{{ board.image.url }}"
+        alt="{{ board.name }}"
+        class="h-full w-full object-cover"
+        loading="lazy"
+      >
+    </div>
+  {% else %}
+    <div class="px-4 py-2 rounded-full bg-white/20 border border-white/20 text-white/90 text-sm font-semibold">
+      {{ board.name }}
+    </div>
+  {% endif %}
+{% endblock %}
+
+
+
+
   
   <!-- membros (direita) -->
   <div id="board-members-bar"
@@ -313,6 +335,13 @@
     </div>
   </div>
 {% endif %}
+
+
+
+
+
+
+
 
 
 

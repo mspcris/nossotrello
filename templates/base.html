@@ -119,6 +119,8 @@
 <!-- MODAL dock -->
   <script defer src="{% static 'boards/modal/modal.dock.js' %}"></script>
 
+  <script defer src="{% static 'boards/header_search.js' %}"></script>
+
   
   <!-- CSS dinâmico -->
   {% block extra_css %}{% endblock %}
@@ -186,14 +188,34 @@
       </div>
     </div>
 
-    <!-- CENTRO -->
-    <div class="cm-header-search">
-      <div id="header-search-slot" class="w-full max-w-[920px] mx-auto">
-        <div class="w-full rounded-2xl bg-white/35 backdrop-blur-md border border-white/30 shadow px-4 py-2">
-          {% block header_right_under_logo %}{% endblock %}
-        </div>
-      </div>
+    <!-- CENTRO — IMAGEM DO QUADRO (CRAVADA) -->
+<div class="cm-header-center flex items-center justify-center">
+{% block header_center %}
+  {% if board.cover_image %}
+    <div class="cm-header-board-cover">
+      <img
+        src="{{ board.cover_image.url }}"
+        alt="{{ board.name }}"
+        class="cm-header-board-cover-img"
+      >
     </div>
+  {% else %}
+    <div class="cm-header-board-cover cm-header-board-cover-fallback">
+      {{ board.name }}
+    </div>
+  {% endif %}
+{% endblock %}
+
+</div>
+
+
+
+
+
+    
+    </div>
+
+
 
     <!-- DIREITA -->
     <div class="flex items-center justify-end gap-3 w-[260px]">
@@ -231,6 +253,20 @@
              alt="Perfil"
              class="h-12 w-12 rounded-full object-cover border border-white/50 shadow">
       </a>
+
+
+      <button
+  type="button"
+  id="header-search-toggle"
+  class="p-2 rounded-full bg-white/70 border border-white/40 shadow hover:bg-white transition"
+  aria-label="Buscar no quadro"
+  title="Buscar"
+>
+  🔍
+</button>
+
+
+
     </div>
   </div>
 
@@ -245,6 +281,26 @@
   </div>
 </header>
 
+
+<!-- SEARCH OVERLAY (DESKTOP) -->
+<div
+  id="board-search-overlay"
+  class="fixed inset-0 z-[1500] hidden"
+  aria-hidden="true"
+>
+  <!-- BACKDROP (fica fosco só quando NÃO está digitando) -->
+  <div
+    id="search-backdrop"
+    class="absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity duration-200"
+  ></div>
+
+  <!-- SEARCH PANEL -->
+  <div class="relative mx-auto mt-28 max-w-[900px] px-4">
+    <div class="search-panel rounded-2xl bg-white/90 backdrop-blur-md border border-white/40 shadow-xl p-4">
+      {% block header_right_under_logo %}{% endblock %}
+    </div>
+  </div>
+</div>
 
 
 
