@@ -16,6 +16,7 @@ Including another URLconf
 """
 """URL configuration for nossotrello project."""
 # nossotrello/urls.py
+
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
@@ -23,35 +24,22 @@ from django.conf.urls.static import static
 from django.views.generic import TemplateView
 
 urlpatterns = [
-    # Admin
     path("admin/", admin.site.urls),
 
-    # App principal (boards nossotrello)
+    # App principal
     path("", include(("boards.urls", "boards"), namespace="boards")),
 
-    # =========================================================
-    # QA / CHECKLIST (NÃO linkado em lugar nenhum)
-    # =========================================================
+    # QA / CHECKLIST
     path(
         "qa/checktrello/",
         TemplateView.as_view(template_name="checktrello.html"),
         name="qa_checktrello",
     ),
 
-    # App tracktime
-    path("", include(("boards.urls", "boards"), namespace="boards")),
+    # Tracktime
     path("track-time/", include(("tracktime.urls", "tracktime"), namespace="tracktime")),
-
-
-
 ]
 
-# Media em desenvolvimento
 if settings.DEBUG:
-    urlpatterns += static(
-        settings.MEDIA_URL,
-        document_root=settings.MEDIA_ROOT
-    )
-
-    path("", include(("boards.urls", "boards"), namespace="boards")),
-    
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# END nossotrello/urls.py

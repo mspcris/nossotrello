@@ -84,6 +84,9 @@ from .views import columns as columns_views
 # Attachments / Quill (assumindo boards/views/attachments.py e boards/views/activity.py ou afins)
 from .views import attachments as attachments_views
 
+from .views import cards_state as cards_state_views
+
+
 app_name = "boards"
 
 urlpatterns = [
@@ -162,9 +165,11 @@ urlpatterns = [
     # ============================================================
     # CARDS — Arquivo / Lixeira (Cards)
     # ============================================================
-    path("card/<int:card_id>/archive/", cards_views.archive_card, name="archive_card"),
-    path("card/<int:card_id>/unarchive/", cards_views.unarchive_card, name="unarchive_card"),
-    path("card/<int:card_id>/restore/", cards_views.restore_card, name="restore_card"),
+    path("card/<int:card_id>/archive/", cards_state_views.archive_card, name="archive_card"),
+    path("card/<int:card_id>/unarchive/", cards_state_views.unarchive_card, name="unarchive_card"),
+    path("card/<int:card_id>/restore/", cards_state_views.restore_card, name="restore_card"),
+    path("trash/", cards_state_views.trash, name="trash"),
+
 
     # ============================================================
     # BOARDS — COMPARTILHAMENTO (modal + remove membro)
