@@ -24,11 +24,22 @@ from .views.polling import board_poll
 
 from boards.views.modal_card_term import set_card_term_due, set_board_term_colors
 
+
+from .views.activity import (
+    activity_panel,
+    add_activity,
+    cards_unread_activity,
+    quill_upload,
+)
+
+from boards.views.account import (
+public_profile,
+)
+
 # Módulo "boards" (boards/views/boards.py)
 from boards.views.boards import (
     # core
     index,
-    public_profile,
     board_detail,
     add_board,
     rename_board,
@@ -64,16 +75,14 @@ from boards.views.boards import (
 )
 
 # Outros módulos (pelo seu urls atual)
-from .views.activity import cards_unread_activity
-from .views.search import board_search
+
+from .views.search import board_search, home_search
 
 # Colunas (assumindo boards/views/columns.py)
 from .views import columns as columns_views
 
 # Attachments / Quill (assumindo boards/views/attachments.py e boards/views/activity.py ou afins)
 from .views import attachments as attachments_views
-from .views import activity as activity_views
-
 
 app_name = "boards"
 
@@ -306,9 +315,10 @@ urlpatterns = [
     path("card/<int:card_id>/move/options/", cards_views.card_move_options, name="card_move_options"),
 
     # Atividade (painel / add / quill upload) — ajuste conforme seu projeto real
-    path("card/<int:card_id>/activity/panel/", activity_views.activity_panel, name="activity_panel"),
-    path("card/<int:card_id>/activity/add/", activity_views.add_activity, name="add_activity"),
-    path("quill/upload/", attachments_views.quill_upload, name="quill_upload"),
+    path("card/<int:card_id>/activity/panel/", activity_panel, name="activity_panel"),
+    path("card/<int:card_id>/activity/add/", add_activity, name="add_activity"),
+    path("quill/upload/", quill_upload, name="quill_upload"),
+
 
     path(
         "board/<int:board_id>/cards/unread-activity/",
