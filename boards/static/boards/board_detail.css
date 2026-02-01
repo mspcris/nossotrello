@@ -1,189 +1,130 @@
-/* board_detail.css 
-estilos fixos do board, não do wallpaper */
-.drag-ghost {
-    opacity: 0.4;
-    border: 2px dashed #999;
+/* board_detail.css
+   Estilos fixos do board (não do wallpaper)
+   Consolidado: duplicidades removidas (mantendo somente a ÚLTIMA versão)
+*/
+
+/* =========================
+   Drag ghost
+========================= */
+.drag-ghost{
+  opacity: 0.4;
+  border: 2px dashed #999;
+}
+.drag-dragging{ opacity: 0.9; }
+
+/* =========================
+   Glow das colunas (somente no board)
+========================= */
+#columns-wrapper .column-glass{
+  border: 1px solid rgba(255,255,255,0.45);
+  box-shadow: 0 0 14px rgba(255,255,255,0.25);
+  background-clip: padding-box;
 }
 
-/* ============================================================
-   GLOW DAS COLUNAS (dentro do board)
-   - Inspiração: glow dos .board-card na home
-   - Focado em fundos escuros / wallpapers carregados
-   ============================================================ */
-
-#columns-wrapper .column-glass {
-    /* mantém o vidro já definido em base/columns.css, aqui só complementamos */
-    border: 1px solid rgba(255, 255, 255, 0.45);
-    box-shadow: 0 0 14px rgba(255, 255, 255, 0.25);
-    background-clip: padding-box;
+/* =========================
+   Legibilidade de títulos / labels
+========================= */
+.board-label{
+  display: inline-block;
+  background: rgba(255,255,255,0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  padding: 2px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.35);
 }
 
-/* ============================================================
-   GLOW DOS CARDS DENTRO DAS COLUNAS
-   - Atua sobre os <li data-card-id> renderizados em card_item.html
-   - Respeita o rounded já aplicado pelas classes Tailwind
-   ============================================================ */
+/* =========================
+   Delete button (X) sempre acima
+========================= */
+#columns-wrapper li[data-card-id]{ position: relative; }
 
-#columns-wrapper li[data-card-id] {
-    border: 1px solid rgba(255, 255, 255, 0.55);
-    background: rgba(255, 255, 255, 0.80);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    box-shadow: 0 0 10px rgba(255, 255, 255, 0.25);
-    transition:
-        transform 0.18s ease,
-        box-shadow 0.18s ease,
-        background 0.18s ease;
-
-    /* ✅ necessário pro overlay do prazo */
-    position: relative;
-    overflow: hidden;
+#columns-wrapper li[data-card-id] .delete-card-btn{
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 9999 !important;
 }
 
-/* ✅ camada de cor do prazo (mantém o glass) */
-#columns-wrapper li[data-card-id]::before{
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    background: rgba(var(--term-rgb, 0,0,0), var(--term-opacity, 0));
-    pointer-events: none;
-    z-index: 0;
+/* =========================
+   Boing do add card
+========================= */
+.boing-run.boing-down{ animation: boingDown 200ms ease-out; }
+.boing-run.boing-up{ animation: boingUp 200ms ease-out; }
+
+@keyframes boingDown{
+  0%{ transform: translateY(-6px) scaleY(0.98); opacity: 0.6; }
+  70%{ transform: translateY(2px) scaleY(1.01); opacity: 1; }
+  100%{ transform: translateY(0) scaleY(1); }
+}
+@keyframes boingUp{
+  0%{ transform: translateY(6px) scaleY(0.98); opacity: 0.6; }
+  70%{ transform: translateY(-2px) scaleY(1.01); opacity: 1; }
+  100%{ transform: translateY(0) scaleY(1); }
 }
 
-/* ✅ garante que o conteúdo fique acima do overlay */
-#columns-wrapper li[data-card-id] > *{
-    position: relative;
-    z-index: 1;
+/* =========================
+   Tooltip member
+========================= */
+.member-tooltip{
+  position: fixed;
+  z-index: 9999;
+  max-width: 320px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.92);
+  border: 1px solid rgba(255,255,255,0.35);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.28);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.member-tooltip.hidden{ display: none; }
+
+.member-tooltip__row{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.member-tooltip__avatar{
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  object-fit: cover;
+  border: 1px solid rgba(0,0,0,0.08);
+}
+.member-tooltip__fallback{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 18px;
+  background: rgba(0,0,0,0.06);
+}
+.member-tooltip__name{
+  font-weight: 800;
+  font-size: 14px;
+  line-height: 1.15;
+}
+.member-tooltip__sub{
+  margin-top: 2px;
+  font-size: 12px;
+  opacity: 0.75;
+  line-height: 1.15;
 }
 
-
-/* Hover com leve destaque, mantendo legibilidade em fundo escuro */
-#columns-wrapper li[data-card-id]:hover {
-    transform: translateY(-1px) scale(1.02);
-    box-shadow: 0 0 18px rgba(255, 255, 255, 0.4);
-    background: rgba(255, 255, 255, 0.92);
-}
-
-/* ============================================================
-   LEGIBILIDADE DOS TÍTULOS EM QUALQUER WALLPAPER
-   Cria um pequeno fundo glass minimalista atrás de textos curtos
-   ============================================================ */
-
-.board-label {
-    display: inline-block;
-    background: rgba(255, 255, 255, 0.55);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-    padding: 2px 8px;
-    border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.35);
-}
-
-.delete-card-btn {
-    z-index: 30;
-}
-
-
-/* ============================================================
-   BOING DO ADD CARD
-=============================================================== */
-
-.boing-run.boing-down { animation: boingDown 200ms ease-out; }
-.boing-run.boing-up   { animation: boingUp 200ms ease-out; }
-
-@keyframes boingDown {
-  0%   { transform: translateY(-6px) scaleY(0.98); opacity: 0.6; }
-  70%  { transform: translateY(2px)  scaleY(1.01); opacity: 1; }
-  100% { transform: translateY(0)    scaleY(1); }
-}
-
-@keyframes boingUp {
-  0%   { transform: translateY(6px) scaleY(0.98); opacity: 0.6; }
-  70%  { transform: translateY(-2px) scaleY(1.01); opacity: 1; }
-  100% { transform: translateY(0)    scaleY(1); }
-}
-
-.member-tooltip {
-    position: fixed;
-    z-index: 9999;
-    max-width: 320px;
-    padding: 10px 12px;
-    border-radius: 14px;
-    background: rgba(255, 255, 255, 0.92);
-    border: 1px solid rgba(255, 255, 255, 0.35);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-}
-
-.member-tooltip.hidden { display: none; }
-
-.member-tooltip__row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.member-tooltip__avatar {
-    width: 44px;
-    height: 44px;
-    border-radius: 14px;
-    object-fit: cover;
-    border: 1px solid rgba(0, 0, 0, 0.08);
-}
-
-.member-tooltip__fallback {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 800;
-    font-size: 18px;
-    background: rgba(0, 0, 0, 0.06);
-}
-
-.member-tooltip__name {
-    font-weight: 800;
-    font-size: 14px;
-    line-height: 1.15;
-}
-
-.member-tooltip__sub {
-    margin-top: 2px;
-    font-size: 12px;
-    opacity: 0.75;
-    line-height: 1.15;
-}
-/* mantém "Todos os Quadros" pequeno e destaca o nome do quadro */
+/* =========================
+   Breadcrumb
+========================= */
 .board-breadcrumb-name{
-  font-size: 18px;      /* ajuste fino aqui */
+  font-size: 18px;
   font-weight: 800;
   line-height: 1.1;
 }
 
-
-
-@media (max-width: 768px) {
-  .cm-search-icon {
-    font-size: 20px;
-    background: none;
-    border: none;
-  }
-
-  .cm-search-panel {
-    background: white;
-    padding: 12px;
-    border-radius: 12px;
-    margin: 8px;
-  }
-
-  .cm-search-panel.hidden {
-    display: none;
-  }
-}
-
-
-.cm-mobile-search-wrapper {
+/* =========================
+   Mobile search wrapper (board)
+========================= */
+.cm-mobile-search-wrapper{
   margin-top: 6px;
   padding: 10px;
   border-radius: 16px;
@@ -192,38 +133,30 @@ estilos fixos do board, não do wallpaper */
   box-shadow: 0 10px 30px rgba(0,0,0,0.18);
   animation: cm-boing .22s ease-out;
 }
-
-@keyframes cm-boing {
-  0%   { transform: scale(.92); opacity: 0; }
-  60%  { transform: scale(1.03); opacity: 1; }
-  100% { transform: scale(1); }
+@keyframes cm-boing{
+  0%{ transform: scale(.92); opacity: 0; }
+  60%{ transform: scale(1.03); opacity: 1; }
+  100%{ transform: scale(1); }
 }
 
-
-/* alinha verticalmente o miolo do header com os itens do topo */
-#header-search-slot {
-  align-items: center;
-}
-#cm-search-panel {
+/* alinha verticalmente o slot do header */
+#header-search-slot{ align-items: center; }
+#cm-search-panel{
   display: flex;
   flex-direction: column;
   justify-content: center;
 }
 
-/* garante que header e seus botões ganham prioridade de clique */
-header { position: relative; z-index: 50; }
-
-/* garante que o slot mobile e breadcrumb não fiquem “atrás” de nada */
-#cm-mobile-breadcrumb, #cm-mobile-search-wrapper { position: relative; z-index: 40; }
+/* prioridade de clique */
+header{ position: relative; z-index: 50; }
+#cm-mobile-breadcrumb,
+#cm-mobile-search-wrapper{ position: relative; z-index: 40; }
 
 /* =========================
-   Aggregator Column
+   Aggregator column
 ========================= */
-
-
-
-.aggregator-card {
-  background: rgba(255, 255, 255, 0.124);
+.aggregator-card{
+  background: rgba(255,255,255,0.124);
   border-radius: 10px;
   padding: 10px 12px;
   font-size: 14px;
@@ -232,113 +165,32 @@ header { position: relative; z-index: 50; }
   align-items: center;
   cursor: default;
 }
-
-.aggregator-count {
+.aggregator-count{
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   min-width: 2.5ch;
   text-align: right;
 }
+.aggregator-name{ opacity: .85; }
 
-.aggregator-name {
-  opacity: .85;
-}
-
-
-
-/* ================================
-   AGGREGATOR COLUMN – CINEMÁTICO
-================================ */
-
-
-/* ENTRADA */
-@keyframes aggregator-in {
-  0% {
-    opacity: 0;
-    transform: translateX(-48px) scaleX(0.92);
-    filter: blur(6px);
-  }
-  60% {
-    opacity: 1;
-    transform: translateX(6px) scaleX(1.01);
-    filter: blur(0);
-  }
-  100% {
-    transform: translateX(0) scaleX(1);
-  }
-}
-
-/* SAÍDA */
-@keyframes aggregator-out {
-  0% {
-    opacity: 1;
-    transform: translateX(0) scaleX(1);
-    filter: blur(0);
-  }
-  100% {
-    opacity: 0;
-    transform: translateX(-64px) scaleX(0.9);
-    filter: blur(8px);
-  }
-}
-
-/* classe aplicada dinamicamente */
-.aggregator-enter {
-  animation: aggregator-in 4200ms cubic-bezier(.22,.61,.36,1) both;
-}
-
-.aggregator-exit {
-  animation: aggregator-out 6000ms ease-in both;
-}
-
-/* glow sutil de presença */
-.aggregator-column::after {
-  content: "";
-  position: absolute;
-  inset: -8px;
-  border-radius: 16px;
-  background: linear-gradient(
-    120deg,
-    rgba(99,102,241,.15),
-    rgba(56,189,248,.12),
-    transparent 60%
-  );
-  opacity: 0;
-  transition: opacity .4s ease;
-  pointer-events: none;
-}
-
-.aggregator-enter::after {
-  opacity: 1;
-}
-
-/* ===============================
-   Aggregator Column – Cinematic
-   =============================== */
-
-/* estado inicial (antes de entrar) */
-.aggregator-enter {
+.aggregator-enter{
   opacity: 0;
   transform: scale(0.96) translateY(-6px);
   filter: blur(6px);
   max-width: 0;
 }
-
-/* estado visível */
-.aggregator-enter-active {
+.aggregator-enter-active{
   opacity: 1;
   transform: scale(1) translateY(0);
   filter: blur(0);
   max-width: 1000px;
   transition:
     opacity 280ms ease,
-    transform 360ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 360ms cubic-bezier(0.22,1,0.36,1),
     filter 240ms ease,
     max-width 360ms ease;
 }
-
-/* saída */
-.aggregator-exit {
+.aggregator-exit{
   opacity: 0;
   transform: scale(0.97) translateY(-4px);
   filter: blur(4px);
@@ -350,46 +202,32 @@ header { position: relative; z-index: 50; }
     max-width 260ms ease;
 }
 
-/* =========================
-   Aggregator Column — FINAL
-========================= */
+.aggregator-column *{ pointer-events: none; }
 
-/* visual only */
-.aggregator-column * {
-  pointer-events: none;
-}
-
-/* coluna em si */
-.aggregator-column {
+.aggregator-column{
   position: relative;
   border: none;
   border-radius: 14px;
   overflow: visible;
-
   transform-origin: top center;
   will-change: transform, opacity, filter, max-width;
 }
 
-/* 🔑 HEADER — AQUI ESTÁ O FIX */
-.aggregator-column .column-header {
-  background: transparent;              /* mata painel branco */
-  border: none;                          /* remove linhas herdadas */
-  border-radius: 14px 14px 12px 12px;    /* força arredondamento */
-  overflow: hidden;                      /* corta qualquer fundo filho */
+.aggregator-column .column-header{
+  background: transparent;
+  border: none;
+  border-radius: 14px 14px 12px 12px;
+  overflow: hidden;
 }
-
-/* garante que nenhum reset mate o radius */
-.aggregator-column .column-header * {
-  border-radius: inherit;
-}
-
-/* cards internos */
-.aggregator-column .card-item {
+.aggregator-column .column-header *{ border-radius: inherit; }
+.aggregator-column .card-item{
   border-radius: 10px;
   box-shadow: 0 4px 10px rgba(0,0,0,0.12);
 }
 
-/* Dock sempre acima e clicável */
+/* =========================
+   Dock
+========================= */
 #cm-action-dock{
   position: fixed;
   right: 18px;
@@ -397,7 +235,6 @@ header { position: relative; z-index: 50; }
   z-index: 999999;
   pointer-events: auto;
 }
-
 #cm-dock-toggle{
   width: 54px;
   height: 54px;
@@ -410,7 +247,6 @@ header { position: relative; z-index: 50; }
   justify-content: center;
   font-size: 22px;
 }
-
 #cm-dock-menu{
   position: absolute;
   right: 0;
@@ -422,7 +258,6 @@ header { position: relative; z-index: 50; }
   box-shadow: 0 10px 30px rgba(2,6,23,0.18);
   padding: 8px;
 }
-
 #cm-dock-menu .dock-action{
   width: 100%;
   text-align: left;
@@ -435,59 +270,30 @@ header { position: relative; z-index: 50; }
   border: 0;
   cursor: pointer;
 }
+#cm-dock-menu .dock-action .label{ display: inline-block; }
+#cm-dock-menu .dock-action:hover{ background: rgba(15,23,42,0.06); }
 
-#cm-dock-menu .dock-action .label{
-  display: inline-block;
-}
-
-#cm-dock-menu .dock-action:hover{
-  background: rgba(15,23,42,0.06);
-}
-
-
-/* Card vira contexto pro z-index do X */
-#columns-wrapper li[data-card-id]{
-  position: relative;
-}
-
-/* X sempre acima de capa/preview */
-#columns-wrapper li[data-card-id] .delete-card-btn{
-  position: absolute;     /* se já for absolute, ok */
-  top: 10px;
-  right: 10px;
-  z-index: 9999 !important;
-}
-
-/* Se a imagem/capa estiver “roubando” clique por cima */
-#columns-wrapper li[data-card-id] img{
-  position: relative;
-  z-index: 1;
-}
-/* ===============================
-   CALENDAR MODE
-   =============================== */
-
-.cm-calendar {
+/* =========================
+   Calendar mode (board)
+========================= */
+.cm-calendar{
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 6px;
 }
-
-.cm-calendar-day {
+.cm-calendar-day{
   background: #f1f5f9;
   min-height: 120px;
   padding: 6px;
   border-radius: 6px;
 }
-
-.cm-calendar-date {
+.cm-calendar-date{
   font-size: 11px;
   font-weight: 600;
   opacity: 0.6;
 }
-
-.cm-calendar-card {
-  background: white;
+.cm-calendar-card{
+  background: #fff;
   margin-top: 4px;
   padding: 6px;
   border-radius: 6px;
@@ -495,18 +301,13 @@ header { position: relative; z-index: 50; }
   cursor: pointer;
 }
 
-
-
-/* ===========================
+/* =========================
    Access Requests (Owner)
-   =========================== */
+========================= */
+.cm-accessreq-wrap{ max-width: 980px; }
 
-.cm-accessreq-wrap {
-  max-width: 980px;
-}
-
-.cm-accessreq-card {
-  background: rgba(255, 255, 255, 0.88);
+.cm-accessreq-card{
+  background: rgba(255,255,255,0.88);
   border: 1px solid rgba(0,0,0,0.10);
   border-radius: 14px;
   box-shadow: 0 14px 36px rgba(0,0,0,0.18);
@@ -515,62 +316,54 @@ header { position: relative; z-index: 50; }
   overflow: hidden;
 }
 
-.cm-accessreq-head {
+.cm-accessreq-head{
   padding: 12px 14px;
   border-bottom: 1px solid rgba(0,0,0,0.08);
 }
-
-.cm-accessreq-title {
+.cm-accessreq-title{
   margin: 0;
   font-size: 14px;
   font-weight: 900;
   color: #0f172a;
 }
-
-.cm-accessreq-sub {
+.cm-accessreq-sub{
   margin-top: 4px;
   font-size: 12px;
   color: #475569;
 }
-
-.cm-accessreq-list {
+.cm-accessreq-list{
   padding: 10px 12px;
   display: grid;
   gap: 10px;
 }
-
-.cm-accessreq-row {
+.cm-accessreq-row{
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 
-  background: rgba(248, 250, 252, 0.9);
+  background: rgba(248,250,252,0.9);
   border: 1px solid rgba(2,6,23,0.10);
   border-radius: 12px;
   padding: 10px 12px;
 }
-
-.cm-accessreq-email {
+.cm-accessreq-email{
   font-size: 13px;
   font-weight: 800;
   color: #0f172a;
   word-break: break-word;
 }
-
-.cm-accessreq-meta {
+.cm-accessreq-meta{
   margin-top: 2px;
   font-size: 11px;
   color: #64748b;
 }
-
-.cm-accessreq-actions {
+.cm-accessreq-actions{
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
 }
-
-.cm-btn {
+.cm-btn{
   border: 0;
   border-radius: 10px;
   padding: 8px 10px;
@@ -579,47 +372,31 @@ header { position: relative; z-index: 50; }
   cursor: pointer;
   transition: filter .15s ease, transform .05s ease;
 }
+.cm-btn:active{ transform: translateY(1px); }
+.cm-btn-ok{ background: #16a34a; color: #fff; }
+.cm-btn-no{ background: #dc2626; color: #fff; }
+.cm-btn:hover{ filter: brightness(1.06); }
 
-.cm-btn:active {
-  transform: translateY(1px);
+/* =========================
+   Column belly
+========================= */
+@keyframes col-belly-width{
+  0%{ flex-basis: var(--col-base, 240px); }
+  45%{ flex-basis: calc(var(--col-base, 240px) + 36px); }
+  100%{ flex-basis: var(--col-base, 240px); }
 }
 
-.cm-btn-ok {
-  background: #16a34a;
-  color: #fff;
+#columns-wrapper .column-item{
+  flex: 0 0 var(--col-base, 240px);
+  width: var(--col-base, 240px);
+  position: relative;
 }
 
-.cm-btn-no {
-  background: #dc2626;
-  color: #fff;
-}
-
-.cm-btn:hover {
-  filter: brightness(1.06);
-}
-
-
-@keyframes col-belly {
-  0%   { transform: none; }
-  30%  { transform: none; }
-  50%  { transform: none; }
-  100% { transform: none; }
-}
-
-/* “engorda” real: mexe no width/flex-basis */
-.column-item.col-belly {
+.column-item.col-belly{
   animation: col-belly-width 260ms ease-out;
   will-change: flex-basis, width;
 }
-
-@keyframes col-belly-width {
-  0%   { flex-basis: var(--col-base, 250px); }
-  45%  { flex-basis: calc(var(--col-base, 250px) + 36px); }
-  100% { flex-basis: var(--col-base, 250px); }
-}
-
-
-.column-item.col-belly::before {
+.column-item.col-belly::before{
   content: "";
   position: absolute;
   inset: -6px -10px;
@@ -630,15 +407,10 @@ header { position: relative; z-index: 50; }
   pointer-events: none;
 }
 
-
-#columns-wrapper .column-item{
-  flex: 0 0 var(--col-base, 240px);
-  width: var(--col-base, 240px);
-  position: relative;
-}
-
-/*badged do card*/
-.card-unread-badge {
+/* =========================
+   Unread badge
+========================= */
+.card-unread-badge{
   position: absolute;
   top: 6px;
   right: 6px;
@@ -652,9 +424,8 @@ header { position: relative; z-index: 50; }
   justify-content: center;
 
   border-radius: 9999px;
-
-  background-color: #dc2626; /* red-600 */
-  color: #ffffff;
+  background-color: #dc2626;
+  color: #fff;
 
   font-size: 11px;
   font-weight: 700;
@@ -665,21 +436,10 @@ header { position: relative; z-index: 50; }
   z-index: 10;
 }
 
-
-
-
-
-
-/* ============================================================
-   IMAGEM DO QUADRO DENTRO DA BOARD - CENTRALIZADA - Header
-   ============================================================ */
-/* =========================================================
-   CM COVER (mesmo efeito da Home)
-   - fundo: blur da imagem (cover)
-   - frente: imagem nítida (contain)
-   ========================================================= */
-.cm-cover {
-  /* ajuste fino via variáveis */
+/* =========================
+   CM cover (header)
+========================= */
+.cm-cover{
   --cm-cover-h: 56px;
   --cm-cover-w: 260px;
   --cm-cover-radius: 18px;
@@ -690,19 +450,18 @@ header { position: relative; z-index: 50; }
   border-radius: var(--cm-cover-radius);
   overflow: hidden;
 
-  /* “glass” base */
-  background: rgba(255, 255, 255, 0.14);
-  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255,255,255,0.14);
+  border: 1px solid rgba(255,255,255,0.35);
   box-shadow: 0 10px 25px rgba(0,0,0,.20);
+
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
 
-/* camada de blur usando a MESMA imagem */
-.cm-cover::before {
+.cm-cover::before{
   content: "";
   position: absolute;
-  inset: -18px; /* bleed pra blur não “cortar” */
+  inset: -18px;
   background-image: var(--cm-cover-url);
   background-size: cover;
   background-position: center;
@@ -711,107 +470,183 @@ header { position: relative; z-index: 50; }
   opacity: 0.95;
 }
 
-/* leve vinheta/realce (refina o contraste, igual “card da home”) */
-.cm-cover::after {
+.cm-cover::after{
   content: "";
   position: absolute;
   inset: 0;
-  background:
-    linear-gradient(to bottom, rgba(0,0,0,.10), rgba(0,0,0,.22));
+  background: linear-gradient(to bottom, rgba(0,0,0,.10), rgba(0,0,0,.22));
   pointer-events: none;
 }
 
-.cm-cover__img {
+.cm-cover__img{
   position: relative;
   z-index: 1;
   width: 100%;
   height: 100%;
-  object-fit: contain;     /* <- evita distorção, fica igual Home */
+  object-fit: contain;
   object-position: center;
 }
 
-/* Variantes de tamanho (pra você padronizar) */
-.cm-cover--header {
-  --cm-cover-h: 52px;      /* você pediu “diminuir um pouco” */
+.cm-cover--header{
+  --cm-cover-h: 52px;
   --cm-cover-w: 240px;
   --cm-cover-radius: 16px;
 }
 
-.cm-cover--card {
-  --cm-cover-h: 96px;
-  --cm-cover-w: 100%;
-  --cm-cover-radius: 14px;
+/* =========================
+   PRAZOS / TERM BADGES (corrige o “efeito colateral”)
+   - garante que o elemento que recebe style via JS (applySavedTermColorsToBoard)
+     fique com “cara de badge” e aceite background/border inline
+========================= */
+[data-term-status],
+.term-badge{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  padding: 2px 8px;
+  min-height: 22px;
+
+  border-radius: 999px;
+  border: 1px solid currentColor;
+
+  /* IMPORTANTE: sem !important para não bloquear o inline do JS */
+  background-color: rgba(255,255,255,0.18);
+  color: #0f172a;
+
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
 }
 
+/* badge “data” ao lado do status (se existir) */
+.term-date-badge,
+[data-term-date]{
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  min-height: 22px;
 
+  border-radius: 999px;
+  border: 1px solid rgba(15,23,42,0.18);
+  background: rgba(255,255,255,0.35);
 
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+}
 
+/* se o status estiver no LI (seu filtro lê data-term-status no card),
+   permite que o badge herde a cor via “currentColor” quando o JS pinta o próprio badge */
+li[data-card-id][data-term-status="overdue"] .term-badge{ color: #dc2626; }
+li[data-card-id][data-term-status="warn"] .term-badge{ color: #f59e0b; }
+li[data-card-id][data-term-status="ok"] .term-badge{ color: #16a34a; }
 
-/* ============================================================
-   ZOOM DA IMAGEM NO CARD
-   ============================================================ */
+/* =========================
+   Capa do card (BOARD)
+========================= */
 :root{
-  --card-cover-thumb-h: 140px; /* altura no card da coluna */
-  --card-cover-modal-h: clamp(110px, 14vh, 180px);
+  --card-cover-thumb-h: 100px;
   --card-cover-bg: rgba(0,0,0,0.10);
 }
 
-
-/* ============================================================
-   IMAGEM DO CARD DENTRO DA BOARD
-   ============================================================ */
-/* Thumb da capa do card (coluna) */
-/* Thumb da capa do card (coluna) */
 #columns-wrapper li[data-card-id] .card-cover-wrap{
   position: relative;
-  height: var(--card-cover-thumb-h);
-  border-radius: 14px;
+  height: var(--card-cover-thumb-h, 100px);
   overflow: hidden;
-  background: var(--card-cover-bg);
 
-  /* 🔑 palco centralizado (igual Home) */
+  margin: -12px -12px 10px;
+
+  border-top-left-radius: 14px;
+  border-top-right-radius: 14px;
+
+  background: transparent;
+
   display: flex;
   align-items: center;
   justify-content: center;
+
+  isolation: isolate;
 }
 
-/* fundo blur (não interfere no centrado) */
 #columns-wrapper li[data-card-id] .card-cover-blur{
   position: absolute;
-  inset: 0;
+  inset: -18px;
   background-size: cover;
-  background-position: center center;
-  transform: scaleX(-1) scale(1.15);
-  filter: blur(12px);
-  opacity: 0.9;
+  background-position: center;
+
+  background-color: var(--card-cover-bg, rgba(0,0,0,0.10));
+  opacity: 1;
+
+  filter: blur(16px) saturate(1.35);
+  transform: scale(1.25);
+
   pointer-events: none;
   z-index: 0;
 }
 
-/* imagem nítida centralizada, sem “forçar canvas 100%” */
+#columns-wrapper li[data-card-id] .card-cover-wrap::after{
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 35%,
+    rgba(0,0,0,0.00),
+    rgba(0,0,0,0.12)
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
 #columns-wrapper li[data-card-id] img.card-cover-img{
   position: relative;
-  z-index: 1;
+  z-index: 2;
 
-  width: auto !important;
-  height: 100% !important;
-  max-width: 100% !important;
-  max-height: 100% !important;
+  width: 100%;
+  height: 100%;
 
-  object-fit: contain !important;
-  object-position: center center !important;
+  object-fit: contain;
+  object-position: center center;
 
   display: block;
 }
-#columns-wrapper li[data-card-id] .card-cover-wrap{
-  margin-left: -12px;   /* equivale a -mx-3 */
-  margin-right: -12px;
-  margin-top: -12px;    /* equivale a -mt-3 */
-  border-top-left-radius: 14px;
-  border-top-right-radius: 14px;
+
+/* evita que imagens do card “tampem” elementos de UI */
+#columns-wrapper li[data-card-id] img{
+  position: relative;
+  z-index: 1;
 }
 
+/* =========================
+   Card context / z-index
+========================= */
 
+/* Card vira contexto pro z-index do X */
+#columns-wrapper li[data-card-id]{
+  position: relative;
+  overflow: hidden; /* necessário pro overlay do prazo */
+}
 
+/* camada de cor do prazo (mantém o glass) */
+#columns-wrapper li[data-card-id]::before{
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(var(--term-rgb, 0,0,0), var(--term-opacity, 0));
+  pointer-events: none;
+  z-index: 0;
+}
 
-/* end board_detail.css 
+/* garante que o conteúdo fique acima do overlay */
+#columns-wrapper li[data-card-id] > *{
+  position: relative;
+  z-index: 1;
+}
+
+/* X sempre acima de capa/preview */
+#columns-wrapper li[data-card-id] .delete-card-btn{
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 9999 !important;
+}

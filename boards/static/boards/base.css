@@ -6,39 +6,26 @@
 /* ============================================================
    DENSIDADE GLOBAL
    ============================================================ */
+html { font-size: 85%; } /* 16px -> ~13.6px (sua densidade) */
 
-html { font-size: 85%; }  /*16px -> 12px*/ 
-
-body {
+body{
   font-size: 1rem;
   line-height: 1.35;
 }
 
- /*Opcional (Chromium): manter 100%*/ 
-@supports (zoom: 0.8) {
-  body { zoom: 0.9; }
+/* Opcional (Chromium): manter 100% (ajuste fino) */
+@supports (zoom: 0.8){
+  body{ zoom: 0.9; }
 }
-
-
-
-/*
-html { font-size: 16px; }
-body { font-size: 0.75rem; }
-*/
-
 
 /* =======================================================================
    TOKENS GERAIS (NÃO MODAL)
    ======================================================================= */
-:root {
-  /* Bordas / sombras (uso geral) */
+:root{
+  /* Bordas / sombras */
   --border-light: rgba(255,255,255,0.25);
   --border-dark: rgba(255,255,255,0.14);
   --shadow-thumb: rgba(0,0,0,0.25);
-
-  /* Capa (BOARD thumbnails) */
-  --card-cover-thumb-h: 110px;
-  --card-cover-bg: rgba(0,0,0,0.10);
 
   /* HOME boards */
   --boards-gap: 1rem;
@@ -49,96 +36,66 @@ body { font-size: 0.75rem; }
 }
 
 /* HOME: modo manual (1/2/3 colunas) */
-body.boards-cols-1 { --boards-cols: 1; }
-body.boards-cols-2 { --boards-cols: 2; }
-body.boards-cols-3 { --boards-cols: 3; }
+body.boards-cols-1{ --boards-cols: 1; }
+body.boards-cols-2{ --boards-cols: 2; }
+body.boards-cols-3{ --boards-cols: 3; }
 
 /* =======================================================================
    BOARD — COLUNAS / CARDS (VIDRO)
    ======================================================================= */
-.column-glass {
-  background: rgba(255, 255, 255, 0.25);
+.column-glass{
+  background: rgba(255,255,255,0.25);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.35);
+  border: 1px solid rgba(255,255,255,0.35);
 }
 
-.card-glass {
-  background: rgba(255, 255, 255, 0.55);
+.card-glass{
+  background: rgba(255,255,255,0.55);
   backdrop-filter: blur(6px);
-  border: 1px solid rgba(255, 255, 255, 0.35);
+  border: 1px solid rgba(255,255,255,0.35);
 }
 
 /* Temas translúcidos (colunas) */
-.gray-column-bg   { background-color: rgba(240, 240, 240, 0.35) !important; }
-.blue-column-bg   { background-color: rgba(59, 130, 246, 0.20) !important; }
-.green-column-bg  { background-color: rgba(52, 211, 153, 0.20) !important; }
-.purple-column-bg { background-color: rgba(168, 85, 247, 0.20) !important; }
-.amber-column-bg  { background-color: rgba(251, 191, 36, 0.25) !important; }
+.gray-column-bg{ background-color: rgba(240,240,240,0.35) !important; }
+.blue-column-bg{ background-color: rgba(59,130,246,0.20) !important; }
+.green-column-bg{ background-color: rgba(52,211,153,0.20) !important; }
+.purple-column-bg{ background-color: rgba(168,85,247,0.20) !important; }
+.amber-column-bg{ background-color: rgba(251,191,36,0.25) !important; }
 
 /* DARK GLOBAL (html.dark) — board */
-html.dark .card-glass {
-  background: rgba(0, 0, 0, 0.35) !important;
+html.dark .card-glass{
+  background: rgba(0,0,0,0.35) !important;
   border: 1px solid var(--border-dark) !important;
 }
-html.dark .column-glass {
-  background: rgba(0, 0, 0, 0.30) !important;
+html.dark .column-glass{
+  background: rgba(0,0,0,0.30) !important;
   border: 1px solid var(--border-dark) !important;
 }
-html.dark .gray-column-bg   { background-color: rgba(15, 23, 42, 0.35) !important; }
-html.dark .blue-column-bg   { background-color: rgba(59, 130, 246, 0.18) !important; }
-html.dark .green-column-bg  { background-color: rgba(52, 211, 153, 0.16) !important; }
-html.dark .purple-column-bg { background-color: rgba(168, 85, 247, 0.16) !important; }
-html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !important; }
+html.dark .gray-column-bg{ background-color: rgba(15,23,42,0.35) !important; }
+html.dark .blue-column-bg{ background-color: rgba(59,130,246,0.18) !important; }
+html.dark .green-column-bg{ background-color: rgba(52,211,153,0.16) !important; }
+html.dark .purple-column-bg{ background-color: rgba(168,85,247,0.16) !important; }
+html.dark .amber-column-bg{ background-color: rgba(251,191,36,0.18) !important; }
 
 /* =======================================================================
-   CAPA/IMAGEM — BOARD (SEM DUPLICIDADE)
+   BOARD MEMBERS BAR
    ======================================================================= */
-#columns-wrapper li[data-card-id] .card-cover-wrap{
-  max-height: var(--card-cover-thumb-h) !important;
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
-}
-
-#columns-wrapper li[data-card-id] .card-cover-img{
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: contain !important;
-  background: var(--card-cover-bg) !important;
-  display: block;
-  cursor: zoom-in;
-}
-
-#columns-wrapper li[data-card-id] .card-cover-img:not(img){
-  background-size: contain !important;
-  background-repeat: no-repeat !important;
-  background-position: center !important;
-  background-color: var(--card-cover-bg) !important;
-}
-
-/* =======================================================================
-   BOARD MEMBERS BAR (SEM DUPLICIDADE — ÚLTIMA REGRA PREVALECE)
-   ======================================================================= */
-.board-members-bar {
+.board-members-bar{
   display: flex;
   justify-content: flex-end;
   align-items: center;
   gap: 4px;
-
-  /* Alinhado com o breadcrumb (header do board) */
   margin: 0;
   padding: 0;
-
   flex-wrap: wrap;
 }
 
-.board-member-avatar {
+.board-member-avatar{
   width: 36px;
   height: 36px;
   border-radius: 999px;
-
   overflow: hidden;
   border: 2px solid rgba(255,255,255,0.6);
-
   background: rgba(255,255,255,0.85);
   cursor: pointer;
 
@@ -149,244 +106,112 @@ html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !import
   transition: transform .15s ease, box-shadow .15s ease;
 }
 
-.board-member-avatar:hover {
+.board-member-avatar:hover{
   transform: scale(1.08);
   box-shadow: 0 4px 14px rgba(0,0,0,0.25);
 }
 
-.board-member-avatar img {
+.board-member-avatar img{
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.board-member-avatar .avatar-fallback {
+.board-member-avatar .avatar-fallback{
   font-weight: 500;
   font-size: 14px;
   color: #111;
 }
 
-
-
-
 /* =======================================================================
-   HEADER — CENTRO (BOARD COVER)
+   HEADER — GRID BASE
    ======================================================================= */
-.cm-header-bar {
+.cm-header-bar{
   grid-template-columns: 260px 1fr 260px;
 }
 
-.cm-header-center {
+.cm-header-center{
   min-height: 72px;
-}
-
-.cm-board-cover-wrap {
-  max-width: 420px;
-  width: 100%;
-  border-radius: 18px;
-  overflow: hidden;
-  backdrop-filter: blur(8px);
-  box-shadow: 0 10px 30px rgba(0,0,0,0.25);
-}
-
-.cm-board-cover-img {
-  width: 100%;
-  height: 96px;
-  object-fit: cover;
-  display: block;
-}
-
-/* Placeholder quando não há imagem */
-.cm-board-cover-placeholder {
-  padding: 18px 28px;
-  border-radius: 18px;
-  background: rgba(255,255,255,0.35);
-  backdrop-filter: blur(8px);
-  font-weight: 700;
-  font-size: 1.1rem;
-  text-align: center;
-  white-space: nowrap;
 }
 
 /* =======================================================================
    SEARCH OVERLAY
    ======================================================================= */
-#board-search-overlay {
-  pointer-events: auto;
+#board-search-overlay{ pointer-events: auto; }
+#board-search-overlay.hidden{ display: none; }
+
+/* fundo visível quando digitando (sua lógica) */
+#board-search-overlay.is-typing #search-backdrop{
+  opacity: 0 !important;
+  pointer-events: none;
 }
-
-#board-search-overlay.hidden {
-  display: none;
-}
-
-
 
 /* =======================================================================
-   HOME — CARDS DE BOARDS
+   HOME — GRID (flex) e card base
    ======================================================================= */
-.board-card {
-  position: relative;
-  cursor: pointer;
-  width: var(--board-width);
-  min-height: var(--board-min-height);
-  border-radius: 12px;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(4px);
+.home-group-items,
+.home-group-dropzone,
+.boards-grid,
+#home-favorites-items,
+#home-owned-list,
+#home-shared-list{
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: wrap !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  gap: 12px !important;
+
+  width: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
 }
 
-@media (max-width: 767px) {
-  .board-card { width: 100%; }
+/* Card base (HOME) — largura controlada via variável */
+.board-card{
+  flex: 0 0 auto !important;
+  box-sizing: border-box !important;
+  width: var(--board-width, 16rem) !important;
 }
 
-.board-card__actions {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  z-index: 10;
-}
+/* MOBILE — lógica 1 / 2 / 3 colunas */
+@media (max-width: 767px){
+  body.boards-cols-1 .board-card{ width: 100% !important; max-width: 100% !important; }
+  body.boards-cols-2 .board-card{ width: calc(50% - 6px) !important; }
+  body.boards-cols-3 .board-card{ width: calc(33.33% - 8px) !important; }
 
-/* (ÚLTIMA REGRA PREVALECE) — ações mais “premium” */
-.board-card__actions > button{
-  width: 40px;
-  height: 40px;
-  border-radius: 9999px;
-  background: rgba(24,24,27,.95);
-  color: #fff;
-  box-shadow: 0 10px 18px rgba(0,0,0,.25);
-  border: 1px solid rgba(255,255,255,.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background .15s ease, transform .05s ease, border-color .15s ease;
-}
-.board-card__actions > button:hover{
-  background: rgba(39,39,42,.95);
-  border-color: rgba(255,255,255,.7);
-}
-.board-card__actions > button:active{ transform: scale(.95); }
-.board-card__actions > button svg{ width: 20px; height: 20px; }
-
-/* Capa (HOME) */
-.board-card__cover {
-  width: 100%;
-  height: var(--board-cover-height);
-  border-radius: 10px;
-  overflow: hidden;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  background: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.board-card__cover-img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
-/* Texto */
-.board-card__body { color: inherit; text-decoration: none; }
-.board-card__body h2 {
-  font-size: 1.15rem;
-  font-weight: 700;
-  line-height: 1.2;
-  margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.board-card__body p {
-  font-size: 0.9rem;
-  opacity: 0.8;
-  margin: 0;
-}
-
-/* Owner */
-.board-card__owner {
-  margin-top: 6px;
-  background: rgba(0, 0, 0, 0.6);
-  color: #fff;
-  border-radius: 6px;
-  padding: 4px 6px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  max-width: 100%;
-}
-.board-card__owner-email {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Botão excluir (só modo delete) */
-.board-card .delete-button {
-  display: none !important;
-  color: #dc2626;
-  text-decoration: underline;
-  font-size: 0.875rem;
-  margin-top: 6px;
-  background: transparent;
-  border: 0;
-  padding: 0;
-}
-.board-card.delete-mode .delete-button { display: inline-block !important; }
-
-/* HOME — remover quadro do agrupamento */
-.remove-from-group-btn {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  z-index: 20;
-
-  opacity: 0;
-  pointer-events: none;
-
-  background: rgba(239, 68, 68, 0.9);
-  color: #fff;
-  border: 0;
-  border-radius: 9999px;
-  padding: 2px 8px;
-
-  font-size: 0.7rem;
-  font-weight: 600;
-  line-height: 1;
-
-  transition: opacity 0.15s ease;
-}
-
-/* Desktop: aparece no hover */
-@media (hover: hover) and (pointer: fine) {
-  .home-group-items .board-card:hover .remove-from-group-btn {
-    opacity: 1;
-    pointer-events: auto;
+  body:not(.boards-cols-1):not(.boards-cols-2):not(.boards-cols-3) .board-card{
+    width: calc(50% - 6px) !important;
   }
-}
 
-/* Mobile: sempre visível */
-@media (hover: none) {
-  .home-group-items .remove-from-group-btn {
-    opacity: 1;
-    pointer-events: auto;
+  .board-card{ min-width: 0 !important; margin: 0 !important; }
+  .board-card__cover{ height: 70px !important; }
+
+  .board-card__body h2{
+    font-size: 0.85rem !important;
+    line-height: 1.2 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
   }
 }
 
 /* =======================================================================
    MOBILE — SWITCH 1 / 2 / 3 / AUTO (HOME)
    ======================================================================= */
-@media (max-width: 767px) {
 
-  .boards-cols-switch {
+/* regra global: switch só aparece na HOME */
+body:not(.is-home) .boards-cols-switch{ display: none !important; }
+
+/* desktop/tablet: switch nunca */
+@media (min-width: 768px){
+  .boards-cols-switch{ display: none !important; }
+}
+
+/* mobile base (se existir) */
+@media (max-width: 767px){
+  .boards-cols-switch{
     position: fixed;
     top: 10px;
     left: 10px;
@@ -396,18 +221,17 @@ html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !import
     gap: 6px;
     padding: 6px;
 
-    background: rgba(255, 255, 255, 0.7);
+    background: rgba(255,255,255,0.7);
     backdrop-filter: blur(6px);
-    border: 1px solid rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(0,0,0,0.15);
     border-radius: 12px;
 
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.15);
   }
 
-  .boards-cols-switch .bcs-btn {
+  .boards-cols-switch .bcs-btn{
     min-width: 34px;
     height: 34px;
-
     padding: 0 8px;
     border-radius: 8px;
 
@@ -415,50 +239,29 @@ html.dark .amber-column-bg  { background-color: rgba(251, 191, 36, 0.18) !import
     font-weight: 700;
     line-height: 1;
 
-    border: 1px solid rgba(0, 0, 0, 0.25);
-    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(0,0,0,0.25);
+    background: rgba(255,255,255,0.85);
     color: #111;
 
     cursor: pointer;
     user-select: none;
 
-    transition: background 0.15s ease,
-                color 0.15s ease,
-                transform 0.1s ease,
-                box-shadow 0.1s ease;
+    transition: background .15s ease, color .15s ease, transform .1s ease, box-shadow .1s ease;
   }
 
-  .boards-cols-switch .bcs-btn:hover { background: rgba(255, 255, 255, 1); }
-  .boards-cols-switch .bcs-btn:active { transform: scale(0.95); }
+  .boards-cols-switch .bcs-btn:hover{ background: rgba(255,255,255,1); }
+  .boards-cols-switch .bcs-btn:active{ transform: scale(0.95); }
 
-  .boards-cols-switch .bcs-btn.is-active {
-    background: rgba(16, 185, 129, 0.9);
+  .boards-cols-switch .bcs-btn.is-active{
+    background: rgba(16,185,129,0.9);
     color: #fff;
-    border-color: rgba(0, 0, 0, 0.35);
+    border-color: rgba(0,0,0,0.35);
     box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25);
   }
 }
 
-/* HOME x BOARD — switch só na HOME */
-@media (max-width: 767px) {
-  body:not(.is-home) .boards-cols-switch { display: none !important; }
-
-  body.is-home .boards-cols-switch {
-    position: absolute !important;
-    top: 10px !important;
-    right: 12px !important;
-    left: auto !important;
-    z-index: 60 !important;
-  }
-
-  body.is-home .cm-header-row { padding-top: 58px !important; }
-}
-
-/* Regra global: switch só aparece na HOME */
-body:not(.is-home) .boards-cols-switch { display: none !important; }
-
-/* Override do “fixed” no mobile quando HOME (fica no header) */
-body.is-home .boards-cols-switch {
+/* HOME no mobile: switch no header (não fixed) */
+body.is-home .boards-cols-switch{
   position: static !important;
   top: auto !important;
   left: auto !important;
@@ -470,12 +273,13 @@ body.is-home .boards-cols-switch {
   gap: 6px !important;
   padding: 6px !important;
   border-radius: 14px !important;
+
   background: rgba(255,255,255,0.75) !important;
   border: 1px solid rgba(0,0,0,0.25) !important;
   box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
 }
 
-body.is-home .boards-cols-switch .bcs-btn {
+body.is-home .boards-cols-switch .bcs-btn{
   width: 44px !important;
   height: 38px !important;
   border-radius: 12px !important;
@@ -484,20 +288,15 @@ body.is-home .boards-cols-switch .bcs-btn {
   font-weight: 600 !important;
 }
 
-body.is-home .boards-cols-switch .bcs-btn.is-active {
+body.is-home .boards-cols-switch .bcs-btn.is-active{
   background: rgba(16,185,129,0.90) !important;
   color: #fff !important;
   border-color: rgba(5,150,105,0.90) !important;
 }
 
-/* Barra de colunas: só mobile */
-@media (min-width: 768px) {
-  .boards-cols-switch { display: none !important; }
-}
-
-/* Header mobile: logo + avatar */
-.cm-header-mobile { position: relative; }
-.cm-header-mobile .cm-header-row {
+/* Header mobile: logo + avatar (global helper) */
+.cm-header-mobile{ position: relative; }
+.cm-header-mobile .cm-header-row{
   display: flex;
   align-items: center;
   gap: 10px;
@@ -517,107 +316,10 @@ body.is-home .boards-cols-switch .bcs-btn.is-active {
   display: block !important;
 }
 
-/* Mobile: seletor 1/2/3/Auto no canto direito */
-@media (max-width: 767px) {
-  .cm-header-mobile .boards-cols-switch{
-    position: absolute;
-    top: 10px;
-    right: 12px;
-    left: auto;
-    z-index: 50;
-    margin: 0 !important;
-  }
-  .cm-header-mobile .cm-header-row{ padding-top: 58px; }
-}
-
-/* Switch colapsado (dropdown) */
-.boards-cols-switch--mobile{ position: relative; }
-.boards-cols-switch--mobile .bcs-trigger{
-  height: 38px;
-  min-width: 86px;
-  padding: 0 12px;
-  border-radius: 14px;
-  background: rgba(255,255,255,0.85);
-  border: 1px solid rgba(0,0,0,0.18);
-  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
-  font-weight: 600;
-}
-.boards-cols-switch--mobile .bcs-menu{
-  position: absolute;
-  right: 0;
-  top: calc(100% + 8px);
-  display: none;
-  gap: 10px;
-  padding: 10px;
-  border-radius: 16px;
-  background: rgba(255,255,255,0.92);
-  border: 1px solid rgba(0,0,0,0.15);
-  box-shadow: 0 8px 20px rgba(0,0,0,0.22);
-  z-index: 80;
-}
-.boards-cols-switch--mobile[data-open="true"] .bcs-menu{ display: flex; }
-.boards-cols-switch--mobile .bcs-btn{
-  height: 38px;
-  min-width: 44px;
-  padding: 0 14px;
-  border-radius: 14px;
-  background: rgba(255,255,255,0.88);
-  border: 1px solid rgba(0,0,0,0.18);
-  font-weight: 600;
-}
-
-/* HOME: controle absoluto de colunas (home grid via flex) */
-.home-group-items,
-.home-group-dropzone,
-.boards-grid,
-#home-favorites-items,
-#home-owned-list,
-#home-shared-list {
-  display: flex !important;
-  flex-direction: row !important;
-  flex-wrap: wrap !important;
-  align-items: stretch !important;
-  justify-content: flex-start !important;
-  gap: 12px !important;
-  width: 100% !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  box-sizing: border-box !important;
-}
-
-/* Card base (HOME) — largura controlada */
-.board-card {
-  flex: 0 0 auto !important;
-  box-sizing: border-box !important;
-  width: var(--board-width, 16rem) !important;
-}
-
-/* MOBILE — lógica 1 / 2 / 3 colunas */
-@media (max-width: 767px) {
-  body.boards-cols-1 .board-card { width: 100% !important; max-width: 100% !important; }
-  body.boards-cols-2 .board-card { width: calc(50% - 6px) !important; }
-  body.boards-cols-3 .board-card { width: calc(33.33% - 8px) !important; }
-
-  body:not(.boards-cols-1):not(.boards-cols-2):not(.boards-cols-3) .board-card {
-    width: calc(50% - 6px) !important;
-  }
-
-  .board-card { min-width: 0 !important; margin: 0 !important; }
-  .board-card__cover { height: 70px !important; }
-
-  .board-card__body h2 {
-    font-size: 0.85rem !important;
-    line-height: 1.2 !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-  }
-}
-
 /* =======================================================================
    CODE / PRISM (GLOBAL)
    ======================================================================= */
-pre {
+pre{
   background: transparent !important;
   padding: 0 !important;
   margin: 0 0 1rem 0 !important;
@@ -626,51 +328,38 @@ pre {
   box-shadow: none !important;
   border: none !important;
   position: relative;
+
   white-space: pre-wrap !important;
   word-break: break-word !important;
 }
 
-.code-wrapper { position: relative; }
+.code-wrapper{ position: relative; }
 
-.copy-code-btn {
+.copy-code-btn{
   position: absolute;
   top: 8px;
   right: 8px;
+
   background: #444;
-  color: white;
+  color: #fff;
+
   padding: 4px 8px;
   border-radius: 4px;
+
   font-size: 11px;
   cursor: pointer;
   opacity: 0.8;
-  transition: 0.2s;
+  transition: opacity .2s ease;
 }
-.copy-code-btn:hover { opacity: 1; }
+.copy-code-btn:hover{ opacity: 1; }
 
 /* Helpers */
-.home-background {
+.home-background{
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
 }
 
-
-
-/* ============================================================
-   SEARCH OVERLAY — fundo visível quando digitando
-   ============================================================ */
-#board-search-overlay.is-typing #search-backdrop {
-  opacity: 0 !important;
-  pointer-events: none;
-}
-
-
-
-
-
-
-
-
 /* =======================================================================
-   FIM DO BASE.CSS CONSOLIDADO
+   FIM DO BASE.CSS
    ======================================================================= */
