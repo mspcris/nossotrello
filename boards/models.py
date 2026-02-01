@@ -113,6 +113,7 @@ class Board(models.Model):
     is_deleted = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(null=True, blank=True)
 
+
     # legado
     home_wallpaper_filename = models.CharField(max_length=255, blank=True, default="")
 
@@ -234,6 +235,8 @@ class Card(models.Model):
 
     is_deleted = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(blank=True, null=True)
+    is_archived = models.BooleanField(default=False)
+    archived_at = models.DateTimeField(blank=True, null=True)
 
     objects = ActiveCardManager()
     all_objects = models.Manager()
@@ -412,15 +415,27 @@ class Mention(models.Model):
         ACTIVITY = "activity", "Atividade"
         DESCRIPTION = "description", "Descrição"
 
-    board = models.ForeignKey(Board, related_name="mentions", on_delete=models.CASCADE)
-    card = models.ForeignKey(Card, related_name="mentions", on_delete=models.CASCADE)
-    source = models.CharField(max_length=20, choices=Source.choices)
-    
+    board = models.ForeignKey(
+        Board,
+        related_name="mentions",
+        on_delete=models.CASCADE,
+    )
+    card = models.ForeignKey(
+        Card,
+        related_name="mentions",
+        on_delete=models.CASCADE,
+    )
+    source = models.CharField(
+        max_length=20,
+        choices=Source.choices,
+    )
+
     actor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name="mentions_made",
         on_delete=models.SET_NULL,
-        null=True, blank=True,
+        null=True,
+        blank=True,
     )
     mentioned_user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -429,8 +444,8 @@ class Mention(models.Model):
     )
 
     raw_text = models.TextField(blank=True, default="")
-    
-    # NOVOS CAMPOS PARA O CONTADOR
+
+    # Contadores
     seen_count = models.PositiveIntegerField(default=0)
     emailed_count = models.PositiveIntegerField(default=0)
 
@@ -438,34 +453,27 @@ class Mention(models.Model):
         CardLog,
         related_name="mentions",
         on_delete=models.SET_NULL,
-        null=True, blank=True,
+        null=True,
+        blank=True,
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        # REMOVEMOS a UniqueConstraint para permitir a lógica de "delta" por registro
+        constraints = [
+            models.UniqueConstraint(
+                fields=["card", "mentioned_user", "source"],
+                name="uniq_mention_card_user_source",
+            ),
+        ]
         indexes = [
             models.Index(fields=["card", "mentioned_user"]),
             models.Index(fields=["board", "mentioned_user"]),
+            models.Index(fields=["card", "source"]),
         ]
 
     def __str__(self):
         return f"{self.mentioned_user} ({self.emailed_count}/{self.seen_count}) em {self.card}"
-    
-
-    class Meta:
-        constraints = [
-        models.UniqueConstraint(
-            fields=["card", "mentioned_user", "source"],
-            name="uniq_mention_card_user_source",
-        ),
-    ]
-    indexes = [
-        models.Index(fields=["card", "mentioned_user"]),
-        models.Index(fields=["board", "mentioned_user"]),
-        models.Index(fields=["card", "source"]),
-    ]
 
 
 # ============================================================

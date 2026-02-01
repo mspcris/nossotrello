@@ -26,7 +26,7 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import escape
-from django.views.decorators.http import require_POST, require_http_methods, require_http_methods
+from django.views.decorators.http import require_POST, require_http_methods
 
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import EmailMultiAlternatives
@@ -331,8 +331,14 @@ def board_detail(request, board_id):
         board.columns
         .filter(is_deleted=False)
         .order_by("position")
-        .prefetch_related("cards")
+        .prefetch_related(
+            Prefetch(
+                "cards",
+                queryset=Card.objects.filter(is_archived=False).order_by("position", "id"),
+            )
+        )
     )
+
 
     memberships_qs = board.memberships.select_related("user")
 
@@ -373,7 +379,6 @@ def board_detail(request, board_id):
             )
 
     # logado mas sem acesso
-        # logado mas sem acesso
     if memberships_qs.exists() and request.user.is_authenticated and not my_membership:
         owner_membership = memberships_qs.filter(role=BoardMembership.Role.OWNER).select_related("user").first()
         owner_user = owner_membership.user if owner_membership else None
@@ -388,7 +393,21 @@ def board_detail(request, board_id):
             status=403,
         )
 
-    can_edit = bool(my_membership)
+    # regra de edição: somente OWNER/EDITOR (e staff sempre)
+    can_edit = bool(
+        request.user.is_authenticated
+        and (
+            getattr(request.user, "is_staff", False)
+            or (
+                my_membership
+                and my_membership.role in {
+                    BoardMembership.Role.OWNER,
+                    BoardMembership.Role.EDITOR,
+                }
+            )
+        )
+    )
+
     can_share_board = bool(my_membership and my_membership.role == BoardMembership.Role.OWNER)
     can_leave_board = bool(my_membership and my_membership.role != BoardMembership.Role.OWNER)
 
@@ -1344,8 +1363,14 @@ def board_poll(request, board_id):
         board.columns
         .filter(is_deleted=False)
         .order_by("position")
-        .prefetch_related("cards")
+        .prefetch_related(
+            Prefetch(
+                "cards",
+                queryset=Card.objects.filter(is_archived=False).order_by("position", "id"),
+            )
+        )
     )
+
 
     html = render_to_string(
         "boards/partials/columns_block.html",
@@ -1374,9 +1399,10 @@ def toggle_aggregator_column(request, board_id):
         .prefetch_related(
             Prefetch(
                 "cards",
-                queryset=Card.objects.filter(is_deleted=False).order_by("position"),
+                queryset=Card.objects.filter(is_archived=False).order_by("position", "id"),
             )
         )
+
     )
 
     return render(
@@ -1404,7 +1430,9 @@ def board_history_modal(request, board_id):
 
     logs = (
         CardLog.objects
-        .filter(card__column__board=board, card__is_deleted=False)
+        .filter(card__column__board=board, card__is_deleted=False, card__is_archived=False)
+
+
         .select_related("card", "card__column")
         .order_by("-created_at")[:500]
     )
@@ -1436,6 +1464,7 @@ def board_history_unread_count(request, board_id):
     qs = CardLog.objects.filter(
         card__column__board=board,
         card__is_deleted=False,
+        card__is_archived=False,
     )
 
     if last_seen:

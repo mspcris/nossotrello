@@ -603,6 +603,96 @@ def delete_card(request, card_id):
 
 @login_required
 @require_POST
+def archive_card(request, card_id):
+    card = get_object_or_404(Card, id=card_id, is_deleted=False)
+    actor = _actor_label(request)
+
+    if not _user_can_edit_board(request.user, card.column.board):
+        return _deny_read_only(request)
+
+    if not getattr(card, "is_archived", False):
+        _log_card(card, request, f"<p><strong>{actor}</strong> arquivou este card.</p>")
+        card.is_archived = True
+        card.archived_at = timezone.now()
+        card.save(update_fields=["is_archived", "archived_at"])
+
+        board = card.column.board
+        board.version += 1
+        board.save(update_fields=["version"])
+
+    return HttpResponse("", status=200)
+
+
+@login_required
+@require_POST
+def unarchive_card(request, card_id):
+    card = get_object_or_404(Card, id=card_id, is_deleted=False)
+    actor = _actor_label(request)
+
+    if not _user_can_edit_board(request.user, card.column.board):
+        return _deny_read_only(request)
+
+    if getattr(card, "is_archived", False):
+        _log_card(card, request, f"<p><strong>{actor}</strong> desarquivou este card.</p>")
+        card.is_archived = False
+        card.archived_at = None
+        card.save(update_fields=["is_archived", "archived_at"])
+
+        board = card.column.board
+        board.version += 1
+        board.save(update_fields=["version"])
+
+    return HttpResponse("", status=200)
+
+
+@login_required
+@require_POST
+@transaction.atomic
+def restore_card(request, card_id):
+    # restaura da lixeira (soft delete -> ativo)
+    card = get_object_or_404(Card.all_objects, id=card_id)
+    actor = _actor_label(request)
+
+    if not _user_can_edit_board(request.user, card.column.board):
+        return _deny_read_only(request)
+
+    if card.is_deleted:
+        # volta ativo e fora do arquivo
+        card.is_deleted = False
+        card.deleted_at = None
+        card.is_archived = False
+        card.archived_at = None
+
+        # coloca no fim da coluna (entre ativos não-arquivados)
+        from django.db.models import Max
+        last_pos = (
+            Card.objects
+            .filter(column=card.column, is_archived=False)
+            .aggregate(m=Max("position"))
+            .get("m")
+        )
+        card.position = int(last_pos or 0) + 1
+
+        card.save(update_fields=[
+            "is_deleted", "deleted_at",
+            "is_archived", "archived_at",
+            "position",
+        ])
+
+        _log_card(card, request, f"<p><strong>{actor}</strong> restaurou este card da lixeira.</p>")
+
+        board = card.column.board
+        board.version += 1
+        board.save(update_fields=["version"])
+
+    return HttpResponse("", status=200)
+
+
+
+
+
+@login_required
+@require_POST
 @transaction.atomic
 def move_card(request):
     """
