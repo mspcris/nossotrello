@@ -15,8 +15,8 @@ body {
 }
 
  /*Opcional (Chromium): manter 100%*/ 
-@supports (zoom: 0.5) {
-  body { zoom: 0.8; }
+@supports (zoom: 0.8) {
+  body { zoom: 0.9; }
 }
 
 
@@ -671,6 +671,9 @@ pre {
 
 
 
+/* ============================================================
+   IMAGEM DO QUADRO DENTRO DA BOARD - CENTRALIZADA 
+   ============================================================ */
 .cm-header-board-cover {
   width: 120px;
   height: 48px;
@@ -725,7 +728,10 @@ pre {
 }
 
 
-/*ZOOM DA IMAGEM DO CARD*/
+
+/* ============================================================
+   ZOOM DA IMAGEM NO CARD
+   ============================================================ */
 :root{
   --card-cover-thumb-h: 140px; /* altura no card da coluna */
   --card-cover-modal-h: clamp(110px, 14vh, 180px);
