@@ -1,11 +1,10 @@
-# /boards/services/cards_state.py
-
+# boards/services/cards_state.py
 from django.utils import timezone
 
 
 def archive_card(card):
     if card.is_deleted:
-        return  # não arquiva item na lixeira
+        return
     if card.is_archived:
         return
     card.is_archived = True
@@ -35,4 +34,4 @@ def restore_card(card):
     card.is_deleted = False
     card.deleted_at = None
     card.save(update_fields=["is_deleted", "deleted_at"])
-# END /boards/services/cards_state.py
+# END boards/services/cards_state.py

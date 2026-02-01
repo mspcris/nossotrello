@@ -1,6 +1,10 @@
 {# templates/boards/partials/card_modal_body.html (arquivo completo) #}
 {% load tag_helpers %}
 
+{% load static %}
+<link rel="stylesheet" href="{% static 'css/modal.css' %}">
+
+
 {% if card.cover_image %}
   <div class="px-4 pt-4">
     <div class="group relative rounded-xl overflow-hidden border border-white/20">
@@ -31,8 +35,18 @@
      data-tag-colors='{{ card.tag_colors|default_if_none:"{}"|escape }}'
      {% if term_status %}data-term-status="{{ term_status }}"{% endif %}
      data-term-notify="{% if card.due_notify %}1{% else %}0{% endif %}">
+    
+    
+     <div class="avisoradical">
+  <span>
+    <strong>ATENÇÃO!</strong>
+    MODO LEGADO — Para ter acesso às novidades, clique em Menu, Minha conta e marque “Mostrar atividade na lateral do modal”.
+  </span>
+</div>
 
-  {# Topbar (abas + salvar) #}
+
+  
+     {# Topbar (abas + salvar) #}
   <div class="cm-topbar">
     <div class="cm-bar" role="tablist" aria-label="Abas do card">
       <div class="cm-tabs">

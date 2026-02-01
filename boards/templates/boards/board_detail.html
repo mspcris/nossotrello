@@ -182,6 +182,21 @@
   </button>
 </li>
 
+
+<li>
+  <a class="nt-link" href="{% url 'boards:archived' board.id %}">
+    🗃️ Arquivados
+  </a>
+</li>
+
+<li>
+  <a class="nt-link" href="{% url 'boards:trash' board.id %}">
+    🗑️ Lixeira
+  </a>
+</li>
+
+
+
 <li>
   <button class="nt-link" data-action="toggle-calendar">
     📅 Modo calendário

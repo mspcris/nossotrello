@@ -86,7 +86,6 @@ from .views import attachments as attachments_views
 
 from .views import cards_state as cards_state_views
 
-
 app_name = "boards"
 
 urlpatterns = [
@@ -165,10 +164,15 @@ urlpatterns = [
     # ============================================================
     # CARDS — Arquivo / Lixeira (Cards)
     # ============================================================
+    
     path("card/<int:card_id>/archive/", cards_state_views.archive_card, name="archive_card"),
     path("card/<int:card_id>/unarchive/", cards_state_views.unarchive_card, name="unarchive_card"),
+    path("card/<int:card_id>/trash/", cards_state_views.trash_card, name="trash_card"),
     path("card/<int:card_id>/restore/", cards_state_views.restore_card, name="restore_card"),
-    path("trash/", cards_state_views.trash, name="trash"),
+    # CARDS — Arquivo / Lixeira (PÁGINAS)
+    path("board/<int:board_id>/trash/", cards_state_views.trash, name="trash"),
+    path("board/<int:board_id>/archived/", cards_state_views.archived, name="archived"),
+
 
 
     # ============================================================

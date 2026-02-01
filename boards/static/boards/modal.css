@@ -1856,3 +1856,53 @@ html.dark #modal #modal-breadcrumb{
   font-weight: 700;
   vertical-align: middle;
 }
+
+
+/* Aviso "ATENÇÃO" (modo legado) */
+/* Aviso legível e “limpo” */
+#cm-root .avisoradical{
+  position: sticky;
+  top: 0;
+  z-index: 9999;
+
+  display: flex;
+  align-items: center;
+
+  padding: 8px 12px;
+  margin: 8px 0 10px 0;
+
+  background: #fff5f5;                 /* fundo claro */
+  border: 2px solid #dc2626;           /* vermelho forte */
+  border-radius: 10px;
+
+  box-shadow: 0 6px 18px rgba(0,0,0,.18);
+}
+
+/* Texto bem legível */
+#cm-root .avisoradical span{
+  font-size: 15px;
+  line-height: 1.35;
+  font-weight: 700;
+  color: #111827;                       /* quase preto */
+  text-shadow: none;
+}
+
+/* Só o ATENÇÃO pisca */
+#cm-root .avisoradical strong{
+  color: #dc2626;
+  font-weight: 900;
+  margin-right: 6px;
+
+  animation: atencaoBlink 1s steps(2,end) infinite;
+}
+
+/* Pisca simples (sem “neon”) */
+@keyframes atencaoBlink{
+  0%{ opacity: 1; }
+  100%{ opacity: .15; }
+}
+
+/* Acessibilidade */
+@media (prefers-reduced-motion: reduce){
+  #cm-root .avisoradical strong{ animation: none !important; }
+}

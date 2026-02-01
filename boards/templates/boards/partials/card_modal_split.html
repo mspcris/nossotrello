@@ -547,8 +547,35 @@
                 role="menuitem">
           <span>🔗</span> <span class="label">Copiar link</span>
         </button>
+
+            <button type="button"
+            class="dock-action"
+            role="menuitem"
+            hx-post="{% url 'boards:archive_card' card.id %}"
+            hx-swap="none"
+            hx-include="#cm-main-form input[name='csrfmiddlewaretoken']"
+            hx-confirm="Arquivar este card? Ele vai sair do quadro e ir para Arquivados."
+            >
+      <span>🗃️</span> <span class="label">Arquivar card</span>
+    </button>
+
+    <button type="button"
+            class="dock-action"
+            role="menuitem"
+            hx-post="{% url 'boards:trash_card' card.id %}"
+            hx-swap="none"
+            hx-include="#cm-main-form input[name='csrfmiddlewaretoken']"
+            hx-confirm="Enviar este card para a Lixeira?"
+            >
+      <span>🗑️</span> <span class="label">Excluir card</span>
+    </button>
+
       </div>
     </div>
+
+
+
+
 
     <div id="cm-action-dock-panel" role="dialog" aria-label="Painel de ação" class="hidden">
       <div id="cm-dock-panel-body"></div>
