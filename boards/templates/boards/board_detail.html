@@ -207,20 +207,44 @@
 {% endblock %}
 
 
+
+
+
+
+
+
+
+
+  <!-- IMAGEM DO QUADRO NO CENTRO D HEADER -->
 {% block header_center %}
   {% if board and board.image %}
-    <div class="cm-header-board-cover">
+    <div class="cm-cover cm-cover--header"
+         style="--cm-cover-url: url('{{ board.image.url }}');">
       <img
         src="{{ board.image.url }}"
         alt="{{ board.name }}"
-        class="cm-header-board-cover-img"
+        class="cm-cover__img"
         loading="lazy"
       >
     </div>
   {% else %}
-    {{ block.super }}
+    <div class="cm-cover cm-cover--header" style="--cm-cover-url: none;">
+      <div style="position:relative; z-index:1; padding:0 14px; display:flex; align-items:center; height:100%; font-weight:700;">
+        {{ board.name }}
+      </div>
+    </div>
   {% endif %}
 {% endblock %}
+
+
+
+
+
+
+
+
+
+
 
 
 {% block content %}
