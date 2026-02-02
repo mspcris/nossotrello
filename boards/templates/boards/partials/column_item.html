@@ -21,7 +21,9 @@
                      bg-white/20 backdrop-blur-sm border border-white/40 transition"
               hx-get="{% url 'boards:add_card' column.id %}?where=top"
               hx-target="#form-top-col-{{ column.id }}"
-              hx-swap="innerHTML">
+              hx-swap="innerHTML"
+              onpointerdown="event.stopPropagation();"
+              ontouchstart="event.stopPropagation();">
         + Card
       </button>
 
@@ -32,6 +34,8 @@
                        text-gray-700 hover:text-gray-900 backdrop-blur-sm transition"
                 data-col-menu-trigger="{{ column.id }}"
                 aria-expanded="false"
+                onpointerdown="event.stopPropagation();"
+                ontouchstart="event.stopPropagation();"
                 onclick="event.preventDefault(); event.stopPropagation(); window.__cmToggleColMenu('{{ column.id }}');">
           ⋮
         </button>
@@ -39,14 +43,31 @@
         <div id="col-menu-{{ column.id }}"
              data-col-menu-popover="{{ column.id }}"
              class="hidden absolute right-0 mt-2 w-60 rounded-lg shadow-lg
-                    bg-white/90 backdrop-blur-md border border-gray-300 p-3 z-50">
+                    bg-white/90 backdrop-blur-md border border-gray-300 p-3 z-50
+                    max-h-[70vh] overflow-y-auto overscroll-contain">
 
-          <!-- A) Excluir cards (modo excluir só nesta coluna) -->
+          <!-- A) Excluir cards (toggle: entrar/sair) -->
           <button type="button"
+                  id="col-del-mode-btn-{{ column.id }}"
                   class="w-full text-left text-sm px-3 py-2 rounded-lg
                          bg-gray-900 text-white hover:bg-black transition"
-                  onclick="event.preventDefault(); event.stopPropagation(); window.__cmEnableDeleteCardsOnlyThisColumn('{{ column.id }}'); window.__cmToggleColMenu('{{ column.id }}');">
-            Excluir cards (desta coluna)
+                  onpointerdown="event.stopPropagation();"
+                  ontouchstart="event.stopPropagation();"
+                  onclick="event.preventDefault(); event.stopPropagation(); window.__cmToggleDeleteCardsOnlyThisColumn('{{ column.id }}');">
+            Excluir Cards
+          </button>
+
+          <hr class="my-2">
+
+          <!-- A2) Arquivar cards (toggle: entrar/sair) -->
+          <button type="button"
+                  id="col-arch-mode-btn-{{ column.id }}"
+                  class="w-full text-left text-sm px-3 py-2 rounded-lg
+                         bg-slate-800 text-white hover:bg-slate-900 transition"
+                  onpointerdown="event.stopPropagation();"
+                  ontouchstart="event.stopPropagation();"
+                  onclick="event.preventDefault(); event.stopPropagation(); window.__cmToggleArchiveCardsOnlyThisColumn('{{ column.id }}');">
+            Arquivar Cards
           </button>
 
           <hr class="my-2">
@@ -55,6 +76,8 @@
           <button type="button"
                   class="w-full text-left text-sm px-3 py-2 rounded-lg
                          bg-red-600 text-white hover:bg-red-700 transition"
+                  onpointerdown="event.stopPropagation();"
+                  ontouchstart="event.stopPropagation();"
                   onclick="event.preventDefault(); event.stopPropagation(); if(confirm('Excluir esta coluna e todos os cards nela?')) { htmx.trigger(this, 'confirmed'); }"
                   hx-post="{% url 'boards:delete_column' column.id %}"
                   hx-trigger="confirmed"
@@ -69,6 +92,8 @@
           <button type="button"
                   class="w-full text-left text-sm px-3 py-2 rounded-lg
                          bg-white/70 border border-gray-200 hover:bg-white transition"
+                  onpointerdown="event.stopPropagation();"
+                  ontouchstart="event.stopPropagation();"
                   onclick="event.preventDefault(); event.stopPropagation(); window.__cmToggleColumnColorPicker('{{ column.id }}');">
             Alterar cor
           </button>
@@ -78,15 +103,19 @@
 
             <div class="grid grid-cols-5 gap-2">
               {% for value, label in column.THEME_CHOICES %}
-                <div class="w-7 h-7 rounded-full cursor-pointer border border-gray-300
-                            hover:scale-110 transition"
-                     style="background-color: var(--{{ value }}-color);"
-                     onclick="event.stopPropagation();"
-                     hx-post="{% url 'boards:set_column_theme' column.id %}"
-                     hx-vals='{"theme": "{{ value }}"}'
-                     hx-target="closest .column-glass"
-                     hx-swap="outerHTML">
-                </div>
+                <!-- IMPORTANTE: virou BUTTON (anti-drag no mobile) -->
+                <button type="button"
+                        class="w-7 h-7 rounded-full cursor-pointer border border-gray-300
+                               hover:scale-110 transition"
+                        style="background-color: var(--{{ value }}-color);"
+                        onpointerdown="event.stopPropagation();"
+                        ontouchstart="event.stopPropagation();"
+                        onclick="event.preventDefault(); event.stopPropagation();"
+                        hx-post="{% url 'boards:set_column_theme' column.id %}"
+                        hx-vals='{"theme": "{{ value }}"}'
+                        hx-target="closest .column-glass"
+                        hx-swap="outerHTML">
+                </button>
               {% endfor %}
             </div>
           </div>
@@ -98,12 +127,16 @@
           <div class="grid grid-cols-2 gap-2">
             <button type="button"
                     class="text-sm px-3 py-2 rounded-lg bg-white/70 border border-gray-200 hover:bg-white transition"
-                    onclick="event.preventDefault(); event.stopPropagation(); window.__cmSortColumnByDue('{{ column.id }}','asc'); window.__cmToggleColMenu('{{ column.id }}');">
+                    onpointerdown="event.stopPropagation();"
+                    ontouchstart="event.stopPropagation();"
+                    onclick="event.preventDefault(); event.stopPropagation(); window.__cmSortColumnByDue('{{ column.id }}','asc'); window.__cmHideAllColMenus();">
               Asc
             </button>
             <button type="button"
                     class="text-sm px-3 py-2 rounded-lg bg-white/70 border border-gray-200 hover:bg-white transition"
-                    onclick="event.preventDefault(); event.stopPropagation(); window.__cmSortColumnByDue('{{ column.id }}','desc'); window.__cmToggleColMenu('{{ column.id }}');">
+                    onpointerdown="event.stopPropagation();"
+                    ontouchstart="event.stopPropagation();"
+                    onclick="event.preventDefault(); event.stopPropagation(); window.__cmSortColumnByDue('{{ column.id }}','desc'); window.__cmHideAllColMenus();">
               Desc
             </button>
           </div>
@@ -115,12 +148,16 @@
           <div class="grid grid-cols-2 gap-2">
             <button type="button"
                     class="text-sm px-3 py-2 rounded-lg bg-white/70 border border-gray-200 hover:bg-white transition"
-                    onclick="event.preventDefault(); event.stopPropagation(); window.__cmSortColumnByStart('{{ column.id }}','asc'); window.__cmToggleColMenu('{{ column.id }}');">
+                    onpointerdown="event.stopPropagation();"
+                    ontouchstart="event.stopPropagation();"
+                    onclick="event.preventDefault(); event.stopPropagation(); window.__cmSortColumnByStart('{{ column.id }}','asc'); window.__cmHideAllColMenus();">
               Asc
             </button>
             <button type="button"
                     class="text-sm px-3 py-2 rounded-lg bg-white/70 border border-gray-200 hover:bg-white transition"
-                    onclick="event.preventDefault(); event.stopPropagation(); window.__cmSortColumnByStart('{{ column.id }}','desc'); window.__cmToggleColMenu('{{ column.id }}');">
+                    onpointerdown="event.stopPropagation();"
+                    ontouchstart="event.stopPropagation();"
+                    onclick="event.preventDefault(); event.stopPropagation(); window.__cmSortColumnByStart('{{ column.id }}','desc'); window.__cmHideAllColMenus();">
               Desc
             </button>
           </div>
@@ -156,7 +193,6 @@
   <!-- ===================== LISTA DE CARDS (SCROLL AQUI) ===================== -->
   <ul id="cards-col-{{ column.id }}"
       class="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
-
     {% for card in column.cards.all %}
       {% include "boards/partials/card_item.html" %}
     {% endfor %}
@@ -170,7 +206,9 @@
                    border border-white/30 hover:bg-white/20 transition"
             hx-get="{% url 'boards:add_card' column.id %}?where=bottom"
             hx-target="#form-col-{{ column.id }}"
-            hx-swap="innerHTML">
+            hx-swap="innerHTML"
+            onpointerdown="event.stopPropagation();"
+            ontouchstart="event.stopPropagation();">
       + Card
     </button>
   </div>
@@ -212,6 +250,32 @@
     });
   }
 
+  // Expor para usar de outros botões
+  window.__cmHideAllColMenus = function () { hideAllMenus(null); };
+
+  function isDeleteCardsModeOn() {
+    // modo global do hamburger: mostra .delete-card-btn quando ativo :contentReference[oaicite:2]{index=2}
+    return !!document.querySelector(".delete-card-btn:not(.hidden)");
+  }
+
+  function updateMenuLabels(colId) {
+    // 1) Excluir cards: vira "Sair..." quando o modo está ativo nessa coluna
+    const delBtn = document.getElementById("col-del-mode-btn-" + colId);
+    const activeCol = document.body.dataset.cmDeleteCardsOnlyColumn || "";
+    if (delBtn) {
+      const activeHere = isDeleteCardsModeOn() && activeCol === String(colId);
+      delBtn.textContent = activeHere ? "Sair do modo de exclusão" : "Excluir Cards";
+    }
+
+    // 2) Arquivar cards: toggle local
+    const archBtn = document.getElementById("col-arch-mode-btn-" + colId);
+    const activeArchCol = document.body.dataset.cmArchiveCardsOnlyColumn || "";
+    if (archBtn) {
+      const activeArchHere = activeArchCol === String(colId);
+      archBtn.textContent = activeArchHere ? "Sair do modo de arquivar" : "Arquivar Cards";
+    }
+  }
+
   // Abre/fecha o menu ⋮ da coluna
   window.__cmToggleColMenu = function (colId) {
     const menu = document.getElementById("col-menu-" + colId);
@@ -220,8 +284,14 @@
 
     const isOpen = !menu.classList.contains("hidden");
     hideAllMenus(menu);
-    if (isOpen) hideMenu(menu, trg);
-    else showMenu(menu, trg);
+
+    if (isOpen) {
+      hideMenu(menu, trg);
+      return;
+    }
+
+    updateMenuLabels(colId);
+    showMenu(menu, trg);
   };
 
   // Fecha menus ao clicar fora ou apertar ESC (instala 1x)
@@ -254,18 +324,15 @@
   // =========================
   function getCookie(name) {
     const parts = (`; ${document.cookie}`).split(`; ${name}=`);
-
     if (parts.length === 2) return parts.pop().split(";").shift();
     return "";
   }
 
   function getCSRFToken() {
-    // tenta input hidden (quando houver form na página)
     const fromInput = document.querySelector("[name=csrfmiddlewaretoken]")?.value || "";
     return fromInput || getCookie("csrftoken");
   }
 
-  // Envia a ordem atual do DOM para o backend persistir em Card.position
   window.__cmPersistColumnOrder = async function (colId) {
     const ul = document.getElementById("cards-col-" + colId);
     if (!ul) return;
@@ -309,18 +376,15 @@
   // Helpers de data
   // =========================
   function parseYMD(s) {
-    // Converte "YYYY-MM-DD" em Date UTC (ou null)
     if (!s) return null;
     const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})$/);
     if (!m) return null;
-
     const y = Number(m[1]), mo = Number(m[2]) - 1, d = Number(m[3]);
     const dt = new Date(Date.UTC(y, mo, d, 0, 0, 0));
     return isNaN(dt.getTime()) ? null : dt;
   }
 
   function refreshCountersCompat() {
-    // compat com vários pontos do app
     if (window.BoardUI && typeof window.BoardUI.refreshColumnCounters === "function") {
       window.BoardUI.refreshColumnCounters();
       return;
@@ -333,7 +397,6 @@
 
   // =========================
   // Ordenação por DATA DE INÍCIO (DOM + persistência)
-  // Lê do atributo do card: data-start-date="YYYY-MM-DD"
   // =========================
   window.__cmSortColumnByStart = async function (colId, dir) {
     const ul = document.getElementById("cards-col-" + colId);
@@ -350,29 +413,24 @@
 
       const aMissing = !da;
       const bMissing = !db;
-      if (aMissing && bMissing) return a.idx - b.idx; // estável
-      if (aMissing) return 1;  // sem data vai pro fim
-      if (bMissing) return -1; // sem data vai pro fim
+      if (aMissing && bMissing) return a.idx - b.idx;
+      if (aMissing) return 1;
+      if (bMissing) return -1;
 
       const diff = da.getTime() - db.getTime();
       if (diff !== 0) return (dir === "desc") ? -diff : diff;
-
-      return a.idx - b.idx; // estável
+      return a.idx - b.idx;
     });
 
     indexed.forEach((x) => ul.appendChild(x.el));
     refreshCountersCompat();
 
-    try {
-      await window.__cmPersistColumnOrder(colId);
-    } catch (err) {
-      alert(err?.message || "Erro ao persistir ordenação.");
-    }
+    try { await window.__cmPersistColumnOrder(colId); }
+    catch (err) { alert(err?.message || "Erro ao persistir ordenação."); }
   };
 
   // =========================
   // Ordenação por VENCIMENTO (DOM + persistência)
-  // Lê do atributo do card: data-term-due="YYYY-MM-DD"
   // =========================
   window.__cmSortColumnByDue = async function (colId, dir) {
     const ul = document.getElementById("cards-col-" + colId);
@@ -395,37 +453,42 @@
 
       const diff = da.getTime() - db.getTime();
       if (diff !== 0) return (dir === "desc") ? -diff : diff;
-
       return a.idx - b.idx;
     });
 
     indexed.forEach((x) => ul.appendChild(x.el));
     refreshCountersCompat();
 
-    try {
-      await window.__cmPersistColumnOrder(colId);
-    } catch (err) {
-      alert(err?.message || "Erro ao persistir ordenação.");
+    try { await window.__cmPersistColumnOrder(colId); }
+    catch (err) { alert(err?.message || "Erro ao persistir ordenação."); }
+  };
+
+  // =========================
+  // MODO: Excluir cards (somente desta coluna)
+  // =========================
+  window.__cmToggleDeleteCardsOnlyThisColumn = function (colId) {
+    const toggleBtn = document.getElementById("toggle-delete-cards"); // do hamburger :contentReference[oaicite:3]{index=3}
+    const activeCol = document.body.dataset.cmDeleteCardsOnlyColumn || "";
+
+    // se já está ativo nessa coluna -> sair
+    if (isDeleteCardsModeOn() && activeCol === String(colId)) {
+      document.body.dataset.cmDeleteCardsOnlyColumn = "";
+      if (toggleBtn) toggleBtn.click(); // volta para "Excluir cards" :contentReference[oaicite:4]{index=4}
+      window.__cmHideAllColMenus();
+      updateMenuLabels(colId);
+      return;
     }
-  };
 
-  // =========================
-  // Excluir cards (somente desta coluna)
-  // =========================
-  window.__cmEnableDeleteCardsOnlyThisColumn = function (colId) {
-    const toggleBtn = document.getElementById("toggle-delete-cards");
+    // ativa modo global e filtra só esta coluna
     if (toggleBtn) toggleBtn.click();
+    document.body.dataset.cmDeleteCardsOnlyColumn = String(colId);
 
-    setTimeout(() => {
-      const anyShown = document.querySelector(".delete-card-btn:not(.hidden)");
-      if (!anyShown && toggleBtn) toggleBtn.click();
+    setTimeout(() => { window.__cmApplyDeleteCardsOnlyColumn(); }, 0);
 
-      document.body.dataset.cmDeleteCardsOnlyColumn = String(colId);
-      window.__cmApplyDeleteCardsOnlyColumn();
-    }, 0);
+    // fecha menu SEMPRE
+    window.__cmHideAllColMenus();
   };
 
-  // Aplica filtro visual para mostrar o botão X só na coluna selecionada
   window.__cmApplyDeleteCardsOnlyColumn = function () {
     const onlyColId = document.body.dataset.cmDeleteCardsOnlyColumn || "";
     if (!onlyColId) return;
@@ -436,17 +499,59 @@
     });
   };
 
-  // Reaplica o filtro após swaps do HTMX
-  document.body.addEventListener("htmx:afterSwap", () => {
-    if (document.body.dataset.cmDeleteCardsOnlyColumn) {
-      window.__cmApplyDeleteCardsOnlyColumn();
+  // =========================
+  // MODO: Arquivar cards (somente desta coluna)
+  // (requer .archive-card-btn no card_item.html)
+  // =========================
+  window.__cmToggleArchiveCardsOnlyThisColumn = function (colId) {
+    const activeCol = document.body.dataset.cmArchiveCardsOnlyColumn || "";
+
+    // se já está ativo nessa coluna -> sair
+    if (activeCol === String(colId)) {
+      document.body.dataset.cmArchiveCardsOnlyColumn = "";
+      window.__cmDisableArchiveCardsOnlyColumn();
+      window.__cmHideAllColMenus();
+      updateMenuLabels(colId);
+      return;
     }
+
+    document.body.dataset.cmArchiveCardsOnlyColumn = String(colId);
+    window.__cmApplyArchiveCardsOnlyColumn();
+    window.__cmHideAllColMenus();
+  };
+
+  window.__cmDisableArchiveCardsOnlyColumn = function () {
+    document.querySelectorAll(".archive-card-btn").forEach((btn) => {
+      btn.classList.add("hidden");
+      btn.style.display = "";
+    });
+  };
+
+  window.__cmApplyArchiveCardsOnlyColumn = function () {
+    const onlyColId = document.body.dataset.cmArchiveCardsOnlyColumn || "";
+    if (!onlyColId) return;
+
+    document.querySelectorAll(".archive-card-btn").forEach((btn) => {
+      const inCol = btn.closest(`.column-item[data-column-id="${onlyColId}"]`);
+      if (inCol) {
+        btn.classList.remove("hidden");
+        btn.style.display = "";
+      } else {
+        btn.classList.add("hidden");
+        btn.style.display = "none";
+      }
+    });
+  };
+
+  // Reaplica filtros após swaps do HTMX
+  document.body.addEventListener("htmx:afterSwap", () => {
+    if (document.body.dataset.cmDeleteCardsOnlyColumn) window.__cmApplyDeleteCardsOnlyColumn();
+    if (document.body.dataset.cmArchiveCardsOnlyColumn) window.__cmApplyArchiveCardsOnlyColumn();
   });
 
   document.body.addEventListener("htmx:afterSettle", () => {
-    if (document.body.dataset.cmDeleteCardsOnlyColumn) {
-      window.__cmApplyDeleteCardsOnlyColumn();
-    }
+    if (document.body.dataset.cmDeleteCardsOnlyColumn) window.__cmApplyDeleteCardsOnlyColumn();
+    if (document.body.dataset.cmArchiveCardsOnlyColumn) window.__cmApplyArchiveCardsOnlyColumn();
   });
 
 })();

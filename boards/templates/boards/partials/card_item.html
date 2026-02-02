@@ -11,18 +11,30 @@
   class="card-item p-3 bg-white/80 rounded-xl shadow-sm mb-3 cursor-pointer overflow-hidden"
 >
 
-  {# EXCLUIR #}
-  <button
-    type="button"
-    class="delete-card-btn hidden absolute top-1 right-1 z-30
-           bg-red-600 text-white text-xs px-2 py-1 rounded"
-    onpointerdown="event.stopPropagation();"
-    onclick="event.stopPropagation();"
-    hx-post="{% url 'boards:delete_card' card.id %}"
-    hx-target="#card-{{ card.id }}"
-    hx-swap="outerHTML">
-    X
-  </button>
+<!-- BOTÃO DE EXCLUSÃO (aparece apenas no modo "Excluir cards") -->
+<button type="button"
+        class="delete-card-btn hidden absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded"
+        onpointerdown="event.stopPropagation();"
+        ontouchstart="event.stopPropagation();"
+        onclick="event.stopPropagation();"
+        hx-post="{% url 'boards:delete_card' card.id %}"
+        hx-target="#card-{{ card.id }}"
+        hx-swap="outerHTML">
+  X
+</button>
+
+<!-- BOTÃO DE ARQUIVAR (aparece apenas no modo "Arquivar cards") -->
+<button type="button"
+        class="archive-card-btn hidden absolute top-1 right-1 bg-slate-800 text-white text-xs px-2 py-1 rounded"
+        onpointerdown="event.stopPropagation();"
+        ontouchstart="event.stopPropagation();"
+        onclick="event.stopPropagation();"
+        hx-post="{% url 'boards:archive_card' card.id %}"
+        hx-swap="none"
+        hx-confirm="Arquivar este card? Ele vai sair do quadro e ir para Arquivados.">
+  🗃️
+</button>
+
 
   {# CAPA #}
   {% if card.cover_image %}
