@@ -11,6 +11,10 @@ from .models import Project, ActivityType, TimeEntry
 from boards.models import Card, Board
 import re
 from boards.models import UserProfile
+from tracktime.services.pressticket import send_text_message, PressTicketError
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 
@@ -180,6 +184,37 @@ def card_tracktime_start(request, card_id):
 
     entry.set_confirmation_window(now=now)
     entry.save(update_fields=["confirm_due_at", "auto_stop_at"])
+
+        # ✅ WhatsApp (MVP): dispara mensagem no start, sem quebrar o track-time se falhar
+    try:
+        prof = _get_or_create_profile(request.user)  # já existe no arquivo
+        phone = (prof.telefone or "").strip()
+
+        if phone and settings.PRESSTICKET_TOKEN:
+            card_url = entry.card_url_cache or request.build_absolute_uri(
+                reverse("boards:card_modal", args=[card.id])
+            )
+
+            msg = (
+                f"⏱️ Início do Track-time\n"
+                f"Card: {card.title}\n"
+                f"Abrir: {card_url}"
+            )
+
+            send_text_message(
+                base_url=getattr(settings, "PRESSTICKET_BASE_URL", "https://api.atendimento.camim.com.br"),
+                token=getattr(settings, "PRESSTICKET_TOKEN", ""),
+                number=phone,
+                body=msg,
+                user_id=getattr(settings, "PRESSTICKET_USER_ID", 0),
+                queue_id=getattr(settings, "PRESSTICKET_QUEUE_ID", 0),
+                whatsapp_id=getattr(settings, "PRESSTICKET_WHATSAPP_ID", 0),
+            )
+    except PressTicketError as e:
+        logger.warning("[tracktime] WhatsApp não enviado (PressTicketError): %s", e)
+    except Exception as e:
+        logger.exception("[tracktime] WhatsApp não enviado (erro inesperado): %s", e)
+
 
     return card_tracktime_panel(request, card_id)
 
@@ -791,9 +826,13 @@ def _render_phone_required_modal(request, card_id: int, project_id: str, activit
     )
     # Força o modal a ir para o BODY, sem depender do hx-target que disparou o POST
     resp = HttpResponse(html)
-    resp["HX-Retarget"] = "body"
+
+    # joga o modal de telefone dentro do overlay do modal global (fica sempre acima)
+    resp["HX-Retarget"] = "#modal"
     resp["HX-Reswap"] = "beforeend"
+
     return resp
+
 
 @login_required
 def tracktime_phone_required_modal(request):

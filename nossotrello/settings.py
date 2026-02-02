@@ -241,6 +241,21 @@ if EMAIL_USE_TLS and EMAIL_USE_SSL:
 
 DEFAULT_FROM_EMAIL = (os.getenv("DEFAULT_FROM_EMAIL") or "no-reply@clinicacamim.com.br").strip()
 
+
+# ============================================================
+# WHATSAPP -
+# ============================================================
+import os
+
+PRESSTICKET_TOKEN = os.getenv("PRESSTICKET_TOKEN", "").strip()
+PRESSTICKET_BASE_URL = os.getenv("PRESSTICKET_BASE_URL", "https://api.atendimento.camim.com.br").strip()
+
+PRESSTICKET_USER_ID = int(os.getenv("PRESSTICKET_USER_ID", "0") or 0)
+PRESSTICKET_QUEUE_ID = int(os.getenv("PRESSTICKET_QUEUE_ID", "0") or 0)
+PRESSTICKET_WHATSAPP_ID = int(os.getenv("PRESSTICKET_WHATSAPP_ID", "0") or 0)
+
+
+
 # ============================================================
 # Domínios institucionais permitidos
 # ============================================================
@@ -251,6 +266,9 @@ INSTITUTIONAL_EMAIL_DOMAINS = _env_csv(
         "clinicacamim.com.br",
         "camim.com.br",
         "egidesaude.com.br",
+        "arquitetodigital.com.br",
+        "sabesistemas.com.br",
+        "mrfsolution.com.br",
     ],
 )
 

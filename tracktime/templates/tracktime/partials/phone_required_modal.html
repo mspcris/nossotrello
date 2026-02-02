@@ -18,6 +18,9 @@
             Para usar o track-time, precisamos do seu WhatsApp no formato <strong>+55 (DD) NÚMERO</strong>.
           </p>
         </div>
+
+        {# opcional: sem botão de fechar (modal obrigatório) #}
+        {# <button type="button" class="text-slate-400 hover:text-slate-700" onclick="document.getElementById('tt-phone-modal')?.remove()">✕</button> #}
       </div>
     </div>
 
@@ -25,7 +28,7 @@
       class="p-4"
       hx-post="{% url 'tracktime:phone_save' %}"
       hx-swap="none"
-      hx-on::after-request="
+      hx-on:htmx:afterRequest="
         if (event.detail && event.detail.successful) {
           const root = document.getElementById('tt-phone-modal');
           if (root) root.remove();
@@ -34,7 +37,7 @@
           const projectId = this.querySelector('input[name=project_id]')?.value;
           const activityId = this.querySelector('input[name=activity_id]')?.value;
 
-          // ✅ re-dispara o Start e atualiza o painel do track-time (mesmo fluxo do seu form)
+          // ✅ re-dispara o Start e atualiza o painel do track-time
           if (cardId && projectId && activityId && window.htmx) {
             window.htmx.ajax('POST', '/track-time/cards/' + cardId + '/track-time/start/', {
               target: '#cm-tracktime-panel',
@@ -43,8 +46,6 @@
             });
           }
         }
-      "
-
       "
     >
       {% csrf_token %}
@@ -70,6 +71,7 @@
             name="ddd"
             type="text"
             inputmode="numeric"
+            autocomplete="off"
             maxlength="2"
             placeholder="21"
             class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-200"
@@ -83,6 +85,7 @@
             name="phone"
             type="text"
             inputmode="numeric"
+            autocomplete="off"
             maxlength="9"
             placeholder="999999999"
             class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-200"
@@ -119,13 +122,16 @@
   const root = document.getElementById("tt-phone-modal");
   if (!root) return;
 
-  // trava clique fora (modal obrigatório)
+  // Modal obrigatório: não fecha clicando no backdrop
   root.addEventListener("click", function (e) {
     if (e.target === root) {
       e.preventDefault();
       e.stopPropagation();
     }
   }, { passive: false });
+
+  // (opcional) esc fecha? aqui não (obrigatório)
+  // document.addEventListener("keydown", (e) => { if (e.key === "Escape") e.preventDefault(); }, { passive:false });
 
   // foco no DDD
   const ddd = root.querySelector("input[name=ddd]");
