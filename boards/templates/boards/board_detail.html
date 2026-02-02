@@ -1674,45 +1674,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 <!--ZERAR SCROLL NA TELA!!-->
 
-<script>
-(function () {
-  const wrap = document.getElementById("columns-wrapper");
-  if (!wrap) return;
 
-  const vv = window.visualViewport;
-
-  function fit() {
-    const rect = wrap.getBoundingClientRect();
-    const viewportH = vv ? vv.height : window.innerHeight;
-
-    // padding para não “morder” o final (safe area)
-    wrap.style.paddingBottom = "calc(12px + env(safe-area-inset-bottom))";
-
-    const safeBottom = 0; // deixa o padding fazer o trabalho
-    const available = Math.max(240, Math.floor(viewportH - rect.top - safeBottom));
-    wrap.style.height = available + "px";
-  }
-
-  function rafFit() { requestAnimationFrame(fit); }
-
-  document.addEventListener("DOMContentLoaded", rafFit);
-  window.addEventListener("load", rafFit);
-  window.addEventListener("resize", rafFit);
-
-  // ✅ eventos que realmente mudam viewport no mobile
-  if (vv) {
-    vv.addEventListener("resize", rafFit);
-    vv.addEventListener("scroll", rafFit);
-  }
-
-  document.body.addEventListener("htmx:afterSwap", rafFit);
-  document.body.addEventListener("htmx:afterSettle", rafFit);
-
-  // ✅ recalcula depois que fontes/header assentam
-  setTimeout(rafFit, 50);
-  setTimeout(rafFit, 250);
-})();
-</script>
 
 
 <script>

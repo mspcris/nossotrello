@@ -791,3 +791,26 @@ li[data-card-id][data-term-status="ok"] .term-badge{ color: #16a34a; }
   min-height: 0;                /* ✅ CRÍTICO em flex */
   overflow-y: auto;
 }
+
+
+
+
+/* =========================
+   Aggregator column (FIXA, ISOLADA)
+========================= */
+.aggregator-column {
+  width: 220px;
+  flex: 0 0 220px;
+}
+
+@media (max-width: 767px) {
+  .aggregator-column {
+    width: 200px;
+    flex: 0 0 200px;
+  }
+
+  .aggregator-column .aggregator-body {
+    max-height: 50vh;
+    overflow-y: auto;
+  }
+}
