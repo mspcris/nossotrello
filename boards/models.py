@@ -361,6 +361,8 @@ class UserProfile(models.Model):
         default=True,
         help_text="Mostrar atividade fixa na lateral do modal do card (estilo Trello)",
     )
+    
+    board_col_width = models.PositiveSmallIntegerField(default=240)
 
     activity_counts = models.BooleanField(
         default=True,

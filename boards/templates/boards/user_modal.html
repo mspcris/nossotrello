@@ -113,6 +113,7 @@
             class="bg-white/60 border border-gray-200 rounded-xl p-4"
           >
             {% csrf_token %}
+
             <div class="grid gap-3">
 
               <div>
@@ -211,27 +212,46 @@
                 </div>
               </div>
 
-
-
-
-
               <label class="inline-flex items-center gap-2 text-sm mt-3">
-                <!-- garante envio quando desmarcado -->
-               
-
-                <input type="checkbox"
-                      name="activity_counts"
-                      value="1"
-                      {% if profile.activity_counts %}checked{% endif %}>
+                <input
+                  type="checkbox"
+                  name="activity_counts"
+                  value="1"
+                  {% if profile.activity_counts %}checked{% endif %}
+                >
                 <span>Mostrar Contador de Atividades</span>
               </label>
 
+              <p class="text-xs text-gray-500 mt-1">
+                Desmarcado: oculta os contadores (pílulas) no card e no menu.
+              </p>
 
-<p class="text-xs text-gray-500 mt-1">
-  Desmarcado: oculta os contadores (pílulas) no card e no menu.
-</p>
+              <!-- ✅ LARGURA DO BOARD (DENTRO DO FORM, PARA IR NO POST) -->
+              <div class="mt-4 border-t pt-4">
+                <label class="block text-sm font-semibold mb-1">
+                  Largura das colunas do board
+                </label>
 
+                <div class="flex items-center gap-3">
+                  <input
+                    type="range"
+                    name="board_col_width"
+                    min="200"
+                    max="420"
+                    step="20"
+                    value="{{ profile.board_col_width|default:240 }}"
+                    class="w-full"
+                    oninput="document.getElementById('um-col-width-val').textContent = this.value + 'px';"
+                  >
+                  <span id="um-col-width-val" class="text-sm w-16 text-right">
+                    {{ profile.board_col_width|default:240 }}px
+                  </span>
+                </div>
 
+                <p class="text-xs text-gray-500 mt-1">
+                  Ajusta a largura padrão das colunas do quadro. Valor em pixels.
+                </p>
+              </div>
 
               <div class="mt-3 um-actions">
                 <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded w-fit">Salvar</button>

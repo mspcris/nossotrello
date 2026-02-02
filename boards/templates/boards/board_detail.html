@@ -429,8 +429,12 @@
 
     <div id="calendar-root" class="hidden"></div>
 
-    <div id="columns-wrapper"
-         class="flex gap-6 overflow-x-auto overflow-y-hidden pb-6 pr-4 min-h-0">
+    <div
+      id="columns-wrapper"
+      class="columns-wrapper"
+      style="--col-base: {{ profile.board_col_width|default:240 }}px;"
+    >
+
 
       {# 🔑 ÚNICO columns-list do sistema #}
       {% include "boards/partials/columns_list.html" %}

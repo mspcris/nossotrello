@@ -156,6 +156,20 @@ def account_profile_update(request):
     prof.activity_sidebar = ("activity_sidebar" in request.POST)
     prof.activity_counts  = (request.POST.get("activity_counts") == "1")
 
+    # ... depois de activity_sidebar / activity_counts
+
+    raw = (request.POST.get("board_col_width") or "").strip()
+    try:
+        colw = int(raw)
+    except ValueError:
+        colw = prof.board_col_width or 240
+
+    # limita faixa para não quebrar layout
+    colw = max(200, min(420, colw))
+
+    prof.board_col_width = colw
+    update_fields.append("board_col_width")
+
 
 
     update_fields.append("activity_sidebar")

@@ -325,43 +325,27 @@
   }
 
     function applyPostSuccessActivityUI(responseText) {
-    removeActivityEmptyState();
+      removeActivityEmptyState();
 
-    const html = String(responseText || "").trim();
-    if (!html) return;
+      const raw = String(responseText || "").trim();
+      if (!raw) return;
 
-    const panel = document.getElementById("card-activity-panel");
-    if (
-      panel &&
-      (html.includes('id="card-activity-panel"') || html.includes('id="activity-panel-wrapper"'))
-    ) {
-      panel.outerHTML = html;
+      // ✅ remove blocos OOB do HTMX (senão vira “painel de anexos” no meio)
+      const doc = new DOMParser().parseFromString(raw, "text/html");
+      doc.querySelectorAll("[hx-swap-oob]").forEach((n) => n.remove());
 
-      // ✅ pós-render: remove blocos vazios do Quill
+      // pega só o painel de atividade de dentro do HTML retornado
+      const newPanel = doc.getElementById("card-activity-panel");
+      if (!newPanel) return;
+
+      const panelNow = document.getElementById("card-activity-panel");
+      if (!panelNow) return;
+
+      panelNow.outerHTML = newPanel.outerHTML;
+
       try { cleanupActivityLogSpacing(); } catch (_e) {}
       setTimeout(() => { try { cleanupActivityLogSpacing(); } catch (_e) {} }, 60);
-
-      return;
     }
-
-    const list =
-      document.querySelector("#activity-panel-wrapper .cm-activity-list") ||
-      document.querySelector("#cm-activity-panel .cm-activity-list");
-
-    const looksLikeItem = html.includes("activity-item") || html.includes("cm-activity-item");
-
-    if (list && looksLikeItem) {
-      try {
-        list.insertAdjacentHTML("afterbegin", html);
-
-        // ✅ pós-insert: remove blocos vazios do Quill
-        try { cleanupActivityLogSpacing(); } catch (_e) {}
-        setTimeout(() => { try { cleanupActivityLogSpacing(); } catch (_e) {} }, 60);
-
-        return;
-      } catch (_e) {}
-    }
-  }
 
 
     function cleanupActivityLogSpacing() {
@@ -664,53 +648,66 @@
   }
 
   async function uploadFileAndInsertLink(quill, file, description) {
-    const cardId = getCardId();
-    if (!cardId) throw new Error("cardId ausente.");
+  const cardId = getCardId();
+  if (!cardId) throw new Error("cardId ausente.");
 
-    const uploadUrl = `/card/${cardId}/attachments/add/`;
+  const uploadUrl = `/card/${cardId}/attachments/add/`;
 
-    const form = new FormData();
-    form.append("file", file);
-    form.append("description", description || "Áudio gravado na atividade");
+  const form = new FormData();
+  form.append("file", file);
+  form.append("description", description || "Áudio gravado na atividade");
 
-    const res = await fetch(uploadUrl, {
-      method: "POST",
-      credentials: "same-origin",
-      headers: {
-        "X-CSRFToken": getCSRF(),
-        "X-Requested-With": "XMLHttpRequest",
-      },
-      body: form,
-    });
+  const res = await fetch(uploadUrl, {
+    method: "POST",
+    credentials: "same-origin",
+    headers: {
+      "X-CSRFToken": getCSRF(),
+      "X-Requested-With": "XMLHttpRequest",
+    },
+    body: form,
+  });
 
-    if (!res.ok) {
-      const t = await res.text().catch(() => "");
-      throw new Error(t || `Upload falhou (${res.status}).`);
-    }
-
-    const html = await res.text();
-
-    const list = document.getElementById("attachments-list");
-    if (list) list.insertAdjacentHTML("beforeend", html);
-
-    const tmp = document.createElement("div");
-    tmp.innerHTML = html;
-
-    const a = tmp.querySelector("a[href]");
-    const img = tmp.querySelector("img[src]");
-    const fileUrl = (img && img.getAttribute("src")) || (a && a.getAttribute("href")) || "";
-
-    const range = quill.getSelection(true) || { index: quill.getLength() };
-
-    if (fileUrl) {
-      quill.insertText(range.index, "🎤 Áudio", { link: fileUrl });
-      quill.insertText(range.index + 7, "\n");
-      quill.setSelection(range.index + 8);
-    } else {
-      quill.insertText(range.index, "[áudio anexado]\n");
-      quill.setSelection(range.index + 15);
-    }
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(t || `Upload falhou (${res.status}).`);
   }
+
+  const raw = await res.text();
+
+  // ✅ parse + remove OOB
+  const doc = new DOMParser().parseFromString(raw, "text/html");
+  doc.querySelectorAll("[hx-swap-oob]").forEach((n) => n.remove());
+
+  // ✅ atualiza lista visual, se existir
+  const list = document.getElementById("attachments-list");
+  if (list) {
+    const item =
+      doc.querySelector("[id^='attachment-']") ||
+      doc.querySelector(".attachment-item") ||
+      doc.body.firstElementChild;
+
+    if (item) list.insertAdjacentHTML("beforeend", item.outerHTML);
+  }
+
+  // ✅ extrai URL do arquivo do HTML já “limpo”
+  const a = doc.querySelector("a[href]");
+  const img = doc.querySelector("img[src]");
+  const fileUrl = (img && img.getAttribute("src")) || (a && a.getAttribute("href")) || "";
+
+  const range = quill.getSelection(true) || { index: quill.getLength() };
+
+  if (fileUrl) {
+    quill.insertText(range.index, "🎤 Áudio", { link: fileUrl });
+    quill.insertText(range.index + 7, "\n");
+    quill.setSelection(range.index + 8);
+  } else {
+    quill.insertText(range.index, "[áudio anexado]\n");
+    quill.setSelection(range.index + 15);
+  }
+}
+
+
+
 
   function ensureAudioFileInput() {
     let input = document.getElementById("cm-audio-capture-input");

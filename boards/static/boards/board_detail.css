@@ -378,18 +378,29 @@ header{ position: relative; z-index: 50; }
 .cm-btn:hover{ filter: brightness(1.06); }
 
 /* =========================
-   Column belly
+   Column belly (efeito largura)
 ========================= */
 @keyframes col-belly-width{
-  0%{ flex-basis: var(--col-base, 240px); }
-  45%{ flex-basis: calc(var(--col-base, 240px) + 36px); }
-  100%{ flex-basis: var(--col-base, 240px); }
+  0%{ flex-basis: var(--col-w, var(--col-base, 240px)); }
+  45%{ flex-basis: calc(var(--col-w, var(--col-base, 240px)) + 36px); }
+  100%{ flex-basis: var(--col-w, var(--col-base, 240px)); }
 }
 
+/* Largura da coluna  */
 #columns-wrapper .column-item{
-  flex: 0 0 var(--col-base, 240px);
-  width: var(--col-base, 240px);
+  --col-w: clamp(var(--col-min, 200px), var(--col-base, 240px), var(--col-max, 520px));
+
+  flex: 0 0 var(--col-w);
+  width: var(--col-w);
   position: relative;
+}
+
+
+/* Largura da coluna var */
+#columns-wrapper{
+  --col-base: 240px; /* default */
+  --col-min: 200px;
+  --col-max: 520px;
 }
 
 .column-item.col-belly{
@@ -649,4 +660,31 @@ li[data-card-id][data-term-status="ok"] .term-badge{ color: #16a34a; }
   top: 10px;
   right: 10px;
   z-index: 9999 !important;
+}
+
+
+/* garante 1 linha horizontal (scroll) para colunas + add-column */
+#columns-wrapper.columns-wrapper {
+  display: flex;
+  flex-wrap: nowrap;          /* CRÍTICO: não quebrar linha */
+  align-items: flex-start;
+  gap: 16px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* o UL das colunas precisa ser “linha” também */
+#columns-list {
+  display: flex;
+  flex-wrap: nowrap;          /* CRÍTICO */
+  gap: 16px;
+  align-items: flex-start;
+}
+
+/* garante que o box NÃO está fixo/absoluto */
+#add-column-box {
+  position: static !important; /* CRÍTICO: mata fixed/absolute herdado */
+  flex: 0 0 auto;              /* não encolhe */
+  align-self: flex-start;
+  margin: 0;
 }
