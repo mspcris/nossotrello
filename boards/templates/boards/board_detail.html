@@ -463,6 +463,7 @@
            class="board-members-bar flex items-center gap-1 shrink-0"
            aria-label="Usuários do quadro">
         {% for member in board_members %}
+          {% if member.id != request.user.id %}
           {% with p=member.profile %}
             <button type="button"
                     class="board-member-avatar"
@@ -479,6 +480,7 @@
               {% endif %}
             </button>
           {% endwith %}
+           {% endif %}
         {% endfor %}
       </div>
 
