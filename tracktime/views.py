@@ -1,7 +1,7 @@
 # tracktime/views.py
 
 from django.shortcuts import render, get_object_or_404, redirect
-from django.http import HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
+from django.http import HttpResponseBadRequest, HttpResponseForbidden, JsonResponse, HttpResponse
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
@@ -9,6 +9,9 @@ from django.conf import settings
 from django.core.mail import send_mail
 from .models import Project, ActivityType, TimeEntry
 from boards.models import Card, Board
+import re
+from boards.models import UserProfile
+
 
 
 def _format_mmss(seconds: int) -> str:
@@ -118,7 +121,6 @@ def card_tracktime_start(request, card_id):
         id=card_id
     )
 
-    # ✅ segurança: só quem vê o board pode trackear no card
     if not _can_view_board(request.user, card.column.board):
         return HttpResponseForbidden("Sem acesso ao board deste card")
 
@@ -127,6 +129,11 @@ def card_tracktime_start(request, card_id):
 
     if not project_id or not activity_id:
         return HttpResponseBadRequest("Projeto e atividade são obrigatórios")
+
+    # ✅ GATE: telefone obrigatório antes de qualquer efeito colateral
+    prof = _get_or_create_profile(request.user)
+    if not (prof.telefone or "").strip():
+        return _render_phone_required_modal(request, card_id=card.id, project_id=project_id, activity_id=activity_id)
 
     project = get_object_or_404(
         Project,
@@ -744,3 +751,92 @@ def card_elapsed_json(request, card_id: int):
         "elapsed_seconds": elapsed_seconds,
         "ts": now.isoformat(),
     })
+
+def _get_or_create_profile(user):
+    prof = getattr(user, "profile", None)
+    if prof:
+        return prof
+    prof, _ = UserProfile.objects.get_or_create(user=user)
+    return prof
+
+
+def _digits_only(s: str) -> str:
+    return re.sub(r"\D+", "", (s or ""))
+
+
+def _normalize_br_phone(ddd: str, phone: str):
+    ddd_d = _digits_only(ddd)
+    ph_d = _digits_only(phone)
+
+    if len(ddd_d) != 2:
+        return None, "DDD inválido. Informe exatamente 2 números (ex: 21)."
+
+    if len(ph_d) not in (8, 9):
+        return None, "Telefone inválido. Informe 8 ou 9 dígitos (ex: 999999999)."
+
+    # formato PressTicket: 55DDDNÚMERO (somente dígitos)
+    return f"55{ddd_d}{ph_d}", None
+
+
+def _render_phone_required_modal(request, card_id: int, project_id: str, activity_id: str, error: str = ""):
+    html = render(
+        request,
+        "tracktime/partials/phone_required_modal.html",
+        {
+            "card_id": card_id,
+            "project_id": project_id,
+            "activity_id": activity_id,
+            "error": error,
+        },
+    )
+    # Força o modal a ir para o BODY, sem depender do hx-target que disparou o POST
+    resp = HttpResponse(html)
+    resp["HX-Retarget"] = "body"
+    resp["HX-Reswap"] = "beforeend"
+    return resp
+
+@login_required
+def tracktime_phone_required_modal(request):
+    """
+    Permite abrir o modal via GET (opcional).
+    """
+    card_id = int(request.GET.get("card_id") or 0)
+    project_id = (request.GET.get("project_id") or "").strip()
+    activity_id = (request.GET.get("activity_id") or "").strip()
+
+    if not card_id or not project_id or not activity_id:
+        return HttpResponseBadRequest("Dados incompletos para abrir o modal.")
+
+    return _render_phone_required_modal(request, card_id, project_id, activity_id)
+
+
+@login_required
+def tracktime_phone_save(request):
+    """
+    Salva telefone no profile do usuário no formato 55DDDNÚMERO (somente dígitos).
+    """
+    if request.method != "POST":
+        return HttpResponseBadRequest("POST required")
+
+    card_id = int((request.POST.get("card_id") or "0").strip() or 0)
+    project_id = (request.POST.get("project_id") or "").strip()
+    activity_id = (request.POST.get("activity_id") or "").strip()
+
+    ddd = (request.POST.get("ddd") or "").strip()
+    phone = (request.POST.get("phone") or "").strip()
+
+    normalized, err = _normalize_br_phone(ddd, phone)
+    if err:
+        # mantém o modal aberto e exibe erro
+        return _render_phone_required_modal(request, card_id, project_id, activity_id, error=err)
+
+    prof = _get_or_create_profile(request.user)
+    prof.telefone = normalized
+    prof.save(update_fields=["telefone"])
+
+    # HTMX: 204 OK sem conteúdo (o after-request do form dispara o start)
+    if request.headers.get("HX-Request"):
+        return HttpResponse(status=204)
+
+    # fallback não-HTMX: volta
+    return redirect(request.META.get("HTTP_REFERER") or "/")

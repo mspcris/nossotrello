@@ -1,3 +1,4 @@
+# tracktime/urls.py
 from django.urls import path
 from . import views
 
@@ -7,7 +8,6 @@ urlpatterns = [
     # painel do card
     path("cards/<int:card_id>/track-time/", views.card_tracktime_panel, name="card_panel"),
     path("me/running.json", views.me_running_json, name="me_running_json"),
-
 
     # ações
     path("cards/<int:card_id>/track-time/start/", views.card_tracktime_start, name="card_start"),
@@ -24,15 +24,14 @@ urlpatterns = [
     path("activities/<int:pk>/toggle/", views.toggle_activity, name="toggle_activity"),
     path("boards/<int:board_id>/running/", views.board_running, name="board_running"),
 
-     # Modal Track-time
+    # Modal Track-time
     path("modal/", views.tracktime_modal, name="modal"),
-    path(
-    "cards/<int:card_id>/track-time/running-slot/",
-    views.card_tracktime_panel_running_slot,
-    name="card_panel_running_slot",
-    ),
+    path("cards/<int:card_id>/track-time/running-slot/", views.card_tracktime_panel_running_slot, name="card_panel_running_slot"),
     path("cards/<int:card_id>/track-time/elapsed.json", views.card_elapsed_json, name="card_elapsed_json"),
 
+    # ✅ NOVO: telefone obrigatório (modal + save)
+    path("phone/required-modal/", views.tracktime_phone_required_modal, name="phone_required_modal"),
+    path("phone/save/", views.tracktime_phone_save, name="phone_save"),
 
     # Tabs (HTML)
     path("tabs/live/", views.tracktime_tab_live, name="tab_live"),
@@ -42,5 +41,4 @@ urlpatterns = [
 
     # Dados (JSON) para polling do “Ao vivo”
     path("live.json", views.tracktime_live_json, name="live_json"),
-
 ]
