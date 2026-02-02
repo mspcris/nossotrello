@@ -701,3 +701,61 @@ li[data-card-id][data-term-status="ok"] .term-badge{ color: #16a34a; }
     object-fit: cover;
   }
 }
+
+/* =========================
+   CARD COVER — MOBILE FIX
+   Replica visual do desktop
+========================= */
+@media (max-width: 767px) {
+
+  /* força layout vertical */
+  #columns-wrapper li[data-card-id] {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* container da capa */
+  #columns-wrapper li[data-card-id] .card-cover-wrap {
+    height: var(--card-cover-thumb-h, 120px);
+    margin: -12px -12px 10px;
+  }
+
+  /* blur ocupa tudo */
+  #columns-wrapper li[data-card-id] .card-cover-blur {
+    inset: -18px;
+    filter: blur(16px) saturate(1.35);
+    transform: scale(1.25);
+  }
+
+  /* imagem centralizada, nunca lateral */
+  #columns-wrapper li[data-card-id] img.card-cover-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: center;
+  }
+}
+
+
+@media (max-width: 767px) {
+  header .cm-header-inner {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 10px;
+  }
+
+  /* primeira linha: menu + logo */
+  header .cm-header-left {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  /* segunda linha: avatares + lupa */
+  header .cm-header-right {
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+}
