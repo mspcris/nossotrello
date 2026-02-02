@@ -1,8 +1,19 @@
+// boards/static/boards/header_search.js
+// Header search overlay (board) — abre no toggle, fecha no ESC e ao clicar fora (igual popover)
+// - Usa capture=true para não depender de bubbling
+// - Não fecha ao clicar dentro do painel
+// - Não “briga” com o clique do toggle
+// - Mantém is-typing (backdrop) sincronizado e reseta ao fechar
+
 (function () {
   const toggle = document.getElementById("header-search-toggle");
   const overlay = document.getElementById("board-search-overlay");
 
   if (!toggle || !overlay) return;
+
+  function isOpen() {
+    return !overlay.classList.contains("hidden");
+  }
 
   function open() {
     overlay.classList.remove("hidden");
@@ -12,20 +23,41 @@
   function close() {
     overlay.classList.add("hidden");
     overlay.setAttribute("aria-hidden", "true");
+    overlay.classList.remove("is-typing"); // reset do backdrop ao fechar
   }
 
+  // Toggle abre/fecha
   toggle.addEventListener("click", function (e) {
     e.preventDefault();
     e.stopPropagation();
-    open();
+
+    if (isOpen()) close();
+    else open();
   });
 
-  overlay.addEventListener("click", function (e) {
-    if (e.target === overlay || e.target.closest(".bg-black")) {
+  // Clique fora (igual popover) — CAPTURE
+  document.addEventListener(
+    "click",
+    function (e) {
+      if (!isOpen()) return;
+
+      const panel =
+        overlay.querySelector(".search-panel") ||
+        overlay.querySelector("[data-search-panel]");
+
+      // clique no toggle não fecha (toggle já gerencia)
+      if (toggle.contains(e.target)) return;
+
+      // clique dentro do painel não fecha
+      if (panel && panel.contains(e.target)) return;
+
+      // qualquer clique fora fecha
       close();
-    }
-  });
+    },
+    true
+  );
 
+  // ESC fecha
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape") close();
   });
@@ -46,11 +78,10 @@
   input.addEventListener("input", syncBackdrop);
   input.addEventListener("focus", syncBackdrop);
 
-  // reset ao fechar
+  // reset ao fechar (quando ESC)
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       overlay.classList.remove("is-typing");
     }
   });
 })();
-

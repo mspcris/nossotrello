@@ -1054,3 +1054,4 @@ if (!window.__colorPopoverOutsideInstalled) {
     triggerBelly(e.detail?.columnEl);
   });
 })();
+
