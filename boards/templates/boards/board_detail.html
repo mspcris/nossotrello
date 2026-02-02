@@ -102,24 +102,44 @@
 
 {% block drawer_items %}
 <li>
-  <a class="nt-link" href="{% url 'boards:boards_index' %}">← Voltar aos Quadros</a>
+  <a class="nt-link flex items-center gap-2" href="{% url 'boards:boards_index' %}">
+    <!-- arrow-left -->
+    <svg class="h-5 w-5 opacity-90" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M10 19l-7-7 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M3 12h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    <span>Voltar aos Quadros</span>
+  </a>
 </li>
 
 {% if can_share_board %}
 <li>
-  <button class="nt-link" type="button"
+  <button class="nt-link flex items-center gap-2" type="button"
           hx-get="{% url 'boards:board_share' board.id %}"
           hx-target="body" hx-swap="beforeend">
-    Compartilhar quadro
+    <!-- share -->
+    <svg class="h-5 w-5 opacity-90" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M16 8a3 3 0 10-2.8-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M6 14a3 3 0 100 6 3 3 0 000-6z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M18 13a3 3 0 100 6 3 3 0 000-6z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M8.6 15.2l6.8-3.4M15.4 8.2L8.6 11.6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span>Compartilhar quadro</span>
   </button>
 </li>
 
 <li>
-  <button class="nt-link" type="button"
+  <button class="nt-link flex items-center gap-2" type="button"
           hx-get="{% url 'boards:transfer_owner_start' board.id %}"
           hx-target="#modal-body" hx-swap="innerHTML"
           hx-on="htmx:beforeRequest: try{ if(window.Modal&&Modal.open){Modal.open();} }catch(e){}">
-    Transferir titularidade
+    <!-- user-switch / transfer -->
+    <svg class="h-5 w-5 opacity-90" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0z" stroke="currentColor" stroke-width="2"/>
+      <path d="M4 21a8 8 0 0116 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M20 10h-5m5 0l-2-2m2 2l-2 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span>Transferir titularidade</span>
   </button>
 </li>
 
@@ -127,39 +147,68 @@
 <li>
   <form method="post" action="{% url 'boards:board_leave' board.id %}">
     {% csrf_token %}
-    <button type="submit" class="nt-link"
+    <button type="submit" class="nt-link flex items-center gap-2"
             onclick="return confirm('Sair deste quadro? Ele vai sumir da sua lista.')">
-      Sair do quadro
+      <!-- log-out -->
+      <svg class="h-5 w-5 opacity-90" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M10 17l-1 0a4 4 0 01-4-4V7a4 4 0 014-4h1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <path d="M16 12H7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <path d="M13 9l3 3-3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>Sair do quadro</span>
     </button>
   </form>
 </li>
 {% endif %}
 
 <li>
-  <button class="nt-link" type="button"
+  <button class="nt-link flex items-center gap-2" type="button"
           hx-get="{% url 'boards:update_board_wallpaper' board.id %}"
           hx-target="body" hx-swap="beforeend">
-    Trocar Wallpaper
+    <!-- image -->
+    <svg class="h-5 w-5 opacity-90" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M4 7a3 3 0 013-3h10a3 3 0 013 3v10a3 3 0 01-3 3H7a3 3 0 01-3-3V7z" stroke="currentColor" stroke-width="2"/>
+      <path d="M8 11a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" fill="currentColor"/>
+      <path d="M20 16l-5-5-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span>Trocar Wallpaper</span>
   </button>
 </li>
 
 <li>
-  <button class="nt-link" type="button"
+  <button class="nt-link flex items-center gap-2" type="button"
           hx-post="{% url 'boards:remove_board_wallpaper' board.id %}"
           hx-target="body" hx-swap="beforeend">
-    Remover Wallpaper
+    <!-- image-off -->
+    <svg class="h-5 w-5 opacity-90" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M4 7a3 3 0 013-3h10a3 3 0 013 3v10a3 3 0 01-3 3H7a3 3 0 01-3-3V7z" stroke="currentColor" stroke-width="2"/>
+      <path d="M4 4l16 16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M14.5 12.5L20 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M9 15l3-3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    <span>Remover Wallpaper</span>
   </button>
 </li>
 
 <li>
-  <button id="toggle-delete-columns" type="button" class="nt-link">
-    Excluir colunas
+  <button id="toggle-delete-columns" type="button" class="nt-link flex items-center gap-2">
+    <!-- columns -->
+    <svg class="h-5 w-5 opacity-90" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M4 6a2 2 0 012-2h3a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6z" stroke="currentColor" stroke-width="2"/>
+      <path d="M13 6a2 2 0 012-2h3a2 2 0 012 2v12a2 2 0 01-2 2h-3a2 2 0 01-2-2V6z" stroke="currentColor" stroke-width="2"/>
+    </svg>
+    <span>Excluir colunas</span>
   </button>
 </li>
 
 <li>
-  <button id="toggle-delete-cards" type="button" class="nt-link">
-    Excluir cards
+  <button id="toggle-delete-cards" type="button" class="nt-link flex items-center gap-2">
+    <!-- cards -->
+    <svg class="h-5 w-5 opacity-90" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M7 7h10M7 11h10M7 15h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M6 4h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2z" stroke="currentColor" stroke-width="2"/>
+    </svg>
+    <span>Excluir cards</span>
   </button>
 </li>
 
@@ -168,38 +217,61 @@
 </li>
 
 <li>
-  <button class="nt-link relative" type="button"
+  <button class="nt-link relative flex items-center gap-2" type="button"
           hx-get="{% url 'boards:board_history_modal' board.id %}"
           hx-target="#modal-body" hx-swap="innerHTML"
           hx-on="htmx:beforeRequest: try{ if(window.Modal&&Modal.open){Modal.open();} }catch(e){}">
-    Histórico do quadro
-    {% if request.user.is_authenticated and request.user.profile.activity_counts %}
-  <span id="board-history-badge"
-        class="ml-2 inline-flex items-center justify-center text-xs font-semibold
-               rounded-full px-2 py-0.5 bg-red-600 text-white hidden">0</span>
-{% endif %}
+    <!-- history -->
+    <svg class="h-5 w-5 opacity-90" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M3 12a9 9 0 101.8-5.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M3 4v5h5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M12 7v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
 
+    <span>Histórico do quadro</span>
+
+    {% if request.user.is_authenticated and request.user.profile.activity_counts %}
+      <span id="board-history-badge"
+            class="ml-2 inline-flex items-center justify-center text-xs font-semibold
+                   rounded-full px-2 py-0.5 bg-red-600 text-white hidden">0</span>
+    {% endif %}
   </button>
 </li>
 
-
 <li>
-  <a class="nt-link" href="{% url 'boards:archived' board.id %}">
-    🗃️ Arquivados
+  <a class="nt-link flex items-center gap-2" href="{% url 'boards:archived' board.id %}">
+    <!-- archive -->
+    <svg class="h-5 w-5 opacity-90" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M4 7a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V7z" stroke="currentColor" stroke-width="2"/>
+      <path d="M6 11v9a2 2 0 002 2h8a2 2 0 002-2v-9" stroke="currentColor" stroke-width="2"/>
+      <path d="M10 15h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    <span>Arquivados</span>
   </a>
 </li>
 
 <li>
-  <a class="nt-link" href="{% url 'boards:trash' board.id %}">
-    🗑️ Lixeira
+  <a class="nt-link flex items-center gap-2" href="{% url 'boards:trash' board.id %}">
+    <!-- trash -->
+    <svg class="h-5 w-5 opacity-90" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M9 3h6m-8 4h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M8 7l1 14h6l1-14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M10 11v7M14 11v7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    <span>Lixeira</span>
   </a>
 </li>
 
-
-
 <li>
-  <button class="nt-link" data-action="toggle-calendar">
-    📅 Modo calendário
+  <button class="nt-link flex items-center gap-2" data-action="toggle-calendar">
+    <!-- calendar -->
+    <svg class="h-5 w-5 opacity-90" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M7 3v3M17 3v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M4 8h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M6 5h12a2 2 0 012 2v13a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2z" stroke="currentColor" stroke-width="2"/>
+      <path d="M8 12h4M8 16h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    <span>Modo calendário</span>
   </button>
 </li>
 
@@ -1527,21 +1599,16 @@ function openReadonlyUserProfile(userId) {
 
 
 
-
-
-
-
+<!--LUPA PESQUISA!!-->
 <script>
 document.addEventListener("DOMContentLoaded", () => {
   const icon = document.getElementById("cm-search-icon");
   const wrapper = document.getElementById("cm-mobile-search-wrapper");
-  const inner = document.getElementById("cm-mobile-search-inner");
-  const closeBtn = document.getElementById("cm-search-close");
 
   const panel = document.getElementById("cm-search-panel");
   const desktopHome = document.getElementById("cm-search-desktop-home");
 
-  if (!icon || !wrapper || !inner || !closeBtn || !panel || !desktopHome) return;
+  if (!icon || !wrapper || !panel || !desktopHome) return;
 
   function isMobilePortrait() {
     return window.matchMedia("(max-width: 767px)").matches;
@@ -1551,13 +1618,14 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!isMobilePortrait()) return;
 
     wrapper.classList.remove("hidden");
-    inner.appendChild(panel);
+    wrapper.appendChild(panel);
 
     const input = panel.querySelector("#board-filter");
-    if (input) input.focus();
+    input && input.focus();
   }
 
   function closeSearch() {
+    // devolve pro desktop sempre
     desktopHome.appendChild(panel);
     wrapper.classList.add("hidden");
   }
@@ -1568,26 +1636,27 @@ document.addEventListener("DOMContentLoaded", () => {
     openSearch();
   });
 
-  closeBtn.addEventListener("click", (e) => {
+  // 🔒 Fechar clicando fora SEM deixar o clique “passar” pro perfil
+  document.addEventListener("pointerdown", (e) => {
+    if (!isMobilePortrait()) return;
+    if (wrapper.classList.contains("hidden")) return;
+
+    const clickedInside = wrapper.contains(e.target) || icon.contains(e.target);
+    if (clickedInside) return;
+
     e.preventDefault();
     e.stopPropagation();
     closeSearch();
-  });
+  }, true);
 
-  // clicou fora: fecha
-  document.addEventListener("click", (e) => {
-    if (!isMobilePortrait()) return;
-    if (wrapper.classList.contains("hidden")) return;
-    if (wrapper.contains(e.target) || e.target === icon) return;
-    closeSearch();
-  });
-
-  // se virou desktop: garante painel no lugar certo
   window.addEventListener("resize", () => {
     if (!isMobilePortrait()) closeSearch();
   });
 });
 </script>
+
+
+
 
 
 
@@ -2127,7 +2196,6 @@ document.addEventListener("pointerup", (e) => {
   btn.click();
 }, { capture: true });
 </script>
-
 
 
 {% endblock content %}

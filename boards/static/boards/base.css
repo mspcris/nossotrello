@@ -141,10 +141,12 @@ html.dark .amber-column-bg{ background-color: rgba(251,191,36,0.18) !important; 
 #board-search-overlay.hidden{ display: none; }
 
 /* fundo visível quando digitando (sua lógica) */
-#board-search-overlay.is-typing #search-backdrop{
+/* antes: pointer-events: none; */
+#board-search-overlay.is-typing #search-backdrop {
   opacity: 0 !important;
-  pointer-events: none;
+  pointer-events: auto; /* mantém bloqueio de clique */
 }
+
 
 /* =======================================================================
    HOME — GRID (flex) e card base
@@ -372,6 +374,54 @@ pre{
   }
 }
 
+@media (max-width: 767px) {
+  #board-search-overlay { display: none !important; }
+}
+
+@media (max-width: 767px) {
+  .cm-header-board-cover { width: 96px; height: 40px; }
+  .cm-header-center { min-height: 56px; }
+}
+
+.cm-header-board-cover {
+  width: 120px;
+  height: 48px;
+  border-radius: 999px;
+  overflow: hidden;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: rgba(255,255,255,0.25);
+  border: 1px solid rgba(255,255,255,0.35);
+}
+
+.cm-header-board-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cm-header-board-cover {
+  width: 120px;
+  height: 48px;
+  border-radius: 999px;
+  overflow: hidden;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: rgba(255,255,255,0.25);
+  border: 1px solid rgba(255,255,255,0.35);
+}
+
+.cm-header-board-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 
 
 /* =======================================================================
