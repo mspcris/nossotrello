@@ -372,44 +372,51 @@
 
 
   <!-- MOBILE RETRATO (< 768px) — SLOT DINÂMICO -->
-  <div class="md:hidden">
+<div class="md:hidden">
+  <div class="flex items-center justify-between gap-3">
 
-    <!-- Breadcrumb MOBILE (estado fechado) -->
-<div class="flex items-center justify-between gap-3">
-  <div id="cm-mobile-breadcrumb"
-       class="text-sm font-semibold text-white/90 drop-shadow truncate min-w-0">
-    <a href="{% url 'boards:boards_index' %}" class="underline underline-offset-2">
-      Todos os Quadros
-    </a>
-    <span class="opacity-70">→</span>
-    <span class="board-breadcrumb-name">{{ board.name }}</span>
+    <!-- breadcrumb -->
+    <div id="cm-mobile-breadcrumb"
+         class="text-sm font-semibold text-white/90 drop-shadow truncate min-w-0">
+      <a href="{% url 'boards:boards_index' %}" class="underline underline-offset-2">Todos os Quadros</a>
+      <span class="opacity-70">→</span>
+      <span class="board-breadcrumb-name">{{ board.name }}</span>
+    </div>
+
+    <!-- avatares + lupa (direita) -->
+    <div class="flex items-center gap-2 shrink-0">
+      <div id="board-members-bar-mobile"
+           class="board-members-bar flex items-center gap-1 shrink-0"
+           aria-label="Usuários do quadro">
+        {% for member in board_members %}
+          {% with p=member.profile %}
+            <button type="button"
+                    class="board-member-avatar"
+                    onclick="openReadonlyUserProfile({{ member.id }})"
+                    aria-label="Ver perfil">
+              {% if p and p.avatar %}
+                <img src="{{ p.avatar.url }}" alt="" loading="lazy">
+              {% elif p and p.avatar_choice %}
+                <img src="{% static 'images/avatar/' %}{{ p.avatar_choice }}" alt="" loading="lazy">
+              {% else %}
+                <span class="avatar-fallback">
+                  {{ p.display_name|default:member.get_full_name|default:member.email|first|upper }}
+                </span>
+              {% endif %}
+            </button>
+          {% endwith %}
+        {% endfor %}
+      </div>
+
+      <button id="cm-search-icon" aria-label="Buscar" class="cm-search-icon">🔍</button>
+    </div>
+
   </div>
 
-  <button id="cm-search-icon"
-          type="button"
-          aria-label="Buscar"
-          class="shrink-0 h-10 w-10 rounded-full bg-white/35 backdrop-blur-md border border-white/30 shadow
-                 flex items-center justify-center">
-    🔍
-  </button>
+  <!-- slot da busca aberta continua igual -->
+  <div id="cm-mobile-search-wrapper" class="cm-mobile-search-wrapper hidden"></div>
 </div>
 
-
-    <!-- Search MOBILE (estado aberto) -->
-<div id="cm-mobile-search-wrapper"
-     class="hidden mt-2 rounded-xl bg-white/35 backdrop-blur-md border border-white/30 shadow px-4 py-2">
-
-  <div class="flex items-center justify-between mb-2">
-    <span class="text-sm font-semibold text-white/90 drop-shadow">Busca</span>
-    <button id="cm-search-close"
-            type="button"
-            class="text-sm font-semibold text-white/90 underline underline-offset-2">
-      Fechar
-    </button>
-  </div>
-
-  <div id="cm-mobile-search-inner"></div>
-</div>
 
 
       <!-- ⬇️ A BARRA ORIGINAL, SEM ALTERAR UMA LINHA ⬇️ -->
@@ -429,11 +436,18 @@
 
     <div id="calendar-root" class="hidden"></div>
 
-    <div
+      <div
       id="columns-wrapper"
       class="columns-wrapper"
-      style="--col-base: {{ profile.board_col_width|default:240 }}px;"
+      style="--col-base:
+        {% if request.user.is_authenticated %}
+          {{ request.user.profile.board_col_width|default:240 }}px
+        {% else %}
+          240px
+        {% endif %}
+      ;"
     >
+
 
 
       {# 🔑 ÚNICO columns-list do sistema #}
@@ -2086,6 +2100,33 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 
+
+<script>
+  document.body.addEventListener("userPrefsUpdated", function (e) {
+    const w = e?.detail?.board_col_width;
+    if (!w) return;
+
+    const wrap = document.getElementById("columns-wrapper");
+    if (!wrap) return;
+
+    wrap.style.setProperty("--col-base", `${w}px`);
+  });
+</script>
+
+
+
+<script>
+document.addEventListener("pointerup", (e) => {
+  const btn = e.target.closest("[data-column-color]");
+  if (!btn) return;
+
+  e.preventDefault();
+  e.stopPropagation();
+
+  // se você já tem onclick, isso força a mesma ação no mobile
+  btn.click();
+}, { capture: true });
+</script>
 
 
 

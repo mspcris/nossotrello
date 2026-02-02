@@ -183,11 +183,20 @@ def account_profile_update(request):
     if update_fields:
         prof.save(update_fields=sorted(set(update_fields)))
 
-    return _render_account_modal(
+    resp = _render_account_modal(
         request,
         ok={"profile": "Perfil atualizado."},
         active_tab="profile",
     )
+
+    # 🔔 avisa a página do board (HTMX) para aplicar preferências sem refresh
+    try:
+        resp["HX-Trigger"] = f'{{"userPrefsUpdated": {{"board_col_width": {prof.board_col_width}}}}}'
+    except Exception:
+        pass
+
+    return resp
+
 
 
 @require_POST

@@ -360,6 +360,20 @@ pre{
   background-repeat: no-repeat;
 }
 
+@media (max-width: 768px) {
+  .cm-header-row{
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+
+  /* garante que “blocos” possam cair pra 2ª linha sem esmagar */
+  .cm-header-row > *{
+    min-width: 0;
+  }
+}
+
+
+
 /* =======================================================================
    FIM DO BASE.CSS
    ======================================================================= */

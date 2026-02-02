@@ -688,3 +688,16 @@ li[data-card-id][data-term-status="ok"] .term-badge{ color: #16a34a; }
   align-self: flex-start;
   margin: 0;
 }
+
+@media (max-width: 768px){
+  #board-members-bar-mobile .board-member-avatar{
+    width: 28px;
+    height: 28px;
+  }
+  #board-members-bar-mobile img{
+    width: 100%;
+    height: 100%;
+    border-radius: 999px;
+    object-fit: cover;
+  }
+}
