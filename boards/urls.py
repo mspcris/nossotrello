@@ -173,14 +173,10 @@ urlpatterns = [
 
 
 
-
-    path("boards/trash/", boards_trash, name="boards_trash"),
-    path("boards/archived/", boards_archived, name="boards_archived"),
-
     path("board/<int:board_id>/archive/", archive_board, name="archive_board"),
     path("board/<int:board_id>/unarchive/", unarchive_board, name="unarchive_board"),
 
-    path("board/<int:board_id>/trash/", trash_board, name="trash_board"),
+    path("board/<int:board_id>/trash-board/", trash_board, name="trash_board"),
     path("board/<int:board_id>/restore/", restore_board, name="restore_board"),
     path("boards/trash/", boards_trash, name="boards_trash"),
     path("boards/archived/", boards_archived, name="boards_archived"),

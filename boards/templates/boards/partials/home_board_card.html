@@ -104,25 +104,27 @@
     </button>
   {% endif %}
 
-  {% if show_delete_button %}
-    <button
-      hx-post="{% url 'boards:delete_board' board.id %}"
-      hx-target="closest .board-card"
-      hx-swap="outerHTML"
-      class="delete-button">
-      Excluir quadro
-    </button>
-  {% endif %}
+{% if show_delete_button %}
+  <button
+    hx-post="{% url 'boards:delete_board' board.id %}"
+    hx-target="closest .board-card"
+    hx-swap="outerHTML"
+    class="delete-button delete-board-btn hidden"
+    onclick="event.preventDefault(); event.stopPropagation();">
+    Excluir quadro
+  </button>
+{% endif %}
 
-  <!-- Botão Arquivar (modo arquivar quadros) -->
+{# Botão Arquivar (modo arquivar quadros) - SEMPRE EXISTE, só fica hidden #}
 <button type="button"
         class="archive-board-btn hidden text-sm text-yellow-200 bg-yellow-700/70 px-2 py-1 rounded"
         hx-post="{% url 'boards:archive_board' board.id %}"
         hx-target="closest .board-card"
-        hx-swap="delete"
+        hx-swap="outerHTML"
         onclick="event.preventDefault(); event.stopPropagation();">
   Arquivar quadro
 </button>
+
 
 </div>
 <!-- end home_board_card.html -->

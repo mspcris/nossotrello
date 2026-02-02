@@ -180,66 +180,37 @@
 
   {# ===================== MODOS: EXCLUIR / ARQUIVAR (unificado, sem quebrar) ===================== #}
   <script>
-    (function () {
-      // Mantém o ID existente do botão de exclusão (já usado hoje)
-      const btnDelete = document.getElementById("toggle-delete-mode");
+(function () {
+  const deleteBtn  = document.getElementById("toggle-delete-mode");   // <- id real
+  const archiveBtn = document.getElementById("toggle-archive-boards"); // <- id real
 
-      // Você tinha um botão com id toggle-archive-boards; para não quebrar, suportamos ambos:
-      const btnArchive = document.getElementById("toggle-archive-mode") || document.getElementById("toggle-archive-boards");
+  function setDeleteMode(on) {
+    document.body.dataset.boardDeleteMode = on ? "1" : "0";
+    document.querySelectorAll(".delete-board-btn").forEach(el => el.classList.toggle("hidden", !on));
+    if (deleteBtn) deleteBtn.textContent = on ? "Sair do modo de exclusão" : "Excluir quadros";
+    if (on) setArchiveMode(false);
+  }
 
-      let deleteMode = false;
-      let archiveMode = false;
+  function setArchiveMode(on) {
+    document.body.dataset.boardArchiveMode = on ? "1" : "0";
+    document.querySelectorAll(".archive-board-btn").forEach(el => el.classList.toggle("hidden", !on));
+    if (archiveBtn) archiveBtn.textContent = on ? "Sair do modo de arquivamento" : "Arquivar quadros";
+    if (on) setDeleteMode(false);
+  }
 
-      function applyModes() {
-        document.querySelectorAll(".board-card").forEach(card => {
-          card.classList.toggle("delete-mode", deleteMode);
-          card.classList.toggle("archive-mode", archiveMode);
-        });
+  deleteBtn?.addEventListener("click", (e) => {
+    e.preventDefault();
+    const on = document.body.dataset.boardDeleteMode !== "1";
+    setDeleteMode(on);
+  });
 
-        if (btnDelete) {
-          btnDelete.innerText = deleteMode ? "Sair do modo de exclusão" : "Excluir quadros";
-        }
-        if (btnArchive) {
-          btnArchive.innerText = archiveMode ? "Sair do modo de arquivamento" : "Arquivar quadros";
-        }
-      }
+  archiveBtn?.addEventListener("click", (e) => {
+    e.preventDefault();
+    const on = document.body.dataset.boardArchiveMode !== "1";
+    setArchiveMode(on);
+  });
+})();
+</script>
 
-      function setDeleteMode(on) {
-        deleteMode = on;
-        if (on) archiveMode = false;
-        applyModes();
-      }
-
-      function setArchiveMode(on) {
-        archiveMode = on;
-        if (on) deleteMode = false;
-        applyModes();
-      }
-
-      btnDelete?.addEventListener("click", (e) => {
-        e.preventDefault();
-        setDeleteMode(!deleteMode);
-      });
-
-      btnArchive?.addEventListener("click", (e) => {
-        e.preventDefault();
-        setArchiveMode(!archiveMode);
-      });
-
-      // Depois de executar uma ação HTMX (excluir/arquivar), desarma para não ficar “armado”
-      document.body.addEventListener("htmx:afterRequest", function () {
-        if (deleteMode || archiveMode) {
-          deleteMode = false;
-          archiveMode = false;
-          applyModes();
-        }
-      });
-
-      // Evita estado “travado” ao voltar pelo cache do browser
-      window.addEventListener("pageshow", function (event) {
-        if (event.persisted) window.location.reload();
-      });
-    })();
-  </script>
 
 {% endblock %}
