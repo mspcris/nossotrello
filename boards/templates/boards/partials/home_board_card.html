@@ -117,8 +117,8 @@
   <!-- Botão Arquivar (modo arquivar quadros) -->
 <button type="button"
         class="archive-board-btn hidden text-sm text-yellow-200 bg-yellow-700/70 px-2 py-1 rounded"
-        hx-post="{% url 'archive_board' board.id %}"
-        hx-target="closest .home-board-card"
+        hx-post="{% url 'boards:archive_board' board.id %}"
+        hx-target="closest .board-card"
         hx-swap="delete"
         onclick="event.preventDefault(); event.stopPropagation();">
   Arquivar quadro

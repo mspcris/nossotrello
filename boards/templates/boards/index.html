@@ -72,19 +72,19 @@
     </button>
   </li>
 
-<li>
-  <a href="{% url 'boards_trash' %}" class="nt-link">Lixeira de quadros</a>
-</li>
+  <li>
+    <button id="toggle-archive-mode" type="button" class="nt-link">
+      Arquivar quadros
+    </button>
+  </li>
 
-<li>
-  <a href="{% url 'boards_archived' %}" class="nt-link">Quadros arquivados</a>
-</li>
+  <li>
+    <a href="{% url 'boards:boards_trash' %}" class="nt-link">Lixeira de quadros</a>
+  </li>
 
-<li>
-<button id="toggle-archive-boards" class="nt-link">Arquivar quadros</button>
-</li>
-
-
+  <li>
+    <a href="{% url 'boards:boards_archived' %}" class="nt-link">Quadros arquivados</a>
+  </li>
 {% endblock %}
 
 {% block content %}
@@ -101,38 +101,35 @@
       </div>
 
       <div class="home-group-dropzone" data-group-id="{{ favorites_group.id }}">
-  <div class="flex flex-wrap gap-6" id="home-favorites-items">
-    {% for it in favorites_group_items %}
-      {% include "boards/partials/home_board_card.html" with board=it.board favorite_board_ids=favorite_board_ids subtitle="" show_delete_button=False is_shared=False %}
-    {% empty %}
-      <div class="text-gray-300 backdrop-blur-lg px-4 py-2 rounded-lg home-empty-hint">
-        Sem favoritos ainda.
+        <div class="flex flex-wrap gap-6" id="home-favorites-items">
+          {% for it in favorites_group_items %}
+            {% include "boards/partials/home_board_card.html" with board=it.board favorite_board_ids=favorite_board_ids subtitle="" show_delete_button=False is_shared=False %}
+          {% empty %}
+            <div class="text-gray-300 backdrop-blur-lg px-4 py-2 rounded-lg home-empty-hint">
+              Sem favoritos ainda.
+            </div>
+          {% endfor %}
+        </div>
       </div>
-    {% endfor %}
-  </div>
-</div>
-
-
     </div>
 
     {# ===================== CRIAR NOVO AGRUPAMENTO ===================== #}
     <div class="flex flex-wrap gap-6" >
       <form
-  class="flex gap-2 items-center flex-wrap"
-  hx-post="{% url 'boards:home_group_create' %}"
-  hx-target="#home-custom-groups"
-  hx-swap="beforeend"
-  hx-on::after-request="if(event.detail.successful){ this.querySelector('input[name=name]').value=''; }"
->
-  {% csrf_token %}
-  <input type="text" name="name" class="rounded-lg px-3 py-2 w-64" placeholder="Novo agrupamento (ex: Clínicas RJ)">
-  <button type="submit" class="px-3 py-2 bg-white/70 rounded-lg font-semibold">+ Criar agrupamento</button>
-</form>
-
+        class="flex gap-2 items-center flex-wrap"
+        hx-post="{% url 'boards:home_group_create' %}"
+        hx-target="#home-custom-groups"
+        hx-swap="beforeend"
+        hx-on::after-request="if(event.detail.successful){ this.querySelector('input[name=name]').value=''; }"
+      >
+        {% csrf_token %}
+        <input type="text" name="name" class="rounded-lg px-3 py-2 w-64" placeholder="Novo agrupamento (ex: Clínicas RJ)">
+        <button type="submit" class="px-3 py-2 bg-white/70 rounded-lg font-semibold">+ Criar agrupamento</button>
+      </form>
     </div>
 
     {# ===================== GRUPOS CUSTOM ===================== #}
-     <div id="home-custom-groups" class="pt-2 pr-4">
+    <div id="home-custom-groups" class="pt-2 pr-4">
       {% for row in custom_groups %}
         {% include "boards/partials/home_group_block.html" with g=row.group items=row.items favorite_board_ids=favorite_board_ids %}
       {% empty %}
@@ -172,41 +169,7 @@
     {% endif %}
   </div>
 
-<script>
-  (function () {
-    let deleteMode = false;
-    const toggleBtn = document.getElementById("toggle-delete-mode");
-
-    function applyDeleteMode(on) {
-      deleteMode = on;
-
-      document.querySelectorAll(".board-card").forEach(card => {
-        card.classList.toggle("delete-mode", deleteMode);
-      });
-
-      if (toggleBtn) {
-        toggleBtn.innerText = deleteMode ? "Sair do modo de exclusão" : "Excluir quadros";
-      }
-    }
-
-    toggleBtn?.addEventListener("click", (e) => {
-      e.preventDefault();
-      applyDeleteMode(!deleteMode);
-    });
-
-    // Depois de excluir um quadro (HTMX), desliga o modo para não ficar “armado”
-    document.body.addEventListener("htmx:afterRequest", function () {
-      if (deleteMode) applyDeleteMode(false);
-    });
-
-    // Evita estado “travado” ao voltar pelo cache do browser
-    window.addEventListener("pageshow", function (event) {
-      if (event.persisted) window.location.reload();
-    });
-  })();
-</script>
-
-
+  {# ===================== HOME GROUPS (mantido) ===================== #}
   <script>
     window.HOME_GROUPS = [
       {% for row in custom_groups %}
@@ -215,50 +178,68 @@
     ];
   </script>
 
+  {# ===================== MODOS: EXCLUIR / ARQUIVAR (unificado, sem quebrar) ===================== #}
+  <script>
+    (function () {
+      // Mantém o ID existente do botão de exclusão (já usado hoje)
+      const btnDelete = document.getElementById("toggle-delete-mode");
 
-<script>
-(function () {
-  const deleteBtn = document.getElementById("toggle-delete-boards");
-  const archiveBtn = document.getElementById("toggle-archive-boards");
+      // Você tinha um botão com id toggle-archive-boards; para não quebrar, suportamos ambos:
+      const btnArchive = document.getElementById("toggle-archive-mode") || document.getElementById("toggle-archive-boards");
 
-  function setDeleteMode(on) {
-    document.body.dataset.boardDeleteMode = on ? "1" : "0";
-    document.querySelectorAll(".delete-board-btn").forEach(el => el.classList.toggle("hidden", !on));
-    if (deleteBtn) deleteBtn.textContent = on ? "Sair do modo de exclusão" : "Excluir quadros";
-    if (on) setArchiveMode(false);
-  }
+      let deleteMode = false;
+      let archiveMode = false;
 
-  function setArchiveMode(on) {
-    document.body.dataset.boardArchiveMode = on ? "1" : "0";
-    document.querySelectorAll(".archive-board-btn").forEach(el => el.classList.toggle("hidden", !on));
-    if (archiveBtn) archiveBtn.textContent = on ? "Sair do modo de arquivamento" : "Arquivar quadros";
-    if (on) setDeleteMode(false);
-  }
+      function applyModes() {
+        document.querySelectorAll(".board-card").forEach(card => {
+          card.classList.toggle("delete-mode", deleteMode);
+          card.classList.toggle("archive-mode", archiveMode);
+        });
 
-  if (deleteBtn) {
-    deleteBtn.addEventListener("click", () => {
-      const on = document.body.dataset.boardDeleteMode !== "1";
-      setDeleteMode(on);
-    });
-  }
+        if (btnDelete) {
+          btnDelete.innerText = deleteMode ? "Sair do modo de exclusão" : "Excluir quadros";
+        }
+        if (btnArchive) {
+          btnArchive.innerText = archiveMode ? "Sair do modo de arquivamento" : "Arquivar quadros";
+        }
+      }
 
-  if (archiveBtn) {
-    archiveBtn.addEventListener("click", () => {
-      const on = document.body.dataset.boardArchiveMode !== "1";
-      setArchiveMode(on);
-    });
-  }
+      function setDeleteMode(on) {
+        deleteMode = on;
+        if (on) archiveMode = false;
+        applyModes();
+      }
 
-  // Ao concluir htmx (arquivar/excluir), mantém a UX consistente
-  document.body.addEventListener("htmx:afterRequest", (e) => {
-    // se quiser: quando arquivar/excluir um quadro, pode manter o modo ligado.
-    // se você preferir DESLIGAR automaticamente após a ação, descomente:
-    // setDeleteMode(false);
-    // setArchiveMode(false);
-  });
-})();
-</script>
+      function setArchiveMode(on) {
+        archiveMode = on;
+        if (on) deleteMode = false;
+        applyModes();
+      }
 
+      btnDelete?.addEventListener("click", (e) => {
+        e.preventDefault();
+        setDeleteMode(!deleteMode);
+      });
 
+      btnArchive?.addEventListener("click", (e) => {
+        e.preventDefault();
+        setArchiveMode(!archiveMode);
+      });
+
+      // Depois de executar uma ação HTMX (excluir/arquivar), desarma para não ficar “armado”
+      document.body.addEventListener("htmx:afterRequest", function () {
+        if (deleteMode || archiveMode) {
+          deleteMode = false;
+          archiveMode = false;
+          applyModes();
+        }
+      });
+
+      // Evita estado “travado” ao voltar pelo cache do browser
+      window.addEventListener("pageshow", function (event) {
+        if (event.persisted) window.location.reload();
+      });
+    })();
+  </script>
 
 {% endblock %}

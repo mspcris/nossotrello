@@ -272,6 +272,23 @@ header {
   width: 20px;
   height: 20px;
 }
+
+
+/* Por padrão, não mostra ações destrutivas */
+.board-card .delete-button,
+.board-card .archive-button {
+  display: none;
+}
+
+/* Mostra somente no modo correspondente */
+.board-card.delete-mode .delete-button {
+  display: inline-flex;
+}
+
+.board-card.archive-mode .archive-button {
+  display: inline-flex;
+}
+
 /* ================================
    END HOME - NOSSO TRELLO
    Layout unificado e previsível

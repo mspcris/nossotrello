@@ -20,7 +20,7 @@ def _user_can_access_board(user, board: Board) -> bool:
 def boards_trash(request):
     boards = (
         Board.all_objects
-        .filter(is_deleted=True, boardmembership__user=request.user)
+        .filter(is_deleted=True, memberships__user=request.user).distinct()
         .order_by("-deleted_at", "-id")
         .distinct()
     )
