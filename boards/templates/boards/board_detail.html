@@ -1677,17 +1677,21 @@ document.addEventListener("DOMContentLoaded", () => {
     const wrap = document.getElementById("columns-wrapper");
     if (!wrap) return;
 
-    // garante que a página não role (só as colunas)
-    document.documentElement.style.overflow = "hidden";
-    document.body.style.overflow = "hidden";
+    const rect = wrap.getBoundingClientRect();
 
-    // altura disponível = viewport - topo real do wrapper - folga
-    const top = wrap.getBoundingClientRect().top;
-    const paddingBottom = 12; // folga mínima pra não "colar" no fim
-    const h = Math.max(240, Math.floor(window.innerHeight - top - paddingBottom));
+    // Melhor medida em mobile (leva em conta barra do navegador/teclado)
+    const vv = window.visualViewport;
+    const viewportH = vv ? vv.height : window.innerHeight;
 
-    wrap.style.height = h + "px";
+    // Respiro no fim + safe-area (iPhone etc.)
+    const safeBottom = 16; // px base
+    wrap.style.paddingBottom = "calc(12px + env(safe-area-inset-bottom))";
+
+    // Altura útil
+    const available = Math.max(240, Math.floor(viewportH - rect.top - safeBottom));
+    wrap.style.height = available + "px";
   }
+
 
   window.addEventListener("load", fitColumnsWrapper);
   window.addEventListener("resize", fitColumnsWrapper);
