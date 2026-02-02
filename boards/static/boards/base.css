@@ -423,6 +423,23 @@ pre{
   object-fit: cover;
 }
 
+@media (max-width: 767px) {
+  #header-search-toggle {
+    display: none !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .cm-cover--header {
+    --cm-cover-h: 42px;
+    --cm-cover-w: 140px;
+    --cm-cover-radius: 14px;
+  }
+
+  .cm-cover__img {
+    object-fit: cover;
+  }
+}
 
 /* =======================================================================
    FIM DO BASE.CSS

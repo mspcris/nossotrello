@@ -759,3 +759,15 @@ li[data-card-id][data-term-status="ok"] .term-badge{ color: #16a34a; }
     gap: 8px;
   }
 }
+
+@media (max-width: 767px) {
+  .cm-cover--header {
+    --cm-cover-h: 42px;
+    --cm-cover-w: 140px;
+    --cm-cover-radius: 14px;
+  }
+
+  .cm-cover__img {
+    object-fit: cover;
+  }
+}

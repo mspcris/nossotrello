@@ -68,7 +68,9 @@
                    id="board-filter"
                    placeholder="Filtrar… (ex: urgente)"
                    class="w-full h-10 rounded-lg px-3 text-sm bg-white/80 border border-gray-300"
-                   oninput="applyBoardFilter(this.value)">
+                   oninput="applyBoardFilter(this.value)"
+                   onclick="event.stopPropagation();"
+                   onpointerdown="event.stopPropagation();">
           </div>
 
           <!-- TOGGLE (compacto) -->
@@ -480,13 +482,19 @@
         {% endfor %}
       </div>
 
-      <button id="cm-search-icon" aria-label="Buscar" class="cm-search-icon">🔍</button>
+      <button id="cm-search-icon" aria-label="Buscar" class="cm-search-icon" onclick="event.stopPropagation();">🔍</button>
     </div>
 
   </div>
 
   <!-- slot da busca aberta continua igual -->
-  <div id="cm-mobile-search-wrapper" class="cm-mobile-search-wrapper hidden"></div>
+  <div
+  id="cm-mobile-search-wrapper"
+  class="cm-mobile-search-wrapper hidden"
+  onclick="event.stopPropagation();"
+>
+</div>
+
 </div>
 
 
