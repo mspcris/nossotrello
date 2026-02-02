@@ -771,3 +771,23 @@ li[data-card-id][data-term-status="ok"] .term-badge{ color: #16a34a; }
     object-fit: cover;
   }
 }
+#columns-wrapper {
+  overflow-x: auto;
+  overflow-y: auto;              /* ✅ sem isso, corta */
+  -webkit-overflow-scrolling: touch;
+}
+
+/* evita bug de flex que “corta” altura interna */
+.column-item {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+/* lista de cards vira a área scrollável dentro da coluna */
+[id^="cards-col-"] {
+  flex: 1;
+  min-height: 0;                /* ✅ CRÍTICO em flex */
+  overflow-y: auto;
+}
