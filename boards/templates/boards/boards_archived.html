@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Quadros arquivados{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto p-4">
+  <div class="flex items-center justify-between mb-4">
+    <h1 class="text-xl font-semibold">Quadros arquivados</h1>
+    <a href="{% url 'boards_index' %}" class="px-3 py-2 rounded bg-white/20 border border-white/30">Voltar</a>
+  </div>
+
+  {% if not boards %}
+    <div class="p-4 rounded bg-white/10 border border-white/20">Sem quadros arquivados.</div>
+  {% else %}
+    <ul class="space-y-3">
+      {% for b in boards %}
+        <li class="p-4 rounded bg-white/10 border border-white/20 flex items-center justify-between">
+          <div>
+            <div class="font-semibold">{{ b.name }}</div>
+            <div class="text-xs opacity-70">Arquivado em: {{ b.archived_at|default:"-" }}</div>
+          </div>
+
+          <button class="px-3 py-2 rounded bg-blue-600 text-white"
+                  hx-post="{% url 'unarchive_board' b.id %}"
+                  hx-target="closest li"
+                  hx-swap="delete">
+            Restaurar (desarquivar)
+          </button>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+</div>
+{% endblock %}

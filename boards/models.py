@@ -64,6 +64,14 @@ class OrganizationMembership(models.Model):
 
 
 # ============================================================
+# BOARD ACTIVE OR ARQUIVED OR DELETED
+# ============================================================
+class ActiveBoardManager(models.Manager):
+    def get_queryset(self):
+        # Só quadros "vivos" e visíveis na home / navegação normal
+        return super().get_queryset().filter(is_deleted=False, is_archived=False)
+
+# ============================================================
 # BOARD
 # ============================================================
 class Board(models.Model):
@@ -82,6 +90,17 @@ class Board(models.Model):
         null=True,
         blank=True,
     )
+    # Soft delete (já existe no seu projeto; mantenha)
+    is_deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+
+    # NOVO: Arquivo
+    is_archived = models.BooleanField(default=False)
+    archived_at = models.DateTimeField(null=True, blank=True)
+
+    # Managers
+    objects = ActiveBoardManager()   # uso padrão (home/normal)
+    all_objects = models.Manager()   # para buscar arquivados/excluídos
 
     name = models.CharField(max_length=255)
 

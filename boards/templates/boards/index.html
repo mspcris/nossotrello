@@ -71,6 +71,20 @@
       Excluir quadros
     </button>
   </li>
+
+<li>
+  <a href="{% url 'boards_trash' %}" class="nt-link">Lixeira de quadros</a>
+</li>
+
+<li>
+  <a href="{% url 'boards_archived' %}" class="nt-link">Quadros arquivados</a>
+</li>
+
+<li>
+<button id="toggle-archive-boards" class="nt-link">Arquivar quadros</button>
+</li>
+
+
 {% endblock %}
 
 {% block content %}
@@ -200,5 +214,51 @@
       {% endfor %}
     ];
   </script>
+
+
+<script>
+(function () {
+  const deleteBtn = document.getElementById("toggle-delete-boards");
+  const archiveBtn = document.getElementById("toggle-archive-boards");
+
+  function setDeleteMode(on) {
+    document.body.dataset.boardDeleteMode = on ? "1" : "0";
+    document.querySelectorAll(".delete-board-btn").forEach(el => el.classList.toggle("hidden", !on));
+    if (deleteBtn) deleteBtn.textContent = on ? "Sair do modo de exclusão" : "Excluir quadros";
+    if (on) setArchiveMode(false);
+  }
+
+  function setArchiveMode(on) {
+    document.body.dataset.boardArchiveMode = on ? "1" : "0";
+    document.querySelectorAll(".archive-board-btn").forEach(el => el.classList.toggle("hidden", !on));
+    if (archiveBtn) archiveBtn.textContent = on ? "Sair do modo de arquivamento" : "Arquivar quadros";
+    if (on) setDeleteMode(false);
+  }
+
+  if (deleteBtn) {
+    deleteBtn.addEventListener("click", () => {
+      const on = document.body.dataset.boardDeleteMode !== "1";
+      setDeleteMode(on);
+    });
+  }
+
+  if (archiveBtn) {
+    archiveBtn.addEventListener("click", () => {
+      const on = document.body.dataset.boardArchiveMode !== "1";
+      setArchiveMode(on);
+    });
+  }
+
+  // Ao concluir htmx (arquivar/excluir), mantém a UX consistente
+  document.body.addEventListener("htmx:afterRequest", (e) => {
+    // se quiser: quando arquivar/excluir um quadro, pode manter o modo ligado.
+    // se você preferir DESLIGAR automaticamente após a ação, descomente:
+    // setDeleteMode(false);
+    // setArchiveMode(false);
+  });
+})();
+</script>
+
+
 
 {% endblock %}
