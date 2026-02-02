@@ -1,16 +1,19 @@
 {# boards/templates/boards/index.html #}
 {% extends "base.html" %}
 {% load static %}
+
 {% block body_class %}is-home{% endblock %}
+
 {% block extra_css %}
-<link rel="stylesheet" href="{% url 'boards:home_wallpaper_css' %}">
-<link rel="stylesheet" href="{% static 'boards/home.css' %}">
-<script src="{% static 'boards/home_groups.js' %}"></script>
-<script src="{% static 'boards/home_board_search.js' %}"></script>
+  <link rel="stylesheet" href="{% url 'boards:home_wallpaper_css' %}">
+  <link rel="stylesheet" href="{% static 'boards/home.css' %}">
+
+  {# IMPORTANT: defer evita o crash "document.body is null" dentro do home_groups.js #}
+  <script src="{% static 'boards/home_groups.js' %}" defer></script>
+  <script src="{% static 'boards/home_board_search.js' %}" defer></script>
 {% endblock %}
 
 {% block title %}NossoTrello - Boards{% endblock %}
-
 
 {% block header_center %}
   <div class="cm-header-board-cover" style="width: 260px; height: 72px;">
@@ -23,10 +26,8 @@
   </div>
 {% endblock %}
 
-
-
 {% block header_right_under_logo %}
-    <div class="w-full flex justify-center">
+  <div class="w-full flex justify-center">
     <div class="w-full max-w-[980px]">
       <div class="cm-search-panel w-full rounded-xl bg-emerald-200/70 backdrop-blur-md border border-white/30 shadow px-3 py-2">
         <div class="flex items-center gap-3">
@@ -114,7 +115,7 @@
     </div>
 
     {# ===================== CRIAR NOVO AGRUPAMENTO ===================== #}
-    <div class="flex flex-wrap gap-6" >
+    <div class="flex flex-wrap gap-6">
       <form
         class="flex gap-2 items-center flex-wrap"
         hx-post="{% url 'boards:home_group_create' %}"
@@ -178,39 +179,56 @@
     ];
   </script>
 
-  {# ===================== MODOS: EXCLUIR / ARQUIVAR (unificado, sem quebrar) ===================== #}
+  {# ===================== MODOS: EXCLUIR / ARQUIVAR (sem quebrar) ===================== #}
   <script>
-(function () {
-  const deleteBtn  = document.getElementById("toggle-delete-mode");   // <- id real
-  const archiveBtn = document.getElementById("toggle-archive-boards"); // <- id real
+  (function () {
+    function initModes() {
+      const deleteBtn  = document.getElementById("toggle-delete-mode");
+      const archiveBtn = document.getElementById("toggle-archive-mode"); // FIX: era toggle-archive-boards
 
-  function setDeleteMode(on) {
-    document.body.dataset.boardDeleteMode = on ? "1" : "0";
-    document.querySelectorAll(".delete-board-btn").forEach(el => el.classList.toggle("hidden", !on));
-    if (deleteBtn) deleteBtn.textContent = on ? "Sair do modo de exclusão" : "Excluir quadros";
-    if (on) setArchiveMode(false);
-  }
+      function setDeleteMode(on) {
+        document.body.dataset.boardDeleteMode = on ? "1" : "0";
+        document.querySelectorAll(".delete-board-btn").forEach(el => el.classList.toggle("hidden", !on));
+        if (deleteBtn) deleteBtn.textContent = on ? "Sair do modo de exclusão" : "Excluir quadros";
+        if (on) setArchiveMode(false);
+      }
 
-  function setArchiveMode(on) {
-    document.body.dataset.boardArchiveMode = on ? "1" : "0";
-    document.querySelectorAll(".archive-board-btn").forEach(el => el.classList.toggle("hidden", !on));
-    if (archiveBtn) archiveBtn.textContent = on ? "Sair do modo de arquivamento" : "Arquivar quadros";
-    if (on) setDeleteMode(false);
-  }
+      function setArchiveMode(on) {
+        document.body.dataset.boardArchiveMode = on ? "1" : "0";
+        document.querySelectorAll(".archive-board-btn").forEach(el => el.classList.toggle("hidden", !on));
+        if (archiveBtn) archiveBtn.textContent = on ? "Sair do modo de arquivamento" : "Arquivar quadros";
+        if (on) setDeleteMode(false);
+      }
 
-  deleteBtn?.addEventListener("click", (e) => {
-    e.preventDefault();
-    const on = document.body.dataset.boardDeleteMode !== "1";
-    setDeleteMode(on);
-  });
+      if (deleteBtn && !deleteBtn.dataset.bound) {
+        deleteBtn.dataset.bound = "1";
+        deleteBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          const on = document.body.dataset.boardDeleteMode !== "1";
+          setDeleteMode(on);
+        });
+      }
 
-  archiveBtn?.addEventListener("click", (e) => {
-    e.preventDefault();
-    const on = document.body.dataset.boardArchiveMode !== "1";
-    setArchiveMode(on);
-  });
-})();
-</script>
+      if (archiveBtn && !archiveBtn.dataset.bound) {
+        archiveBtn.dataset.bound = "1";
+        archiveBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          const on = document.body.dataset.boardArchiveMode !== "1";
+          setArchiveMode(on);
+        });
+      }
+    }
 
+    // Garantia operacional: mesmo que scripts externos estejam no <head>, só roda após DOM pronto.
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", initModes);
+    } else {
+      initModes();
+    }
+
+    // Se HTMX trocar trechos relevantes na home, reatacha com idempotência.
+    document.addEventListener("htmx:load", initModes);
+  })();
+  </script>
 
 {% endblock %}

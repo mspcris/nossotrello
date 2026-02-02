@@ -31,11 +31,16 @@ def boards_trash(request):
 def boards_archived(request):
     boards = (
         Board.all_objects
-        .filter(is_archived=True, is_deleted=False, boardmembership__user=request.user)
+        .filter(
+            is_archived=True,
+            is_deleted=False,
+            memberships__user=request.user,  # FIX: era boardmembership__user
+        )
         .order_by("-archived_at", "-id")
         .distinct()
     )
     return render(request, "boards/boards_archived.html", {"boards": boards})
+
 
 
 @login_required
