@@ -11,6 +11,20 @@
 
 {% block title %}NossoTrello - Boards{% endblock %}
 
+
+{% block header_center %}
+  <div class="cm-header-board-cover" style="width: 260px; height: 72px;">
+    <img
+      src="{% static 'images/multi_tarefas.gif' %}"
+      alt="Animação"
+      class="cm-header-board-cover-img"
+      style="width: 100%; height: 100%; object-fit: cover; object-position: center;"
+    >
+  </div>
+{% endblock %}
+
+
+
 {% block header_right_under_logo %}
     <div class="w-full flex justify-center">
     <div class="w-full max-w-[980px]">
