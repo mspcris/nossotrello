@@ -324,15 +324,23 @@
     }
   }
 
-  function applyPostSuccessActivityUI(responseText) {
+    function applyPostSuccessActivityUI(responseText) {
     removeActivityEmptyState();
 
     const html = String(responseText || "").trim();
     if (!html) return;
 
     const panel = document.getElementById("card-activity-panel");
-    if (panel && (html.includes('id="card-activity-panel"') || html.includes('id="activity-panel-wrapper"'))) {
+    if (
+      panel &&
+      (html.includes('id="card-activity-panel"') || html.includes('id="activity-panel-wrapper"'))
+    ) {
       panel.outerHTML = html;
+
+      // ✅ pós-render: remove blocos vazios do Quill
+      try { cleanupActivityLogSpacing(); } catch (_e) {}
+      setTimeout(() => { try { cleanupActivityLogSpacing(); } catch (_e) {} }, 60);
+
       return;
     }
 
@@ -345,10 +353,86 @@
     if (list && looksLikeItem) {
       try {
         list.insertAdjacentHTML("afterbegin", html);
+
+        // ✅ pós-insert: remove blocos vazios do Quill
+        try { cleanupActivityLogSpacing(); } catch (_e) {}
+        setTimeout(() => { try { cleanupActivityLogSpacing(); } catch (_e) {} }, 60);
+
         return;
       } catch (_e) {}
     }
   }
+
+
+    function cleanupActivityLogSpacing() {
+    try {
+      const wrapper =
+        document.getElementById("activity-panel-wrapper") ||
+        document.querySelector("#cm-activity-panel") ||
+        document.querySelector("#activity-panel-wrapper");
+      
+      
+      
+
+      if (!wrapper) return;
+
+      const contentBlocks = wrapper.querySelectorAll(".activity-content, .cm-activity-content");
+      if (!contentBlocks || !contentBlocks.length) return;
+
+      const normalizeHtml = (html) =>
+        String(html || "")
+          .replace(/\u00A0/g, " ")
+          .replace(/&nbsp;/gi, " ")
+          .replace(/\s+/g, "")
+          .toLowerCase();
+
+      const hasMedia = (el) =>
+        !!el.querySelector("img, video, audio, iframe, object, embed, table, ul, ol, blockquote");
+
+      const isEmptyNode = (node) => {
+        if (!node) return true;
+
+        // se tem mídia/lista/etc, não é vazio
+        if (hasMedia(node)) return false;
+
+        // clone e remove lixo típico do Quill
+        const tmp = node.cloneNode(true);
+
+        tmp
+          .querySelectorAll("span.ql-ui, span[data-ql-ui], span[contenteditable='false']")
+          .forEach((s) => s.remove());
+
+        tmp.querySelectorAll("br").forEach((b) => b.remove());
+
+        const txt = (tmp.textContent || "").replace(/\u00A0/g, " ").trim();
+        const html = normalizeHtml(tmp.innerHTML);
+
+        // vazio de verdade
+        if (!txt && (!html || html.replace(/<[^>]+>/g, "") === "")) return true;
+
+        return false;
+      };
+
+      contentBlocks.forEach((block) => {
+        // remove <p>/<div> vazios em qualquer posição
+        Array.from(block.querySelectorAll("p, div")).forEach((el) => {
+          if (isEmptyNode(el)) el.remove();
+        });
+
+        // limpa lixo nas bordas do bloco
+        const isIgnorableText = (n) => n.nodeType === 3 && (n.textContent || "").trim() === "";
+        const isBr = (n) => n.nodeType === 1 && n.tagName === "BR";
+
+        while (block.firstChild && (isIgnorableText(block.firstChild) || isBr(block.firstChild))) {
+          block.firstChild.remove();
+        }
+        while (block.lastChild && (isIgnorableText(block.lastChild) || isBr(block.lastChild))) {
+          block.lastChild.remove();
+        }
+      });
+    } catch (_e) {}
+  }
+
 
   // ============================================================
   // REPLY (Responder)
@@ -829,6 +913,9 @@
         try {
           const resp = evt.detail?.xhr?.responseText || "";
           applyPostSuccessActivityUI(resp);
+          
+          try { cleanupActivityLogSpacing(); } catch (_e) {}
+          setTimeout(() => { try { cleanupActivityLogSpacing(); } catch (_e) {} }, 60);
         } catch (_e) {}
 
         resetEditor();
@@ -880,6 +967,9 @@
         btn.setAttribute("aria-expanded", isComposerOpen() ? "true" : "false");
       }
     }, 0);
+
+    try { cleanupActivityLogSpacing(); } catch (_e) {}
+    setTimeout(() => { try { cleanupActivityLogSpacing(); } catch (_e) {} }, 120);
   }
 
   document.addEventListener("DOMContentLoaded", afterModalPaint);

@@ -6,34 +6,62 @@
     <h3 class="text-lg font-semibold">Atividade</h3>
   </div>
 
-  <div id="activity-panel-wrapper" class="activity-panel max-h-[60vh] overflow-y-auto pr-2">
+  <div
+    id="activity-panel-wrapper"
+    class="activity-panel max-h-[60vh] overflow-y-auto pr-2"
+  >
     <div class="cm-activity-list space-y-2">
 
       {% for log in logs|default:card.logs.all|dictsortreversed:"created_at" %}
 
-        <div class="activity-item px-3 py-2 rounded-xl border shadow-sm bg-[var(--cm-surface)] border-[var(--cm-border)]">
+        <div
+          class="activity-item px-3 py-2 rounded-xl border shadow-sm
+                 bg-[var(--cm-surface)] border-[var(--cm-border)]"
+        >
+
+          <!-- Cabeçalho: data + responder -->
           <div class="flex items-start justify-between gap-2">
-            <div class="activity-meta text-[11px] text-gray-500 mb-1 leading-none">
+            <div class="activity-meta text-[11px] text-gray-500 leading-none">
               {{ log.created_at|date:"d/m/Y H:i" }}
             </div>
 
             {% if log.actor %}
               <button
                 type="button"
-                class="cm-activity-reply-btn text-gray-500 hover:text-gray-800"
+                class="cm-activity-reply-btn"
                 title="Responder"
                 aria-label="Responder"
                 data-reply-to="{{ log.id }}"
                 data-reply-user="{% if log.actor.profile.handle %}@{{ log.actor.profile.handle }}{% else %}{{ log.actor.email }}{% endif %}"
-              >↩</button>
+              >
+                <!-- ícone reply -->
+                <svg
+                  viewBox="0 0 24 24"
+                  class="w-4 h-4 opacity-80"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path d="M10 9V5L3 12l7 7v-4.1c6 0 9.5 2 11 6-1-8-5-12-11-12z"/>
+                </svg>
+              </button>
             {% endif %}
           </div>
 
-          <div class="activity-content text-sm leading-snug [&_p]:m-0 [&_p]:leading-snug [&_p+ p]:mt-2">
+          <!-- Conteúdo -->
+          <div
+            class="activity-content text-sm leading-snug
+                   [&_p]:m-0
+                   [&_p]:leading-snug
+                   [&_p+ p]:mt-2"
+          >
             {% if log.actor %}
               <div class="text-[12px] text-gray-700 mb-1">
                 <strong>
-                  {% if log.actor.profile.handle %}@{{ log.actor.profile.handle }}{% else %}{{ log.actor.email }}{% endif %}
+                  {% if log.actor.profile.handle %}
+                    @{{ log.actor.profile.handle }}
+                  {% else %}
+                    {{ log.actor.email }}
+                  {% endif %}
                 </strong>
                 <span>Disse:</span>
               </div>
@@ -42,42 +70,63 @@
             {% if log.attachment %}
               <p class="mb-1">
                 <strong>Anexo:</strong>
-                <a href="{{ log.attachment.url }}" target="_blank" class="text-blue-600 underline">
+                <a
+                  href="{{ log.attachment.url }}"
+                  target="_blank"
+                  class="text-blue-600 underline"
+                >
                   {{ log.attachment.name|cut:"attachments/" }}
                 </a>
               </p>
             {% endif %}
 
+            {# compatível com HTML antigo e delta/text #}
             {% if log.content_delta %}
-                {{ log.content_text|linebreaksbr }}
-              {% else %}
-                {{ log.content|safe }}
-              {% endif %}
-
+              {{ log.content_text|linebreaksbr }}
+            {% else %}
+              {{ log.content|safe }}
+            {% endif %}
           </div>
 
+          <!-- Replies -->
           {% if log.replies.all %}
             <div class="mt-2 space-y-2">
               {% for r in log.replies.all %}
-                <div class="pl-3 py-2 rounded-xl border bg-white/40 border-[var(--cm-border)]">
+                <div
+                  class="pl-3 py-2 rounded-xl border
+                         bg-white/40 border-[var(--cm-border)]"
+                >
                   <div class="activity-meta text-[11px] text-gray-500 mb-1 leading-none">
                     {{ r.created_at|date:"d/m/Y H:i" }}
                   </div>
 
                   <div class="text-[12px] text-gray-700 mb-1">
                     <strong>
-                      {% if r.actor.profile.handle %}@{{ r.actor.profile.handle }}{% else %}{{ r.actor.email }}{% endif %}
+                      {% if r.actor.profile.handle %}
+                        @{{ r.actor.profile.handle }}
+                      {% else %}
+                        {{ r.actor.email }}
+                      {% endif %}
                     </strong>
                     <span>
                       Respondeu ao
                       <strong>
-                        {% if log.actor.profile.handle %}@{{ log.actor.profile.handle }}{% else %}{{ log.actor.email }}{% endif %}
+                        {% if log.actor.profile.handle %}
+                          @{{ log.actor.profile.handle }}
+                        {% else %}
+                          {{ log.actor.email }}
+                        {% endif %}
                       </strong>
                       que:
                     </span>
                   </div>
 
-                  <div class="activity-content text-sm leading-snug [&_p]:m-0 [&_p]:leading-snug [&_p+ p]:mt-2">
+                  <div
+                    class="activity-content text-sm leading-snug
+                           [&_p]:m-0
+                           [&_p]:leading-snug
+                           [&_p+ p]:mt-2"
+                  >
                     {{ r.content|safe }}
                   </div>
                 </div>

@@ -1906,3 +1906,72 @@ html.dark #modal #modal-breadcrumb{
 @media (prefers-reduced-motion: reduce){
   #cm-root .avisoradical strong{ animation: none !important; }
 }
+
+
+/* ============================================================
+   Reply button (Atividade)
+   ============================================================ */
+#cm-root #activity-panel-wrapper .cm-activity-reply-btn{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+
+  border: 1px solid var(--cm-border);
+  background: rgba(255,255,255,0.35);
+  backdrop-filter: blur(8px);
+
+  cursor: pointer;
+  transition: transform 120ms ease, background 120ms ease, box-shadow 120ms ease;
+}
+
+#cm-root #activity-panel-wrapper .cm-activity-reply-ico{
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+  opacity: 0.9;
+}
+
+#cm-root #activity-panel-wrapper .cm-activity-reply-btn:hover{
+  background: rgba(255,255,255,0.55);
+  transform: translateY(-1px) scale(1.04);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.10);
+}
+
+#cm-root #activity-panel-wrapper .cm-activity-reply-btn:active{
+  transform: translateY(0px) scale(0.98);
+  box-shadow: none;
+}
+
+/* Tooltip (sem JS): usa data-tooltip */
+#cm-root #activity-panel-wrapper .cm-activity-reply-btn{
+  position: relative;
+}
+
+#cm-root #activity-panel-wrapper .cm-activity-reply-btn::after{
+  content: attr(data-tooltip);
+  position: absolute;
+  right: 0;
+  top: -34px;
+
+  font-size: 11px;
+  line-height: 1;
+  padding: 6px 8px;
+  border-radius: 10px;
+
+  background: rgba(0,0,0,0.75);
+  color: #fff;
+
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+  transition: opacity 120ms ease, transform 120ms ease;
+  white-space: nowrap;
+}
+
+#cm-root #activity-panel-wrapper .cm-activity-reply-btn:hover::after{
+  opacity: 1;
+  transform: translateY(0);
+}

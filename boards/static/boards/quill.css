@@ -42,3 +42,31 @@
   cursor: pointer;
 }
 
+/* ============================================================
+   Quill renderizado dentro do LOG de ATIVIDADE
+   - remove margem padrão do <p> que causa “buracos” gigantes
+   - mantém espaçamento controlado entre parágrafos reais
+   ============================================================ */
+
+#card-activity-panel .activity-content p,
+#card-activity-panel .activity-content ul,
+#card-activity-panel .activity-content ol,
+#card-activity-panel .activity-content blockquote {
+  margin: 0 !important;
+}
+
+#card-activity-panel .activity-content p + p,
+#card-activity-panel .activity-content p + ul,
+#card-activity-panel .activity-content p + ol,
+#card-activity-panel .activity-content ul + p,
+#card-activity-panel .activity-content ol + p {
+  margin-top: 6px !important;
+}
+
+#card-activity-panel .activity-content br {
+  line-height: 0 !important;
+}
+
+#card-activity-panel .activity-content {
+  line-height: 1.35 !important;
+}
