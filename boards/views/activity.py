@@ -1,5 +1,6 @@
 # boards/views/activity.py
 import re
+import json
 
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, get_object_or_404
@@ -48,6 +49,56 @@ def _safe_user_handle_or_email(u):
     return ""
 
 
+def _compact_quill_html(s: str) -> str:
+    s = (s or "").strip()
+
+    # normaliza NBSP
+    s = s.replace("\u00A0", " ")
+    s = re.sub(r"&nbsp;", " ", s, flags=re.I)
+
+    # remove spans vazios comuns do Quill (cursor/ui/etc)
+    s = re.sub(r"<span[^>]*>\s*</span>", "", s, flags=re.I)
+
+    # remove <p> vazios mesmo se tiverem spans vazios e <br ...>
+    empty_p_re = re.compile(
+        r"<p[^>]*>(?:\s|<br[^>]*>|&nbsp;|<span[^>]*>\s*</span>)*</p>",
+        flags=re.I,
+    )
+
+    # aplica em loop para “varrer” sequências grandes
+    while True:
+        new_s = empty_p_re.sub("", s)
+        if new_s == s:
+            break
+        s = new_s
+
+    # remove div vazio (cinturão e suspensório)
+    s = re.sub(
+        r"<div[^>]*>(?:\s|<br[^>]*>|&nbsp;|<span[^>]*>\s*</span>)*</div>",
+        "",
+        s,
+        flags=re.I,
+    )
+
+    # colapsa múltiplos <br>
+    s = re.sub(r"(?:<br[^>]*>\s*){2,}", "<br>", s, flags=re.I)
+
+    return s.strip()
+
+
+def _parse_delta(delta_raw: str):
+    """
+    Aceita string JSON do Delta. Retorna dict ou {}.
+    """
+    try:
+        if not delta_raw:
+            return {}
+        obj = json.loads(delta_raw)
+        return obj if isinstance(obj, dict) else {}
+    except Exception:
+        return {}
+
+
 @login_required
 @require_http_methods(["GET"])
 def activity_panel(request, card_id):
@@ -81,13 +132,6 @@ def activity_panel(request, card_id):
     )
 
 
-
-
-
-
-
-
-
 @login_required
 @require_POST
 def add_activity(request, card_id):
@@ -98,8 +142,15 @@ def add_activity(request, card_id):
     if not can_edit_board(request.user, board):
         return HttpResponse("Somente leitura.", status=403)
 
-    raw = (request.POST.get("content") or "").strip()
-    if not raw:
+    # legado: HTML
+    raw_html = (request.POST.get("content") or "").strip()
+
+    # ✅ novo: Delta + texto (source of truth)
+    delta_raw = (request.POST.get("delta") or "").strip()
+    text_raw = (request.POST.get("text") or "").strip()
+
+    # regra mínima: precisa ter delta OU html
+    if not delta_raw and not raw_html:
         return HttpResponse("Conteúdo vazio", status=400)
 
     reply_to_id = (request.POST.get("reply_to") or "").strip()
@@ -110,53 +161,40 @@ def add_activity(request, card_id):
         except Exception:
             parent_log = None
 
-    html, saved_paths = _save_base64_images_to_media(raw, folder="quill")
+    # se veio html, mantém pipeline atual (base64->media etc)
+    saved_paths = []
+    clean_html = ""
+    if raw_html:
+        html, saved_paths = _save_base64_images_to_media(raw_html, folder="quill")
+        clean_html = _compact_quill_html(html)
 
-    def _trim_quill_empty_blocks(s: str) -> str:
-        s = (s or "").strip()
+    # parse delta
+    delta_obj = _parse_delta(delta_raw)
 
-        # remove blocos vazios no começo/fim (padrão Quill)
-        # <p><br></p>, <p><br/></p>, <p>&nbsp;</p>, etc.
-        s = re.sub(
-            r'^(?:\s*<p>(?:\s|&nbsp;|<br\s*/?>)*</p>\s*)+',
-            "",
-            s,
-            flags=re.I,
-        )
-        s = re.sub(
-            r'(?:\s*<p>(?:\s|&nbsp;|<br\s*/?>)*</p>\s*)+$',
-            "",
-            s,
-            flags=re.I,
-        )
-
-        return s.strip()
-
-    clean_html = _trim_quill_empty_blocks(html)
-    if not clean_html:
+    # validação: se não tem texto e não tem html útil e delta vazio => vazio
+    if not text_raw and not clean_html and not delta_obj:
         return HttpResponse("Conteúdo vazio", status=400)
 
-    # ✅ Agora: atividade “normal” vira CardLog puro (sem wrapper).
-    # ✅ Resposta (reply) também vira CardLog puro com reply_to.
-    CardLog.objects.create(
+    log = CardLog.objects.create(
         card=card,
         actor=request.user,
         reply_to=parent_log if parent_log else None,
-        content=clean_html,
+        content=clean_html,          # legado (pode ficar vazio quando delta é o foco)
+        content_delta=delta_obj,     # ✅ novo
+        content_text=text_raw,       # ✅ novo
         attachment=None,
     )
 
     board.version += 1
     board.save(update_fields=["version"])
 
-    # menções: @handle e emails no texto bruto
-    # ✅ Se for reply: notifica o autor original via mentions (sem poluir o HTML salvo)
+    # menções: usa TEXTO (mais estável); fallback para HTML se necessário
     try:
-        raw_for_mentions = raw
+        raw_for_mentions = text_raw or raw_html
         if parent_log and parent_log.actor:
             who = _safe_user_handle_or_email(parent_log.actor)
             if who:
-                raw_for_mentions = f"{who} {raw}"
+                raw_for_mentions = f"{who} {raw_for_mentions}"
 
         process_mentions_and_notify(
             request=request,
@@ -168,6 +206,7 @@ def add_activity(request, card_id):
     except Exception:
         pass
 
+    # attachments via imagens (se existirem no HTML legado)
     referenced_paths = _extract_media_image_paths(clean_html or "", folder="quill")
     all_paths = list(dict.fromkeys((saved_paths or []) + (referenced_paths or [])))
 
@@ -181,20 +220,21 @@ def add_activity(request, card_id):
         )
 
     # garante anexos também para imagens já existentes em /media/quill/
-    img_urls = re.findall(r'src=(["\'])([^"\']+)\1', clean_html, flags=re.IGNORECASE)
-    for _q, url in img_urls:
-        if "/media/quill/" not in (url or ""):
-            continue
+    if clean_html:
+        img_urls = re.findall(r'src=(["\'])([^"\']+)\1', clean_html, flags=re.IGNORECASE)
+        for _q, url in img_urls:
+            if "/media/quill/" not in (url or ""):
+                continue
 
-        relative_path = url.split("/media/")[-1].strip()
-        if not relative_path:
-            continue
+            relative_path = url.split("/media/")[-1].strip()
+            if not relative_path:
+                continue
 
-        try:
-            if not card.attachments.filter(file=relative_path).exists():
-                CardAttachment.objects.create(card=card, file=relative_path)
-        except Exception:
-            pass
+            try:
+                if not card.attachments.filter(file=relative_path).exists():
+                    CardAttachment.objects.create(card=card, file=relative_path)
+            except Exception:
+                pass
 
     try:
         card.refresh_from_db()
@@ -244,15 +284,6 @@ def add_activity(request, card_id):
     return HttpResponse(activity_html + oob_html)
 
 
-
-
-
-
-
-
-
-
-
 @require_POST
 def quill_upload(request):
     return JsonResponse({"error": "Not implemented"}, status=501)
@@ -277,11 +308,11 @@ def cards_unread_activity(request, board_id):
         )
     }
 
-    # logs que NÃO são do próprio usuário
+    # logs que NÃO são do próprio usuário (mais correto que procurar email no conteúdo)
     logs = (
         CardLog.objects
         .filter(card__column__board=board)
-        .exclude(content__icontains=request.user.email)
+        .exclude(actor=request.user)
     )
 
     counts = {}

@@ -97,7 +97,6 @@ class Board(models.Model):
         help_text="Cores do prazo: {'ok':'#..','warn':'#..','overdue':'#..'}",
     )
 
-
     image = models.ImageField(upload_to="board_covers/", null=True, blank=True)
 
     background_image = models.ImageField(
@@ -112,7 +111,6 @@ class Board(models.Model):
     # soft delete
     is_deleted = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(null=True, blank=True)
-
 
     # legado
     home_wallpaper_filename = models.CharField(max_length=255, blank=True, default="")
@@ -160,7 +158,6 @@ class BoardMembership(models.Model):
 
     def __str__(self):
         return f"{self.user} em {self.board} ({self.role})"
-
 
 
 # ============================================================
@@ -217,16 +214,13 @@ class Card(models.Model):
     tags = models.CharField(max_length=255, blank=True, null=True)
     tag_colors = models.JSONField(default=dict, blank=True)
 
-
     #+ ============================================================
     #+PRAZOS (vencimento) + DATA INÍCIO
     #+ ============================================================
-    
     start_date = models.DateField(null=True, blank=True)   # ✅ DATA DE INÍCIO
     due_date = models.DateField(null=True, blank=True)
     due_warn_date = models.DateField(null=True, blank=True)
     due_notify = models.BooleanField(default=True)
-
 
     cover_image = models.ImageField(upload_to="card_covers/", null=True, blank=True)
 
@@ -248,14 +242,13 @@ class Card(models.Model):
         return self.title
 
 
-
 # ============================================================
 # CARD LOG
 # ============================================================
 class CardLog(models.Model):
     card = models.ForeignKey(Card, related_name="logs", on_delete=models.CASCADE)
 
-    actor = models.ForeignKey(   # ✅ NOVO
+    actor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
         blank=True,
@@ -270,7 +263,13 @@ class CardLog(models.Model):
         on_delete=models.SET_NULL,
     )
 
-    content = models.TextField(blank=True)
+    # legado (HTML)
+    content = models.TextField(blank=True, default="")
+
+    # ✅ novo: source of truth do Quill
+    content_delta = models.JSONField(blank=True, default=dict)
+    content_text = models.TextField(blank=True, default="")
+
     attachment = models.FileField(upload_to="logs/", blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -362,12 +361,11 @@ class UserProfile(models.Model):
         default=True,
         help_text="Mostrar atividade fixa na lateral do modal do card (estilo Trello)",
     )
-        
+
     activity_counts = models.BooleanField(
         default=True,
         help_text="Mostrar contadores de atividade (comentários/itens) no modal do card",
     )
-
 
     avatar_choice = models.CharField(max_length=60, blank=True, default="")
     display_name = models.CharField(max_length=120, blank=True, default="")
@@ -486,7 +484,6 @@ class Mention(models.Model):
 # ============================================================
 # HOME GROUPS (agrupamentos pessoais de quadros)
 # ============================================================
-
 class BoardGroup(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -573,8 +570,6 @@ class BoardActivityReadState(models.Model):
         return f"{self.user} leu {self.board} até {self.last_seen_at}"
 
 
-
-
 from django.conf import settings
 
 class BoardAccessRequest(models.Model):
@@ -595,8 +590,6 @@ class BoardAccessRequest(models.Model):
 
     def __str__(self):
         return f"{self.user.email} pediu acesso ao board {self.board.name}"
-
-
 
 
 # END boards/models.py

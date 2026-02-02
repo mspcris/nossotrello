@@ -48,7 +48,12 @@
               </p>
             {% endif %}
 
-            {{ log.content|safe }}
+            {% if log.content_delta %}
+                {{ log.content_text|linebreaksbr }}
+              {% else %}
+                {{ log.content|safe }}
+              {% endif %}
+
           </div>
 
           {% if log.replies.all %}
