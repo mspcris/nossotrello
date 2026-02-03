@@ -16,6 +16,48 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+def _send_whatsapp_two_messages(*, number: str, message: str, url: str) -> None:
+    """
+    Sempre envia 2 mensagens:
+    1) comunicado (message)
+    2) somente link (url)
+    """
+    number = (number or "").strip()
+    message = (message or "").strip()
+    url = (url or "").strip()
+
+    if not number or not getattr(settings, "PRESSTICKET_TOKEN", "").strip():
+        return
+
+    base_url = getattr(settings, "PRESSTICKET_BASE_URL", "https://api.atendimento.camim.com.br")
+    token = getattr(settings, "PRESSTICKET_TOKEN", "")
+    user_id = getattr(settings, "PRESSTICKET_USER_ID", 0)
+    queue_id = getattr(settings, "PRESSTICKET_QUEUE_ID", 0)
+    whatsapp_id = getattr(settings, "PRESSTICKET_WHATSAPP_ID", 0)
+
+    # 1) comunicado
+    if message:
+        send_text_message(
+            base_url=base_url,
+            token=token,
+            number=number,
+            body=message,
+            user_id=user_id,
+            queue_id=queue_id,
+            whatsapp_id=whatsapp_id,
+        )
+
+    # 2) link puro (sem texto)
+    if url:
+        send_text_message(
+            base_url=base_url,
+            token=token,
+            number=number,
+            body=url,
+            user_id=user_id,
+            queue_id=queue_id,
+            whatsapp_id=whatsapp_id,
+        )
 
 
 def _format_mmss(seconds: int) -> str:
@@ -187,33 +229,30 @@ def card_tracktime_start(request, card_id):
 
         # ✅ WhatsApp (MVP): dispara mensagem no start, sem quebrar o track-time se falhar
     try:
-        prof = _get_or_create_profile(request.user)  # já existe no arquivo
+        prof = _get_or_create_profile(request.user)
         phone = (prof.telefone or "").strip()
 
         if phone and settings.PRESSTICKET_TOKEN:
-            card_url = entry.card_url_cache or request.build_absolute_uri(
-                reverse("boards:card_modal", args=[card.id])
-            )
+            card_url = (entry.card_url_cache or "").strip()
+            if not card_url:
+                card_url = request.build_absolute_uri(reverse("boards:card_modal", args=[card.id]))
 
-            msg = (
+            msg1 = (
                 f"⏱️ Início do Track-time\n"
-                f"Card: {card.title}\n"
-                f"Abrir: {card_url}"
+                f"Card: {card.title}"
             )
 
-            send_text_message(
-                base_url=getattr(settings, "PRESSTICKET_BASE_URL", "https://api.atendimento.camim.com.br"),
-                token=getattr(settings, "PRESSTICKET_TOKEN", ""),
+            _send_whatsapp_two_messages(
                 number=phone,
-                body=msg,
-                user_id=getattr(settings, "PRESSTICKET_USER_ID", 0),
-                queue_id=getattr(settings, "PRESSTICKET_QUEUE_ID", 0),
-                whatsapp_id=getattr(settings, "PRESSTICKET_WHATSAPP_ID", 0),
+                message=msg1,
+                url=card_url,   # 2ª mensagem: SOMENTE o link
             )
+
     except PressTicketError as e:
         logger.warning("[tracktime] WhatsApp não enviado (PressTicketError): %s", e)
     except Exception as e:
         logger.exception("[tracktime] WhatsApp não enviado (erro inesperado): %s", e)
+
 
 
     return card_tracktime_panel(request, card_id)
@@ -233,6 +272,38 @@ def card_tracktime_stop(request, card_id):
 
     if entry:
         entry.stop()
+
+        if entry:
+            entry.stop()
+
+        # ✅ WhatsApp no STOP (2 mensagens: comunicado + link puro)
+        try:
+            prof = _get_or_create_profile(request.user)
+            phone = (prof.telefone or "").strip()
+
+            if phone and settings.PRESSTICKET_TOKEN:
+                card_url = (entry.card_url_cache or "").strip()
+                title = (entry.card_title_cache or "").strip() or "Card"
+
+                total_min = int(getattr(entry, "minutes", 0) or 0)
+
+                msg1 = (
+                    f"⏱️ Fim do Track-time\n"
+                    f"Card: {title}\n"
+                    f"Total: {total_min} min"
+                )
+
+                _send_whatsapp_two_messages(
+                    number=phone,
+                    message=msg1,
+                    url=card_url,  # 2ª mensagem: SOMENTE o link
+                )
+
+        except PressTicketError as e:
+            logger.warning("[tracktime] WhatsApp STOP não enviado (PressTicketError): %s", e)
+        except Exception as e:
+            logger.exception("[tracktime] WhatsApp STOP não enviado (erro inesperado): %s", e)
+
 
     return card_tracktime_panel(request, card_id)
 
