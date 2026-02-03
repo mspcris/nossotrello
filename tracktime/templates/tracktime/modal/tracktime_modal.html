@@ -29,6 +29,7 @@
       hx-target="#tt-tab-body"
       hx-swap="innerHTML"
     >
+    
       Semana
     </button>
 
@@ -53,6 +54,20 @@
     >
       Cadastros
     </button>
+
+    <button
+  type="button"
+  class="tt-tab tt-btn"
+  data-tt-tab="online"
+  hx-get="{% url 'tracktime:tab_online' %}"
+  hx-target="#tt-tab-body"
+  hx-swap="innerHTML"
+>
+  On-Line - Sem track-time
+</button>
+
+
+    
   </div>
 
   <!-- BODY -->

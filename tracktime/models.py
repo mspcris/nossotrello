@@ -333,4 +333,16 @@ class TimeEntry(models.Model):
         )
 
 
+
+
+class TrackPresence(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="track_presence")
+    last_ping_at = models.DateTimeField(default=timezone.now)
+    tab = models.CharField(max_length=40, blank=True, default="")
+    path = models.CharField(max_length=200, blank=True, default="")
+
+    def __str__(self):
+        return f"{self.user_id} @ {self.last_ping_at}"
+
+
 #END tracktime/models.py

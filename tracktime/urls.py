@@ -41,4 +41,10 @@ urlpatterns = [
 
     # Dados (JSON) para polling do “Ao vivo”
     path("live.json", views.tracktime_live_json, name="live_json"),
+
+    # Painel de atividades fora do track-time
+    path("modal/tab/online/", views.tracktime_tab_online, name="tab_online"),
+    path("online/json/", views.tracktime_online_json, name="online_json"),
+    path("presence/ping/", views.tracktime_presence_ping, name="presence_ping"),
+
 ]

@@ -8,12 +8,19 @@ from django.urls import reverse
 from django.conf import settings
 from django.core.mail import send_mail
 from .models import Project, ActivityType, TimeEntry
-from boards.models import Card, Board
+from boards.models import Card, Board, CardLog
 import re
 from boards.models import UserProfile
 from tracktime.services.pressticket import send_text_message, PressTicketError
 import logging
 from django.db import IntegrityError, transaction
+from django.db.models import Max
+from django.views.decorators.http import require_http_methods
+from datetime import timedelta
+from django.contrib.auth import get_user_model
+User = get_user_model()
+from .models import TrackPresence
+
 
 logger = logging.getLogger(__name__)
 
@@ -1022,3 +1029,178 @@ def tracktime_phone_save(request):
 
     # fallback não-HTMX: volta
     return redirect(request.META.get("HTTP_REFERER") or "/")
+
+
+
+
+
+
+
+@login_required
+@require_http_methods(["POST"])
+def tracktime_presence_ping(request):
+    tab = (request.POST.get("tab") or "").strip()[:40]
+    path = (request.POST.get("path") or "").strip()[:200]
+
+    now = timezone.now()
+    TrackPresence.objects.update_or_create(
+        user=request.user,
+        defaults={"last_ping_at": now, "tab": tab, "path": path},
+    )
+    return JsonResponse({"ok": True, "ts": now.isoformat()})
+
+
+@login_required
+def tracktime_tab_online(request):
+    return render(request, "tracktime/modal/tabs/online.html", {})
+
+
+
+
+@login_required
+def tracktime_online_json(request):
+    now = timezone.now()
+
+    # Quem "pode aparecer" no painel (presença recente)
+    presence_after = now - timedelta(minutes=30)
+    presences = (
+        TrackPresence.objects
+        .filter(last_ping_at__gte=presence_after)
+        .select_related("user", "user__profile")
+        .order_by("-last_ping_at")
+    )
+
+    user_ids = list(presences.values_list("user_id", flat=True))
+    if not user_ids:
+        return JsonResponse({"ts": now.isoformat(), "items": []})
+
+    # 1) Timers rodando => sempre "ativo" (independente de 9 min)
+    running_qs = (
+        TimeEntry.objects
+        .filter(ended_at__isnull=True, user_id__in=user_ids)
+        .order_by("-started_at")
+        .only("user_id", "started_at", "card_title_cache", "card_url_cache")
+    )
+
+    running_by_user = {}
+    for e in running_qs:
+        if e.user_id not in running_by_user:
+            running_by_user[e.user_id] = {
+                "started_at": e.started_at.isoformat() if e.started_at else None,
+                "card_title": (e.card_title_cache or "").strip(),
+                "card_url": (e.card_url_cache or "").strip(),
+            }
+
+    # 2) Atividades (CardLog) nos últimos 9 minutos => "ativo"
+    activity_after = now - timedelta(minutes=9)
+
+    logs_qs = (
+        CardLog.objects
+        .filter(actor_id__in=user_ids, created_at__gte=activity_after)
+        .select_related("card", "card__column", "card__column__board", "actor")
+        .order_by("-created_at")
+    )
+
+    logs_by_user = {}
+    for lg in logs_qs:
+        lst = logs_by_user.setdefault(lg.actor_id, [])
+        if len(lst) >= 20:
+            continue
+
+        card = getattr(lg, "card", None)
+        board_id = None
+        board_name = None
+        card_title = None
+        card_url = ""
+
+        if card:
+            card_title = (getattr(card, "title", "") or "").strip()
+            col = getattr(card, "column", None)
+            if col:
+                board_id = getattr(col, "board_id", None)
+                board = getattr(col, "board", None)
+                if board:
+                    board_name = (getattr(board, "name", "") or "").strip() or None
+
+            if board_id:
+                board_url = reverse("boards:board_detail", kwargs={"board_id": int(board_id)})
+                card_url = f"{board_url}?card={int(card.id)}"
+
+        lst.append({
+            "type": "cardlog",
+            "at": lg.created_at.isoformat(),
+            "content": (lg.content or "").strip(),  # html/text
+            "card_id": getattr(card, "id", None),
+            "card_title": card_title,
+            "card_url": card_url,
+            "board_id": board_id,
+            "board_name": board_name,
+        })
+
+    items = []
+
+    for p in presences:
+        u = p.user
+        prof = getattr(u, "profile", None)
+
+        display = (getattr(u, "get_full_name", lambda: "")() or "").strip()
+        if prof and getattr(prof, "display_name", ""):
+            display = (prof.display_name or "").strip() or display
+        if not display:
+            display = (getattr(u, "email", "") or "Usuário").strip()
+
+        handle = (getattr(prof, "handle", "") or "").strip() if prof else ""
+
+        activities = []
+
+        # timer rodando vira a primeira linha do histórico
+        run = running_by_user.get(u.id)
+        if run:
+            t = (run.get("card_title") or "Card").strip()
+            url = (run.get("card_url") or "").strip()
+            activities.append({
+                "type": "tracktime",
+                "at": now.isoformat(),  # mantém sempre "ativo"
+                "text": f"Track-time rodando: {t}",
+                "card_title": t,
+                "card_url": url,
+            })
+
+        # logs recentes (<= 9 min)
+        for lg in logs_by_user.get(u.id, []):
+            # Texto amigável: remove HTML aqui no backend não é obrigatório;
+            # o frontend já pode limpar, mas deixamos o conteúdo raw para flexibilidade.
+            activities.append({
+                "type": "cardlog",
+                "at": lg["at"],
+                "content": lg["content"],
+                "card_title": lg.get("card_title"),
+                "card_url": lg.get("card_url"),
+                "board_name": lg.get("board_name"),
+            })
+
+        # Regra do painel:
+        # - se não tem timer rodando
+        # - e não tem atividade nos últimos 9 min
+        # => some
+        if not activities:
+            continue
+
+        # ordena atividades por data desc
+        activities.sort(key=lambda x: x.get("at") or "", reverse=True)
+
+        last_activity_at = activities[0].get("at")
+
+        items.append({
+            "user_id": u.id,
+            "user": display,
+            "handle": handle,
+            "last_ping_at": p.last_ping_at.isoformat(),
+            "activities": activities[:20],
+            "last_activity_at": last_activity_at,
+        })
+
+    # ordena por atividade mais recente
+    items.sort(key=lambda x: x.get("last_activity_at") or "", reverse=True)
+
+    return JsonResponse({"ts": now.isoformat(), "items": items})

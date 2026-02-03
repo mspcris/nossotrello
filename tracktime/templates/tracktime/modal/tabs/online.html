@@ -1,0 +1,162 @@
+{# tracktime/templates/tracktime/modal/tabs/online.html #}
+
+<div class="tt-live">
+  <div class="tt-live-header">
+    <div class="tt-live-title">
+      <div style="font-weight:900;">Online</div>
+      <div class="tt-muted" style="font-size:12px;">Atividade nos últimos 9 min (ou track-time rodando).</div>
+    </div>
+
+    <button type="button" class="btn btn-sm" id="tt-online-refresh-btn">Atualizar</button>
+  </div>
+
+  <div id="tt-online-list" class="tt-live-list">
+    <div class="tt-muted">Carregando...</div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const list = document.getElementById("tt-online-list");
+  if (!list) return;
+
+  function esc(s){return String(s||"").replace(/[&<>"']/g,(c)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));}
+  function pad2(n){return String(n).padStart(2,"0");}
+  function hhmm(iso){
+    if(!iso) return "";
+    try{ const d=new Date(iso); return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }catch(e){ return ""; }
+  }
+
+  function stripHtml(html) {
+    const div = document.createElement("div");
+    div.innerHTML = String(html || "");
+    return (div.textContent || div.innerText || "").trim();
+  }
+
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(";").shift();
+    return "";
+  }
+
+  async function ping(){
+    try{
+      const fd = new FormData();
+      fd.append("tab", "online");
+      fd.append("path", window.location.pathname + window.location.search);
+
+      const csrftoken = getCookie("csrftoken");
+
+      await fetch("{% url 'tracktime:presence_ping' %}", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "X-Requested-With": "XMLHttpRequest",
+          "X-CSRFToken": csrftoken,
+        },
+        body: fd
+      });
+    }catch(e){}
+  }
+
+  async function fetchOnline(){
+    const res = await fetch("{% url 'tracktime:online_json' %}", {
+      method:"GET",
+      credentials:"same-origin",
+      headers: {"Accept":"application/json","X-Requested-With":"XMLHttpRequest"},
+      cache:"no-store"
+    });
+    if(!res.ok) return null;
+    return await res.json();
+  }
+
+  function render(data){
+    const items = (data && data.items) || [];
+    if(!items.length){
+      list.innerHTML = `<div class="tt-empty">Ninguém em atividade agora.</div>`;
+      return;
+    }
+
+    list.innerHTML = `
+      <div class="space-y-2">
+        ${items.map(it => {
+          const user = esc(it.user);
+          const handle = it.handle ? ` <span class="tt-muted">@${esc(it.handle)}</span>` : "";
+          const lastPing = hhmm(it.last_ping_at);
+
+          const acts = Array.isArray(it.activities) ? it.activities : [];
+
+          const lines = acts.map(a => {
+            const at = hhmm(a.at);
+            if (a.type === "tracktime") {
+              const title = esc(a.card_title || "Card");
+              const url = a.card_url ? esc(a.card_url) : "";
+              const node = url ? `<a href="${url}" target="_blank" rel="noopener">${title}</a>` : title;
+              return `• ${at} — ⏱️ Track-time: ${node}`;
+            }
+
+            // cardlog
+            const raw = a.content || "";
+            const text = esc(stripHtml(raw)).slice(0, 180);
+            const cardTitle = esc(a.card_title || "Card");
+            const cardUrl = a.card_url ? esc(a.card_url) : "";
+            const cardNode = cardUrl ? `<a href="${cardUrl}" target="_blank" rel="noopener">${cardTitle}</a>` : cardTitle;
+
+            return `• ${at} — ${cardNode}: ${text || "Atualização"}`;
+          });
+
+          return `
+            <div class="tt-card">
+              <div class="tt-body">
+                <div class="tt-row">
+                  <div class="tt-left" style="min-width:0;">
+                    <div style="font-weight:900; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                      ${user}${handle}
+                    </div>
+
+                    <div class="tt-muted" style="font-size:12px; margin-top:6px; display:flex; flex-direction:column; gap:4px;">
+                      ${lines.join("") || "—"}
+                    </div>
+
+                    <div class="tt-muted" style="font-size:11px; margin-top:8px;">
+                      Ping: ${lastPing}
+                    </div>
+                  </div>
+
+                  <div class="tt-times">
+                    <div class="tt-mmss">●</div>
+                    <div class="tt-start">&nbsp;</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join("")}
+      </div>
+    `;
+  }
+
+  async function refresh(){
+    await ping();
+    const data = await fetchOnline();
+    if (data) render(data);
+  }
+
+  const btn = document.getElementById("tt-online-refresh-btn");
+  if (btn) btn.addEventListener("click", refresh);
+
+  refresh();
+  const t = setInterval(() => { if(!document.hidden) refresh(); }, 3000);
+
+  const obs = new MutationObserver(() => {
+    if (!document.getElementById("tt-online-list")) {
+      clearInterval(t);
+      obs.disconnect();
+    }
+  });
+  obs.observe(document.body, { childList:true, subtree:true });
+})();
+</script>
+
+{# END tracktime/templates/tracktime/modal/tabs/online.html #}
