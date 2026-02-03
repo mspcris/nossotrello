@@ -179,7 +179,13 @@ def card_tracktime_start(request, card_id):
     # ✅ GATE: telefone obrigatório antes de qualquer efeito colateral
     prof = _get_or_create_profile(request.user)
     if not (prof.telefone or "").strip():
-        return _render_phone_required_modal(request, card_id=card.id, project_id=project_id, activity_id=activity_id)
+      
+
+        url = reverse("tracktime:modal") + "?tab=portal&reason=phone_required"
+        resp = HttpResponse(status=204)
+        resp["HX-Redirect"] = url
+        return resp
+
 
     project = get_object_or_404(
         Project,
