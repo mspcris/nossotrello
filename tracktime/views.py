@@ -217,9 +217,12 @@ def card_tracktime_start(request, card_id):
         card_id=card.id,
         board_id=card.column.board_id,
         card_title_cache=card.title,
-        card_url_cache=request.build_absolute_uri(
-            reverse("boards:card_modal", args=[card.id])
-        ),
+        card_url_cache=(
+        settings.SITE_URL.rstrip("/")
+        + reverse("boards:board_detail", kwargs={"board_id": card.column.board_id})
+        + f"?card={card.id}"
+    ),
+
         started_at=now,
         minutes=0,
     )
@@ -232,10 +235,13 @@ def card_tracktime_start(request, card_id):
         prof = _get_or_create_profile(request.user)
         phone = (prof.telefone or "").strip()
 
-        if phone and settings.PRESSTICKET_TOKEN:
-            card_url = (entry.card_url_cache or "").strip()
-            if not card_url:
-                card_url = request.build_absolute_uri(reverse("boards:card_modal", args=[card.id]))
+        if not card_url:
+            card_url = (
+            settings.SITE_URL.rstrip("/")
+            + reverse("boards:board_detail", kwargs={"board_id": card.column.board_id})
+            + f"?card={card.id}"
+    )
+
 
             msg1 = (
                 f"⏱️ Início do Track-time\n"
@@ -273,10 +279,7 @@ def card_tracktime_stop(request, card_id):
     if entry:
         entry.stop()
 
-        if entry:
-            entry.stop()
-
-        # ✅ WhatsApp no STOP (2 mensagens: comunicado + link puro)
+       # ✅ WhatsApp no STOP (2 mensagens: comunicado + link puro)
         try:
             prof = _get_or_create_profile(request.user)
             phone = (prof.telefone or "").strip()
@@ -354,19 +357,22 @@ def card_tracktime_manual(request, card_id):
     now = timezone.now()
 
     TimeEntry.objects.create(
-        user=request.user,
-        project_id=project.id,
-        activity_type_id=activity.id,
-        minutes=minutes_int,
-        started_at=now,
-        ended_at=now,
-        card_id=card.id,
-        board_id=card.column.board_id,
-        card_title_cache=card.title,
-        card_url_cache=request.build_absolute_uri(
-            reverse("boards:card_modal", args=[card.id])
-        ),
-    )
+    user=request.user,
+    project_id=project.id,
+    activity_type_id=activity.id,
+    minutes=minutes_int,
+    started_at=now,
+    ended_at=now,
+    card_id=card.id,
+    board_id=card.column.board_id,
+    card_title_cache=card.title,
+    card_url_cache=(
+        settings.SITE_URL.rstrip("/")
+        + reverse("boards:board_detail", kwargs={"board_id": card.column.board_id})
+        + f"?card={card.id}"
+    ),
+)
+
 
     return card_tracktime_panel(request, card_id)
 
