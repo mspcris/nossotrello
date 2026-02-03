@@ -13,6 +13,7 @@ import re
 from boards.models import UserProfile
 from tracktime.services.pressticket import send_text_message, PressTicketError
 import logging
+from django.db import IntegrityError, transaction
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +58,55 @@ def _send_whatsapp_two_messages(*, number: str, message: str, url: str) -> None:
             user_id=user_id,
             queue_id=queue_id,
             whatsapp_id=whatsapp_id,
+        )
+
+def _get_or_create_activity_type_for_user(*, user, name: str) -> ActivityType:
+    name = (name or "").strip()
+    if not name:
+        return None
+
+    try:
+        with transaction.atomic():
+            obj, created = ActivityType.objects.get_or_create(
+                name=name,
+                created_by=user,
+                defaults={"is_active": True},
+            )
+            if not created and not obj.is_active:
+                obj.is_active = True
+                obj.save(update_fields=["is_active"])
+            return obj
+    except IntegrityError:
+        # fallback para corrida/duplicidade: busca o existente
+        return (
+            ActivityType.objects
+            .filter(created_by=user, name=name)
+            .order_by("-id")
+            .first()
+        )
+
+def _get_or_create_project_for_user(*, user, name: str) -> Project:
+    name = (name or "").strip()
+    if not name:
+        return None
+
+    try:
+        with transaction.atomic():
+            obj, created = Project.objects.get_or_create(
+                name=name,
+                created_by=user,
+                defaults={"is_active": True},
+            )
+            if not created and not obj.is_active:
+                obj.is_active = True
+                obj.save(update_fields=["is_active"])
+            return obj
+    except IntegrityError:
+        return (
+            Project.objects
+            .filter(created_by=user, name=name)
+            .order_by("-id")
+            .first()
         )
 
 
@@ -449,14 +499,16 @@ def portal(request):
         if "project_name" in request.POST:
             name = (request.POST.get("project_name") or "").strip()
             if name:
-                Project.objects.create(name=name, created_by=request.user)
+                _get_or_create_project_for_user(user=request.user, name=name)
 
         if "activity_name" in request.POST:
             name = (request.POST.get("activity_name") or "").strip()
             if name:
-                ActivityType.objects.create(name=name, created_by=request.user)
+                _get_or_create_activity_type_for_user(user=request.user, name=name)
 
         return redirect("tracktime:portal")
+
+
 
     return render(
         request,
@@ -570,15 +622,16 @@ def tracktime_tab_portal(request):
         if "project_name" in request.POST:
             name = (request.POST.get("project_name") or "").strip()
             if name:
-                Project.objects.create(name=name, created_by=request.user)
+                _get_or_create_project_for_user(user=request.user, name=name)
 
         if "activity_name" in request.POST:
             name = (request.POST.get("activity_name") or "").strip()
             if name:
-                ActivityType.objects.create(name=name, created_by=request.user)
+                _get_or_create_activity_type_for_user(user=request.user, name=name)
 
         projects = Project.objects.filter(created_by=request.user).order_by("name")
         activities = ActivityType.objects.filter(created_by=request.user).order_by("name")
+
 
     return render(
         request,

@@ -2,6 +2,7 @@
 
 from django.conf import settings
 from django.db import models
+from django.db.models import Q, UniqueConstraint
 from django.utils import timezone
 import hashlib
 import secrets
@@ -42,7 +43,7 @@ class ActivityType(models.Model):
     Tipo de atividade (Brainstorm, Dev, Bugfix, etc).
     """
 
-    name = models.CharField(max_length=120, unique=True)
+    name = models.CharField(max_length=120)
     is_active = models.BooleanField(default=True)
 
     created_by = models.ForeignKey(
@@ -59,6 +60,13 @@ class ActivityType(models.Model):
 
     class Meta:
         ordering = ["name"]
+        constraints = [
+            UniqueConstraint(
+                fields=["created_by", "name"],
+                name="uniq_activitytype_created_by_name",
+                condition=Q(created_by__isnull=False),
+            )
+        ]
 
     def __str__(self) -> str:
         return self.name
