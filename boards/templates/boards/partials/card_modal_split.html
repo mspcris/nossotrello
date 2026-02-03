@@ -325,7 +325,8 @@
                     rows="2"
                     autocomplete="off"
                     style="min-height:56px; resize:vertical;"
-                    placeholder="Digite as etiquetas separadas por vírgula"></textarea>
+                    placeholder="Digite as etiquetas separadas por vírgula">{{ card.tags|default_if_none:"" }}</textarea>
+
 
                   <div class="cm-tag-catalog">
                     <label>Cadastre etiquetas fixas para utilizar quando quiser. Digite uma por vez e Enter (ou clique em Incluir). Após, clique nelas para adicionar ao quadro.</label>

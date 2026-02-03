@@ -307,7 +307,9 @@
             name="tags"
             id="cm-tags-input"
             autocomplete="off"
+            value="{{ card.tags|default_if_none:"" }}"
           />
+
 
           <div class="cm-tag-catalog">
             <div class="cm-tag-create">

@@ -548,7 +548,11 @@ def board_running(request, board_id: int):
 
 @login_required
 def tracktime_modal(request):
-    return render(request, "tracktime/modal/tracktime_modal.html", {})
+    tab = (request.GET.get("tab") or "live").strip().lower()
+    if tab not in {"live", "portal", "week", "month"}:
+        tab = "live"
+    return render(request, "tracktime/modal/tracktime_modal.html", {"tab": tab})
+
 
 
 @login_required

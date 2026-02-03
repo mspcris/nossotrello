@@ -92,6 +92,12 @@
       class="tt-grid"
     >
       {% csrf_token %}
+      
+
+
+
+
+
 
       <div>
         <select id="tt-project" name="project" required class="tt-select">
@@ -113,6 +119,20 @@
         <button type="submit" class="tt-btn tt-btn-primary">Start</button>
       </div>
     </form>
+
+
+
+      <div class="tt-row" style="justify-content:flex-end;">
+  <button
+    type="button"
+    class="tt-btn"
+    hx-get="{% url 'tracktime:modal' %}?tab=portal"
+    hx-target="#modal"
+    hx-swap="innerHTML"
+  >
+    Cadastrar projeto/atividade
+  </button>
+</div>
 
     {# Manual só quando NÃO está rodando #}
     <form
