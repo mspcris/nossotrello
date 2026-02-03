@@ -1055,6 +1055,18 @@ def tracktime_tab_online(request):
     return render(request, "tracktime/modal/tabs/online.html", {})
 
 
+def _cardlog_to_text(log: CardLog) -> str:
+    txt = (getattr(log, "content_text", "") or "").strip()
+    if txt:
+        return txt
+
+    html = (getattr(log, "content", "") or "").strip()
+    if html:
+        return html  # deixa o frontend stripHtml limpar
+
+    return "Atualização"
+
+
 
 
 @login_required
@@ -1062,7 +1074,7 @@ def tracktime_online_json(request):
     now = timezone.now()
 
     # Quem "pode aparecer" no painel (presença recente)
-    presence_after = now - timedelta(minutes=30)
+    presence_after = now - timedelta(minutes=9)
     presences = (
         TrackPresence.objects
         .filter(last_ping_at__gte=presence_after)
@@ -1126,16 +1138,20 @@ def tracktime_online_json(request):
                 board_url = reverse("boards:board_detail", kwargs={"board_id": int(board_id)})
                 card_url = f"{board_url}?card={int(card.id)}"
 
+        text = _cardlog_to_text(lg)
+
         lst.append({
             "type": "cardlog",
             "at": lg.created_at.isoformat(),
-            "content": (lg.content or "").strip(),  # html/text
+            "text": text,  # ✅ sempre vem preenchido
+            "content": (lg.content or "").strip(),  # opcional: mantém raw pra quill
             "card_id": getattr(card, "id", None),
             "card_title": card_title,
             "card_url": card_url,
             "board_id": board_id,
             "board_name": board_name,
         })
+
 
     items = []
 
@@ -1159,12 +1175,15 @@ def tracktime_online_json(request):
             t = (run.get("card_title") or "Card").strip()
             url = (run.get("card_url") or "").strip()
             activities.append({
-                "type": "tracktime",
-                "at": now.isoformat(),  # mantém sempre "ativo"
-                "text": f"Track-time rodando: {t}",
-                "card_title": t,
-                "card_url": url,
+                "type": "cardlog",
+                "at": lg["at"],
+                "text": lg.get("text") or "",     # ✅
+                "content": lg.get("content") or "",  # opcional
+                "card_title": lg.get("card_title"),
+                "card_url": lg.get("card_url"),
+                "board_name": lg.get("board_name"),
             })
+
 
         # logs recentes (<= 9 min)
         for lg in logs_by_user.get(u.id, []):
@@ -1173,11 +1192,13 @@ def tracktime_online_json(request):
             activities.append({
                 "type": "cardlog",
                 "at": lg["at"],
-                "content": lg["content"],
+                "text": lg.get("text") or "",     # ✅
+                "content": lg.get("content") or "",  # opcional
                 "card_title": lg.get("card_title"),
                 "card_url": lg.get("card_url"),
                 "board_name": lg.get("board_name"),
             })
+
 
         # Regra do painel:
         # - se não tem timer rodando

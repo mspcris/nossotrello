@@ -97,14 +97,17 @@
             }
 
             // cardlog
-            const raw = a.content || "";
+            const raw = (a.text || a.content || "");
             const text = esc(stripHtml(raw)).slice(0, 180);
+
             const cardTitle = esc(a.card_title || "Card");
             const cardUrl = a.card_url ? esc(a.card_url) : "";
-            const cardNode = cardUrl ? `<a href="${cardUrl}" target="_blank" rel="noopener">${cardTitle}</a>` : cardTitle;
+            const cardNode = cardUrl
+            ? `<a href="${cardUrl}" target="_blank" rel="noopener">${cardTitle}</a>`
+            : cardTitle;
 
             return `• ${at} — ${cardNode}: ${text || "Atualização"}`;
-          });
+
 
           return `
             <div class="tt-card">
