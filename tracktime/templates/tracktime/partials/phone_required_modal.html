@@ -25,29 +25,29 @@
     </div>
 
     <form
-      class="p-4"
-      hx-post="{% url 'tracktime:phone_save' %}"
-      hx-swap="none"
-      hx-on:htmx:afterRequest="
-        if (event.detail && event.detail.successful) {
-          const root = document.getElementById('tt-phone-modal');
-          if (root) root.remove();
+        class="p-4"
+        hx-post="{% url 'tracktime:phone_save' %}"
+        hx-swap="none"
+        hx-on::after-request="
+          if (event.detail && event.detail.successful) {
+            const root = document.getElementById('tt-phone-modal');
+            if (root) root.remove();
 
-          const cardId = this.querySelector('input[name=card_id]')?.value;
-          const projectId = this.querySelector('input[name=project_id]')?.value;
-          const activityId = this.querySelector('input[name=activity_id]')?.value;
+            const cardId = this.querySelector('input[name=card_id]')?.value;
+            const projectId = this.querySelector('input[name=project_id]')?.value;
+            const activityId = this.querySelector('input[name=activity_id]')?.value;
 
-          // ✅ re-dispara o Start e atualiza o painel do track-time
-          if (cardId && projectId && activityId && window.htmx) {
-            window.htmx.ajax('POST', '/track-time/cards/' + cardId + '/track-time/start/', {
-              target: '#cm-tracktime-panel',
-              swap: 'innerHTML',
-              values: { project: projectId, activity: activityId }
-            });
+            if (cardId && projectId && activityId && window.htmx) {
+              window.htmx.ajax('POST', '/track-time/cards/' + cardId + '/track-time/start/', {
+                target: '#cm-tracktime-panel',
+                swap: 'innerHTML',
+                values: { project: projectId, activity: activityId }
+              });
+            }
           }
-        }
-      "
-    >
+        "
+      >
+
       {% csrf_token %}
 
       <input type="hidden" name="card_id" value="{{ card_id }}">
