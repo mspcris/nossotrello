@@ -231,17 +231,19 @@ def card_tracktime_start(request, card_id):
     entry.save(update_fields=["confirm_due_at", "auto_stop_at"])
 
         # ✅ WhatsApp (MVP): dispara mensagem no start, sem quebrar o track-time se falhar
+       # ✅ WhatsApp no START (2 mensagens: comunicado + link puro)
     try:
         prof = _get_or_create_profile(request.user)
         phone = (prof.telefone or "").strip()
 
-        if not card_url:
-            card_url = (
-            settings.SITE_URL.rstrip("/")
-            + reverse("boards:board_detail", kwargs={"board_id": card.column.board_id})
-            + f"?card={card.id}"
-    )
-
+        if phone and settings.PRESSTICKET_TOKEN:
+            card_url = (entry.card_url_cache or "").strip()
+            if not card_url:
+                card_url = (
+                    settings.SITE_URL.rstrip("/")
+                    + reverse("boards:board_detail", kwargs={"board_id": card.column.board_id})
+                    + f"?card={card.id}"
+                )
 
             msg1 = (
                 f"⏱️ Início do Track-time\n"
@@ -251,13 +253,14 @@ def card_tracktime_start(request, card_id):
             _send_whatsapp_two_messages(
                 number=phone,
                 message=msg1,
-                url=card_url,   # 2ª mensagem: SOMENTE o link
+                url=card_url,  # 2ª mensagem: SOMENTE o link
             )
 
     except PressTicketError as e:
-        logger.warning("[tracktime] WhatsApp não enviado (PressTicketError): %s", e)
+        logger.warning("[tracktime] WhatsApp START não enviado (PressTicketError): %s", e)
     except Exception as e:
-        logger.exception("[tracktime] WhatsApp não enviado (erro inesperado): %s", e)
+        logger.exception("[tracktime] WhatsApp START não enviado (erro inesperado): %s", e)
+
 
 
 
