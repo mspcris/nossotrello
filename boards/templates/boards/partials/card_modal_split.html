@@ -162,7 +162,8 @@
                 <textarea
   name="description"
   class="cm-textarea cm-textarea-resizable"
->{{ card.description|default_if_none:"" }}</textarea>
+>{{ card.description|default_if_none:""|safe }}</textarea>
+
 
                 <div class="cm-muted" style="margin-top:8px;"></div>
               </div>

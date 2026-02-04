@@ -410,13 +410,26 @@ function bindQuillToTextarea(textarea, boardId) {
 window.Modal.quill.init = function () {
   const boardId = getBoardIdFromUrl();
 
-  // 1) Descrição (div + hidden input -> quill)
+  // 1) Preferência: DIV + hidden input (se existir)
   const descDiv = document.getElementById("quill-editor");
   const descHidden = document.getElementById("description-input");
-  bindQuillToDiv(descDiv, descHidden, boardId);
+  if (descDiv && descHidden) {
+    bindQuillToDiv(descDiv, descHidden, boardId);
+    return;
+  }
 
-  // 2) Atividade: mantida somente em modal.activity_quill.js
+  // 2) Fallback: textarea (modal split atual)
+  const descTa =
+    document.querySelector('#cm-root textarea[name="description"]') ||
+    document.querySelector('textarea[name="description"]');
+
+  if (descTa) bindQuillToTextarea(descTa, boardId);
 };
+
+
+
+
+
 
 // ✅ sempre que o HTMX atualizar o corpo do modal, re-inicializa o Quill
 document.body.addEventListener("htmx:afterSwap", function (e) {
