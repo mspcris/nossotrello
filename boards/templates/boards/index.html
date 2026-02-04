@@ -17,12 +17,17 @@
 
 
 
-
 {% block header_center %}
-  <div class="cm-home-cover">
-    <img src="{% static 'images/multi_tarefas.gif' %}" alt="Animação" loading="lazy">
+  <div class="cm-header-board-cover" style="width: 260px; height: 72px;">
+    <img
+      src="{% static 'images/multi_tarefas.gif' %}"
+      class="cm-header-board-cover-img"
+      style="width: 100%; height: 100%; object-fit: cover; object-position: center;"
+    >
   </div>
 {% endblock %}
+
+
 
 
 

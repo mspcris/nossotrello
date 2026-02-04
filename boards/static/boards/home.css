@@ -292,155 +292,42 @@ header {
 
 
 
-/* =========================================================
-   HOME header (mobile): imagem menor e CENTRALIZADA
-   ========================================================= */
-@media (max-width: 767px) {
-
-  /* garante que o header sirva de referência pro "centro absoluto" */
-  body.is-home header,
-  body.is-home .nt-header,
-  body.is-home .site-header,
-  body.is-home #site-header,
-  body.is-home .header {
-    position: relative;
-  }
-
-  /* capa/animacao central e menor, fora do fluxo */
-  body.is-home .cm-header-board-cover {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-
-    width: 140px;   /* ajuste fino */
-    height: 34px;   /* ajuste fino */
-
-    border-radius: 999px;
-    overflow: hidden;
-
-    pointer-events: none; /* não briga com menu/ações */
-    z-index: 2;
-  }
-
-  body.is-home .cm-header-board-cover-img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    object-position: center;
-    display: block;
-  }
-}
-
-
-
-
-/* DESKTOP (padrão): mantém seu tamanho original */
-body.is-home .cm-header-board-cover--desktop{
-  width: 260px;
-  height: 72px;
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-body.is-home .cm-header-board-cover-img{
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center;
-  display: block;
-}
-
-/* MOBILE: menor e central absoluto */
-@media (max-width: 767px){
-  body.is-home header,
-  body.is-home .nt-header,
-  body.is-home .site-header,
-  body.is-home #site-header,
-  body.is-home .header{
-    position: relative;
-  }
-
-  body.is-home .cm-header-board-cover--desktop{
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-
-    width: 140px;
-    height: 34px;
-
-    pointer-events: none;
-    z-index: 2;
-  }
-}
-
-
-/* HOME: dimensionamento do cover no header (não afeta board_detail) */
-.is-home .cm-cover--home{
-  width: 260px;   /* desktop/tablet */
-  height: 72px;
-}
-
-/* Mobile retrato */
-@media (max-width: 767px){
-  .is-home .cm-cover--home{
-    width: 170px;
-    height: 48px;
-  }
-}
-
-
-/* HOME header cover: “igual board” (pílula, recorte, central) sem depender do board_detail.css */
-.is-home .cm-home-cover{
-  flex: 0 0 auto;
-  width: 260px;     /* desktop */
-  height: 72px;
-  border-radius: 9999px;  /* pílula */
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid rgba(255,255,255,.25);
-  background: rgba(255,255,255,.15);
-  backdrop-filter: blur(6px);
-}
-
-.is-home .cm-home-cover img{
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: cover;
-  object-position: center;
-}
-
-/* Só no mobile: menor (sem mexer no desktop) */
-@media (max-width: 767px){
-  .is-home .cm-home-cover{
-    width: 170px;
-    height: 48px;
-  }
-}
-
-
-
-/* desktop / default (não mexe) */
-.is-home .cm-home-cover{
-  width: 260px;
-  height: 72px;
-}
-
-/* mobile: metade do tamanho */
-@media (max-width: 767px){
-  .is-home .cm-home-cover{
-    width: 130px;   /* 260 / 2 */
-    height: 36px;   /* 72 / 2  */
-  }
-}
-
 
 
 /* ================================
    END HOME - NOSSO TRELLO
    Layout unificado e previsível
    ================================ */
+
+
+
+
+
+/* =========================================================
+   HOME: pílula do header — só mexe no mobile
+   ========================================================= */
+
+/* garante pílula sempre (desktop e mobile) */
+.is-home .cm-header-board-cover{
+  border-radius: 9999px;
+  overflow: hidden;
+  display: block;
+}
+
+.is-home .cm-header-board-cover-img{
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center;
+}
+
+/* MOBILE: metade do tamanho + tenta centralizar */
+@media (max-width: 767px){
+  .is-home .cm-header-board-cover{
+    width: 130px !important;  /* 260 / 2 */
+    height: 36px !important;  /* 72 / 2 */
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
