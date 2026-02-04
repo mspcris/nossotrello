@@ -1,78 +1,65 @@
 // boards/static/boards/modal/modal.quill.js
+// boards/static/boards/modal/modal.quill.js
 (() => {
   if (!window.Modal) return;
 
   window.Modal.quill = window.Modal.quill || {};
 
   function getBoardIdFromUrl() {
-    // /board/<id>/...
     const m = (window.location.pathname || "").match(/\/board\/(\d+)\b/);
     return m ? m[1] : null;
   }
 
-function renderMentionCard(item) {
-  const name =
-    (item?.display_name || "").trim() ||
-    (item?.handle ? `@${item.handle}` : "") ||
-    (item?.email || "").trim();
+  function renderMentionCard(item) {
+    const name =
+      (item?.display_name || "").trim() ||
+      (item?.handle ? `@${item.handle}` : "") ||
+      (item?.email || "").trim();
 
-  const handle = (item?.handle || "").trim();
-  const email = (item?.email || "").trim();
-  const avatar = (item?.avatar_url || "").trim();
+    const handle = (item?.handle || "").trim();
+    const email = (item?.email || "").trim();
+    const avatar = (item?.avatar_url || "").trim();
 
-  const root = document.createElement("div");
-  root.className = "mention-card";
+    const root = document.createElement("div");
+    root.className = "mention-card";
 
-  // avatar
-  let avatarEl;
-  if (avatar) {
-    avatarEl = document.createElement("img");
-    avatarEl.className = "mention-avatar";
-    avatarEl.src = avatar;
-    avatarEl.alt = "";
-  } else {
-    avatarEl = document.createElement("div");
-    avatarEl.className = "mention-avatar mention-avatar-fallback";
-    avatarEl.textContent = (handle || name || "?").slice(0, 2).toUpperCase();
-  }
+    let avatarEl;
+    if (avatar) {
+      avatarEl = document.createElement("img");
+      avatarEl.className = "mention-avatar";
+      avatarEl.src = avatar;
+      avatarEl.alt = "";
+    } else {
+      avatarEl = document.createElement("div");
+      avatarEl.className = "mention-avatar mention-avatar-fallback";
+      avatarEl.textContent = (handle || name || "?").slice(0, 2).toUpperCase();
+    }
 
-  // meta
-  const meta = document.createElement("div");
-  meta.className = "mention-meta";
+    const meta = document.createElement("div");
+    meta.className = "mention-meta";
 
-  const nameEl = document.createElement("div");
-  nameEl.className = "mention-name";
-  nameEl.textContent = name;
+    const nameEl = document.createElement("div");
+    nameEl.className = "mention-name";
+    nameEl.textContent = name;
+    meta.appendChild(nameEl);
 
-  meta.appendChild(nameEl);
+    if (handle) {
+      const handleEl = document.createElement("div");
+      handleEl.className = "mention-handle";
+      handleEl.textContent = `@${handle}`;
+      meta.appendChild(handleEl);
+    }
 
-  if (handle) {
-    const handleEl = document.createElement("div");
-    handleEl.className = "mention-handle";
-    handleEl.textContent = `@${handle}`;
-    meta.appendChild(handleEl);
-  }
+    if (email) {
+      const emailEl = document.createElement("div");
+      emailEl.className = "mention-email";
+      emailEl.textContent = email;
+      meta.appendChild(emailEl);
+    }
 
-  if (email) {
-    const emailEl = document.createElement("div");
-    emailEl.className = "mention-email";
-    emailEl.textContent = email;
-    meta.appendChild(emailEl);
-  }
-
-  root.appendChild(avatarEl);
-  root.appendChild(meta);
-
-  return root; // 🔑 HTMLElement
-}
-
-  function escapeHtml(s) {
-    return String(s || "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
+    root.appendChild(avatarEl);
+    root.appendChild(meta);
+    return root;
   }
 
   function makeMentionConfig(boardId) {
@@ -117,7 +104,6 @@ function renderMentionCard(item) {
         quill.insertEmbed(range.index, "image", base64, "user");
         quill.setSelection(range.index + 1, 0, "user");
 
-        // ✅ força auto-grow após embed
         try { quill.__autoGrowApply?.(); } catch (_e) {}
         try { requestAnimationFrame(() => quill.__autoGrowApply?.()); } catch (_e) {}
       };
@@ -125,224 +111,215 @@ function renderMentionCard(item) {
     } catch (_e) {}
   }
 
-
-
-
-
-
-
   function ensureModalScrollable(modalScroll) {
-  if (!modalScroll) return;
-  // garante barra no modal (scroll único)
-  modalScroll.style.setProperty("overflow-y", "auto", "important");
-  modalScroll.style.setProperty("-webkit-overflow-scrolling", "touch", "important");
-}
-
-function keepCaretVisibleInScroll(quill, modalScroll) {
-  try {
-    if (!quill || !modalScroll) return;
-    const range = quill.getSelection?.();
-    if (!range) return;
-
-    const b = quill.getBounds(range.index); // posição do caret dentro do editor
-    const edRect = quill.root.getBoundingClientRect();
-    const scRect = modalScroll.getBoundingClientRect();
-
-    // posição absoluta do caret na viewport
-    const caretY = edRect.top + b.top;
-
-    const topLimit = scRect.top + 24;
-    const botLimit = scRect.bottom - 24;
-
-    if (caretY < topLimit) {
-      modalScroll.scrollTop -= (topLimit - caretY);
-    } else if (caretY > botLimit) {
-      modalScroll.scrollTop += (caretY - botLimit);
-    }
-  } catch (_e) {}
-}
-
-
-
-
-
-
-
-
-function autoGrowQuill(quill, opts = {}) {
-  const min = Number(opts.min ?? 220);
-  const max = opts.max; // pode ser Infinity
-
-  const editor = quill?.root;
-  if (!editor) return;
-
-  const container = editor.closest(".ql-container");
-  if (!container) return;
-
-  const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
-
-  function getManualMinHeight() {
-    const v = parseInt(container.dataset.cmManualMinHeight || "0", 10);
-    return Number.isFinite(v) ? v : 0;
+    if (!modalScroll) return;
+    modalScroll.style.setProperty("overflow-y", "auto", "important");
+    modalScroll.style.setProperty("-webkit-overflow-scrolling", "touch", "important");
   }
 
-  function resetInternalScroll() {
+  function keepCaretVisibleInScroll(quill, modalScroll) {
     try {
-      editor.scrollTop = 0;
-      container.scrollTop = 0;
+      if (!quill || !modalScroll) return;
+      const range = quill.getSelection?.();
+      if (!range) return;
+
+      const b = quill.getBounds(range.index);
+      const edRect = quill.root.getBoundingClientRect();
+      const scRect = modalScroll.getBoundingClientRect();
+
+      const caretY = edRect.top + b.top;
+      const topLimit = scRect.top + 24;
+      const botLimit = scRect.bottom - 24;
+
+      if (caretY < topLimit) {
+        modalScroll.scrollTop -= (topLimit - caretY);
+      } else if (caretY > botLimit) {
+        modalScroll.scrollTop += (caretY - botLimit);
+      }
     } catch (_e) {}
   }
 
-  function apply() {
+  function autoGrowQuill(quill, opts = {}) {
+    const min = Number(opts.min ?? 220);
+
+    const editor = quill?.root;
+    if (!editor) return;
+
+    const container = editor.closest(".ql-container");
+    if (!container) return;
+
+    function getManualMinHeight() {
+      const v = parseInt(container.dataset.cmManualMinHeight || "0", 10);
+      return Number.isFinite(v) ? v : 0;
+    }
+
+    function resetInternalScroll() {
+      try {
+        editor.scrollTop = 0;
+        container.scrollTop = 0;
+      } catch (_e) {}
+    }
+
+    function resolveModalScrollContainer() {
+      if (quill.__cmModalScroll) return quill.__cmModalScroll;
+
+      return (
+        editor.closest(".card-modal-scroll") ||
+        editor.closest("#modal-body") ||
+        document.querySelector("#card-modal-root .card-modal-scroll") ||
+        document.querySelector("#modal-body") ||
+        null
+      );
+    }
+
+    function ensureModalScroll(modalScroll) {
+      if (!modalScroll) return;
+
+      // scroll único: quem rola é o modal
+      modalScroll.style.setProperty("overflow-y", "auto", "important");
+      modalScroll.style.setProperty("overflow-x", "hidden", "important");
+      modalScroll.style.setProperty("-webkit-overflow-scrolling", "touch", "important");
+
+      // ❌ NÃO setar max-height aqui (CSS do modal governa isso)
+      // modalScroll.style.setProperty("max-height", "80vh", "important");
+    }
+
+    function apply() {
+      const modalScroll = resolveModalScrollContainer();
+      ensureModalScroll(modalScroll);
+
+      // Quill: nunca rolar internamente
+      container.style.setProperty("display", "block", "important");
+      container.style.setProperty("height", "auto", "important");
+      container.style.setProperty("max-height", "none", "important");
+      container.style.setProperty("overflow", "hidden", "important");
+
+      editor.style.setProperty("display", "block", "important");
+      editor.style.setProperty("height", "auto", "important");
+      editor.style.setProperty("min-height", "0", "important");
+      editor.style.setProperty("overflow", "visible", "important");
+
+      editor.style.setProperty("box-sizing", "border-box", "important");
+      editor.style.setProperty("width", "100%", "important");
+      editor.style.setProperty("max-width", "none", "important");
+      editor.style.setProperty("padding", "12px 14px 14px 14px", "important");
+
+      const manualMin = getManualMinHeight();
+      const needed = (editor.scrollHeight || 0) + 2;
+      const target = Math.max(min, manualMin, needed);
+
+      container.style.setProperty("height", `${Math.ceil(target)}px`, "important");
+
+      requestAnimationFrame(() => {
+        resetInternalScroll();
+        requestAnimationFrame(resetInternalScroll);
+      });
+    }
+
+    quill.on("text-change", () => {
+      apply();
+      requestAnimationFrame(apply);
+      setTimeout(apply, 0);
+      setTimeout(apply, 50);
+    });
+
+    quill.on("selection-change", () => {
+      resetInternalScroll();
+      requestAnimationFrame(resetInternalScroll);
+    });
+
+    editor.addEventListener(
+      "load",
+      () => {
+        requestAnimationFrame(apply);
+        setTimeout(apply, 0);
+        setTimeout(apply, 50);
+      },
+      true
+    );
+
+    requestAnimationFrame(apply);
+    setTimeout(apply, 0);
+    setTimeout(apply, 50);
+
+    quill.__autoGrowApply = apply;
+    return apply;
+  }
+
+  function bindQuillToTextarea(textarea, boardId) {
+    if (!textarea) return null;
+    if (textarea.dataset.quillBound === "1") return null;
+    textarea.dataset.quillBound = "1";
+
+    const host = document.createElement("div");
+    host.className = "cm-quill";
+    textarea.insertAdjacentElement("afterend", host);
+
+    textarea.style.display = "none";
+
     const modalScroll =
-      quill.__cmModalScroll ||
-      editor.closest("#modal-body.card-modal-scroll") ||
       document.querySelector("#modal-body.card-modal-scroll") ||
       document.querySelector("#modal-body") ||
       document.querySelector("#card-modal-root .card-modal-scroll");
 
-    if (modalScroll) {
-      modalScroll.style.setProperty("overflow-y", "auto", "important");
-      modalScroll.style.setProperty("overflow-x", "hidden", "important");
-      modalScroll.style.setProperty("-webkit-overflow-scrolling", "touch", "important");
-      modalScroll.style.setProperty("overscroll-behavior", "contain", "important");
+    const quillOptions = {
+      theme: "snow",
+      modules: {
+        toolbar: [
+          [{ header: [1, 2, 3, false] }],
+          ["bold", "italic", "underline", "strike"],
+          [{ list: "ordered" }, { list: "bullet" }],
+          ["link", "image"],
+          ["clean"],
+        ],
+        mention: makeMentionConfig(boardId),
+      },
+      placeholder: textarea.getAttribute("placeholder") || "",
+    };
+
+    if (modalScroll) quillOptions.scrollingContainer = modalScroll;
+    ensureModalScrollable(modalScroll);
+
+    const quill = new Quill(host, quillOptions);
+    quill.__cmModalScroll = modalScroll || null;
+
+    window.Modal.quill._descQuill = quill;
+
+    const initial = (textarea.value || "").trim();
+    if (initial) quill.root.innerHTML = initial;
+
+    const container = quill.root.closest(".ql-container");
+    if (container) delete container.dataset.cmManualMinHeight;
+
+    autoGrowQuill(quill, { min: 100, max: Infinity });
+
+    quill.on("selection-change", () => {
+      keepCaretVisibleInScroll(quill, quill.__cmModalScroll);
+      requestAnimationFrame(() => keepCaretVisibleInScroll(quill, quill.__cmModalScroll));
+    });
+
+    quill.on("text-change", () => {
+      textarea.value = quill.root.innerHTML;
+      try { textarea.dispatchEvent(new Event("input", { bubbles: true })); } catch (_e) {}
+
+      keepCaretVisibleInScroll(quill, quill.__cmModalScroll);
+      requestAnimationFrame(() => keepCaretVisibleInScroll(quill, quill.__cmModalScroll));
+    });
+
+    const toolbar = quill.getModule("toolbar");
+    if (toolbar) {
+      toolbar.addHandler("image", () => {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "image/*";
+        input.onchange = () => {
+          const file = input.files?.[0];
+          if (file) insertBase64ImageIntoQuill(quill, file);
+        };
+        input.click();
+      });
     }
 
-    container.style.setProperty("display", "block", "important");
-    container.style.setProperty("max-height", "none", "important");
-    container.style.setProperty("overflow", "visible", "important");
-
-    editor.style.setProperty("display", "block", "important");
-    editor.style.setProperty("height", "auto", "important");
-    editor.style.setProperty("min-height", "0", "important");
-    editor.style.setProperty("overflow", "visible", "important");
-    editor.style.setProperty("padding", "12px 14px 14px 14px", "important");
-
-    const manualMin = getManualMinHeight();
-    const needed = (editor.scrollHeight || 0);
-
-    const hardMax = (max === Infinity) ? Infinity : (Number.isFinite(max) ? max : Infinity);
-
-    const target = clamp(Math.max(min, manualMin, needed), min, hardMax);
-    container.style.setProperty("height", `${Math.ceil(target)}px`, "important");
-
-    requestAnimationFrame(() => {
-      resetInternalScroll();
-      requestAnimationFrame(resetInternalScroll);
-    });
-  }
-
-  quill.on("text-change", () => {
-    apply();
-    requestAnimationFrame(apply);
-  });
-
-  quill.on("selection-change", () => {
-    resetInternalScroll();
-    requestAnimationFrame(resetInternalScroll);
-  });
-
-  editor.addEventListener("load", () => requestAnimationFrame(apply), true);
-
-  requestAnimationFrame(apply);
-  setTimeout(apply, 0);
-
-  quill.__autoGrowApply = apply;
-  return apply;
-}
-
-
-
-
-
-function bindQuillToTextarea(textarea, boardId) {
-  if (!textarea) return null;
-  if (textarea.dataset.quillBound === "1") return null;
-  textarea.dataset.quillBound = "1";
-
-  // cria host do editor logo após o textarea
-  const host = document.createElement("div");
-  host.className = "cm-quill";
-  textarea.insertAdjacentElement("afterend", host);
-
-  // esconde textarea (mantém no form)
-  textarea.style.display = "none";
-
-    // 🔑 quem deve rolar é o modal (scroll único), não o editor
-  const modalScroll =
-    document.querySelector("#modal-body.card-modal-scroll") ||
-    document.querySelector("#modal-body") ||
-    document.querySelector("#card-modal-root .card-modal-scroll");
-
-  const quillOptions = {
-    theme: "snow",
-    modules: {
-      toolbar: [
-        [{ header: [1, 2, 3, false] }],
-        ["bold", "italic", "underline", "strike"],
-        [{ list: "ordered" }, { list: "bullet" }],
-        ["link", "image"],
-        ["clean"],
-      ],
-      mention: makeMentionConfig(boardId),
-    },
-    placeholder: textarea.getAttribute("placeholder") || "",
-  };
-
-  if (modalScroll) quillOptions.scrollingContainer = modalScroll;
-  
-
-  ensureModalScrollable(modalScroll);
-
-
-  const quill = new Quill(host, quillOptions);
-
-  quill.__cmModalScroll = modalScroll || null;
-
-
-  window.Modal.quill._descQuill = quill;
-  // conteúdo inicial
-  const initial = (textarea.value || "").trim();
-  if (initial) quill.root.innerHTML = initial;
-
-  // ✅ AUTO-GROW (Descrição) — depois do conteúdo inicial
-  const container = quill.root.closest(".ql-container");
-  if (container) delete container.dataset.cmManualMinHeight;
-
-  autoGrowQuill(quill, { min: 100, max: Infinity });
-
-
-  quill.on("selection-change", () => {
-    keepCaretVisibleInScroll(quill, quill.__cmModalScroll);
-    requestAnimationFrame(() => keepCaretVisibleInScroll(quill, quill.__cmModalScroll));
-  });
-
-  quill.on("text-change", () => {
-    textarea.value = quill.root.innerHTML;
-    try { textarea.dispatchEvent(new Event("input", { bubbles: true })); } catch (_e) {}
-
-    keepCaretVisibleInScroll(quill, quill.__cmModalScroll);
-    requestAnimationFrame(() => keepCaretVisibleInScroll(quill, quill.__cmModalScroll));
-  });
-
-
-
-  // upload image base64 quando inserir via toolbar
-  const toolbar = quill.getModule("toolbar");
-  if (toolbar) {
-    toolbar.addHandler("image", () => {
-      const input = document.createElement("input");
-      input.type = "file";
-      input.accept = "image/*";
-      input.onchange = () => {
-        const file = input.files?.[0];
-        if (file) insertBase64ImageIntoQuill(quill, file);
-      };
-      input.click();
-    });
-  }
-
-    // se colar imagem dentro do editor, mantém o comportamento antigo (base64 no conteúdo)
     quill.root.addEventListener("paste", (e) => {
       try {
         const cd = e.clipboardData;
@@ -353,7 +330,6 @@ function bindQuillToTextarea(textarea, boardId) {
         const file = imgItem.getAsFile?.();
         if (!file) return;
 
-        // deixa o texto normal e intercepta imagem
         e.preventDefault();
         insertBase64ImageIntoQuill(quill, file);
       } catch (_e) {}
@@ -362,155 +338,117 @@ function bindQuillToTextarea(textarea, boardId) {
     return quill;
   }
 
-
-
-
-
-
   function bindQuillToDiv(div, hiddenInput, boardId) {
-  if (!div || !hiddenInput) return null;
-  if (div.dataset.quillBound === "1") return null;
-  div.dataset.quillBound = "1";
+    if (!div || !hiddenInput) return null;
+    if (div.dataset.quillBound === "1") return null;
+    div.dataset.quillBound = "1";
 
-  // 🔑 quem deve rolar é o modal (scroll único), não o editor
-  const modalScroll =
-    document.querySelector("#modal-body.card-modal-scroll") ||
-    document.querySelector("#modal-body") ||
-    document.querySelector("#card-modal-root .card-modal-scroll");
+    const modalScroll =
+      document.querySelector("#modal-body.card-modal-scroll") ||
+      document.querySelector("#modal-body") ||
+      document.querySelector("#card-modal-root .card-modal-scroll");
 
-  const quillOptions = {
-    theme: "snow",
-    modules: {
-      toolbar: [
-        [{ header: [1, 2, 3, false] }],
-        ["bold", "italic", "underline", "strike"],
-        [{ list: "ordered" }, { list: "bullet" }],
-        ["link", "image"],
-        ["clean"],
-      ],
-      mention: makeMentionConfig(boardId),
-    },
-    placeholder: div.getAttribute("data-placeholder") || "",
+    const quillOptions = {
+      theme: "snow",
+      modules: {
+        toolbar: [
+          [{ header: [1, 2, 3, false] }],
+          ["bold", "italic", "underline", "strike"],
+          [{ list: "ordered" }, { list: "bullet" }],
+          ["link", "image"],
+          ["clean"],
+        ],
+        mention: makeMentionConfig(boardId),
+      },
+      placeholder: div.getAttribute("data-placeholder") || "",
+    };
+
+    if (modalScroll) quillOptions.scrollingContainer = modalScroll;
+    ensureModalScrollable(modalScroll);
+
+    const quill = new Quill(div, quillOptions);
+    quill.__cmModalScroll = modalScroll || null;
+
+    window.Modal.quill._descQuill = quill;
+
+    const initial = (hiddenInput.value || "").trim();
+    if (initial) quill.root.innerHTML = initial;
+
+    const container = quill.root.closest(".ql-container");
+    if (container) delete container.dataset.cmManualMinHeight;
+    autoGrowQuill(quill, { min: 100, max: Infinity });
+
+    quill.on("text-change", () => {
+      hiddenInput.value = quill.root.innerHTML;
+      try { hiddenInput.dispatchEvent(new Event("input", { bubbles: true })); } catch (_e) {}
+
+      keepCaretVisibleInScroll(quill, quill.__cmModalScroll);
+      requestAnimationFrame(() => keepCaretVisibleInScroll(quill, quill.__cmModalScroll));
+    });
+
+    quill.on("selection-change", () => {
+      keepCaretVisibleInScroll(quill, quill.__cmModalScroll);
+      requestAnimationFrame(() => keepCaretVisibleInScroll(quill, quill.__cmModalScroll));
+    });
+
+    const toolbar = quill.getModule("toolbar");
+    if (toolbar) {
+      toolbar.addHandler("image", () => {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "image/*";
+        input.onchange = () => {
+          const file = input.files?.[0];
+          if (file) insertBase64ImageIntoQuill(quill, file);
+        };
+        input.click();
+      });
+    }
+
+    quill.root.addEventListener("paste", (e) => {
+      try {
+        const cd = e.clipboardData;
+        const items = cd?.items ? Array.from(cd.items) : [];
+        const imgItem = items.find((it) => (it.type || "").startsWith("image/"));
+        if (!imgItem) return;
+
+        const file = imgItem.getAsFile?.();
+        if (!file) return;
+
+        e.preventDefault();
+        insertBase64ImageIntoQuill(quill, file);
+      } catch (_e) {}
+    });
+
+    return quill;
+  }
+
+  window.Modal.quill.init = function () {
+    const boardId = getBoardIdFromUrl();
+
+    const descDiv = document.getElementById("quill-editor");
+    const descHidden = document.getElementById("description-input");
+    if (descDiv && descHidden) {
+      bindQuillToDiv(descDiv, descHidden, boardId);
+      return;
+    }
+
+    const descTa =
+      document.querySelector('#cm-root textarea[name="description"]') ||
+      document.querySelector('textarea[name="description"]');
+
+    if (descTa) bindQuillToTextarea(descTa, boardId);
   };
 
-  if (modalScroll) quillOptions.scrollingContainer = modalScroll;
+  document.body.addEventListener("htmx:afterSwap", function (e) {
+    const target = e?.target;
+    if (!target) return;
 
-  ensureModalScrollable(modalScroll);
-
-  const quill = new Quill(div, quillOptions);
-
-  quill.__cmModalScroll = modalScroll || null;
-
-
-  // ✅ referência usada por resize/grip
-  window.Modal.quill._descQuill = quill;
-
-  // inicial (se existir)
-  const initial = (hiddenInput.value || "").trim();
-  if (initial) quill.root.innerHTML = initial;
-
-  // ✅ AUTO-GROW (Descrição)
-  const container = quill.root.closest(".ql-container");
-  if (container) delete container.dataset.cmManualMinHeight;
-  autoGrowQuill(quill, { min: 100, max: Infinity });
-
-
-  // sync no hidden
-  quill.on("text-change", () => {
-    hiddenInput.value = quill.root.innerHTML;
-    try { hiddenInput.dispatchEvent(new Event("input", { bubbles: true })); } catch (_e) {}
+    if (target.id === "modal-body" || target.closest?.("#modal-body")) {
+      try { window.Modal?.quill?.init?.(); } catch (_e) {}
+    }
   });
 
-  quill.on("selection-change", () => {
-    keepCaretVisibleInScroll(quill, quill.__cmModalScroll);
-    requestAnimationFrame(() => keepCaretVisibleInScroll(quill, quill.__cmModalScroll));
-  });
-
-  quill.on("text-change", () => {
-    keepCaretVisibleInScroll(quill, quill.__cmModalScroll);
-    requestAnimationFrame(() => keepCaretVisibleInScroll(quill, quill.__cmModalScroll));
-  });
-
-
-  // toolbar image -> base64
-  const toolbar = quill.getModule("toolbar");
-  if (toolbar) {
-    toolbar.addHandler("image", () => {
-      const input = document.createElement("input");
-      input.type = "file";
-      input.accept = "image/*";
-      input.onchange = () => {
-        const file = input.files?.[0];
-        if (file) insertBase64ImageIntoQuill(quill, file);
-      };
-      input.click();
-    });
-  }
-
-  // paste image -> base64
-  quill.root.addEventListener("paste", (e) => {
-    try {
-      const cd = e.clipboardData;
-      const items = cd?.items ? Array.from(cd.items) : [];
-      const imgItem = items.find((it) => (it.type || "").startsWith("image/"));
-      if (!imgItem) return;
-
-      const file = imgItem.getAsFile?.();
-      if (!file) return;
-
-      e.preventDefault();
-      insertBase64ImageIntoQuill(quill, file);
-    } catch (_e) {}
-  });
-
-  return quill;
-}
-
-
-
-
-// ✅ Init do Quill no modal
-window.Modal.quill.init = function () {
-  const boardId = getBoardIdFromUrl();
-
-  // 1) Preferência: DIV + hidden input (se existir)
-  const descDiv = document.getElementById("quill-editor");
-  const descHidden = document.getElementById("description-input");
-  if (descDiv && descHidden) {
-    bindQuillToDiv(descDiv, descHidden, boardId);
-    return;
-  }
-
-  // 2) Fallback: textarea (modal split atual)
-  const descTa =
-    document.querySelector('#cm-root textarea[name="description"]') ||
-    document.querySelector('textarea[name="description"]');
-
-  if (descTa) bindQuillToTextarea(descTa, boardId);
-};
-
-
-
-
-
-
-// ✅ sempre que o HTMX atualizar o corpo do modal, re-inicializa o Quill
-document.body.addEventListener("htmx:afterSwap", function (e) {
-  const target = e?.target;
-  if (!target) return;
-
-  // só quando o swap afetar o modal
-  if (target.id === "modal-body" || target.closest?.("#modal-body")) {
-    try { window.Modal?.quill?.init?.(); } catch (_e) {}
-  }
-});
-
-  
-
-  // ============================================================
-  // IMG CLICK: abre qualquer imagem do Quill em nova aba
-  // (Descrição + Atividade + conteúdo renderizado)
-  // ============================================================
   (function installQuillImageOpenInNewTab() {
     if (window.__cmQuillImgOpenInstalled) return;
     window.__cmQuillImgOpenInstalled = true;
@@ -534,6 +472,7 @@ document.body.addEventListener("htmx:afterSwap", function (e) {
     );
   })();
 
+ 
 
 
 // ============================================================
