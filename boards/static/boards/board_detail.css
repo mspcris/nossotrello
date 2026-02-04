@@ -884,3 +884,148 @@ li[data-card-id][data-term-status="ok"] .term-badge{ color: #16a34a; }
   width: 10px;
   height: 10px; /* <- adiciona */
 }
+
+
+/* ============================================================
+   MOBILE HEADER — centralizar a imagem do quadro SEM distorção
+   Escopo: páginas de board (body_class = is-board)
+   ============================================================ */
+
+@media (max-width: 767px) {
+  /* 1) O header que contém: ☰ (esq) + imagem (meio) + perfil (dir)
+     -> Você precisa apontar o seletor CERTO do container do header.
+     PASSO A PASSO:
+     - No Chrome DevTools (no mobile via remote debug ou responsivo):
+       1) Selecione a imagem do quadro (a do meio)
+       2) Suba no DOM até o elemento que também contém o botão ☰ e o avatar
+       3) Esse é o "HEADER WRAPPER"
+     - Troque o seletor abaixo se necessário.
+  */
+
+  /* ✅ TENTE PRIMEIRO assim (muito comum): */
+  body.is-board header {
+    position: relative;
+  }
+
+  /* 2) A “capa” do header (sua imagem do board) vira centro ABSOLUTO */
+  body.is-board header .cm-cover--header {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+
+    /* tamanho “bonito” no mobile */
+    width: 150px;
+    height: 44px;
+
+    border-radius: 18px;
+    overflow: hidden;
+
+    /* garante que o centro fique por cima, sem empurrar layout */
+    z-index: 2;
+    pointer-events: auto;
+  }
+
+  /* 3) Imagem dentro da capa */
+  body.is-board header .cm-cover--header .cm-cover__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  /* 4) Evita que a esquerda/direita “invadam” o centro visualmente */
+  body.is-board header > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* 5) Aperta espaçamentos típicos (ajuste fino) */
+  body.is-board header {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+}
+
+
+
+/* =========================================================
+   MOBILE: header do board
+   - Centro: imagem do quadro ABSOLUTA e menor
+   - Direita: itens “acolados”
+   - Sem mexer no HTML do header_center
+   ========================================================= */
+@media (max-width: 767px) {
+
+  /* garante um "relativo" forte no header (pega o container real que existir) */
+  body.is-board header,
+  body.is-board .nt-header,
+  body.is-board .site-header,
+  body.is-board #site-header,
+  body.is-board .header {
+    position: relative;
+  }
+
+  /* 🔥 a capa do quadro vira elemento "flutuante" e centralizado */
+  body.is-board header .cm-cover--header,
+  body.is-board .nt-header .cm-cover--header,
+  body.is-board .site-header .cm-cover--header,
+  body.is-board #site-header .cm-cover--header,
+  body.is-board .header .cm-cover--header {
+    position: absolute !important;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+
+    /* menor ainda (ajuste fino aqui) */
+    width: 108px;
+    height: 30px;
+
+    border-radius: 999px;
+    overflow: hidden;
+
+    /* não “rouba” toque/click do menu e botões da direita */
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  /* garante que a img siga o novo tamanho */
+  body.is-board header .cm-cover--header .cm-cover__img,
+  body.is-board .nt-header .cm-cover--header .cm-cover__img,
+  body.is-board .site-header .cm-cover--header .cm-cover__img,
+  body.is-board #site-header .cm-cover--header .cm-cover__img,
+  body.is-board .header .cm-cover--header .cm-cover__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* remove os botões sobre a capa (X/+), porque no mobile não cabe */
+  body.is-board header .cm-cover--header ~ button,
+  body.is-board .nt-header .cm-cover--header ~ button,
+  body.is-board .site-header .cm-cover--header ~ button,
+  body.is-board #site-header .cm-cover--header ~ button,
+  body.is-board .header .cm-cover--header ~ button {
+    display: none !important;
+  }
+
+  /* “acolando” o header right (onde ficam @handle, sair, avatar etc)
+     -> como não temos o seletor exato do seu header, isso tenta cobrir os wrappers comuns */
+  body.is-board header [class*="right"],
+  body.is-board .nt-header [class*="right"],
+  body.is-board .site-header [class*="right"],
+  body.is-board #site-header [class*="right"],
+  body.is-board .header [class*="right"] {
+    gap: 6px !important;
+  }
+
+  /* reduz padding geral do header pra sobrar mais respiro */
+  body.is-board header,
+  body.is-board .nt-header,
+  body.is-board .site-header,
+  body.is-board #site-header,
+  body.is-board .header {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+}
