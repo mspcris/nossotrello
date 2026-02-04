@@ -131,9 +131,47 @@ function renderMentionCard(item) {
 
 
 
+  function ensureModalScrollable(modalScroll) {
+  if (!modalScroll) return;
+  // garante barra no modal (scroll único)
+  modalScroll.style.setProperty("overflow-y", "auto", "important");
+  modalScroll.style.setProperty("-webkit-overflow-scrolling", "touch", "important");
+}
+
+function keepCaretVisibleInScroll(quill, modalScroll) {
+  try {
+    if (!quill || !modalScroll) return;
+    const range = quill.getSelection?.();
+    if (!range) return;
+
+    const b = quill.getBounds(range.index); // posição do caret dentro do editor
+    const edRect = quill.root.getBoundingClientRect();
+    const scRect = modalScroll.getBoundingClientRect();
+
+    // posição absoluta do caret na viewport
+    const caretY = edRect.top + b.top;
+
+    const topLimit = scRect.top + 24;
+    const botLimit = scRect.bottom - 24;
+
+    if (caretY < topLimit) {
+      modalScroll.scrollTop -= (topLimit - caretY);
+    } else if (caretY > botLimit) {
+      modalScroll.scrollTop += (caretY - botLimit);
+    }
+  } catch (_e) {}
+}
+
+
+
+
+
+
+
+
 function autoGrowQuill(quill, opts = {}) {
   const min = Number(opts.min ?? 220);
-  const max = Number(opts.max ?? 3000);
+  const max = opts.max; // pode ser Infinity
 
   const editor = quill?.root;
   if (!editor) return;
@@ -156,68 +194,62 @@ function autoGrowQuill(quill, opts = {}) {
   }
 
   function apply() {
-    // Layout previsível
+    const modalScroll =
+      quill.__cmModalScroll ||
+      editor.closest("#modal-body.card-modal-scroll") ||
+      document.querySelector("#modal-body.card-modal-scroll") ||
+      document.querySelector("#modal-body") ||
+      document.querySelector("#card-modal-root .card-modal-scroll");
+
+    if (modalScroll) {
+      modalScroll.style.setProperty("overflow-y", "auto", "important");
+      modalScroll.style.setProperty("overflow-x", "hidden", "important");
+      modalScroll.style.setProperty("-webkit-overflow-scrolling", "touch", "important");
+      modalScroll.style.setProperty("overscroll-behavior", "contain", "important");
+    }
+
     container.style.setProperty("display", "block", "important");
     container.style.setProperty("max-height", "none", "important");
-
-    // Mantém “scroll único” (modal rola), sem scroll interno no Quill
-    container.style.setProperty("overflow", "hidden", "important");
+    container.style.setProperty("overflow", "visible", "important");
 
     editor.style.setProperty("display", "block", "important");
     editor.style.setProperty("height", "auto", "important");
     editor.style.setProperty("min-height", "0", "important");
-    editor.style.setProperty("overflow", "hidden", "important");
-
-    // respiro no fundo (evita última linha colar na borda)
-    editor.style.setProperty("padding-bottom", "14px", "important");
-
-    const bottomPad = 14;
-    const needed = (editor.scrollHeight || 0) + bottomPad;
+    editor.style.setProperty("overflow", "visible", "important");
+    editor.style.setProperty("padding", "12px 14px 14px 14px", "important");
 
     const manualMin = getManualMinHeight();
+    const needed = (editor.scrollHeight || 0);
 
-    // clamp por viewport (evita card “tomar a tela” em casos patológicos)
-    const vh = window.innerHeight || 800;
-    const maxByViewport = Math.max(260, Math.floor(vh * 0.60)); // 60vh, como seu grip
-    const hardMax = Number.isFinite(max) ? max : 3000;
-    const effectiveMax = Math.min(hardMax, maxByViewport);
+    const hardMax = (max === Infinity) ? Infinity : (Number.isFinite(max) ? max : Infinity);
 
-    const target = clamp(Math.max(min, manualMin, needed), min, effectiveMax);
-    container.style.setProperty("height", `${target}px`, "important");
+    const target = clamp(Math.max(min, manualMin, needed), min, hardMax);
+    container.style.setProperty("height", `${Math.ceil(target)}px`, "important");
 
-    // zera scroll interno (defensivo)
     requestAnimationFrame(() => {
       resetInternalScroll();
       requestAnimationFrame(resetInternalScroll);
     });
   }
 
-  // digitação / enter / deletar
   quill.on("text-change", () => {
     apply();
     requestAnimationFrame(apply);
   });
 
-  // movimentar cursor também pode disparar scroll interno
   quill.on("selection-change", () => {
     resetInternalScroll();
     requestAnimationFrame(resetInternalScroll);
   });
 
-  // imagens carregando mudam altura depois
   editor.addEventListener("load", () => requestAnimationFrame(apply), true);
 
-  // inicial
   requestAnimationFrame(apply);
   setTimeout(apply, 0);
 
   quill.__autoGrowApply = apply;
   return apply;
 }
-
-
-
-
 
 
 
@@ -258,8 +290,14 @@ function bindQuillToTextarea(textarea, boardId) {
   };
 
   if (modalScroll) quillOptions.scrollingContainer = modalScroll;
+  
+
+  ensureModalScrollable(modalScroll);
+
 
   const quill = new Quill(host, quillOptions);
+
+  quill.__cmModalScroll = modalScroll || null;
 
 
   window.Modal.quill._descQuill = quill;
@@ -271,15 +309,23 @@ function bindQuillToTextarea(textarea, boardId) {
   const container = quill.root.closest(".ql-container");
   if (container) delete container.dataset.cmManualMinHeight;
 
-  autoGrowQuill(quill, { min: 100, max: 3000 });
+  autoGrowQuill(quill, { min: 100, max: Infinity });
 
-  // manter textarea atualizado + disparar input (dirty tracking / floatbar)
+
+  quill.on("selection-change", () => {
+    keepCaretVisibleInScroll(quill, quill.__cmModalScroll);
+    requestAnimationFrame(() => keepCaretVisibleInScroll(quill, quill.__cmModalScroll));
+  });
+
   quill.on("text-change", () => {
     textarea.value = quill.root.innerHTML;
-    try {
-      textarea.dispatchEvent(new Event("input", { bubbles: true }));
-    } catch (_e) {}
+    try { textarea.dispatchEvent(new Event("input", { bubbles: true })); } catch (_e) {}
+
+    keepCaretVisibleInScroll(quill, quill.__cmModalScroll);
+    requestAnimationFrame(() => keepCaretVisibleInScroll(quill, quill.__cmModalScroll));
   });
+
+
 
   // upload image base64 quando inserir via toolbar
   const toolbar = quill.getModule("toolbar");
@@ -349,7 +395,12 @@ function bindQuillToTextarea(textarea, boardId) {
 
   if (modalScroll) quillOptions.scrollingContainer = modalScroll;
 
+  ensureModalScrollable(modalScroll);
+
   const quill = new Quill(div, quillOptions);
+
+  quill.__cmModalScroll = modalScroll || null;
+
 
   // ✅ referência usada por resize/grip
   window.Modal.quill._descQuill = quill;
@@ -361,13 +412,25 @@ function bindQuillToTextarea(textarea, boardId) {
   // ✅ AUTO-GROW (Descrição)
   const container = quill.root.closest(".ql-container");
   if (container) delete container.dataset.cmManualMinHeight;
-  autoGrowQuill(quill, { min: 100, max: 3000 });
+  autoGrowQuill(quill, { min: 100, max: Infinity });
+
 
   // sync no hidden
   quill.on("text-change", () => {
     hiddenInput.value = quill.root.innerHTML;
     try { hiddenInput.dispatchEvent(new Event("input", { bubbles: true })); } catch (_e) {}
   });
+
+  quill.on("selection-change", () => {
+    keepCaretVisibleInScroll(quill, quill.__cmModalScroll);
+    requestAnimationFrame(() => keepCaretVisibleInScroll(quill, quill.__cmModalScroll));
+  });
+
+  quill.on("text-change", () => {
+    keepCaretVisibleInScroll(quill, quill.__cmModalScroll);
+    requestAnimationFrame(() => keepCaretVisibleInScroll(quill, quill.__cmModalScroll));
+  });
+
 
   // toolbar image -> base64
   const toolbar = quill.getModule("toolbar");
@@ -483,7 +546,11 @@ document.body.addEventListener("htmx:afterSwap", function (e) {
   window.__cmQuillResizeInstalled = true;
 
   function ensureHandle() {
-    const host = document.querySelector("#modal-body #quill-editor");
+    const host =
+      document.querySelector("#modal-body #quill-editor") ||
+      document.querySelector("#modal-body .cm-quill") ||
+      document.querySelector("#modal-body textarea[name='description']")?.nextElementSibling; // host criado
+
     if (!host) return;
 
     const container = host.querySelector(".ql-container");
@@ -596,7 +663,11 @@ document.body.addEventListener("htmx:afterSwap", function (e) {
     const active = root.getAttribute("data-cm-active") || root.dataset.cmActive;
     if (active && active !== "desc") return null;
 
-    const host = document.querySelector("#modal-body #quill-editor");
+    const host =
+      document.querySelector("#modal-body #quill-editor") ||
+      document.querySelector("#modal-body .cm-quill") ||
+      document.querySelector("#modal-body textarea[name='description']")?.nextElementSibling; // host criado
+
 
     if (!host) return null;
 
