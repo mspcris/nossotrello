@@ -192,10 +192,6 @@ function autoGrowQuill(quill, opts = {}) {
     });
   }
 
-
-    try { window.dispatchEvent(new Event("resize")); } catch (_e) {}
-  }
-
   // digitação / enter / deletar
   quill.on("text-change", () => {
     apply();
@@ -320,12 +316,23 @@ function bindQuillToTextarea(textarea, boardId) {
     return quill;
   }
 
+
+
+
+
+
   function bindQuillToDiv(div, hiddenInput, boardId) {
   if (!div || !hiddenInput) return null;
   if (div.dataset.quillBound === "1") return null;
   div.dataset.quillBound = "1";
 
-  const quill = new Quill(div, {
+  // 🔑 quem deve rolar é o modal (scroll único), não o editor
+  const modalScroll =
+    document.querySelector("#modal-body.card-modal-scroll") ||
+    document.querySelector("#modal-body") ||
+    document.querySelector("#card-modal-root .card-modal-scroll");
+
+  const quillOptions = {
     theme: "snow",
     modules: {
       toolbar: [
@@ -337,12 +344,24 @@ function bindQuillToTextarea(textarea, boardId) {
       ],
       mention: makeMentionConfig(boardId),
     },
-    placeholder: div.getAttribute("data-placeholder") || "Escreva uma atualização...",
-  });
+    placeholder: div.getAttribute("data-placeholder") || "",
+  };
+
+  if (modalScroll) quillOptions.scrollingContainer = modalScroll;
+
+  const quill = new Quill(div, quillOptions);
+
+  // ✅ referência usada por resize/grip
+  window.Modal.quill._descQuill = quill;
 
   // inicial (se existir)
   const initial = (hiddenInput.value || "").trim();
   if (initial) quill.root.innerHTML = initial;
+
+  // ✅ AUTO-GROW (Descrição)
+  const container = quill.root.closest(".ql-container");
+  if (container) delete container.dataset.cmManualMinHeight;
+  autoGrowQuill(quill, { min: 100, max: 3000 });
 
   // sync no hidden
   quill.on("text-change", () => {
@@ -381,26 +400,36 @@ function bindQuillToTextarea(textarea, boardId) {
     } catch (_e) {}
   });
 
-  // botão "Limpar" do seu template
-  window.resetActivityQuill = function () {
-    try { quill.setText(""); } catch (_e) {}
-    hiddenInput.value = "";
-  };
-
   return quill;
 }
 
+
+
+
+// ✅ Init do Quill no modal
 window.Modal.quill.init = function () {
   const boardId = getBoardIdFromUrl();
 
-  // 1) Descrição (textarea -> quill)
-  const descTextarea = document.querySelector('#cm-main-form textarea[name="description"]');
-  bindQuillToTextarea(descTextarea, boardId);
+  // 1) Descrição (div + hidden input -> quill)
+  const descDiv = document.getElementById("quill-editor");
+  const descHidden = document.getElementById("description-input");
+  bindQuillToDiv(descDiv, descHidden, boardId);
 
-  // 2) Atividade: novo padrão (div + hidden)
-  //mantida somente em modal.activity_quill.js
-
+  // 2) Atividade: mantida somente em modal.activity_quill.js
 };
+
+// ✅ sempre que o HTMX atualizar o corpo do modal, re-inicializa o Quill
+document.body.addEventListener("htmx:afterSwap", function (e) {
+  const target = e?.target;
+  if (!target) return;
+
+  // só quando o swap afetar o modal
+  if (target.id === "modal-body" || target.closest?.("#modal-body")) {
+    try { window.Modal?.quill?.init?.(); } catch (_e) {}
+  }
+});
+
+  
 
   // ============================================================
   // IMG CLICK: abre qualquer imagem do Quill em nova aba
@@ -441,7 +470,7 @@ window.Modal.quill.init = function () {
   window.__cmQuillResizeInstalled = true;
 
   function ensureHandle() {
-    const host = document.querySelector("#modal-body .cm-quill");
+    const host = document.querySelector("#modal-body #quill-editor");
     if (!host) return;
 
     const container = host.querySelector(".ql-container");
@@ -554,7 +583,8 @@ window.Modal.quill.init = function () {
     const active = root.getAttribute("data-cm-active") || root.dataset.cmActive;
     if (active && active !== "desc") return null;
 
-    const host = document.querySelector("#modal-body .cm-quill");
+    const host = document.querySelector("#modal-body #quill-editor");
+
     if (!host) return null;
 
     const container = host.querySelector(".ql-container");
