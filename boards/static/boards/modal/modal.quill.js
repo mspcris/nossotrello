@@ -160,28 +160,38 @@ function autoGrowQuill(quill, opts = {}) {
     container.style.setProperty("display", "block", "important");
     container.style.setProperty("max-height", "none", "important");
 
-    // ✅ EVITA “scroll invisível”: não clipar o conteúdo
-    container.style.setProperty("overflow", "visible", "important");
+    // Mantém “scroll único” (modal rola), sem scroll interno no Quill
+    container.style.setProperty("overflow", "hidden", "important");
 
     editor.style.setProperty("display", "block", "important");
     editor.style.setProperty("height", "auto", "important");
     editor.style.setProperty("min-height", "0", "important");
+    editor.style.setProperty("overflow", "hidden", "important");
 
-    // ✅ placeholder/texto não pode ser cortado
-    editor.style.setProperty("overflow", "visible", "important");
+    // respiro no fundo (evita última linha colar na borda)
+    editor.style.setProperty("padding-bottom", "14px", "important");
 
-    const needed = editor.scrollHeight || 0;
+    const bottomPad = 14;
+    const needed = (editor.scrollHeight || 0) + bottomPad;
+
     const manualMin = getManualMinHeight();
-    const target = clamp(Math.max(min, manualMin, needed), min, max);
 
+    // clamp por viewport (evita card “tomar a tela” em casos patológicos)
+    const vh = window.innerHeight || 800;
+    const maxByViewport = Math.max(260, Math.floor(vh * 0.60)); // 60vh, como seu grip
+    const hardMax = Number.isFinite(max) ? max : 3000;
+    const effectiveMax = Math.min(hardMax, maxByViewport);
+
+    const target = clamp(Math.max(min, manualMin, needed), min, effectiveMax);
     container.style.setProperty("height", `${target}px`, "important");
 
-    // ✅ O Quill pode ajustar scrollTop depois do seu cálculo.
-    // Então zera em 2 frames para “ganhar” do Quill.
+    // zera scroll interno (defensivo)
     requestAnimationFrame(() => {
       resetInternalScroll();
       requestAnimationFrame(resetInternalScroll);
     });
+  }
+
 
     try { window.dispatchEvent(new Event("resize")); } catch (_e) {}
   }
