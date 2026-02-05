@@ -45,7 +45,12 @@ def _send_whatsapp_two_messages(*, number: str, message: str, url: str) -> None:
 
     # 1) comunicado
     if message:
-        send_text_message(
+        logger.warning(
+        "pressticket: sending number=%s path=%s base_url=%s user_id=%s queue_id=%s whatsapp_id=%s",
+        number, getattr(request, "path", ""), base_url, user_id, queue_id, whatsapp_id
+    )
+    try:
+        resp = send_text_message(
             base_url=base_url,
             token=token,
             number=number,
@@ -54,10 +59,23 @@ def _send_whatsapp_two_messages(*, number: str, message: str, url: str) -> None:
             queue_id=queue_id,
             whatsapp_id=whatsapp_id,
         )
+        logger.warning("pressticket: sent ok number=%s resp_keys=%s", number, list((resp or {}).keys())[:15])
+    except PressTicketError:
+        logger.exception("pressticket: send failed (PressTicketError) number=%s", number)
+        raise
+    except Exception:
+        logger.exception("pressticket: send failed (unexpected) number=%s", number)
+        raise
+
 
     # 2) link puro (sem texto)
     if url:
-        send_text_message(
+        logger.warning(
+        "pressticket: sending number=%s path=%s base_url=%s user_id=%s queue_id=%s whatsapp_id=%s",
+        number, getattr(request, "path", ""), base_url, user_id, queue_id, whatsapp_id
+    )
+    try:
+        resp = send_text_message(
             base_url=base_url,
             token=token,
             number=number,
@@ -66,6 +84,14 @@ def _send_whatsapp_two_messages(*, number: str, message: str, url: str) -> None:
             queue_id=queue_id,
             whatsapp_id=whatsapp_id,
         )
+        logger.warning("pressticket: sent ok number=%s resp_keys=%s", number, list((resp or {}).keys())[:15])
+    except PressTicketError:
+        logger.exception("pressticket: send failed (PressTicketError) number=%s", number)
+        raise
+    except Exception:
+        logger.exception("pressticket: send failed (unexpected) number=%s", number)
+        raise
+
 
 def _get_or_create_activity_type_for_user(*, user, name: str) -> ActivityType:
     name = (name or "").strip()
