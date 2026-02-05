@@ -20,6 +20,8 @@ from datetime import timedelta
 from django.contrib.auth import get_user_model
 User = get_user_model()
 from .models import TrackPresence
+from tracktime.services.notifications import notify_tracktime_extended
+
 
 
 logger = logging.getLogger(__name__)
@@ -492,6 +494,11 @@ def tracktime_confirm_link(request, entry_id, token):
 
     entry.confirmation_token_hash = ""
     entry.extend_one_hour(now=timezone.now())
+    try:
+        notify_tracktime_extended(entry=entry)
+    except Exception:
+        logger.exception("[tracktime] notify extend failed entry_id=%s", entry.id)
+
 
     board_id = entry.board_id
     card_id = entry.card_id

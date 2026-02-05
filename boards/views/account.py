@@ -156,6 +156,21 @@ def account_profile_update(request):
     prof.activity_sidebar = ("activity_sidebar" in request.POST)
     prof.activity_counts  = (request.POST.get("activity_counts") == "1")
 
+    if "notify_whatsapp" in request.POST:
+        prof.notify_whatsapp = True
+        update_fields.append("notify_whatsapp")
+    else:
+        prof.notify_whatsapp = False
+        update_fields.append("notify_whatsapp")
+
+    if "notify_email" in request.POST:
+        prof.notify_email = True
+        update_fields.append("notify_email")
+    else:
+        prof.notify_email = False
+        update_fields.append("notify_email")
+
+
     # ... depois de activity_sidebar / activity_counts
 
     raw = (request.POST.get("board_col_width") or "").strip()
