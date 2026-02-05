@@ -9,7 +9,7 @@ from django.http import (
 )
 from django.shortcuts import get_object_or_404, render, redirect
 from django.urls import reverse
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_http_methods
 
 from boards.models import Board, BoardMembership, Card
 from boards.services.cards_state import (
@@ -18,6 +18,9 @@ from boards.services.cards_state import (
     soft_delete_card as svc_soft_delete_card,
     restore_card as svc_restore_card,
 )
+from boards.models import CardFollow, UserProfile
+from django.http import HttpResponseBadRequest, HttpResponseForbidden, JsonResponse, HttpResponse
+
 
 
 def _can_access_board(user, board: Board) -> bool:
@@ -175,5 +178,32 @@ def archived(request, board_id: int):
 
     return render(request, "boards/archived.html", {"board": board, "cards": cards})
 
+
+@login_required
+@require_http_methods(["POST"])
+def toggle_card_follow(request, card_id: int):
+    card = get_object_or_404(Card.objects.select_related("column__board"), id=card_id)
+    board = card.column.board
+
+    # permissão: tem que ver o board
+    if not _can_access_board(request.user, board):
+        return HttpResponseForbidden("Sem acesso ao board deste card")
+
+    # gate: só pode seguir se tiver email OU whatsapp habilitado no profile
+    prof = getattr(request.user, "profile", None)
+    if not prof:
+        prof, _ = UserProfile.objects.get_or_create(user=request.user)
+
+    can_follow = bool(getattr(prof, "notify_email", False) or getattr(prof, "notify_whatsapp", False))
+    if not can_follow:
+        return HttpResponseBadRequest("Habilite Email ou WhatsApp no seu perfil para seguir cards.")
+
+    obj = CardFollow.objects.filter(card_id=card.id, user_id=request.user.id).first()
+    if obj:
+        obj.delete()
+        return JsonResponse({"ok": True, "following": False})
+    else:
+        CardFollow.objects.create(card_id=card.id, user_id=request.user.id)
+        return JsonResponse({"ok": True, "following": True})
 
 # END boards/views/cards_state.py

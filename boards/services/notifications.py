@@ -17,6 +17,8 @@ from tracktime.services.pressticket import send_text_message, PressTicketError
 
 import html
 from django.utils.html import strip_tags
+from boards.models import Mention, CardFollow
+
 
 
 
@@ -119,9 +121,23 @@ def _get_or_create_profile(user) -> UserProfile:
     return prof
 
 
-def _user_allowed_for_card(*, user, prof: UserProfile, card: Card) -> bool:
-    if not prof.notify_only_owned_or_mentioned:
+def _user_allowed_for_card(*, card: Card, user: User) -> bool:
+    if not card or not user:
+        return False
+
+    if getattr(card, "owner_id", None) == user.id:
         return True
+
+    # foi mencionado em algum momento no card
+    if Mention.objects.filter(card_log__card_id=card.id, mentioned_user_id=user.id).exists():
+        return True
+
+    # está seguindo o card
+    if CardFollow.objects.filter(card_id=card.id, user_id=user.id).exists():
+        return True
+
+    return False
+
 
     # dono do card
     if getattr(card, "created_by_id", None) == user.id:
@@ -195,18 +211,20 @@ def send_email_notification(*, to_email: str, subject: str, body: str) -> None:
 def notify_users_for_card(
     *,
     card: Card,
-    recipients: Iterable,
+    recipients: list[User],
     subject: str,
     message: str,
-    include_link_as_second_whatsapp_message: bool = True,
-) -> None:
-    snap = build_card_snapshot(card=card)
+    include_link_as_second_whatsapp_message: bool = False,
+    notify_only_owned_or_mentioned: bool = True,
+    bypass_card_gate: bool = False,   # <-- NOVO
+):
+    if not recipients:
+        return
 
     for u in recipients:
-        prof = _get_or_create_profile(u)
-
-        if not _user_allowed_for_card(user=u, prof=prof, card=card):
-            continue
+        if notify_only_owned_or_mentioned and (not bypass_card_gate):
+            if not _user_allowed_for_card(card=card, user=u):
+                continue
 
         # WhatsApp
         if prof.notify_whatsapp:

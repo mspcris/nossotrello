@@ -657,4 +657,19 @@ class CardNotificationLog(models.Model):
             models.Index(fields=["user", "run_date"]),
         ]
 
+
+class CardFollow(models.Model):
+    card = models.ForeignKey("Card", on_delete=models.CASCADE, related_name="follows")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="card_follows")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("card", "user")
+        indexes = [
+            models.Index(fields=["card", "user"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user_id} follows {self.card_id}"
+
 # END boards/models.py

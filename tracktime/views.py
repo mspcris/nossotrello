@@ -327,7 +327,7 @@ def card_tracktime_start(request, card_id):
        # ✅ WhatsApp no START (2 mensagens: comunicado + link puro)
     try:
         # recipients = membros do board (regra única do produto)
-        recipients = get_board_recipients_for_card(card=card)
+        recipients = [request.user]
 
         snap = build_card_snapshot(card=card)
         msg = format_card_message(
@@ -341,7 +341,9 @@ def card_tracktime_start(request, card_id):
             subject=f"Início do Track-time: {snap.title}",
             message=msg,
             include_link_as_second_whatsapp_message=True,
+            bypass_card_gate=True,  # <-- garante envio pro ator
         )
+
 
     except Exception as e:
         logger.exception("[tracktime] Notificação START falhou: %s", e)
@@ -379,7 +381,7 @@ def card_tracktime_stop(request, card_id):
 
        # ✅ WhatsApp no STOP (2 mensagens: comunicado + link puro)
         try:
-            recipients = get_board_recipients_for_card(card=card)
+            recipients = [request.user]
 
             snap = build_card_snapshot(card=card)
             total_min = int(getattr(entry, "minutes", 0) or 0)
@@ -396,6 +398,7 @@ def card_tracktime_stop(request, card_id):
                 subject=f"Fim do Track-time: {snap.title}",
                 message=msg,
                 include_link_as_second_whatsapp_message=True,
+                bypass_card_gate=True,
             )
 
         except Exception as e:
@@ -506,7 +509,7 @@ def tracktime_confirm_link(request, entry_id, token):
     entry.extend_one_hour(now=timezone.now())
     try:
         card = Card.objects.select_related("column__board").get(id=entry.card_id)
-        recipients = get_board_recipients_for_card(card=card)
+        recipients = [request.user]
 
         snap = build_card_snapshot(card=card)
 
@@ -521,7 +524,9 @@ def tracktime_confirm_link(request, entry_id, token):
             subject=f"Track-time +1h: {snap.title}",
             message=msg,
             include_link_as_second_whatsapp_message=True,
+            bypass_card_gate=True,
         )
+
     except Exception as e:
         logger.exception("[tracktime] Notificação CONFIRM (+1h) falhou: %s", e)
 

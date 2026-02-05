@@ -367,6 +367,9 @@ urlpatterns = [
         name="delete_attachment",
     ),
 
+    path("card/<int:card_id>/follow/", cards_state_views.toggle_card_follow, name="toggle_card_follow"),
+
+
     # ============================================================
     # CHECKLISTS (modal do card)
     # ============================================================
