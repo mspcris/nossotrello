@@ -8,15 +8,21 @@
       <div class="cm-muted">Acompanhe o tempo no centro.</div>
     </div>
 
-    <form
+        <form
       method="post"
       hx-post="{% url 'tracktime:card_stop' card.id %}"
       hx-target="#cm-tracktime-panel"
       hx-swap="innerHTML"
+      hx-disabled-elt="find button"
+      hx-indicator="#tt-stop-indicator"
     >
       {% csrf_token %}
-      <button type="submit" class="tt-btn tt-btn-danger">Stop</button>
+      <button type="submit" class="tt-btn tt-btn-danger">
+        <span class="tt-btn-label">Stop</span>
+        <span id="tt-stop-indicator" class="htmx-indicator" style="margin-left:8px;">⏳</span>
+      </button>
     </form>
+
   </div>
 
   {# ✅ Spinner central + texto dentro (atualiza via JSON, sem swap de DOM) #}

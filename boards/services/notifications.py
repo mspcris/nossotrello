@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass
 from typing import Iterable
 
@@ -13,6 +14,38 @@ from django.utils import timezone
 
 from boards.models import BoardMembership, Mention, UserProfile, Card
 from tracktime.services.pressticket import send_text_message, PressTicketError
+
+import html
+from django.utils.html import strip_tags
+
+
+
+_RE_DATA_IMG = re.compile(
+    r"""<img\b[^>]*\bsrc=["']data:image/[^"']+["'][^>]*>""",
+    flags=re.IGNORECASE,
+)
+_RE_DATA_ANY = re.compile(
+    r"""data:image/[^;]+;base64,[a-z0-9+/=\s]+""",
+    flags=re.IGNORECASE,
+)
+
+def sanitize_card_description_to_text(desc_html: str, *, limit: int = 450) -> str:
+    raw = (desc_html or "").strip()
+    if not raw:
+        return ""
+
+    raw = _RE_DATA_IMG.sub("", raw)
+    raw = _RE_DATA_ANY.sub("", raw)
+
+    txt = strip_tags(raw)
+    txt = html.unescape(txt)
+    txt = re.sub(r"[ \t]{2,}", " ", txt).strip()
+
+    if limit and len(txt) > limit:
+        txt = txt[:limit].rstrip() + "…"
+    return txt
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +70,8 @@ def _fmt_date(d) -> str:
     return d.strftime("%Y-%m-%d")
 
 
+
+
 def build_card_snapshot(*, card: Card) -> CardSnapshot:
     board_id = int(card.column.board_id)
     card_id = int(card.id)
@@ -52,7 +87,7 @@ def build_card_snapshot(*, card: Card) -> CardSnapshot:
         board_id=board_id,
         title=(card.title or "").strip(),
         tags=(card.tags or "").strip(),
-        description=(card.description or "").strip(),
+        description=sanitize_card_description_to_text(getattr(card, "description", "")),
         start_date=_fmt_date(card.start_date),
         due_warn_date=_fmt_date(card.due_warn_date),
         due_date=_fmt_date(card.due_date),

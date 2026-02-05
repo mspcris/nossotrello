@@ -265,10 +265,13 @@ def card_tracktime_start(request, card_id):
     if not (prof.telefone or "").strip():
       
 
-        url = reverse("tracktime:modal") + "?tab=portal&reason=phone_required"
-        resp = HttpResponse(status=204)
-        resp["HX-Redirect"] = url
-        return resp
+        # HTMX: abre modal (não redireciona para fragmento sem layout)
+        if request.headers.get("HX-Request"):
+            return _render_phone_required_modal(request, card_id, project_id, activity_id)
+
+        # fallback não-HTMX: manda para uma página “de verdade” (com base/layout)
+        return redirect(reverse("tracktime:portal") + "?reason=phone_required")
+
 
 
     project = get_object_or_404(

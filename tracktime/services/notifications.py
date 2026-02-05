@@ -15,6 +15,8 @@ import html
 import re
 from django.utils.html import strip_tags
 
+from boards.services.notifications import sanitize_card_description_to_text
+
 
 logger = logging.getLogger(__name__)
 
