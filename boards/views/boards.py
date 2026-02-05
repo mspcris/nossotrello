@@ -40,6 +40,8 @@ from ..models import (
     BoardGroup,
     BoardGroupItem,
     BoardAccessRequest,
+    Card,
+    CardSeen,
 )
 
 from .helpers import (
@@ -1430,23 +1432,43 @@ def board_history_modal(request, board_id):
 
     logs = (
         CardLog.objects
-        .filter(card__column__board=board, card__is_deleted=False, card__is_archived=False)
-
-
+        .filter(card__column__board=board, card__is_deleted=False)
         .select_related("card", "card__column")
         .order_by("-created_at")[:500]
     )
 
+    # Ao abrir o histórico: marca como lido (zera contagem do histórico)
     now = timezone.now()
     st, _created = BoardActivityReadState.objects.get_or_create(board=board, user=request.user)
     st.last_seen_at = now
     st.save(update_fields=["last_seen_at", "updated_at"])
+
+    # ✅ NOVA REGRA: ao abrir o histórico, zera também as notificações dos CARDS do quadro
+    cards_qs = Card.objects.filter(column__board=board, is_deleted=False).only("id")
+    card_ids = list(cards_qs.values_list("id", flat=True))
+
+    if card_ids:
+        # atualiza os já existentes
+        CardSeen.objects.filter(user=request.user, card_id__in=card_ids).update(last_seen_at=now)
+
+        # cria os que não existem ainda (para realmente zerar tudo)
+        existing_ids = set(
+            CardSeen.objects.filter(user=request.user, card_id__in=card_ids)
+            .values_list("card_id", flat=True)
+        )
+        missing_ids = [cid for cid in card_ids if cid not in existing_ids]
+        if missing_ids:
+            CardSeen.objects.bulk_create(
+                [CardSeen(card_id=cid, user=request.user, last_seen_at=now) for cid in missing_ids],
+                ignore_conflicts=True,
+            )
 
     return render(
         request,
         "boards/partials/board_history_modal.html",
         {"board": board, "logs": logs},
     )
+
 
 
 @login_required

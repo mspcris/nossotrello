@@ -99,21 +99,24 @@
 
 
 
-      <div>
-        <select id="tt-project" name="project" required class="tt-select">
-          {% for p in projects %}
-            <option value="{{ p.id }}">{{ p.name }}</option>
-          {% endfor %}
-        </select>
-      </div>
+   
 
-      <div>
-        <select id="tt-activity" name="activity" required class="tt-select">
-          {% for a in activities %}
-            <option value="{{ a.id }}">{{ a.name }}</option>
-          {% endfor %}
-        </select>
-      </div>
+
+      <select id="tt-project"  name="project" required class="tt-select">
+        <option value="" selected disabled>Selecione o projeto...</option>
+        {% for p in projects %}
+          <option value="{{ p.id }}">{{ p.name }}</option>
+        {% endfor %}
+      </select>
+
+      <select id="tt-activity" name="activity" required class="tt-select">
+        <option value="" selected disabled>Selecione a atividade...</option>
+        {% for a in activities %}
+          <option value="{{ a.id }}">{{ a.name }}</option>
+        {% endfor %}
+      </select>
+
+
 
       <div class="tt-right" style="grid-column: 1 / -1;">
         <button type="submit" class="tt-btn tt-btn-primary tt-btn-async">

@@ -1,43 +1,45 @@
 # boards/views/helpers.py
-
-import os
-import json
 import base64
+import json
+import logging
+import os
 import re
-import uuid
 import requests
+import uuid
+from collections import Counter
+from typing import List
 
 from django.conf import settings
-from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest
-from django.shortcuts import render, get_object_or_404, redirect
-from django.utils import timezone
-from django.utils.html import escape
+from django.contrib.auth import get_user_model
+from django.contrib.auth.decorators import login_required
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth import get_user_model
+from django.core.mail import send_mail
 from django.db import transaction
 from django.db.models import Count, Q
+from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
-from django.contrib.auth import get_user_model
-from django.core.mail import send_mail
-from typing import List
-from django.db.models import Q
+from django.utils import timezone
+from django.utils.html import escape
 
+from boards.services.notifications import send_whatsapp
 from ..models import (
     Board,
-    Column,
+    BoardMembership,
     Card,
-    CardLog,
     CardAttachment,
+    CardLog,
     Checklist,
     ChecklistItem,
+    Column,
+    Mention,
     Organization,
     OrganizationMembership,
-    BoardMembership,
     UserProfile,
-    Mention,
 )
+
+
 
 
 # ======================================================================
@@ -82,10 +84,6 @@ def _actor_label(request) -> str:
 
     return "Sistema"
 
-
-
-from django.urls import reverse
-from django.utils.html import escape
 
 def _actor_html(request) -> str:
     if getattr(request, "user", None) and request.user.is_authenticated:
@@ -306,9 +304,6 @@ def _ensure_attachments_and_activity_for_images(
 # MENTIONS (Lógica de Contador/Delta)
 # ======================================================================
 
-from collections import Counter
-
-from collections import Counter
 
 MENTION_HANDLE_RE = re.compile(r"(?<!\w)@([a-z0-9_\.]{2,40})\b", re.IGNORECASE)
 EMAIL_RE = re.compile(r"(?<![\w\.-])([A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,})(?![\w\.-])", re.IGNORECASE)
@@ -381,6 +376,74 @@ def _send_mention_email(request, mentioned_user, actor_user, board, card, mentio
     except Exception:
         pass
 
+
+
+logger = logging.getLogger(__name__)
+
+def _send_mention_whatsapp(request, mentioned_user, actor_user, board, card, mention):
+    """
+    Dispara WhatsApp de notificação de marcação (duas mensagens: texto + link).
+    Respeita preferência do usuário (notify_whatsapp) e valida telefone.
+    """
+    try:
+        prof = getattr(mentioned_user, "profile", None)
+        if not prof or not getattr(prof, "notify_whatsapp", False):
+            return
+
+        phone_raw = (getattr(prof, "telefone", "") or "").strip()
+        phone_digits = re.sub(r"\D+", "", phone_raw)
+
+        # Se não tiver DDI, assume BR
+        if len(phone_digits) in (10, 11):
+            phone_digits = "55" + phone_digits
+
+        # Valida: 55 + DDD + (8 ou 9)
+        if len(phone_digits) not in (12, 13):
+            logger.warning(
+                "mention_whatsapp: invalid phone user_id=%s raw=%r digits=%r",
+                getattr(mentioned_user, "id", None), phone_raw, phone_digits
+            )
+            return
+
+        actor_name = (
+            (getattr(actor_user, "profile", None) and (actor_user.profile.display_name or actor_user.profile.handle))
+            or actor_user.get_full_name()
+            or actor_user.get_username()
+            or (actor_user.email or "alguém")
+        )
+        actor_name = (actor_name or "").strip()
+
+        # Link igual ao e-mail (tab=ativ&mention=...)
+        path = reverse("boards:board_detail", kwargs={"board_id": board.id})
+        url = request.build_absolute_uri(f"{path}?card={card.id}&tab=ativ&mention={mention.id}")
+
+        # Mensagem “super hiper descontraída e cheia de ícones”
+        msg = (
+            "🏷️ Opa! Você foi marcado no Nosso Trello 😄✨\n"
+            f"👤 Quem te marcou: {actor_name}\n"
+            f"🧩 Quadro: {board.name}\n"
+            f"🗂️ Card: {card.title}\n"
+            "🔥 Bora dar uma olhada? 👇👀"
+        )
+
+        send_whatsapp(user=mentioned_user, phone_digits=phone_digits, body=msg)
+        send_whatsapp(user=mentioned_user, phone_digits=phone_digits, body=url)
+
+    except Exception:
+        # Não derruba fluxo
+        logger.exception(
+            "mention_whatsapp: send failed user_id=%s board_id=%s card_id=%s",
+            getattr(mentioned_user, "id", None),
+            getattr(board, "id", None),
+            getattr(card, "id", None),
+        )
+        return
+
+
+
+
+
+
 def process_mentions_and_notify(*, request, board, card, source, raw_text):
     if not getattr(request, "user", None) or not request.user.is_authenticated:
         return
@@ -440,12 +503,12 @@ def process_mentions_and_notify(*, request, board, card, source, raw_text):
 
             # 2.2 Delta: se current_total > emailed_count => manda (geralmente 1)
             if current_total > mention_obj.emailed_count:
-                delta = current_total - mention_obj.emailed_count
-                # Se você quiser mandar 1 email por “nova marcação”, mande 1 e pronto.
-                # Se quiser mandar delta emails, faça loop. Vou manter 1 por save (mais seguro).
+                # Dispara notificação (1 vez por save, sem spam)
                 _send_mention_email(request, mentioned_user, request.user, board, card, mention_obj)
+                _send_mention_whatsapp(request, mentioned_user, request.user, board, card, mention_obj)
 
                 mention_obj.emailed_count = current_total
+
 
             # 2.3 Sempre atualiza seen_count e raw_text
             mention_obj.seen_count = current_total
@@ -455,6 +518,12 @@ def process_mentions_and_notify(*, request, board, card, source, raw_text):
             mention_obj.save(update_fields=["seen_count", "emailed_count", "raw_text", "actor", "board"])
 
             request._mentions_notify_cache.add(cache_key)
+
+
+
+
+
+
 
 # ======================================================================
 # Save e disponibilizar de imagens do HTML (quill)

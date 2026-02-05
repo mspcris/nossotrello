@@ -496,7 +496,32 @@
             <input type="hidden" name="content" id="cm-activity-content">
 
             <div class="flex gap-2">
-              <button type="submit" class="cm-btn primary"><span class="underline font-semibold">I</span>ncluir</button>
+              <button
+                type="button"
+                class="cm-btn primary"
+                onclick="
+                  const form = document.getElementById('cm-activity-form');
+                  if (!form) return;
+
+                  // sem feedback visual de clique (trava rápido)
+                  this.disabled = true;
+
+                  // dá tempo do Quill/mention aplicar a inserção no hidden antes do submit
+                  setTimeout(() => {
+                    try {
+                      if (form.requestSubmit) form.requestSubmit();
+                      else form.submit();
+                    } catch (_e) {
+                      try { form.submit(); } catch (_e2) {}
+                    } finally {
+                      setTimeout(() => { try { this.disabled = false; } catch (_e3) {} }, 800);
+                    }
+                  }, 250);
+                "
+              >
+                <span class="underline font-semibold">I</span>ncluir
+              </button>
+
               <button type="button" class="cm-btn" onclick="resetActivityQuill()">Limpar</button>
             </div>
           </form>
