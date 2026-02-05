@@ -496,6 +496,7 @@
             <input type="hidden" name="content" id="cm-activity-content">
 
             <div class="flex gap-2">
+              {% comment %} 
               <button
                 type="button"
                 class="cm-btn primary"
@@ -520,7 +521,40 @@
                 "
               >
                 <span class="underline font-semibold">I</span>ncluir
-              </button>
+              </button> 
+              {% endcomment %}
+
+              <button
+  type="button"
+  class="cm-btn primary"
+  onclick="
+    event.preventDefault();
+
+    const form = this.form;
+    if (!form) return;
+
+    // Sem 'submit' nativo: precisamos disparar o submit que o HTMX intercepta
+    this.disabled = true;
+
+    // Pequeno delay para o mention terminar de aplicar e o Quill sincronizar antes do htmx:configRequest
+    setTimeout(() => {
+      try {
+        if (form.requestSubmit) form.requestSubmit();
+        else {
+          // fallback: dispara submit event (htmx escuta), e só se não cancelar, submete
+          const ev = new Event('submit', { bubbles: true, cancelable: true });
+          if (form.dispatchEvent(ev)) form.submit();
+        }
+      } finally {
+        setTimeout(() => { try { this.disabled = false; } catch (_e) {} }, 600);
+      }
+    }, 150);
+  "
+>
+  <span class="underline font-semibold">I</span>ncluir
+</button>
+
+
 
               <button type="button" class="cm-btn" onclick="resetActivityQuill()">Limpar</button>
             </div>
