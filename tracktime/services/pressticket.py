@@ -36,7 +36,14 @@ def send_text_message(
     if not user_id or not queue_id or not whatsapp_id:
         raise PressTicketError("IDs do PressTicket não configurados (user/queue/whatsapp)")
 
-    url = base_url.rstrip("/")
+    base = (base_url or "").rstrip("/")
+
+    # Aceita tanto BASE_URL = https://host quanto BASE_URL = https://host/api/messages/send
+    if base.endswith("/api/messages/send"):
+        url = base
+    else:
+        url = base + "/api/messages/send"
+
 
     payload = {
         "number": number,

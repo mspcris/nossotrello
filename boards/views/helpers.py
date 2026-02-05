@@ -119,14 +119,20 @@ def _log_card(card: Card, request, message_html: str, attachment=None):
     Retorna a instância criada ou None.
     """
     try:
+        actor = None
+        if getattr(request, "user", None) and getattr(request.user, "is_authenticated", False):
+            actor = request.user
+
         return CardLog.objects.create(
             card=card,
+            actor=actor,  # ✅ passa a gravar autor quando houver
             content=message_html,
             attachment=attachment,
         )
     except Exception:
         # Auditoria não pode derrubar fluxo de negócio
         return None
+
 
 def _board_anchor_card(board: Board):
     """
