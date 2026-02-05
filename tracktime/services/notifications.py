@@ -11,6 +11,11 @@ from django.urls import reverse
 
 from tracktime.services.pressticket import send_text_message, PressTicketError
 
+import html
+import re
+from django.utils.html import strip_tags
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -40,6 +45,47 @@ def _iso_or_none(dt) -> Optional[str]:
         return None
 
 
+_RE_DATA_IMG = re.compile(
+    r"""<img\b[^>]*\bsrc=["']data:image/[^"']+["'][^>]*>""",
+    flags=re.IGNORECASE,
+)
+_RE_DATA_ANY = re.compile(
+    r"""data:image/[^;]+;base64,[a-z0-9+/=\s]+""",
+    flags=re.IGNORECASE,
+)
+
+def sanitize_card_description_to_text(desc_html: str, *, limit: int = 450) -> str:
+    """
+    - remove imagens inline base64 (não vaza payload)
+    - remove HTML
+    - retorna texto puro, com limite
+    """
+    raw = (desc_html or "").strip()
+    if not raw:
+        return ""
+
+    # remove <img src="data:image/...base64,...">
+    raw = _RE_DATA_IMG.sub("", raw)
+
+    # remove qualquer ocorrência remanescente de data:image...base64,...
+    raw = _RE_DATA_ANY.sub("", raw)
+
+    # HTML -> texto
+    txt = strip_tags(raw)
+
+    # decode entidades e normaliza espaços
+    txt = html.unescape(txt)
+    txt = re.sub(r"\s+\n", "\n", txt)
+    txt = re.sub(r"\n{3,}", "\n\n", txt)
+    txt = re.sub(r"[ \t]{2,}", " ", txt).strip()
+
+    if limit and len(txt) > limit:
+        txt = txt[:limit].rstrip() + "…"
+    return txt
+
+
+
+
 def snapshot_card(*, card, site_url: str) -> CardSnapshot:
     board_id = getattr(getattr(card, "column", None), "board_id", None) or 0
 
@@ -53,7 +99,7 @@ def snapshot_card(*, card, site_url: str) -> CardSnapshot:
         board_id=int(board_id or 0),
         title=_safe_str(getattr(card, "title", "")),
         tags=_safe_str(getattr(card, "tags", "")),  # etiquetas estão em Card.tags :contentReference[oaicite:1]{index=1}
-        description=_safe_str(getattr(card, "description", "")),
+        description=sanitize_card_description_to_text(getattr(card, "description", "")),
         start_date=_iso_or_none(getattr(card, "start_date", None)),
         warn_date=_iso_or_none(getattr(card, "due_warn_date", None)),
         due_date=_iso_or_none(getattr(card, "due_date", None)),

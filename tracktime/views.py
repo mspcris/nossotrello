@@ -29,6 +29,8 @@ from boards.services.notifications import (
     notify_users_for_card,
 )
 
+import html
+from django.utils.html import strip_tags
 
 
 
@@ -325,6 +327,40 @@ def card_tracktime_start(request, card_id):
     try:
         # recipients = membros do board (regra única do produto)
         recipients = get_board_recipients_for_card(card=card)
+
+
+        _RE_DATA_IMG = re.compile(
+            r"""<img\b[^>]*\bsrc=["']data:image/[^"']+["'][^>]*>""",
+            flags=re.IGNORECASE,
+        )
+        _RE_DATA_ANY = re.compile(
+            r"""data:image/[^;]+;base64,[a-z0-9+/=\s]+""",
+            flags=re.IGNORECASE,
+        )
+
+        def sanitize_card_description_to_text(desc_html: str, *, limit: int = 450) -> str:
+            """
+            - remove imagens inline base64 (não vaza payload)
+            - remove HTML
+            - retorna texto puro, com limite
+            """
+            raw = (desc_html or "").strip()
+            if not raw:
+                return ""
+
+            raw = _RE_DATA_IMG.sub("", raw)
+            raw = _RE_DATA_ANY.sub("", raw)
+
+            txt = strip_tags(raw)
+            txt = html.unescape(txt)
+            txt = re.sub(r"\s+\n", "\n", txt)
+            txt = re.sub(r"\n{3,}", "\n\n", txt)
+            txt = re.sub(r"[ \t]{2,}", " ", txt).strip()
+
+            if limit and len(txt) > limit:
+                txt = txt[:limit].rstrip() + "…"
+            return txt
+
 
         snap = build_card_snapshot(card=card)
         msg = format_card_message(
@@ -1278,3 +1314,8 @@ def tracktime_online_json(request):
     items.sort(key=lambda x: x.get("last_activity_at") or "", reverse=True)
 
     return JsonResponse({"ts": now.isoformat(), "items": items})
+
+
+
+
+
