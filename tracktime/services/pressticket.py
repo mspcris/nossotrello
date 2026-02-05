@@ -72,7 +72,19 @@ def send_text_message(
             if not raw:
                 return {}
             try:
-                return json.loads(raw)
+                obj = json.loads(raw)
+
+                # PressTicket retorna sucesso dentro de "error" (sim, bizarro)
+                if isinstance(obj, dict) and "error" in obj and isinstance(obj["error"], dict):
+                    data = obj["error"].get("_data") if isinstance(obj["error"], dict) else None
+                    msg_id = None
+                    if isinstance(data, dict):
+                        _id = data.get("id")
+                        if isinstance(_id, dict):
+                            msg_id = _id.get("_serialized") or _id.get("id")
+                    logger.warning("pressticket: api ok msg_id=%r", msg_id)
+                return obj
+
             except Exception:
                 return {"raw": raw}
     except error.HTTPError as e:
