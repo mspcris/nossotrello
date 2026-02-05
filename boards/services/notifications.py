@@ -210,26 +210,32 @@ def notify_users_for_card(
 
         # WhatsApp
         if prof.notify_whatsapp:
-            import re  # topo do arquivo, junto dos imports
-
             phone_raw = (prof.telefone or "").strip()
             phone_digits = re.sub(r"\D+", "", phone_raw)
 
-            if len(phone_digits) < 12:  # ex: 55 + DDD + número
-                logger.warning("pressticket: invalid phone after sanitize user_id=%s raw=%r digits=%r", u.id, phone_raw, phone_digits)
-                continue
-
-
-            if phone_digits:
+            # esperado: 55 + DDD (2) + número (8 ou 9) => 12 ou 13 dígitos
+            if len(phone_digits) not in (12, 13):
+                logger.warning(
+                    "pressticket: invalid phone after sanitize user_id=%s raw=%r digits=%r",
+                    u.id, phone_raw, phone_digits,
+                )
+            else:
                 try:
                     send_whatsapp(user=u, phone_digits=phone_digits, body=message)
 
                     if include_link_as_second_whatsapp_message:
-                        send_whatsapp(user=u, phone_digits=phone, body=snap.tracktime_url)
+                        send_whatsapp(user=u, phone_digits=phone_digits, body=snap.tracktime_url)
+
                 except PressTicketError:
-                    logger.exception("pressticket: send failed (PressTicketError) user_id=%s card_id=%s", u.id, card.id)
+                    logger.exception(
+                        "pressticket: send failed (PressTicketError) user_id=%s card_id=%s",
+                        u.id, card.id,
+                    )
                 except Exception:
-                    logger.exception("pressticket: send failed (unexpected) user_id=%s card_id=%s", u.id, card.id)
+                    logger.exception(
+                        "pressticket: send failed (unexpected) user_id=%s card_id=%s",
+                        u.id, card.id,
+                    )
 
         # Email
         if prof.notify_email:
@@ -240,4 +246,7 @@ def notify_users_for_card(
                     body = f"{message}\n\nLink: {snap.tracktime_url}\n"
                     send_email_notification(to_email=to_email, subject=subject, body=body)
                 except Exception:
-                    logger.exception("email: send failed user_id=%s card_id=%s", u.id, card.id)
+                    logger.exception(
+                        "email: send failed user_id=%s card_id=%s",
+                        u.id, card.id,
+                    )

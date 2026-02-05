@@ -111,8 +111,9 @@ def snapshot_card(*, card, site_url: str) -> CardSnapshot:
 
 def _user_prefs(user) -> Tuple[bool, bool, str]:
     """
-    returns: (allow_whatsapp, allow_email, phone_digits)
+    returns: (allow_whatsapp, allow_email, phone_raw)
     """
+
     prof = getattr(user, "profile", None)
     allow_whatsapp = bool(getattr(prof, "notify_whatsapp", True)) if prof else True
     allow_email = bool(getattr(prof, "notify_email", True)) if prof else True
@@ -140,6 +141,13 @@ def send_whatsapp(*, user, phone: str, kind: str, message: str) -> None:
     phone = _safe_str(phone or phone_cfg)
     if not phone:
         logger.info("notify: whatsapp skipped (no phone) user_id=%s kind=%s", user.id, kind)
+        return
+
+    phone_raw = phone
+    phone = re.sub(r"\D+", "", phone_raw)
+
+    if len(phone) not in (12, 13):
+        logger.info("notify: whatsapp skipped (invalid phone) user_id=%s kind=%s raw=%r digits=%r", user.id, kind, phone_raw, phone)
         return
 
     token = _safe_str(getattr(settings, "PRESSTICKET_TOKEN", ""))
