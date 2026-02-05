@@ -22,6 +22,14 @@ User = get_user_model()
 from .models import TrackPresence
 from tracktime.services.notifications import notify_tracktime_extended
 
+from boards.services.notifications import (
+    get_board_recipients_for_card,
+    build_card_snapshot,
+    format_card_message,
+    notify_users_for_card,
+)
+
+
 
 
 logger = logging.getLogger(__name__)
@@ -315,33 +323,26 @@ def card_tracktime_start(request, card_id):
         # ✅ WhatsApp (MVP): dispara mensagem no start, sem quebrar o track-time se falhar
        # ✅ WhatsApp no START (2 mensagens: comunicado + link puro)
     try:
-        prof = _get_or_create_profile(request.user)
-        phone = (prof.telefone or "").strip()
+        # recipients = membros do board (regra única do produto)
+        recipients = get_board_recipients_for_card(card=card)
 
-        if phone and settings.PRESSTICKET_TOKEN:
-            card_url = (entry.card_url_cache or "").strip()
-            if not card_url:
-                card_url = (
-                    settings.SITE_URL.rstrip("/")
-                    + reverse("boards:board_detail", kwargs={"board_id": card.column.board_id})
-                    + f"?card={card.id}"
-                )
+        snap = build_card_snapshot(card=card)
+        msg = format_card_message(
+            title_prefix="⏱️ Início do Track-time",
+            snap=snap,
+        )
 
-            msg1 = (
-                f"⏱️ Início do Track-time\n"
-                f"Card: {card.title}"
-            )
+        notify_users_for_card(
+            card=card,
+            recipients=recipients,
+            subject=f"Início do Track-time: {snap.title}",
+            message=msg,
+            include_link_as_second_whatsapp_message=True,
+        )
 
-            _send_whatsapp_two_messages(
-                number=phone,
-                message=msg1,
-                url=card_url,  # 2ª mensagem: SOMENTE o link
-            )
-
-    except PressTicketError as e:
-        logger.warning("[tracktime] WhatsApp START não enviado (PressTicketError): %s", e)
     except Exception as e:
-        logger.exception("[tracktime] WhatsApp START não enviado (erro inesperado): %s", e)
+        logger.exception("[tracktime] Notificação START falhou: %s", e)
+
 
 
 
@@ -364,33 +365,39 @@ def card_tracktime_stop(request, card_id):
     if entry:
         entry.stop()
 
+        card = None
+        try:
+            card = Card.objects.select_related("column__board").get(id=entry.card_id)
+        except Exception:
+            card = None
+        if not card:
+            return card_tracktime_panel(request, card_id)
+
+
        # ✅ WhatsApp no STOP (2 mensagens: comunicado + link puro)
         try:
-            prof = _get_or_create_profile(request.user)
-            phone = (prof.telefone or "").strip()
+            recipients = get_board_recipients_for_card(card=card)
 
-            if phone and settings.PRESSTICKET_TOKEN:
-                card_url = (entry.card_url_cache or "").strip()
-                title = (entry.card_title_cache or "").strip() or "Card"
+            snap = build_card_snapshot(card=card)
+            total_min = int(getattr(entry, "minutes", 0) or 0)
 
-                total_min = int(getattr(entry, "minutes", 0) or 0)
+            msg = format_card_message(
+                title_prefix="⏱️ Fim do Track-time",
+                snap=snap,
+                extra_lines=[f"Total: {total_min} min"],
+            )
 
-                msg1 = (
-                    f"⏱️ Fim do Track-time\n"
-                    f"Card: {title}\n"
-                    f"Total: {total_min} min"
-                )
+            notify_users_for_card(
+                card=card,
+                recipients=recipients,
+                subject=f"Fim do Track-time: {snap.title}",
+                message=msg,
+                include_link_as_second_whatsapp_message=True,
+            )
 
-                _send_whatsapp_two_messages(
-                    number=phone,
-                    message=msg1,
-                    url=card_url,  # 2ª mensagem: SOMENTE o link
-                )
-
-        except PressTicketError as e:
-            logger.warning("[tracktime] WhatsApp STOP não enviado (PressTicketError): %s", e)
         except Exception as e:
-            logger.exception("[tracktime] WhatsApp STOP não enviado (erro inesperado): %s", e)
+            logger.exception("[tracktime] Notificação STOP falhou: %s", e)
+
 
 
     return card_tracktime_panel(request, card_id)
@@ -495,6 +502,27 @@ def tracktime_confirm_link(request, entry_id, token):
     entry.confirmation_token_hash = ""
     entry.extend_one_hour(now=timezone.now())
     try:
+        card = Card.objects.select_related("column__board").get(id=entry.card_id)
+        recipients = get_board_recipients_for_card(card=card)
+
+        snap = build_card_snapshot(card=card)
+
+        msg = format_card_message(
+            title_prefix="✅ Track-time estendido em +1 hora",
+            snap=snap,
+        )
+
+        notify_users_for_card(
+            card=card,
+            recipients=recipients,
+            subject=f"Track-time +1h: {snap.title}",
+            message=msg,
+            include_link_as_second_whatsapp_message=True,
+        )
+    except Exception as e:
+        logger.exception("[tracktime] Notificação CONFIRM (+1h) falhou: %s", e)
+
+    try:
         notify_tracktime_extended(entry=entry)
     except Exception:
         logger.exception("[tracktime] notify extend failed entry_id=%s", entry.id)
@@ -515,6 +543,7 @@ def tracktime_confirm_link(request, entry_id, token):
 
     url = reverse("boards:board_detail", kwargs={"board_id": board_id})
     return redirect(f"{url}?card={card_id}&tab=tracktime")
+
 
 
 # ============================================================

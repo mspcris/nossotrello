@@ -206,3 +206,54 @@ def notify_tracktime_extended(*, entry, request_user=None) -> None:
     subj = f"[NossoTrello] Track-time estendido (+1h) — {title}"
     body = msg + "\nAbrir Track-time:\n" + track_url + "\n"
     send_email_notify(user=user, subject=subj, body=body)
+
+
+def notify_card_deadline(*, user, card, kind: str) -> None:
+    """
+    kind:
+      - warn_today
+      - warn_minus_1
+      - due_minus_1
+      - due_today
+    """
+    site_url = _safe_str(getattr(settings, "SITE_URL", "")) or ""
+    snap = snapshot_card(card=card, site_url=site_url)
+
+    # abre board com card e já no tracktime
+    track_url = snap.card_url
+    if "?" in track_url:
+        track_url = track_url + "&tab=tracktime"
+    else:
+        track_url = track_url + "?tab=tracktime"
+
+    title = snap.title or "Card"
+
+    kind_label = {
+        "warn_today": "📣 Aviso do card (hoje)",
+        "warn_minus_1": "📣 Aviso do card (amanhã)",
+        "due_minus_1": "⏰ Vencimento do card (amanhã)",
+        "due_today": "⏰ Vencimento do card (hoje)",
+    }.get(kind, kind)
+
+    msg = (
+        f"{kind_label}\n"
+        f"Card: {title}\n"
+        f"Tags: {snap.tags}\n"
+        f"Descrição: {snap.description}\n"
+        f"Data Início: {snap.start_date}\n"
+        f"Data Aviso: {snap.warn_date}\n"
+        f"Data Vencimento: {snap.due_date}\n"
+    )
+
+    # WhatsApp: texto + link puro
+    try:
+        send_whatsapp(user=user, phone="", kind=f"card_{kind}_message", message=msg)
+        send_whatsapp(user=user, phone="", kind=f"card_{kind}_url", message=track_url)
+    except PressTicketError:
+        logger.exception("notify: whatsapp card deadline failed (PressTicketError) user_id=%s card_id=%s kind=%s", user.id, card.id, kind)
+    except Exception:
+        logger.exception("notify: whatsapp card deadline failed (unexpected) user_id=%s card_id=%s kind=%s", user.id, card.id, kind)
+
+    subj = f"[NossoTrello] {kind_label} — {title}"
+    body = msg + "\nAbrir card (Track-time):\n" + track_url + "\n"
+    send_email_notify(user=user, subject=subj, body=body)

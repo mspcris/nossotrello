@@ -228,6 +228,14 @@ class ActiveCardManager(models.Manager):
 # CARD
 # ============================================================
 class Card(models.Model):
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="created_cards",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     tags = models.CharField(max_length=255, blank=True, null=True)
@@ -259,6 +267,7 @@ class Card(models.Model):
 
     def __str__(self):
         return self.title
+
 
 
 # ============================================================
@@ -389,8 +398,10 @@ class UserProfile(models.Model):
     )
 
     notify_whatsapp = models.BooleanField(default=True)
-
     notify_email = models.BooleanField(default=True)
+
+    notify_only_owned_or_mentioned = models.BooleanField(default=False)
+
 
 
     avatar_choice = models.CharField(max_length=60, blank=True, default="")
@@ -617,5 +628,33 @@ class BoardAccessRequest(models.Model):
     def __str__(self):
         return f"{self.user.email} pediu acesso ao board {self.board.name}"
 
+
+
+class CardNotificationLog(models.Model):
+    class Kind(models.TextChoices):
+        WARN = "warn", "Data aviso"
+        WARN_MINUS_1 = "warn_minus_1", "Véspera do aviso"
+        DUE_MINUS_1 = "due_minus_1", "Véspera do vencimento"
+        DUE = "due", "Vencimento"
+
+    card = models.ForeignKey(Card, related_name="notification_logs", on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="card_notification_logs", on_delete=models.CASCADE)
+    kind = models.CharField(max_length=20, choices=Kind.choices)
+    run_date = models.DateField()  # dia que o command rodou (08:00)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["card", "user", "kind", "run_date"],
+                name="uniq_card_user_kind_rundate",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["run_date", "kind"]),
+            models.Index(fields=["card", "kind"]),
+            models.Index(fields=["user", "run_date"]),
+        ]
 
 # END boards/models.py

@@ -98,8 +98,10 @@ def add_card(request, column_id):
 
         with transaction.atomic():
             card = form.save(commit=False)
+            card.created_by = request.user
 
             raw_desc = (request.POST.get("description") or card.description or "").strip()
+
             desc_html, saved_paths = _save_base64_images_to_media(raw_desc, folder="quill")
             card.description = desc_html
             card.column = column
@@ -1010,12 +1012,22 @@ def duplicate_card(request, card_id):
     new_card = Card.objects.create(
         column=column,
         position=new_position,
+        created_by=request.user,
+
         title=new_title,
         description=(card.description or ""),
         tags=(card.tags or ""),
-        tag_colors=(card.tag_colors or ""),
+
+        tag_colors=(card.tag_colors or {}),
+
+        start_date=card.start_date,
+        due_date=card.due_date,
+        due_warn_date=card.due_warn_date,
+        due_notify=bool(card.due_notify),
+
         cover_image=card.cover_image,
     )
+
 
     # copia anexos (referenciam os mesmos arquivos)
     try:
