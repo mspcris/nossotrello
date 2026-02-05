@@ -42,7 +42,9 @@ from ..models import (
     BoardAccessRequest,
     Card,
     CardSeen,
+    CardFollow,
 )
+
 
 from .helpers import (
     DEFAULT_WALLPAPER_FILENAME,
@@ -474,6 +476,19 @@ def board_detail(request, board_id):
             .values_list("card_id", "c")
         )
         unread_by_card = {card_id: c for card_id, c in data}
+    # ============================================================
+    # FOLLOWING POR CARD (BOOTSTRAP INICIAL)
+    # ============================================================
+    followed_ids = set()
+    if request.user.is_authenticated:
+        followed_ids = set(
+            CardFollow.objects
+            .filter(user=request.user, card__column__board=board)
+            .values_list("card_id", flat=True)
+        )
+
+
+
 
     # ============================================================
     # ✅ FIX: INJETAR A CONTAGEM NO OBJETO CARD ANTES DO 1º RENDER
@@ -484,6 +499,8 @@ def board_detail(request, board_id):
             # col.cards é o RelatedManager prefetchado por .prefetch_related("cards")
             for c in col.cards.all():
                 c.unread_count = int(unread_by_card.get(c.id, 0) or 0)
+                c.is_following = (c.id in followed_ids)
+
     except Exception:
         pass
 
@@ -1372,6 +1389,22 @@ def board_poll(request, board_id):
             )
         )
     )
+
+    # ============================================================
+    # FOLLOWING POR CARD (POLL)
+    # ============================================================
+    followed_ids = set(
+        CardFollow.objects
+        .filter(user=request.user, card__column__board=board)
+        .values_list("card_id", flat=True)
+    )
+
+    try:
+        for col in columns:
+            for c in col.cards.all():
+                c.is_following = (c.id in followed_ids)
+    except Exception:
+        pass
 
 
     html = render_to_string(

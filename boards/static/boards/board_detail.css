@@ -1031,4 +1031,39 @@ li[data-card-id][data-term-status="ok"] .term-badge{ color: #16a34a; }
 }
 
 
+
+
+
+
+
 .dock-action .icon { display:inline-flex; align-items:center; }
+
+
+.card-follow-icon.is-following {
+  background: #16a34a;
+  color: #fff;
+}
+
+/* wrapper só para estado */
+.card-follow-icon.is-following button{
+  background: #16a34a !important;
+  color: #fff;
+}
+
+/* opcional: feedback de request em voo */
+.card-follow-icon.is-following-pending button{
+  filter: brightness(0.92);
+  opacity: 0.9;
+}
+
+
+
+.card-follow-btn.is-following{
+  background: #16a34a !important;
+  color: #fff !important;
+}
+
+.card-follow-btn.is-following-pending{
+  opacity: .9;
+  filter: brightness(.95);
+}

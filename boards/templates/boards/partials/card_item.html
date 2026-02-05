@@ -60,7 +60,7 @@
 
 
   {# 🔴 BADGE + 👁️ (lado direito) — BADGE continua 100% controlado pelo POLL #}
-<div class="mb-2 flex items-center justify-between gap-2">
+<div class="card-follow-icon">
   <span
     data-card-unread-badge
     class="hidden inline-flex items-center justify-center
@@ -70,7 +70,7 @@
   </span>
 
   <button type="button"
-          class="inline-flex items-center justify-center h-7 w-7 rounded-full bg-black/40 text-white"
+          class="card-follow-btn inline-flex items-center justify-center h-7 w-7 rounded-full bg-black/40 text-white {% if card.is_following %}is-following{% endif %}"
           aria-label="Seguir card"
           title="Seguir card"
           onpointerdown="event.stopPropagation();"

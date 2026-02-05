@@ -208,6 +208,76 @@ window.applySavedTermColorsToBoard = function (scope) {
 
 
 
+
+
+
+
+// =========================
+// FOLLOW CARD — verde IMEDIATO (optimistic) + HTMX source-of-truth
+// =========================
+(function () {
+  if (window.__cmFollowCardInstalled) return;
+  window.__cmFollowCardInstalled = true;
+
+  function getBtnFromEventTarget(t){
+    return t.closest?.(".card-follow-btn[hx-post]") || null;
+  }
+
+  // 1) Clique: pinta NA HORA (capture roda antes do onclick inline)
+  document.addEventListener("click", function (e) {
+    const btn = getBtnFromEventTarget(e.target);
+    if (!btn) return;
+
+    if (btn.dataset.followBusy === "1") return;
+    btn.dataset.followBusy = "1";
+
+    btn.classList.toggle("is-following");
+    btn.classList.add("is-following-pending");
+  }, true);
+
+  // 2) Sucesso: alinha com resposta JSON se existir
+  document.body.addEventListener("htmx:afterRequest", function (e) {
+    const elt = e.detail?.elt;
+    const btn = elt?.closest?.(".card-follow-btn[hx-post]") || null;
+    if (!btn) return;
+
+    btn.classList.remove("is-following-pending");
+    btn.dataset.followBusy = "0";
+
+    try {
+      const xhr = e.detail?.xhr;
+      const ct = xhr?.getResponseHeader?.("content-type") || "";
+      if (ct.includes("application/json")) {
+        const data = JSON.parse(xhr.responseText || "{}");
+        if (typeof data.following === "boolean") {
+          btn.classList.toggle("is-following", data.following);
+        }
+      }
+    } catch (_err) {}
+  });
+
+  // 3) Erro: rollback do optimista
+  document.body.addEventListener("htmx:responseError", function (e) {
+    const elt = e.detail?.elt;
+    const btn = elt?.closest?.(".card-follow-btn[hx-post]") || null;
+    if (!btn) return;
+
+    btn.classList.remove("is-following-pending");
+    btn.dataset.followBusy = "0";
+
+    btn.classList.toggle("is-following");
+  });
+})();
+
+
+
+
+
+
+
+
+
+
 // ============================================================
 // VIEWER LIVE REFRESH (sem websocket): atualiza columns-list sem F5
 // ============================================================
