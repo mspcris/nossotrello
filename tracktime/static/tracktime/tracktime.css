@@ -319,3 +319,29 @@
 }
 
 @keyframes ttspin { to { transform: translateY(-50%) rotate(360deg); } }
+
+
+
+
+
+
+
+
+
+
+
+
+/* Loading label: escondido por padrão */
+.tt-btn-async .tt-btn-loading { display: none; }
+
+/* Durante request HTMX: troca label -> Loading... */
+form.htmx-request .tt-btn-async .tt-btn-label { display: none; }
+form.htmx-request .tt-btn-async .tt-btn-loading { display: inline; }
+
+/* (opcional) feedback visual no botão */
+form.htmx-request .tt-btn-async {
+  opacity: .85;
+  cursor: wait;
+  pointer-events: none;
+}
+

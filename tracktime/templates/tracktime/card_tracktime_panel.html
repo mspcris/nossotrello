@@ -118,8 +118,9 @@
       <div class="tt-right" style="grid-column: 1 / -1;">
         <button type="submit" class="tt-btn tt-btn-primary tt-btn-async">
           <span class="tt-btn-label">Start</span>
-          <span class="htmx-indicator tt-btn-indicator" aria-hidden="true"></span>
+          <span class="tt-btn-loading">Loading...</span>
         </button>
+
       </div>
     </form>
 
@@ -254,7 +255,7 @@
       }
 
       if (!data.running) {
-        line.textContent = "Aguardando iniciar…";
+        line.textContent = "Processando, Aguarde…";
         return;
       }
 

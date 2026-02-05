@@ -14,18 +14,14 @@
           hx-post="{% url 'tracktime:card_stop' card.id %}"
           hx-target="#cm-tracktime-panel"
           hx-swap="innerHTML"
-          hx-disabled-elt="find button"
-          hx-indicator="find .htmx-indicator"
         >
-
           {% csrf_token %}
-         <button type="submit" class="tt-btn tt-btn-danger tt-btn-async">
-          <span class="tt-btn-label">Stop</span>
-          <span class="htmx-indicator tt-btn-indicator" aria-hidden="true"></span>
-        </button>
-
-
+          <button type="submit" class="tt-btn tt-btn-danger tt-btn-async">
+            <span class="tt-btn-label">Stop</span>
+            <span class="tt-btn-loading">Loading...</span>
+          </button>
         </form>
+
 
 
   </div>
