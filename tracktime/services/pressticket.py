@@ -36,7 +36,7 @@ def send_text_message(
     if not user_id or not queue_id or not whatsapp_id:
         raise PressTicketError("IDs do PressTicket não configurados (user/queue/whatsapp)")
 
-    url = base_url.rstrip("/") + "/v1/messages/send"
+    url = base_url.rstrip("/")
 
     payload = {
         "number": number,
@@ -53,9 +53,10 @@ def send_text_message(
         data=data,
         method="POST",
         headers={
-            "x-api-token": token,
+            "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
         },
+
     )
 
     try:
