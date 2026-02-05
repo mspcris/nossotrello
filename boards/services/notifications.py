@@ -210,10 +210,20 @@ def notify_users_for_card(
 
         # WhatsApp
         if prof.notify_whatsapp:
-            phone = (prof.telefone or "").strip()
-            if phone:
+            import re  # topo do arquivo, junto dos imports
+
+            phone_raw = (prof.telefone or "").strip()
+            phone_digits = re.sub(r"\D+", "", phone_raw)
+
+            if len(phone_digits) < 12:  # ex: 55 + DDD + número
+                logger.warning("pressticket: invalid phone after sanitize user_id=%s raw=%r digits=%r", u.id, phone_raw, phone_digits)
+                continue
+
+
+            if phone_digits:
                 try:
-                    send_whatsapp(user=u, phone_digits=phone, body=message)
+                    send_whatsapp(user=u, phone_digits=phone_digits, body=message)
+
                     if include_link_as_second_whatsapp_message:
                         send_whatsapp(user=u, phone_digits=phone, body=snap.tracktime_url)
                 except PressTicketError:
