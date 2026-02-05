@@ -9,19 +9,20 @@
     </div>
 
         <form
-      method="post"
-      hx-post="{% url 'tracktime:card_stop' card.id %}"
-      hx-target="#cm-tracktime-panel"
-      hx-swap="innerHTML"
-      hx-disabled-elt="find button"
-      hx-indicator="#tt-stop-indicator"
-    >
-      {% csrf_token %}
-      <button type="submit" class="tt-btn tt-btn-danger">
-        <span class="tt-btn-label">Stop</span>
-        <span id="tt-stop-indicator" class="htmx-indicator" style="margin-left:8px;">⏳</span>
-      </button>
-    </form>
+          method="post"
+          hx-post="{% url 'tracktime:card_stop' card.id %}"
+          hx-target="#cm-tracktime-panel"
+          hx-swap="innerHTML"
+          hx-disabled-elt="find button"
+          hx-indicator="#tt-stop-indicator"
+        >
+          {% csrf_token %}
+          <button type="submit" class="tt-btn tt-btn-danger">
+            <span class="tt-btn-label">Stop</span>
+            <span id="tt-stop-indicator" class="htmx-indicator tt-btn-indicator" aria-hidden="true"></span>
+          </button>
+        </form>
+
 
   </div>
 

@@ -267,3 +267,50 @@
 
 .htmx-indicator { display: none; }
 .htmx-request .htmx-indicator { display: inline-block; }
+
+
+
+/* HTMX indicator padrão: escondido, aparece durante request */
+.htmx-indicator { display: none; }
+.htmx-request .htmx-indicator { display: inline-block; }
+
+/* Form em request: botão fica “ocupado” */
+.tt-async-form.htmx-request .tt-btn-async {
+  opacity: .75;
+  cursor: wait;
+}
+
+/* Indicador “bonito”: bolinha girando */
+.tt-btn-indicator{
+  width: 14px;
+  height: 14px;
+  margin-left: 10px;
+  border-radius: 999px;
+  border: 2px solid rgba(255,255,255,.55);
+  border-top-color: rgba(255,255,255,0);
+  animation: ttspin .8s linear infinite;
+  vertical-align: -2px;
+}
+
+@keyframes ttspin { to { transform: rotate(360deg); } }
+
+/* Central */
+.tt-elapsed-sub { font-size: 12px; }
+.tt-elapsed-main {
+  margin-top: 8px;
+  font-weight: 900;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+/* BUSY do botão durante request (Start/Stop) */
+.tt-async-form.htmx-request .tt-btn-async {
+  opacity: .75;
+  cursor: wait;
+  pointer-events: none;
+}
+
+/* Se quiser “travar” qualquer botão dentro do form, mesmo sem classes extras */
+.tt-async-form.htmx-request button {
+  pointer-events: none;
+}
