@@ -80,12 +80,13 @@
 
                     <div class="cm-feed-bubble">
                       <div class="cm-feed-body">
-                        {% if log.content_delta %}
-                          {{ log.content_text|linebreaksbr }}
-                        {% else %}
+                        {% if log.content %}
                           {{ log.content|safe }}
+                        {% elif log.content_text %}
+                          {{ log.content_text|linebreaksbr }}
                         {% endif %}
                       </div>
+
 
                       {% if log.attachment %}
                         <div class="cm-attach">
@@ -129,12 +130,13 @@
 
                                   <div class="cm-feed-bubble">
                                     <div class="cm-feed-body">
-                                      {% if r.content_delta %}
-                                        {{ r.content_text|linebreaksbr }}
-                                      {% else %}
+                                      {% if r.content %}
                                         {{ r.content|safe }}
+                                      {% elif r.content_text %}
+                                        {{ r.content_text|linebreaksbr }}
                                       {% endif %}
                                     </div>
+
                                   </div>
                                 </div>
                               </div>
