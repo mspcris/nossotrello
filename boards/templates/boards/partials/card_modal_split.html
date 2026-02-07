@@ -1223,50 +1223,7 @@
 })();
 </script>
 
-<script>
-(function () {
-  function bindActivityToggle() {
-    const toggle = document.getElementById("cm-activity-toggle");
-    const composer = document.getElementById("cm-activity-composer");
-    const gap = document.getElementById("cm-activity-gap");
 
-    if (!toggle || !composer) return;
-    if (toggle.dataset.cmBound === "1") return;
-    toggle.dataset.cmBound = "1";
-
-    function setOpen(open) {
-      composer.classList.toggle("is-hidden", !open);
-      if (gap) gap.classList.toggle("is-hidden", !open);
-      toggle.setAttribute("aria-expanded", open ? "true" : "false");
-
-      if (open) {
-        const ed = document.getElementById("cm-activity-editor");
-        if (ed) ed.scrollIntoView({ block: "nearest" });
-      }
-    }
-
-    toggle.addEventListener("click", function () {
-      const isHidden = composer.classList.contains("is-hidden");
-      setOpen(isHidden);
-    });
-
-    document.body.addEventListener("htmx:afterRequest", function (evt) {
-      if (!evt.target || evt.target.id !== "cm-activity-form") return;
-      if (!evt.detail || !evt.detail.successful) return;
-
-      setOpen(false);
-      if (typeof window.resetActivityQuill === "function") {
-        try { window.resetActivityQuill(); } catch (_e) {}
-      }
-    });
-  }
-
-  document.addEventListener("DOMContentLoaded", bindActivityToggle);
-  document.body.addEventListener("htmx:afterSwap", function (evt) {
-    if (evt.target && evt.target.id === "modal-body") bindActivityToggle();
-  });
-})();
-</script>
 
 <!-- TRACK-TIME (HOTFIX: não depende de cm:tabchange) -->
 <script>
