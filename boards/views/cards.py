@@ -962,10 +962,15 @@ def card_modal(request, card_id):
     )
 
     # ✅ LOGS ORDENADOS (mais novos primeiro)
-    logs = card.logs.order_by("-created_at")
+    
+    from .activity import _decorate_logs_for_feed  # import local para evitar circularidade
 
+    logs_qs = card.logs.order_by("-created_at")
     ctx = _card_modal_context(card)
-    ctx["logs"] = logs
+    ctx["logs"] = _decorate_logs_for_feed(logs_qs)
+
+    
+    
 
     return _render_card_modal(request, card, ctx)
 

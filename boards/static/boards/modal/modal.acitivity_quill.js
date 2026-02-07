@@ -118,17 +118,18 @@
     };
   }
 
-    // ============================================================
-    // UI: Toggle do composer "Nova Atividade"
-    // ============================================================
-    function getComposerEl() {
-      return document.getElementById("cm-activity-composer");
-    }
+  // ============================================================
+  // UI: Toggle do composer "Nova Atividade"
+  // ============================================================
+  function getComposerEl() {
+    return document.getElementById("cm-activity-composer");
+  }
 
-    function getGapEl() {
-      return document.getElementById("cm-activity-gap");
-    }
-    function getToggleBtn() {
+  function getGapEl() {
+    return document.getElementById("cm-activity-gap");
+  }
+
+  function getToggleBtn() {
     return document.getElementById("cm-activity-toggle");
   }
 
@@ -162,7 +163,6 @@
     if (gap) gap.classList.toggle("is-hidden", !isNew);
   }
 
-
   function isComposerOpen() {
     const el = getComposerEl();
     return !!(el && !el.classList.contains("is-hidden"));
@@ -178,10 +178,8 @@
     if (gap) gap.classList.remove("is-hidden");
     if (btn) btn.setAttribute("aria-expanded", "true");
 
-    // Só inicializa Quill quando abriu
     ensureQuill();
 
-    // foco
     try {
       const q = window[STATE_KEY];
       if (q && typeof q.focus === "function") q.focus();
@@ -199,34 +197,36 @@
     if (btn) btn.setAttribute("aria-expanded", "false");
   }
 
-  document.addEventListener("click", function (e) {
-  const feedBtn = e.target?.closest?.("#cm-activity-tab-feed");
-  if (feedBtn) {
-    setActivityTab("feed");
-    closeComposer();
-    return;
-  }
+  document.addEventListener(
+    "click",
+    function (e) {
+      const feedBtn = e.target?.closest?.("#cm-activity-tab-feed");
+      if (feedBtn) {
+        setActivityTab("feed");
+        closeComposer();
+        return;
+      }
 
-  const newBtn = e.target?.closest?.("#cm-activity-tab-new");
-  if (newBtn) {
-    setActivityTab("new");
-    openComposer();
-    return;
-  }
+      const newBtn = e.target?.closest?.("#cm-activity-tab-new");
+      if (newBtn) {
+        setActivityTab("new");
+        openComposer();
+        return;
+      }
 
-  // compat: se ainda existir #cm-activity-toggle em algum layout antigo
-  const legacyToggle = e.target?.closest?.("#cm-activity-toggle");
-  if (legacyToggle) {
-    if (isComposerOpen()) {
-      setActivityTab("feed");
-      closeComposer();
-    } else {
-      setActivityTab("new");
-      openComposer();
-    }
-  }
-}, true);
-
+      const legacyToggle = e.target?.closest?.("#cm-activity-toggle");
+      if (legacyToggle) {
+        if (isComposerOpen()) {
+          setActivityTab("feed");
+          closeComposer();
+        } else {
+          setActivityTab("new");
+          openComposer();
+        }
+      }
+    },
+    true
+  );
 
   // ============================================================
   // Detectar se a aba ATIVIDADE está realmente ativa no DOM
@@ -330,7 +330,9 @@
         requestAnimationFrame(resetInternalScroll);
       });
 
-      try { window.dispatchEvent(new Event("resize")); } catch (_e) {}
+      try {
+        window.dispatchEvent(new Event("resize"));
+      } catch (_e) {}
     }
 
     quill.on("text-change", () => {
@@ -371,69 +373,134 @@
     }
   }
 
-    function applyPostSuccessActivityUI(responseText) {
-      removeActivityEmptyState();
+  function applyPostSuccessActivityUI(responseText) {
+    removeActivityEmptyState();
 
-      const raw = String(responseText || "").trim();
-      if (!raw) return;
+    const raw = String(responseText || "").trim();
+    if (!raw) return;
 
-      // ✅ remove blocos OOB do HTMX (senão vira “painel de anexos” no meio)
-      const doc = new DOMParser().parseFromString(raw, "text/html");
-      doc.querySelectorAll("[hx-swap-oob]").forEach((n) => n.remove());
+    const doc = new DOMParser().parseFromString(raw, "text/html");
+    doc.querySelectorAll("[hx-swap-oob]").forEach((n) => n.remove());
 
-      // pega só o painel de atividade de dentro do HTML retornado
-      const newPanel = doc.getElementById("card-activity-panel");
-      if (!newPanel) return;
+    const newPanel = doc.getElementById("card-activity-panel");
+    if (!newPanel) return;
 
-      const panelNow = document.getElementById("card-activity-panel");
-      if (!panelNow) return;
+    const panelNow = document.getElementById("card-activity-panel");
+    if (!panelNow) return;
 
-      panelNow.outerHTML = newPanel.outerHTML;
+    panelNow.outerHTML = newPanel.outerHTML;
 
-      try { cleanupActivityLogSpacing(); } catch (_e) {}
-      setTimeout(() => { try { cleanupActivityLogSpacing(); } catch (_e) {} }, 60);
-
-      try { updateActivityFeedCount(); } catch (_e) {}
-      setTimeout(() => { try { updateActivityFeedCount(); } catch (_e) {} }, 80);
-
-    }
-
-    function updateActivityFeedCount() {
+    try {
+      cleanupActivityLogSpacing();
+    } catch (_e) {}
+    setTimeout(() => {
       try {
-        const badge = document.getElementById("cm-activity-feed-count");
-        const host = document.getElementById("cm-activity-panel");
-        if (!badge || !host) return;
-
-        // heurísticas (sem depender do HTML do painel)
-        let items = host.querySelectorAll("[data-activity-id]");
-        if (!items || !items.length) items = host.querySelectorAll(".activity-item");
-        if (!items || !items.length) items = host.querySelectorAll(".cm-activity-item");
-        if (!items || !items.length) items = host.querySelectorAll("article");
-        if (!items || !items.length) items = host.querySelectorAll("li");
-
-        let n = items ? items.length : 0;
-
-        // se veio só o placeholder “Nenhuma atividade ainda.”, zera
-        const txt = (host.textContent || "").trim();
-        if (txt === "Nenhuma atividade ainda.") n = 0;
-
-        badge.textContent = String(n);
-
-        // regra de exibição
-        badge.classList.toggle("hidden", n <= 0);
+        cleanupActivityLogSpacing();
       } catch (_e) {}
+    }, 60);
+
+    try {
+      updateActivityFeedCount();
+    } catch (_e) {}
+    setTimeout(() => {
+      try {
+        updateActivityFeedCount();
+      } catch (_e) {}
+    }, 80);
+
+    // ✅ rebinda e reaplica filtro após trocar o HTML do painel
+    try {
+      bindFeedFilterUI();
+    } catch (_e) {}
+    try {
+      applyFeedFilter();
+    } catch (_e) {}
+  }
+
+  function updateActivityFeedCount() {
+    try {
+      const badge = document.getElementById("cm-activity-feed-count");
+      const host = document.getElementById("cm-activity-panel");
+      if (!badge || !host) return;
+
+      let items = host.querySelectorAll("[data-activity-id]");
+      if (!items || !items.length) items = host.querySelectorAll(".activity-item");
+      if (!items || !items.length) items = host.querySelectorAll(".cm-activity-item");
+      if (!items || !items.length) items = host.querySelectorAll("article");
+      if (!items || !items.length) items = host.querySelectorAll("li");
+
+      let n = items ? items.length : 0;
+
+      const txt = (host.textContent || "").trim();
+      if (txt === "Nenhuma atividade ainda.") n = 0;
+
+      badge.textContent = String(n);
+      badge.classList.toggle("hidden", n <= 0);
+    } catch (_e) {}
+  }
+
+  // ============================================================
+  // FEED FILTER (Comentários / Arquivos / Sistema / Tudo)
+  // ============================================================
+  function getFeedEl() {
+    return document.getElementById("cm-feed");
+  }
+
+  function applyFeedFilter() {
+    const sel = document.getElementById("cm-feed-filter");
+    const q = document.getElementById("cm-feed-q");
+    const feed = getFeedEl();
+    if (!sel || !feed) return;
+
+    const filter = (sel.value || "comments").toLowerCase();
+    const term = (q?.value || "").trim().toLowerCase();
+
+    const items = feed.querySelectorAll(".cm-feed-item");
+    items.forEach((it) => {
+      const type = (it.getAttribute("data-type") || "").trim().toLowerCase();
+      const text = (it.getAttribute("data-text") || "").toLowerCase();
+
+      const okType = filter === "all" || type === filter;
+      const okText = !term || text.includes(term);
+
+      it.classList.toggle("is-hidden", !(okType && okText));
+    });
+
+    const days = feed.querySelectorAll(".cm-feed-dayhdr");
+    days.forEach((hdr) => {
+      let node = hdr.nextElementSibling;
+      let hasVisible = false;
+      while (node && !node.classList.contains("cm-feed-dayhdr")) {
+        if (node.classList.contains("cm-feed-item") && !node.classList.contains("is-hidden")) {
+          hasVisible = true;
+          break;
+        }
+        node = node.nextElementSibling;
+      }
+      hdr.classList.toggle("is-hidden", !hasVisible);
+    });
+  }
+
+  function bindFeedFilterUI() {
+    const sel = document.getElementById("cm-feed-filter");
+    const q = document.getElementById("cm-feed-q");
+
+    if (sel && sel.dataset.cmBound !== "1") {
+      sel.dataset.cmBound = "1";
+      sel.addEventListener("change", applyFeedFilter);
     }
+    if (q && q.dataset.cmBound !== "1") {
+      q.dataset.cmBound = "1";
+      q.addEventListener("input", applyFeedFilter);
+    }
+  }
 
-
-    function cleanupActivityLogSpacing() {
+  function cleanupActivityLogSpacing() {
     try {
       const wrapper =
         document.getElementById("activity-panel-wrapper") ||
         document.querySelector("#cm-activity-panel") ||
         document.querySelector("#activity-panel-wrapper");
-      
-      
-      
 
       if (!wrapper) return;
 
@@ -452,11 +519,8 @@
 
       const isEmptyNode = (node) => {
         if (!node) return true;
-
-        // se tem mídia/lista/etc, não é vazio
         if (hasMedia(node)) return false;
 
-        // clone e remove lixo típico do Quill
         const tmp = node.cloneNode(true);
 
         tmp
@@ -468,19 +532,15 @@
         const txt = (tmp.textContent || "").replace(/\u00A0/g, " ").trim();
         const html = normalizeHtml(tmp.innerHTML);
 
-        // vazio de verdade
         if (!txt && (!html || html.replace(/<[^>]+>/g, "") === "")) return true;
-
         return false;
       };
 
       contentBlocks.forEach((block) => {
-        // remove <p>/<div> vazios em qualquer posição
         Array.from(block.querySelectorAll("p, div")).forEach((el) => {
           if (isEmptyNode(el)) el.remove();
         });
 
-        // limpa lixo nas bordas do bloco
         const isIgnorableText = (n) => n.nodeType === 3 && (n.textContent || "").trim() === "";
         const isBr = (n) => n.nodeType === 1 && n.tagName === "BR";
 
@@ -493,7 +553,6 @@
       });
     } catch (_e) {}
   }
-
 
   // ============================================================
   // REPLY (Responder)
@@ -574,6 +633,104 @@
   );
 
   // ============================================================
+  // Upload de IMAGEM do Quill (paste/toolbar) — NÃO cria CardLog
+  // ============================================================
+  async function uploadQuillImageAndInsertEmbed(quill, file) {
+    const uploadUrl = `/quill/upload/`;
+
+    const form = new FormData();
+    form.append("image", file); // view quill_upload espera "image"
+
+    const res = await fetch(uploadUrl, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {
+        "X-CSRFToken": getCSRF(),
+        "X-Requested-With": "XMLHttpRequest",
+      },
+      body: form,
+    });
+
+    if (!res.ok) {
+      const t = await res.text().catch(() => "");
+      throw new Error(t || `Upload falhou (${res.status}).`);
+    }
+
+    const data = await res.json().catch(() => ({}));
+    const fileUrl = data && data.url ? String(data.url) : "";
+    if (!fileUrl) throw new Error("Upload não retornou URL.");
+
+    const range = quill.getSelection(true) || { index: quill.getLength() };
+
+    quill.insertEmbed(range.index, "image", fileUrl);
+    quill.insertText(range.index + 1, "\n");
+    quill.setSelection(range.index + 2);
+
+    try {
+      quill.__autoGrowApply?.();
+    } catch (_e) {}
+  }
+
+  // ============================================================
+  // Upload de ANEXO (áudio/arquivo) — fluxo legado (pode criar log separado)
+  // ============================================================
+  async function uploadAttachmentAndInsertLink(quill, file, description) {
+    const cardId = getCardId();
+    if (!cardId) throw new Error("cardId ausente.");
+
+    const uploadUrl = `/card/${cardId}/attachments/add/`;
+
+    const form = new FormData();
+    form.append("file", file);
+    form.append("description", description || "Arquivo anexado na atividade");
+
+    const res = await fetch(uploadUrl, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {
+        "X-CSRFToken": getCSRF(),
+        "X-Requested-With": "XMLHttpRequest",
+      },
+      body: form,
+    });
+
+    if (!res.ok) {
+      const t = await res.text().catch(() => "");
+      throw new Error(t || `Upload falhou (${res.status}).`);
+    }
+
+    const raw = await res.text();
+
+    const doc = new DOMParser().parseFromString(raw, "text/html");
+    doc.querySelectorAll("[hx-swap-oob]").forEach((n) => n.remove());
+
+    const list = document.getElementById("attachments-list");
+    if (list) {
+      const item =
+        doc.querySelector("[id^='attachment-']") ||
+        doc.querySelector(".attachment-item") ||
+        doc.body.firstElementChild;
+
+      if (item) list.insertAdjacentHTML("beforeend", item.outerHTML);
+    }
+
+    const a = doc.querySelector("a[href]");
+    const img = doc.querySelector("img[src]");
+    const fileUrl = (img && img.getAttribute("src")) || (a && a.getAttribute("href")) || "";
+
+    const range = quill.getSelection(true) || { index: quill.getLength() };
+
+    if (fileUrl) {
+      quill.insertText(range.index, "🎤 Áudio", { link: fileUrl });
+      quill.insertText(range.index + 7, "\n");
+      quill.setSelection(range.index + 8);
+    } else {
+      quill.insertText(range.index, "[áudio anexado]\n");
+      quill.setSelection(range.index + 15);
+    }
+  }
+
+  // ============================================================
   // Quill init
   // ============================================================
   function ensureQuill() {
@@ -608,7 +765,57 @@
 
     const quill = new Quill(el, quillOptions);
 
-    // audio bind (mantém seu fluxo atual)
+    // ============================================================
+    // ✅ IMAGEM: toolbar + paste => /quill/upload/ + embed (miniatura no texto)
+    // ============================================================
+    try {
+      const toolbar = quill.getModule("toolbar");
+      if (toolbar) {
+        toolbar.addHandler("image", () => {
+          const input = document.createElement("input");
+          input.type = "file";
+          input.accept = "image/*";
+          input.onchange = async () => {
+            try {
+              const file = input.files && input.files[0];
+              if (!file) return;
+              await uploadQuillImageAndInsertEmbed(quill, file);
+            } catch (err) {
+              notifyActivityError(err?.message || "Erro ao enviar imagem.");
+            }
+          };
+          input.click();
+        });
+      }
+    } catch (_e) {}
+
+    // paste (Ctrl+V) com imagem
+    try {
+      quill.root.addEventListener(
+        "paste",
+        async (e) => {
+          const items = e?.clipboardData?.items || [];
+          for (const it of items) {
+            if (it && it.type && it.type.startsWith("image/")) {
+              e.preventDefault();
+              const file = it.getAsFile();
+              if (!file) return;
+              try {
+                await uploadQuillImageAndInsertEmbed(quill, file);
+              } catch (err) {
+                notifyActivityError(err?.message || "Erro ao colar imagem.");
+              }
+              return;
+            }
+          }
+        },
+        true
+      );
+    } catch (_e) {}
+
+    // ============================================================
+    // AUDIO bind (mantém seu fluxo atual)
+    // ============================================================
     try {
       const tb = quill.getModule("toolbar");
       const btn = tb?.container?.querySelector?.(".ql-audio");
@@ -653,7 +860,7 @@
   }
 
   // ============================================================
-  // AUDIO (mantido igual ao seu) ...
+  // AUDIO
   // ============================================================
   window.__cmAudioRec = window.__cmAudioRec || {
     recording: false,
@@ -685,7 +892,9 @@
     }
     if (msg) {
       console.error("[activity-audio]", msg);
-      try { alert(msg); } catch (_e) {}
+      try {
+        alert(msg);
+      } catch (_e) {}
     }
   }
 
@@ -703,12 +912,7 @@
   }
 
   function pickAudioMimeType() {
-    const candidates = [
-      "audio/webm;codecs=opus",
-      "audio/webm",
-      "audio/ogg;codecs=opus",
-      "audio/ogg",
-    ];
+    const candidates = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus", "audio/ogg"];
     for (const c of candidates) {
       try {
         if (window.MediaRecorder && MediaRecorder.isTypeSupported(c)) return c;
@@ -723,68 +927,6 @@
     if (m.includes("webm")) return "webm";
     return "webm";
   }
-
-  async function uploadFileAndInsertLink(quill, file, description) {
-  const cardId = getCardId();
-  if (!cardId) throw new Error("cardId ausente.");
-
-  const uploadUrl = `/card/${cardId}/attachments/add/`;
-
-  const form = new FormData();
-  form.append("file", file);
-  form.append("description", description || "Áudio gravado na atividade");
-
-  const res = await fetch(uploadUrl, {
-    method: "POST",
-    credentials: "same-origin",
-    headers: {
-      "X-CSRFToken": getCSRF(),
-      "X-Requested-With": "XMLHttpRequest",
-    },
-    body: form,
-  });
-
-  if (!res.ok) {
-    const t = await res.text().catch(() => "");
-    throw new Error(t || `Upload falhou (${res.status}).`);
-  }
-
-  const raw = await res.text();
-
-  // ✅ parse + remove OOB
-  const doc = new DOMParser().parseFromString(raw, "text/html");
-  doc.querySelectorAll("[hx-swap-oob]").forEach((n) => n.remove());
-
-  // ✅ atualiza lista visual, se existir
-  const list = document.getElementById("attachments-list");
-  if (list) {
-    const item =
-      doc.querySelector("[id^='attachment-']") ||
-      doc.querySelector(".attachment-item") ||
-      doc.body.firstElementChild;
-
-    if (item) list.insertAdjacentHTML("beforeend", item.outerHTML);
-  }
-
-  // ✅ extrai URL do arquivo do HTML já “limpo”
-  const a = doc.querySelector("a[href]");
-  const img = doc.querySelector("img[src]");
-  const fileUrl = (img && img.getAttribute("src")) || (a && a.getAttribute("href")) || "";
-
-  const range = quill.getSelection(true) || { index: quill.getLength() };
-
-  if (fileUrl) {
-    quill.insertText(range.index, "🎤 Áudio", { link: fileUrl });
-    quill.insertText(range.index + 7, "\n");
-    quill.setSelection(range.index + 8);
-  } else {
-    quill.insertText(range.index, "[áudio anexado]\n");
-    quill.setSelection(range.index + 15);
-  }
-}
-
-
-
 
   function ensureAudioFileInput() {
     let input = document.getElementById("cm-audio-capture-input");
@@ -801,14 +943,20 @@
   }
 
   function configureCaptureAttribute(input) {
-    try { input.removeAttribute("capture"); } catch (_e) {}
+    try {
+      input.removeAttribute("capture");
+    } catch (_e) {}
 
     if (!isMobileUA()) return;
 
     if (isAndroidUA()) {
-      try { input.setAttribute("capture", "microphone"); } catch (_e) {}
+      try {
+        input.setAttribute("capture", "microphone");
+      } catch (_e) {}
     } else {
-      try { input.setAttribute("capture", "user"); } catch (_e) {}
+      try {
+        input.setAttribute("capture", "user");
+      } catch (_e) {}
     }
   }
 
@@ -817,7 +965,7 @@
       throw new Error("Gravação não suportada (getUserMedia indisponível).");
     }
 
-    const isSecure = (location.protocol === "https:" || location.hostname === "localhost");
+    const isSecure = location.protocol === "https:" || location.hostname === "localhost";
     if (!isSecure) {
       throw new Error("Gravação exige HTTPS para acessar o microfone.");
     }
@@ -857,7 +1005,9 @@
 
     const blob = new Blob(window.__cmAudioRec.chunks, { type: mime || "audio/webm" });
 
-    try { window.__cmAudioRec.stream?.getTracks?.().forEach((t) => t.stop()); } catch (_e) {}
+    try {
+      window.__cmAudioRec.stream?.getTracks?.().forEach((t) => t.stop());
+    } catch (_e) {}
 
     window.__cmAudioRec.recording = false;
     window.__cmAudioRec.recorder = null;
@@ -869,7 +1019,8 @@
     const ts = new Date().toISOString().replace(/[:.]/g, "-");
     const file = new File([blob], `audio-${ts}.${ext}`, { type: mime || "audio/webm" });
 
-    await uploadFileAndInsertLink(quill, file, "Áudio gravado na atividade");
+    // ✅ aqui era o bug: você chamava uma função que não existe
+    await uploadAttachmentAndInsertLink(quill, file, "Áudio gravado na atividade");
   }
 
   async function fallbackCaptureAudioFile(quill) {
@@ -881,7 +1032,8 @@
       try {
         const file = input.files && input.files[0];
         if (!file) return;
-        await uploadFileAndInsertLink(quill, file, "Áudio enviado na atividade");
+        // ✅ aqui era o bug: você chamava uma função que não existe
+        await uploadAttachmentAndInsertLink(quill, file, "Áudio enviado na atividade");
       } catch (err) {
         notifyActivityError(err?.message || "Erro ao enviar áudio.");
       }
@@ -895,7 +1047,7 @@
       clearActivityError?.();
 
       const hasGetUserMedia = !!navigator.mediaDevices?.getUserMedia;
-      const isSecure = (location.protocol === "https:" || location.hostname === "localhost");
+      const isSecure = location.protocol === "https:" || location.hostname === "localhost";
 
       if (!hasGetUserMedia || !isSecure || !window.MediaRecorder) {
         await fallbackCaptureAudioFile(quill);
@@ -911,7 +1063,9 @@
       setAudioButtonRecordingUI(quill, false);
 
       window.__cmAudioRec.recording = false;
-      try { window.__cmAudioRec.stream?.getTracks?.().forEach((t) => t.stop()); } catch (_e) {}
+      try {
+        window.__cmAudioRec.stream?.getTracks?.().forEach((t) => t.stop());
+      } catch (_e) {}
 
       window.__cmAudioRec.stream = null;
       window.__cmAudioRec.recorder = null;
@@ -971,13 +1125,9 @@
       const payload = syncPayload();
 
       if (evt.detail && evt.detail.parameters) {
-        // legado
         evt.detail.parameters["content"] = payload.html;
-
-        // ✅ novo
         evt.detail.parameters["delta"] = payload.delta;
         evt.detail.parameters["text"] = payload.text;
-
         if (replyTo) evt.detail.parameters["reply_to"] = replyTo;
       }
     });
@@ -987,9 +1137,15 @@
         try {
           const resp = evt.detail?.xhr?.responseText || "";
           applyPostSuccessActivityUI(resp);
-          
-          try { cleanupActivityLogSpacing(); } catch (_e) {}
-          setTimeout(() => { try { cleanupActivityLogSpacing(); } catch (_e) {} }, 60);
+
+          try {
+            cleanupActivityLogSpacing();
+          } catch (_e) {}
+          setTimeout(() => {
+            try {
+              cleanupActivityLogSpacing();
+            } catch (_e) {}
+          }, 60);
         } catch (_e) {}
 
         resetEditor();
@@ -997,9 +1153,15 @@
         clearReplyContext();
         setActivityTab("feed");
         closeComposer();
-        try { updateActivityFeedCount(); } catch (_e) {}
-        setTimeout(() => { try { updateActivityFeedCount(); } catch (_e) {} }, 60);
 
+        try {
+          updateActivityFeedCount();
+        } catch (_e) {}
+        setTimeout(() => {
+          try {
+            updateActivityFeedCount();
+          } catch (_e) {}
+        }, 60);
       }
     });
   }
@@ -1047,14 +1209,32 @@
       }
     }, 0);
 
+    try {
+      bindFeedFilterUI();
+    } catch (_e) {}
+    try {
+      applyFeedFilter();
+    } catch (_e) {}
 
-    try { cleanupActivityLogSpacing(); } catch (_e) {}
-    setTimeout(() => { try { cleanupActivityLogSpacing(); } catch (_e) {} }, 120);
+    try {
+      cleanupActivityLogSpacing();
+    } catch (_e) {}
+    setTimeout(() => {
+      try {
+        cleanupActivityLogSpacing();
+      } catch (_e) {}
+    }, 120);
 
-    try { updateActivityFeedCount(); } catch (_e) {}
-    setTimeout(() => { try { updateActivityFeedCount(); } catch (_e) {} }, 140);
-
+    try {
+      updateActivityFeedCount();
+    } catch (_e) {}
+    setTimeout(() => {
+      try {
+        updateActivityFeedCount();
+      } catch (_e) {}
+    }, 140);
   }
+
   document.addEventListener("DOMContentLoaded", afterModalPaint);
 
   document.body.addEventListener("htmx:afterSettle", function (e) {

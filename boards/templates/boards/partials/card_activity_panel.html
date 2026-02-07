@@ -1,10 +1,9 @@
 {# templates/boards/partials/card_activity_panel.html #}
 {% load tag_helpers %}
 
-{# Painel Feed (ex-Atividade) no estilo do print #}
 <div id="card-activity-panel" class="cm-feed-root">
 
-  {# TOOLBAR: busca + filtro + botão menu #}
+  {# TOOLBAR #}
   <div class="cm-feed-toolbar" id="cm-feed-toolbar">
     <div class="cm-feed-search">
       <span class="cm-feed-ico" aria-hidden="true">🔍</span>
@@ -28,80 +27,73 @@
     </button>
   </div>
 
-  {# SCROLL DO FEED (mantém o seu max-h e overflow) #}
+  {# SCROLL DO FEED #}
   <div id="activity-panel-wrapper" class="activity-panel cm-feed-scroll max-h-[60vh] overflow-y-auto pr-2">
-
     <div class="cm-feed" id="cm-feed">
 
-      {# logs (fallback mantém seu default atual) #}
-      {% with logs_list=logs|default:card.logs.all|dictsort:"created_at" %}
+      {# IMPORTANTE: logs deve vir do backend já DECORADO (lista com cm_type) #}
+      {% with logs_list=logs %}
         {% if logs_list %}
 
-          {# separa por dia (como no print) #}
-          {% regroup logs_list by created_at|date:"d/m/Y" as days %}
+          {% for log in logs_list %}
+            {% ifchanged log.created_at|date:"d/m/Y" %}
+              <div class="cm-feed-dayhdr">{{ log.created_at|date:"d/m/Y" }}</div>
+            {% endifchanged %}
 
-          {% for day in days %}
-            <section class="cm-feed-day" data-day="{{ day.grouper }}">
-              <div class="cm-feed-dayhdr">{{ day.grouper }}</div>
+            {% with html_l=log.content|default_if_none:""|lower txt_l=log.content_text|default_if_none:""|lower %}
+              <article
+                class="cm-feed-item"
+                data-type="{{ log.cm_type|default:'comments' }}"
+                data-text="{{ txt_l|striptags|escape }} {{ html_l|striptags|escape }}"
+              >
+                <div class="cm-feed-row">
 
-              {% for log in day.list %}
-                {# type: comments / files / system (JS usa) #}
-                {% with
-                  has_file=log.attachment|yesno:"1,0"
-                  is_system=log.actor|yesno:"0,1"
-                %}
-                <article
-                  class="cm-feed-item"
-                  data-type="{% if is_system == '1' %}system{% elif has_file == '1' %}files{% else %}comments{% endif %}"
-                  data-text="{{ log.content_text|default_if_none:''|striptags|lower }} {{ log.content|default_if_none:''|striptags|lower }}"
-                >
-                  <div class="cm-feed-row">
+                  {# avatar #}
+                  <div class="cm-feed-avatar" aria-hidden="true">
+                    {% if log.actor %}
+                      {{ log.actor.email|default:"U"|slice:":1"|upper }}
+                    {% else %}
+                      •
+                    {% endif %}
+                  </div>
 
-                    {# avatar (simples, sem depender de imagem de perfil) #}
-                    <div class="cm-feed-avatar" aria-hidden="true">
+                  <div class="cm-feed-main">
+
+                    {# HEADER (fora do balão) #}
+                    <div class="cm-feed-meta">
+                      <span class="cm-feed-handle">
+                        {% if log.actor %}
+                          {% if log.actor.profile.handle %}
+                            @{{ log.actor.profile.handle }}
+                          {% else %}
+                            {{ log.actor.email }}
+                          {% endif %}
+                        {% else %}
+                          (SISTEMA)
+                        {% endif %}
+                      </span>
+
+                      <span class="cm-feed-time">{{ log.created_at|date:"H:i" }}</span>
+
                       {% if log.actor %}
-                        {{ log.actor.email|default:"U"|first|upper }}
-                      {% else %}
-                        •
+                        <button
+                          type="button"
+                          class="cm-feed-reply-btn cm-activity-reply-btn"
+                          title="Responder"
+                          aria-label="Responder"
+                          data-reply-to="{{ log.id }}"
+                          data-reply-user="{% if log.actor.profile.handle %}@{{ log.actor.profile.handle }}{% else %}{{ log.actor.email }}{% endif %}"
+                        >
+                          <svg viewBox="0 0 24 24" class="w-4 h-4 opacity-80" fill="currentColor" aria-hidden="true">
+                            <path d="M10 9V5L3 12l7 7v-4.1c6 0 9.5 2 11 6-1-8-5-12-11-12z"/>
+                          </svg>
+                        </button>
                       {% endif %}
                     </div>
 
-                    <div class="cm-feed-main">
-
-                      <div class="cm-feed-meta">
-                        <span class="cm-feed-handle">
-                          {% if log.actor %}
-                            {% if log.actor.profile.handle %}
-                              @{{ log.actor.profile.handle }}
-                            {% else %}
-                              {{ log.actor.email }}
-                            {% endif %}
-                          {% else %}
-                            (SISTEMA)
-                          {% endif %}
-                        </span>
-
-                        <span class="cm-feed-time">{{ log.created_at|date:"H:i" }}</span>
-
-                        {# botão responder (mantém seu comportamento atual) #}
-                        {% if log.actor %}
-                          <button
-                            type="button"
-                            class="cm-feed-reply-btn cm-activity-reply-btn"
-                            title="Responder"
-                            aria-label="Responder"
-                            data-reply-to="{{ log.id }}"
-                            data-reply-user="{% if log.actor.profile.handle %}@{{ log.actor.profile.handle }}{% else %}{{ log.actor.email }}{% endif %}"
-                          >
-                            <svg viewBox="0 0 24 24" class="w-4 h-4 opacity-80" fill="currentColor" aria-hidden="true">
-                              <path d="M10 9V5L3 12l7 7v-4.1c6 0 9.5 2 11 6-1-8-5-12-11-12z"/>
-                            </svg>
-                          </button>
-                        {% endif %}
-                      </div>
-
+                    {# BALÃO #}
+                    <div class="cm-feed-bubble">
                       <div class="cm-feed-body">
-                        {# conteúdo principal #}
                         {% if log.content_delta %}
                           {{ log.content_text|linebreaksbr }}
                         {% else %}
@@ -109,7 +101,7 @@
                         {% endif %}
                       </div>
 
-                      {# anexo (thumb + link, com preview flutuante igual print) #}
+                      {# anexo explícito (thumb pequena) #}
                       {% if log.attachment %}
                         <div class="cm-attach">
                           <a
@@ -121,7 +113,6 @@
                             {{ log.attachment.name|cut:"attachments/" }}
                           </a>
 
-                          {# se for imagem, mostra thumb (sem depender de backend) #}
                           <a
                             href="{{ log.attachment.url }}"
                             target="_blank"
@@ -135,57 +126,64 @@
                         </div>
                       {% endif %}
 
-                      {# replies (threads) #}
-                      {% if log.replies.all %}
-                        <div class="cm-replies">
-                          <div class="cm-replies-title">
-                            {{ log.replies.all|length }} resposta{{ log.replies.all|length|pluralize }}
-                          </div>
+                      {# replies #}
+                      {% with replies=log.replies.all %}
+                        {% if replies %}
+                          <div class="cm-replies">
+                            <div class="cm-replies-title">
+                              {{ replies|length }} resposta{{ replies|length|pluralize }}
+                            </div>
 
-                          {% for r in log.replies.all %}
-                            <div class="cm-reply">
-                              <div class="cm-reply-avatar" aria-hidden="true">
-                                {% if r.actor %}{{ r.actor.email|default:"U"|first|upper }}{% else %}•{% endif %}
-                              </div>
-
-                              <div class="cm-reply-main">
-                                <div class="cm-feed-meta">
-                                  <span class="cm-feed-handle">
-                                    {% if r.actor %}
-                                      {% if r.actor.profile.handle %}
-                                        @{{ r.actor.profile.handle }}
-                                      {% else %}
-                                        {{ r.actor.email }}
-                                      {% endif %}
-                                    {% else %}
-                                      (SISTEMA)
-                                    {% endif %}
-                                  </span>
-                                  <span class="cm-feed-time">{{ r.created_at|date:"H:i" }}</span>
-                                </div>
-
-                                <div class="cm-feed-body">
-                                  {% if r.content_delta %}
-                                    {{ r.content_text|linebreaksbr }}
+                            {% for r in replies %}
+                              <div class="cm-reply">
+                                <div class="cm-reply-avatar" aria-hidden="true">
+                                  {% if r.actor %}
+                                    {{ r.actor.email|default:"U"|slice:":1"|upper }}
                                   {% else %}
-                                    {{ r.content|safe }}
+                                    •
                                   {% endif %}
                                 </div>
-                              </div>
-                            </div>
-                          {% endfor %}
-                        </div>
-                      {% endif %}
 
+                                <div class="cm-reply-main">
+                                  <div class="cm-feed-meta">
+                                    <span class="cm-feed-handle">
+                                      {% if r.actor %}
+                                        {% if r.actor.profile.handle %}
+                                          @{{ r.actor.profile.handle }}
+                                        {% else %}
+                                          {{ r.actor.email }}
+                                        {% endif %}
+                                      {% else %}
+                                        (SISTEMA)
+                                      {% endif %}
+                                    </span>
+                                    <span class="cm-feed-time">{{ r.created_at|date:"H:i" }}</span>
+                                  </div>
+
+                                  <div class="cm-feed-bubble">
+                                    <div class="cm-feed-body">
+                                      {% if r.content_delta %}
+                                        {{ r.content_text|linebreaksbr }}
+                                      {% else %}
+                                        {{ r.content|safe }}
+                                      {% endif %}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            {% endfor %}
+                          </div>
+                        {% endif %}
+                      {% endwith %}
                     </div>
+
                   </div>
-                </article>
-                {% endwith %}
-              {% endfor %}
-            </section>
+                </div>
+              </article>
+            {% endwith %}
+
           {% endfor %}
 
-          {# “Carregar mais” e pill “novas mensagens” (mock) #}
           <div class="cm-feed-foot">
             <button type="button" class="cm-feed-more" id="cm-feed-more">+ Carregar mais</button>
 
@@ -199,10 +197,11 @@
           <p class="cm-muted">Nenhuma atividade ainda.</p>
         {% endif %}
       {% endwith %}
+
     </div>
   </div>
 
-  {# Preview flutuante (igual print) #}
+  {# Preview flutuante #}
   <div class="cm-hover-preview" id="cm-hover-preview" aria-hidden="true">
     <img id="cm-hover-img" alt="">
     <div class="cm-hover-footer">

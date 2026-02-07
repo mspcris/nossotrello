@@ -112,7 +112,7 @@ def activity_panel(request, card_id):
         if not memberships_qs.filter(user=request.user).exists():
             return HttpResponse("Você não tem acesso a este quadro.", status=403)
 
-    parents = (
+    parents_qs = (
         card.logs
         .filter(reply_to__isnull=True)
         .select_related("actor")
@@ -124,6 +124,9 @@ def activity_panel(request, card_id):
         )
         .order_by("-created_at")
     )
+
+    parents = _decorate_logs_for_feed(parents_qs)
+
 
     return render(
         request,
@@ -242,7 +245,7 @@ def add_activity(request, card_id):
         pass
 
     # 1) Atualiza painel de atividade (target do hx-post)
-    parents = (
+    parents_qs = (
         card.logs
         .filter(reply_to__isnull=True)
         .select_related("actor")
@@ -254,6 +257,9 @@ def add_activity(request, card_id):
         )
         .order_by("-created_at")
     )
+
+    parents = _decorate_logs_for_feed(parents_qs)
+
 
     activity_html = render_to_string(
         "boards/partials/card_activity_panel.html",
@@ -325,3 +331,239 @@ def cards_unread_activity(request, board_id):
         counts[log.card_id] = counts.get(log.card_id, 0) + 1
 
     return JsonResponse({"cards": counts})
+
+
+def _actor_label_and_initial(u):
+    """
+    Retorna (label, initial, reply_user)
+    - label: @handle se existir, senão email
+    - initial: primeira letra do email (ou do handle sem @)
+    - reply_user: string usada no botão Responder
+    """
+    if not u:
+        return ("(SISTEMA)", "•", "")
+
+    # handle
+    handle = ""
+    try:
+        handle = (getattr(getattr(u, "profile", None), "handle", None) or "").strip()
+    except Exception:
+        handle = ""
+
+    email = ""
+    try:
+        email = (getattr(u, "email", "") or "").strip()
+    except Exception:
+        email = ""
+
+    if handle:
+        label = f"@{handle}"
+        initial = (handle[:1] or "U").upper()
+        reply_user = label
+        return (label, initial, reply_user)
+
+    if email:
+        label = email
+        initial = (email[:1] or "U").upper()
+        reply_user = email
+        return (label, initial, reply_user)
+
+    return ("(SISTEMA)", "•", "")
+
+
+def _actor_label_and_initial(u):
+    """
+    Retorna (label, initial, reply_user)
+    - label: @handle se existir, senão email
+    - initial: primeira letra do email (ou do handle sem @)
+    - reply_user: string usada no botão Responder
+    """
+    if not u:
+        return ("(SISTEMA)", "•", "")
+
+    # handle
+    handle = ""
+    try:
+        handle = (getattr(getattr(u, "profile", None), "handle", None) or "").strip()
+    except Exception:
+        handle = ""
+
+    email = ""
+    try:
+        email = (getattr(u, "email", "") or "").strip()
+    except Exception:
+        email = ""
+
+    if handle:
+        label = f"@{handle}"
+        initial = (handle[:1] or "U").upper()
+        reply_user = label
+        return (label, initial, reply_user)
+
+    if email:
+        label = email
+        initial = (email[:1] or "U").upper()
+        reply_user = email
+        return (label, initial, reply_user)
+
+    return ("(SISTEMA)", "•", "")
+
+
+def _log_is_files(log) -> bool:
+    """
+    Heurística única no backend para decidir se o log é 'files'.
+    """
+    # 1) attachment direto no log
+    try:
+        att = getattr(log, "attachment", None)
+        if att:
+            return True
+    except Exception:
+        pass
+
+    # 2) varre conteúdo/html/texto
+    html = (getattr(log, "content", "") or "").lower()
+    txt = (getattr(log, "content_text", "") or "").lower()
+    hay = f"{html} {txt}"
+
+    if "<img" in hay:
+        return True
+
+    for ext in (".png", ".jpg", ".jpeg", ".webp", ".gif"):
+        if ext in hay:
+            return True
+
+    if ("attachments/" in hay) or ("uploads/" in hay) or ("/media/" in hay):
+        return True
+
+    return False
+
+
+def _decorate_one_log(log):
+    """
+    Aplica cm_* em 1 log (não quebra se faltar profile).
+    """
+    # actor/labels
+    actor = getattr(log, "actor", None)
+    label, initial, reply_user = _actor_label_and_initial(actor)
+    log.cm_actor_label = label
+    log.cm_actor_initial = initial
+    log.cm_reply_user = reply_user
+
+    # tipo
+    if not getattr(log, "actor_id", None):
+        log.cm_type = "system"
+    else:
+        log.cm_type = "files" if _log_is_files(log) else "comments"
+
+    return log
+
+
+def _decorate_logs_for_feed(logs_qs):
+    """
+    Retorna LISTA (não QuerySet) com cm_* preenchido em parents e replies.
+    """
+    logs = list(logs_qs)
+    for log in logs:
+        _decorate_one_log(log)
+
+        # replies já vêm via prefetch; decorar também
+        try:
+            replies = list(getattr(log, "replies", []).all())
+        except Exception:
+            replies = list(getattr(log, "replies", []) or [])
+
+        for r in replies:
+            _decorate_one_log(r)
+
+    return logs
+
+
+def _decorate_one_log(log):
+    """
+    Aplica cm_* em 1 log (não quebra se faltar profile).
+    """
+    # actor/labels
+    actor = getattr(log, "actor", None)
+    label, initial, reply_user = _actor_label_and_initial(actor)
+    log.cm_actor_label = label
+    log.cm_actor_initial = initial
+    log.cm_reply_user = reply_user
+
+    # tipo
+    if not getattr(log, "actor_id", None):
+        log.cm_type = "system"
+    else:
+        log.cm_type = "files" if _log_is_files(log) else "comments"
+
+    return log
+
+
+def _decorate_logs_for_feed(logs_qs):
+    """
+    Retorna LISTA (não QuerySet) com cm_* preenchido em parents e replies.
+    """
+    logs = list(logs_qs)
+    for log in logs:
+        _decorate_one_log(log)
+
+        # replies já vêm via prefetch; decorar também
+        try:
+            replies = list(getattr(log, "replies", []).all())
+        except Exception:
+            replies = list(getattr(log, "replies", []) or [])
+
+        for r in replies:
+            _decorate_one_log(r)
+
+    return logs
+
+
+
+def _safe_handle(u) -> str:
+    """
+    Nunca levanta exception se não existir profile.
+    """
+    if not u:
+        return ""
+    try:
+        prof = getattr(u, "profile", None)
+        h = getattr(prof, "handle", "") if prof else ""
+        h = (h or "").strip()
+        if h:
+            return f"@{h}"
+    except Exception:
+        pass
+
+    try:
+        e = (getattr(u, "email", "") or "").strip()
+        if e:
+            return e
+    except Exception:
+        pass
+
+    return ""
+
+
+def _decorate_one_log(log):
+    # tipo
+    if not getattr(log, "actor_id", None):
+        log.cm_type = "system"
+        log.cm_actor_label = "(SISTEMA)"
+        log.cm_actor_initial = "•"
+        log.cm_reply_user = ""
+    else:
+        log.cm_type = "files" if _log_is_files(log) else "comments"
+        label = _safe_handle(getattr(log, "actor", None))
+        log.cm_actor_label = label or "(usuário)"
+        # inicial
+        try:
+            email = getattr(getattr(log, "actor", None), "email", "") or ""
+            log.cm_actor_initial = (email[:1] or "U").upper()
+        except Exception:
+            log.cm_actor_initial = "U"
+        log.cm_reply_user = log.cm_actor_label
+
+    return log
+
+

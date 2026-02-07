@@ -2718,3 +2718,13 @@ html.dark #modal #modal-breadcrumb{
   border-color: rgba(255,255,255,0.14);
   background: rgba(2,6,23,0.42);
 }
+
+
+
+
+
+
+
+.cm-feed-item.is-hidden { display: none !important; }
+.cm-feed-dayhdr.is-hidden { display: none !important; }
+
