@@ -118,20 +118,50 @@
     };
   }
 
-  // ============================================================
-  // UI: Toggle do composer "Nova Atividade"
-  // ============================================================
-  function getComposerEl() {
-    return document.getElementById("cm-activity-composer");
-  }
+    // ============================================================
+    // UI: Toggle do composer "Nova Atividade"
+    // ============================================================
+    function getComposerEl() {
+      return document.getElementById("cm-activity-composer");
+    }
 
-  function getGapEl() {
-    return document.getElementById("cm-activity-gap");
-  }
-
-  function getToggleBtn() {
+    function getGapEl() {
+      return document.getElementById("cm-activity-gap");
+    }
+    function getToggleBtn() {
     return document.getElementById("cm-activity-toggle");
   }
+
+  function getTabFeedBtn() {
+    return document.getElementById("cm-activity-tab-feed");
+  }
+
+  function getTabNewBtn() {
+    return document.getElementById("cm-activity-tab-new");
+  }
+
+  function setActivityTab(which /* 'feed' | 'new' */) {
+    const feedBtn = getTabFeedBtn();
+    const newBtn = getTabNewBtn();
+    const composer = getComposerEl();
+
+    const isNew = which === "new";
+
+    if (feedBtn) {
+      feedBtn.classList.toggle("is-active", !isNew);
+      feedBtn.setAttribute("aria-selected", (!isNew).toString());
+    }
+    if (newBtn) {
+      newBtn.classList.toggle("is-active", isNew);
+      newBtn.setAttribute("aria-selected", (isNew).toString());
+    }
+
+    if (composer) composer.classList.toggle("is-hidden", !isNew);
+
+    const gap = getGapEl();
+    if (gap) gap.classList.toggle("is-hidden", !isNew);
+  }
+
 
   function isComposerOpen() {
     const el = getComposerEl();
@@ -169,17 +199,34 @@
     if (btn) btn.setAttribute("aria-expanded", "false");
   }
 
-  document.addEventListener(
-    "click",
-    function (e) {
-      const btn = e.target?.closest?.("#cm-activity-toggle");
-      if (!btn) return;
+  document.addEventListener("click", function (e) {
+  const feedBtn = e.target?.closest?.("#cm-activity-tab-feed");
+  if (feedBtn) {
+    setActivityTab("feed");
+    closeComposer();
+    return;
+  }
 
-      if (isComposerOpen()) closeComposer();
-      else openComposer();
-    },
-    true
-  );
+  const newBtn = e.target?.closest?.("#cm-activity-tab-new");
+  if (newBtn) {
+    setActivityTab("new");
+    openComposer();
+    return;
+  }
+
+  // compat: se ainda existir #cm-activity-toggle em algum layout antigo
+  const legacyToggle = e.target?.closest?.("#cm-activity-toggle");
+  if (legacyToggle) {
+    if (isComposerOpen()) {
+      setActivityTab("feed");
+      closeComposer();
+    } else {
+      setActivityTab("new");
+      openComposer();
+    }
+  }
+}, true);
+
 
   // ============================================================
   // Detectar se a aba ATIVIDADE está realmente ativa no DOM
@@ -345,6 +392,36 @@
 
       try { cleanupActivityLogSpacing(); } catch (_e) {}
       setTimeout(() => { try { cleanupActivityLogSpacing(); } catch (_e) {} }, 60);
+
+      try { updateActivityFeedCount(); } catch (_e) {}
+      setTimeout(() => { try { updateActivityFeedCount(); } catch (_e) {} }, 80);
+
+    }
+
+    function updateActivityFeedCount() {
+      try {
+        const badge = document.getElementById("cm-activity-feed-count");
+        const host = document.getElementById("cm-activity-panel");
+        if (!badge || !host) return;
+
+        // heurísticas (sem depender do HTML do painel)
+        let items = host.querySelectorAll("[data-activity-id]");
+        if (!items || !items.length) items = host.querySelectorAll(".activity-item");
+        if (!items || !items.length) items = host.querySelectorAll(".cm-activity-item");
+        if (!items || !items.length) items = host.querySelectorAll("article");
+        if (!items || !items.length) items = host.querySelectorAll("li");
+
+        let n = items ? items.length : 0;
+
+        // se veio só o placeholder “Nenhuma atividade ainda.”, zera
+        const txt = (host.textContent || "").trim();
+        if (txt === "Nenhuma atividade ainda.") n = 0;
+
+        badge.textContent = String(n);
+
+        // regra de exibição
+        badge.classList.toggle("hidden", n <= 0);
+      } catch (_e) {}
     }
 
 
@@ -918,7 +995,11 @@
         resetEditor();
         clearActivityError();
         clearReplyContext();
+        setActivityTab("feed");
         closeComposer();
+        try { updateActivityFeedCount(); } catch (_e) {}
+        setTimeout(() => { try { updateActivityFeedCount(); } catch (_e) {} }, 60);
+
       }
     });
   }
@@ -957,18 +1038,23 @@
 
     setTimeout(function () {
       const composer = getComposerEl();
-      const btn = getToggleBtn();
+
       if (composer && !composer.classList.contains("is-hidden")) {
+        setActivityTab("new");
+      } else {
+        setActivityTab("feed");
         closeComposer();
-      } else if (btn) {
-        btn.setAttribute("aria-expanded", isComposerOpen() ? "true" : "false");
       }
     }, 0);
 
+
     try { cleanupActivityLogSpacing(); } catch (_e) {}
     setTimeout(() => { try { cleanupActivityLogSpacing(); } catch (_e) {} }, 120);
-  }
 
+    try { updateActivityFeedCount(); } catch (_e) {}
+    setTimeout(() => { try { updateActivityFeedCount(); } catch (_e) {} }, 140);
+
+  }
   document.addEventListener("DOMContentLoaded", afterModalPaint);
 
   document.body.addEventListener("htmx:afterSettle", function (e) {

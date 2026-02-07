@@ -478,15 +478,29 @@
     <aside class="cm-activity">
       <section class="cm-activity-panel" role="region">
 
-        <div class="cm-activity-togglebar">
-          <button type="button"
-                  id="cm-activity-toggle"
-                  class="cm-btn"
-                  aria-expanded="false"
-                  aria-controls="cm-activity-composer">
-            Nova Atividade
-          </button>
-        </div>
+          <div class="cm-activity-togglebar" role="tablist" aria-label="Atividade">
+            <div class="cm-activity-tabs">
+              <button type="button"
+                      id="cm-activity-tab-feed"
+                      class="cm-btn cm-activity-tab is-active"
+                      role="tab"
+                      aria-selected="true"
+                      aria-controls="cm-activity-feed">
+                Feed
+                <span id="cm-activity-feed-count" class="cm-activity-badge hidden" aria-label="Total de itens no feed"></span>
+              </button>
+
+
+              <button type="button"
+                      id="cm-activity-tab-new"
+                      class="cm-btn cm-activity-tab"
+                      role="tab"
+                      aria-selected="false"
+                      aria-controls="cm-activity-composer">
+                Nova Atividade
+              </button>
+            </div>
+          </div>
 
         <div id="cm-activity-composer" class="cm-card space-y-3 is-hidden">
           <form id="cm-activity-form"
@@ -575,11 +589,12 @@
 
         <div id="cm-activity-gap" style="height: 10px;" class="is-hidden"></div>
 
-        <div class="cm-card">
+        <div class="cm-card" id="cm-activity-feed" role="tabpanel" aria-labelledby="cm-activity-tab-feed">
           <div id="cm-activity-panel">
             {% include "boards/partials/card_activity_panel.html" %}
           </div>
         </div>
+
 
       </section>
     </aside>
@@ -1447,5 +1462,205 @@
 </script>
 
 
+
+
+
+
+<script>
+(function(){
+  function $(sel, root){ return (root||document).querySelector(sel); }
+  function $all(sel, root){ return Array.from((root||document).querySelectorAll(sel)); }
+
+  function bootFeed(){
+    const root = document.getElementById("cm-root");
+    if (!root) return;
+
+    const feed = $("#cm-feed", root);
+    const q = $("#cm-feed-q", root);
+    const filter = $("#cm-feed-filter", root);
+    const preview = $("#cm-hover-preview", root);
+    const pImg = $("#cm-hover-img", root);
+    const pOpen = $("#cm-hover-open", root);
+    const pName = $("#cm-hover-name", root);
+
+    if (!feed || !q || !filter) return;
+    if (root.dataset.cmFeedBound === "1") return;
+    root.dataset.cmFeedBound = "1";
+
+    function norm(s){ return String(s||"").toLowerCase(); }
+
+    function applyFilter(){
+      const query = norm(q.value).trim();
+      const f = String(filter.value||"comments");
+
+      const items = $all(".cm-feed-item", feed);
+      items.forEach((it) => {
+        const t = String(it.getAttribute("data-type") || "comments");
+        const text = norm(it.getAttribute("data-text") || it.textContent || "");
+
+        const okType = (f === "all") ? true : (t === f);
+        const okQ = !query || text.includes(query);
+
+        it.style.display = (okType && okQ) ? "" : "none";
+      });
+
+      // oculta dias vazios
+      $all(".cm-feed-day", feed).forEach((day) => {
+        const anyVisible = $all(".cm-feed-item", day).some((it) => it.style.display !== "none");
+        day.style.display = anyVisible ? "" : "none";
+      });
+    }
+
+    q.addEventListener("input", applyFilter);
+    filter.addEventListener("change", applyFilter);
+    applyFilter();
+
+    // Preview hover (imagem)
+    function hidePreview(){
+      if (!preview) return;
+      preview.classList.remove("is-on");
+      preview.setAttribute("aria-hidden", "true");
+    }
+
+    feed.addEventListener("mouseover", function(e){
+      const thumb = e.target && e.target.closest ? e.target.closest(".cm-attach-thumb[data-preview-src]") : null;
+      if (!thumb || !preview || !pImg) return;
+
+      const src = thumb.getAttribute("data-preview-src");
+      if (!src) return;
+
+      pImg.src = src;
+      if (pOpen) pOpen.href = src;
+      if (pName) pName.textContent = "Imagem";
+      preview.classList.add("is-on");
+      preview.setAttribute("aria-hidden", "false");
+    }, true);
+
+    feed.addEventListener("mouseout", function(e){
+      const thumb = e.target && e.target.closest ? e.target.closest(".cm-attach-thumb[data-preview-src]") : null;
+      if (!thumb) return;
+      hidePreview();
+    }, true);
+
+    document.addEventListener("keydown", function(e){
+      if (e.key === "Escape") hidePreview();
+    });
+
+    // Quando o HTMX trocar o modal-body, o seu código já rebind em vários pontos.
+    // Aqui basta o guard dataset.cmFeedBound para não duplicar listeners.
+  }
+
+  document.addEventListener("DOMContentLoaded", bootFeed);
+  document.body.addEventListener("htmx:afterSwap", function(evt){
+    if (evt.target && evt.target.id === "modal-body") bootFeed();
+  });
+})();
+</script>
+
+
+
+
+
+
+
+<script>
+(function(){
+  function $(sel, root){ return (root||document).querySelector(sel); }
+  function $all(sel, root){ return Array.from((root||document).querySelectorAll(sel)); }
+
+  function bootFeed(){
+    const root = document.getElementById("cm-root");
+    if (!root) return;
+
+    const feedRoot = $("#card-activity-panel", root);
+    if (!feedRoot) return;
+
+    if (feedRoot.dataset.cmFeedBound === "1") return;
+    feedRoot.dataset.cmFeedBound = "1";
+
+    const feed = $("#cm-feed", feedRoot);
+    const q = $("#cm-feed-q", feedRoot);
+    const filter = $("#cm-feed-filter", feedRoot);
+
+    const preview = $("#cm-hover-preview", feedRoot);
+    const pImg = $("#cm-hover-img", feedRoot);
+    const pOpen = $("#cm-hover-open", feedRoot);
+
+    const wrap = $("#activity-panel-wrapper", feedRoot);
+    const pill = $("#cm-newmsg-pill", feedRoot);
+
+    function norm(s){ return String(s||"").toLowerCase(); }
+
+    function apply(){
+      if (!feed) return;
+
+      const query = norm(q && q.value).trim();
+      const f = String(filter && filter.value || "comments");
+
+      $all(".cm-feed-item", feed).forEach((it) => {
+        const t = String(it.getAttribute("data-type") || "comments");
+        const text = norm(it.getAttribute("data-text") || it.textContent || "");
+
+        const okType = (f === "all") ? true : (t === f);
+        const okQ = !query || text.includes(query);
+
+        it.style.display = (okType && okQ) ? "" : "none";
+      });
+
+      $all(".cm-feed-day", feed).forEach((day) => {
+        const anyVisible = $all(".cm-feed-item", day).some((it) => it.style.display !== "none");
+        day.style.display = anyVisible ? "" : "none";
+      });
+    }
+
+    if (q) q.addEventListener("input", apply);
+    if (filter) filter.addEventListener("change", apply);
+    apply();
+
+    function hidePreview(){
+      if (!preview) return;
+      preview.classList.remove("is-on");
+      preview.setAttribute("aria-hidden", "true");
+    }
+
+    if (feed){
+      feed.addEventListener("mouseover", function(e){
+        const thumb = e.target && e.target.closest ? e.target.closest(".cm-attach-thumb[data-preview-src]") : null;
+        if (!thumb || !preview || !pImg) return;
+
+        const src = thumb.getAttribute("data-preview-src");
+        if (!src) return;
+
+        pImg.src = src;
+        if (pOpen) pOpen.href = src;
+
+        preview.classList.add("is-on");
+        preview.setAttribute("aria-hidden", "false");
+      }, true);
+
+      feed.addEventListener("mouseout", function(e){
+        const thumb = e.target && e.target.closest ? e.target.closest(".cm-attach-thumb[data-preview-src]") : null;
+        if (!thumb) return;
+        hidePreview();
+      }, true);
+    }
+
+    document.addEventListener("keydown", function(e){
+      if (e.key === "Escape") hidePreview();
+    });
+
+    if (pill && wrap){
+      pill.addEventListener("click", function(){
+        try { wrap.scrollTop = wrap.scrollHeight; } catch(_e){}
+      });
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", bootFeed);
+  document.body.addEventListener("htmx:afterSwap", function(evt){
+    if (evt.target && evt.target.id === "modal-body") bootFeed();
+  });
+})();
+</script>
 
 {# END templates/boards/partials/card_modal_split.html #}

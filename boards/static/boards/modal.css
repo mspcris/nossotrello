@@ -667,8 +667,6 @@ html.dark #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-
    ======================================================================= */
 #cm-activity-composer{ display: none; }
 #cm-activity-gap{ display: none; }
-#cm-activity-composer.is-open{ display: block; }
-#cm-activity-gap.is-open{ display: block; }
 
 
 /* =======================================================================
@@ -2022,4 +2020,701 @@ html.dark #modal #modal-breadcrumb{
 #modal-body .ql-container,
 #modal-body .ql-editor {
   overflow-anchor: none;
+}
+
+
+
+
+
+/* ============================================================
+   ATIVIDADE — Tabs (Feed / Nova Atividade)
+   ============================================================ */
+#card-modal-root .cm-activity-togglebar{
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding: 8px 0 10px 0;
+  background: transparent;
+}
+
+#card-modal-root .cm-activity-tabs{
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+#card-modal-root .cm-activity-tab{
+  opacity: 0.88;
+  transform: none;
+}
+
+#card-modal-root .cm-activity-tab.is-active{
+  opacity: 1;
+  background: linear-gradient(180deg, rgba(37,99,235,0.22), rgba(37,99,235,0.12));
+  border-color: rgba(37,99,235,0.55);
+}
+
+
+
+/* Badge contador do Feed */
+#card-modal-root .cm-activity-badge{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 18px;
+  padding: 0 6px;
+  margin-left: 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 18px;
+  border: 1px solid rgba(15,23,42,0.14);
+  background: rgba(15,23,42,0.06);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* ============================================================
+   FEED (Atividade) — UI do print (split modal)
+   Arquivo: boards/static/boards/modal/modal.css
+   ============================================================ */
+
+#cm-root .cm-activity-panel{
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+#cm-root .cm-activity-togglebar{
+  display: flex;
+  justify-content: flex-start;
+  gap: 10px;
+}
+
+#cm-root .cm-activity-tabs{
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+#cm-root .cm-activity-tab{
+  border-radius: 9999px;
+  padding: 8px 14px;
+  border: 1px solid rgba(15,23,42,0.12);
+  background: rgba(255,255,255,0.25);
+  backdrop-filter: blur(8px);
+}
+
+#cm-root .cm-activity-tab.is-active{
+  background: rgba(255,255,255,0.45);
+  border-color: rgba(255,255,255,0.35);
+  box-shadow: 0 6px 18px rgba(2,6,23,0.10);
+}
+
+#cm-root .cm-feed-toolbar{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255,255,255,0.35);
+  background: rgba(255,255,255,0.28);
+  backdrop-filter: blur(10px);
+}
+
+#cm-root .cm-feed-search{
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+#cm-root .cm-feed-search input{
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+}
+
+#cm-root .cm-feed-filter{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+#cm-root .cm-feed-filter select{
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-weight: 600;
+}
+
+#cm-root .cm-feed-toolbar .cm-feed-iconbtn{
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(15,23,42,0.10);
+  background: rgba(255,255,255,0.18);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Lista / grupos por data */
+#cm-root .cm-feed{
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+#cm-root .cm-feed-day{
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#cm-root .cm-feed-dayhdr{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  opacity: 0.75;
+  font-weight: 600;
+  padding: 6px 0;
+}
+
+#cm-root .cm-feed-dayhdr::before,
+#cm-root .cm-feed-dayhdr::after{
+  content: "";
+  height: 1px;
+  flex: 1 1 auto;
+  background: rgba(15,23,42,0.10);
+}
+
+/* Card do feed */
+#cm-root .cm-feed-item{
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.28);
+  background: rgba(255,255,255,0.22);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 26px rgba(2,6,23,0.10);
+  padding: 12px;
+}
+
+#cm-root .cm-feed-row{
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 10px;
+  align-items: start;
+  min-width: 0;
+}
+
+#cm-root .cm-feed-avatar{
+  width: 34px;
+  height: 34px;
+  border-radius: 9999px;
+  overflow: hidden;
+  background: rgba(15,23,42,0.10);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+}
+
+#cm-root .cm-feed-meta{
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+#cm-root .cm-feed-handle{
+  font-weight: 800;
+}
+
+#cm-root .cm-feed-time{
+  opacity: 0.75;
+}
+
+#cm-root .cm-feed-body{
+  margin-top: 6px;
+}
+
+#cm-root .cm-feed-body .cm-muted{
+  opacity: 0.75;
+}
+
+/* “Sistema ... moveram este card” estilo banner */
+#cm-root .cm-feed-system-banner{
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(15,23,42,0.08);
+  background: rgba(15,23,42,0.05);
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* Anexo thumb + preview */
+#cm-root .cm-attach{
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+#cm-root .cm-attach-thumb{
+  width: 72px;
+  height: 48px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.30);
+  background: rgba(15,23,42,0.08);
+  position: relative;
+}
+
+#cm-root .cm-attach-thumb img{
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+#cm-root .cm-hover-preview{
+  position: fixed;
+  right: 26px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 340px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.28);
+  background: rgba(255,255,255,0.20);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 20px 50px rgba(2,6,23,0.22);
+  z-index: 99999;
+  display: none;
+}
+
+#cm-root .cm-hover-preview.is-on{ display: block; }
+
+#cm-root .cm-hover-preview img{
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+  display: block;
+}
+
+#cm-root .cm-hover-preview .cm-hover-footer{
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+}
+
+/* Replies */
+#cm-root .cm-replies{
+  margin-top: 10px;
+  padding-left: 44px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#cm-root .cm-reply{
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+#cm-root .cm-reply-avatar{
+  width: 26px;
+  height: 26px;
+  border-radius: 9999px;
+  overflow: hidden;
+  background: rgba(15,23,42,0.10);
+}
+
+/* Pill “novas mensagens” no rodapé */
+#cm-root .cm-newmsg-pill{
+  position: sticky;
+  bottom: 8px;
+  align-self: flex-end;
+  margin-top: 8px;
+  padding: 10px 14px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255,255,255,0.30);
+  background: rgba(255,255,255,0.28);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 26px rgba(2,6,23,0.14);
+  font-weight: 700;
+  display: none;
+}
+
+#cm-root .cm-newmsg-pill.is-on{ display: inline-flex; gap: 10px; align-items: center; }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* ============================================================
+   FEED (Atividade) — layout do print (scoped)
+   ============================================================ */
+
+#cm-root .cm-activity{
+  /* garante que o painel direito não “coma” espaço estranho */
+  min-width: 0;
+}
+
+#cm-root .cm-feed-root{
+  position: relative;
+  min-width: 0;
+}
+
+#cm-root .cm-feed-toolbar{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  padding: 10px 12px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255,255,255,0.30);
+  background: rgba(255,255,255,0.20);
+  box-shadow: 0 10px 26px rgba(2,6,23,0.10);
+
+  /* sem blur aqui (seu hard rule já mata blur interno) */
+}
+
+#cm-root .cm-feed-search{
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#cm-root .cm-feed-search input{
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--cm-text);
+}
+
+#cm-root .cm-feed-filter{
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+#cm-root .cm-feed-filter-label{
+  font-weight: 800;
+  color: var(--cm-text);
+}
+
+#cm-root .cm-feed-filter select{
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--cm-text);
+  font-weight: 700;
+}
+
+#cm-root .cm-feed-iconbtn{
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.25);
+  background: rgba(255,255,255,0.14);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#cm-root .cm-feed-scroll{
+  margin-top: 10px;
+}
+
+#cm-root .cm-feed{
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+#cm-root .cm-feed-day{
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#cm-root .cm-feed-dayhdr{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+
+  font-weight: 800;
+  opacity: 0.75;
+  padding: 6px 0;
+}
+
+#cm-root .cm-feed-dayhdr::before,
+#cm-root .cm-feed-dayhdr::after{
+  content: "";
+  height: 1px;
+  flex: 1 1 auto;
+  background: rgba(15,23,42,0.10);
+}
+
+#cm-root .cm-feed-item{
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.24);
+  background: rgba(255,255,255,0.20);
+  box-shadow: 0 10px 26px rgba(2,6,23,0.10);
+  padding: 12px;
+}
+
+#cm-root .cm-feed-row{
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+#cm-root .cm-feed-avatar{
+  width: 34px;
+  height: 34px;
+  border-radius: 9999px;
+  background: rgba(15,23,42,0.10);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+}
+
+#cm-root .cm-feed-main{
+  min-width: 0;
+}
+
+#cm-root .cm-feed-meta{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+#cm-root .cm-feed-handle{
+  font-weight: 900;
+}
+
+#cm-root .cm-feed-time{
+  opacity: 0.75;
+}
+
+#cm-root .cm-feed-reply-btn{
+  margin-left: auto;
+}
+
+#cm-root .cm-feed-body{
+  margin-top: 8px;
+  font-size: 0.95em;
+  line-height: 1.35;
+}
+
+#cm-root .cm-attach{
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+#cm-root .cm-attach-file{
+  font-weight: 700;
+}
+
+#cm-root .cm-attach-thumb{
+  width: 240px;
+  max-width: 100%;
+  height: 140px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.25);
+  position: relative;
+  display: block;
+}
+
+#cm-root .cm-attach-thumb img{
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+#cm-root .cm-attach-zoom{
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#cm-root .cm-replies{
+  margin-top: 10px;
+  padding-left: 44px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#cm-root .cm-replies-title{
+  font-weight: 800;
+  opacity: 0.8;
+}
+
+#cm-root .cm-reply{
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+#cm-root .cm-reply-avatar{
+  width: 26px;
+  height: 26px;
+  border-radius: 9999px;
+  background: rgba(15,23,42,0.10);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+}
+
+#cm-root .cm-feed-foot{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0 0 0;
+}
+
+#cm-root .cm-feed-more{
+  border-radius: 9999px;
+  border: 1px solid rgba(255,255,255,0.25);
+  background: rgba(255,255,255,0.14);
+  padding: 10px 14px;
+  font-weight: 800;
+}
+
+#cm-root .cm-newmsg-pill{
+  border-radius: 9999px;
+  border: 1px solid rgba(255,255,255,0.25);
+  background: rgba(255,255,255,0.18);
+  padding: 10px 14px;
+  font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Preview flutuante */
+#cm-root .cm-hover-preview{
+  position: fixed;
+  right: 26px;
+  top: 50%;
+  transform: translateY(-50%);
+
+  width: 340px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.25);
+  background: rgba(255,255,255,0.20);
+  box-shadow: 0 20px 50px rgba(2,6,23,0.22);
+  z-index: 99999;
+  display: none;
+}
+
+#cm-root .cm-hover-preview.is-on{ display: block; }
+
+#cm-root .cm-hover-preview img{
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+  display: block;
+}
+
+#cm-root .cm-hover-footer{
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+}
+
+#cm-root .cm-hover-zoom{
+  font-weight: 900;
+  opacity: 0.85;
+}
+
+/* Dark: harmoniza bordas/fundos */
+#card-modal-root.theme-dark #cm-root .cm-feed-toolbar,
+#card-modal-root.card-theme-dark #cm-root .cm-feed-toolbar,
+#card-modal-root.theme-dark #cm-root .cm-feed-item,
+#card-modal-root.card-theme-dark #cm-root .cm-feed-item,
+#card-modal-root.theme-dark #cm-root .cm-hover-preview,
+#card-modal-root.card-theme-dark #cm-root .cm-hover-preview{
+  border-color: rgba(255,255,255,0.14);
+  background: rgba(2,6,23,0.42);
 }
