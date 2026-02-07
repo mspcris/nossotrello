@@ -44,6 +44,9 @@ from ..models import Board, BoardMembership, Card, CardAttachment, Column, CardS
 from datetime import timedelta
 from django.utils.html import strip_tags
 
+from django.db.models import Prefetch
+from boards.models import CardLog  # se já não estiver importado
+
 
 # ============================================================
 # PERMISSÕES
@@ -948,31 +951,40 @@ def _summarize_html(html: str, limit: int = 220) -> str:
 
 
 
+
+
 @login_required
 def card_modal(request, card_id):
     card = get_object_or_404(Card, id=card_id, is_deleted=False)
 
-    # ============================================================
-    # READ MARK — marca o card como visto pelo usuário
-    # ============================================================
     CardSeen.objects.update_or_create(
         card=card,
         user=request.user,
         defaults={"last_seen_at": timezone.now()},
     )
 
-    # ✅ LOGS ORDENADOS (mais novos primeiro)
-    
-    from .activity import _decorate_logs_for_feed  # import local para evitar circularidade
+    parents_qs = (
+        card.logs
+        .filter(reply_to__isnull=True)
+        .select_related("actor")
+        .prefetch_related(
+            Prefetch(
+                "replies",
+                queryset=CardLog.objects.select_related("actor").order_by("created_at"),
+            )
+        )
+        .order_by("-created_at")
+    )
 
-    logs_qs = card.logs.order_by("-created_at")
+    # importa “tarde” pra não criar ciclo de import
+    from .activity import _decorate_logs_for_feed
+    parents = _decorate_logs_for_feed(parents_qs)
+
     ctx = _card_modal_context(card)
-    ctx["logs"] = _decorate_logs_for_feed(logs_qs)
-
-    
-    
+    ctx["logs"] = parents
 
     return _render_card_modal(request, card, ctx)
+
 
 
 

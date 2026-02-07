@@ -26,6 +26,13 @@ from .helpers import (
     process_mentions_and_notify,
 )
 
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
+from django.views.decorators.csrf import csrf_exempt
+import os
+import uuid
+from django.utils.html import escape
+
 
 def _safe_user_handle_or_email(u):
     """
@@ -134,6 +141,36 @@ def activity_panel(request, card_id):
         {"card": card, "logs": parents},
     )
 
+def _build_comment_log_html_for_images(actor_handle_or_email: str, relative_paths: list[str]) -> str:
+    """
+    HTML simples para aparecer no FEED/COMENTÁRIOS (thumb pequena + link).
+    Não depende do template de anexo.
+    """
+    if not relative_paths:
+        return ""
+
+    # pega 1ª imagem (se quiser, depois evolui para múltiplas)
+    rp = relative_paths[0].lstrip("/")
+    url = f"/media/{rp}"
+    filename = os.path.basename(rp)
+
+    who = actor_handle_or_email.strip() if actor_handle_or_email else ""
+    prefix = f"{escape(who)} adicionou uma imagem na atividade:" if who else "Adicionou uma imagem na atividade:"
+
+    return f"""
+    <div class="cm-activity-img-comment">
+      <div class="cm-muted">{prefix}</div>
+      <div class="cm-attach">
+        <a class="cm-attach-file" href="{escape(url)}" target="_blank" rel="noopener">{escape(filename)}</a>
+        <a href="{escape(url)}" target="_blank" rel="noopener" class="cm-attach-thumb" data-preview-src="{escape(url)}">
+          <img src="{escape(url)}" alt="">
+          <span class="cm-attach-zoom" aria-hidden="true">🔍</span>
+        </a>
+      </div>
+    </div>
+    """.strip()
+
+
 
 @login_required
 @require_POST
@@ -214,6 +251,7 @@ def add_activity(request, card_id):
     all_paths = list(dict.fromkeys((saved_paths or []) + (referenced_paths or [])))
 
     if all_paths:
+        # 1) mantém: cria anexos + log de "files" (do seu fluxo atual)
         _ensure_attachments_and_activity_for_images(
             card=card,
             request=request,
@@ -221,6 +259,26 @@ def add_activity(request, card_id):
             actor=_actor_html(request),
             context_label="atividade",
         )
+
+        # 2) NOVO: cria também o "registro pequeno" no FEED/COMENTÁRIOS
+        try:
+            who = _safe_user_handle_or_email(request.user)
+            comment_html = _build_comment_log_html_for_images(who, all_paths)
+            if comment_html:
+                CardLog.objects.create(
+                    card=card,
+                    actor=request.user,
+                    reply_to=parent_log if parent_log else None,
+                    content=comment_html,
+                    content_delta={},      # força cair no branch HTML do template
+                    content_text="",
+                    attachment=None,
+                )
+                board.version += 1
+                board.save(update_fields=["version"])
+        except Exception:
+            pass
+
 
     # garante anexos também para imagens já existentes em /media/quill/
     if clean_html:
@@ -290,9 +348,55 @@ def add_activity(request, card_id):
     return HttpResponse(activity_html + oob_html)
 
 
+
+
+@login_required
 @require_POST
 def quill_upload(request):
-    return JsonResponse({"error": "Not implemented"}, status=501)
+    """
+    Upload de imagem para o Quill (atividade).
+    Retorna JSON: { url: "<url pública do arquivo>" }
+    """
+    f = request.FILES.get("image")
+    if not f:
+        return JsonResponse({"error": "Arquivo 'image' ausente."}, status=400)
+
+    # valida tipo
+    ct = (getattr(f, "content_type", "") or "").lower()
+    if not ct.startswith("image/"):
+        return JsonResponse({"error": "Somente imagem é permitida."}, status=400)
+
+    # valida tamanho (ex.: 10MB)
+    try:
+        if f.size and int(f.size) > 10 * 1024 * 1024:
+            return JsonResponse({"error": "Imagem maior que 10MB."}, status=400)
+    except Exception:
+        pass
+
+    # extensão segura
+    ext = os.path.splitext(f.name or "")[1].lower()
+    if ext not in [".png", ".jpg", ".jpeg", ".webp", ".gif"]:
+        # fallback por content-type
+        if ct == "image/png":
+            ext = ".png"
+        elif ct in ("image/jpg", "image/jpeg"):
+            ext = ".jpg"
+        elif ct == "image/webp":
+            ext = ".webp"
+        elif ct == "image/gif":
+            ext = ".gif"
+        else:
+            ext = ".png"
+
+    # caminho final
+    filename = f"{uuid.uuid4().hex}{ext}"
+    relative_path = f"quill/{filename}"
+
+    # salva no storage padrão (MEDIA_ROOT)
+    saved_path = default_storage.save(relative_path, f)
+    url = default_storage.url(saved_path)
+
+    return JsonResponse({"url": url})
 
 
 @login_required
@@ -460,21 +564,58 @@ def _decorate_one_log(log):
 
 
 def _decorate_logs_for_feed(logs_qs):
-    """
-    Retorna LISTA (não QuerySet) com cm_* preenchido em parents e replies.
-    """
     logs = list(logs_qs)
+
     for log in logs:
-        _decorate_one_log(log)
+        # label/avatar padronizados (opcional, mas ajuda seu template novo)
+        if getattr(log, "actor", None):
+            u = log.actor
+            handle = ""
+            try:
+                handle = (getattr(getattr(u, "profile", None), "handle", "") or "").strip()
+            except Exception:
+                handle = ""
 
-        # replies já vêm via prefetch; decorar também
+            email = (getattr(u, "email", "") or "").strip()
+            log.cm_actor_label = f"@{handle}" if handle else (email or "(USUÁRIO)")
+            log.cm_reply_user = f"@{handle}" if handle else (email or "")
+            log.cm_actor_initial = (email[:1].upper() if email else "U")
+        else:
+            log.cm_actor_label = "(SISTEMA)"
+            log.cm_reply_user = ""
+            log.cm_actor_initial = "•"
+
+        # tipo
+        if _log_is_system(log) or not getattr(log, "actor_id", None):
+            log.cm_type = "system"
+        else:
+            log.cm_type = "files" if _log_is_files(log) else "comments"
+
+        # decorar replies também (normalmente comments/files, raramente system)
         try:
-            replies = list(getattr(log, "replies", []).all())
+            reps = list(getattr(log, "replies", []).all())
         except Exception:
-            replies = list(getattr(log, "replies", []) or [])
+            reps = []
 
-        for r in replies:
-            _decorate_one_log(r)
+        for r in reps:
+            if getattr(r, "actor", None):
+                u = r.actor
+                handle = ""
+                try:
+                    handle = (getattr(getattr(u, "profile", None), "handle", "") or "").strip()
+                except Exception:
+                    handle = ""
+                email = (getattr(u, "email", "") or "").strip()
+                r.cm_actor_label = f"@{handle}" if handle else (email or "(USUÁRIO)")
+                r.cm_actor_initial = (email[:1].upper() if email else "U")
+            else:
+                r.cm_actor_label = "(SISTEMA)"
+                r.cm_actor_initial = "•"
+
+            if _log_is_system(r) or not getattr(r, "actor_id", None):
+                r.cm_type = "system"
+            else:
+                r.cm_type = "files" if _log_is_files(r) else "comments"
 
     return logs
 
@@ -567,3 +708,28 @@ def _decorate_one_log(log):
     return log
 
 
+def _log_is_system(log) -> bool:
+    """
+    'System' = log gerado por ações do sistema (criou card, alterou prazo, etc).
+    Heurística: não é reply, não tem delta, não tem texto, e vem como HTML legado.
+    """
+    try:
+        if getattr(log, "reply_to_id", None):
+            return False
+    except Exception:
+        pass
+
+    has_delta = bool(getattr(log, "content_delta", None))
+    has_text = bool((getattr(log, "content_text", "") or "").strip())
+    if has_delta or has_text:
+        return False
+
+    html = (getattr(log, "content", "") or "").strip().lower()
+    if not html:
+        return False
+
+    # padrão do seu _log_card: <p><strong>ATOR</strong> ...</p>
+    if "<p" in html and "<strong" in html:
+        return True
+
+    return False
