@@ -251,14 +251,34 @@ def add_activity(request, card_id):
     all_paths = list(dict.fromkeys((saved_paths or []) + (referenced_paths or [])))
 
     if all_paths:
-        # 1) mantém: cria anexos + log de "files" (do seu fluxo atual)
-        _ensure_attachments_and_activity_for_images(
-            card=card,
-            request=request,
-            relative_paths=all_paths,
-            actor=_actor_html(request),
-            context_label="atividade",
-        )
+        # ✅ só garante attachments, sem criar log grande extra
+        for rp in all_paths:
+            rp = (rp or "").lstrip("/")
+            try:
+                if not card.attachments.filter(file=rp).exists():
+                    CardAttachment.objects.create(card=card, file=rp)
+            except Exception:
+                pass
+
+        # ✅ mantém seu registro pequeno (vai cair em Arquivos)
+        try:
+            who = _safe_user_handle_or_email(request.user)
+            comment_html = _build_comment_log_html_for_images(who, all_paths)
+            if comment_html:
+                CardLog.objects.create(
+                    card=card,
+                    actor=request.user,
+                    reply_to=parent_log if parent_log else None,
+                    content=comment_html,
+                    content_delta={},
+                    content_text="",
+                    attachment=None,
+                )
+                board.version += 1
+                board.save(update_fields=["version"])
+        except Exception:
+            pass
+
 
         # 2) NOVO: cria também o "registro pequeno" no FEED/COMENTÁRIOS
         try:
@@ -544,22 +564,33 @@ def _log_is_files(log) -> bool:
 
 
 def _decorate_one_log(log):
-    """
-    Aplica cm_* em 1 log (não quebra se faltar profile).
-    """
-    # actor/labels
-    actor = getattr(log, "actor", None)
-    label, initial, reply_user = _actor_label_and_initial(actor)
-    log.cm_actor_label = label
-    log.cm_actor_initial = initial
-    log.cm_reply_user = reply_user
-
-    # tipo
+    # system primeiro
     if not getattr(log, "actor_id", None):
         log.cm_type = "system"
-    else:
-        log.cm_type = "files" if _log_is_files(log) else "comments"
+        log.cm_actor_label = "(SISTEMA)"
+        log.cm_actor_initial = "•"
+        log.cm_reply_user = ""
+        return log
 
+    # labels
+    label = _safe_handle(getattr(log, "actor", None))
+    log.cm_actor_label = label or "(usuário)"
+    try:
+        email = getattr(getattr(log, "actor", None), "email", "") or ""
+        log.cm_actor_initial = (email[:1] or "U").upper()
+    except Exception:
+        log.cm_actor_initial = "U"
+    log.cm_reply_user = log.cm_actor_label
+
+    # ✅ REGRA: comentário prevalece se veio do Quill (texto e/ou delta)
+    has_delta = bool(getattr(log, "content_delta", None))
+    has_text = bool((getattr(log, "content_text", "") or "").strip())
+    if has_delta or has_text:
+        log.cm_type = "comments"
+        return log
+
+    # senão, cai na heurística antiga
+    log.cm_type = "files" if _log_is_files(log) else "comments"
     return log
 
 
