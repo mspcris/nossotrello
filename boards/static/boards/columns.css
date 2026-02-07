@@ -29,10 +29,13 @@
 .slate-column-bg   { background: rgba(203, 213, 225, 0.45); }
 
 /* Header colorido */
-.column-header {
-    background: rgba(255, 255, 255, 0.55);
-    backdrop-filter: blur(6px);
+/* Header: NÃO cria um “painel” diferente — usa o mesmo glass da coluna */
+.column-header{
+  background: transparent !important;     /* remove o painel próprio */
+  backdrop-filter: none !important;       /* evita blur diferente */
+  border-bottom: 1px solid rgba(255,255,255,0.14);
 }
+
 
 /* ============================================================
    DARK MODE OVERRIDES (quando <html class="dark">)
@@ -51,10 +54,12 @@ html.dark .teal-column-bg  { background: rgba(20, 184, 166, 0.14) !important; }
 html.dark .slate-column-bg { background: rgba(51, 65, 85, 0.35) !important; }
 
 /* Header das colunas */
-html.dark .column-header {
-    background: rgba(0, 0, 0, 0.45) !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+html.dark .column-header{
+  background: transparent !important;
+  backdrop-filter: none !important;
+  border-bottom: 1px solid rgba(255,255,255,0.12) !important;
 }
+
 
 /* Texto dentro do header (garantia contra classes Tailwind/hardcode) */
 html.dark .column-header,
@@ -175,4 +180,95 @@ html.dark .column-header * {
   .column-header {
     padding: 10px 10px !important;
   }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+/* =========================================================
+   FIX DEFINITIVO: header acompanha o raio do topo
+   (sem orelha / sem margin negativo)
+   ========================================================= */
+
+/* 1) container da coluna: garante clip */
+.column-item {
+  border-radius: 16px;
+  overflow: hidden;
+  padding: 0 !important;
+}
+
+/* 2) header: precisa ter o mesmo raio no topo */
+.column-item .column-header {
+  border-top-left-radius: 16px !important;
+  border-top-right-radius: 16px !important;
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+
+  margin: 0 !important;
+  /* padding do topo fica no header */
+  padding: 10px 12px !important;
+}
+
+/* 3) corpo/lista: padding só embaixo e laterais (não no topo) */
+.column-item .cards,
+.column-item .card-list,
+.column-item [data-card-list],
+.column-item ul {
+  box-sizing: border-box;
+  padding: 0 12px 12px 12px !important; /* topo zero */
+}
+
+
+/* =========================================================
+   LEGIBILIDADE: texto sempre legível sem “painel”
+   Estratégia:
+   1) texto com sombra (contra fundo claro/escuro)
+   2) scrim sutil no header (degradê transparente) para wallpapers
+   ========================================================= */
+
+/* Header sem painel, mas com scrim (não cria “orelha”) */
+.column-item .column-header{
+  background: linear-gradient(
+    to bottom,
+    rgba(0,0,0,0.22),
+    rgba(0,0,0,0.10),
+    rgba(0,0,0,0.00)
+  ) !important;
+
+  /* não mexe no blur do container */
+  backdrop-filter: none !important;
+}
+
+/* Texto do header: cor neutra + sombra dupla */
+.column-item .column-header,
+.column-item .column-header *{
+  color: rgba(255,255,255,0.92) !important;
+  text-shadow:
+    0 1px 2px rgba(0,0,0,0.55),
+    0 0 12px rgba(0,0,0,0.35);
+}
+
+/* Ícones/botões no header: ajuda a destacar no wallpaper */
+.column-item .column-header button,
+.column-item .column-header .btn,
+.column-item .column-header a{
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.45));
+}
+
+/* Dark mode: scrim um pouco mais leve (já é escuro) */
+html.dark .column-item .column-header{
+  background: linear-gradient(
+    to bottom,
+    rgba(0,0,0,0.18),
+    rgba(0,0,0,0.08),
+    rgba(0,0,0,0.00)
+  ) !important;
 }

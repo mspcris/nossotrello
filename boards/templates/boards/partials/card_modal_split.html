@@ -144,7 +144,15 @@
             enctype="multipart/form-data"
             hx-post="{% url 'boards:update_card' card.id %}"
             hx-target="#modal-body"
-            hx-swap="innerHTML">
+            hx-swap="innerHTML"
+            hx-on::config-request="
+            (function(){
+              const ta = document.getElementById('cm-description');
+              if (!ta) return;
+              ta.value = ta.value; // força o estado atual no campo que será serializado
+            })();
+          ">
+
         {% csrf_token %}
 
         <div id="cm-panels">
@@ -159,10 +167,14 @@
 
               <div>
                 <label class="cm-label">Descrição</label>
+
                 <textarea
-  name="description"
-  class="cm-textarea cm-textarea-resizable"
->{{ card.description|default_if_none:""|safe }}</textarea>
+                  id="cm-description"
+                  name="description"
+                  class="cm-textarea cm-textarea-resizable"
+                  hx-preserve
+                >{{ card.description|default_if_none:""|safe }}</textarea>
+
 
 
                 <div class="cm-muted" style="margin-top:8px;"></div>
@@ -1319,6 +1331,160 @@
     if (!root) return;
     const active = (root.getAttribute("data-cm-active") || root.dataset.cmActive || "desc").trim();
     if (active === "track" || active === "tracktime") loadTrack(root);
+  });
+})();
+</script>
+
+{% comment %} Capture e restaure o scroll do textarea durante swaps: {% endcomment %}
+<script>
+(function(){
+  function getTA(){
+    const r = document.getElementById("cm-root");
+    return r ? r.querySelector("#cm-description") : null;
+  }
+
+  document.body.addEventListener("htmx:beforeSwap", function(evt){
+    if (!evt.target || evt.target.id !== "modal-body") return;
+    const ta = getTA();
+    if (!ta) return;
+    try{
+      sessionStorage.setItem("cm_desc_scroll", String(ta.scrollTop || 0));
+      sessionStorage.setItem("cm_desc_sel", String(ta.selectionStart || 0));
+    }catch(_e){}
+  });
+
+  document.body.addEventListener("htmx:afterSwap", function(evt){
+    if (!evt.target || evt.target.id !== "modal-body") return;
+    const ta = getTA();
+    if (!ta) return;
+    try{
+      const st = parseInt(sessionStorage.getItem("cm_desc_scroll") || "0", 10);
+      const ss = parseInt(sessionStorage.getItem("cm_desc_sel") || "0", 10);
+      ta.scrollTop = st;
+
+      ta.setSelectionRange(ss, ss);
+    }catch(_e){}
+  });
+})();
+</script>
+
+<script>
+(function () {
+  function getScrollContainer() {
+    return document.querySelector("#modal-body.card-modal-scroll")
+      || document.querySelector("#card-modal-root .card-modal-scroll")
+      || document.getElementById("modal-body")
+      || document.scrollingElement;
+  }
+
+  function lockScrollWhileEditing(root) {
+    if (!root || root.dataset.cmScrollLock2Bound === "1") return;
+    root.dataset.cmScrollLock2Bound = "1";
+
+    const sc = getScrollContainer();
+    if (!sc) return;
+
+    let lastTop = 0;
+    let raf1 = 0;
+    let raf2 = 0;
+
+    function capture() {
+      lastTop = sc.scrollTop || 0;
+    }
+
+    function restore() {
+      // 2 frames = pós layout/reflow do Chromium
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+
+      raf1 = requestAnimationFrame(() => {
+        sc.scrollTop = lastTop;
+        raf2 = requestAnimationFrame(() => {
+          sc.scrollTop = lastTop;
+        });
+      });
+    }
+
+    // textarea descrição
+    const ta = root.querySelector("#cm-description");
+    if (ta && ta.dataset.cmScrollLock2 === "1") return;
+    if (ta) {
+      ta.dataset.cmScrollLock2 = "1";
+
+      ta.addEventListener("keydown", function () { capture(); restore(); }, true);
+      ta.addEventListener("input", function () { capture(); restore(); }, true);
+      ta.addEventListener("compositionupdate", function () { capture(); restore(); }, true);
+      ta.addEventListener("compositionend", function () { capture(); restore(); }, true);
+
+      // se algum CSS/JS mudar altura, segura também
+      try {
+        const ro = new ResizeObserver(() => { restore(); });
+        ro.observe(ta);
+      } catch (_e) {}
+    }
+
+    // Quill (se existir no modal)
+    root.querySelectorAll(".ql-editor").forEach((ed) => {
+      if (ed.dataset.cmScrollLock2 === "1") return;
+      ed.dataset.cmScrollLock2 = "1";
+
+      ed.addEventListener("keydown", function () { capture(); restore(); }, true);
+      ed.addEventListener("input", function () { capture(); restore(); }, true);
+      ed.addEventListener("compositionupdate", function () { capture(); restore(); }, true);
+      ed.addEventListener("compositionend", function () { capture(); restore(); }, true);
+
+      try {
+        const ro = new ResizeObserver(() => { restore(); });
+        ro.observe(ed);
+      } catch (_e) {}
+    });
+  }
+
+  function boot() {
+    const root = document.getElementById("cm-root");
+    if (!root) return;
+    //lockScrollWhileEditing(root);
+  }
+
+  document.addEventListener("DOMContentLoaded", boot);
+  document.body.addEventListener("htmx:afterSwap", function (evt) {
+    if (evt.target && evt.target.id === "modal-body") boot();
+  });
+})();
+</script>
+
+<script>
+  (function () {
+  function boot() {
+    const root = document.getElementById("cm-root");
+    if (!root) return;
+
+    const ta = root.querySelector("#cm-description");
+    if (!ta) return;
+
+    if (ta.dataset.cmTaScrollLock === "1") return;
+    ta.dataset.cmTaScrollLock = "1";
+
+    let last = 0;
+    function capture() { last = ta.scrollTop || 0; }
+    function restore() {
+      requestAnimationFrame(() => {
+        ta.scrollTop = last;
+        requestAnimationFrame(() => { ta.scrollTop = last; });
+      });
+    }
+
+    // captura antes e restaura depois (2 frames)
+    ta.addEventListener("keydown", capture, true);
+    ta.addEventListener("input", function () { restore(); }, true);
+    ta.addEventListener("compositionstart", capture, true);
+    ta.addEventListener("compositionupdate", function () { restore(); }, true);
+    ta.addEventListener("compositionend", function () { restore(); }, true);
+  }
+
+  document.addEventListener("DOMContentLoaded", boot);
+  document.body.addEventListener("htmx:afterSwap", function (evt) {
+    if (evt.target && evt.target.id === "modal-body") boot();
   });
 })();
 </script>

@@ -1975,3 +1975,51 @@ html.dark #modal #modal-breadcrumb{
   opacity: 1;
   transform: translateY(0);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* trava layout: o textarea não pode crescer infinito e bagunçar o scroll do modal */
+#cm-root .cm-textarea-resizable{
+  max-height: 55vh;     /* ajuste fino */
+  overflow: auto;       /* scroll interno */
+  resize: vertical;     /* mantém UX */
+}
+
+
+/* Desliga o “scroll anchoring” do Chromium (causa pulo em auto-grow) */
+#modal-body.card-modal-scroll,
+#card-modal-root .card-modal-scroll{
+  overflow-anchor: none !important;
+}
+
+/* E também no que cresce (Quill/textarea) */
+#cm-root .ql-container,
+#cm-root .ql-editor,
+#cm-root textarea{
+  overflow-anchor: none !important;
+}
+
+
+
+
+#modal-body.card-modal-scroll,
+#card-modal-root .card-modal-scroll {
+  overflow-anchor: none;
+}
+
+#modal-body .ql-container,
+#modal-body .ql-editor {
+  overflow-anchor: none;
+}

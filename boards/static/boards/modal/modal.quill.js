@@ -1,13 +1,22 @@
 // boards/static/boards/modal/modal.quill.js
-// boards/static/boards/modal/modal.quill.js
 (() => {
   if (!window.Modal) return;
 
   window.Modal.quill = window.Modal.quill || {};
 
+  // ---------------------------
+  // Helpers
+  // ---------------------------
   function getBoardIdFromUrl() {
     const m = (window.location.pathname || "").match(/\/board\/(\d+)\b/);
     return m ? m[1] : null;
+  }
+
+  function ensureModalScrollable(modalScroll) {
+    if (!modalScroll) return;
+    modalScroll.style.setProperty("overflow-y", "auto", "important");
+    modalScroll.style.setProperty("overflow-x", "hidden", "important");
+    modalScroll.style.setProperty("-webkit-overflow-scrolling", "touch", "important");
   }
 
   function renderMentionCard(item) {
@@ -111,34 +120,19 @@
     } catch (_e) {}
   }
 
-  function ensureModalScrollable(modalScroll) {
-    if (!modalScroll) return;
-    modalScroll.style.setProperty("overflow-y", "auto", "important");
-    modalScroll.style.setProperty("-webkit-overflow-scrolling", "touch", "important");
-  }
-
-  function keepCaretVisibleInScroll(quill, modalScroll) {
+  function pasteHtmlIntoQuill(quill, html) {
     try {
-      if (!quill || !modalScroll) return;
-      const range = quill.getSelection?.();
-      if (!range) return;
-
-      const b = quill.getBounds(range.index);
-      const edRect = quill.root.getBoundingClientRect();
-      const scRect = modalScroll.getBoundingClientRect();
-
-      const caretY = edRect.top + b.top;
-      const topLimit = scRect.top + 24;
-      const botLimit = scRect.bottom - 24;
-
-      if (caretY < topLimit) {
-        modalScroll.scrollTop -= (topLimit - caretY);
-      } else if (caretY > botLimit) {
-        modalScroll.scrollTop += (caretY - botLimit);
-      }
+      const range = quill.getSelection(true) || { index: quill.getLength(), length: 0 };
+      quill.clipboard.dangerouslyPasteHTML(range.index, html, "user");
+      // posiciona caret no final do conteúdo inserido
+      quill.setSelection(Math.min(quill.getLength(), range.index + 1), 0, "user");
+      try { quill.__autoGrowApply?.(); } catch (_e) {}
     } catch (_e) {}
   }
 
+  // ---------------------------
+  // AutoGrow (estável, sem “pulo” no click)
+  // ---------------------------
   function autoGrowQuill(quill, opts = {}) {
     const min = Number(opts.min ?? 220);
 
@@ -153,13 +147,6 @@
       return Number.isFinite(v) ? v : 0;
     }
 
-    function resetInternalScroll() {
-      try {
-        editor.scrollTop = 0;
-        container.scrollTop = 0;
-      } catch (_e) {}
-    }
-
     function resolveModalScrollContainer() {
       if (quill.__cmModalScroll) return quill.__cmModalScroll;
 
@@ -172,25 +159,17 @@
       );
     }
 
-    function ensureModalScroll(modalScroll) {
-      if (!modalScroll) return;
+    // Estilos fixos: aplica uma vez
+    let stylesApplied = false;
+    function applyStaticStyles() {
+      if (stylesApplied) return;
+      stylesApplied = true;
 
-      // scroll único: quem rola é o modal
-      modalScroll.style.setProperty("overflow-y", "auto", "important");
-      modalScroll.style.setProperty("overflow-x", "hidden", "important");
-      modalScroll.style.setProperty("-webkit-overflow-scrolling", "touch", "important");
-
-      // ❌ NÃO setar max-height aqui (CSS do modal governa isso)
-      // modalScroll.style.setProperty("max-height", "80vh", "important");
-    }
-
-    function apply() {
       const modalScroll = resolveModalScrollContainer();
-      ensureModalScroll(modalScroll);
+      ensureModalScrollable(modalScroll);
 
-      // Quill: nunca rolar internamente
+      // Quem rola é o modal, nunca o quill internamente
       container.style.setProperty("display", "block", "important");
-      container.style.setProperty("height", "auto", "important");
       container.style.setProperty("max-height", "none", "important");
       container.style.setProperty("overflow", "hidden", "important");
 
@@ -203,49 +182,51 @@
       editor.style.setProperty("width", "100%", "important");
       editor.style.setProperty("max-width", "none", "important");
       editor.style.setProperty("padding", "12px 14px 14px 14px", "important");
+    }
+
+    function applyHeight() {
+      applyStaticStyles();
 
       const manualMin = getManualMinHeight();
       const needed = (editor.scrollHeight || 0) + 2;
       const target = Math.max(min, manualMin, needed);
 
-      container.style.setProperty("height", `${Math.ceil(target)}px`, "important");
+      const current = Math.round(container.getBoundingClientRect().height || 0);
+      const next = Math.ceil(target);
 
+      // evita micro-ajustes que causam “jump”
+      if (Math.abs(current - next) < 2) return;
+
+      container.style.setProperty("height", `${next}px`, "important");
+    }
+
+    // throttle por frame
+    let scheduled = false;
+    function scheduleApply() {
+      if (scheduled) return;
+      scheduled = true;
       requestAnimationFrame(() => {
-        resetInternalScroll();
-        requestAnimationFrame(resetInternalScroll);
+        scheduled = false;
+        applyHeight();
       });
     }
 
-    quill.on("text-change", () => {
-      apply();
-      requestAnimationFrame(apply);
-      setTimeout(apply, 0);
-      setTimeout(apply, 50);
-    });
+    // CRÍTICO: não rodar em selection-change (isso gerava “só clicar e sobe”)
+    quill.on("text-change", scheduleApply);
 
-    quill.on("selection-change", () => {
-      resetInternalScroll();
-      requestAnimationFrame(resetInternalScroll);
-    });
+    // imagens (ou recursos) alteram altura depois
+    editor.addEventListener("load", scheduleApply, true);
 
-    editor.addEventListener(
-      "load",
-      () => {
-        requestAnimationFrame(apply);
-        setTimeout(apply, 0);
-        setTimeout(apply, 50);
-      },
-      true
-    );
+    // boot
+    scheduleApply();
 
-    requestAnimationFrame(apply);
-    setTimeout(apply, 0);
-    setTimeout(apply, 50);
-
-    quill.__autoGrowApply = apply;
-    return apply;
+    quill.__autoGrowApply = applyHeight;
+    return applyHeight;
   }
 
+  // ---------------------------
+  // Bindings
+  // ---------------------------
   function bindQuillToTextarea(textarea, boardId) {
     if (!textarea) return null;
     if (textarea.dataset.quillBound === "1") return null;
@@ -255,6 +236,7 @@
     host.className = "cm-quill";
     textarea.insertAdjacentElement("afterend", host);
 
+    // mantém o textarea no DOM, mas escondido
     textarea.style.display = "none";
 
     const modalScroll =
@@ -285,27 +267,28 @@
 
     window.Modal.quill._descQuill = quill;
 
+    // inicial: renderiza HTML salvo como HTML (não como texto)
     const initial = (textarea.value || "").trim();
-    if (initial) quill.root.innerHTML = initial;
+    if (initial) {
+      try {
+        quill.clipboard.dangerouslyPasteHTML(0, initial, "silent");
+      } catch (_e) {
+        quill.root.innerHTML = initial;
+      }
+    }
 
     const container = quill.root.closest(".ql-container");
     if (container) delete container.dataset.cmManualMinHeight;
 
-    autoGrowQuill(quill, { min: 100, max: Infinity });
+    autoGrowQuill(quill, { min: 100 });
 
-    quill.on("selection-change", () => {
-      keepCaretVisibleInScroll(quill, quill.__cmModalScroll);
-      requestAnimationFrame(() => keepCaretVisibleInScroll(quill, quill.__cmModalScroll));
-    });
-
+    // sync para backend
     quill.on("text-change", () => {
       textarea.value = quill.root.innerHTML;
       try { textarea.dispatchEvent(new Event("input", { bubbles: true })); } catch (_e) {}
-
-      keepCaretVisibleInScroll(quill, quill.__cmModalScroll);
-      requestAnimationFrame(() => keepCaretVisibleInScroll(quill, quill.__cmModalScroll));
     });
 
+    // toolbar image
     const toolbar = quill.getModule("toolbar");
     if (toolbar) {
       toolbar.addHandler("image", () => {
@@ -320,18 +303,29 @@
       });
     }
 
+    // paste: prioridade para imagem; depois HTML; senão deixa padrão
     quill.root.addEventListener("paste", (e) => {
       try {
         const cd = e.clipboardData;
+        if (!cd) return;
+
         const items = cd?.items ? Array.from(cd.items) : [];
         const imgItem = items.find((it) => (it.type || "").startsWith("image/"));
-        if (!imgItem) return;
+        if (imgItem) {
+          const file = imgItem.getAsFile?.();
+          if (file) {
+            e.preventDefault();
+            insertBase64ImageIntoQuill(quill, file);
+          }
+          return;
+        }
 
-        const file = imgItem.getAsFile?.();
-        if (!file) return;
-
-        e.preventDefault();
-        insertBase64ImageIntoQuill(quill, file);
+        const html = cd.getData("text/html");
+        if (html && html.trim()) {
+          e.preventDefault();
+          pasteHtmlIntoQuill(quill, html);
+          return;
+        }
       } catch (_e) {}
     });
 
@@ -372,23 +366,22 @@
     window.Modal.quill._descQuill = quill;
 
     const initial = (hiddenInput.value || "").trim();
-    if (initial) quill.root.innerHTML = initial;
+    if (initial) {
+      try {
+        quill.clipboard.dangerouslyPasteHTML(0, initial, "silent");
+      } catch (_e) {
+        quill.root.innerHTML = initial;
+      }
+    }
 
     const container = quill.root.closest(".ql-container");
     if (container) delete container.dataset.cmManualMinHeight;
-    autoGrowQuill(quill, { min: 100, max: Infinity });
+
+    autoGrowQuill(quill, { min: 100 });
 
     quill.on("text-change", () => {
       hiddenInput.value = quill.root.innerHTML;
       try { hiddenInput.dispatchEvent(new Event("input", { bubbles: true })); } catch (_e) {}
-
-      keepCaretVisibleInScroll(quill, quill.__cmModalScroll);
-      requestAnimationFrame(() => keepCaretVisibleInScroll(quill, quill.__cmModalScroll));
-    });
-
-    quill.on("selection-change", () => {
-      keepCaretVisibleInScroll(quill, quill.__cmModalScroll);
-      requestAnimationFrame(() => keepCaretVisibleInScroll(quill, quill.__cmModalScroll));
     });
 
     const toolbar = quill.getModule("toolbar");
@@ -408,21 +401,34 @@
     quill.root.addEventListener("paste", (e) => {
       try {
         const cd = e.clipboardData;
+        if (!cd) return;
+
         const items = cd?.items ? Array.from(cd.items) : [];
         const imgItem = items.find((it) => (it.type || "").startsWith("image/"));
-        if (!imgItem) return;
+        if (imgItem) {
+          const file = imgItem.getAsFile?.();
+          if (file) {
+            e.preventDefault();
+            insertBase64ImageIntoQuill(quill, file);
+          }
+          return;
+        }
 
-        const file = imgItem.getAsFile?.();
-        if (!file) return;
-
-        e.preventDefault();
-        insertBase64ImageIntoQuill(quill, file);
+        const html = cd.getData("text/html");
+        if (html && html.trim()) {
+          e.preventDefault();
+          pasteHtmlIntoQuill(quill, html);
+          return;
+        }
       } catch (_e) {}
     });
 
     return quill;
   }
 
+  // ---------------------------
+  // Public init
+  // ---------------------------
   window.Modal.quill.init = function () {
     const boardId = getBoardIdFromUrl();
 
@@ -440,6 +446,7 @@
     if (descTa) bindQuillToTextarea(descTa, boardId);
   };
 
+  // rebind em swaps do modal
   document.body.addEventListener("htmx:afterSwap", function (e) {
     const target = e?.target;
     if (!target) return;
@@ -449,6 +456,9 @@
     }
   });
 
+  // ---------------------------
+  // Click em imagem abre em nova aba
+  // ---------------------------
   (function installQuillImageOpenInNewTab() {
     if (window.__cmQuillImgOpenInstalled) return;
     window.__cmQuillImgOpenInstalled = true;
@@ -472,279 +482,162 @@
     );
   })();
 
- 
+  // ---------------------------
+  // Resize Grip flutuante (não interfere no layout/overflow)
+  // ---------------------------
+  (function installDescResizeGripFloating() {
+    if (window.__cmDescGripInstalled) return;
+    window.__cmDescGripInstalled = true;
 
+    let grip = null;
+    let rafId = 0;
 
-// ============================================================
-// Quill Descrição — Resize Handle (MVP) — COMPLETO (sem erro)
-// - grava cmManualMinHeight no onDown e no onMove
-// - garante height explícito antes de arrastar
-// ============================================================
-(function installQuillResizeHandle() {
-  if (window.__cmQuillResizeInstalled) return;
-  window.__cmQuillResizeInstalled = true;
-
-  function ensureHandle() {
-    const host =
-      document.querySelector("#modal-body #quill-editor") ||
-      document.querySelector("#modal-body .cm-quill") ||
-      document.querySelector("#modal-body textarea[name='description']")?.nextElementSibling; // host criado
-
-    if (!host) return;
-
-    const container = host.querySelector(".ql-container");
-    if (!container) return;
-
-    if (container.querySelector(".cm-quill-resize-handle")) return;
-
-    // altura inicial (SEM marcar manual)
-    const h0 = container.getBoundingClientRect().height;
-    if (!h0 || h0 < 180) {
-      container.style.setProperty("height", "240px", "important");
-      // NÃO setar dataset aqui
-      delete container.dataset.cmManualMinHeight;
+    function clamp(n, min, max) {
+      return Math.max(min, Math.min(max, n));
     }
 
-    const handle = document.createElement("div");
-    handle.className = "cm-quill-resize-handle";
-    handle.setAttribute("title", "Arraste para aumentar/reduzir");
-    handle.setAttribute("aria-label", "Redimensionar descrição");
+    function getDescContainer() {
+      const root = document.getElementById("cm-root");
+      if (!root) return null;
 
-    container.style.position = "relative";
-    container.appendChild(handle);
+      // só quando a aba descrição estiver ativa (se existir esse controle)
+      const active = root.getAttribute("data-cm-active") || root.dataset.cmActive;
+      if (active && active !== "desc") return null;
 
-    let startY = 0;
-    let startH = 0;
-    let dragging = false;
+      const host =
+        document.querySelector("#modal-body #quill-editor") ||
+        document.querySelector("#modal-body .cm-quill") ||
+        document.querySelector("#modal-body textarea[name='description']")?.nextElementSibling;
 
-    function getY(e) {
-      return (e.touches ? e.touches[0].clientY : e.clientY);
+      if (!host) return null;
+
+      const container = host.querySelector(".ql-container");
+      return container || null;
     }
 
-    function onDown(e) {
-      dragging = true;
-      startY = getY(e);
-      startH = container.getBoundingClientRect().height;
+    function ensureGrip() {
+      if (grip && document.contains(grip)) return grip;
 
-      // garante height explícito e marca manual SOMENTE aqui
-      container.style.setProperty("height", `${startH}px`, "important");
-      container.dataset.cmManualMinHeight = String(Math.round(startH));
+      grip = document.createElement("div");
+      grip.className = "cm-desc-resize-grip";
+      grip.setAttribute("title", "Arraste para aumentar/reduzir");
+      grip.setAttribute("aria-label", "Redimensionar descrição");
 
-      e.preventDefault();
-      e.stopPropagation();
+      // fallback visual caso CSS não carregue
+      grip.style.position = "fixed";
+      grip.style.width = "18px";
+      grip.style.height = "18px";
+      grip.style.cursor = "nwse-resize";
+      grip.style.zIndex = "40";
+      grip.style.opacity = "0.8";
 
-      document.addEventListener("mousemove", onMove, true);
-      document.addEventListener("mouseup", onUp, true);
-      document.addEventListener("touchmove", onMove, { passive: false, capture: true });
-      document.addEventListener("touchend", onUp, true);
+      document.body.appendChild(grip);
+      bindDrag(grip);
+      return grip;
     }
 
-    function onMove(e) {
-      if (!dragging) return;
+    function positionGrip() {
+      const container = getDescContainer();
+      const g = ensureGrip();
 
-      const y = getY(e);
-      const dy = y - startY;
+      if (!container) {
+        g.style.display = "none";
+        return;
+      }
 
-      const newH = Math.max(180, Math.min(700, startH + dy));
-      container.style.setProperty("height", `${newH}px`, "important");
-      container.dataset.cmManualMinHeight = String(Math.round(newH));
-
-      e.preventDefault();
-      e.stopPropagation();
+      const r = container.getBoundingClientRect();
+      g.style.left = `${Math.max(0, r.right - 22)}px`;
+      g.style.top = `${Math.max(0, r.bottom - 22)}px`;
+      g.style.display = "block";
     }
 
-    function onUp(e) {
-      dragging = false;
-
-      document.removeEventListener("mousemove", onMove, true);
-      document.removeEventListener("mouseup", onUp, true);
-      document.removeEventListener("touchmove", onMove, true);
-      document.removeEventListener("touchend", onUp, true);
-
-      e?.preventDefault?.();
-      e?.stopPropagation?.();
-
-      // força auto-grow recalcular depois do drag
-      try { requestAnimationFrame(() => window.Modal?.quill?._descQuill?.__autoGrowApply?.()); } catch (_e) {}
+    function schedulePosition() {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(positionGrip);
     }
 
-    handle.addEventListener("mousedown", onDown, true);
-    handle.addEventListener("touchstart", onDown, { passive: false, capture: true });
-  }
+    function bindDrag(g) {
+      let dragging = false;
+      let startY = 0;
+      let startH = 0;
+      let container = null;
 
-  document.addEventListener("DOMContentLoaded", () => setTimeout(ensureHandle, 0));
-  document.body.addEventListener("htmx:afterSwap", () => setTimeout(ensureHandle, 0));
-  document.body.addEventListener("htmx:afterSettle", () => setTimeout(ensureHandle, 0));
+      function getY(e) {
+        return (e.touches ? e.touches[0].clientY : e.clientY);
+      }
 
-  setTimeout(ensureHandle, 0);
-})();
+      function onDown(e) {
+        container = getDescContainer();
+        if (!container) return;
 
+        dragging = true;
+        startY = getY(e);
+        startH = container.getBoundingClientRect().height;
 
+        // trava altura explícita e marca manual (prioridade sobre auto-grow)
+        container.style.setProperty("height", `${Math.round(startH)}px`, "important");
+        container.dataset.cmManualMinHeight = String(Math.round(startH));
 
+        e.preventDefault();
+        e.stopPropagation();
 
+        document.addEventListener("mousemove", onMove, true);
+        document.addEventListener("mouseup", onUp, true);
+        document.addEventListener("touchmove", onMove, { passive: false, capture: true });
+        document.addEventListener("touchend", onUp, true);
+      }
 
+      function onMove(e) {
+        if (!dragging || !container) return;
 
-// ============================================================
-// Quill Descrição — Resize Grip (MVP robusto, fora do overflow)
-// ============================================================
-(function installDescResizeGripFloating() {
-  if (window.__cmDescGripInstalled) return;
-  window.__cmDescGripInstalled = true;
+        const y = getY(e);
+        const dy = y - startY;
 
-  let grip = null;
-  let rafId = 0;
+        const vh = window.innerHeight || 800;
+        const maxH = clamp(Math.floor(vh * 0.60), 260, 900);
+        const newH = clamp(startH + dy, 180, maxH);
 
-  function getDescContainer() {
-    const root = document.getElementById("cm-root");
-    if (!root) return null;
+        container.style.setProperty("height", `${Math.round(newH)}px`, "important");
+        container.dataset.cmManualMinHeight = String(Math.round(newH));
 
-    // só quando a aba descrição estiver ativa
-    const active = root.getAttribute("data-cm-active") || root.dataset.cmActive;
-    if (active && active !== "desc") return null;
+        e.preventDefault();
+        e.stopPropagation();
 
-    const host =
-      document.querySelector("#modal-body #quill-editor") ||
-      document.querySelector("#modal-body .cm-quill") ||
-      document.querySelector("#modal-body textarea[name='description']")?.nextElementSibling; // host criado
+        schedulePosition();
+      }
 
+      function onUp(e) {
+        dragging = false;
 
-    if (!host) return null;
+        document.removeEventListener("mousemove", onMove, true);
+        document.removeEventListener("mouseup", onUp, true);
+        document.removeEventListener("touchmove", onMove, true);
+        document.removeEventListener("touchend", onUp, true);
 
-    const container = host.querySelector(".ql-container");
-    return container || null;
-  }
+        e?.preventDefault?.();
+        e?.stopPropagation?.();
 
-  function ensureGrip() {
-    if (grip && document.contains(grip)) return grip;
+        schedulePosition();
+        try { requestAnimationFrame(() => window.Modal?.quill?._descQuill?.__autoGrowApply?.()); } catch (_e) {}
+      }
 
-    grip = document.createElement("div");
-    grip.className = "cm-desc-resize-grip";
-    grip.setAttribute("title", "Arraste para aumentar/reduzir");
-    grip.setAttribute("aria-label", "Redimensionar descrição");
-    document.body.appendChild(grip);
-
-    bindDrag(grip);
-    return grip;
-  }
-
-  function clamp(n, min, max) {
-    return Math.max(min, Math.min(max, n));
-  }
-
-  function positionGrip() {
-    const container = getDescContainer();
-    const g = ensureGrip();
-
-    if (!container) {
-      g.style.display = "none";
-      return;
+      g.addEventListener("mousedown", onDown, true);
+      g.addEventListener("touchstart", onDown, { passive: false, capture: true });
     }
 
-    const r = container.getBoundingClientRect();
-    // posiciona no canto inferior direito do container
-    const left = r.right - 30;
-    const top  = r.bottom - 30;
-
-    g.style.left = `${left}px`;
-    g.style.top = `${top}px`;
-    g.style.display = "block";
-  }
-
-  function schedulePosition() {
-    if (rafId) cancelAnimationFrame(rafId);
-    rafId = requestAnimationFrame(positionGrip);
-  }
-
-  function bindDrag(g) {
-    let dragging = false;
-    let startY = 0;
-    let startH = 0;
-    let container = null;
-
-    function onDown(e) {
-      container = getDescContainer();
-      if (!container) return;
-
-      dragging = true;
-      startY = (e.touches ? e.touches[0].clientY : e.clientY);
-      startH = container.getBoundingClientRect().height;
-
-      // garante height explícito (senão fica “auto” e dá efeito doido)
-      container.style.setProperty("height", `${startH}px`, "important");
-
-
-      e.preventDefault();
-      e.stopPropagation();
-
-      document.addEventListener("mousemove", onMove, true);
-      document.addEventListener("mouseup", onUp, true);
-      document.addEventListener("touchmove", onMove, { passive: false, capture: true });
-      document.addEventListener("touchend", onUp, true);
-    }
-
-    function onMove(e) {
-      if (!dragging || !container) return;
-
-      const y = (e.touches ? e.touches[0].clientY : e.clientY);
-      const dy = y - startY;
-
-      const vh = window.innerHeight || 800;
-      const maxH = clamp(Math.floor(vh * 0.60), 260, 900); // alinhado com seu max-height 60vh
-      const newH = clamp(startH + dy, 180, maxH);
-
-      container.style.setProperty("height", `${newH}px`, "important");
-
-
-      e.preventDefault();
-      e.stopPropagation();
-
-      schedulePosition();
-    }
-
-    function onUp(e) {
-      dragging = false;
-
-      document.removeEventListener("mousemove", onMove, true);
-      document.removeEventListener("mouseup", onUp, true);
-      document.removeEventListener("touchmove", onMove, true);
-      document.removeEventListener("touchend", onUp, true);
-
-      e?.preventDefault?.();
-      e?.stopPropagation?.();
-
-      schedulePosition();
-    }
-
-    g.addEventListener("mousedown", onDown, true);
-    g.addEventListener("touchstart", onDown, { passive: false, capture: true });
-  }
-
-  // reposiciona em tudo que mexe no layout do modal
-  function bindRepositionTriggers() {
-    // swaps do modal
+    // triggers
     document.body.addEventListener("htmx:afterSwap", schedulePosition);
     document.body.addEventListener("htmx:afterSettle", schedulePosition);
-
-    // troca de abas
-    const root = document.getElementById("cm-root");
-    root?.addEventListener("cm:tabchange", schedulePosition);
-
-    // scroll dentro do modal (seu modal tem card-modal-scroll)
     document.addEventListener("scroll", schedulePosition, true);
     window.addEventListener("resize", schedulePosition);
 
-    // quando fechar modal, some com o grip
     document.addEventListener("modal:closed", function () {
       if (grip) grip.style.display = "none";
     });
-  }
 
-  bindRepositionTriggers();
+    setTimeout(schedulePosition, 0);
+  })();
 
-  // primeira tentativa
-  setTimeout(schedulePosition, 0);
+  // init inicial
+  try { window.Modal?.quill?.init?.(); } catch (_e) {}
 })();
-
-
-})();
-//END modal.quill.js
