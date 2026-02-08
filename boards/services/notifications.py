@@ -1,26 +1,23 @@
 # boards/services/notifications.py
-
 from __future__ import annotations
 
+import html
 import logging
 import re
 from dataclasses import dataclass
-from typing import Iterable
+from typing import Iterable, Optional
 
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django.urls import reverse
-from django.utils import timezone
+from django.utils.html import strip_tags
 
-from boards.models import BoardMembership, Mention, UserProfile, Card
+from boards.models import BoardMembership, Mention, UserProfile, Card, CardFollow
 from tracktime.services.pressticket import send_text_message, PressTicketError
 
-import html
-from django.utils.html import strip_tags
-from boards.models import Mention, CardFollow
-
-
-
+logger = logging.getLogger(__name__)
+User = get_user_model()
 
 _RE_DATA_IMG = re.compile(
     r"""<img\b[^>]*\bsrc=["']data:image/[^"']+["'][^>]*>""",
@@ -31,11 +28,13 @@ _RE_DATA_ANY = re.compile(
     flags=re.IGNORECASE,
 )
 
+
 def sanitize_card_description_to_text(desc_html: str, *, limit: int = 450) -> str:
     raw = (desc_html or "").strip()
     if not raw:
         return ""
 
+    # segurança: remove payload base64 (evita vazamento em email/whats/log)
     raw = _RE_DATA_IMG.sub("", raw)
     raw = _RE_DATA_ANY.sub("", raw)
 
@@ -46,10 +45,6 @@ def sanitize_card_description_to_text(desc_html: str, *, limit: int = 450) -> st
     if limit and len(txt) > limit:
         txt = txt[:limit].rstrip() + "…"
     return txt
-
-
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -72,16 +67,12 @@ def _fmt_date(d) -> str:
     return d.strftime("%Y-%m-%d")
 
 
-
-
 def build_card_snapshot(*, card: Card) -> CardSnapshot:
     board_id = int(card.column.board_id)
     card_id = int(card.id)
 
     board_url = reverse("boards:board_detail", kwargs={"board_id": board_id})
     card_url = f"{settings.SITE_URL.rstrip('/')}{board_url}?card={card_id}"
-
-    # Abre o card já no contexto do Track-time (se seu frontend respeita tab=tracktime)
     tracktime_url = f"{card_url}&tab=tracktime"
 
     return CardSnapshot(
@@ -98,7 +89,7 @@ def build_card_snapshot(*, card: Card) -> CardSnapshot:
     )
 
 
-def format_card_message(*, title_prefix: str, snap: CardSnapshot, extra_lines: list[str] | None = None) -> str:
+def format_card_message(*, title_prefix: str, snap: CardSnapshot, extra_lines: Optional[list[str]] = None) -> str:
     lines = [
         title_prefix,
         f"Card: {snap.title}",
@@ -121,41 +112,48 @@ def _get_or_create_profile(user) -> UserProfile:
     return prof
 
 
-def _user_allowed_for_card(*, card: Card, user: User) -> bool:
-    if not card or not user:
-        return False
-
-    if getattr(card, "owner_id", None) == user.id:
-        return True
-
-    # foi mencionado em algum momento no card
-    if Mention.objects.filter(card_log__card_id=card.id, mentioned_user_id=user.id).exists():
-        return True
-
-    # está seguindo o card
-    if CardFollow.objects.filter(card_id=card.id, user_id=user.id).exists():
-        return True
-
-    return False
-
-
-    # dono do card
-    if getattr(card, "created_by_id", None) == user.id:
-        return True
-
-    # mencionado no card (description/activity)
-    return Mention.objects.filter(card=card, mentioned_user=user).exists()
-
-
-def get_board_recipients_for_card(*, card: Card):
+def get_board_recipients_for_card(*, card: Card) -> list[User]:
     board = card.column.board
     memberships = (
         BoardMembership.objects
         .filter(board=board)
         .select_related("user", "user__profile")
     )
-    users = [m.user for m in memberships]
-    return users
+    return [m.user for m in memberships]
+
+
+def get_card_followers(*, card: Card) -> list[User]:
+    """
+    Regra: seguidores do card (olho) são o público padrão para atividade/track-time (para terceiros).
+    """
+    qs = (
+        User.objects
+        .filter(card_follows__card_id=card.id, is_active=True)
+        .select_related("profile")
+        .distinct()
+    )
+    return list(qs)
+
+
+def _user_is_follower(*, card: Card, user: User) -> bool:
+    return CardFollow.objects.filter(card_id=card.id, user_id=user.id).exists()
+
+
+def _user_was_mentioned_in_card(*, card: Card, user: User) -> bool:
+    return Mention.objects.filter(card_id=card.id, mentioned_user_id=user.id).exists()
+
+
+def _safe_digits_phone(phone_raw: str) -> str:
+    phone_digits = re.sub(r"\D+", "", (phone_raw or "").strip())
+
+    # Se não tiver DDI, assume BR
+    if len(phone_digits) in (10, 11):
+        phone_digits = "55" + phone_digits
+
+    # 55 + DDD + 8/9
+    if len(phone_digits) not in (12, 13):
+        return ""
+    return phone_digits
 
 
 def send_whatsapp(*, user, phone_digits: str, body: str) -> None:
@@ -165,10 +163,9 @@ def send_whatsapp(*, user, phone_digits: str, body: str) -> None:
     queue_id = int(getattr(settings, "PRESSTICKET_QUEUE_ID", 0) or 0)
     whatsapp_id = int(getattr(settings, "PRESSTICKET_WHATSAPP_ID", 0) or 0)
 
-    logger.warning(
-        "pressticket: sending kind=message number=%r base_url=%r user_id=%s queue_id=%s whatsapp_id=%s",
-        phone_digits, base_url, user_id, queue_id, whatsapp_id
-    )
+    if not (base_url and token and user_id and queue_id and whatsapp_id):
+        logger.info("pressticket: skipped (missing config) user_id=%s", getattr(user, "id", None))
+        return
 
     resp = send_text_message(
         base_url=base_url,
@@ -180,97 +177,82 @@ def send_whatsapp(*, user, phone_digits: str, body: str) -> None:
         whatsapp_id=whatsapp_id,
     )
 
-    # Se a API sempre devolve {"error":{...}} mesmo em sucesso, não vamos “reclassificar”.
-    # Só logamos algum identificador se existir.
     try:
         msg_id = (
-            resp.get("error", {})
-                .get("_data", {})
-                .get("id", {})
-                .get("_serialized", "")
+            (resp or {}).get("error", {})
+            .get("_data", {})
+            .get("id", {})
+            .get("_serialized", "")
         )
         if msg_id:
-            logger.warning("pressticket: api ok msg_id=%r", msg_id)
+            logger.info("pressticket: ok msg_id=%r user_id=%s", msg_id, getattr(user, "id", None))
     except Exception:
         pass
 
-    logger.warning("pressticket: sent ok kind=message number=%r resp_keys=%s", phone_digits, list((resp or {}).keys())[:15])
-
 
 def send_email_notification(*, to_email: str, subject: str, body: str) -> None:
-    from_email = getattr(settings, "DEFAULT_FROM_EMAIL", "") or "no-reply@localhost"
+    from_email = getattr(settings, "DEFAULT_FROM_EMAIL", "") or None
     send_mail(
-        subject=subject,
-        message=body,
+        subject=(subject or "").strip(),
+        message=(body or "").strip(),
         from_email=from_email,
         recipient_list=[to_email],
-        fail_silently=False,
+        fail_silently=True,  # notificação não pode derrubar fluxo
     )
 
 
 def notify_users_for_card(
     *,
     card: Card,
-    recipients: list[User],
+    recipients: Iterable[User],
     subject: str,
     message: str,
+    snap: Optional[CardSnapshot] = None,
     include_link_as_second_whatsapp_message: bool = False,
-    notify_only_owned_or_mentioned: bool = True,
-    bypass_card_gate: bool = False,   # <-- NOVO
+    exclude_actor: bool = True,
+    actor: Optional[User] = None,
 ):
+    """
+    Compliance com suas regras:
+    - Notifica seguidores do card (público vem pronto em recipients) e/ou autor do track-time.
+    - Nunca notifica o próprio em atividade normal (exclude_actor=True).
+    - Para track-time, passe exclude_actor=False (autor deve ser notificado).
+    - Flags/canais do usuário mandam (notify_email/notify_whatsapp).
+    """
     if not recipients:
         return
 
+    snap = snap or build_card_snapshot(card=card)
+    link = snap.tracktime_url or snap.card_url
+
     for u in recipients:
-        if notify_only_owned_or_mentioned and (not bypass_card_gate):
-            if not _user_allowed_for_card(card=card, user=u):
-                continue
+        if not u:
+            continue
+
+        if exclude_actor and actor and getattr(u, "id", None) == getattr(actor, "id", None):
+            continue
+
+        prof = _get_or_create_profile(u)
 
         # WhatsApp
-        if prof.notify_whatsapp:
-            phone_raw = (prof.telefone or "").strip()
-            phone_digits = re.sub(r"\D+", "", phone_raw)
-
-            # Se não tiver DDI (ex: veio só DDD+número), assume BR e prefixa 55
-            if len(phone_digits) in (10, 11):
-                phone_digits = "55" + phone_digits
-
-            # Agora valida: 55 + DDD + (8 ou 9)
-            if len(phone_digits) not in (12, 13):
-                logger.warning(
-                    "pressticket: invalid phone after sanitize user_id=%s raw=%r digits=%r",
-                    u.id, phone_raw, phone_digits
-                )
-                continue
-
-            try:
-                send_whatsapp(user=u, phone_digits=phone_digits, body=message)
-
-                if include_link_as_second_whatsapp_message:
-                    send_whatsapp(user=u, phone_digits=phone_digits, body=snap.tracktime_url)
-
-            except PressTicketError:
-                logger.exception(
-                    "pressticket: send failed (PressTicketError) user_id=%s card_id=%s",
-                    u.id, card.id
-                )
-            except Exception:
-                logger.exception(
-                    "pressticket: send failed (unexpected) user_id=%s card_id=%s",
-                    u.id, card.id
-                )
-
+        if getattr(prof, "notify_whatsapp", False):
+            phone_digits = _safe_digits_phone(getattr(prof, "telefone", ""))
+            if phone_digits:
+                try:
+                    send_whatsapp(user=u, phone_digits=phone_digits, body=message)
+                    if include_link_as_second_whatsapp_message:
+                        send_whatsapp(user=u, phone_digits=phone_digits, body=link)
+                except PressTicketError:
+                    logger.exception("pressticket: send failed (PressTicketError) user_id=%s card_id=%s", u.id, card.id)
+                except Exception:
+                    logger.exception("pressticket: send failed (unexpected) user_id=%s card_id=%s", u.id, card.id)
 
         # Email
-        if prof.notify_email:
+        if getattr(prof, "notify_email", False):
             to_email = (getattr(u, "email", "") or "").strip()
             if to_email:
                 try:
-                    # Email com link junto no corpo (não separado em 2 mensagens)
-                    body = f"{message}\n\nLink: {snap.tracktime_url}\n"
+                    body = f"{message}\n\nLink: {link}\n"
                     send_email_notification(to_email=to_email, subject=subject, body=body)
                 except Exception:
-                    logger.exception(
-                        "email: send failed user_id=%s card_id=%s",
-                        u.id, card.id,
-                    )
+                    logger.exception("email: send failed user_id=%s card_id=%s", u.id, card.id)

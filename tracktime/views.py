@@ -24,10 +24,12 @@ from tracktime.services.notifications import notify_tracktime_extended
 
 from boards.services.notifications import (
     get_board_recipients_for_card,
+    get_card_followers,
     build_card_snapshot,
     format_card_message,
     notify_users_for_card,
 )
+
 
 
 
@@ -326,8 +328,12 @@ def card_tracktime_start(request, card_id):
         # ✅ WhatsApp (MVP): dispara mensagem no start, sem quebrar o track-time se falhar
        # ✅ WhatsApp no START (2 mensagens: comunicado + link puro)
     try:
-        # recipients = membros do board (regra única do produto)
-        recipients = [request.user]
+        # Regra: track-time notifica o autor SEMPRE + seguidores do card
+        followers = get_card_followers(card=card)
+        recipients = followers[:]
+        if request.user not in recipients:
+            recipients.insert(0, request.user)
+
 
         snap = build_card_snapshot(card=card)
         msg = format_card_message(
@@ -340,9 +346,13 @@ def card_tracktime_start(request, card_id):
             recipients=recipients,
             subject=f"Início do Track-time: {snap.title}",
             message=msg,
+            snap=snap,
             include_link_as_second_whatsapp_message=True,
-            bypass_card_gate=True,  # <-- garante envio pro ator
+            exclude_actor=False,
+            actor=entry.user,
         )
+
+
 
 
     except Exception as e:
@@ -381,7 +391,11 @@ def card_tracktime_stop(request, card_id):
 
        # ✅ WhatsApp no STOP (2 mensagens: comunicado + link puro)
         try:
-            recipients = [request.user]
+            followers = get_card_followers(card=card)
+            recipients = followers[:]
+            if request.user not in recipients:
+                recipients.insert(0, request.user)
+
 
             snap = build_card_snapshot(card=card)
             total_min = int(getattr(entry, "minutes", 0) or 0)
@@ -397,9 +411,12 @@ def card_tracktime_stop(request, card_id):
                 recipients=recipients,
                 subject=f"Fim do Track-time: {snap.title}",
                 message=msg,
+                snap=snap,
                 include_link_as_second_whatsapp_message=True,
-                bypass_card_gate=True,
+                exclude_actor=False,   # autor DEVE ser notificado no track-time
+                actor=entry.user,
             )
+
 
         except Exception as e:
             logger.exception("[tracktime] Notificação STOP falhou: %s", e)
@@ -509,7 +526,11 @@ def tracktime_confirm_link(request, entry_id, token):
     entry.extend_one_hour(now=timezone.now())
     try:
         card = Card.objects.select_related("column__board").get(id=entry.card_id)
-        recipients = [request.user]
+        followers = get_card_followers(card=card)
+        recipients = followers[:]
+        if entry.user not in recipients:
+            recipients.insert(0, request.user)
+
 
         snap = build_card_snapshot(card=card)
 
@@ -521,11 +542,14 @@ def tracktime_confirm_link(request, entry_id, token):
         notify_users_for_card(
             card=card,
             recipients=recipients,
-            subject=f"Track-time +1h: {snap.title}",
+            subject=f"Track-time estendido: {snap.title}",
             message=msg,
+            snap=snap,
             include_link_as_second_whatsapp_message=True,
-            bypass_card_gate=True,
+            exclude_actor=False,   # autor DEVE ser notificado no track-time
+            actor=entry.user,
         )
+
 
     except Exception as e:
         logger.exception("[tracktime] Notificação CONFIRM (+1h) falhou: %s", e)

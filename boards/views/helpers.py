@@ -23,7 +23,14 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import escape
 
-from boards.services.notifications import send_whatsapp
+from boards.services.notifications import (
+    send_whatsapp,
+    get_card_followers,
+    build_card_snapshot,
+    format_card_message,
+    notify_users_for_card,
+)
+
 from ..models import (
     Board,
     BoardMembership,
@@ -112,23 +119,48 @@ def _actor_html(request) -> str:
 
 def _log_card(card: Card, request, message_html: str, attachment=None):
     """
-    Registra no histórico do card (CardLog).
-    message_html deve ser HTML válido.
-    Retorna a instância criada ou None.
+    Registra no histórico do card (CardLog) e notifica seguidores.
     """
     try:
         actor = None
         if getattr(request, "user", None) and getattr(request.user, "is_authenticated", False):
             actor = request.user
 
-        return CardLog.objects.create(
+        log = CardLog.objects.create(
             card=card,
-            actor=actor,  # ✅ passa a gravar autor quando houver
+            actor=actor,
             content=message_html,
             attachment=attachment,
         )
+
+        # ✅ Regra: seguidores recebem notificação de qualquer atividade do card
+        # (exceto quando a própria pessoa fez a ação)
+        try:
+            followers = get_card_followers(card=card)
+            if followers:
+                snap = build_card_snapshot(card=card)
+                msg = format_card_message(
+                    title_prefix="📝 Atividade no card",
+                    snap=snap,
+                )
+
+                notify_users_for_card(
+                    card=card,
+                    recipients=followers,
+                    subject=f"Atividade no card: {snap.title}",
+                    message=msg,
+                    snap=snap,
+                    include_link_as_second_whatsapp_message=False,
+                    exclude_actor=True,   # não notificar a própria ação
+                    actor=actor,
+                )
+        except Exception:
+            # notificação nunca derruba a auditoria
+            pass
+
+        return log
+
     except Exception:
-        # Auditoria não pode derrubar fluxo de negócio
         return None
 
 
@@ -501,13 +533,22 @@ def process_mentions_and_notify(*, request, board, card, source, raw_text):
             if current_total < mention_obj.seen_count:
                 mention_obj.emailed_count = min(mention_obj.emailed_count, current_total)
 
-            # 2.2 Delta: se current_total > emailed_count => manda (geralmente 1)
+                       # 2.2 Delta: se current_total > emailed_count => manda (geralmente 1)
             if current_total > mention_obj.emailed_count:
+                # Regra: mention => usuário passa a seguir o card a partir daqui
+                try:
+                    from boards.models import CardFollow
+                    CardFollow.objects.get_or_create(card=card, user=mentioned_user)
+                except Exception:
+                    # seguir não pode quebrar fluxo de comentário
+                    pass
+
                 # Dispara notificação (1 vez por save, sem spam)
                 _send_mention_email(request, mentioned_user, request.user, board, card, mention_obj)
                 _send_mention_whatsapp(request, mentioned_user, request.user, board, card, mention_obj)
 
                 mention_obj.emailed_count = current_total
+
 
 
             # 2.3 Sempre atualiza seen_count e raw_text

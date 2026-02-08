@@ -289,7 +289,7 @@ def add_activity(request, card_id):
 
     # menções: usa TEXTO (mais estável); fallback para HTML se necessário
     try:
-        raw_for_mentions = text_raw or raw_html
+        raw_for_mentions = raw_html or text_raw
         if parent_log and parent_log.actor:
             who = _safe_user_handle_or_email(parent_log.actor)
             if who:
