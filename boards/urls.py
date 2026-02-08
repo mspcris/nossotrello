@@ -228,6 +228,8 @@ urlpatterns = [
         deny_board_access,
         name="board_deny_access",
     ),
+    path("board/<int:board_id>/access-requests/poll/", views.board_access_requests_poll, name="board_access_requests_poll"),
+
 
     # ============================================================
     # BOARDS — COLUNAS (criar / reordenar / seguir)

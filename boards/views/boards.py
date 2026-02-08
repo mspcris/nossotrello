@@ -57,6 +57,14 @@ from .helpers import (
 from .helpers import Board, Column, Card, BoardMembership, Organization
 
 
+
+
+
+
+
+
+
+
 def _get_home_org(request):
     if not request.user.is_authenticated:
         return None
@@ -1806,3 +1814,28 @@ def deny_board_access(request, board_id, user_id):
 
     # Para o HTMX: some com a linha da solicitação
     return HttpResponse("")
+
+
+
+@login_required
+def board_access_requests_poll(request, board_id):
+    # proteções básicas (owner/admin)
+    board = get_object_or_404(Board, id=board_id)
+
+    # se não pode compartilhar/gerenciar, devolve vazio (não “vaza” info)
+    if not user_can_share_board(request.user, board):   # use SUA função/flag (can_share_board)
+        return HttpResponse("", content_type="text/html")
+
+    pending_access_requests = (
+        BoardAccessRequest.objects
+        .filter(board=board, status="pending")          # ajuste para o seu model/campos
+        .select_related("user", "user__profile")
+        .order_by("-id")
+    )
+
+    html = render_to_string(
+        "boards/partials/access_requests_panel.html",
+        {"pending_access_requests": pending_access_requests},
+        request=request,
+    )
+    return HttpResponse(html, content_type="text/html")

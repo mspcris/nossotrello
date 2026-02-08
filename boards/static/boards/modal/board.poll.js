@@ -5,11 +5,12 @@ function syncAccessRequests(boardId) {
   const root = document.getElementById("cm-accessreq-root");
   if (!root) return;
 
-  fetch(`/board/${boardId}/access-requests/poll/`, {
+  fetch(window.ACCESS_REQUESTS_POLL_URL, {
     credentials: "same-origin",
     cache: "no-store",
     headers: { "X-Requested-With": "XMLHttpRequest" }
   })
+
 
     .then(r => r.text())
     .then(html => {
