@@ -5,7 +5,6 @@ from django.db import models
 from django.core.validators import RegexValidator
 from django.utils import timezone
 
-
 # ============================================================
 # ORGANIZATION (dona dos boards)
 # ============================================================
@@ -671,5 +670,23 @@ class CardFollow(models.Model):
 
     def __str__(self):
         return f"{self.user_id} follows {self.card_id}"
+
+
+class ColumnFollow(models.Model):
+    column = models.ForeignKey("boards.Column", on_delete=models.CASCADE, related_name="follows")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="column_follows")
+    include_new = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = (("column", "user"),)
+        indexes = [
+            models.Index(fields=["column", "include_new"]),
+            models.Index(fields=["user"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user_id} -> column {self.column_id} (include_new={self.include_new})"
+
 
 # END boards/models.py

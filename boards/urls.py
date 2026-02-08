@@ -96,6 +96,9 @@ from .views import attachments as attachments_views
 
 from .views import cards_state as cards_state_views
 
+from boards.views.column_follow import toggle_column_follow
+
+
 app_name = "boards"
 
 urlpatterns = [
@@ -227,10 +230,11 @@ urlpatterns = [
     ),
 
     # ============================================================
-    # BOARDS — COLUNAS (criar / reordenar)
+    # BOARDS — COLUNAS (criar / reordenar / seguir)
     # ============================================================
     path("board/<int:board_id>/add_column/", columns_views.add_column, name="add_column"),
     path("board/<int:board_id>/columns/reorder/", columns_views.reorder_columns, name="reorder_columns"),
+    path("column/<int:column_id>/follow/", toggle_column_follow, name="toggle_column_follow"),
 
     # ============================================================
     # BOARDS — WALLPAPER / CSS

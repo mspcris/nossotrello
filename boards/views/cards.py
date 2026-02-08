@@ -36,6 +36,7 @@ from ..permissions import can_edit_board  # noqa: F401
 from ..forms import CardForm
 from ..models import Board, BoardMembership, Card, CardAttachment, Column, CardSeen
 from boards.models import CardLog
+from boards.models import CardFollow, ColumnFollow 
 
 
 logger = logging.getLogger(__name__)
@@ -110,6 +111,23 @@ def add_card(request, column_id):
                 card.position = column.cards.count()
 
             card.save()
+            # ===============================
+            # AUTO-FOLLOW: seguidores da coluna (include_new=True)
+            # ===============================
+            try:
+                follower_ids = list(
+                    ColumnFollow.objects
+                    .filter(column=column, include_new=True)
+                    .values_list("user_id", flat=True)
+                )
+                if follower_ids:
+                    CardFollow.objects.bulk_create(
+                        [CardFollow(card_id=card.id, user_id=uid) for uid in follower_ids],
+                        ignore_conflicts=True,
+                    )
+            except Exception:
+                pass
+
 
             board = card.column.board
 
@@ -817,6 +835,23 @@ def move_card(request):
     # move card para nova coluna
     card.column = new_column
     card.save(update_fields=["column"])
+    # ===============================
+    # AUTO-FOLLOW: seguidores da coluna destino (include_new=True)
+    # ===============================
+    try:
+        follower_ids = list(
+            ColumnFollow.objects
+            .filter(column=new_column, include_new=True)
+            .values_list("user_id", flat=True)
+        )
+        if follower_ids:
+            CardFollow.objects.bulk_create(
+                [CardFollow(card_id=card.id, user_id=uid) for uid in follower_ids],
+                ignore_conflicts=True,
+            )
+    except Exception:
+        pass
+
 
     # cards da nova coluna (sem o card)
     new_cards = list(
