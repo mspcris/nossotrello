@@ -578,6 +578,13 @@ def _log_is_system(log) -> bool:
     'System' = log gerado por ações do sistema (criou card, alterou prazo, etc).
     Heurística: não é reply, não tem delta, não tem texto, e vem como HTML legado.
     """
+    # ✅ Se tem autor, não é sistema (ex.: anexos, ações do usuário logadas em HTML legado)
+    try:
+        if getattr(log, "actor_id", None):
+            return False
+    except Exception:
+        pass
+
     try:
         if getattr(log, "reply_to_id", None):
             return False
@@ -597,6 +604,7 @@ def _log_is_system(log) -> bool:
         return True
 
     return False
+
 
 
 def _log_is_files(log) -> bool:
