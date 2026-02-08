@@ -31,6 +31,12 @@ from boards.services.notifications import (
     notify_users_for_card,
 )
 
+from boards.services.notifications import (
+    build_card_snapshot,
+    format_card_message,
+    notify_users_for_card,
+)
+
 from ..models import (
     Board,
     BoardMembership,
@@ -133,10 +139,13 @@ def _log_card(card: Card, request, message_html: str, attachment=None):
             attachment=attachment,
         )
 
-        # ✅ Regra: seguidores recebem notificação de qualquer atividade do card
+        # seguidores recebem notificação de qualquer atividade do card
         # (exceto quando a própria pessoa fez a ação)
         try:
-            followers = get_card_followers(card=card)
+            followers = [cf.user for cf in card.follows.select_related("user").all()]
+            if actor:
+                followers = [u for u in followers if u.id != actor.id]
+
             if followers:
                 snap = build_card_snapshot(card=card)
                 msg = format_card_message(
@@ -149,10 +158,8 @@ def _log_card(card: Card, request, message_html: str, attachment=None):
                     recipients=followers,
                     subject=f"Atividade no card: {snap.title}",
                     message=msg,
-                    snap=snap,
                     include_link_as_second_whatsapp_message=False,
-                    exclude_actor=True,   # não notificar a própria ação
-                    actor=actor,
+                    notify_only_owned_or_mentioned=True,  # segue o gate (seguir/menção/dono)
                 )
         except Exception:
             # notificação nunca derruba a auditoria
@@ -162,7 +169,6 @@ def _log_card(card: Card, request, message_html: str, attachment=None):
 
     except Exception:
         return None
-
 
 def _board_anchor_card(board: Board):
     """
