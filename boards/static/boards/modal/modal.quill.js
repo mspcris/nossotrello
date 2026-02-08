@@ -366,15 +366,18 @@ function bindQuillToTextarea(textarea, boardId) {
   const form = textarea.closest("form");
   if (form && !form.dataset.quillSyncBoundTextarea) {
     form.dataset.quillSyncBoundTextarea = "1";
-    form.addEventListener("submit", syncToTextarea, { capture: true });
+    const syncToTextarea = () => {
+      try { quill.update?.("silent"); } catch (_e) {}
+      try { textarea.value = quill.root.innerHTML || ""; } catch (_e) {}
+    };
 
-    document.body.addEventListener("htmx:configRequest", () => {
-      try { syncToTextarea(); } catch (_e) {}
-    }, true);
+    // document.body.addEventListener("htmx:configRequest", () => {
+    //   try { syncToTextarea(); } catch (_e) {}
+    // }, true);
 
-    document.body.addEventListener("htmx:beforeRequest", () => {
-      try { syncToTextarea(); } catch (_e) {}
-    }, true);
+    // document.body.addEventListener("htmx:beforeRequest", () => {
+    //   try { syncToTextarea(); } catch (_e) {}
+    // }, true);
   } // ✅ FECHA o if(form...)
 
   // toolbar image (fora do if)
@@ -771,3 +774,24 @@ function bindQuillToDiv(div, hiddenInput, boardId) {
   // init inicial
   try { window.Modal?.quill?.init?.(); } catch (_e) {}
 })();
+
+
+
+
+
+
+
+function syncActiveDesc() {
+  const root = document.getElementById("cm-root");
+  if (!root) return;
+
+  const ta = root.querySelector('#cm-description, textarea[name="description"]');
+  const q = window.Modal?.quill?._descQuill;
+
+  if (!ta || !q || !q.root) return;
+
+  // 🔒 força o Quill a “commitar” estado pendente antes de ler HTML
+  try { q.update?.("silent"); } catch (_e) {}
+
+  try { ta.value = q.root.innerHTML || ""; } catch (_e) {}
+}

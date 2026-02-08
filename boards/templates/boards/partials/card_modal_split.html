@@ -85,43 +85,36 @@
             <button type="button" class="cm-tabbtn" data-cm-tab="files"> 📎 Anexos</button>
             <button type="button" class="cm-tabbtn" data-cm-tab="track"> ⏱️ Track-time</button>
           </div>
-
-          <div class="cm-actions" id="cm-actions">
+{% comment %} 
+           <div class="cm-actions" id="cm-actions">
             <button type="submit" form="cm-main-form" class="cm-btn primary" id="cm-save-btn">Salvar</button>
-          </div>
+          </div> {% endcomment %}
         </div>
-      </div>
+      </div> 
 
       <div id="cm-tags-wrap">
         {% include "boards/partials/card_tags_bar.html" %}
       </div>
 
-      <form id="cm-tag-color-form"
-            style="display:none !important;"
-            method="post"
-            action="{% url 'boards:set_tag_color' card.id %}"
-            onsubmit="return false;">
-        {% csrf_token %}
-        <input type="hidden" name="tag" id="cm-tag-color-tag">
-        <input type="hidden" name="color" id="cm-tag-color-value">
-      </form>
+          <div id="cm-tag-color-popover"
+              class="hidden"
+              style="position:absolute; z-index:99999; padding:12px; border-radius:12px;
+                      background: rgba(255,255,255,0.98); border:1px solid rgba(15,23,42,0.12);
+                      box-shadow: 0 10px 30px rgba(2,6,23,0.18);">
+            <div class="flex flex-col gap-3">
+              <input type="color"
+                    id="cm-tag-color-picker"
+                    class="w-12 h-12 border rounded cursor-pointer">
 
-      <div id="cm-tag-color-popover"
-           class="hidden"
-           style="position:absolute; z-index:99999; padding:12px; border-radius:12px;
-                  background: rgba(255,255,255,0.98); border:1px solid rgba(15,23,42,0.12);
-                  box-shadow: 0 10px 30px rgba(2,6,23,0.18);">
-        <div class="flex flex-col gap-3">
-          <input type="color"
-                 id="cm-tag-color-picker"
-                 class="w-12 h-12 border rounded cursor-pointer">
+              <div class="flex gap-2 justify-end">
+                <button type="button" class="cm-btn primary" id="cm-float-save-btn">
+  <span class="underline font-semibold">S</span>alvar
+</button>
 
-          <div class="flex gap-2 justify-end">
-            <button type="button" class="cm-btn" id="cm-tag-color-cancel">Cancelar</button>
-            <button type="button" class="cm-btn primary" id="cm-tag-color-save">Salvar cor</button>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+
 
       <form id="cm-cover-form"
             class="hidden"
@@ -146,12 +139,12 @@
             hx-target="#modal-body"
             hx-swap="innerHTML"
             hx-on::config-request="
-            (function(){
-              const ta = document.getElementById('cm-description');
-              if (!ta) return;
-              ta.value = ta.value; // força o estado atual no campo que será serializado
-            })();
-          ">
+              (function(){
+                try { if (typeof syncActiveDesc === 'function') syncActiveDesc(); } catch(_e){}
+              })();
+            "
+
+
 
         {% csrf_token %}
 
@@ -465,9 +458,11 @@
 
       <div id="cm-floatbar" class="cm-floatbar hidden" aria-live="polite">
         <div class="cm-floatbar-inner">
-          <button type="submit" form="cm-main-form" class="cm-btn primary" id="cm-float-save-btn">
-            <span class="underline font-semibold">S</span>alvar
-          </button>
+          {% comment %} <button type="submit" form="cm-main-form" class="cm-btn primary" id="cm-float-save-btn"> {% endcomment %}
+          <button type="submit" form="cm-main-form" class="cm-btn primary" id="cm-tag-color-save-btn">
+  <span class="underline font-semibold">S</span>alvar
+</button>
+
           <button type="button" class="cm-btn" id="cm-close-btn">Fechar</button>
         </div>
       </div>
@@ -831,13 +826,13 @@
   (function initFloatbarDirty() {
     const form = document.getElementById("cm-main-form");
     const floatbar = document.getElementById("cm-floatbar");
-    const floatSave = document.getElementById("cm-float-save-btn");
+    const floatSave = document.getElementById("cm-save-btn");
     const closeBtn = document.getElementById("cm-close-btn");
 
     if (!form || !floatbar) return;
 
     const WATCH = [
-      "title",
+      "card_title",
       "description",
       "tags",
       "due_color_ok",
@@ -1090,7 +1085,7 @@
     e.stopPropagation();
 
     if (k === "s") {
-      const btn = document.getElementById("cm-save-btn") || document.getElementById("cm-float-save-btn");
+      const btn = document.getElementById("cm-float-save-btn") || document.getElementById("cm-save-btn");
       if (btn) { btn.click(); return; }
       submitFormById("cm-main-form");
       return;
@@ -1658,5 +1653,26 @@
   document.addEventListener("DOMContentLoaded", bindActivityToggle);
 </script>
 
+<script>
+  document.addEventListener("click", function (e) {
+  const btn = e.target?.closest?.("#cm-float-save-btn, #cm-save-btn");
+  if (!btn) return;
+
+  const form = document.getElementById("cm-main-form");
+  if (!form) return;
+
+  // garante flush do Quill antes do submit
+  try { window.__cmQuillHtmxSyncInstalled && (window.Modal?.quill?._descQuill?.update?.("silent")); } catch (_e) {}
+  try {
+    const root = document.getElementById("cm-root");
+    const ta = root?.querySelector("#cm-description");
+    const q = window.Modal?.quill?._descQuill;
+    if (ta && q?.root) ta.value = q.root.innerHTML || "";
+  } catch (_e) {}
+
+  // agora submete
+  try { form.requestSubmit ? form.requestSubmit() : form.submit(); } catch (_e) {}
+}, true);
+</script>
 
 {# END templates/boards/partials/card_modal_split.html #}
