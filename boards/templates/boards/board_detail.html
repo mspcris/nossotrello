@@ -2219,5 +2219,94 @@ document.addEventListener("pointerup", (e) => {
 }, { capture: true });
 </script>
 
+<script>
+  (function () {
+  if (window.__cmColFollowPopoverInstalled) return;
+  window.__cmColFollowPopoverInstalled = true;
+
+  const GAP = 8;
+
+  function qsa(sel, root=document){ return Array.from(root.querySelectorAll(sel)); }
+
+  function closeAll() {
+    qsa("[data-col-follow-popover]").forEach(p => {
+      p.classList.add("hidden");
+      p.style.position = "";
+      p.style.left = "";
+      p.style.top = "";
+      p.style.zIndex = "";
+    });
+    qsa("[data-col-follow-btn]").forEach(b => b.setAttribute("aria-expanded", "false"));
+  }
+
+  function positionPopover(btn, pop) {
+    // garante visível para medir
+    pop.classList.remove("hidden");
+
+    // “portal”: popover no body (foge de overflow da coluna)
+    if (pop.parentElement !== document.body) {
+      document.body.appendChild(pop);
+    }
+
+    pop.style.position = "fixed";
+    pop.style.zIndex = "9999";
+
+    // mede
+    const r = btn.getBoundingClientRect();
+    const pr = pop.getBoundingClientRect();
+
+    // default: abre abaixo, alinhado à esquerda do botão
+    let left = r.left;
+    let top = r.bottom + GAP;
+
+    // se estourar à direita, alinha pela direita do botão
+    const vw = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
+    if (left + pr.width > vw - 8) left = Math.max(8, r.right - pr.width);
+
+    // se estourar embaixo, tenta abrir acima
+    const vh = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
+    if (top + pr.height > vh - 8) {
+      top = Math.max(8, r.top - pr.height - GAP);
+    }
+
+    pop.style.left = `${Math.round(left)}px`;
+    pop.style.top  = `${Math.round(top)}px`;
+  }
+
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest?.("[data-col-follow-btn]");
+    if (!btn) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const colId = btn.getAttribute("data-col-id");
+    const pop = document.querySelector(`[data-col-follow-popover][data-col-id="${colId}"]`);
+    if (!pop) return;
+
+    const isOpen = !pop.classList.contains("hidden");
+
+    closeAll();
+
+    if (!isOpen) {
+      btn.setAttribute("aria-expanded", "true");
+      // 2 frames para garantir layout antes de medir
+      requestAnimationFrame(() => requestAnimationFrame(() => positionPopover(btn, pop)));
+    }
+  }, true);
+
+  // fecha clicando fora
+  document.addEventListener("pointerdown", (e) => {
+    if (e.target.closest?.("[data-col-follow-btn]")) return;
+    if (e.target.closest?.("[data-col-follow-popover]")) return;
+    closeAll();
+  }, true);
+
+  // fecha em scroll/resize (evita “deslocar”)
+  window.addEventListener("resize", closeAll, { passive: true });
+  window.addEventListener("scroll", closeAll, { passive: true, capture: true });
+})();
+</script>
+
 
 {% endblock content %}

@@ -20,19 +20,25 @@
 
 <!-- follow coluna (popover) -->
 <div class="relative" data-col-follow-scope="{{ column.id }}">
-  <button ... id="col-follow-btn-{{ column.id }}"
+      <button id="col-follow-btn-{{ column.id }}"
         data-col-follow-btn
+        data-col-id="{{ column.id }}"
+        type="button"
         class="px-2 py-1 rounded-lg bg-white/20 border border-white/40
                text-gray-700 hover:text-gray-900 backdrop-blur-sm transition"
-          aria-expanded="false"
-          title="Seguir cards desta coluna"
-          onpointerdown="event.stopPropagation();"
-          ontouchstart="event.stopPropagation();"
-          onclick="event.preventDefault(); event.stopPropagation(); window.__cmToggleColFollowPopover('{{ column.id }}');">
-    👁
-  </button>
+        aria-expanded="false"
+        title="Seguir cards desta coluna"
+        onpointerdown="event.stopPropagation();"
+        ontouchstart="event.stopPropagation();"
+        onclick="event.preventDefault(); event.stopPropagation(); window.__cmToggleColFollowPopover('{{ column.id }}');">
+  👁
+</button>
+
+
 
 <div id="col-follow-popover-{{ column.id }}"
+     data-col-follow-popover
+     data-col-id="{{ column.id }}"
      class="hidden absolute right-full mr-3 mt-2 w-72 rounded-xl shadow-2xl
             bg-slate-900/90 text-white backdrop-blur-md border border-white/15
             p-3 z-[9999]">
@@ -622,6 +628,25 @@
   // =========================
   // Follow da coluna (popover) — sem modal
   // =========================
+  const BOARD_ID = window.BOARD_ID || "0";
+  function colFollowKey(colId){ return `colFollow:${BOARD_ID}:${colId}`; }
+
+  function setColEyeState(colId, following) {
+    const btn = document.getElementById("col-follow-btn-" + colId);
+    if (!btn) return;
+    btn.classList.toggle("is-following", !!following);
+  }
+
+  // Rehidrata o olho no load (F5)
+  document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll("[data-col-follow-btn][data-col-id]").forEach((btn) => {
+      const colId = btn.getAttribute("data-col-id");
+      const val = localStorage.getItem(colFollowKey(colId));
+      if (!val) return;
+      setColEyeState(colId, val === "1");
+    });
+  });
+
   function hideColFollowPopover(colId) {
     const pop = document.getElementById("col-follow-popover-" + colId);
     const btn = document.getElementById("col-follow-btn-" + colId);
@@ -717,6 +742,8 @@
     // (se você quiser respeitar exatamente o checkbox, trate no caller)
     setAllCardsFollowUI(colId, false);
   }
+    localStorage.setItem(colFollowKey(colId), data?.active ? "1" : "0");
+
 }
 
 

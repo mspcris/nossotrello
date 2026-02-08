@@ -287,3 +287,11 @@ html.dark .column-item .column-header{
   color: #fff !important;
   border-color: rgba(34,197,94,.65) !important;
 }
+
+
+ /* Olho da coluna ativo (verde) */
+  [data-col-follow-btn].is-following {
+    background: rgba(16, 185, 129, 0.22);
+    border-color: rgba(16, 185, 129, 0.55);
+    color: rgb(5, 150, 105);
+  }
