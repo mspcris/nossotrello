@@ -550,30 +550,34 @@
               </button> 
               {% endcomment %}
 
-              <button
+<button
+  id="cm-activity-submit"
   type="button"
   class="cm-btn primary"
+  data-busy-text="Enviando…"
   onclick="
     event.preventDefault();
 
     const form = this.form;
     if (!form) return;
 
-    // Sem 'submit' nativo: precisamos disparar o submit que o HTMX intercepta
+    // trava até o HTMX finalizar (sem timeout)
     this.disabled = true;
+    this.dataset.origHtml = this.dataset.origHtml || this.innerHTML;
+    this.innerHTML = this.getAttribute('data-busy-text') || 'Enviando…';
 
-    // Pequeno delay para o mention terminar de aplicar e o Quill sincronizar antes do htmx:configRequest
+    // evita duplo clique
+    form.dataset.cmBusy = '1';
+
+    // mantém o micro-delay pro Quill/mention sincronizar
     setTimeout(() => {
       try {
         if (form.requestSubmit) form.requestSubmit();
         else {
-          // fallback: dispara submit event (htmx escuta), e só se não cancelar, submete
           const ev = new Event('submit', { bubbles: true, cancelable: true });
           if (form.dispatchEvent(ev)) form.submit();
         }
-      } finally {
-        setTimeout(() => { try { this.disabled = false; } catch (_e) {} }, 600);
-      }
+      } catch (_e) {}
     }, 150);
   "
 >
