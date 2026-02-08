@@ -1,3 +1,23 @@
+
+<!-- /boards/templates/boards/partials/column_item.html -->
+<div class="column-item relative w-72 flex-shrink-0 rounded-xl shadow-lg overflow-visible
+            column-glass {{ column.theme|default:'gray'|add:'-column-bg' }}
+            flex flex-col max-h-[calc(100vh-180px)]"
+     data-column-id="{{ column.id }}">
+
+  <!-- ===================== HEADER ===================== -->
+  <div class="column-header shrink-0 px-4 py-2 border-b border-white/40 z-10 min-h-[72px]">
+
+    <!-- Linha 1: ações -->
+    <div class="flex items-center justify-end gap-2">
+      {% with n=column.card_count|default:column.cards.count %}
+        <span class="mr-auto text-xs text-gray-600" data-column-counter>
+          {{ n }} card{% if n != 1 %}s{% endif %}
+        </span>
+      {% endwith %}
+
+
+
 <!-- follow coluna (popover) -->
 <div class="relative" data-col-follow-scope="{{ column.id }}">
   <button type="button"
@@ -54,22 +74,9 @@
 </div>
 
 
-<!-- /boards/templates/boards/partials/column_item.html -->
-<div class="column-item relative w-72 flex-shrink-0 rounded-xl shadow-lg overflow-visible
-            column-glass {{ column.theme|default:'gray'|add:'-column-bg' }}
-            flex flex-col max-h-[calc(100vh-180px)]"
-     data-column-id="{{ column.id }}">
 
-  <!-- ===================== HEADER ===================== -->
-  <div class="column-header shrink-0 px-4 py-2 border-b border-white/40 z-10 min-h-[72px]">
 
-    <!-- Linha 1: ações -->
-    <div class="flex items-center justify-end gap-2">
-      {% with n=column.card_count|default:column.cards.count %}
-        <span class="mr-auto text-xs text-gray-600" data-column-counter>
-          {{ n }} card{% if n != 1 %}s{% endif %}
-        </span>
-      {% endwith %}
+
 
       <!-- + Card (TOPO) -->
       <button type="button"
