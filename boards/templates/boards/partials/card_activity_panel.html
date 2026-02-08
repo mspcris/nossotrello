@@ -28,7 +28,8 @@
   </div>
 
   {# SCROLL DO FEED #}
-  <div id="activity-panel-wrapper" class="activity-panel cm-feed-scroll max-h-[60vh] overflow-y-auto pr-2">
+  <div id="activity-panel-wrapper" class="activity-panel cm-feed-scroll flex-1 min-h-0 overflow-y-auto pr-2">
+
     <div class="cm-feed" id="cm-feed">
 
       {% with logs_list=logs|default:card.logs.all %}

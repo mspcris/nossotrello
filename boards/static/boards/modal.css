@@ -2786,3 +2786,56 @@ html.dark #modal #modal-breadcrumb{
   min-height: 0;
   max-height: none !important; /* mata o 60vh */
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* ============================================================
+   MODAL SPLIT — 2 scrolls independentes (esquerda / direita)
+   ============================================================ */
+
+/* 1) no modo split, o modal NÃO rola */
+#cm-root[data-cm-mode="split"]{
+  height: 100%;
+}
+
+#cm-root[data-cm-mode="split"] #modal-body.card-modal-scroll,
+#cm-root[data-cm-mode="split"] #card-modal-root .card-modal-scroll{
+  overflow: hidden !important;  /* desliga scroll “mestre” */
+}
+
+/* 2) o split precisa preencher a altura disponível */
+#cm-root[data-cm-mode="split"] .cm-split{
+  height: 100%;
+  min-height: 0;
+}
+
+/* 3) cada coluna vira um “painel” com scroll próprio */
+#cm-root[data-cm-mode="split"] .cm-main,
+#cm-root[data-cm-mode="split"] .cm-activity{
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+}
+
+
+
+
+
+
+
+
+
+
