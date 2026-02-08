@@ -1,24 +1,20 @@
 {# templates/boards/partials/card_activity_panel.html #}
 {% load tag_helpers %}
-{% load static %}
 
-{# Namespace único por card para NÃO duplicar IDs no DOM (modal + page) #}
-{% with ns="cmfeed-"|add:card.id|stringformat:"s" %}
-
-<div id="card-activity-panel-{{ ns }}" class="cm-feed-root" data-cm-ns="{{ ns }}" data-card-id="{{ card.id }}">
+<div id="card-activity-panel" class="cm-feed-root">
 
   {# TOOLBAR #}
-  <div class="cm-feed-toolbar" id="cm-feed-toolbar-{{ ns }}">
+  <div class="cm-feed-toolbar" id="cm-feed-toolbar">
     <div class="cm-feed-search">
       <span class="cm-feed-ico" aria-hidden="true">🔍</span>
-      <input type="text" id="cm-feed-q-{{ ns }}" placeholder="Buscar" autocomplete="off">
+      <input type="text" id="cm-feed-q" placeholder="Buscar" autocomplete="off">
     </div>
 
     <div class="cm-feed-filter">
       <span class="cm-feed-ico" aria-hidden="true">⏷</span>
       <span class="cm-feed-filter-label">Filtros:</span>
 
-      <select id="cm-feed-filter-{{ ns }}">
+      <select id="cm-feed-filter">
         <option value="comments">Comentários</option>
         <option value="files">Arquivos</option>
         <option value="system">Sistema</option>
@@ -26,178 +22,179 @@
       </select>
     </div>
 
-    <button type="button" class="cm-feed-iconbtn" id="cm-feed-menu-{{ ns }}" title="Opções" aria-label="Opções">
+    <button type="button" class="cm-feed-iconbtn" id="cm-feed-menu" title="Opções" aria-label="Opções">
       ☰
     </button>
   </div>
 
   {# SCROLL DO FEED #}
-  <div id="activity-panel-wrapper-{{ ns }}" class="activity-panel cm-feed-scroll max-h-[60vh] overflow-y-auto pr-2">
-    <div class="cm-feed" id="cm-feed-{{ ns }}">
+  <div id="activity-panel-wrapper" class="activity-panel cm-feed-scroll max-h-[60vh] overflow-y-auto pr-2">
+    <div class="cm-feed" id="cm-feed">
 
       {% with logs_list=logs|default:card.logs.all %}
         {% if logs_list %}
 
           {% for log in logs_list %}
-            {% ifchanged log.created_at|date:"d/m/Y" %}
-              <div class="cm-feed-dayhdr">{{ log.created_at|date:"d/m/Y" }}</div>
-            {% endifchanged %}
+            {# ✅ EVITA DUPLICAÇÃO: replies NÃO entram no loop principal #}
+            {% if not log.reply_to_id %}
 
-            {% with html_l=log.content|default_if_none:""|lower txt_l=log.content_text|default_if_none:""|lower %}
-              <article
-                class="cm-feed-item"
-                data-activity-id="{{ log.id }}"
-                data-type="{{ log.cm_type|default:'comments' }}"
-                data-text="{{ txt_l|striptags|escape }} {{ html_l|striptags|escape }}"
-              >
+              {% ifchanged log.created_at|date:"d/m/Y" %}
+                <div class="cm-feed-dayhdr">{{ log.created_at|date:"d/m/Y" }}</div>
+              {% endifchanged %}
 
-                <div class="cm-feed-row">
+              {% with html_l=log.content|default_if_none:""|lower txt_l=log.content_text|default_if_none:""|lower %}
+                <article
+                  class="cm-feed-item"
+                  data-activity-id="{{ log.id }}"
+                  data-type="{{ log.cm_type|default:'comments' }}"
+                  data-text="{{ txt_l|striptags|escape }} {{ html_l|striptags|escape }}"
+                >
 
-                  {# AVATAR (feed) #}
-                  <div class="cm-feed-avatar" aria-hidden="true">
-                    {% if log.actor %}
-                      {% with p=log.actor.profile %}
-                        {% if p and p.avatar %}
-                          <img class="cm-avatar-img"
-                               src="{{ p.avatar.url }}"
-                               alt="{{ log.cm_actor_label|default:'(SISTEMA)' }}">
-                        {% elif p and p.avatar_choice %}
-                          <img class="cm-avatar-img"
-                               src="{% static 'images/avatar/' %}{{ p.avatar_choice }}"
-                               alt="{{ log.cm_actor_label|default:'(SISTEMA)' }}">
-                        {% else %}
-                          <span class="cm-avatar-initial">{{ log.cm_actor_initial|default:"•" }}</span>
-                        {% endif %}
-                      {% endwith %}
-                    {% else %}
-                      <span class="cm-avatar-initial">{{ log.cm_actor_initial|default:"•" }}</span>
-                    {% endif %}
-                  </div>
+                  <div class="cm-feed-row">
 
-                  <div class="cm-feed-main">
-
-                    <div class="cm-feed-meta">
-                      <span class="cm-feed-handle">
-                        {{ log.cm_actor_label|default:"(SISTEMA)" }}
-                      </span>
-
-                      <span class="cm-feed-time">{{ log.created_at|date:"H:i" }}</span>
-
+                    <div class="cm-feed-avatar" aria-hidden="true">
                       {% if log.actor %}
-                        <button
-                          type="button"
-                          class="cm-feed-reply-btn cm-activity-reply-btn"
-                          title="Responder"
-                          aria-label="Responder"
-                          data-reply-to="{{ log.id }}"
-                          data-reply-user="{{ log.cm_reply_user|default:'' }}"
-                        >
-                          <svg viewBox="0 0 24 24" class="w-4 h-4 opacity-80" fill="currentColor" aria-hidden="true">
-                            <path d="M10 9V5L3 12l7 7v-4.1c6 0 9.5 2 11 6-1-8-5-12-11-12z"/>
-                          </svg>
-                        </button>
+                        {% with p=log.actor.profile %}
+                          {% if p and p.avatar %}
+                            <img class="cm-avatar-img"
+                                 src="{{ p.avatar.url }}"
+                                 alt="{{ log.cm_actor_label|default:'(SISTEMA)' }}">
+                          {% elif p and p.avatar_choice %}
+                            {% load static %}
+                            <img class="cm-avatar-img"
+                                 src="{% static 'images/avatar/' %}{{ p.avatar_choice }}"
+                                 alt="{{ log.cm_actor_label|default:'(SISTEMA)' }}">
+                          {% else %}
+                            <span class="cm-avatar-initial">{{ log.cm_actor_initial|default:"•" }}</span>
+                          {% endif %}
+                        {% endwith %}
+                      {% else %}
+                        <span class="cm-avatar-initial">{{ log.cm_actor_initial|default:"•" }}</span>
                       {% endif %}
                     </div>
 
-                    <div class="cm-feed-bubble">
-                      <div class="cm-feed-body">
-                        {% if log.content %}
-                          {{ log.content|safe }}
-                        {% elif log.content_text %}
-                          {{ log.content_text|linebreaksbr }}
+                    <div class="cm-feed-main">
+
+                      <div class="cm-feed-meta">
+                        <span class="cm-feed-handle">
+                          {{ log.cm_actor_label|default:"(SISTEMA)" }}
+                        </span>
+
+                        <span class="cm-feed-time">{{ log.created_at|date:"H:i" }}</span>
+
+                        {% if log.actor %}
+                          <button
+                            type="button"
+                            class="cm-feed-reply-btn cm-activity-reply-btn"
+                            title="Responder"
+                            aria-label="Responder"
+                            data-reply-to="{{ log.id }}"
+                            data-reply-user="{{ log.cm_reply_user|default:'' }}"
+                          >
+                            <svg viewBox="0 0 24 24" class="w-4 h-4 opacity-80" fill="currentColor" aria-hidden="true">
+                              <path d="M10 9V5L3 12l7 7v-4.1c6 0 9.5 2 11 6-1-8-5-12-11-12z"/>
+                            </svg>
+                          </button>
                         {% endif %}
                       </div>
 
-                      {% if log.attachment %}
-                        <div class="cm-attach">
-                          <a class="cm-attach-file" href="{{ log.attachment.url }}" target="_blank" rel="noopener">
-                            {{ log.attachment.name|cut:"attachments/" }}
-                          </a>
-
-                          <a
-                            href="{{ log.attachment.url }}"
-                            target="_blank"
-                            rel="noopener"
-                            class="cm-attach-thumb"
-                            data-preview-src="{{ log.attachment.url }}"
-                          >
-                            <img src="{{ log.attachment.url }}" alt="">
-                            <span class="cm-attach-zoom" aria-hidden="true">🔍</span>
-                          </a>
+                      <div class="cm-feed-bubble">
+                        <div class="cm-feed-body">
+                          {% if log.content %}
+                            {{ log.content|safe }}
+                          {% elif log.content_text %}
+                            {{ log.content_text|linebreaksbr }}
+                          {% endif %}
                         </div>
-                      {% endif %}
 
-                      {% with replies=log.replies.all %}
-                        {% if replies %}
-                          <div class="cm-replies">
-                            <div class="cm-replies-title">
-                              {{ replies|length }} resposta{{ replies|length|pluralize }}
-                            </div>
+                        {% if log.attachment %}
+                          <div class="cm-attach">
+                            <a class="cm-attach-file" href="{{ log.attachment.url }}" target="_blank" rel="noopener">
+                              {{ log.attachment.name|cut:"attachments/" }}
+                            </a>
 
-                            {% for r in replies %}
-                              {# FIX: wrapper .cm-reply (antes estava quebrado e bagunçava o DOM) #}
-                              <div class="cm-reply" data-reply-id="{{ r.id }}">
-                                <div class="cm-reply-avatar" aria-hidden="true">
-                                  {% if r.actor %}
-                                    {% with p=r.actor.profile %}
-                                      {% if p and p.avatar %}
-                                        <img class="cm-avatar-img"
-                                             src="{{ p.avatar.url }}"
-                                             alt="{{ r.cm_actor_label|default:'(SISTEMA)' }}">
-                                      {% elif p and p.avatar_choice %}
-                                        <img class="cm-avatar-img"
-                                             src="{% static 'images/avatar/' %}{{ p.avatar_choice }}"
-                                             alt="{{ r.cm_actor_label|default:'(SISTEMA)' }}">
-                                      {% else %}
-                                        <span class="cm-avatar-initial">{{ r.cm_actor_initial|default:"•" }}</span>
-                                      {% endif %}
-                                    {% endwith %}
-                                  {% else %}
-                                    <span class="cm-avatar-initial">{{ r.cm_actor_initial|default:"•" }}</span>
-                                  {% endif %}
-                                </div>
+                            <a
+                              href="{{ log.attachment.url }}"
+                              target="_blank"
+                              rel="noopener"
+                              class="cm-attach-thumb"
+                              data-preview-src="{{ log.attachment.url }}"
+                            >
+                              <img src="{{ log.attachment.url }}" alt="">
+                              <span class="cm-attach-zoom" aria-hidden="true">🔍</span>
+                            </a>
+                          </div>
+                        {% endif %}
 
-                                <div class="cm-reply-main">
-                                  <div class="cm-feed-meta">
-                                    <span class="cm-feed-handle">
-                                      {{ r.cm_actor_label|default:"(SISTEMA)" }}
-                                    </span>
-                                    <span class="cm-feed-time">{{ r.created_at|date:"H:i" }}</span>
+                        {% with replies=log.replies.all %}
+                          {% if replies %}
+                            <div class="cm-replies">
+                              <div class="cm-replies-title">
+                                {{ replies|length }} resposta{{ replies|length|pluralize }}
+                              </div>
+
+                              {% for r in replies %}
+                                <div class="cm-reply-row">
+                                  <div class="cm-reply-avatar" aria-hidden="true">
+                                    {% if r.actor %}
+                                      {% with p=r.actor.profile %}
+                                        {% if p and p.avatar %}
+                                          <img class="cm-avatar-img"
+                                               src="{{ p.avatar.url }}"
+                                               alt="{{ r.cm_actor_label|default:'(SISTEMA)' }}">
+                                        {% elif p and p.avatar_choice %}
+                                          {% load static %}
+                                          <img class="cm-avatar-img"
+                                               src="{% static 'images/avatar/' %}{{ p.avatar_choice }}"
+                                               alt="{{ r.cm_actor_label|default:'(SISTEMA)' }}">
+                                        {% else %}
+                                          <span class="cm-avatar-initial">{{ r.cm_actor_initial|default:"•" }}</span>
+                                        {% endif %}
+                                      {% endwith %}
+                                    {% else %}
+                                      <span class="cm-avatar-initial">{{ r.cm_actor_initial|default:"•" }}</span>
+                                    {% endif %}
                                   </div>
 
-                                  <div class="cm-feed-bubble">
-                                    <div class="cm-feed-body">
-                                      {% if r.content %}
-                                        {{ r.content|safe }}
-                                      {% elif r.content_text %}
-                                        {{ r.content_text|linebreaksbr }}
-                                      {% endif %}
+                                  <div class="cm-reply-main">
+                                    <div class="cm-feed-meta">
+                                      <span class="cm-feed-handle">
+                                        {{ r.cm_actor_label|default:"(SISTEMA)" }}
+                                      </span>
+                                      <span class="cm-feed-time">{{ r.created_at|date:"H:i" }}</span>
+                                    </div>
+
+                                    <div class="cm-feed-bubble">
+                                      <div class="cm-feed-body">
+                                        {% if r.content %}
+                                          {{ r.content|safe }}
+                                        {% elif r.content_text %}
+                                          {{ r.content_text|linebreaksbr }}
+                                        {% endif %}
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
-                              </div>
-                            {% endfor %}
-                          </div>
-                        {% endif %}
-                      {% endwith %}
-                    </div>
+                              {% endfor %}
+                            </div>
+                          {% endif %}
+                        {% endwith %}
+                      </div>
 
+                    </div>
                   </div>
-                </div>
-              </article>
-            {% endwith %}
+                </article>
+              {% endwith %}
+
+            {% endif %}
           {% endfor %}
 
           <div class="cm-feed-foot">
-            <button type="button" class="cm-feed-more" id="cm-feed-more-{{ ns }}">+ Carregar mais</button>
+            <button type="button" class="cm-feed-more" id="cm-feed-more">+ Carregar mais</button>
 
-            <button type="button"
-                    class="cm-newmsg-pill"
-                    id="cm-newmsg-pill-{{ ns }}"
-                    aria-label="Novas mensagens"
-                    title="Ir para as novas mensagens">
+            <button type="button" class="cm-newmsg-pill" id="cm-newmsg-pill" aria-label="Novas mensagens" title="Ir para as novas mensagens">
               <span aria-hidden="true">⬇</span>
-              <span id="cm-newmsg-count-{{ ns }}">2</span> novas mensagens
+              <span id="cm-newmsg-count">2</span> novas mensagens
             </button>
           </div>
 
@@ -209,16 +206,14 @@
     </div>
   </div>
 
-  <div class="cm-hover-preview" id="cm-hover-preview-{{ ns }}" aria-hidden="true">
-    <img id="cm-hover-img-{{ ns }}" alt="">
+  <div class="cm-hover-preview" id="cm-hover-preview" aria-hidden="true">
+    <img id="cm-hover-img" alt="">
     <div class="cm-hover-footer">
-      <span class="cm-muted" id="cm-hover-name-{{ ns }}">Imagem</span>
-      <a class="cm-muted" id="cm-hover-open-{{ ns }}" target="_blank" rel="noopener">Abrir</a>
-      <span class="cm-hover-zoom" id="cm-hover-zoom-{{ ns }}">500%</span>
+      <span class="cm-muted" id="cm-hover-name">Imagem</span>
+      <a class="cm-muted" id="cm-hover-open" target="_blank" rel="noopener">Abrir</a>
+      <span class="cm-hover-zoom" id="cm-hover-zoom">500%</span>
     </div>
   </div>
 
 </div>
-
-{% endwith %}
 {# END templates/boards/partials/card_activity_panel.html #}
