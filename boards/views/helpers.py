@@ -159,8 +159,8 @@ def _log_card(card: Card, request, message_html: str, attachment=None):
                     subject=f"Atividade no card: {snap.title}",
                     message=msg,
                     include_link_as_second_whatsapp_message=False,
-                    notify_only_owned_or_mentioned=True,  # segue o gate (seguir/menção/dono)
                 )
+
         except Exception:
             # notificação nunca derruba a auditoria
             pass

@@ -30,6 +30,13 @@ from .helpers import (
     process_mentions_and_notify,
 )
 
+from boards.services.notifications import (
+    build_card_snapshot,
+    format_card_message,
+    notify_users_for_card,
+)
+
+
 
 def _safe_user_handle_or_email(u):
     """
@@ -332,6 +339,29 @@ def add_activity(request, card_id):
             content_text=effective_text,
             attachment=None,
         )
+
+            # Notifica seguidores do card (exceto o autor da ação)
+    try:
+        followers = [cf.user for cf in card.follows.select_related("user").all()]
+        followers = [u for u in followers if u and u.id != request.user.id]
+
+        if followers:
+            snap = build_card_snapshot(card=card)
+            msg = format_card_message(
+                title_prefix="📝 Atividade no card",
+                snap=snap,
+            )
+            notify_users_for_card(
+                card=card,
+                recipients=followers,
+                subject=f"Atividade no card: {snap.title}",
+                message=msg,
+                include_link_as_second_whatsapp_message=False,
+            )
+
+    except Exception:
+        pass
+
         board.version += 1
         board.save(update_fields=["version"])
 
@@ -381,6 +411,28 @@ def add_activity(request, card_id):
                     content_text=effective_text,  # mantém texto real
                     attachment=None,
                 )
+                    # Notifica seguidores do card (exceto o autor da ação)
+                try:
+                    followers = [cf.user for cf in card.follows.select_related("user").all()]
+                    followers = [u for u in followers if u and u.id != request.user.id]
+
+                    if followers:
+                        snap = build_card_snapshot(card=card)
+                        msg = format_card_message(
+                            title_prefix="📝 Atividade no card",
+                            snap=snap,
+                        )
+                        notify_users_for_card(
+                            card=card,
+                            recipients=followers,
+                            subject=f"Atividade no card: {snap.title}",
+                            message=msg,
+                            include_link_as_second_whatsapp_message=False,
+                        )
+
+                except Exception:
+                    pass
+
                 board.version += 1
                 board.save(update_fields=["version"])
             except Exception:
@@ -402,6 +454,29 @@ def add_activity(request, card_id):
                         content_text="",  # vazio => cai em files
                         attachment=None,
                     )
+
+                        # Notifica seguidores do card (exceto o autor da ação)
+                try:
+                    followers = [cf.user for cf in card.follows.select_related("user").all()]
+                    followers = [u for u in followers if u and u.id != request.user.id]
+
+                    if followers:
+                        snap = build_card_snapshot(card=card)
+                        msg = format_card_message(
+                            title_prefix="📝 Atividade no card",
+                            snap=snap,
+                        )
+                        notify_users_for_card(
+                            card=card,
+                            recipients=followers,
+                            subject=f"Atividade no card: {snap.title}",
+                            message=msg,
+                            include_link_as_second_whatsapp_message=False,
+                        )
+
+                except Exception:
+                    pass
+
                     board.version += 1
                     board.save(update_fields=["version"])
             except Exception:
