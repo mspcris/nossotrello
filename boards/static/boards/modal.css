@@ -2874,3 +2874,20 @@ html.dark #modal #modal-breadcrumb{
 #cm-root .cm-panel[data-cm-panel="desc"] .cm-card:has(.cm-quill){
   overflow: visible !important;
 }
+
+
+
+
+/* FEED — remover controls sem função */
+#cm-root .cm-feed-toolbar .cm-feed-iconbtn{
+  display: none !important;
+}
+/* FEED — remover CTA decorativo */
+#cm-root .cm-feed-more,
+#cm-root .cm-newmsg-pill{
+  display: none !important;
+}
+/* FEED — remove contagem se não for unread */
+#cm-root .cm-activity-badge{
+  display: none !important;
+}

@@ -340,32 +340,27 @@ def add_activity(request, card_id):
             attachment=None,
         )
 
-            # Notifica seguidores do card (exceto o autor da ação)
-    try:
-        followers = [cf.user for cf in card.follows.select_related("user").all()]
-        followers = [u for u in followers if u and u.id != request.user.id]
-
-        if followers:
-            snap = build_card_snapshot(card=card)
-            msg = format_card_message(
-                title_prefix="📝 Atividade no card",
-                snap=snap,
-            )
-            notify_users_for_card(
-                card=card,
-                recipients=followers,
-                subject=f"Atividade no card: {snap.title}",
-                message=msg,
-                include_link_as_second_whatsapp_message=True,
-            )
-
-    except Exception:
-        pass
+        # Notifica (best-effort)
+        try:
+            followers = [cf.user for cf in card.follows.select_related("user").all()]
+            followers = [u for u in followers if u and u.id != request.user.id]
+            if followers:
+                snap = build_card_snapshot(card=card)
+                msg = format_card_message(title_prefix="📝 Atividade no card", snap=snap)
+                notify_users_for_card(
+                    card=card,
+                    recipients=followers,
+                    subject=f"Atividade no card: {snap.title}",
+                    message=msg,
+                    include_link_as_second_whatsapp_message=True,
+                )
+        except Exception:
+            pass
 
         board.version += 1
         board.save(update_fields=["version"])
 
-        # ============================================================
+    # ============================================================
     # Se TEM imagem:
     # - garante anexos
     # - COMMENTS somente se houver texto (texto+imagem)
@@ -411,7 +406,8 @@ def add_activity(request, card_id):
                     content_text=effective_text,  # mantém texto real
                     attachment=None,
                 )
-                    # Notifica seguidores do card (exceto o autor da ação)
+
+                # Notifica seguidores do card (exceto o autor da ação)
                 try:
                     followers = [cf.user for cf in card.follows.select_related("user").all()]
                     followers = [u for u in followers if u and u.id != request.user.id]
@@ -429,7 +425,6 @@ def add_activity(request, card_id):
                             message=msg,
                             include_link_as_second_whatsapp_message=True,
                         )
-
                 except Exception:
                     pass
 
@@ -455,7 +450,7 @@ def add_activity(request, card_id):
                         attachment=None,
                     )
 
-                        # Notifica seguidores do card (exceto o autor da ação)
+                # Notifica seguidores do card (exceto o autor da ação)
                 try:
                     followers = [cf.user for cf in card.follows.select_related("user").all()]
                     followers = [u for u in followers if u and u.id != request.user.id]
@@ -473,14 +468,14 @@ def add_activity(request, card_id):
                             message=msg,
                             include_link_as_second_whatsapp_message=True,
                         )
-
                 except Exception:
                     pass
 
-                    board.version += 1
-                    board.save(update_fields=["version"])
+                board.version += 1
+                board.save(update_fields=["version"])
             except Exception:
                 pass
+
 
     # ============================================================
     # Atualiza UI

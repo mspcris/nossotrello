@@ -1166,40 +1166,7 @@ function isQuillContainerPresent(el) {
   } catch (_e) {
     return false;
   }
-}
-
-function hardDestroyActivityQuill() {
-  try {
-    const el = window[STATE_EL_KEY] || document.getElementById("cm-activity-editor");
-    if (!el) return;
-
-    // remove toolbar
-    try {
-      const toolbar = el.previousSibling;
-      if (toolbar && toolbar.classList && toolbar.classList.contains("ql-toolbar")) {
-        toolbar.remove();
-      }
-    } catch (_e) {}
-
-    // limpa container/editor
-    try {
-      el.innerHTML = "";
-      el.classList.remove("ql-container");
-    } catch (_e) {}
-
-    window[STATE_KEY] = null;
-    window[STATE_EL_KEY] = null;
-  } catch (_e) {}
-}
-
-  
-  
-  
-  
-  
-  
-  
-  
+} 
   
   function bindActivityForm() {
   const form =
