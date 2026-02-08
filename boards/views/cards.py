@@ -1,28 +1,23 @@
 # boards/views/cards.py
-
-from asyncio.log import logger
 import json
 import os
 import re
 import uuid
 import logging
-
-
-from datetime import datetime
-from datetime import date as _date
+from datetime import datetime, timedelta, date as _date
 
 from django.contrib.auth.decorators import login_required
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
-from django.db.models import F
+from django.db.models import F, Prefetch
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils.dateparse import parse_date
-from django.utils.html import escape
+from django.utils.html import escape, strip_tags
 from django.views.decorators.http import require_POST, require_http_methods
 
 from .helpers import (
@@ -40,12 +35,11 @@ from ..permissions import can_edit_board  # noqa: F401
 
 from ..forms import CardForm
 from ..models import Board, BoardMembership, Card, CardAttachment, Column, CardSeen
-# regra: se due_date preenchida => warn obrigatória
-from datetime import timedelta
-from django.utils.html import strip_tags
+from boards.models import CardLog
 
-from django.db.models import Prefetch
-from boards.models import CardLog  # se já não estiver importado
+
+logger = logging.getLogger(__name__)
+
 
 
 # ============================================================
@@ -188,15 +182,7 @@ def _parse_any_date(s: str):
 
 
 
-from datetime import date as _date, timedelta
-import logging
-import re
 
-from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
-from django.shortcuts import get_object_or_404
-from django.utils.html import escape
-from django.views.decorators.http import require_POST
 
 
 def _fmt_date_br(d):
@@ -529,7 +515,28 @@ def update_card(request, card_id):
 
     ctx = _card_modal_context(card)
     ctx["board_due_colors"] = getattr(board, "due_colors", {}) or {}
-    return _render_card_modal(request, card, ctx)
+
+
+    parents_qs = (
+        card.logs
+        .filter(reply_to__isnull=True)
+        .select_related("actor")
+        .prefetch_related(
+            Prefetch(
+                "replies",
+                queryset=CardLog.objects.select_related("actor").order_by("created_at"),
+            )
+        )
+        .order_by("-created_at")
+    )
+
+    from .activity import _decorate_logs_for_feed  # import tardio (anti-ciclo)
+    ctx["logs"] = _decorate_logs_for_feed(parents_qs)
+
+    # return _render_card_modal(request, card, ctx)
+        # sempre devolve SOMENTE o corpo do modal (fluxo de salvar)
+    return render(request, "boards/partials/card_modal_split.html", ctx)
+
 
 
 
@@ -903,57 +910,48 @@ def card_move_options(request, card_id):
 
 
 
+
+
+
+
+
 def _render_card_modal(request, card, context=None):
     ctx = context or _card_modal_context(card)
-    def _render_card_modal(request, card, context=None):
-        ctx = context or _card_modal_context(card)
 
-    # ✅ SEMPRE montar logs decorados (para cm_type = system/files/comments)
-    try:
-        from django.db.models import Prefetch
-        from boards.models import CardLog
-        from .activity import _decorate_logs_for_feed  # import tardio evita ciclo
+    # ✅ SEMPRE montar logs decorados (cm_type = system/files/comments)
+    from django.db.models import Prefetch
+    from boards.models import CardLog
+    from .activity import _decorate_logs_for_feed  # import tardio evita ciclo
 
-        parents_qs = (
-            card.logs
-            .filter(reply_to__isnull=True)
-            .select_related("actor")
-            .prefetch_related(
-                Prefetch(
-                    "replies",
-                    queryset=CardLog.objects.select_related("actor").order_by("created_at"),
-                )
+    parents_qs = (
+        card.logs
+        .filter(reply_to__isnull=True)
+        .select_related("actor")
+        .prefetch_related(
+            Prefetch(
+                "replies",
+                queryset=CardLog.objects.select_related("actor").order_by("created_at"),
             )
-            .order_by("-created_at")
         )
-        ctx["logs"] = _decorate_logs_for_feed(parents_qs)
-    except Exception:
-        # fallback: deixa como está (template usa card.logs.all)
-        pass
-
-
-    # ✅ CHECKLISTS (total/done calculados no backend)
-    from django.db.models import Count, Q  # pode mover pro topo depois
-
-    checklists = (
-        card.checklists
-            .all()
-            # .annotate(
-                # total=Count("items", distinct=True),
-                # done=Count("items", filter=Q(items__checked=True), distinct=True),
-            # )
+        .order_by("-created_at")
     )
-    ctx["checklists"] = checklists
+    ctx["logs"] = _decorate_logs_for_feed(parents_qs)
 
-    # hardening: garante chaves usadas nos templates
+    # ✅ CHECKLISTS
+    ctx["checklists"] = card.checklists.all()
+
+    # hardening: chaves usadas nos templates
     ctx.setdefault("card", card)
     ctx.setdefault("column", getattr(card, "column", None))
     ctx.setdefault("board", getattr(getattr(card, "column", None), "board", None))
-    # ⚠️ REMOVER esta linha, senão você sobrescreve o annotate:
-    # ctx.setdefault("checklists", card.checklists.all())
     ctx.setdefault("board_due_colors", (getattr(card.column.board, "due_colors", None) or {}))
 
-    profile = getattr(request.user, "profile", None)
+    # ✅ sidebar flag (acesso seguro ao profile)
+    try:
+        profile = request.user.profile
+    except Exception:
+        profile = None
+
     use_sidebar = bool(profile and getattr(profile, "activity_sidebar", False))
 
     template_name = (
@@ -963,6 +961,11 @@ def _render_card_modal(request, card, context=None):
     )
 
     return render(request, template_name, ctx)
+
+
+
+
+
 
 
 def _summarize_html(html: str, limit: int = 220) -> str:
