@@ -356,7 +356,7 @@ def add_activity(request, card_id):
                 recipients=followers,
                 subject=f"Atividade no card: {snap.title}",
                 message=msg,
-                include_link_as_second_whatsapp_message=False,
+                include_link_as_second_whatsapp_message=True,
             )
 
     except Exception:
@@ -427,7 +427,7 @@ def add_activity(request, card_id):
                             recipients=followers,
                             subject=f"Atividade no card: {snap.title}",
                             message=msg,
-                            include_link_as_second_whatsapp_message=False,
+                            include_link_as_second_whatsapp_message=True,
                         )
 
                 except Exception:
@@ -471,7 +471,7 @@ def add_activity(request, card_id):
                             recipients=followers,
                             subject=f"Atividade no card: {snap.title}",
                             message=msg,
-                            include_link_as_second_whatsapp_message=False,
+                            include_link_as_second_whatsapp_message=True,
                         )
 
                 except Exception:
