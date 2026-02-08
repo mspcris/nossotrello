@@ -1106,65 +1106,77 @@
 
   window.resetActivityQuill = resetEditor;
 
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
   function bindActivityForm() {
-    const form =
-      document.getElementById("cm-activity-form") ||
-      document.querySelector('section[data-cm-panel="ativ"] form');
-    if (!form) return;
+  const form =
+    document.getElementById("cm-activity-form") ||
+    document.querySelector('section[data-cm-panel="ativ"] form');
+  if (!form) return;
 
-    if (form.dataset.cmBound === "1") return;
-    form.dataset.cmBound = "1";
+  if (form.dataset.cmBound === "1") return;
+  form.dataset.cmBound = "1";
 
-    form.addEventListener("htmx:configRequest", function (evt) {
-      ensureQuill();
-      clearActivityError();
+  // 1) Antes de enviar: só injeta parâmetros (HTMX continua “dono” do swap)
+  form.addEventListener("htmx:configRequest", function (evt) {
+    ensureQuill();
+    clearActivityError();
 
-      const { input } = ensureReplyFields(form);
-      const replyTo = (input?.value || "").trim();
+    const { input } = ensureReplyFields(form);
+    const replyTo = (input?.value || "").trim();
 
-      const payload = syncPayload();
+    const payload = syncPayload();
 
-      if (evt.detail && evt.detail.parameters) {
-        evt.detail.parameters["content"] = payload.html;
-        evt.detail.parameters["delta"] = payload.delta;
-        evt.detail.parameters["text"] = payload.text;
-        if (replyTo) evt.detail.parameters["reply_to"] = replyTo;
-      }
-    });
+    if (evt.detail && evt.detail.parameters) {
+      // legado
+      evt.detail.parameters["content"] = payload.html;
 
-    form.addEventListener("htmx:afterRequest", function (evt) {
-      if (evt.detail?.successful === true) {
-        try {
-          const resp = evt.detail?.xhr?.responseText || "";
-          applyPostSuccessActivityUI(resp);
+      // novo
+      evt.detail.parameters["delta"] = payload.delta;
+      evt.detail.parameters["text"] = payload.text;
 
-          try {
-            cleanupActivityLogSpacing();
-          } catch (_e) {}
-          setTimeout(() => {
-            try {
-              cleanupActivityLogSpacing();
-            } catch (_e) {}
-          }, 60);
-        } catch (_e) {}
+      if (replyTo) evt.detail.parameters["reply_to"] = replyTo;
+    }
+  });
 
+  // 2) Pós-request: NÃO mexe no HTML (evita duplicação). Só limpa UI.
+  form.addEventListener("htmx:afterRequest", function (evt) {
+    if (evt.detail?.successful !== true) return;
+
+    // deixa o HTMX aplicar o swap; depois só “higiene”
+    setTimeout(() => {
+      try {
         resetEditor();
         clearActivityError();
         clearReplyContext();
         setActivityTab("feed");
         closeComposer();
 
-        try {
-          updateActivityFeedCount();
-        } catch (_e) {}
-        setTimeout(() => {
-          try {
-            updateActivityFeedCount();
-          } catch (_e) {}
-        }, 60);
-      }
-    });
-  }
+        try { updateActivityFeedCount(); } catch (_e) {}
+        try { cleanupActivityLogSpacing(); } catch (_e) {}
+        setTimeout(() => { try { cleanupActivityLogSpacing(); } catch (_e) {} }, 60);
+      } catch (_e) {}
+    }, 0);
+  });
+}
+
+
+
+
+
+
+
+
+
+
 
   function initActivityModule() {
     if (!isActivityTabActive()) return;
