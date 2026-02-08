@@ -1122,10 +1122,36 @@
     document.querySelector('section[data-cm-panel="ativ"] form');
   if (!form) return;
 
+  // evita bind duplicado no mesmo nó
   if (form.dataset.cmBound === "1") return;
   form.dataset.cmBound = "1";
 
-  // 1) Antes de enviar: só injeta parâmetros (HTMX continua “dono” do swap)
+  // ============================================================
+  // ✅ TRAVA anti double-submit (resolve POST duplicado)
+  // ============================================================
+  function markSubmitting() {
+    if (form.dataset.cmSubmitting === "1") return false;
+    form.dataset.cmSubmitting = "1";
+    return true;
+  }
+
+  function clearSubmitting() {
+    form.dataset.cmSubmitting = "0";
+  }
+
+  form.addEventListener(
+    "htmx:beforeRequest",
+    function (evt) {
+      // Se já está submetendo, cancela a 2ª tentativa
+      if (!markSubmitting()) {
+        evt.preventDefault();
+        evt.stopPropagation();
+        return;
+      }
+    },
+    true
+  );
+
   form.addEventListener("htmx:configRequest", function (evt) {
     ensureQuill();
     clearActivityError();
@@ -1139,7 +1165,7 @@
       // legado
       evt.detail.parameters["content"] = payload.html;
 
-      // novo
+      // ✅ novo
       evt.detail.parameters["delta"] = payload.delta;
       evt.detail.parameters["text"] = payload.text;
 
@@ -1147,24 +1173,35 @@
     }
   });
 
-  // 2) Pós-request: NÃO mexe no HTML (evita duplicação). Só limpa UI.
   form.addEventListener("htmx:afterRequest", function (evt) {
-    if (evt.detail?.successful !== true) return;
+    // libera a trava sempre ao final do request (sucesso ou erro)
+    clearSubmitting();
 
-    // deixa o HTMX aplicar o swap; depois só “higiene”
-    setTimeout(() => {
+    if (evt.detail?.successful === true) {
       try {
-        resetEditor();
-        clearActivityError();
-        clearReplyContext();
-        setActivityTab("feed");
-        closeComposer();
+        const resp = evt.detail?.xhr?.responseText || "";
+        applyPostSuccessActivityUI(resp);
 
-        try { updateActivityFeedCount(); } catch (_e) {}
-        try { cleanupActivityLogSpacing(); } catch (_e) {}
-        setTimeout(() => { try { cleanupActivityLogSpacing(); } catch (_e) {} }, 60);
+        try {
+          cleanupActivityLogSpacing();
+        } catch (_e) {}
+        setTimeout(() => {
+          try {
+            cleanupActivityLogSpacing();
+          } catch (_e) {}
+        }, 60);
       } catch (_e) {}
-    }, 0);
+
+      resetEditor();
+      clearActivityError();
+      clearReplyContext();
+      closeComposer();
+    }
+  });
+
+  // (opcional, mas ajuda) em caso de erro de rede/servidor, garante liberação
+  form.addEventListener("htmx:responseError", function () {
+    clearSubmitting();
   });
 }
 

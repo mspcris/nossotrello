@@ -335,11 +335,11 @@ def add_activity(request, card_id):
         board.version += 1
         board.save(update_fields=["version"])
 
-    # ============================================================
+        # ============================================================
     # Se TEM imagem:
     # - garante anexos
     # - COMMENTS somente se houver texto (texto+imagem)
-    # - FILES sempre (imagem-only OU texto+imagem)
+    # - FILES somente se for imagem-only
     # ============================================================
     if all_paths:
         # garante anexos
@@ -356,55 +356,56 @@ def add_activity(request, card_id):
         who = _safe_user_handle_or_email(request.user)
 
         # --------------------------
-        # COMMENTS: só se tiver texto (text do POST OU texto derivado do delta)
-    if effective_text:
-        try:
-            thumb_html = _build_comment_log_html_for_images(who, all_paths)
-
-            html_no_img = (clean_html or "")
-            if html_no_img:
-                html_no_img = re.sub(r"<img[^>]*>", "", html_no_img, flags=re.I)
-                html_no_img = _compact_quill_html(html_no_img)
-
-            # garante texto no comment mesmo se html vier vazio
-            if not html_no_img:
-                html_no_img = f"<p>{escape(effective_text)}</p>"
-
-            comments_html = (html_no_img or "") + (thumb_html or "")
-
-            CardLog.objects.create(
-                card=card,
-                actor=request.user,
-                reply_to=parent_log if parent_log else None,
-                content=comments_html,
-                content_delta={},            # FORÇA HTML => sem imagem grande
-                content_text=effective_text, # ✅ mantém texto real (POST ou delta)
-                attachment=None,
-            )
-            board.version += 1
-            board.save(update_fields=["version"])
-        except Exception:
-            pass
-
+        # COMMENTS: só se tiver texto
         # --------------------------
-        # FILES: sempre 1 ÚNICO log
-        # --------------------------
-        try:
-            files_html = _build_comment_log_html_for_images(who, all_paths)
-            if files_html:
+        if effective_text:
+            try:
+                thumb_html = _build_comment_log_html_for_images(who, all_paths)
+
+                html_no_img = (clean_html or "")
+                if html_no_img:
+                    html_no_img = re.sub(r"<img[^>]*>", "", html_no_img, flags=re.I)
+                    html_no_img = _compact_quill_html(html_no_img)
+
+                if not html_no_img:
+                    html_no_img = f"<p>{escape(effective_text)}</p>"
+
+                comments_html = (html_no_img or "") + (thumb_html or "")
+
                 CardLog.objects.create(
                     card=card,
                     actor=request.user,
                     reply_to=parent_log if parent_log else None,
-                    content=files_html,
-                    content_delta={},
-                    content_text="",  # vazio => cai em files
+                    content=comments_html,
+                    content_delta={},             # FORÇA HTML => sem imagem grande
+                    content_text=effective_text,  # mantém texto real
                     attachment=None,
                 )
                 board.version += 1
                 board.save(update_fields=["version"])
-        except Exception:
-            pass
+            except Exception:
+                pass
+
+        # --------------------------
+        # FILES: somente se for imagem-only
+        # --------------------------
+        else:
+            try:
+                files_html = _build_comment_log_html_for_images(who, all_paths)
+                if files_html:
+                    CardLog.objects.create(
+                        card=card,
+                        actor=request.user,
+                        reply_to=parent_log if parent_log else None,
+                        content=files_html,
+                        content_delta={},
+                        content_text="",  # vazio => cai em files
+                        attachment=None,
+                    )
+                    board.version += 1
+                    board.save(update_fields=["version"])
+            except Exception:
+                pass
 
     # ============================================================
     # Atualiza UI
