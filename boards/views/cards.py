@@ -905,6 +905,32 @@ def card_move_options(request, card_id):
 
 def _render_card_modal(request, card, context=None):
     ctx = context or _card_modal_context(card)
+    def _render_card_modal(request, card, context=None):
+        ctx = context or _card_modal_context(card)
+
+    # ✅ SEMPRE montar logs decorados (para cm_type = system/files/comments)
+    try:
+        from django.db.models import Prefetch
+        from boards.models import CardLog
+        from .activity import _decorate_logs_for_feed  # import tardio evita ciclo
+
+        parents_qs = (
+            card.logs
+            .filter(reply_to__isnull=True)
+            .select_related("actor")
+            .prefetch_related(
+                Prefetch(
+                    "replies",
+                    queryset=CardLog.objects.select_related("actor").order_by("created_at"),
+                )
+            )
+            .order_by("-created_at")
+        )
+        ctx["logs"] = _decorate_logs_for_feed(parents_qs)
+    except Exception:
+        # fallback: deixa como está (template usa card.logs.all)
+        pass
+
 
     # ✅ CHECKLISTS (total/done calculados no backend)
     from django.db.models import Count, Q  # pode mover pro topo depois
