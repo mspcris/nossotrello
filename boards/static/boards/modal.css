@@ -304,11 +304,6 @@
   z-index: 1;
 }
 
-/* HARD RULE: dentro do modal ninguém usa blur */
-#card-modal-root *{
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
 
 
 /* =======================================================================
@@ -1310,8 +1305,8 @@ html.dark #card-modal-root{
   line-height: 1;
   cursor: pointer;
 
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  /* backdrop-filter: blur(14px); */
+  /* -webkit-backdrop-filter: blur(14px); */
 
   box-shadow: var(--cm-btn-shadow);
   transition: transform .08s ease, box-shadow .18s ease, background .18s ease, border-color .18s ease;
@@ -2836,6 +2831,46 @@ html.dark #modal #modal-breadcrumb{
 
 
 
+/* remove blur dos botões (mantém aparência via background/border/shadow) */
+#card-modal-root #cm-root .cm-btn,
+#card-modal-root #cm-root .cm-btn.primary{
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
 
 
 
+
+/* HARD RULE: dentro do modal ninguém usa blur */
+/* #card-modal-root *{
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+} */
+
+
+
+/* ============================================================
+   FIX — QUILL (Descrição) auto-grow via CSS (sem JS)
+   Colar NO FINAL do modal.css
+   ============================================================ */
+
+/* Snow theme do Quill costuma forçar height: 100%; então precisamos quebrar isso */
+#cm-root .cm-panel[data-cm-panel="desc"] .ql-container.ql-snow{
+  height: auto !important;
+  min-height: 120px !important;     /* ajuste fino */
+  max-height: none !important;
+  overflow: visible !important;      /* sem scroll interno */
+}
+
+/* O editor precisa poder crescer */
+#cm-root .cm-panel[data-cm-panel="desc"] .ql-editor{
+  height: auto !important;
+  min-height: 120px !important;
+  overflow: visible !important;
+}
+
+/* Segurança: se alguma regra antiga estiver “cortando” por overflow hidden */
+#cm-root .cm-panel[data-cm-panel="desc"] .cm-card:has(.ql-container),
+#cm-root .cm-panel[data-cm-panel="desc"] .cm-card:has(.cm-quill){
+  overflow: visible !important;
+}

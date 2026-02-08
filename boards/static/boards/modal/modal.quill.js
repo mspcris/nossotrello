@@ -163,96 +163,120 @@
   // ---------------------------
   // AutoGrow (estável, sem “pulo” no click)
   // ---------------------------
-  function autoGrowQuill(quill, opts = {}) {
-    const min = Number(opts.min ?? 220);
+function autoGrowQuill(quill, opts = {}) {
+  const min = Number(opts.min ?? 220);
+  const editor = quill?.root;
+  if (!editor) return;
 
-    const editor = quill?.root;
-    if (!editor) return;
+  const container = editor.closest(".ql-container");
+  if (!container) return;
 
-    const container = editor.closest(".ql-container");
-    if (!container) return;
-
-    function getManualMinHeight() {
-      const v = parseInt(container.dataset.cmManualMinHeight || "0", 10);
-      return Number.isFinite(v) ? v : 0;
-    }
-
-    function resolveModalScrollContainer() {
-      if (quill.__cmModalScroll) return quill.__cmModalScroll;
-
-      return (
-        editor.closest(".card-modal-scroll") ||
-        editor.closest("#modal-body") ||
-        document.querySelector("#card-modal-root .card-modal-scroll") ||
-        document.querySelector("#modal-body") ||
-        null
-      );
-    }
-
-    // Estilos fixos: aplica uma vez
-    let stylesApplied = false;
-    function applyStaticStyles() {
-      if (stylesApplied) return;
-      stylesApplied = true;
-
-      const modalScroll = resolveModalScrollContainer();
-      ensureModalScrollable(modalScroll);
-
-      // Quem rola é o modal, nunca o quill internamente
-      container.style.setProperty("display", "block", "important");
-      container.style.setProperty("max-height", "none", "important");
-      container.style.setProperty("overflow", "hidden", "important");
-
-      editor.style.setProperty("display", "block", "important");
-      editor.style.setProperty("height", "auto", "important");
-      editor.style.setProperty("min-height", "0", "important");
-      editor.style.setProperty("overflow", "visible", "important");
-
-      editor.style.setProperty("box-sizing", "border-box", "important");
-      editor.style.setProperty("width", "100%", "important");
-      editor.style.setProperty("max-width", "none", "important");
-      editor.style.setProperty("padding", "12px 14px 14px 14px", "important");
-    }
-
-    function applyHeight() {
-      applyStaticStyles();
-
-      const manualMin = getManualMinHeight();
-      const needed = (editor.scrollHeight || 0) + 2;
-      const target = Math.max(min, manualMin, needed);
-
-      const current = Math.round(container.getBoundingClientRect().height || 0);
-      const next = Math.ceil(target);
-
-      // evita micro-ajustes que causam “jump”
-      if (Math.abs(current - next) < 2) return;
-
-      container.style.setProperty("height", `${next}px`, "important");
-    }
-
-    // throttle por frame
-    let scheduled = false;
-    function scheduleApply() {
-      if (scheduled) return;
-      scheduled = true;
-      requestAnimationFrame(() => {
-        scheduled = false;
-        applyHeight();
-      });
-    }
-
-    // CRÍTICO: não rodar em selection-change (isso gerava “só clicar e sobe”)
-    quill.on("text-change", scheduleApply);
-
-    // imagens (ou recursos) alteram altura depois
-    editor.addEventListener("load", scheduleApply, true);
-
-    // boot
-    scheduleApply();
-
-    quill.__autoGrowApply = applyHeight;
-    return applyHeight;
+  function getManualMinHeight() {
+    const v = parseInt(container.dataset.cmManualMinHeight || "0", 10);
+    return Number.isFinite(v) ? v : 0;
   }
+
+  function resolveModalScrollContainer() {
+    if (quill.__cmModalScroll) return quill.__cmModalScroll;
+    return (
+      editor.closest(".card-modal-scroll") ||
+      editor.closest("#modal-body") ||
+      document.querySelector("#card-modal-root .card-modal-scroll") ||
+      document.querySelector("#modal-body") ||
+      null
+    );
+  }
+
+  const modalScroll = resolveModalScrollContainer();
+
+  let stylesApplied = false;
+  function applyStaticStyles() {
+    if (stylesApplied) return;
+    stylesApplied = true;
+
+    // Quem rola é o modal, nunca o quill internamente
+    container.style.setProperty("display", "block", "important");
+    container.style.setProperty("max-height", "none", "important");
+    container.style.setProperty("overflow", "hidden", "important");
+
+    editor.style.setProperty("display", "block", "important");
+    editor.style.setProperty("height", "auto", "important");
+    editor.style.setProperty("min-height", "0", "important");
+    editor.style.setProperty("overflow", "visible", "important");
+
+    editor.style.setProperty("box-sizing", "border-box", "important");
+    editor.style.setProperty("width", "100%", "important");
+    editor.style.setProperty("max-width", "none", "important");
+    editor.style.setProperty("padding", "12px 14px 14px 14px", "important");
+  }
+
+  function isActuallyVisible(el) {
+    // evita medir quando a aba/painel está hidden
+    if (!el || !el.isConnected) return false;
+    const r = el.getBoundingClientRect();
+    return (r.width > 0 && r.height > 0);
+  }
+
+  function applyHeight() {
+    applyStaticStyles();
+
+    // Se ainda não está visível, não mede (isso é o teu bug)
+    if (!isActuallyVisible(editor)) return;
+
+    const manualMin = getManualMinHeight();
+    const needed = (editor.scrollHeight || 0) + 2;
+    const target = Math.max(min, manualMin, needed);
+
+    const current = Math.round(container.getBoundingClientRect().height || 0);
+    const next = Math.ceil(target);
+
+    if (Math.abs(current - next) < 2) return;
+
+    // evita “pulo”: preserva scroll do container que está rolando
+    const st = modalScroll ? modalScroll.scrollTop : 0;
+    container.style.setProperty("height", `${next}px`, "important");
+    if (modalScroll) modalScroll.scrollTop = st;
+  }
+
+  let scheduled = false;
+  function scheduleApply() {
+    if (scheduled) return;
+    scheduled = true;
+    requestAnimationFrame(() => {
+      scheduled = false;
+      applyHeight();
+    });
+  }
+
+  // 1) Conteúdo muda (ok)
+  quill.on("text-change", scheduleApply);
+
+  // 2) Quando o editor ganha foco/clique (aba pode ter acabado de abrir)
+  editor.addEventListener("focusin", scheduleApply, true);
+  editor.addEventListener("mousedown", scheduleApply, true);
+
+  // 3) Imagens e recursos que alteram altura depois
+  editor.addEventListener("load", scheduleApply, true);
+
+  // 4) ResizeObserver: pega mudanças de layout/visibilidade sem depender de tecla
+  let ro = null;
+  try {
+    ro = new ResizeObserver(() => scheduleApply());
+    ro.observe(editor);
+  } catch (_e) {}
+
+  // boot (várias tentativas curtas para cobrir timing de swap/paint)
+  scheduleApply();
+  setTimeout(scheduleApply, 0);
+  setTimeout(scheduleApply, 50);
+  setTimeout(scheduleApply, 150);
+
+  quill.__autoGrowApply = applyHeight;
+  quill.__autoGrowSchedule = scheduleApply;
+
+  return applyHeight;
+}
+
 
 
 
@@ -535,6 +559,33 @@ function bindQuillToDiv(div, hiddenInput, boardId) {
 }
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   // ---------------------------
   // Public init
   // ---------------------------
@@ -567,6 +618,24 @@ function bindQuillToDiv(div, hiddenInput, boardId) {
 
 
 
+(function watchActiveTabForDescAutogrow(){
+  if (window.__cmWatchDescTab) return;
+  window.__cmWatchDescTab = true;
+
+  const root = document.getElementById("cm-root");
+  if (!root) return;
+
+  const mo = new MutationObserver(() => {
+    const active = root.getAttribute("data-cm-active") || root.dataset.cmActive;
+    if (active === "desc") {
+      const q = window.Modal?.quill?._descQuill;
+      try { q?.__autoGrowSchedule?.(); } catch (_e) {}
+      try { requestAnimationFrame(() => q?.__autoGrowSchedule?.()); } catch (_e) {}
+    }
+  });
+
+  mo.observe(root, { attributes: true, attributeFilter: ["data-cm-active"] });
+})();
 
 
 
