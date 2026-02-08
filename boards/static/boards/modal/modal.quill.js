@@ -7,6 +7,36 @@
   // ---------------------------
   // Helpers
   // ---------------------------
+
+    function pruneQuillOrphans(scope) {
+    const root = scope || document;
+
+    // 1) Remove toolbars que não têm um container logo em seguida
+    root.querySelectorAll(".ql-toolbar").forEach((tb) => {
+      const next = tb.nextElementSibling;
+      if (!next || !next.classList || !next.classList.contains("ql-container")) {
+        try { tb.remove(); } catch (_e) {}
+      }
+    });
+
+    // 2) Remove containers que não têm editor interno
+    root.querySelectorAll(".ql-container").forEach((ct) => {
+      if (!ct.querySelector(".ql-editor")) {
+        try { ct.remove(); } catch (_e) {}
+      }
+    });
+
+    // 3) Se ainda sobrar mais de um toolbar “válido”, mantém só o primeiro
+    const valid = Array.from(root.querySelectorAll(".ql-toolbar")).filter((tb) => {
+      const next = tb.nextElementSibling;
+      return next && next.classList && next.classList.contains("ql-container");
+    });
+    if (valid.length > 1) {
+      valid.slice(1).forEach((tb) => { try { tb.remove(); } catch (_e) {} });
+    }
+  }
+
+
   function getBoardIdFromUrl() {
     const m = (window.location.pathname || "").match(/\/board\/(\d+)\b/);
     return m ? m[1] : null;
@@ -224,237 +254,337 @@
     return applyHeight;
   }
 
+
+
+    function cleanupQuillInModal() {
+    const scope = document.querySelector("#modal-body") || document;
+
+    // Remove toolbars/containers órfãos que ficaram de swaps anteriores
+    scope.querySelectorAll(".ql-toolbar, .ql-container").forEach((el) => {
+      // só remove se estiver dentro de um host nosso (.cm-quill) OU do quill-editor
+      const insideOurHost = el.closest(".cm-quill") || el.closest("#quill-editor");
+      if (insideOurHost) {
+        try { el.remove(); } catch (_e) {}
+      }
+    });
+
+    // Remove hosts duplicados (mantém só o primeiro por textarea)
+    const hosts = Array.from(scope.querySelectorAll(".cm-quill"));
+    if (hosts.length > 1) {
+      hosts.slice(1).forEach((h) => { try { h.remove(); } catch (_e) {} });
+    }
+  }
+
+
+
   // ---------------------------
   // Bindings
   // ---------------------------
-  function bindQuillToTextarea(textarea, boardId) {
-    if (!textarea) return null;
-    if (textarea.dataset.quillBound === "1") return null;
-    textarea.dataset.quillBound = "1";
+function bindQuillToTextarea(textarea, boardId) {
+  if (!textarea) return null;
 
-    const host = document.createElement("div");
+  const taId = textarea.id || textarea.getAttribute("name") || "description";
+  const hostId = `cm-quill-host-${taId}`;
+
+  // remove hosts duplicados do mesmo textarea
+  const allHosts = Array.from(
+    document.querySelectorAll(`#${CSS.escape(hostId)}, .cm-quill[data-for="${taId}"]`)
+  );
+  if (allHosts.length > 1) {
+    allHosts.slice(1).forEach((h) => { try { h.remove(); } catch (_e) {} });
+  }
+
+  let host = document.getElementById(hostId);
+  if (!host) {
+    host = document.createElement("div");
     host.className = "cm-quill";
+    host.id = hostId;
+    host.dataset.for = taId;
     textarea.insertAdjacentElement("afterend", host);
-
-    // mantém o textarea no DOM, mas escondido
-    textarea.style.display = "none";
-
-    const modalScroll =
-      document.querySelector("#modal-body.card-modal-scroll") ||
-      document.querySelector("#modal-body") ||
-      document.querySelector("#card-modal-root .card-modal-scroll");
-
-    const quillOptions = {
-      theme: "snow",
-      modules: {
-        toolbar: [
-          [{ header: [1, 2, 3, false] }],
-          ["bold", "italic", "underline", "strike"],
-          [{ list: "ordered" }, { list: "bullet" }],
-          ["link", "image"],
-          ["clean"],
-        ],
-        mention: makeMentionConfig(boardId),
-      },
-      placeholder: textarea.getAttribute("placeholder") || "",
-    };
-
-    if (modalScroll) quillOptions.scrollingContainer = modalScroll;
-    ensureModalScrollable(modalScroll);
-
-    const quill = new Quill(host, quillOptions);
-    quill.__cmModalScroll = modalScroll || null;
-
-    window.Modal.quill._descQuill = quill;
-
-    // inicial: renderiza HTML salvo como HTML (não como texto)
-    const initial = (textarea.value || "").trim();
-    if (initial) {
-      try {
-        quill.clipboard.dangerouslyPasteHTML(0, initial, "silent");
-      } catch (_e) {
-        quill.root.innerHTML = initial;
-      }
+  } else {
+    const hasQuillDom = !!host.querySelector(".ql-container");
+    if (hasQuillDom) {
+      textarea.dataset.quillBound = "1";
+      textarea.style.display = "none";
+      return null;
     }
+    try { host.innerHTML = ""; } catch (_e) {}
+  }
 
-    const container = quill.root.closest(".ql-container");
-    if (container) delete container.dataset.cmManualMinHeight;
+  textarea.dataset.quillBound = "1";
+  textarea.style.display = "none";
 
-    autoGrowQuill(quill, { min: 100 });
+  const modalScroll =
+    document.querySelector("#modal-body.card-modal-scroll") ||
+    document.querySelector("#modal-body") ||
+    document.querySelector("#card-modal-root .card-modal-scroll");
 
-    // sync para backend
-    quill.on("text-change", () => {
-      textarea.value = quill.root.innerHTML;
+  const quillOptions = {
+    theme: "snow",
+    modules: {
+      toolbar: [
+        [{ header: [1, 2, 3, false] }],
+        ["bold", "italic", "underline", "strike"],
+        [{ list: "ordered" }, { list: "bullet" }],
+        ["link", "image"],
+        ["clean"],
+      ],
+      mention: makeMentionConfig(boardId),
+    },
+    placeholder: textarea.getAttribute("placeholder") || "",
+  };
+
+  if (modalScroll) quillOptions.scrollingContainer = modalScroll;
+  ensureModalScrollable(modalScroll);
+
+  const quill = new Quill(host, quillOptions);
+  quill.__cmModalScroll = modalScroll || null;
+  window.Modal.quill._descQuill = quill;
+
+  // carrega HTML inicial como HTML (renderiza)
+  const initial = (textarea.value || "").trim();
+  if (initial) {
+    try { quill.clipboard.dangerouslyPasteHTML(0, initial, "silent"); }
+    catch (_e) { quill.root.innerHTML = initial; }
+  }
+
+  const container = quill.root.closest(".ql-container");
+  if (container) delete container.dataset.cmManualMinHeight;
+
+  autoGrowQuill(quill, { min: 100 });
+
+  const syncToTextarea = () => {
+    try {
+      textarea.value = quill.root.innerHTML || "";
       try { textarea.dispatchEvent(new Event("input", { bubbles: true })); } catch (_e) {}
+    } catch (_e) {}
+  };
+
+  quill.on("text-change", syncToTextarea);
+  syncToTextarea();
+
+  const form = textarea.closest("form");
+  if (form && !form.dataset.quillSyncBoundTextarea) {
+    form.dataset.quillSyncBoundTextarea = "1";
+    form.addEventListener("submit", syncToTextarea, { capture: true });
+
+    document.body.addEventListener("htmx:configRequest", () => {
+      try { syncToTextarea(); } catch (_e) {}
+    }, true);
+
+    document.body.addEventListener("htmx:beforeRequest", () => {
+      try { syncToTextarea(); } catch (_e) {}
+    }, true);
+  } // ✅ FECHA o if(form...)
+
+  // toolbar image (fora do if)
+  const toolbar = quill.getModule("toolbar");
+  if (toolbar) {
+    toolbar.addHandler("image", () => {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "image/*";
+      input.onchange = () => {
+        const file = input.files?.[0];
+        if (file) insertBase64ImageIntoQuill(quill, file);
+      };
+      input.click();
     });
-
-    // toolbar image
-    const toolbar = quill.getModule("toolbar");
-    if (toolbar) {
-      toolbar.addHandler("image", () => {
-        const input = document.createElement("input");
-        input.type = "file";
-        input.accept = "image/*";
-        input.onchange = () => {
-          const file = input.files?.[0];
-          if (file) insertBase64ImageIntoQuill(quill, file);
-        };
-        input.click();
-      });
-    }
-
-    // paste: prioridade para imagem; depois HTML; senão deixa padrão
-    quill.root.addEventListener("paste", (e) => {
-      try {
-        const cd = e.clipboardData;
-        if (!cd) return;
-
-        const items = cd?.items ? Array.from(cd.items) : [];
-        const imgItem = items.find((it) => (it.type || "").startsWith("image/"));
-        if (imgItem) {
-          const file = imgItem.getAsFile?.();
-          if (file) {
-            e.preventDefault();
-            insertBase64ImageIntoQuill(quill, file);
-          }
-          return;
-        }
-
-        const html = cd.getData("text/html");
-        if (html && html.trim()) {
-          e.preventDefault();
-          pasteHtmlIntoQuill(quill, html);
-          return;
-        }
-      } catch (_e) {}
-    });
-
-    return quill;
   }
 
-  function bindQuillToDiv(div, hiddenInput, boardId) {
-    if (!div || !hiddenInput) return null;
-    if (div.dataset.quillBound === "1") return null;
-    div.dataset.quillBound = "1";
+  // paste: imagem > html
+  quill.root.addEventListener("paste", (e) => {
+    try {
+      const cd = e.clipboardData;
+      if (!cd) return;
 
-    const modalScroll =
-      document.querySelector("#modal-body.card-modal-scroll") ||
-      document.querySelector("#modal-body") ||
-      document.querySelector("#card-modal-root .card-modal-scroll");
-
-    const quillOptions = {
-      theme: "snow",
-      modules: {
-        toolbar: [
-          [{ header: [1, 2, 3, false] }],
-          ["bold", "italic", "underline", "strike"],
-          [{ list: "ordered" }, { list: "bullet" }],
-          ["link", "image"],
-          ["clean"],
-        ],
-        mention: makeMentionConfig(boardId),
-      },
-      placeholder: div.getAttribute("data-placeholder") || "",
-    };
-
-    if (modalScroll) quillOptions.scrollingContainer = modalScroll;
-    ensureModalScrollable(modalScroll);
-
-    const quill = new Quill(div, quillOptions);
-    quill.__cmModalScroll = modalScroll || null;
-
-    window.Modal.quill._descQuill = quill;
-
-    const initial = (hiddenInput.value || "").trim();
-    if (initial) {
-      try {
-        quill.clipboard.dangerouslyPasteHTML(0, initial, "silent");
-      } catch (_e) {
-        quill.root.innerHTML = initial;
+      const items = cd?.items ? Array.from(cd.items) : [];
+      const imgItem = items.find((it) => (it.type || "").startsWith("image/"));
+      if (imgItem) {
+        const file = imgItem.getAsFile?.();
+        if (file) {
+          e.preventDefault();
+          insertBase64ImageIntoQuill(quill, file);
+        }
+        return;
       }
-    }
 
-    const container = quill.root.closest(".ql-container");
-    if (container) delete container.dataset.cmManualMinHeight;
+      const html = cd.getData("text/html");
+      if (html && html.trim()) {
+        e.preventDefault();
+        pasteHtmlIntoQuill(quill, html);
+      }
+    } catch (_e) {}
+  });
 
-    autoGrowQuill(quill, { min: 100 });
+  return quill;
+}
+    
 
-    quill.on("text-change", () => {
-      hiddenInput.value = quill.root.innerHTML;
-      try { hiddenInput.dispatchEvent(new Event("input", { bubbles: true })); } catch (_e) {}
-    });
 
-    const toolbar = quill.getModule("toolbar");
-    if (toolbar) {
-      toolbar.addHandler("image", () => {
-        const input = document.createElement("input");
-        input.type = "file";
-        input.accept = "image/*";
-        input.onchange = () => {
-          const file = input.files?.[0];
-          if (file) insertBase64ImageIntoQuill(quill, file);
-        };
-        input.click();
-      });
-    }
+function bindQuillToDiv(div, hiddenInput, boardId) {
+  if (!div || !hiddenInput) return null;
+  if (div.dataset.quillBound === "1") return null;
+  div.dataset.quillBound = "1";
 
-    quill.root.addEventListener("paste", (e) => {
-      try {
-        const cd = e.clipboardData;
-        if (!cd) return;
+  const modalScroll =
+    document.querySelector("#modal-body.card-modal-scroll") ||
+    document.querySelector("#modal-body") ||
+    document.querySelector("#card-modal-root .card-modal-scroll");
 
-        const items = cd?.items ? Array.from(cd.items) : [];
-        const imgItem = items.find((it) => (it.type || "").startsWith("image/"));
-        if (imgItem) {
-          const file = imgItem.getAsFile?.();
-          if (file) {
-            e.preventDefault();
-            insertBase64ImageIntoQuill(quill, file);
-          }
-          return;
-        }
+  const quillOptions = {
+    theme: "snow",
+    modules: {
+      toolbar: [
+        [{ header: [1, 2, 3, false] }],
+        ["bold", "italic", "underline", "strike"],
+        [{ list: "ordered" }, { list: "bullet" }],
+        ["link", "image"],
+        ["clean"],
+      ],
+      mention: makeMentionConfig(boardId),
+    },
+    placeholder: div.getAttribute("data-placeholder") || "",
+  };
 
-        const html = cd.getData("text/html");
-        if (html && html.trim()) {
-          e.preventDefault();
-          pasteHtmlIntoQuill(quill, html);
-          return;
-        }
-      } catch (_e) {}
-    });
+  if (modalScroll) quillOptions.scrollingContainer = modalScroll;
+  ensureModalScrollable(modalScroll);
 
-    return quill;
+  const quill = new Quill(div, quillOptions);
+  quill.__cmModalScroll = modalScroll || null;
+  window.Modal.quill._descQuill = quill;
+
+  // carrega HTML inicial como HTML (renderiza)
+  const initial = (hiddenInput.value || "").trim();
+  if (initial) {
+    try { quill.clipboard.dangerouslyPasteHTML(0, initial, "silent"); }
+    catch (_e) { quill.root.innerHTML = initial; }
   }
+
+  const syncToHiddenInput = () => {
+    try {
+      hiddenInput.value = quill.root.innerHTML || "";
+      try { hiddenInput.dispatchEvent(new Event("input", { bubbles: true })); } catch (_e) {}
+    } catch (_e) {}
+  };
+
+  quill.on("text-change", syncToHiddenInput);
+  syncToHiddenInput();
+
+  const form = hiddenInput.closest("form");
+  if (form && !form.dataset.quillSyncBoundHidden) {
+    form.dataset.quillSyncBoundHidden = "1";
+    form.addEventListener("submit", syncToHiddenInput, { capture: true });
+
+    document.body.addEventListener("htmx:configRequest", () => {
+      try { syncToHiddenInput(); } catch (_e) {}
+    }, true);
+
+    document.body.addEventListener("htmx:beforeRequest", () => {
+      try { syncToHiddenInput(); } catch (_e) {}
+    }, true);
+  } // ✅ FECHA o if(form...)
+
+  const container = quill.root.closest(".ql-container");
+  if (container) delete container.dataset.cmManualMinHeight;
+
+  autoGrowQuill(quill, { min: 100 });
+
+  const toolbar = quill.getModule("toolbar");
+  if (toolbar) {
+    toolbar.addHandler("image", () => {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "image/*";
+      input.onchange = () => {
+        const file = input.files?.[0];
+        if (file) insertBase64ImageIntoQuill(quill, file);
+      };
+      input.click();
+    });
+  }
+
+  quill.root.addEventListener("paste", (e) => {
+    try {
+      const cd = e.clipboardData;
+      if (!cd) return;
+
+      const items = cd?.items ? Array.from(cd.items) : [];
+      const imgItem = items.find((it) => (it.type || "").startsWith("image/"));
+      if (imgItem) {
+        const file = imgItem.getAsFile?.();
+        if (file) {
+          e.preventDefault();
+          insertBase64ImageIntoQuill(quill, file);
+        }
+        return;
+      }
+
+      const html = cd.getData("text/html");
+      if (html && html.trim()) {
+        e.preventDefault();
+        pasteHtmlIntoQuill(quill, html);
+      }
+    } catch (_e) {}
+  });
+
+  return quill;
+}
+
 
   // ---------------------------
   // Public init
   // ---------------------------
   window.Modal.quill.init = function () {
     const boardId = getBoardIdFromUrl();
+    const modal = document.querySelector("#modal-body") || document;
 
-    const descDiv = document.getElementById("quill-editor");
-    const descHidden = document.getElementById("description-input");
+    // limpa lixo anterior (toolbars/containers órfãos)
+    pruneQuillOrphans(modal);
+
+    const descDiv = modal.querySelector("#quill-editor");
+    const descHidden = modal.querySelector("#description-input");
     if (descDiv && descHidden) {
       bindQuillToDiv(descDiv, descHidden, boardId);
+
+      // poda de novo após o Quill montar DOM
+      requestAnimationFrame(() => pruneQuillOrphans(modal));
       return;
     }
 
     const descTa =
-      document.querySelector('#cm-root textarea[name="description"]') ||
-      document.querySelector('textarea[name="description"]');
+      modal.querySelector('#cm-root textarea[name="description"]') ||
+      modal.querySelector('textarea[name="description"]');
 
-    if (descTa) bindQuillToTextarea(descTa, boardId);
+    if (descTa) {
+      bindQuillToTextarea(descTa, boardId);
+      requestAnimationFrame(() => pruneQuillOrphans(modal));
+    }
   };
 
+
+
+
+
+
+
   // rebind em swaps do modal
-  document.body.addEventListener("htmx:afterSwap", function (e) {
+    let __cmQuillInitRaf = 0;
+
+   document.body.addEventListener("htmx:afterSwap", function (e) {
     const target = e?.target;
     if (!target) return;
 
     if (target.id === "modal-body" || target.closest?.("#modal-body")) {
       try { window.Modal?.quill?.init?.(); } catch (_e) {}
+      try {
+        const modal = document.querySelector("#modal-body") || document;
+        requestAnimationFrame(() => pruneQuillOrphans(modal));
+      } catch (_e) {}
     }
   });
+
+
 
   // ---------------------------
   // Click em imagem abre em nova aba
