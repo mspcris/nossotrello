@@ -60,10 +60,14 @@ CSRF_TRUSTED_ORIGINS = _env_csv(
 
 SQLITE_NAME = (os.getenv("SQLITE_NAME") or "db.sqlite3").strip() or "db.sqlite3"
 
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "db" / SQLITE_NAME,
+        "OPTIONS": {
+            "timeout": 30,  # aumenta tolerância ao lock
+        },
     }
 }
 

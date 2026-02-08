@@ -12,7 +12,7 @@
 
     <div class="ar-list">
       {% for req in pending_access_requests %}
-        <article class="ar-card">
+        <article class="ar-card" id="ar-card-{{ req.user_id }}">
           <div class="ar-card-top">
             <div class="ar-avatar">
               {{ req.user.email|default:req.user.username|slice:":1"|upper }}
@@ -51,21 +51,30 @@
             </div>
           {% endif %}
 
-          <div class="ar-actions">
-            <form method="post" action="{% url 'boards:board_approve_access' req.board_id req.user_id %}">
-              {% csrf_token %}
-              <button type="submit" class="ar-btn ar-approve">
-                Aprovar
-              </button>
-            </form>
+         <div class="ar-actions">
+  <form
+    method="post"
+    action="{% url 'boards:board_approve_access' req.board_id req.user_id %}"
+    hx-post="{% url 'boards:board_approve_access' req.board_id req.user_id %}"
+    hx-target="#ar-card-{{ req.user_id }}"
+    hx-swap="outerHTML"
+  >
+    {% csrf_token %}
+    <button type="submit" class="ar-btn ar-approve">Aprovar</button>
+  </form>
 
-            <form method="post" action="{% url 'boards:board_deny_access' req.board_id req.user_id %}">
-              {% csrf_token %}
-              <button type="submit" class="ar-btn ar-deny">
-                Negar
-              </button>
-            </form>
-          </div>
+  <form
+    method="post"
+    action="{% url 'boards:board_deny_access' req.board_id req.user_id %}"
+    hx-post="{% url 'boards:board_deny_access' req.board_id req.user_id %}"
+    hx-target="#ar-card-{{ req.user_id }}"
+    hx-swap="outerHTML"
+  >
+    {% csrf_token %}
+    <button type="submit" class="ar-btn ar-deny">Negar</button>
+  </form>
+</div>
+
         </article>
       {% endfor %}
     </div>

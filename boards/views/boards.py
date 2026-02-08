@@ -1772,7 +1772,7 @@ def approve_board_access(request, board_id, user_id):
         except Exception:
             pass
 
-    return JsonResponse({"success": True})
+    return redirect(reverse("boards:board_detail", kwargs={"board_id": board.id}))
 
 
 @login_required
@@ -1812,8 +1812,7 @@ def deny_board_access(request, board_id, user_id):
         except Exception:
             pass
 
-    # Para o HTMX: some com a linha da solicitação
-    return HttpResponse("")
+    return redirect(reverse("boards:board_detail", kwargs={"board_id": board.id}))
 
 def user_can_share_board(user, board) -> bool:
     if not getattr(user, "is_authenticated", False):

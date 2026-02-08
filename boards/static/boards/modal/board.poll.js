@@ -177,7 +177,7 @@ const UNREAD_FETCH_EVERY_MS = 20000; // 20s é mais que suficiente para     atua
 // - Não troca colunas/cards, só o painel do owner
 // - Sem impacto visual no board
 // ============================================================
-const ACCESS_POLL_MS = 5000;
+const ACCESS_POLL_MS = 10000;
 
 setInterval(() => {
   const boardId = getBoardId();
