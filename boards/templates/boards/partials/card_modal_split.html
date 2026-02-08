@@ -1,6 +1,7 @@
 {# templates/boards/partials/card_modal_split.html #}
 {% load tag_helpers %}
 
+{% comment %} 
 {% if card.cover_image %}
   <div class="px-4 pt-4">
     <div class="group relative rounded-xl overflow-hidden border border-white/20">
@@ -20,7 +21,8 @@
       </button>
     </div>
   </div>
-{% endif %}
+{% endif %} 
+{% endcomment %}
 
 <style>
 /* ============================================================
@@ -75,6 +77,33 @@
 
     <!-- COLUNA ESQUERDA -->
     <div class="cm-main">
+
+      {% if card.cover_image %}
+  <div class="px-4 pt-4">
+    <div class="group relative rounded-xl overflow-hidden border border-white/20">
+      <a href="{{ card.cover_image.url }}" target="_blank" rel="noopener" class="block">
+        <img
+          src="{{ card.cover_image.url }}"
+          alt="Capa do card"
+          class="w-full object-cover"
+          style="height: 220px; max-height: 220px;"
+        >
+      </a>
+
+      <button type="button"
+              class="absolute top-2 right-2 px-2 py-1 rounded text-xs bg-black/60 text-white
+                     opacity-0 group-hover:opacity-100 transition"
+              hx-post="{% url 'boards:remove_card_cover' card.id %}"
+              hx-target="#modal-body"
+              hx-swap="innerHTML"
+              aria-label="Remover capa"
+              title="Remover capa">
+        ✕
+      </button>
+    </div>
+  </div>
+{% endif %}
+
 
       <div class="cm-topbar">
         <div class="cm-bar" role="tablist" aria-label="Abas do card">
