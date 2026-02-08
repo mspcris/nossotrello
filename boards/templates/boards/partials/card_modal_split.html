@@ -1626,6 +1626,37 @@
 })();
 </script>
 
+<script>
+  function bindActivityToggle() {
+    const btn = document.getElementById("cm-activity-toggle");
+    const composer = document.getElementById("cm-activity-composer");
+    if (!btn || !composer) return;
+
+    function setOpen(open) {
+      if (open) {
+        composer.classList.remove("is-hidden");
+
+        // ✅ monta toolbar/comandos do Quill quando o composer aparece
+        try { window.ensureActivityQuill?.(); } catch (_e) {}
+
+      } else {
+        composer.classList.add("is-hidden");
+      }
+
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+      try { composer.scrollIntoView({ behavior: "smooth", block: "start" }); } catch (_e) {}
+    }
+
+    btn.addEventListener("click", function (e) {
+      e.preventDefault();
+      const isHidden = composer.classList.contains("is-hidden");
+      setOpen(isHidden);
+    });
+  }
+
+  // mantém seu bootstrap existente
+  document.addEventListener("DOMContentLoaded", bindActivityToggle);
+</script>
 
 
 {# END templates/boards/partials/card_modal_split.html #}

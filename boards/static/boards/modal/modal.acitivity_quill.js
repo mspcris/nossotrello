@@ -741,7 +741,23 @@
     if (!el) return;
 
     destroyQuillIfStale(el);
-    if (window[STATE_KEY]) return;
+
+    // ✅ se tem instância, mas não tem toolbar/container, está zumbi => destrói e recria
+    if (window[STATE_KEY]) {
+      if (!isQuillToolbarPresent(el) || !isQuillContainerPresent(el)) {
+        hardDestroyActivityQuill();
+      } else {
+        return;
+      }
+    }
+
+    // ✅ se não tem instância, mas o DOM está com “restos” de Quill, limpa também
+    if (!window[STATE_KEY]) {
+      if (isQuillContainerPresent(el) || isQuillToolbarPresent(el)) {
+        hardDestroyActivityQuill();
+      }
+    }
+
 
     const boardId = getBoardIdFromUrl();
     const modalScroll = getModalScrollContainer();
@@ -858,6 +874,10 @@
     if (container) delete container.dataset.cmManualMinHeight;
     autoGrowQuill(quill, { min: 140, max: 3000 });
   }
+
+    // ✅ expõe para o template/HTMX conseguir montar o Quill ao abrir o composer
+  window.ensureActivityQuill = ensureQuill;
+
 
   // ============================================================
   // AUDIO
@@ -1075,6 +1095,7 @@
     }
   }
 
+
   // ============================================================
   // ✅ Sync (HTML + Delta + Text)
   // ============================================================
@@ -1107,6 +1128,70 @@
   window.resetActivityQuill = resetEditor;
 
   
+
+  function hardDestroyActivityQuill() {
+  try {
+    const q = window[STATE_KEY];
+    const el = window[STATE_EL_KEY] || document.getElementById("cm-activity-editor");
+    if (!q || !el) return;
+
+    // remove toolbar do Quill (normalmente é o sibling anterior)
+    const toolbar = el.previousSibling;
+    if (toolbar && toolbar.classList && toolbar.classList.contains("ql-toolbar")) {
+      toolbar.remove();
+    }
+
+    // limpa editor
+    el.innerHTML = "";
+
+    // zera state
+    window[STATE_KEY] = null;
+    window[STATE_EL_KEY] = null;
+  } catch (_e) {}
+}
+
+function isQuillToolbarPresent(el) {
+  try {
+    const tb = el?.previousSibling;
+    return !!(tb && tb.classList && tb.classList.contains("ql-toolbar"));
+  } catch (_e) {
+    return false;
+  }
+}
+
+function isQuillContainerPresent(el) {
+  try {
+    // quando Quill inicializa, o container recebe classe ql-container
+    return !!(el && el.classList && el.classList.contains("ql-container"));
+  } catch (_e) {
+    return false;
+  }
+}
+
+function hardDestroyActivityQuill() {
+  try {
+    const el = window[STATE_EL_KEY] || document.getElementById("cm-activity-editor");
+    if (!el) return;
+
+    // remove toolbar
+    try {
+      const toolbar = el.previousSibling;
+      if (toolbar && toolbar.classList && toolbar.classList.contains("ql-toolbar")) {
+        toolbar.remove();
+      }
+    } catch (_e) {}
+
+    // limpa container/editor
+    try {
+      el.innerHTML = "";
+      el.classList.remove("ql-container");
+    } catch (_e) {}
+
+    window[STATE_KEY] = null;
+    window[STATE_EL_KEY] = null;
+  } catch (_e) {}
+}
+
   
   
   
@@ -1193,6 +1278,7 @@
       } catch (_e) {}
 
       resetEditor();
+      hardDestroyActivityQuill();
       clearActivityError();
       clearReplyContext();
       closeComposer();
