@@ -1466,98 +1466,6 @@
 
 
 
-<script>
-(function(){
-  function $(sel, root){ return (root||document).querySelector(sel); }
-  function $all(sel, root){ return Array.from((root||document).querySelectorAll(sel)); }
-
-  function bootFeed(){
-    const root = document.getElementById("cm-root");
-    if (!root) return;
-
-    const feed = $("#cm-feed", root);
-    const q = $("#cm-feed-q", root);
-    const filter = $("#cm-feed-filter", root);
-    const preview = $("#cm-hover-preview", root);
-    const pImg = $("#cm-hover-img", root);
-    const pOpen = $("#cm-hover-open", root);
-    const pName = $("#cm-hover-name", root);
-
-    if (!feed || !q || !filter) return;
-    if (root.dataset.cmFeedBound === "1") return;
-    root.dataset.cmFeedBound = "1";
-
-    function norm(s){ return String(s||"").toLowerCase(); }
-
-    function applyFilter(){
-      const query = norm(q.value).trim();
-      const f = String(filter.value||"comments");
-
-      const items = $all(".cm-feed-item", feed);
-      items.forEach((it) => {
-        const t = String(it.getAttribute("data-type") || "comments");
-        const text = norm(it.getAttribute("data-text") || it.textContent || "");
-
-        const okType = (f === "all") ? true : (t === f);
-        const okQ = !query || text.includes(query);
-
-        it.style.display = (okType && okQ) ? "" : "none";
-      });
-
-      // oculta dias vazios
-      $all(".cm-feed-day", feed).forEach((day) => {
-        const anyVisible = $all(".cm-feed-item", day).some((it) => it.style.display !== "none");
-        day.style.display = anyVisible ? "" : "none";
-      });
-    }
-
-    q.addEventListener("input", applyFilter);
-    filter.addEventListener("change", applyFilter);
-    applyFilter();
-
-    // Preview hover (imagem)
-    function hidePreview(){
-      if (!preview) return;
-      preview.classList.remove("is-on");
-      preview.setAttribute("aria-hidden", "true");
-    }
-
-    feed.addEventListener("mouseover", function(e){
-      const thumb = e.target && e.target.closest ? e.target.closest(".cm-attach-thumb[data-preview-src]") : null;
-      if (!thumb || !preview || !pImg) return;
-
-      const src = thumb.getAttribute("data-preview-src");
-      if (!src) return;
-
-      pImg.src = src;
-      if (pOpen) pOpen.href = src;
-      if (pName) pName.textContent = "Imagem";
-      preview.classList.add("is-on");
-      preview.setAttribute("aria-hidden", "false");
-    }, true);
-
-    feed.addEventListener("mouseout", function(e){
-      const thumb = e.target && e.target.closest ? e.target.closest(".cm-attach-thumb[data-preview-src]") : null;
-      if (!thumb) return;
-      hidePreview();
-    }, true);
-
-    document.addEventListener("keydown", function(e){
-      if (e.key === "Escape") hidePreview();
-    });
-
-    // Quando o HTMX trocar o modal-body, o seu código já rebind em vários pontos.
-    // Aqui basta o guard dataset.cmFeedBound para não duplicar listeners.
-  }
-
-  document.addEventListener("DOMContentLoaded", bootFeed);
-  document.body.addEventListener("htmx:afterSwap", function(evt){
-    if (evt.target && evt.target.id === "modal-body") bootFeed();
-  });
-})();
-</script>
-
-
 
 
 
@@ -1658,8 +1566,21 @@
 
   document.addEventListener("DOMContentLoaded", bootFeed);
   document.body.addEventListener("htmx:afterSwap", function(evt){
-    if (evt.target && evt.target.id === "modal-body") bootFeed();
+    if (!evt.target) return;
+
+    // 1) Quando o modal inteiro troca
+    if (evt.target.id === "modal-body") {
+      bootFeed();
+      return;
+    }
+
+    // 2) Quando SOMENTE o painel de atividade troca (ex.: etiqueta, anexo, etc.)
+    if (evt.target.id === "cm-activity-panel") {
+      bootFeed();
+      return;
+    }
   });
+
 })();
 </script>
 
