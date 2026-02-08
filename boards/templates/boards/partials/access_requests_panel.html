@@ -1,29 +1,73 @@
-{% if pending_access_requests %}
-  <div class="cm-card">
-    <h3 class="cm-label">Solicitações de acesso</h3>
+{# boards/templates/boards/partials/access_requests_panel.html #}
 
-    {% for req in pending_access_requests %}
-      <div class="border rounded-lg p-3 mb-2">
-        <div class="text-sm space-y-1">
-          <div><strong>Nome:</strong> {{ req.user.get_full_name|default:req.user.username }}</div>
-          <div><strong>Email:</strong> {{ req.user.email }}</div>
+{% if pending_access_requests %}
+  <section class="ar-wrap" aria-label="Solicitações de acesso">
+    <header class="ar-head">
+      <div class="ar-title">
+        <span class="ar-dot"></span>
+        <h3>Solicitações de acesso</h3>
+      </div>
+      <div class="ar-sub">Aprove ou negue com 1 clique</div>
+    </header>
+
+    <div class="ar-list">
+      {% for req in pending_access_requests %}
+        <article class="ar-card">
+          <div class="ar-card-top">
+            <div class="ar-avatar">
+              {{ req.user.email|default:req.user.username|slice:":1"|upper }}
+            </div>
+
+            <div class="ar-main">
+              <div class="ar-name">
+                {{ req.user.profile.display_name|default:req.user.email|default:req.user.username }}
+              </div>
+              <div class="ar-email">
+                {{ req.user.email|default:req.user.username }}
+              </div>
+            </div>
+
+            <span class="ar-status">Pendente</span>
+          </div>
 
           {% if req.user.profile %}
-            <div><strong>Telefone:</strong> {{ req.user.profile.telefone }}</div>
-            <div><strong>Ramal:</strong> {{ req.user.profile.ramal }}</div>
-            <div><strong>Posto:</strong> {{ req.user.profile.posto }}</div>
-            <div><strong>Função:</strong> {{ req.user.profile.funcao }}</div>
+            <div class="ar-grid">
+              <div class="ar-item">
+                <div class="ar-k">Telefone</div>
+                <div class="ar-v">{{ req.user.profile.telefone|default:"—" }}</div>
+              </div>
+              <div class="ar-item">
+                <div class="ar-k">Ramal</div>
+                <div class="ar-v">{{ req.user.profile.ramal|default:"—" }}</div>
+              </div>
+              <div class="ar-item">
+                <div class="ar-k">Posto</div>
+                <div class="ar-v">{{ req.user.profile.posto|default:"—" }}</div>
+              </div>
+              <div class="ar-item">
+                <div class="ar-k">Função</div>
+                <div class="ar-v">{{ req.user.profile.setor|default:"—" }}</div>
+              </div>
+            </div>
           {% endif %}
-        </div>
 
-        <div class="flex gap-2 mt-3">
-          <a href="{% url 'boards:approve_board_access' req.id %}"
-             class="cm-btn primary">Aprovar</a>
+          <div class="ar-actions">
+            <form method="post" action="{% url 'boards:board_approve_access' req.board_id req.user_id %}">
+              {% csrf_token %}
+              <button type="submit" class="ar-btn ar-approve">
+                Aprovar
+              </button>
+            </form>
 
-          <a href="{% url 'boards:deny_board_access' req.id %}"
-             class="cm-btn danger">Negar</a>
-        </div>
-      </div>
-    {% endfor %}
-  </div>
+            <form method="post" action="{% url 'boards:board_deny_access' req.board_id req.user_id %}">
+              {% csrf_token %}
+              <button type="submit" class="ar-btn ar-deny">
+                Negar
+              </button>
+            </form>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
 {% endif %}

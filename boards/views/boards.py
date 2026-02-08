@@ -1815,20 +1815,29 @@ def deny_board_access(request, board_id, user_id):
     # Para o HTMX: some com a linha da solicitação
     return HttpResponse("")
 
+def user_can_share_board(user, board) -> bool:
+    if not getattr(user, "is_authenticated", False):
+        return False
+
+    # “admin” (staff) pode ver/gerir
+    if getattr(user, "is_staff", False):
+        return True
+
+    bm = BoardMembership.objects.filter(board=board, user=user).first()
+    return bool(bm and bm.role == BoardMembership.Role.OWNER)
 
 
 @login_required
 def board_access_requests_poll(request, board_id):
-    # proteções básicas (owner/admin)
-    board = get_object_or_404(Board, id=board_id)
+    board = get_object_or_404(Board, id=board_id, is_deleted=False)
 
     # se não pode compartilhar/gerenciar, devolve vazio (não “vaza” info)
-    if not user_can_share_board(request.user, board):   # use SUA função/flag (can_share_board)
+    if not user_can_share_board(request.user, board):
         return HttpResponse("", content_type="text/html")
 
     pending_access_requests = (
         BoardAccessRequest.objects
-        .filter(board=board, status="pending")          # ajuste para o seu model/campos
+        .filter(board=board)
         .select_related("user", "user__profile")
         .order_by("-id")
     )
@@ -1839,3 +1848,4 @@ def board_access_requests_poll(request, board_id):
         request=request,
     )
     return HttpResponse(html, content_type="text/html")
+
