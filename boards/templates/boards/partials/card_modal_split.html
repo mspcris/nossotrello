@@ -1588,4 +1588,44 @@
 })();
 </script>
 
+
+
+<script>
+(function () {
+  if (window.__cmActivitySubmitBound === true) return;
+  window.__cmActivitySubmitBound = true;
+
+  function getForm() { return document.getElementById("cm-activity-form"); }
+  function getBtn() { return document.getElementById("cm-activity-submit"); }
+
+  function unlock() {
+    const form = getForm();
+    const btn = getBtn();
+    if (form) form.dataset.cmBusy = "0";
+    if (!btn) return;
+
+    btn.disabled = false;
+    if (btn.dataset.origHtml) btn.innerHTML = btn.dataset.origHtml;
+  }
+
+  // Quando terminar o request (sucesso OU falha)
+  document.body.addEventListener("htmx:afterRequest", function (evt) {
+    const elt = evt.detail && evt.detail.elt;
+    if (elt && elt.id === "cm-activity-form") unlock();
+  });
+
+  document.body.addEventListener("htmx:responseError", function (evt) {
+    const elt = evt.detail && evt.detail.elt;
+    if (elt && elt.id === "cm-activity-form") unlock();
+  });
+
+  document.body.addEventListener("htmx:sendError", function (evt) {
+    const elt = evt.detail && evt.detail.elt;
+    if (elt && elt.id === "cm-activity-form") unlock();
+  });
+})();
+</script>
+
+
+
 {# END templates/boards/partials/card_modal_split.html #}
