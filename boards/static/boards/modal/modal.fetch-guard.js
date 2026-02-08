@@ -1,117 +1,117 @@
 // modal.fetch-guard.js
 (() => {
-  if (!window.fetch || window.fetch.__GUARDED__) return;
+  // evita bind duplo do guard
+  if (window.__CM_MODAL_FETCH_GUARD__) return;
+  window.__CM_MODAL_FETCH_GUARD__ = true;
 
-  const original = window.fetch;
-
-  // Dedup: mantém POSTs idênticos "in-flight" por uma janela curta
-  const inFlight = new Map(); // key -> { ts, promise }
-
-  const DEDUP_WINDOW_MS = 1200;
-  const ADD_PATH_RE = /\/card\/\d+\/activity\/add\/?$/;
-
-  function now() {
-    return Date.now();
-  }
-
-  function getUrl(input) {
+  // ------------------------------------------------------------
+  // 1) Guard do modal: bloqueia apenas chamadas de "abrir modal"
+  //    quando Modal.canOpen() = false
+  // ------------------------------------------------------------
+  function canOpenModal() {
     try {
-      if (typeof input === "string") return input;
-      if (input && typeof input.url === "string") return input.url; // Request
-      return input?.toString?.() || "";
-    } catch {
-      return "";
+      return !window.Modal || typeof window.Modal.canOpen !== "function"
+        ? true
+        : !!window.Modal.canOpen();
+    } catch (_e) {
+      return true;
     }
   }
 
-  function getMethod(init) {
-    const m = (init?.method || "GET").toString().toUpperCase();
-    return m;
+  function isModalOpenUrl(url) {
+    // ajuste aqui se o seu endpoint de modal for diferente
+    // exemplos comuns:
+    //  - /card/292/modal
+    //  - /card/292/modal/
+    //  - /board/11/card/292/modal
+    const u = String(url || "");
+    return /\/card\/\d+\/modal\/?$/.test(u) || /\/card\/\d+\/modal\//.test(u);
   }
 
-  function looksLikeAdd(url) {
-    try {
-      // aceita url absoluta/relativa
-      const u = new URL(url, window.location.origin);
-      return ADD_PATH_RE.test(u.pathname);
-    } catch {
-      return url.includes("/activity/add");
-    }
-  }
+  if (window.fetch && !window.fetch.__GUARDED__) {
+    const original = window.fetch;
 
-  function stableStringifyFormData(fd) {
-    // Serializa FormData de forma determinística (inclui File metadados)
-    const items = [];
-    for (const [k, v] of fd.entries()) {
-      if (v instanceof File) {
-        items.push([k, `__file__:${v.name}:${v.size}:${v.type}`]);
-      } else {
-        items.push([k, String(v)]);
-      }
-    }
-    items.sort((a, b) => (a[0] + "\u0000" + a[1]).localeCompare(b[0] + "\u0000" + b[1]));
-    return items.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join("&");
-  }
+    window.fetch = function (...args) {
+      const url = args[0]?.toString?.() || "";
 
-  function bodySignature(body) {
-    if (!body) return "";
-    try {
-      if (typeof body === "string") return body;
-      if (body instanceof URLSearchParams) return body.toString();
-      if (body instanceof FormData) return stableStringifyFormData(body);
-      if (body instanceof Blob) return `__blob__:${body.type}:${body.size}`;
-      // fallback (obj, etc)
-      return `__body__:${Object.prototype.toString.call(body)}`;
-    } catch {
-      return "__body__:unreadable";
-    }
-  }
-
-  function makeDedupKey(url, init) {
-    const method = getMethod(init);
-    const sig = bodySignature(init?.body);
-    return `${method} ${url} :: ${sig}`;
-  }
-
-  function cleanupOld() {
-    const t = now();
-    for (const [k, v] of inFlight.entries()) {
-      if (t - v.ts > DEDUP_WINDOW_MS) inFlight.delete(k);
-    }
-  }
-
-  window.fetch = function (input, init = {}) {
-    const url = getUrl(input);
-
-    // Guard do modal (se não pode abrir, não deixa /card/ disparar)
-    if (url.includes("/card/") && !window.Modal?.canOpen?.()) {
-      return Promise.resolve(new Response("", { status: 204 }));
-    }
-
-    // Dedup específico: POST no add de activity
-    const method = getMethod(init);
-    if (method === "POST" && looksLikeAdd(url)) {
-      cleanupOld();
-
-      const key = makeDedupKey(url, init);
-      const existing = inFlight.get(key);
-
-      if (existing && (now() - existing.ts) <= DEDUP_WINDOW_MS) {
-        // Reaproveita a mesma promise: impede dupla gravação e dupla renderização
-        return existing.promise;
+      // IMPORTANTE: não bloqueia nada de /activity/add aqui.
+      // Só bloqueia abertura do modal.
+      if (isModalOpenUrl(url) && !canOpenModal()) {
+        return Promise.resolve(new Response("", { status: 204 }));
       }
 
-      const p = original.call(this, input, init).finally(() => {
-        // Remove quando terminar (sucesso/erro)
-        inFlight.delete(key);
-      });
+      return original.apply(this, args);
+    };
 
-      inFlight.set(key, { ts: now(), promise: p });
-      return p;
-    }
+    window.fetch.__GUARDED__ = true;
+  }
 
-    return original.call(this, input, init);
-  };
+  // ------------------------------------------------------------
+  // 2) Anti double-submit: cancela requisições duplicadas do HTMX
+  //    (foco em POST /activity/add)
+  // ------------------------------------------------------------
+  const RECENT = new Map(); // key -> timestamp(ms)
 
-  window.fetch.__GUARDED__ = true;
+  function getRequestPath(detail) {
+    return (
+      detail?.pathInfo?.requestPath ||
+      detail?.path ||
+      detail?.requestPath ||
+      ""
+    );
+  }
+
+  function buildActivitySignature(detail) {
+    // Assinatura mínima para considerar “igual”:
+    // - endpoint
+    // - reply_to
+    // - conteúdo (content/text/delta)
+    const params = detail?.parameters || {};
+    const replyTo = String(params.reply_to || "").trim();
+
+    // tenta cobrir os 3 formatos que você já usa no projeto (html/text/delta)
+    const content = String(params.content || "").trim();
+    const text = String(params.text || "").trim();
+    const delta = typeof params.delta === "string" ? params.delta : "";
+
+    // chave curta (não precisa serializar tudo)
+    return `${replyTo}::${content}::${text}::${delta}`;
+  }
+
+  document.body.addEventListener(
+    "htmx:beforeRequest",
+    function (evt) {
+      const d = evt.detail;
+      if (!d) return;
+
+      const verb = String(d.verb || "").toUpperCase();
+      if (verb !== "POST") return;
+
+      const path = getRequestPath(d);
+      if (!path.includes("/activity/add")) return;
+
+      const sig = buildActivitySignature(d);
+      const key = `${verb} ${path} ${sig}`;
+
+      const now = Date.now();
+      const prev = RECENT.get(key) || 0;
+
+      // janela curta: suficiente pra “duplo clique” e “duplo gatilho”
+      if (now - prev < 900) {
+        evt.preventDefault();
+        return;
+      }
+
+      RECENT.set(key, now);
+
+      // limpeza simples para não crescer infinito
+      // (remove entradas com mais de 20s)
+      if (RECENT.size > 200) {
+        for (const [k, t] of RECENT.entries()) {
+          if (now - t > 20000) RECENT.delete(k);
+        }
+      }
+    },
+    true
+  );
 })();
