@@ -285,13 +285,9 @@ def update_card(request, card_id):
     # UPDATE: título / descrição / tags
     # ============================================================
     # pega TODOS os "title" enviados (evita ambiguidade com checklist)
-    titles = [(_norm(x)) for x in request.POST.getlist("title") if _norm(x)]
+    posted_title = _norm(request.POST.get("card_title") or "")
+    card.title = posted_title if posted_title else old_title
 
-    # prioridade: aliases > primeiro title não-vazio > mantém o atual
-    posted_title = _norm(request.POST.get("card_title") or request.POST.get("cm_title") or "")
-    new_title = posted_title or (titles[0] if titles else old_title)
-
-    card.title = new_title
 
 
     raw_desc = _norm(request.POST.get("description", card.description or ""))
