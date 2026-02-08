@@ -49,9 +49,29 @@
 
                 <div class="cm-feed-row">
 
-                  <div class="cm-feed-avatar" aria-hidden="true">
-                    {{ log.cm_actor_initial|default:"•" }}
-                  </div>
+                   <div class="cm-feed-avatar" aria-hidden="true">
+                      {% if log.actor %}
+                        {% with p=log.actor.profile %}
+                          {% if p and p.avatar %}
+                            <img class="cm-avatar-img"
+                                src="{{ p.avatar.url }}"
+                                alt="{{ log.cm_actor_label|default:'(SISTEMA)' }}">
+                          {% elif p and p.avatar_choice %}
+                            {% load static %}
+                            <img class="cm-avatar-img"
+                                src="{% static 'images/avatar/' %}{{ p.avatar_choice }}"
+                                alt="{{ log.cm_actor_label|default:'(SISTEMA)' }}">
+                          {% else %}
+                            <span class="cm-avatar-initial">{{ log.cm_actor_initial|default:"•" }}</span>
+                          {% endif %}
+                        {% endwith %}
+                      {% else %}
+                        <span class="cm-avatar-initial">{{ log.cm_actor_initial|default:"•" }}</span>
+                      {% endif %}
+                    </div>
+
+
+
 
                   <div class="cm-feed-main">
 
@@ -115,10 +135,29 @@
                             </div>
 
                             {% for r in replies %}
-                              <div class="cm-reply">
-                                <div class="cm-reply-avatar" aria-hidden="true">
-                                  {{ r.cm_actor_initial|default:"•" }}
-                                </div>
+                             <div class="cm-reply-avatar" aria-hidden="true">
+                                {% if r.actor %}
+                                  {% with p=r.actor.profile %}
+                                    {% if p and p.avatar %}
+                                      <img class="cm-avatar-img"
+                                          src="{{ p.avatar.url }}"
+                                          alt="{{ r.cm_actor_label|default:'(SISTEMA)' }}">
+                                    {% elif p and p.avatar_choice %}
+                                      {% load static %}
+                                      <img class="cm-avatar-img"
+                                          src="{% static 'images/avatar/' %}{{ p.avatar_choice }}"
+                                          alt="{{ r.cm_actor_label|default:'(SISTEMA)' }}">
+                                    {% else %}
+                                      <span class="cm-avatar-initial">{{ r.cm_actor_initial|default:"•" }}</span>
+                                    {% endif %}
+                                  {% endwith %}
+                                {% else %}
+                                  <span class="cm-avatar-initial">{{ r.cm_actor_initial|default:"•" }}</span>
+                                {% endif %}
+                              </div>
+
+
+
 
                                 <div class="cm-reply-main">
                                   <div class="cm-feed-meta">

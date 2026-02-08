@@ -2728,3 +2728,19 @@ html.dark #modal #modal-breadcrumb{
 .cm-feed-item.is-hidden { display: none !important; }
 .cm-feed-dayhdr.is-hidden { display: none !important; }
 
+
+
+
+
+
+
+
+
+
+
+
+.cm-feed-avatar,
+.cm-reply-avatar { overflow: hidden; border-radius: 999px; }
+
+.cm-avatar-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cm-avatar-initial { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
