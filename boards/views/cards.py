@@ -513,10 +513,32 @@ def update_card(request, card_id):
     ):
         _log_card(card, request, f"<p><strong>{actor}</strong> atualizou o card.</p>")
 
+        # ============================================================
+    # REBUILD CONTEXT (mesmo contrato do split do load inicial)
+    # ============================================================
+    # Recarrega card com relacionamentos essenciais (evita estado/caches)
+    card = (
+        Card.objects
+        .select_related("column", "column__board")
+        .get(id=card.id)
+    )
+    board = card.column.board
+
     ctx = _card_modal_context(card)
+
+    # hardening: chaves usadas nos templates/includes do split
+    ctx.setdefault("card", card)
+    ctx.setdefault("column", card.column)
+    ctx.setdefault("board", board)
     ctx["board_due_colors"] = getattr(board, "due_colors", {}) or {}
 
+    # split costuma depender disso
+    try:
+        ctx["checklists"] = card.checklists.all()
+    except Exception:
+        ctx["checklists"] = []
 
+    # logs decorados (mesma regra do modal)
     parents_qs = (
         card.logs
         .filter(reply_to__isnull=True)
@@ -533,9 +555,9 @@ def update_card(request, card_id):
     from .activity import _decorate_logs_for_feed  # import tardio (anti-ciclo)
     ctx["logs"] = _decorate_logs_for_feed(parents_qs)
 
-    # return _render_card_modal(request, card, ctx)
-        # sempre devolve SOMENTE o corpo do modal (fluxo de salvar)
+    # SPLIT é o contrato
     return render(request, "boards/partials/card_modal_split.html", ctx)
+
 
 
 
