@@ -650,16 +650,15 @@ def _actor_label_and_initial(u):
 
 def _log_is_system(log) -> bool:
     """
-    'System' = log gerado por ações do sistema (criou card, alterou prazo, etc).
-    Heurística: não é reply, não tem delta, não tem texto, e vem como HTML legado.
-    """
-    # ✅ Se tem autor, não é sistema (ex.: anexos, ações do usuário logadas em HTML legado)
-    try:
-        if getattr(log, "actor_id", None):
-            return False
-    except Exception:
-        pass
+    'System' = auditoria de ações (criou card, alterou prazo, alterou descrição etc).
+    Importante: pode TER actor (ex.: "@user alterou a descrição") e ainda assim ser sistema.
 
+    Heurística atual:
+      - não é reply
+      - não tem delta (atividade/quill)
+      - não tem content_text (atividade/quill)
+      - vem como HTML legado "audit" (normalmente com <p> e <strong>)
+    """
     try:
         if getattr(log, "reply_to_id", None):
             return False
@@ -675,10 +674,12 @@ def _log_is_system(log) -> bool:
     if not html:
         return False
 
+    # padrão clássico de auditoria: "<p><strong>...</strong> ...</p>"
     if "<p" in html and "<strong" in html:
         return True
 
     return False
+
 
 
 
