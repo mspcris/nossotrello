@@ -426,52 +426,12 @@
 
 
 
-{% if can_share_board and board.access_requests.exists %}
-  <div class="cm-accessreq-wrap mt-4">
-    <div class="cm-accessreq-card">
-      <div class="cm-accessreq-head">
-        <h4 class="cm-accessreq-title">Solicitações de acesso</h4>
-        <div class="cm-accessreq-sub">
-          Pendências para este quadro (aprove ou negue).
-        </div>
-      </div>
-
-      <div class="cm-accessreq-list">
-        {% for req in board.access_requests.all %}
-          <div class="cm-accessreq-row">
-            <div class="cm-accessreq-user">
-              <div class="cm-accessreq-email">{{ req.user.email }}</div>
-              <div class="cm-accessreq-meta">
-                solicitado em {{ req.created_at|date:"d/m/Y H:i" }}
-              </div>
-            </div>
-
-            <div class="cm-accessreq-actions">
-              <button
-                class="cm-btn cm-btn-ok"
-                hx-post="{% url 'boards:board_approve_access' board.id req.user.id %}"
-                hx-target="closest .cm-accessreq-row"
-                hx-swap="outerHTML"
-                hx-headers='{"X-CSRFToken":"{{ csrf_token }}"}'>
-                Aprovar
-              </button>
-
-              <button
-                class="cm-btn cm-btn-no"
-                hx-post="{% url 'boards:board_deny_access' board.id req.user.id %}"
-                hx-target="closest .cm-accessreq-row"
-                hx-swap="outerHTML"
-                hx-headers='{"X-CSRFToken":"{{ csrf_token }}"}'>
-                Negar
-              </button>
-            </div>
-          </div>
-        {% endfor %}
-      </div>
-    </div>
+ <!-- SOLICITAÇÃO DE ACESSO AO QUADRO -->
+{% if can_share_board %}
+  <div id="cm-accessreq-root" class="cm-accessreq-wrap mt-4">
+    {% include "boards/partials/access_requests_panel.html" %}
   </div>
 {% endif %}
-
 
 
 

@@ -1,0 +1,29 @@
+{% if pending_access_requests %}
+  <div class="cm-card">
+    <h3 class="cm-label">Solicitações de acesso</h3>
+
+    {% for req in pending_access_requests %}
+      <div class="border rounded-lg p-3 mb-2">
+        <div class="text-sm space-y-1">
+          <div><strong>Nome:</strong> {{ req.user.get_full_name|default:req.user.username }}</div>
+          <div><strong>Email:</strong> {{ req.user.email }}</div>
+
+          {% if req.user.profile %}
+            <div><strong>Telefone:</strong> {{ req.user.profile.telefone }}</div>
+            <div><strong>Ramal:</strong> {{ req.user.profile.ramal }}</div>
+            <div><strong>Posto:</strong> {{ req.user.profile.posto }}</div>
+            <div><strong>Função:</strong> {{ req.user.profile.funcao }}</div>
+          {% endif %}
+        </div>
+
+        <div class="flex gap-2 mt-3">
+          <a href="{% url 'boards:approve_board_access' req.id %}"
+             class="cm-btn primary">Aprovar</a>
+
+          <a href="{% url 'boards:deny_board_access' req.id %}"
+             class="cm-btn danger">Negar</a>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}

@@ -1,4 +1,25 @@
 // boards/static/boards/modal/board.poll.js
+
+// poll solicitação de acesso a board. 
+function syncAccessRequests(boardId) {
+  const root = document.getElementById("cm-accessreq-root");
+  if (!root) return;
+
+  fetch(`/board/${boardId}/access-requests/poll/`, {
+    credentials: "same-origin",
+    cache: "no-store",
+    headers: { "X-Requested-With": "XMLHttpRequest" }
+  })
+
+    .then(r => r.text())
+    .then(html => {
+      root.innerHTML = (html && html.trim()) ? html : "";
+    })
+
+    .catch(() => {});
+}
+
+
 // ============================================================
 // BOARD POLLING — sincroniza colunas/cards entre usuários (A1)
 // - Não faz swap com modal aberto / drag / foco em input
@@ -8,7 +29,7 @@
 
 let __lastUnreadCount = null;
 let __lastUnreadFetchMs = 0;
-const UNREAD_FETCH_EVERY_MS = 150000; // 30s é mais que suficiente para     atualiazar o indicador de atividade
+const UNREAD_FETCH_EVERY_MS = 20000; // 20s é mais que suficiente para     atualiazar o indicador de atividade
 
 
 (function () {
@@ -149,10 +170,31 @@ const UNREAD_FETCH_EVERY_MS = 150000; // 30s é mais que suficiente para     atu
     }, POLL_MS);
   }
 
+
+// ============================================================
+// ACCESS REQUESTS POLL (leve) — 5s
+// - Não troca colunas/cards, só o painel do owner
+// - Sem impacto visual no board
+// ============================================================
+const ACCESS_POLL_MS = 5000;
+
+setInterval(() => {
+  const boardId = getBoardId();
+  if (!boardId) return;
+
+  // aqui NÃO precisa pausar por modal/drag/foco;
+  // é um bloco isolado. Se quiser ser conservador:
+  // if (shouldPause()) return;
+
+  syncAccessRequests(boardId);
+}, ACCESS_POLL_MS);
+
+
+
   // ---- BOOTSTRAP / RESUME POINTS ----
 
   // 1) DOM pronto
-  document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", () => {
   const boardId = getBoardId();
 
   bootstrapHydrate();
@@ -163,9 +205,13 @@ const UNREAD_FETCH_EVERY_MS = 150000; // 30s é mais que suficiente para     atu
   syncUnreadBadge(boardId);
   syncCardUnreadBadges(boardId);
 
+  // ✅ SOLICITAÇÕES DE ACESSO (sem F5)
+  syncAccessRequests(boardId);
+
   // depois entra no loop normal
   loop();
 });
+
 
 
   // 2) LOAD completo (Ctrl+F5 costuma evidenciar timing diferente)
@@ -176,8 +222,10 @@ const UNREAD_FETCH_EVERY_MS = 150000; // 30s é mais que suficiente para     atu
 
   // 3) Ao fechar o modal: destrava e “força” rehidratação + um tick rápido
 document.addEventListener("modal:closed", () => {
+  const boardId = getBoardId();
   bootstrapHydrate();
-  syncUnreadBadge(getBoardId());
+  syncUnreadBadge(boardId);
+  syncAccessRequests(boardId);
   setTimeout(() => { tick(); }, 30);
 });
 
@@ -187,11 +235,14 @@ document.addEventListener("modal:closed", () => {
   // 4) Quando a aba volta a ficar visível
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden) {
+    const boardId = getBoardId();
     bootstrapHydrate();
-    syncUnreadBadge(getBoardId());
+    syncUnreadBadge(boardId);
+    syncAccessRequests(boardId);
     setTimeout(() => { tick(); }, 30);
   }
 });
+
 
 
 

@@ -432,7 +432,7 @@ def board_detail(request, board_id):
         pending_access_requests = (
             BoardAccessRequest.objects
             .filter(board=board)
-            .select_related("user")
+            .select_related("user", "user__profile")
             .order_by("-created_at")
         )
 
@@ -1586,7 +1586,20 @@ def request_board_access(request, board_id):
     profile.save(update_fields=["display_name", "posto", "setor", "ramal", "telefone"])
 
     # Cria a solicitação
-    req_obj, created = BoardAccessRequest.objects.get_or_create(board=board, user=request.user)
+    req_obj, created = BoardAccessRequest.objects.get_or_create(
+    board=board,
+    user=request.user
+    )
+
+    # --------------------------------------------------
+    # 1) SINALIZA MUDANÇA PARA O POLL DO OWNER (SEM F5)
+    # --------------------------------------------------
+    try:
+        board.version = int(getattr(board, "version", 0) or 0) + 1
+        board.save(update_fields=["version"])
+    except Exception:
+        pass
+
 
     # Descobre o dono
     owner_membership = BoardMembership.objects.filter(board=board, role=BoardMembership.Role.OWNER).select_related("user").first()
@@ -1619,6 +1632,34 @@ def request_board_access(request, board_id):
         f"- Email: {email}\n\n"
         f"Para aprovar ou negar, abra o quadro:\n{board_url}\n"
     )
+    # --------------------------------------------------
+    # 2) WHATSAPP PARA O DONO DO QUADRO
+    # --------------------------------------------------
+    try:
+        from boards.services.notifications import send_whatsapp
+        import re
+
+        owner = board.owner
+        prof = getattr(owner, "profile", None)
+
+        phone = getattr(prof, "telefone", "") if prof else ""
+        phone = re.sub(r"\D+", "", phone or "")
+
+        # adiciona DDI Brasil se necessário
+        if len(phone) in (10, 11):
+            phone = "55" + phone
+
+        if len(phone) in (12, 13):
+            nome = request.user.get_full_name() or request.user.username
+            msg = (
+                f"{nome} solicitou acesso ao seu quadro:\n"
+                f"{board.name}\n\n"
+                f"Abra o quadro para aprovar ou negar."
+            )
+            send_whatsapp(user=owner, phone_digits=phone, body=msg)
+            send_whatsapp(user=owner, phone_digits=phone, body=board.get_absolute_url())
+    except Exception:
+        pass
 
     try:
         send_mail(
