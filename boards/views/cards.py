@@ -1,9 +1,9 @@
 # boards/views/cards.py
 import json
+import logging
 import os
 import re
 import uuid
-import logging
 from datetime import datetime, timedelta, date as _date
 
 from django.contrib.auth.decorators import login_required
@@ -11,7 +11,7 @@ from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
-from django.db.models import F, Prefetch
+from django.db.models import F, Max, Prefetch
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
@@ -35,13 +35,9 @@ from ..permissions import can_edit_board  # noqa: F401
 
 from ..forms import CardForm
 from ..models import Board, BoardMembership, Card, CardAttachment, Column, CardSeen
-from boards.models import CardLog
-from boards.models import CardFollow, ColumnFollow 
-
+from boards.models import CardFollow, CardLog, ColumnFollow
 
 logger = logging.getLogger(__name__)
-
-
 
 # ============================================================
 # PERMISSÕES
@@ -253,8 +249,6 @@ def update_card(request, card_id):
     - Mantém seus logs atuais de prazo / data início / etc.
     - Fallback só quando realmente nada relevante mudou
     """
-    from django.utils.html import strip_tags
-    from django.utils.html import escape
 
     def _summarize_html(html: str, limit: int = 220) -> str:
         txt = strip_tags(html or "").strip()
@@ -584,8 +578,9 @@ def update_card(request, card_id):
         )
         .order_by("-created_at")
     )
-
+    # import tardio (NÃO REMOVER, evita ciclo de importação com logs/feed)
     from .activity import _decorate_logs_for_feed  # import tardio (anti-ciclo)
+    # import tardio (NÃO REMOVER, evita ciclo de importação com logs/feed)
     ctx["logs"] = _decorate_logs_for_feed(parents_qs)
 
     # SPLIT é o contrato
@@ -731,7 +726,7 @@ def restore_card(request, card_id):
         card.archived_at = None
 
         # coloca no fim da coluna (entre ativos não-arquivados)
-        from django.db.models import Max
+        
         last_pos = (
             Card.objects
             .filter(column=card.column, is_archived=False)
@@ -991,10 +986,9 @@ def _render_card_modal(request, card, context=None):
     ctx = context or _card_modal_context(card)
 
     # ✅ SEMPRE montar logs decorados (cm_type = system/files/comments)
-    from django.db.models import Prefetch
-    from boards.models import CardLog
+    # import tardio (NÃO REMOVER, evita ciclo de importação com logs/feed)
     from .activity import _decorate_logs_for_feed  # import tardio evita ciclo
-
+    # import tardio (NÃO REMOVER, evita ciclo de importação com logs/feed)
     parents_qs = (
         card.logs
         .filter(reply_to__isnull=True)
@@ -1078,7 +1072,8 @@ def card_modal(request, card_id):
     )
 
     # importa “tarde” pra não criar ciclo de import
-    from .activity import _decorate_logs_for_feed
+    from .activity import _decorate_logs_for_feed # import tardio (NÃO REMOVER, evita ciclo de importação com logs/feed)
+    # import tardio (NÃO REMOVER, evita ciclo de importação com logs/feed)
     parents = _decorate_logs_for_feed(parents_qs)
 
     ctx = _card_modal_context(card)
