@@ -346,14 +346,24 @@ def add_activity(request, card_id):
             followers = [u for u in followers if u and u.id != request.user.id]
             if followers:
                 snap = build_card_snapshot(card=card)
-                msg = format_card_message(title_prefix="📝 Atividade no card", snap=snap)
+
+                card_url = request.build_absolute_uri(f"/board/{board.id}/?card={card.id}")
+
+                msg = format_card_message(
+                    title_prefix="📝 Atividade no card",
+                    snap=snap,
+                )
+                msg = f"{msg}\n\n{card_url}"
+
                 notify_users_for_card(
                     card=card,
                     recipients=followers,
                     subject=f"Atividade no card: {snap.title}",
                     message=msg,
-                    include_link_as_second_whatsapp_message=True,
+                    include_link_as_second_whatsapp_message=False,
                 )
+
+
         except Exception:
             pass
 
@@ -414,17 +424,23 @@ def add_activity(request, card_id):
 
                     if followers:
                         snap = build_card_snapshot(card=card)
+
+                        card_url = request.build_absolute_uri(f"/board/{board.id}/?card={card.id}")
+
                         msg = format_card_message(
                             title_prefix="📝 Atividade no card",
                             snap=snap,
                         )
+                        msg = f"{msg}\n\n{card_url}"
+
                         notify_users_for_card(
                             card=card,
                             recipients=followers,
                             subject=f"Atividade no card: {snap.title}",
                             message=msg,
-                            include_link_as_second_whatsapp_message=True,
+                            include_link_as_second_whatsapp_message=False,
                         )
+
                 except Exception:
                     pass
 
@@ -466,7 +482,7 @@ def add_activity(request, card_id):
                             recipients=followers,
                             subject=f"Atividade no card: {snap.title}",
                             message=msg,
-                            include_link_as_second_whatsapp_message=True,
+                            include_link_as_second_whatsapp_message=False,
                         )
                 except Exception:
                     pass

@@ -30,7 +30,13 @@ function syncAccessRequests(boardId) {
 
 let __lastUnreadCount = null;
 let __lastUnreadFetchMs = 0;
-const UNREAD_FETCH_EVERY_MS = 20000; // 20s é mais que suficiente para     atualiazar o indicador de atividade
+// ============================================================
+// UNREAD BOARD BADGE THROTTLE (UNREAD_FETCH_EVERY_MS)
+// - POLLING (#TEMPO) / THROTTLE DO BADGE DE NÃO-LIDOS DO HISTÓRICO
+// - Limita chamadas do syncUnreadBadge (mesmo sendo chamado em vários gatilhos)
+// - Faz GET /board/<id>/history/unread-count/
+// ============================================================
+const UNREAD_FETCH_EVERY_MS = 10000; // 20s é mais que suficiente para     atualiazar o indicador de atividade
 
 
 (function () {
@@ -38,7 +44,13 @@ const UNREAD_FETCH_EVERY_MS = 20000; // 20s é mais que suficiente para     atua
   window.__BOARD_POLL_INSTALLED__ = true;
 
   // Ajuste fino: se quiser sobrescrever via console/localStorage futuramente
-  const POLL_MS = Number(window.BOARD_POLL_MS || 200000); //2min é mais que suficiente para atualizar cards na board
+  // ============================================================
+  // BOARD POLL (POLL_MS)
+  // - POLLING (#TEMPO) DE SINCRONIZAÇÃO DA BOARD (COLUNAS/CARDS)
+  // - Faz GET /board/<id>/poll/?v=<versao> e aplica swap do columns-list
+  // - Pausa em: modal aberto, drag, foco em input, aba escondida
+  // ============================================================
+  const POLL_MS = Number(window.BOARD_POLL_MS || 20000); //2min é mais que suficiente para atualizar cards na board
 
   function getBoardId() {
     // prioridade: window.BOARD_ID (setado no board_detail)
@@ -173,9 +185,12 @@ const UNREAD_FETCH_EVERY_MS = 20000; // 20s é mais que suficiente para     atua
 
 
 // ============================================================
-// ACCESS REQUESTS POLL (leve) — 5s
-// - Não troca colunas/cards, só o painel do owner
-// - Sem impacto visual no board
+// ACCESS REQUESTS POLL (ACCESS_POLL_MS)
+// - POLLING (#TEMPO) DA SOLICITAÇÃO DE ACESSO AO QUADRO (PAINEL DO OWNER)
+// - Não troca colunas/cards, só atualiza o bloco #cm-accessreq-root
+// - Faz GET em window.ACCESS_REQUESTS_POLL_URL
+// ============================================================
+// - POLLING DA SOLICITAÇÃO DE ACESSO AO QUADRO
 // ============================================================
 const ACCESS_POLL_MS = 10000;
 
@@ -198,6 +213,9 @@ setInterval(() => {
 document.addEventListener("DOMContentLoaded", () => {
   const boardId = getBoardId();
 
+
+  // BOOTSTRAP HYDRATE (50ms/250ms)
+  // - Rehidratação pós-load para garantir bindings (HTMX/Sortable/etc.)
   bootstrapHydrate();
   setTimeout(bootstrapHydrate, 50);
   setTimeout(bootstrapHydrate, 250);
