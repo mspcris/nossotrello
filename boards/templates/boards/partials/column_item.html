@@ -114,8 +114,9 @@
         <div id="col-menu-{{ column.id }}"
              data-col-menu-popover="{{ column.id }}"
              class="hidden absolute right-0 mt-2 w-60 rounded-lg shadow-lg
-                    bg-white/90 backdrop-blur-md border border-gray-300 p-3 z-50
+                    bg-white/90 backdrop-blur-md border border-gray-300 p-3 z-50 text-gray-900
                     max-h-[70vh] overflow-y-auto overscroll-contain">
+
 
           <!-- A) Excluir cards (toggle: entrar/sair) -->
           <button type="button"
@@ -162,7 +163,8 @@
           <!-- C) Alterar cor (abre seletor atual) -->
           <button type="button"
                   class="w-full text-left text-sm px-3 py-2 rounded-lg
-                         bg-white/70 border border-gray-200 hover:bg-white transition"
+                          bg-white/70 border border-gray-200 hover:bg-white transition text-gray-900 hover:text-gray-900"
+
                   onpointerdown="event.stopPropagation();"
                   ontouchstart="event.stopPropagation();"
                   onclick="event.preventDefault(); event.stopPropagation(); window.__cmToggleColumnColorPicker('{{ column.id }}');">

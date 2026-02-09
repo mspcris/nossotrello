@@ -2825,6 +2825,32 @@ html.dark #modal #modal-breadcrumb{
   scrollbar-gutter: stable;
 }
 
+/* ============================================================
+   MOBILE FIX — no split, voltar para 1 scroll mestre no modal
+   Motivo: em mobile o split vira coluna e o 2º painel fica inacessível
+   ============================================================ */
+@media (max-width: 1024px){
+  /* reativa o scroll do modal (mestre) */
+  #cm-root[data-cm-mode="split"] #modal-body.card-modal-scroll,
+  #cm-root[data-cm-mode="split"] #card-modal-root .card-modal-scroll{
+    overflow: auto !important;
+  }
+
+  /* deixa o container crescer (sem “height: 100%” travando a pilha) */
+  #cm-root[data-cm-mode="split"]{
+    height: auto;
+  }
+  #cm-root[data-cm-mode="split"] .cm-split{
+    height: auto !important;
+    min-height: 0;
+  }
+
+  /* desliga os 2 scrolls no mobile; quem rola é o modal */
+  #cm-root[data-cm-mode="split"] .cm-main,
+  #cm-root[data-cm-mode="split"] .cm-activity{
+    overflow: visible !important;
+  }
+}
 
 
 
