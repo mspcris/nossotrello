@@ -58,8 +58,25 @@ from .helpers import (
 logger = logging.getLogger(__name__)
 
 
+from collections import defaultdict
+from django.templatetags.static import static as static_url
 
 
+def _user_avatar_url(u) -> str:
+    prof = getattr(u, "profile", None)
+
+    # 1) avatar upload (ImageField)
+    if prof and getattr(prof, "avatar", None):
+        try:
+            return prof.avatar.url
+        except Exception:
+            pass
+
+    # 2) avatar preset (avatar_choice) -> /static/images/avatar/<arquivo>
+    if prof and getattr(prof, "avatar_choice", ""):
+        return static_url(f"images/avatar/{prof.avatar_choice}")
+
+    return ""
 
 
 
@@ -520,16 +537,7 @@ def board_detail(request, board_id):
                 cid = int(cf.card_id)
 
                 # avatar
-                avatar_url = None
-                try:
-                    prof = getattr(u, "profile", None)
-                    av = getattr(prof, "avatar", None) if prof else None
-                    if av and getattr(av, "url", None):
-                        avatar_url = av.url
-                except Exception:
-                    avatar_url = None
-
-
+                avatar_url = _user_avatar_url(u)
 
                 # nome exibível
                 try:
@@ -1524,15 +1532,7 @@ def board_poll(request, board_id):
 
             cid = int(cf.card_id)
 
-            avatar_url = None
-            try:
-                prof = getattr(u, "profile", None)
-                av = getattr(prof, "avatar", None) if prof else None
-                if av and getattr(av, "url", None):
-                    avatar_url = av.url
-            except Exception:
-                avatar_url = None
-
+            avatar_url = _user_avatar_url(u)
 
             try:
                 prof = getattr(u, "profile", None)
