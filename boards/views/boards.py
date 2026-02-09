@@ -524,10 +524,11 @@ def board_detail(request, board_id):
                 try:
                     prof = getattr(u, "profile", None)
                     av = getattr(prof, "avatar", None) if prof else None
-                    if av and getattr(av, "name", ""):
+                    if av and getattr(av, "url", None):
                         avatar_url = av.url
                 except Exception:
                     avatar_url = None
+
 
 
                 # nome exibível
@@ -1527,9 +1528,11 @@ def board_poll(request, board_id):
             try:
                 prof = getattr(u, "profile", None)
                 av = getattr(prof, "avatar", None) if prof else None
-                avatar_url = av.url if av else None
+                if av and getattr(av, "url", None):
+                    avatar_url = av.url
             except Exception:
                 avatar_url = None
+
 
             try:
                 prof = getattr(u, "profile", None)
