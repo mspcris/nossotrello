@@ -495,6 +495,62 @@ def board_detail(request, board_id):
             .values_list("card_id", flat=True)
         )
 
+        # ============================================================
+    # FOLLOWERS (QUEM SEGUE) POR CARD — BOOTSTRAP INICIAL
+    # ============================================================
+    followers_by_card = {}
+    followers_count_by_card = {}
+
+    if request.user.is_authenticated:
+        try:
+            # ordem estável (id) para o "stack" visual
+            qs_follows = (
+                CardFollow.objects
+                .filter(card__column__board=board)
+                .select_related("user", "user__profile")
+                .order_by("id")
+            )
+
+            for cf in qs_follows:
+                cid = int(cf.card_id)
+                u = cf.user
+
+                # avatar
+                avatar_url = None
+                try:
+                    prof = getattr(u, "profile", None)
+                    av = getattr(prof, "avatar", None) if prof else None
+                    avatar_url = av.url if av else None
+                except Exception:
+                    avatar_url = None
+
+                # nome exibível
+                try:
+                    prof = getattr(u, "profile", None)
+                    display_name = (getattr(prof, "display_name", "") or "").strip()
+                except Exception:
+                    display_name = ""
+
+                name = (
+                    display_name
+                    or (u.get_full_name() or "").strip()
+                    or (u.username or "").strip()
+                    or (u.email or "").strip()
+                    or "Usuário"
+                )
+
+                followers_by_card.setdefault(cid, []).append({
+                    "id": int(u.id),
+                    "name": name,
+                    "avatar_url": avatar_url,
+                })
+
+            # contagem total por card
+            followers_count_by_card = {cid: len(lst) for cid, lst in followers_by_card.items()}
+
+        except Exception:
+            followers_by_card = {}
+            followers_count_by_card = {}
 
 
 
@@ -502,13 +558,18 @@ def board_detail(request, board_id):
     # ✅ FIX: INJETAR A CONTAGEM NO OBJETO CARD ANTES DO 1º RENDER
     # (assim o template do card já nasce com o número, sem esperar poll/js)
     # ============================================================
+        # ============================================================
+    # ✅ FIX: INJETAR NO OBJETO CARD ANTES DO 1º RENDER
+    # ============================================================
     try:
         for col in columns:
-            # col.cards é o RelatedManager prefetchado por .prefetch_related("cards")
             for c in col.cards.all():
                 c.unread_count = int(unread_by_card.get(c.id, 0) or 0)
                 c.is_following = (c.id in followed_ids)
 
+                preview = followers_by_card.get(c.id, []) or []
+                c.followers_preview = preview[:4]
+                c.followers_count = int(followers_count_by_card.get(c.id, 0) or 0)
     except Exception:
         pass
 
@@ -1399,20 +1460,80 @@ def board_poll(request, board_id):
     )
 
     # ============================================================
-    # FOLLOWING POR CARD (POLL)
+    # FOLLOWING POR CARD (BOOTSTRAP INICIAL)
     # ============================================================
-    followed_ids = set(
-        CardFollow.objects
-        .filter(user=request.user, card__column__board=board)
-        .values_list("card_id", flat=True)
-    )
+    followed_ids = set()
+    if request.user.is_authenticated:
+        followed_ids = set(
+            CardFollow.objects
+            .filter(user=request.user, card__column__board=board)
+            .values_list("card_id", flat=True)
+        )
+
+    # ============================================================
+    # FOLLOWERS (QUEM SEGUE) POR CARD — BOOTSTRAP INICIAL
+    # ============================================================
+    followers_by_card = {}
+    followers_count_by_card = {}
+
+    if request.user.is_authenticated:
+        try:
+            qs_follows = (
+                CardFollow.objects
+                .filter(card__column__board=board)
+                .select_related("user", "user__profile")
+                .order_by("id")
+            )
+
+            for cf in qs_follows:
+                cid = int(cf.card_id)
+                u = cf.user
+
+                avatar_url = None
+                try:
+                    prof = getattr(u, "profile", None)
+                    av = getattr(prof, "avatar", None) if prof else None
+                    avatar_url = av.url if av else None
+                except Exception:
+                    avatar_url = None
+
+                try:
+                    prof = getattr(u, "profile", None)
+                    display_name = (getattr(prof, "display_name", "") or "").strip()
+                except Exception:
+                    display_name = ""
+
+                name = (
+                    display_name
+                    or (u.get_full_name() or "").strip()
+                    or (u.username or "").strip()
+                    or (u.email or "").strip()
+                    or "Usuário"
+                )
+
+                followers_by_card.setdefault(cid, []).append({
+                    "id": int(u.id),
+                    "name": name,
+                    "avatar_url": avatar_url,
+                })
+
+            followers_count_by_card = {cid: len(lst) for cid, lst in followers_by_card.items()}
+
+        except Exception:
+            followers_by_card = {}
+            followers_count_by_card = {}
 
     try:
         for col in columns:
             for c in col.cards.all():
                 c.is_following = (c.id in followed_ids)
+
+                preview = followers_by_card.get(c.id, []) or []
+                c.followers_preview = preview[:4]
+                c.followers_count = int(followers_count_by_card.get(c.id, 0) or 0)
     except Exception:
         pass
+
 
 
     html = render_to_string(
@@ -1427,6 +1548,7 @@ def board_poll(request, board_id):
         "html": html,
     })
 
+    
 
 @login_required
 def toggle_aggregator_column(request, board_id):
