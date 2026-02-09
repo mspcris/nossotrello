@@ -1391,3 +1391,39 @@ li[data-card-id][data-term-status="ok"] .term-badge{ color: #16a34a; }
   min-width:20px;
   margin-left:-7px;
 }
+
+
+
+/* ============================================================
+   [FOLLOW] Olho “só no hover” quando NÃO está seguindo
+   - Evita “poluição visual” com vários olhos na tela
+   - Mantém visível quando estiver seguindo (is-following)
+   - Em touch (sem hover), mantém visível para não “sumir”
+   ============================================================ */
+
+.card-item .card-follow-btn{
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .15s ease, transform .15s ease;
+}
+
+/* Hover do card: aparece */
+.card-item:hover .card-follow-btn{
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Se está seguindo (ou pendente), SEMPRE aparece */
+.card-item .card-follow-btn.is-following,
+.card-item .card-follow-btn.is-following-pending{
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Dispositivos sem hover (mobile/tablet): não some */
+@media (hover: none){
+  .card-item .card-follow-btn{
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
