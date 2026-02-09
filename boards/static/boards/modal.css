@@ -2877,7 +2877,9 @@ html.dark #modal #modal-breadcrumb{
 
 /* ============================================================
    FIX — QUILL (Descrição) auto-grow via CSS (sem JS)
-   Colar NO FINAL do modal.css
+   AJUSTE PARA FEED FICAR DESTRAVADO EM BAIXO DA DESCRIÇÃO EM MOBILE (QUANDO O TECLADO ABRE)
+      - o Quill tem height: 100% hardcoded, então precisamos forçar auto-grow via CSS
+      - o ideal seria fazer isso via JS, mas esse é um fix rápido e “bom o suficiente” para destravar o feed em mobile (que estava preso com o teclado aberto) 
    ============================================================ */
 
 /* Snow theme do Quill costuma forçar height: 100%; então precisamos quebrar isso */
