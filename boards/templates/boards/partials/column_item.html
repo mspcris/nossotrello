@@ -1,6 +1,13 @@
 
 <!-- /boards/templates/boards/partials/column_item.html -->
-<div class="column-item relative w-72 flex-shrink-0 rounded-xl shadow-lg overflow-visible
+{% comment %} <div class="column-item relative w-72 flex-shrink-0 rounded-xl shadow-lg overflow-visible
+            column-glass {{ column.theme|default:'gray'|add:'-column-bg' }}
+            flex flex-col max-h-[calc(100vh-180px)]"
+     data-column-id="{{ column.id }}"> {% endcomment %}
+
+
+     <div id="col-{{ column.id }}"
+     class="column-item relative w-72 flex-shrink-0 rounded-xl shadow-lg overflow-visible
             column-glass {{ column.theme|default:'gray'|add:'-column-bg' }}
             flex flex-col max-h-[calc(100vh-180px)]"
      data-column-id="{{ column.id }}">
@@ -156,7 +163,7 @@
                   onclick="event.preventDefault(); event.stopPropagation(); if(confirm('Excluir esta coluna e todos os cards nela?')) { htmx.trigger(this, 'confirmed'); }"
                   hx-post="{% url 'boards:delete_column' column.id %}"
                   hx-trigger="confirmed"
-                  hx-target="closest .column-item"
+                  hx-target="#col-{{ column.id }}"
                   hx-swap="delete">
             Excluir coluna
           </button>
@@ -182,16 +189,19 @@
                 <!-- IMPORTANTE: virou BUTTON (anti-drag no mobile) -->
                 <button type="button"
                         class="w-7 h-7 rounded-full cursor-pointer border border-gray-300
-                               hover:scale-110 transition"
+                              hover:scale-110 transition"
                         style="background-color: var(--{{ value }}-color);"
                         onpointerdown="event.stopPropagation();"
                         ontouchstart="event.stopPropagation();"
-                        onclick="event.preventDefault(); event.stopPropagation();"
                         hx-post="{% url 'boards:set_column_theme' column.id %}"
                         hx-vals='{"theme": "{{ value }}"}'
-                        hx-target="closest .column-glass"
+                        hx-target="#col-{{ column.id }}"
                         hx-swap="outerHTML">
                 </button>
+
+
+</button>
+
               {% endfor %}
             </div>
           </div>
