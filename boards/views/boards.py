@@ -5,6 +5,7 @@ import uuid
 import requests
 import hashlib
 import random
+import logging
 from types import SimpleNamespace
 
 from django.conf import settings
@@ -16,8 +17,9 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
-from django.db import models
-from django.db import transaction
+from django.contrib.auth.tokens import default_token_generator
+from django.core.mail import EmailMultiAlternatives
+from django.db import models, transaction
 from django.db.models import Q, Max, Prefetch
 from django.db.models.functions import Coalesce
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
@@ -25,26 +27,25 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.encoding import force_bytes
 from django.utils.html import escape
+from django.utils.http import urlsafe_base64_encode
 from django.views.decorators.http import require_POST, require_http_methods
 
-from django.contrib.auth.tokens import default_token_generator
-from django.core.mail import EmailMultiAlternatives
-from django.utils.encoding import force_bytes
-from django.utils.http import urlsafe_base64_encode
-import logging
-
 from ..models import (
+    Board,
+    Column,
+    Card,
+    BoardMembership,
+    Organization,
     CardLog,
     BoardActivityReadState,
     BoardGroup,
     BoardGroupItem,
     BoardAccessRequest,
-    Card,
     CardSeen,
     CardFollow,
 )
-
 
 from .helpers import (
     DEFAULT_WALLPAPER_FILENAME,
@@ -54,9 +55,7 @@ from .helpers import (
     get_or_create_user_default_organization,
 )
 
-from .helpers import Board, Column, Card, BoardMembership, Organization
-
-
+logger = logging.getLogger(__name__)
 
 
 
@@ -495,34 +494,41 @@ def board_detail(request, board_id):
             .values_list("card_id", flat=True)
         )
 
-        # ============================================================
+    # ============================================================
     # FOLLOWERS (QUEM SEGUE) POR CARD — BOOTSTRAP INICIAL
+    # Regra: NÃO incluir o próprio request.user (não ocupa espaço)
     # ============================================================
     followers_by_card = {}
     followers_count_by_card = {}
 
     if request.user.is_authenticated:
         try:
-            # ordem estável (id) para o "stack" visual
             qs_follows = (
                 CardFollow.objects
                 .filter(card__column__board=board)
                 .select_related("user", "user__profile")
-                .order_by("id")
+                .order_by("id")  # ordem estável pro stack
             )
 
             for cf in qs_follows:
-                cid = int(cf.card_id)
                 u = cf.user
+
+                # regra: não mostrar "eu mesmo" no stack
+                if int(u.id) == int(request.user.id):
+                    continue
+
+                cid = int(cf.card_id)
 
                 # avatar
                 avatar_url = None
                 try:
                     prof = getattr(u, "profile", None)
                     av = getattr(prof, "avatar", None) if prof else None
-                    avatar_url = av.url if av else None
+                    if av and getattr(av, "name", ""):
+                        avatar_url = av.url
                 except Exception:
                     avatar_url = None
+
 
                 # nome exibível
                 try:
@@ -545,21 +551,15 @@ def board_detail(request, board_id):
                     "avatar_url": avatar_url,
                 })
 
-            # contagem total por card
             followers_count_by_card = {cid: len(lst) for cid, lst in followers_by_card.items()}
 
         except Exception:
             followers_by_card = {}
             followers_count_by_card = {}
 
-
-
     # ============================================================
-    # ✅ FIX: INJETAR A CONTAGEM NO OBJETO CARD ANTES DO 1º RENDER
+    # FIX: INJETAR NO OBJETO CARD ANTES DO 1º RENDER
     # (assim o template do card já nasce com o número, sem esperar poll/js)
-    # ============================================================
-        # ============================================================
-    # ✅ FIX: INJETAR NO OBJETO CARD ANTES DO 1º RENDER
     # ============================================================
     try:
         for col in columns:
@@ -1025,8 +1025,6 @@ def remove_home_wallpaper(request):
     return HttpResponse('<script>location.reload()</script>')
 
 
-logger = logging.getLogger(__name__)
-
 
 # ======================================================================
 # COMPARTILHAR BOARD
@@ -1460,72 +1458,111 @@ def board_poll(request, board_id):
     )
 
     # ============================================================
-    # FOLLOWING POR CARD (BOOTSTRAP INICIAL)
+    # UNREAD POR CARD (POLL)
+    # ============================================================
+    unread_by_card = {}
+
+    try:
+        st = BoardActivityReadState.objects.filter(board=board, user=request.user).first()
+        last_seen = st.last_seen_at if st and st.last_seen_at else None
+
+        qs_logs = CardLog.objects.filter(
+            card__column__board=board,
+            card__is_deleted=False,
+        )
+
+        if last_seen:
+            qs_logs = qs_logs.filter(created_at__gt=last_seen)
+
+        actor_label = _actor_label(request)
+        if actor_label:
+            qs_logs = qs_logs.exclude(content__icontains=actor_label)
+
+        data = (
+            qs_logs.values("card_id")
+            .annotate(c=models.Count("id"))
+            .values_list("card_id", "c")
+        )
+        unread_by_card = {card_id: c for card_id, c in data}
+    except Exception:
+        unread_by_card = {}
+
+    # ============================================================
+    # FOLLOWING POR CARD (POLL)
     # ============================================================
     followed_ids = set()
-    if request.user.is_authenticated:
+    try:
         followed_ids = set(
             CardFollow.objects
             .filter(user=request.user, card__column__board=board)
             .values_list("card_id", flat=True)
         )
+    except Exception:
+        followed_ids = set()
 
     # ============================================================
-    # FOLLOWERS (QUEM SEGUE) POR CARD — BOOTSTRAP INICIAL
+    # FOLLOWERS (QUEM SEGUE) POR CARD — POLL
     # ============================================================
     followers_by_card = {}
     followers_count_by_card = {}
 
-    if request.user.is_authenticated:
-        try:
-            qs_follows = (
-                CardFollow.objects
-                .filter(card__column__board=board)
-                .select_related("user", "user__profile")
-                .order_by("id")
+    try:
+        qs_follows = (
+            CardFollow.objects
+            .filter(card__column__board=board)
+            .select_related("user", "user__profile")
+            .order_by("id")
+        )
+
+        for cf in qs_follows:
+            u = cf.user
+
+            # regra: não mostrar "eu mesmo" no stack
+            if int(u.id) == int(request.user.id):
+                continue
+
+            cid = int(cf.card_id)
+
+            avatar_url = None
+            try:
+                prof = getattr(u, "profile", None)
+                av = getattr(prof, "avatar", None) if prof else None
+                avatar_url = av.url if av else None
+            except Exception:
+                avatar_url = None
+
+            try:
+                prof = getattr(u, "profile", None)
+                display_name = (getattr(prof, "display_name", "") or "").strip()
+            except Exception:
+                display_name = ""
+
+            name = (
+                display_name
+                or (u.get_full_name() or "").strip()
+                or (u.username or "").strip()
+                or (u.email or "").strip()
+                or "Usuário"
             )
 
-            for cf in qs_follows:
-                cid = int(cf.card_id)
-                u = cf.user
+            followers_by_card.setdefault(cid, []).append({
+                "id": int(u.id),
+                "name": name,
+                "avatar_url": avatar_url,
+            })
 
-                avatar_url = None
-                try:
-                    prof = getattr(u, "profile", None)
-                    av = getattr(prof, "avatar", None) if prof else None
-                    avatar_url = av.url if av else None
-                except Exception:
-                    avatar_url = None
+        followers_count_by_card = {cid: len(lst) for cid, lst in followers_by_card.items()}
+    except Exception:
+        followers_by_card = {}
+        followers_count_by_card = {}
 
-                try:
-                    prof = getattr(u, "profile", None)
-                    display_name = (getattr(prof, "display_name", "") or "").strip()
-                except Exception:
-                    display_name = ""
-
-                name = (
-                    display_name
-                    or (u.get_full_name() or "").strip()
-                    or (u.username or "").strip()
-                    or (u.email or "").strip()
-                    or "Usuário"
-                )
-
-                followers_by_card.setdefault(cid, []).append({
-                    "id": int(u.id),
-                    "name": name,
-                    "avatar_url": avatar_url,
-                })
-
-            followers_count_by_card = {cid: len(lst) for cid, lst in followers_by_card.items()}
-
-        except Exception:
-            followers_by_card = {}
-            followers_count_by_card = {}
-
+    # ============================================================
+    # INJEÇÃO NO OBJETO CARD ANTES DO RENDER DO PARTIAL
+    # ============================================================
     try:
         for col in columns:
             for c in col.cards.all():
+                c.unread_count = int(unread_by_card.get(c.id, 0) or 0)
                 c.is_following = (c.id in followed_ids)
 
                 preview = followers_by_card.get(c.id, []) or []
@@ -1533,8 +1570,6 @@ def board_poll(request, board_id):
                 c.followers_count = int(followers_count_by_card.get(c.id, 0) or 0)
     except Exception:
         pass
-
-
 
     html = render_to_string(
         "boards/partials/columns_block.html",
@@ -1717,8 +1752,8 @@ def request_board_access(request, board_id):
 
     # Cria a solicitação
     req_obj, created = BoardAccessRequest.objects.get_or_create(
-    board=board,
-    user=request.user
+        board=board,
+        user=request.user,
     )
 
     # --------------------------------------------------
@@ -1769,7 +1804,7 @@ def request_board_access(request, board_id):
         from boards.services.notifications import send_whatsapp
         import re
 
-        owner = board.owner
+        owner = owner_user
         prof = getattr(owner, "profile", None)
 
         phone = getattr(prof, "telefone", "") if prof else ""
@@ -1787,7 +1822,7 @@ def request_board_access(request, board_id):
                 f"Abra o quadro para aprovar ou negar."
             )
             send_whatsapp(user=owner, phone_digits=phone, body=msg)
-            send_whatsapp(user=owner, phone_digits=phone, body=board.get_absolute_url())
+            send_whatsapp(user=owner, phone_digits=phone, body=board_url)
     except Exception:
         pass
 

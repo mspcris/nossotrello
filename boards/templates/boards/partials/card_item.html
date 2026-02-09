@@ -89,6 +89,37 @@
 </div>
 
 
+
+{# Followers stack (preview até 4) #}
+{% if card.followers_preview %}
+  <div class="card-followers" aria-label="Seguidores do card">
+    {% for f in card.followers_preview %}
+      {% if f.avatar_url %}
+        <img class="card-follower"
+             src="{{ f.avatar_url }}"
+             alt="{{ f.name }}"
+             title="{{ f.name }}" />
+      {% else %}
+        <span class="card-follower card-follower--initials"
+              title="{{ f.name }}"
+              aria-label="{{ f.name }}">
+          {{ f.name|default:"U"|slice:":1"|upper }}
+        </span>
+      {% endif %}
+    {% endfor %}
+
+    {% if card.followers_count and card.followers_count > card.followers_preview|length %}
+      <span class="card-follower card-follower--more"
+            title="+{{ card.followers_count }} seguidores">
+        +{{ card.followers_count }}
+      </span>
+    {% endif %}
+  </div>
+{% endif %}
+
+
+
+
   {# TAGS #}
   {% if card.tags %}
     <div class="flex flex-wrap gap-1 mb-2">
