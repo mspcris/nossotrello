@@ -338,6 +338,11 @@ urlpatterns = [
     # Tags
     path("cards/<int:card_id>/tag-color/", cards_views.set_tag_color, name="set_tag_color"),
     path("card/<int:card_id>/remove_tag/", cards_views.remove_tag, name="remove_tag"),
+    # Tag Catalog (etiquetas fixas do usuário, por board)
+    path("board/<int:board_id>/tag-catalog/", cards_views.tag_catalog_get, name="tag_catalog_get"),
+    path("board/<int:board_id>/tag-catalog/set/", cards_views.tag_catalog_set, name="tag_catalog_set"),
+    path("board/<int:board_id>/tag-catalog/delete/", cards_views.tag_catalog_delete, name="tag_catalog_delete"),
+
 
     # Capa do card
     path("card/<int:card_id>/cover/set/", cards_views.set_card_cover, name="set_card_cover"),
