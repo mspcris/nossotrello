@@ -425,21 +425,22 @@ def add_activity(request, card_id):
                     if followers:
                         snap = build_card_snapshot(card=card)
 
-                        card_url = request.build_absolute_uri(f"/board/{board.id}/?card={card.id}")
+                    card_url = request.build_absolute_uri(f"/board/{board.id}/?card={card.id}")
 
-                        msg = format_card_message(
-                            title_prefix="📝 Atividade no card",
-                            snap=snap,
-                        )
-                        msg = f"{msg}\n\n{card_url}"
+                    msg = format_card_message(
+                        title_prefix="📝 Atividade no card",
+                        snap=snap,
+                    )
+                    msg = f"{msg}\n\n{card_url}"
 
-                        notify_users_for_card(
-                            card=card,
-                            recipients=followers,
-                            subject=f"Atividade no card: {snap.title}",
-                            message=msg,
-                            include_link_as_second_whatsapp_message=False,
-                        )
+                    notify_users_for_card(
+                        card=card,
+                        recipients=followers,
+                        subject=f"Atividade no card: {snap.title}",
+                        message=msg,
+                        include_link_as_second_whatsapp_message=False,
+                    )
+
 
                 except Exception:
                     pass
