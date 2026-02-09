@@ -344,16 +344,15 @@ def add_activity(request, card_id):
         try:
             followers = [cf.user for cf in card.follows.select_related("user").all()]
             followers = [u for u in followers if u and u.id != request.user.id]
+
             if followers:
                 snap = build_card_snapshot(card=card)
-
                 card_url = request.build_absolute_uri(f"/board/{board.id}/?card={card.id}")
 
                 msg = format_card_message(
                     title_prefix="📝 Atividade no card",
                     snap=snap,
                 )
-                msg = f"{msg}\n\n{card_url}"
 
                 notify_users_for_card(
                     card=card,
@@ -361,11 +360,13 @@ def add_activity(request, card_id):
                     subject=f"Atividade no card: {snap.title}",
                     message=msg,
                     include_link_as_second_whatsapp_message=False,
+                    exclude_actor=True,
+                    actor=request.user,
                 )
-
 
         except Exception:
             pass
+
 
         board.version += 1
         board.save(update_fields=["version"])
@@ -424,26 +425,27 @@ def add_activity(request, card_id):
 
                     if followers:
                         snap = build_card_snapshot(card=card)
+                        card_url = request.build_absolute_uri(f"/board/{board.id}/?card={card.id}")
 
-                    card_url = request.build_absolute_uri(f"/board/{board.id}/?card={card.id}")
+                        msg = format_card_message(
+                            title_prefix="📝 Atividade no card",
+                            snap=snap,
+                        )
 
-                    msg = format_card_message(
-                        title_prefix="📝 Atividade no card",
-                        snap=snap,
-                    )
-                    msg = f"{msg}\n\n{card_url}"
-
-                    notify_users_for_card(
-                        card=card,
-                        recipients=followers,
-                        subject=f"Atividade no card: {snap.title}",
-                        message=msg,
-                        include_link_as_second_whatsapp_message=False,
-                    )
-
+                        notify_users_for_card(
+                            card=card,
+                            recipients=followers,
+                            subject=f"Atividade no card: {snap.title}",
+                            message=msg,
+                            include_link_as_second_whatsapp_message=False,
+                            exclude_actor=True,
+                            actor=request.user,
+                        )
 
                 except Exception:
                     pass
+
+
 
                 board.version += 1
                 board.save(update_fields=["version"])
@@ -484,7 +486,11 @@ def add_activity(request, card_id):
                             subject=f"Atividade no card: {snap.title}",
                             message=msg,
                             include_link_as_second_whatsapp_message=False,
+                            exclude_actor=True,
+                            actor=request.user,
                         )
+
+
                 except Exception:
                     pass
 
