@@ -401,6 +401,12 @@ class UserProfile(models.Model):
 
     notify_only_owned_or_mentioned = models.BooleanField(default=False)
 
+    tag_catalog = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Catálogo de etiquetas do usuário, por board, com cor"
+    )
+
 
 
     avatar_choice = models.CharField(max_length=60, blank=True, default="")
@@ -436,6 +442,8 @@ class UserProfile(models.Model):
         default="display_name",
         blank=True,
     )
+
+    
 
     created_at = models.DateTimeField(auto_now_add=True)
 

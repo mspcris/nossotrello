@@ -351,6 +351,25 @@ def update_card(request, card_id):
     added = [t for t in new_tags if t not in old_tags]
 
     # ============================================================
+    # APPLY TAG COLORS FROM USER CATALOG (default)
+    # ============================================================
+    profile = request.user.profile
+    catalog = (profile.tag_catalog or {}).get(str(board.id), [])
+
+    if added and catalog:
+        tag_colors = card.tag_colors or {}
+
+        for tag in added:
+            if tag not in tag_colors:
+                for c in catalog:
+                    if c["name"] == tag:
+                        tag_colors[tag] = c["color"]
+                        break
+
+        card.tag_colors = tag_colors
+        card.save(update_fields=["tag_colors"])
+
+    # ============================================================
     # SAVE CARD
     # ============================================================
     card.save()
@@ -1547,6 +1566,64 @@ def reorder_cards_in_column(request, column_id: int):
         # Atualiza versão do board para polling refletir mudança (mesma estratégia de criação/movimento)
         board.version += 1
         board.save(update_fields=["version"])  # padrão usado no fluxo de escrita :contentReference[oaicite:3]{index=3}
+
+    return JsonResponse({"ok": True})
+
+
+
+
+@login_required
+def tag_catalog_get(request, board_id):
+    profile = request.user.profile
+    catalog = profile.tag_catalog or {}
+    return JsonResponse({
+        "tags": catalog.get(str(board_id), [])
+    })
+
+
+@login_required
+@require_POST
+def tag_catalog_set(request, board_id):
+    profile = request.user.profile
+    payload = json.loads(request.body or "{}")
+
+    name = (payload.get("tag") or "").strip()
+    color = (payload.get("color") or "").strip()
+
+    if not name or not re.match(r"^#[0-9a-fA-F]{6}$", color):
+        return JsonResponse({"error": "invalid"}, status=400)
+
+    catalog = profile.tag_catalog or {}
+    tags = catalog.get(str(board_id), [])
+
+    for t in tags:
+        if t["name"] == name:
+            t["color"] = color
+            break
+    else:
+        tags.append({"name": name, "color": color})
+
+    catalog[str(board_id)] = tags
+    profile.tag_catalog = catalog
+    profile.save(update_fields=["tag_catalog"])
+
+    return JsonResponse({"ok": True})
+
+
+@login_required
+@require_POST
+def tag_catalog_delete(request, board_id):
+    profile = request.user.profile
+    payload = json.loads(request.body or "{}")
+
+    name = (payload.get("tag") or "").strip()
+    catalog = profile.tag_catalog or {}
+
+    tags = [t for t in catalog.get(str(board_id), []) if t["name"] != name]
+    catalog[str(board_id)] = tags
+
+    profile.tag_catalog = catalog
+    profile.save(update_fields=["tag_catalog"])
 
     return JsonResponse({"ok": True})
 
