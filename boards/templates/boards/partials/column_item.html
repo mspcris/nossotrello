@@ -101,21 +101,24 @@
       <!-- menu 3 dots (POPOVER) -->
       <div class="relative" data-col-menu-scope="{{ column.id }}">
         <button type="button"
-                class="px-2 py-1 rounded-lg bg-white/20 border border-white/40
-                       text-gray-700 hover:text-gray-900 backdrop-blur-sm transition"
-                data-col-menu-trigger="{{ column.id }}"
-                aria-expanded="false"
-                onpointerdown="event.stopPropagation();"
-                ontouchstart="event.stopPropagation();"
-                onclick="event.preventDefault(); event.stopPropagation(); window.__cmToggleColMenu('{{ column.id }}');">
-          ⋮
-        </button>
+        class="px-2 py-1 rounded-lg bg-white/20 border border-white/40
+               text-gray-700 hover:text-gray-900 backdrop-blur-sm transition"
+        data-col-menu-btn
+        data-col-id="{{ column.id }}"
+        aria-expanded="false"
+        onpointerdown="event.stopPropagation();"
+        ontouchstart="event.stopPropagation();">
+  ⋮
+</button>
+
 
         <div id="col-menu-{{ column.id }}"
-             data-col-menu-popover="{{ column.id }}"
-             class="hidden absolute right-0 mt-2 w-60 rounded-lg shadow-lg
-                    bg-white/90 backdrop-blur-md border border-gray-300 p-3 z-50 text-gray-900
-                    max-h-[70vh] overflow-y-auto overscroll-contain">
+     data-col-menu-popover
+     data-col-id="{{ column.id }}"
+     class="hidden w-60 rounded-xl shadow-2xl
+            bg-white/95 text-gray-900 border border-gray-400 p-3
+            max-h-[70vh] overflow-y-auto overscroll-contain">
+
 
 
           <!-- A) Excluir cards (toggle: entrar/sair) -->
@@ -810,6 +813,86 @@
 
 
 })();
+
+
+(function () {
+  if (window.__cmColMenuPopoverInstalled) return;
+  window.__cmColMenuPopoverInstalled = true;
+
+  const GAP = 8;
+
+  function qsa(sel, root=document){ return Array.from(root.querySelectorAll(sel)); }
+
+  function closeAll() {
+    qsa("[data-col-menu-popover]").forEach(p => {
+      p.classList.add("hidden");
+      p.style.position = "";
+      p.style.left = "";
+      p.style.top = "";
+      p.style.zIndex = "";
+    });
+    qsa("[data-col-menu-btn]").forEach(b => b.setAttribute("aria-expanded", "false"));
+  }
+
+  function positionPopover(btn, pop) {
+    pop.classList.remove("hidden");
+
+    // portal pro body
+    if (pop.parentElement !== document.body) document.body.appendChild(pop);
+
+    pop.style.position = "fixed";
+    pop.style.zIndex = "9999";
+
+    const r = btn.getBoundingClientRect();
+    const pr = pop.getBoundingClientRect();
+
+    const vw = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
+    const vh = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
+
+    // default: abre à direita do botão (fora da coluna)
+    let left = r.right + GAP;
+    let top  = r.top;
+
+    // se estourar à direita, abre à esquerda
+    if (left + pr.width > vw - 8) left = Math.max(8, r.left - pr.width - GAP);
+
+    // se estourar embaixo, ajusta pra caber
+    if (top + pr.height > vh - 8) top = Math.max(8, vh - pr.height - 8);
+
+    pop.style.left = `${Math.round(left)}px`;
+    pop.style.top  = `${Math.round(top)}px`;
+  }
+
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest?.("[data-col-menu-btn]");
+    if (!btn) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const colId = btn.getAttribute("data-col-id");
+    const pop = document.querySelector(`[data-col-menu-popover][data-col-id="${colId}"]`);
+    if (!pop) return;
+
+    const isOpen = !pop.classList.contains("hidden");
+    closeAll();
+
+    if (!isOpen) {
+      btn.setAttribute("aria-expanded", "true");
+      requestAnimationFrame(() => requestAnimationFrame(() => positionPopover(btn, pop)));
+    }
+  }, true);
+
+  document.addEventListener("pointerdown", (e) => {
+    if (e.target.closest?.("[data-col-menu-btn]")) return;
+    if (e.target.closest?.("[data-col-menu-popover]")) return;
+    closeAll();
+  }, true);
+
+  window.addEventListener("resize", closeAll, { passive: true });
+  window.addEventListener("scroll", closeAll, { passive: true, capture: true });
+})();
+
 </script>
 
 <!-- END /boards/templates/boards/partials/column_item.html -->
