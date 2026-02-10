@@ -2274,4 +2274,90 @@ document.addEventListener("pointerup", (e) => {
 </script>
 
 
+
+
+<script>
+(function () {
+  // armazena pendências por alguns segundos (sobrevive ao swap do poll)
+  const KEY = "__cm_delivering_cards_v1";
+
+  function now() { return Date.now(); }
+
+  function readMap() {
+    try { return JSON.parse(sessionStorage.getItem(KEY) || "{}") || {}; }
+    catch (e) { return {}; }
+  }
+
+  function writeMap(map) {
+    try { sessionStorage.setItem(KEY, JSON.stringify(map || {})); } catch (e) {}
+  }
+
+  function setDelivering(cardId, ms) {
+    const map = readMap();
+    map[String(cardId)] = now() + (ms || 2500);
+    writeMap(map);
+    applyToDOM();
+  }
+
+  function clearDelivering(cardId) {
+    const map = readMap();
+    delete map[String(cardId)];
+    writeMap(map);
+    applyToDOM();
+  }
+
+  function applyToDOM(root) {
+    const map = readMap();
+    const t = now();
+
+    const scope = root || document;
+    scope.querySelectorAll('li[data-card-id]').forEach((cardEl) => {
+      const id = cardEl.getAttribute("data-card-id");
+      const expireAt = Number(map[id] || 0);
+
+      const deliveringEl = cardEl.querySelector("[data-card-delivering]");
+      if (!deliveringEl) return;
+
+      const isDelivered = (cardEl.getAttribute("data-is-delivered") === "1");
+
+   
+      const pending = expireAt && t < expireAt;
+
+      // pendente: mostra spinner e esconde o resto do slot (olho/check)
+      if (pending) {
+        deliveringEl.classList.remove("hidden");
+
+        const delivered = cardEl.querySelector("[data-card-delivered]");
+        if (delivered) delivered.classList.add("hidden");
+
+        const followBtn = cardEl.querySelector("[data-card-follow-btn]");
+        if (followBtn) followBtn.classList.add("hidden");
+
+        const badge = cardEl.querySelector("[data-card-unread-badge]");
+        if (badge) badge.classList.add("hidden");
+      } else {
+        deliveringEl.classList.add("hidden");
+        // não “re-mostra” aqui o check/olho porque quem decide é o template (poll/F5)
+      }
+    });
+
+    // limpa expirados
+    const next = {};
+    Object.keys(map).forEach((k) => {
+      if (Number(map[k] || 0) > t) next[k] = map[k];
+    });
+    if (Object.keys(next).length !== Object.keys(map).length) writeMap(next);
+  }
+
+  // Reidrata sempre que o poll fizer swap
+  document.addEventListener("DOMContentLoaded", () => applyToDOM(document));
+  document.body.addEventListener("htmx:afterSwap", (e) => applyToDOM(e.detail?.target || document));
+  document.body.addEventListener("htmx:afterSettle", (e) => applyToDOM(e.detail?.target || document));
+
+  // API pública: chame isso quando clicar “Entregar” no modal
+  window.CM = window.CM || {};
+  window.CM.setCardDelivering = function (cardId, ms) { setDelivering(cardId, ms); };
+})();
+</script>
+
 {% endblock content %}

@@ -3,12 +3,13 @@
 <li
   id="card-{{ card.id }}"
   data-card-id="{{ card.id }}"
+  data-is-delivered="{{ card.is_delivered|yesno:'1,0' }}"
   data-tag-colors='{{ card.tag_colors|default:"{}"|escapejs }}'
   data-card-open-url="{% url 'boards:card_modal' card.id %}"
   data-term-due="{% if card.due_date %}{{ card.due_date|date:'Y-m-d' }}{% endif %}"
   data-term-warn="{% if card.due_warn_date %}{{ card.due_warn_date|date:'Y-m-d' }}{% endif %}"
   data-term-notify="{{ card.due_notify|default_if_none:True|yesno:'1,0' }}"
-  class="card-item p-3 bg-white/80 rounded-xl shadow-sm mb-3 cursor-pointer overflow-hidden"
+  class="card-item relative p-3 bg-white/80 rounded-xl shadow-sm mb-3 cursor-pointer overflow-hidden"
 >
 
 <!-- BOTÃO DE EXCLUSÃO (aparece apenas no modo "Excluir cards") -->
@@ -59,15 +60,30 @@
 
 
   {# 🔴 BADGE + 👁️ (lado direito) — BADGE continua 100% controlado pelo POLL #}
-{# ✅ Se DELIVERED: mostra check fixo. Se não: mantém olho + badge (comportamento atual) #}
+{# ✅ Se DELIVERED: mostra check fixo. Se não: mantém olho + badge #}
 <div class="card-follow-icon">
-  {% if card.delivered %}
+
+  {# Estado pendente (JS liga/desliga) #}
+  <span
+    data-card-delivering
+    class="hidden inline-flex items-center justify-center h-7 w-7 rounded-full bg-amber-500 text-white shadow"
+    title="Entregando…"
+    aria-label="Entregando…"
+  >
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+         width="18" height="18" fill="none" stroke="currentColor"
+         stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M12 2a10 10 0 1 0 10 10"/>
+    </svg>
+  </span>
+
+  {% if card.is_delivered %}
     <span
-      class="inline-flex items-center justify-center h-7 w-7 rounded-full bg-emerald-600 text-white shadow z-50"
+      data-card-delivered
+      class="inline-flex items-center justify-center h-7 w-7 rounded-full bg-emerald-600 text-white shadow"
       title="Entregue"
       aria-label="Entregue"
     >
-      {# ✅ bonito (SVG), não depende de emoji/fonte #}
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
            width="18" height="18" fill="none" stroke="currentColor"
            stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -84,6 +100,7 @@
     </span>
 
     <button type="button"
+            data-card-follow-btn
             class="card-follow-btn inline-flex items-center justify-center h-7 w-7 rounded-full bg-black/40 text-white {% if card.is_following %}is-following{% endif %}"
             aria-label="Seguir card"
             title="Seguir card"
@@ -102,6 +119,7 @@
     </button>
   {% endif %}
 </div>
+
 
 
 

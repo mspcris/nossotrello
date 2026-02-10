@@ -555,7 +555,12 @@
       hx-post="{% url 'boards:update_card' card.id %}"
       hx-trigger="change"
       hx-target="#modal-body"
-      hx-swap="innerHTML">
+      hx-swap="innerHTML"
+      hx-on::before-request="
+        try { window.CM && CM.setCardDelivering({{ card.id }}, 2500); } catch(_e){}
+      "
+>
+
   {% csrf_token %}
 
   <!-- garante envio de 0 quando desmarcar -->

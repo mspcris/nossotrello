@@ -1,12 +1,28 @@
 # boards/views/polling.py
 
+from collections import defaultdict
+
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Prefetch
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
+from django.templatetags.static import static as static_url
 from django.utils import timezone
-from ..models import Board, Column, Card, CardLog, CardSeen
+
+from ..models import Board, Column, Card, CardLog, CardSeen, CardFollow
+
+
+def _user_avatar_url(u) -> str:
+    prof = getattr(u, "profile", None)
+    if prof and getattr(prof, "avatar", None):
+        try:
+            return prof.avatar.url
+        except Exception:
+            pass
+    if prof and getattr(prof, "avatar_choice", ""):
+        return static_url(f"images/avatar/{prof.avatar_choice}")
+    return ""
 
 
 @login_required
@@ -31,7 +47,6 @@ def board_poll(request, board_id):
     except (TypeError, ValueError):
         client_version = 0
 
-    # Nada mudou
     if int(board.version or 0) == client_version:
         resp = JsonResponse({"version": board.version, "changed": False})
         resp["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
@@ -39,13 +54,14 @@ def board_poll(request, board_id):
 
     # ============================================================
     # Algo mudou -> re-renderiza colunas
-    # IMPORTANT:
-    # - entregue "board" no contexto (mantém Coluna Agregadora)
-    # - entregue as MESMAS contagens que o template usa (card_count)
     # ============================================================
 
-    # Prefetch de cards (ordem consistente ajuda o drag/poll a não “piscar”)
-    cards_qs = Card.objects.filter(is_deleted=False).order_by("position", "id")
+    cards_qs = (
+        Card.objects
+        .filter(is_deleted=False)
+        .select_related("column")  # ajuda template a acessar column sem N+1
+        .order_by("position", "id")
+    )
 
     columns = (
         Column.objects
@@ -55,6 +71,57 @@ def board_poll(request, board_id):
         .order_by("position", "id")
     )
 
+    # ============================================================
+    # Reidratar estado de FOLLOW + previews (senão o poll “zera” UI)
+    # ============================================================
+    # Nota: o template do card espera:
+    # - card.is_following
+    # - card.followers_preview (list de dicts)
+    # - card.followers_count (int)
+    card_ids = []
+    for col in columns:
+        for c in col.cards.all():
+            card_ids.append(c.id)
+
+    if card_ids:
+        followed_ids = set(
+            CardFollow.objects
+            .filter(user=request.user, card_id__in=card_ids)
+            .values_list("card_id", flat=True)
+        )
+
+        by_card = defaultdict(list)
+        counts = defaultdict(int)
+
+        qs = (
+            CardFollow.objects
+            .filter(card_id__in=card_ids)
+            .select_related("user", "user__profile")
+            .order_by("card_id", "-created_at")
+        )
+
+        for f in qs:
+            counts[f.card_id] += 1
+            if len(by_card[f.card_id]) < 4:
+                u = f.user
+                name = (
+                    getattr(getattr(u, "profile", None), "display_name", None)
+                    or u.get_full_name()
+                    or u.email
+                )
+                by_card[f.card_id].append(
+                    {"name": name, "avatar_url": _user_avatar_url(u)}
+                )
+
+        for col in columns:
+            for c in col.cards.all():
+                c.is_following = (c.id in followed_ids)
+                c.followers_preview = by_card.get(c.id, [])
+                c.followers_count = counts.get(c.id, 0)
+
+    # ============================================================
+    # Render HTML
+    # ============================================================
     html = render_to_string(
         "boards/partials/columns_list.html",
         {
@@ -73,9 +140,6 @@ def board_poll(request, board_id):
     )
     resp["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     return resp
-
-
-
 
 
 @login_required
