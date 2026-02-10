@@ -73,6 +73,16 @@
      {% if term_status %}data-term-status="{{ term_status }}"{% endif %}
      data-term-notify="{% if card.due_notify %}1{% else %}0{% endif %}">
 
+
+
+
+
+
+
+
+
+     
+
   <div class="cm-split">
 
     <!-- COLUNA ESQUERDA -->
@@ -108,27 +118,6 @@
       <div class="cm-topbar">
         <div class="cm-bar" role="tablist" aria-label="Abas do card">
           <div class="cm-tabs">
-            <div class="cm-actions" id="cm-actions">
-
-
-  {# envia 0 quando desmarcado (mesmo padrão do due_notify) #}
-  <input type="hidden" name="is_delivered" value="0" form="cm-main-form">
-
-  <label class="cm-delivered-toggle" title="Marcar como entregue (para de notificar por prazo/cores)">
-    <input
-      type="checkbox"
-      id="cm-is-delivered"
-      name="is_delivered"
-      value="1"
-      form="cm-main-form"
-      {% if card.is_delivered %}checked{% endif %}
-    >
-    <span class="cm-delivered-ui">
-      <span class="cm-delivered-dot" aria-hidden="true"></span>
-      <span class="cm-delivered-text">Entregue</span>
-    </span>
-  </label>
-</div>
 
             <button type="button" class="cm-tabbtn is-active" data-cm-tab="desc"> 📄 Descrição</button>
             <button type="button" class="cm-tabbtn" data-cm-tab="tags"> 🏷️ Etiquetas</button>
@@ -532,28 +521,60 @@
 
 
           <div class="cm-activity-togglebar" role="tablist" aria-label="Atividade">
-            <div class="cm-activity-tabs">
-              <button type="button"
-                      id="cm-activity-tab-feed"
-                      class="cm-btn cm-activity-tab is-active"
-                      role="tab"
-                      aria-selected="true"
-                      aria-controls="cm-activity-feed">
-                Feed
-                <span id="cm-activity-feed-count" class="cm-activity-badge hidden" aria-label="Total de itens no feed"></span>
-              </button>
+  <div class="flex items-center justify-between gap-2 flex-wrap">
+    <div class="cm-activity-tabs">
+      <button type="button"
+              id="cm-activity-tab-feed"
+              class="cm-btn cm-activity-tab is-active"
+              role="tab"
+              aria-selected="true"
+              aria-controls="cm-activity-feed">
+        Feed
+        <span id="cm-activity-feed-count" class="cm-activity-badge hidden" aria-label="Total de itens no feed"></span>
+      </button>
+
+      <button type="button"
+              id="cm-activity-tab-new"
+              class="cm-btn cm-activity-tab"
+              role="tab"
+              aria-selected="false"
+              aria-controls="cm-activity-composer">
+        Nova Atividade
+      </button>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <!-- envia 0 quando desmarcado -->
+      <input type="hidden" name="is_delivered" value="0" form="cm-main-form">
+
+      <label class="cm-delivered-toggle" title="Marcar como entregue (para de notificar por prazo/cores)">
+        <input
+  type="checkbox"
+  id="cm-is-delivered"
+  name="is_delivered"
+  value="1"
+  form="cm-main-form"
+  hx-trigger="change"
+  hx-post="{% url 'boards:update_card' card.id %}"
+  hx-target="#modal-body"
+  hx-swap="innerHTML"
+  hx-include="#cm-main-form"
+  {% if card.is_delivered %}checked{% endif %}
+>
+
+        <span class="cm-delivered-ui">
+          <span class="cm-delivered-dot" aria-hidden="true"></span>
+          <span class="cm-delivered-text">Entregue</span>
+        </span>
+      </label>
+    </div>
+  </div>
+</div>
 
 
-              <button type="button"
-                      id="cm-activity-tab-new"
-                      class="cm-btn cm-activity-tab"
-                      role="tab"
-                      aria-selected="false"
-                      aria-controls="cm-activity-composer">
-                Nova Atividade
-              </button>
-            </div>
-          </div>
+
+
+
 
         <div id="cm-activity-composer" class="cm-card space-y-3 is-hidden">
           <form id="cm-activity-form"
@@ -900,22 +921,24 @@
       "due_warn_date",
       "due_notify",
       "start_date",
+      "is_delivered",
     ];
+
 
     function snapshot() {
       const fd = new FormData(form);
       const obj = {};
       WATCH.forEach((k) => { obj[k] = ""; });
-      const seen = new Set();
+
       for (const [k, v] of fd.entries()) {
         if (!WATCH.includes(k)) continue;
-        if (seen.has(k)) continue;
+        // último valor vence (resolve hidden+checkbox)
         obj[k] = String(v ?? "");
-        seen.add(k);
       }
 
       return obj;
     }
+
 
     let base = snapshot();
 
@@ -1737,33 +1760,33 @@
 
 <script>
 (function(){
-  function bootDeliveredUX(){
+  function bootDeliveredAutosave(){
     const root = document.getElementById("cm-root");
-    if (!root) return;
+    const cb = root && root.querySelector("#cm-is-delivered");
+    const form = document.getElementById("cm-main-form");
+    if (!cb || !form) return;
+    if (cb.dataset.cmAutoSave === "1") return;
+    cb.dataset.cmAutoSave = "1";
 
-    const delivered = root.querySelector("#cm-is-delivered");
-    const dueNotify = root.querySelector('input[type="checkbox"][name="due_notify"][value="1"]');
-
-    if (!delivered || delivered.dataset.cmBound === "1") return;
-    delivered.dataset.cmBound = "1";
-
-    function sync(){
-      if (!dueNotify) return;
-
-      if (delivered.checked) {
-        dueNotify.checked = false;     // UX: entrega desliga cores
-      }
+    cb.addEventListener("change", function(){
+  if (cb.checked) {
+    const ok = confirm("Concluir este card? Isso vai marcar como entregue e disparar a notificação.");
+    if (!ok) {
+      cb.checked = false;
+      return;
     }
+  }
+  try { form.requestSubmit ? form.requestSubmit() : form.submit(); } catch(_e) {}
+}, true);
 
-    delivered.addEventListener("change", sync, true);
-    sync();
   }
 
-  document.addEventListener("DOMContentLoaded", bootDeliveredUX);
+  document.addEventListener("DOMContentLoaded", bootDeliveredAutosave);
   document.body.addEventListener("htmx:afterSwap", function(evt){
-    if (evt.target && evt.target.id === "modal-body") bootDeliveredUX();
+    if (evt.target && evt.target.id === "modal-body") bootDeliveredAutosave();
   });
 })();
+
 </script>
 
 {# END templates/boards/partials/card_modal_split.html #}

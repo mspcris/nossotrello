@@ -3005,3 +3005,97 @@ html.dark #modal #modal-breadcrumb{
   border-color: rgba(16,185,129,0.75);
   background: rgba(16,185,129,0.85);
 }
+
+
+
+/* PADRÃO PILL: força Feed / Nova Atividade / Entregue a ficarem iguais */
+#cm-root .cm-activity-togglebar .cm-activity-tabs > *{
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  height: 28px !important;
+  padding: 0 12px !important;
+
+  border-radius: 9999px !important;
+  font-size: 13px !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+}
+
+/* garante que a barra não “estique” */
+#cm-root .cm-activity-togglebar .cm-activity-tabs{
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+/* remove qualquer min-width antigo que deixe um maior */
+#cm-root .cm-activity-togglebar .cm-activity-tabs .cm-btn,
+#cm-root .cm-activity-togglebar .cm-activity-tabs .cm-activity-tab{
+  min-width: 0 !important;
+}
+
+
+
+
+
+
+
+
+
+
+
+/* ============================================================
+   PADRÃO ÚNICO (Feed / Nova Atividade / Entregue)
+   - os dois botões passam a “copiar” o tamanho do Entregue
+   ============================================================ */
+#cm-root{
+  --pill-h: 32px;
+  --pill-px: 12px;
+  --pill-gap: 10px;
+  --pill-fz: 13px;
+  --pill-fw: 600;
+}
+
+/* Base do “pill” (aplica em button e no span do Entregue) */
+#cm-root .cm-activity-tab,
+#cm-root .cm-delivered-ui{
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  height: var(--pill-h) !important;
+  padding: 0 var(--pill-px) !important;
+
+  border-radius: 9999px !important;
+  font-size: var(--pill-fz) !important;
+  font-weight: var(--pill-fw) !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  gap: var(--pill-gap) !important;
+
+  box-sizing: border-box !important;
+}
+
+/* Remove “diferenças herdadas” do cm-btn nos tabs */
+#cm-root .cm-activity-tab{
+  min-height: var(--pill-h) !important;
+  border-radius: 9999px !important;
+}
+
+/* Badge do Feed não pode alterar altura */
+#cm-root #cm-activity-tab-feed{
+  position: relative;
+}
+#cm-root #cm-activity-feed-count{
+  line-height: 1 !important;
+  height: 18px !important; /* mantém o visual */
+}
+
+/* (Opcional) se quiser o badge sem afetar layout: vira “overlay” */
+#cm-root #cm-activity-feed-count:not(.hidden){
+  position: absolute;
+  right: 6px;
+  top: -6px;
+}
