@@ -1093,11 +1093,23 @@ html.dark #cm-root{
    [17] BACKDROP DO CORPO DO MODAL (leve, sem blur)
    - blur interno é proibido (hard rule)
    ======================================================================= */
+/* [17] BACKDROP DO CORPO DO MODAL (leve, sem blur) */
+
+/* LIGHT */
 #card-modal-root .modal-content,
 #modal .modal-content,
 #modal-body{
   background: rgba(255,255,255,0.55);
 }
+
+/* DARK (override) */
+html.dark #modal-body,
+html.dark #modal .modal-content,
+#card-modal-root.theme-dark #modal-body,
+#card-modal-root.card-theme-dark #modal-body{
+  background: rgba(0,0,0,0.45) !important;
+}
+
 
 
 /* =======================================================================
