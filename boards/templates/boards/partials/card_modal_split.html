@@ -172,18 +172,19 @@
         {% csrf_token %}
       </form>
 
-      <form id="cm-main-form"
-            method="post"
-            enctype="multipart/form-data"
-            hx-post="{% url 'boards:update_card' card.id %}"
-            hx-target="#modal-body"
-            hx-swap="innerHTML"
-            hx-on::config-request="
-              (function(){
-                try { if (typeof syncActiveDesc === 'function') syncActiveDesc(); } catch(_e){}
-              })();
-            "
-
+<form id="cm-main-form"
+      method="post"
+      enctype="multipart/form-data"
+      hx-post="{% url 'boards:update_card' card.id %}"
+      hx-target="#modal-body"
+      hx-swap="innerHTML"
+      hx-include="#cm-is-delivered, input[name='is_delivered']"
+      hx-on::config-request="
+        (function(){
+          try { if (typeof syncActiveDesc === 'function') syncActiveDesc(); } catch(_e){}
+        })();
+      "
+>
 
 
         {% csrf_token %}
@@ -543,32 +544,38 @@
       </button>
     </div>
 
+
+
+
+
+    
     <div class="flex items-center gap-2">
-      <!-- envia 0 quando desmarcado -->
-      <input type="hidden" name="is_delivered" value="0" form="cm-main-form">
+<form id="cm-delivered-form"
+      method="post"
+      hx-post="{% url 'boards:update_card' card.id %}"
+      hx-trigger="change"
+      hx-target="#modal-body"
+      hx-swap="innerHTML">
+  {% csrf_token %}
 
-      <label class="cm-delivered-toggle" title="Marcar como entregue (para de notificar por prazo/cores)">
-        <input
-  type="checkbox"
-  id="cm-is-delivered"
-  name="is_delivered"
-  value="1"
-  form="cm-main-form"
-  hx-trigger="change"
-  hx-post="{% url 'boards:update_card' card.id %}"
-  hx-target="#modal-body"
-  hx-swap="innerHTML"
-  hx-include="#cm-main-form"
-  {% if card.is_delivered %}checked{% endif %}
->
+  <!-- garante envio de 0 quando desmarcar -->
+  <input type="hidden" name="is_delivered" value="0">
 
-        <span class="cm-delivered-ui">
-          <span class="cm-delivered-dot" aria-hidden="true"></span>
-          <span class="cm-delivered-text">Entregue</span>
-        </span>
-      </label>
-    </div>
-  </div>
+  <label class="cm-delivered-toggle" title="Marcar como entregue (para de notificar por prazo/cores)">
+    <input
+      type="checkbox"
+      id="cm-is-delivered"
+      name="is_delivered"
+      value="1"
+      {% if card.is_delivered %}checked{% endif %}
+    >
+    <span class="cm-delivered-ui">
+      <span class="cm-delivered-dot" aria-hidden="true"></span>
+      <span class="cm-delivered-text">Entregue</span>
+    </span>
+  </label>
+</form>
+
 </div>
 
 
@@ -1758,35 +1765,6 @@
 
 
 
-<script>
-(function(){
-  function bootDeliveredAutosave(){
-    const root = document.getElementById("cm-root");
-    const cb = root && root.querySelector("#cm-is-delivered");
-    const form = document.getElementById("cm-main-form");
-    if (!cb || !form) return;
-    if (cb.dataset.cmAutoSave === "1") return;
-    cb.dataset.cmAutoSave = "1";
 
-    cb.addEventListener("change", function(){
-  if (cb.checked) {
-    const ok = confirm("Concluir este card? Isso vai marcar como entregue e disparar a notificação.");
-    if (!ok) {
-      cb.checked = false;
-      return;
-    }
-  }
-  try { form.requestSubmit ? form.requestSubmit() : form.submit(); } catch(_e) {}
-}, true);
-
-  }
-
-  document.addEventListener("DOMContentLoaded", bootDeliveredAutosave);
-  document.body.addEventListener("htmx:afterSwap", function(evt){
-    if (evt.target && evt.target.id === "modal-body") bootDeliveredAutosave();
-  });
-})();
-
-</script>
 
 {# END templates/boards/partials/card_modal_split.html #}
