@@ -88,19 +88,54 @@ def build_card_snapshot(*, card: Card) -> CardSnapshot:
         tracktime_url=tracktime_url,
     )
 
+def _wa_safe(text: str) -> str:
+    """
+    Evita quebrar a formatação do WhatsApp (negrito/itálico/etc.)
+    Troca caracteres de markdown do WhatsApp por equivalentes unicode.
+    """
+    s = (text or "").strip()
+    if not s:
+        return ""
+    # WhatsApp: *negrito* _itálico_ ~tachado~ `mono`
+    return (
+        s.replace("*", "∗")
+         .replace("_", "‗")
+         .replace("~", "˜")
+         .replace("`", "ˋ")
+    )
+
+
+def _wa_bold(label: str) -> str:
+    # garante que o label não quebre o markdown
+    return f"*{_wa_safe(label)}*"
+
 
 def format_card_message(*, title_prefix: str, snap: CardSnapshot, extra_lines: Optional[list[str]] = None) -> str:
+    title = _wa_safe(title_prefix)
+
+    card_title = _wa_safe(snap.title)
+    tags = _wa_safe(snap.tags)
+    desc = _wa_safe(snap.description)
+
+    start_date = _wa_safe(snap.start_date)
+    warn_date = _wa_safe(snap.due_warn_date)
+    due_date = _wa_safe(snap.due_date)
+
     lines = [
-        title_prefix,
-        f"Card: {snap.title}",
-        f"Tags: {snap.tags}" if snap.tags else "Tags: (sem etiquetas)",
-        f"Descrição: {snap.description}" if snap.description else "Descrição: (vazia)",
-        f"Data Início: {snap.start_date}" if snap.start_date else "Data Início: (vazia)",
-        f"Data Aviso: {snap.due_warn_date}" if snap.due_warn_date else "Data Aviso: (vazia)",
-        f"Data Vencimento: {snap.due_date}" if snap.due_date else "Data Vencimento: (vazia)",
+        # título em negrito para destacar o “tipo” da notificação
+        f"{_wa_bold(title)}",
+        f"{_wa_bold('Card:')} {card_title}",
+        f"{_wa_bold('Tags:')} {tags}" if tags else f"{_wa_bold('Tags:')} (sem etiquetas)",
+        f"{_wa_bold('Descrição:')} {desc}" if desc else f"{_wa_bold('Descrição:')} (vazia)",
+        f"{_wa_bold('Data Início:')} {start_date}" if start_date else f"{_wa_bold('Data Início:')} (vazia)",
+        f"{_wa_bold('Data Aviso:')} {warn_date}" if warn_date else f"{_wa_bold('Data Aviso:')} (vazia)",
+        f"{_wa_bold('Data Vencimento:')} {due_date}" if due_date else f"{_wa_bold('Data Vencimento:')} (vazia)",
     ]
+
     if extra_lines:
-        lines.extend(extra_lines)
+        # mantém extras, mas também protege caracteres especiais
+        lines.extend([_wa_safe(x) for x in extra_lines if x])
+
     return "\n".join(lines).strip()
 
 
