@@ -89,9 +89,6 @@ class Board(models.Model):
         null=True,
         blank=True,
     )
-    # Soft delete (já existe no seu projeto; mantenha)
-    is_deleted = models.BooleanField(default=False)
-    deleted_at = models.DateTimeField(null=True, blank=True)
 
     # NOVO: Arquivo
     is_archived = models.BooleanField(default=False)
