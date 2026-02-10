@@ -16,6 +16,12 @@ from django.utils.html import strip_tags
 from boards.models import BoardMembership, Mention, UserProfile, Card, CardFollow
 from tracktime.services.pressticket import send_text_message, PressTicketError
 
+from django.utils import timezone
+from django.db import transaction
+
+
+
+
 logger = logging.getLogger(__name__)
 User = get_user_model()
 
@@ -57,6 +63,7 @@ class CardSnapshot:
     start_date: str
     due_warn_date: str
     due_date: str
+    delivered_at: str
     card_url: str
     tracktime_url: str
 
@@ -75,6 +82,9 @@ def build_card_snapshot(*, card: Card) -> CardSnapshot:
     card_url = f"{settings.SITE_URL.rstrip('/')}{board_url}?card={card_id}"
     tracktime_url = f"{card_url}&tab=tracktime"
 
+    delivered_at = getattr(card, "delivered_at", None)
+    delivered_at_str = delivered_at.strftime("%Y-%m-%d") if delivered_at else ""
+
     return CardSnapshot(
         card_id=card_id,
         board_id=board_id,
@@ -84,9 +94,11 @@ def build_card_snapshot(*, card: Card) -> CardSnapshot:
         start_date=_fmt_date(card.start_date),
         due_warn_date=_fmt_date(card.due_warn_date),
         due_date=_fmt_date(card.due_date),
+        delivered_at=delivered_at_str,
         card_url=card_url,
         tracktime_url=tracktime_url,
     )
+
 
 def _wa_safe(text: str) -> str:
     """
@@ -120,6 +132,7 @@ def format_card_message(*, title_prefix: str, snap: CardSnapshot, extra_lines: O
     start_date = _wa_safe(snap.start_date)
     warn_date = _wa_safe(snap.due_warn_date)
     due_date = _wa_safe(snap.due_date)
+    delivered_at = _wa_safe(getattr(snap, "delivered_at", ""))
 
     lines = [
         # título em negrito para destacar o “tipo” da notificação
@@ -130,6 +143,7 @@ def format_card_message(*, title_prefix: str, snap: CardSnapshot, extra_lines: O
         f"{_wa_bold('Data Início:')} {start_date}" if start_date else f"{_wa_bold('Data Início:')} (vazia)",
         f"{_wa_bold('Data Aviso:')} {warn_date}" if warn_date else f"{_wa_bold('Data Aviso:')} (vazia)",
         f"{_wa_bold('Data Vencimento:')} {due_date}" if due_date else f"{_wa_bold('Data Vencimento:')} (vazia)",
+        f"{_wa_bold('Data Entrega:')} {delivered_at}" if delivered_at else f"{_wa_bold('Data Entrega:')} (vazia)",
     ]
 
     if extra_lines:
@@ -137,6 +151,7 @@ def format_card_message(*, title_prefix: str, snap: CardSnapshot, extra_lines: O
         lines.extend([_wa_safe(x) for x in extra_lines if x])
 
     return "\n".join(lines).strip()
+
 
 
 def _get_or_create_profile(user) -> UserProfile:
@@ -246,19 +261,27 @@ def notify_users_for_card(
     include_link_as_second_whatsapp_message: bool = False,
     exclude_actor: bool = True,
     actor: Optional[User] = None,
+    allow_when_delivered: bool = False,  # <-- NOVO
 ):
+    if not recipients:
+        return
+
+    # Gate: se o card está entregue, não notifica nada (email/whatsapp),
+    # exceto quando explicitamente permitido (notificação de Entrega).
+    if getattr(card, "is_delivered", False) and not allow_when_delivered:
+        return
+
+    snap = snap or build_card_snapshot(card=card)
+    link = snap.tracktime_url or snap.card_url
+    
     """
     Compliance com suas regras:
     - Notifica seguidores do card (público vem pronto em recipients) e/ou autor do track-time.
     - Nunca notifica o próprio em atividade normal (exclude_actor=True).
     - Para track-time, passe exclude_actor=False (autor deve ser notificado).
     - Flags/canais do usuário mandam (notify_email/notify_whatsapp).
+    - Criado portão para não disparar mensagens quando o card já está entregue (allow_when_delivered=False), exceto para notificações de Entrega (allow_when_delivered=True).
     """
-    if not recipients:
-        return
-
-    snap = snap or build_card_snapshot(card=card)
-    link = snap.tracktime_url or snap.card_url
 
     for u in recipients:
         if not u:
@@ -291,3 +314,51 @@ def notify_users_for_card(
                     send_email_notification(to_email=to_email, subject=subject, body=body)
                 except Exception:
                     logger.exception("email: send failed user_id=%s card_id=%s", u.id, card.id)
+
+
+
+
+
+
+@transaction.atomic
+def mark_card_delivered(*, card: Card, actor: Optional[User]) -> Card:
+    """
+    Marca o card como entregue e paralisa notificação visual (cores/prazo)
+    via due_notify=False. Mantém vencimento preenchido (não mexe em due_date).
+    """
+    if not getattr(card, "is_delivered", False):
+        card.is_delivered = True
+        card.delivered_at = timezone.now()
+        card.delivered_by = actor if actor and getattr(actor, "id", None) else None
+
+        # Desliga notificações por prazo/cores
+        if hasattr(card, "due_notify"):
+            card.due_notify = False
+
+        card.save(update_fields=["is_delivered", "delivered_at", "delivered_by", "due_notify"])
+    return card
+
+
+def notify_delivery(*, card: Card, actor: Optional[User] = None) -> None:
+    """
+    Envia a notificação de Entrega para seguidores do card (CardFollow),
+    com link como 2ª mensagem (como hoje).
+    """
+    snap = build_card_snapshot(card=card)
+
+    title_prefix = "✅ Entrega do Card"
+    message = format_card_message(title_prefix=title_prefix, snap=snap)
+
+    recipients = get_card_followers(card=card)
+
+    notify_users_for_card(
+        card=card,
+        recipients=recipients,
+        subject=title_prefix,
+        message=message,
+        snap=snap,
+        include_link_as_second_whatsapp_message=True,  
+        exclude_actor=False,  
+        actor=actor,
+        allow_when_delivered=True,  
+    )

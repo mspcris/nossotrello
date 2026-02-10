@@ -37,6 +37,12 @@ from ..forms import CardForm
 from ..models import Board, BoardMembership, Card, CardAttachment, Column, CardSeen
 from boards.models import CardFollow, CardLog, ColumnFollow
 
+
+from boards.services.notifications import mark_card_delivered, notify_delivery
+
+
+
+
 logger = logging.getLogger(__name__)
 
 # ============================================================
@@ -278,6 +284,10 @@ def update_card(request, card_id):
     old_due_date = card.due_date
     old_due_warn_date = card.due_warn_date
     old_due_notify = bool(card.due_notify)
+    old_is_delivered = bool(getattr(card, "is_delivered", False))
+    old_delivered_at = getattr(card, "delivered_at", None)
+    old_delivered_by_id = getattr(card, "delivered_by_id", None)
+
 
     # ============================================================
     # UPDATE: logging inicial
@@ -315,6 +325,9 @@ def update_card(request, card_id):
     due_date_raw = (request.POST.get("due_date") or "").strip()
     due_warn_raw = (request.POST.get("due_warn_date") or "").strip()
     due_notify_raw = (request.POST.get("due_notify") or "").strip()
+    delivered_raw = (request.POST.get("is_delivered") or "").strip().lower()
+    delivered_requested = delivered_raw in ("1", "true", "on", "yes")
+
 
     start_date = _parse_any_date(start_date_raw)
     due_date = _parse_any_date(due_date_raw)
@@ -333,6 +346,19 @@ def update_card(request, card_id):
     card.due_date = due_date
     card.due_warn_date = due_warn_date
     card.due_notify = bool(due_notify)
+
+
+    # ============================================================
+    # ENTREGA (checkbox)
+    # Regra: ao marcar entregue -> desliga notificar com cores (due_notify=False)
+    # ============================================================
+    delivery_state_changed = (old_is_delivered != bool(delivered_requested))
+
+    # Se marcou entregue agora, força due_notify=False
+    if delivered_requested:
+        card.due_notify = False
+
+
 
     # ============================================================
     # TAGS: diff
@@ -367,7 +393,54 @@ def update_card(request, card_id):
     # SAVE CARD
     # ============================================================
     card.save()
-    card.refresh_from_db(fields=["title", "description", "tags", "start_date", "due_date", "due_warn_date", "due_notify"])
+    card.refresh_from_db(fields=[
+        "title", "description", "tags",
+        "start_date", "due_date", "due_warn_date", "due_notify",
+        "is_delivered", "delivered_at", "delivered_by_id",
+    ])
+
+    # ============================================================
+    # APLICA ENTREGA (persistência + notificação + log)
+    # ============================================================
+    if delivery_state_changed:
+        if delivered_requested:
+            # marca entregue (seta delivered_at/by e due_notify=False)
+            card = mark_card_delivered(card=card, actor=request.user)
+
+            # LOG
+            try:
+                _log_card(
+                    card,
+                    request,
+                    f"<p><strong>{actor}</strong> marcou este card como <strong>Entregue</strong>.</p>"
+                )
+            except Exception:
+                pass
+
+            # NOTIFICA ENTREGA (seguidores) + link 2ª msg
+            try:
+                notify_delivery(card=card, actor=request.user)
+            except Exception:
+                pass
+        else:
+            # desmarcou entregue
+            Card.objects.filter(id=card.id).update(
+                is_delivered=False,
+                delivered_at=None,
+                delivered_by=None,
+            )
+            card.refresh_from_db(fields=["is_delivered", "delivered_at", "delivered_by_id"])
+
+            # LOG
+            try:
+                _log_card(
+                    card,
+                    request,
+                    f"<p><strong>{actor}</strong> desmarcou <strong>Entregue</strong> neste card.</p>"
+                )
+            except Exception:
+                pass
+
 
     # ============================================================
     # DIFFS pós-save

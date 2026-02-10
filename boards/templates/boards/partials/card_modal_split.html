@@ -108,6 +108,28 @@
       <div class="cm-topbar">
         <div class="cm-bar" role="tablist" aria-label="Abas do card">
           <div class="cm-tabs">
+            <div class="cm-actions" id="cm-actions">
+
+
+  {# envia 0 quando desmarcado (mesmo padrão do due_notify) #}
+  <input type="hidden" name="is_delivered" value="0" form="cm-main-form">
+
+  <label class="cm-delivered-toggle" title="Marcar como entregue (para de notificar por prazo/cores)">
+    <input
+      type="checkbox"
+      id="cm-is-delivered"
+      name="is_delivered"
+      value="1"
+      form="cm-main-form"
+      {% if card.is_delivered %}checked{% endif %}
+    >
+    <span class="cm-delivered-ui">
+      <span class="cm-delivered-dot" aria-hidden="true"></span>
+      <span class="cm-delivered-text">Entregue</span>
+    </span>
+  </label>
+</div>
+
             <button type="button" class="cm-tabbtn is-active" data-cm-tab="desc"> 📄 Descrição</button>
             <button type="button" class="cm-tabbtn" data-cm-tab="tags"> 🏷️ Etiquetas</button>
             <button type="button" class="cm-tabbtn" data-cm-tab="check"> ☑️ Checklists</button>
@@ -1709,6 +1731,39 @@
   // agora submete
   try { form.requestSubmit ? form.requestSubmit() : form.submit(); } catch (_e) {}
 }, true);
+</script>
+
+
+
+<script>
+(function(){
+  function bootDeliveredUX(){
+    const root = document.getElementById("cm-root");
+    if (!root) return;
+
+    const delivered = root.querySelector("#cm-is-delivered");
+    const dueNotify = root.querySelector('input[type="checkbox"][name="due_notify"][value="1"]');
+
+    if (!delivered || delivered.dataset.cmBound === "1") return;
+    delivered.dataset.cmBound = "1";
+
+    function sync(){
+      if (!dueNotify) return;
+
+      if (delivered.checked) {
+        dueNotify.checked = false;     // UX: entrega desliga cores
+      }
+    }
+
+    delivered.addEventListener("change", sync, true);
+    sync();
+  }
+
+  document.addEventListener("DOMContentLoaded", bootDeliveredUX);
+  document.body.addEventListener("htmx:afterSwap", function(evt){
+    if (evt.target && evt.target.id === "modal-body") bootDeliveredUX();
+  });
+})();
 </script>
 
 {# END templates/boards/partials/card_modal_split.html #}

@@ -2919,3 +2919,89 @@ html.dark #modal #modal-breadcrumb{
 #cm-root .cm-activity-badge{
   display: none !important;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* ============================================================
+   ENTREGA: toggle no topbar (à direita)
+   ============================================================ */
+#cm-root .cm-bar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+
+#cm-root .cm-actions{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-left:auto;
+}
+
+#cm-root .cm-delivered-toggle{
+  display:inline-flex;
+  align-items:center;
+  cursor:pointer;
+  user-select:none;
+}
+
+#cm-root .cm-delivered-toggle input{
+  position:absolute;
+  opacity:0;
+  width:1px;
+  height:1px;
+  pointer-events:none;
+}
+
+#cm-root .cm-delivered-ui{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  padding:8px 12px;
+  border-radius:999px;
+  border:1px solid rgba(15,23,42,0.14);
+  background: rgba(255,255,255,0.70);
+  box-shadow: 0 6px 18px rgba(2,6,23,0.06);
+  transition: transform .08s ease, background .12s ease, border-color .12s ease;
+}
+
+#cm-root .cm-delivered-dot{
+  width:10px;
+  height:10px;
+  border-radius:999px;
+  border:2px solid rgba(15,23,42,0.25);
+  background: transparent;
+  transition: background .12s ease, border-color .12s ease;
+}
+
+#cm-root .cm-delivered-text{
+  font-size:13px;
+  font-weight:600;
+  color: rgba(15,23,42,0.85);
+}
+
+#cm-root .cm-delivered-toggle:hover .cm-delivered-ui{
+  transform: translateY(-1px);
+}
+
+#cm-root .cm-delivered-toggle input:checked + .cm-delivered-ui{
+  border-color: rgba(16,185,129,0.35);
+  background: rgba(16,185,129,0.10);
+}
+
+#cm-root .cm-delivered-toggle input:checked + .cm-delivered-ui .cm-delivered-dot{
+  border-color: rgba(16,185,129,0.75);
+  background: rgba(16,185,129,0.85);
+}
