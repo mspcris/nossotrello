@@ -182,7 +182,21 @@
 
     try {
       const q = window[STATE_KEY];
-      if (q && typeof q.focus === "function") q.focus();
+
+      // Quill dentro de container que alterna visibilidade pode ficar com layout/altura 0.
+      // Força um reflow leve ao reabrir.
+      if (q) {
+        if (typeof q.update === "function") {
+          try { q.update("silent"); } catch (_e) {}
+        }
+        if (typeof q.focus === "function") {
+          try { q.focus(); } catch (_e2) {}
+        }
+        // Gatilho de layout (Chromium) para recalcular alturas do editor.
+        setTimeout(() => {
+          try { window.dispatchEvent(new Event("resize")); } catch (_e3) {}
+        }, 0);
+      }
     } catch (_e) {}
   }
 
@@ -1245,7 +1259,7 @@ function isQuillContainerPresent(el) {
       } catch (_e) {}
 
       resetEditor();
-      hardDestroyActivityQuill();
+      // hardDestroyActivityQuill();
       clearActivityError();
       clearReplyContext();
       closeComposer();

@@ -127,33 +127,106 @@
   // (IDs: #cm-activity-toggle, #cm-activity-composer, #cm-activity-gap)
   // ============================================================
   function initActivityComposerToggle() {
-    const root = document.getElementById("cm-root");
-    if (!root) return;
+  const composer = document.getElementById("cm-activity-composer");
+  if (!composer) return;
 
-    // pega por document (não por query do root), pra não depender da estrutura
-    const btn = document.getElementById("cm-activity-toggle");
-    const composer = document.getElementById("cm-activity-composer");
-    const gap = document.getElementById("cm-activity-gap");
+  // evita double-bind quando HTMX faz swap
+  if (composer.dataset.cmToggleBound === "1") return;
+  composer.dataset.cmToggleBound = "1";
 
-    if (!btn || !composer) return;
+  const tabFeed = document.getElementById("cm-activity-tab-feed");
+  const tabNew  = document.getElementById("cm-activity-tab-new");
+  const btnToggle = document.getElementById("cm-activity-toggle"); // legado (se existir)
+  const feedPanel = document.getElementById("cm-activity-feed");   // opcional
 
-    // evita bind duplicado (por elemento)
-    if (btn.dataset.cmBound === "1") return;
-    btn.dataset.cmBound = "1";
-
-    // estado inicial: FECHADO (fonte única: is-open)
-    composer.classList.remove("is-open");
-    gap?.classList.remove("is-open");
-    btn.setAttribute("aria-expanded", "false");
-
-    btn.addEventListener("click", (e) => {
-      e.preventDefault();
-
-      const open = composer.classList.toggle("is-open");
-      gap?.classList.toggle("is-open", open);
-      btn.setAttribute("aria-expanded", open ? "true" : "false");
-    });
+  function isOpen() {
+    // suportar legado e novo
+    if (composer.classList.contains("is-open")) return true;
+    if (composer.classList.contains("is-hidden")) return false;
+    // fallback: se não tem is-hidden, considera aberto
+    return true;
   }
+
+  function setOpen(open) {
+    // Novo padrão: is-hidden manda
+    composer.classList.toggle("is-hidden", !open);
+    // compat com CSS/JS antigo
+    composer.classList.toggle("is-open", open);
+
+    // se quiser esconder o feed enquanto edita, mantém coerente
+    if (feedPanel) feedPanel.classList.toggle("is-hidden", open);
+
+    if (tabNew) {
+      tabNew.classList.toggle("is-active", open);
+      tabNew.setAttribute("aria-selected", open ? "true" : "false");
+    }
+    if (tabFeed) {
+      tabFeed.classList.toggle("is-active", !open);
+      tabFeed.setAttribute("aria-selected", open ? "false" : "true");
+    }
+
+    // garante que o Quill/mention sobe quando abre
+    if (open) {
+      try { window.ensureActivityQuill?.(); } catch (_e) {}
+    }
+  }
+
+  // estado inicial (respeita aria-selected se existir)
+  const initialOpen =
+    (tabNew && tabNew.getAttribute("aria-selected") === "true") ? true :
+    (!composer.classList.contains("is-hidden"));
+
+  setOpen(initialOpen);
+
+  // Legado: botão único
+  if (btnToggle) {
+    btnToggle.addEventListener("click", function (e) {
+      e.preventDefault();
+      setOpen(!isOpen());
+    }, true);
+  }
+
+  // Novo: abas
+  if (tabNew) {
+    tabNew.addEventListener("click", function (e) {
+      e.preventDefault();
+      setOpen(true);
+    }, true);
+  }
+
+  if (tabFeed) {
+    tabFeed.addEventListener("click", function (e) {
+      e.preventDefault();
+      setOpen(false);
+    }, true);
+  }
+
+  // Pós-submit da atividade: volta pro feed (e deixa “Nova Atividade” reabrir sempre)
+  if (window.__cmActivityAfterSubmitBound !== true) {
+    window.__cmActivityAfterSubmitBound = true;
+
+    document.body.addEventListener("htmx:afterRequest", function (evt) {
+      const elt = evt.detail && evt.detail.elt;
+      if (!elt || elt.id !== "cm-activity-form") return;
+      if (!evt.detail.successful) return;
+
+      // re-query porque HTMX pode ter trocado partes
+      const c = document.getElementById("cm-activity-composer");
+      if (!c) return;
+
+      c.classList.add("is-hidden");
+      c.classList.remove("is-open");
+
+      const tf = document.getElementById("cm-activity-tab-feed");
+      const tn = document.getElementById("cm-activity-tab-new");
+      const fp = document.getElementById("cm-activity-feed");
+
+      if (fp) fp.classList.remove("is-hidden");
+      if (tf) { tf.classList.add("is-active"); tf.setAttribute("aria-selected", "true"); }
+      if (tn) { tn.classList.remove("is-active"); tn.setAttribute("aria-selected", "false"); }
+    }, true);
+  }
+}
 
   // ============================================================
   // Tabs — sempre abrir em "Descrição" (audit + force)

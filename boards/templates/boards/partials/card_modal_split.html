@@ -1636,13 +1636,30 @@
       feed.addEventListener("mouseout", function(e){
         const thumb = e.target && e.target.closest ? e.target.closest(".cm-attach-thumb[data-preview-src]") : null;
         if (!thumb) return;
+
+        // ✅ Se o mouse está indo para dentro do preview, NÃO fecha
+        const to = e.relatedTarget;
+        if (to && preview && (to === preview || (preview.contains && preview.contains(to)))) return;
+
         hidePreview();
       }, true);
-    }
+
 
     document.addEventListener("keydown", function(e){
       if (e.key === "Escape") hidePreview();
     });
+
+      if (preview) {
+        preview.addEventListener("mouseenter", function(){
+          preview.classList.add("is-on");
+          preview.setAttribute("aria-hidden", "false");
+        }, true);
+
+        preview.addEventListener("mouseleave", function(){
+          hidePreview();
+        }, true);
+      }
+
 
     if (pill && wrap){
       pill.addEventListener("click", function(){

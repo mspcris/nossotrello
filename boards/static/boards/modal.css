@@ -81,7 +81,7 @@
   min-height: 0;
 
   border-radius: var(--modal-radius);
-  overflow: hidden;
+  overflow: visible !important; /* libera overlays (preview) */
 
   isolation: isolate;
 
@@ -1187,10 +1187,16 @@ html.dark #cm-root{
    ======================================================================= */
 
 /* mata qualquer tentativa anterior de pseudo-elemento de faixa */
-#card-modal-root::before,
+/* não mate o ::before quando o root for glass (ele é o vidro) */
+#card-modal-root:not(.modal-glass)::before{
+  content: none !important;
+}
+
+/* se precisar matar algum ::before antigo no header, ok */
 #card-modal-root .card-aero-header::before{
   content: none !important;
 }
+
 
 /* cor default (sem notificação) */
 #card-modal-root.card-modal{
@@ -3098,4 +3104,54 @@ html.dark #modal #modal-breadcrumb{
   position: absolute;
   right: 6px;
   top: -6px;
+}
+
+
+
+
+
+
+
+/* Preview flutuante: precisa aceitar hover/click */
+#cm-root .cm-hover-preview{
+  pointer-events: auto !important;
+  z-index: 100000 !important;
+}
+
+
+
+#cm-root .cm-hover-preview img{
+  height: 440px !important;        /* 2x */
+  object-fit: contain !important;  /* melhor pra leitura */
+}
+
+
+/* ============================================================
+   HOTFIX — ANEXO: thumb/preview sempre visível
+   Motivo: regra global de img (height:auto) + wrappers fixos
+   ============================================================ */
+
+/* 1) Thumb: força preencher o box (mata height:auto herdado) */
+#cm-root .cm-attach-thumb img,
+#cm-root .cm-attach-thumb a img{
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;   /* não deixa “encolher” */
+  object-fit: cover !important;
+  display: block !important;
+}
+
+/* 2) Se o thumb for um <a> ou <div> com background-image (sem <img>) */
+#cm-root .cm-attach-thumb[style*="background-image"],
+#cm-root .cm-attach-thumb a[style*="background-image"]{
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+}
+
+/* 3) Garante que o “alvo” do thumb ocupa o box inteiro */
+#cm-root .cm-attach-thumb > a{
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
 }
