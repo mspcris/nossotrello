@@ -130,7 +130,10 @@ const UNREAD_FETCH_EVERY_MS = 60000;// 60s é mais que suficiente para     atual
 
     const list = getColumnsList();
     if (!list) return;
-    
+
+    // evita request quando aba não está visível
+    if (document.hidden) return;
+
     if (shouldPause()) return;
 
     // badges de atividade
@@ -167,10 +170,9 @@ const UNREAD_FETCH_EVERY_MS = 60000;// 60s é mais que suficiente para     atual
       // ✅ BLOQUEIO FINAL (race): se modal abriu DURANTE o request, não faz swap
       if (window.Modal?.state?.isOpen) return;
 
-      if (!data.html || !String(data.html).trim()) return;
-
-      // swap completo do bloco (o elemento antigo “morre”)
-      list.outerHTML = data.html;
+      if (data.changed && data.html && String(data.html).trim()) {
+        list.outerHTML = data.html;
+      }
 
       // atualiza versão local
       boardVersion = Number(data.version || boardVersion);
