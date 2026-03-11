@@ -36,7 +36,7 @@ let __lastUnreadFetchMs = 0;
 // - Limita chamadas do syncUnreadBadge (mesmo sendo chamado em vários gatilhos)
 // - Faz GET /board/<id>/history/unread-count/
 // ============================================================
-const UNREAD_FETCH_EVERY_MS = 10000; // 20s é mais que suficiente para     atualiazar o indicador de atividade
+const UNREAD_FETCH_EVERY_MS = 60000;// 60s é mais que suficiente para     atualiazar o indicador de atividade
 
 
 (function () {
@@ -50,7 +50,10 @@ const UNREAD_FETCH_EVERY_MS = 10000; // 20s é mais que suficiente para     atua
   // - Faz GET /board/<id>/poll/?v=<versao> e aplica swap do columns-list
   // - Pausa em: modal aberto, drag, foco em input, aba escondida
   // ============================================================
-  const POLL_MS = Number(window.BOARD_POLL_MS || 20000); //2min é mais que suficiente para atualizar cards na board
+  
+  
+  // intervalo único do polling central
+  const POLL_MS = Number(window.BOARD_POLL_MS || 60000); // 60s
 
   function getBoardId() {
     // prioridade: window.BOARD_ID (setado no board_detail)
@@ -128,15 +131,22 @@ const UNREAD_FETCH_EVERY_MS = 10000; // 20s é mais que suficiente para     atua
     const list = getColumnsList();
     if (!list) return;
     
-    // ✅ sincroniza badge (throttle protege)
+    if (shouldPause()) return;
+
     // badges de atividade
     syncUnreadBadge(boardId);
-    syncCardUnreadBadges(boardId); // 🔴 FALTAVA ISSO
+    syncCardUnreadBadges(boardId);
+
     // track-time
     tickTrackTimeBadges(boardId);
 
+    // access requests
+    const nowAccess = Date.now();
+    if (nowAccess - __lastAccessFetchMs > ACCESS_FETCH_EVERY_MS) {
+      __lastAccessFetchMs = nowAccess;
+      syncAccessRequests(boardId);
+    }
 
-    if (shouldPause()) return;
     if (inFlight) return;
 
     inFlight = true;
@@ -192,18 +202,10 @@ const UNREAD_FETCH_EVERY_MS = 10000; // 20s é mais que suficiente para     atua
 // ============================================================
 // - POLLING DA SOLICITAÇÃO DE ACESSO AO QUADRO
 // ============================================================
-const ACCESS_POLL_MS = 10000;
 
-setInterval(() => {
-  const boardId = getBoardId();
-  if (!boardId) return;
-
-  // aqui NÃO precisa pausar por modal/drag/foco;
-  // é um bloco isolado. Se quiser ser conservador:
-  // if (shouldPause()) return;
-
-  syncAccessRequests(boardId);
-}, ACCESS_POLL_MS);
+// ACCESS REQUESTS passam a rodar dentro do polling central
+let __lastAccessFetchMs = 0;
+const ACCESS_FETCH_EVERY_MS = 60000;
 
 
 
@@ -269,7 +271,7 @@ document.addEventListener("visibilitychange", () => {
   // Track-time badges (MVP) — throttle 5s
   // ============================================================
   let __ttLastFetchMs = 0;
-  const TT_FETCH_EVERY_MS = 20000;
+  const TT_FETCH_EVERY_MS = 60000;
 
   function formatMMSS(seconds) {
     const s = Math.max(0, Number(seconds || 0));
