@@ -1628,13 +1628,27 @@
 
         apply();
 
-        fetch("/activity/filter/set/", {
+        fetch("{% url 'boards:set_activity_filter' %}", {
           method: "POST",
+          credentials: "same-origin",
           headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value,
+            "X-Requested-With": "XMLHttpRequest"
           },
           body: "value=" + encodeURIComponent(filter.value)
+        })
+        .then((r) => {
+          if (!r.ok) throw new Error("Falha ao salvar filtro");
+          return r.json();
+        })
+        .then((data) => {
+          if (!data || data.ok !== true) {
+            throw new Error("Backend não confirmou salvamento do filtro");
+          }
+        })
+        .catch((err) => {
+          console.error("[activity_filter] erro ao salvar:", err);
         });
 
       });

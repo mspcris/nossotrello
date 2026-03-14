@@ -30,6 +30,7 @@ from .views.activity import (
     add_activity,
     cards_unread_activity,
     quill_upload,
+    set_activity_filter,
 )
 
 from boards.views.account import (
@@ -366,8 +367,8 @@ urlpatterns = [
     # Atividade (painel / add / quill upload) — ajuste conforme seu projeto real
     path("card/<int:card_id>/activity/panel/", activity_panel, name="activity_panel"),
     path("card/<int:card_id>/activity/add/", add_activity, name="add_activity"),
+    path("activity/filter/set/", set_activity_filter, name="set_activity_filter"),
     path("quill/upload/", quill_upload, name="quill_upload"),
-
 
     path(
         "board/<int:board_id>/cards/unread-activity/",
