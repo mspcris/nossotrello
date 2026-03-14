@@ -838,7 +838,10 @@ def move_card(request):
 
     card_id = int(data.get("card_id"))
     new_column_id = int(data.get("new_column_id"))
-    new_position = int(data.get("new_position"))
+    try:
+        new_position = int(data.get("new_position", 0))
+    except Exception:
+        new_position = 0
 
     card = get_object_or_404(Card, id=card_id)
 
@@ -901,7 +904,19 @@ def move_card(request):
             ),
         )
 
-        return JsonResponse({"status": "ok"})
+        snippet_html = render_to_string(
+        "boards/partials/card_item.html",
+        {"card": card},
+        request=request,
+        )
+
+        return JsonResponse({
+            "status": "ok",
+            "card_id": card.id,
+            "column_id": card.column_id,
+            "position": card.position,
+            "snippet": snippet_html
+        })
 
     # ============================================================
     # 2) MOVER PARA OUTRA COLUNA (ESTÁVEL)
@@ -979,7 +994,19 @@ def move_card(request):
         ),
     )
 
-    return JsonResponse({"status": "ok"})
+    snippet_html = render_to_string(
+    "boards/partials/card_item.html",
+    {"card": card},
+    request=request,
+    )
+
+    return JsonResponse({
+        "status": "ok",
+        "card_id": card.id,
+        "column_id": card.column_id,
+        "position": card.position,
+        "snippet": snippet_html
+    })
 
 
 
