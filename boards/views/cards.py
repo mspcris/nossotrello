@@ -40,7 +40,7 @@ from boards.models import CardFollow, CardLog, ColumnFollow
 
 from boards.services.notifications import mark_card_delivered, notify_delivery
 
-
+from boards.models import UserBoardPreference
 
 
 logger = logging.getLogger(__name__)
@@ -1084,6 +1084,15 @@ def card_move_options(request, card_id):
 
 def _render_card_modal(request, card, context=None):
     ctx = context or _card_modal_context(card)
+
+    # ------------------------------------------------
+    # Preferência do usuário para filtro de atividade
+    # ------------------------------------------------
+    pref = None
+    if request.user.is_authenticated:
+        pref, _ = UserBoardPreference.objects.get_or_create(user=request.user)
+
+    ctx["activity_filter_default"] = pref.activity_filter if pref else "comments"
 
     # ✅ SEMPRE montar logs decorados (cm_type = system/files/comments)
     # import tardio (NÃO REMOVER, evita ciclo de importação com logs/feed)

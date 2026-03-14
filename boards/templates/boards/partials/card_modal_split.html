@@ -1621,8 +1621,22 @@
     }
 
     if (q) q.addEventListener("input", apply);
-    if (filter) filter.addEventListener("change", apply);
-    apply();
+    if (filter) {
+      filter.addEventListener("change", function() {
+
+        apply();
+
+        fetch("/activity/filter/set/", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value
+          },
+          body: "value=" + encodeURIComponent(filter.value)
+        });
+
+      });
+    }
 
     function hidePreview(){
       if (!preview) return;

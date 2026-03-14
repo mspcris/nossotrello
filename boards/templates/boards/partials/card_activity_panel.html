@@ -15,10 +15,10 @@
       <span class="cm-feed-filter-label">Filtros:</span>
 
       <select id="cm-feed-filter">
-        <option value="comments">Comentários</option>
-        <option value="files">Arquivos</option>
-        <option value="system">Sistema</option>
-        <option value="all">Tudo</option>
+        <option value="comments" {% if activity_filter_default == "comments" %}selected{% endif %}>Comentários</option>
+        <option value="files" {% if activity_filter_default == "files" %}selected{% endif %}>Arquivos</option>
+        <option value="system" {% if activity_filter_default == "system" %}selected{% endif %}>Sistema</option>
+        <option value="all" {% if activity_filter_default == "all" %}selected{% endif %}>Tudo</option>
       </select>
     </div>
 

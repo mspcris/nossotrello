@@ -272,6 +272,14 @@ urlpatterns = [
     ),
 
     # ============================================================
+    # BOARDS — PREFERÊNCIAS DE USUÁRIO (filtros, agrupamentos pessoais, favoritos)
+    # ============================================================
+    path(
+        "activity/filter/set/",
+        views.set_activity_filter,
+        name="set_activity_filter",
+    ),
+    # ============================================================
     # BOARDS — TRANSFERÊNCIA DE TITULARIDADE (OWNER -> OWNER)
     # ============================================================
     path(

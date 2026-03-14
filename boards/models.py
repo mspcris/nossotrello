@@ -704,4 +704,23 @@ class ColumnFollow(models.Model):
         return f"{self.user_id} -> column {self.column_id} (include_new={self.include_new})"
 
 
+
+class UserBoardPreference(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    activity_filter = models.CharField(
+        max_length=20,
+        default="comments",
+        choices=[
+            ("comments", "Comentários"),
+            ("files", "Arquivos"),
+            ("system", "Sistema"),
+            ("all", "Tudo"),
+        ],
+    )
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Prefs {self.user}"
+
 # END boards/models.py

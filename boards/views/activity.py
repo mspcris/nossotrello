@@ -36,6 +36,7 @@ from boards.services.notifications import (
     notify_users_for_card,
 )
 
+from boards.models import UserBoardPreference
 
 
 def _safe_user_handle_or_email(u):
@@ -778,3 +779,16 @@ def _decorate_logs_for_feed(logs_qs):
             _decorate_one_log(r)
 
     return logs
+
+@login_required
+def set_activity_filter(request):
+    value = request.POST.get("value")
+
+    if value not in ["comments", "files", "system", "all"]:
+        return JsonResponse({"ok": False})
+
+    pref, _ = UserBoardPreference.objects.get_or_create(user=request.user)
+    pref.activity_filter = value
+    pref.save()
+
+    return JsonResponse({"ok": True})
