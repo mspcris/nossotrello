@@ -1125,11 +1125,18 @@ def _summarize_html(html: str, limit: int = 220) -> str:
 def card_modal(request, card_id):
     card = get_object_or_404(Card, id=card_id, is_deleted=False)
 
-    CardSeen.objects.update_or_create(
-        card=card,
-        user=request.user,
-        defaults={"last_seen_at": timezone.now()},
-    )
+    # HARDENING: card pode ter coluna removida ou inconsistente
+    if not card.column_id:
+        return HttpResponse(status=204)
+
+    try:
+        CardSeen.objects.update_or_create(
+            card=card,
+            user=request.user,
+            defaults={"last_seen_at": timezone.now()},
+        )
+    except Exception:
+        pass
 
     parents_qs = (
         card.logs
