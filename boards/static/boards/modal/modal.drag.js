@@ -70,6 +70,65 @@
       const card = activeCard;
       activeCard = null;
 
+      // --------------------------------------------------
+      // DETECTAR DROP DE CARD E SINCRONIZAR COM BACKEND
+      // --------------------------------------------------
+      if (moved) {
+
+        const card = ev.target.closest(".card-item, li[data-card-id]");
+        if (!card) return;
+
+        const cardId = Number(card.dataset.cardId);
+        if (!cardId) return;
+
+        const column = card.closest("[data-column-id]");
+        if (!column) return;
+
+        const columnId = Number(column.dataset.columnId);
+
+        const siblings = Array.from(
+          column.querySelectorAll("li[data-card-id]")
+        );
+
+        const newPosition = siblings.indexOf(card);
+
+        try {
+
+          fetch("/move_card/", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": document.querySelector("meta[name='csrf-token']")?.content
+            },
+            body: JSON.stringify({
+              card_id: cardId,
+              new_column_id: columnId,
+              new_position: newPosition
+            })
+          })
+          .then(r => r.json())
+          .then(data => {
+
+            if (!data || data.status !== "ok") {
+              location.reload();
+              return;
+            }
+
+            const el = document.querySelector(`li[data-card-id="${data.card_id}"]`);
+            if (el && data.snippet) {
+              el.outerHTML = data.snippet;
+            }
+
+          })
+          .catch(() => location.reload());
+
+        } catch (_e) {
+          location.reload();
+        }
+
+      }
+
       if (!moved) {
         const cardId = Number(card.dataset.cardId);
         if (cardId) {

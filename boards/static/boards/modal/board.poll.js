@@ -53,7 +53,9 @@ const UNREAD_FETCH_EVERY_MS = 60000;// 60s é mais que suficiente para     atual
   
   
   // intervalo único do polling central
-  const POLL_MS = Number(window.BOARD_POLL_MS || 60000); // 60s
+  //const POLL_MS = Number(window.BOARD_POLL_MS || 60000); // 60s
+  const POLL_ENABLED = false;
+  const POLL_MS = 60000;
 
   function getBoardId() {
     // prioridade: window.BOARD_ID (setado no board_detail)
@@ -189,6 +191,8 @@ const UNREAD_FETCH_EVERY_MS = 60000;// 60s é mais que suficiente para     atual
   }
 
   function loop() {
+    if (!POLL_ENABLED) return;
+
     setTimeout(async () => {
       await tick();
       loop();
