@@ -240,13 +240,20 @@ def activity_panel(request, card_id):
         )
         .order_by("-created_at")
     )
+ #   pref, _ = UserBoardPreference.objects.get_or_create(user=request.user)
 
     parents = _decorate_logs_for_feed(parents_qs)
+
+    pref, _ = UserBoardPreference.objects.get_or_create(user=request.user)
 
     return render(
         request,
         "boards/partials/card_activity_panel.html",
-        {"card": card, "logs": parents},
+        {
+            "card": card,
+            "logs": parents,
+            "activity_filter_default": pref.activity_filter or "comments",
+        },
     )
 
 
@@ -524,9 +531,15 @@ def add_activity(request, card_id):
 
     parents = _decorate_logs_for_feed(parents_qs)
 
+    pref, _ = UserBoardPreference.objects.get_or_create(user=request.user)
+
     activity_html = render_to_string(
         "boards/partials/card_activity_panel.html",
-        {"card": card, "logs": parents},
+        {
+            "card": card,
+            "logs": parents,
+            "activity_filter_default": pref.activity_filter or "comments",
+        },
         request=request,
     )
 
@@ -781,6 +794,7 @@ def _decorate_logs_for_feed(logs_qs):
     return logs
 
 @login_required
+@require_POST
 def set_activity_filter(request):
     value = request.POST.get("value")
 

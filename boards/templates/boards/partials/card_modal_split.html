@@ -1602,7 +1602,7 @@
       if (!feed) return;
 
       const query = norm(q && q.value).trim();
-      const f = String(filter && filter.value || "comments");
+      const f = filter ? filter.value : "comments";
 
       $all(".cm-feed-item", feed).forEach((it) => {
         const t = String(it.getAttribute("data-type") || "comments");
@@ -1614,11 +1614,13 @@
         it.style.display = (okType && okQ) ? "" : "none";
       });
 
-      $all(".cm-feed-day", feed).forEach((day) => {
+      $all(".cm-feed-dayhdr", feed).forEach((day) => {
         const anyVisible = $all(".cm-feed-item", day).some((it) => it.style.display !== "none");
         day.style.display = anyVisible ? "" : "none";
       });
     }
+    apply();
+
 
     if (q) q.addEventListener("input", apply);
     if (filter) {

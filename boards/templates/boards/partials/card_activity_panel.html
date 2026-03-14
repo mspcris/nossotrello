@@ -14,6 +14,8 @@
       <span class="cm-feed-ico" aria-hidden="true">⏷</span>
       <span class="cm-feed-filter-label">Filtros:</span>
 
+      {{ activity_filter_default }}
+
       <select id="cm-feed-filter">
         <option value="comments" {% if activity_filter_default == "comments" %}selected{% endif %}>Comentários</option>
         <option value="files" {% if activity_filter_default == "files" %}selected{% endif %}>Arquivos</option>
