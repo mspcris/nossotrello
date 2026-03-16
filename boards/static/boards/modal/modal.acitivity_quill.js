@@ -453,120 +453,6 @@
     } catch (_e) {}
   }
 
-  // ============================================================
-  // FEED FILTER (Comentários / Arquivos / Sistema / Tudo)
-  // ============================================================
-  function getFeedEl() {
-    return document.getElementById("cm-feed");
-  }
-
-  function applyFeedFilter() {
-    const sel = document.getElementById("cm-feed-filter");
-    const q = document.getElementById("cm-feed-q");
-    const feed = getFeedEl();
-    if (!sel || !feed) return;
-
-    const filter = (sel.value || "comments").toLowerCase();
-    const term = (q?.value || "").trim().toLowerCase();
-
-    const items = feed.querySelectorAll(".cm-feed-item");
-    items.forEach((it) => {
-      const type = (it.getAttribute("data-type") || "").trim().toLowerCase();
-      const text = (it.getAttribute("data-text") || "").toLowerCase();
-
-      const okType = filter === "all" || type === filter;
-      const okText = !term || text.includes(term);
-
-      it.classList.toggle("is-hidden", !(okType && okText));
-    });
-
-    const days = feed.querySelectorAll(".cm-feed-dayhdr");
-    days.forEach((hdr) => {
-      let node = hdr.nextElementSibling;
-      let hasVisible = false;
-      while (node && !node.classList.contains("cm-feed-dayhdr")) {
-        if (node.classList.contains("cm-feed-item") && !node.classList.contains("is-hidden")) {
-          hasVisible = true;
-          break;
-        }
-        node = node.nextElementSibling;
-      }
-      hdr.classList.toggle("is-hidden", !hasVisible);
-    });
-  }
-
-  function bindFeedFilterUI() {
-    const sel = document.getElementById("cm-feed-filter");
-    const q = document.getElementById("cm-feed-q");
-
-    if (sel && sel.dataset.cmBound !== "1") {
-      sel.dataset.cmBound = "1";
-      sel.addEventListener("change", applyFeedFilter);
-    }
-    if (q && q.dataset.cmBound !== "1") {
-      q.dataset.cmBound = "1";
-      q.addEventListener("input", applyFeedFilter);
-    }
-  }
-
-  function cleanupActivityLogSpacing() {
-    try {
-      const wrapper =
-        document.getElementById("activity-panel-wrapper") ||
-        document.querySelector("#cm-activity-panel") ||
-        document.querySelector("#activity-panel-wrapper");
-
-      if (!wrapper) return;
-
-      const contentBlocks = wrapper.querySelectorAll(".activity-content, .cm-activity-content");
-      if (!contentBlocks || !contentBlocks.length) return;
-
-      const normalizeHtml = (html) =>
-        String(html || "")
-          .replace(/\u00A0/g, " ")
-          .replace(/&nbsp;/gi, " ")
-          .replace(/\s+/g, "")
-          .toLowerCase();
-
-      const hasMedia = (el) =>
-        !!el.querySelector("img, video, audio, iframe, object, embed, table, ul, ol, blockquote");
-
-      const isEmptyNode = (node) => {
-        if (!node) return true;
-        if (hasMedia(node)) return false;
-
-        const tmp = node.cloneNode(true);
-
-        tmp
-          .querySelectorAll("span.ql-ui, span[data-ql-ui], span[contenteditable='false']")
-          .forEach((s) => s.remove());
-
-        tmp.querySelectorAll("br").forEach((b) => b.remove());
-
-        const txt = (tmp.textContent || "").replace(/\u00A0/g, " ").trim();
-        const html = normalizeHtml(tmp.innerHTML);
-
-        if (!txt && (!html || html.replace(/<[^>]+>/g, "") === "")) return true;
-        return false;
-      };
-
-      contentBlocks.forEach((block) => {
-        Array.from(block.querySelectorAll("p, div")).forEach((el) => {
-          if (isEmptyNode(el)) el.remove();
-        });
-
-        const isIgnorableText = (n) => n.nodeType === 3 && (n.textContent || "").trim() === "";
-        const isBr = (n) => n.nodeType === 1 && n.tagName === "BR";
-
-        while (block.firstChild && (isIgnorableText(block.firstChild) || isBr(block.firstChild))) {
-          block.firstChild.remove();
-        }
-        while (block.lastChild && (isIgnorableText(block.lastChild) || isBr(block.lastChild))) {
-          block.lastChild.remove();
-        }
-      });
-    } catch (_e) {}
-  }
 
   // ============================================================
   // REPLY (Responder)
@@ -646,6 +532,121 @@
     true
   );
 
+
+  // ============================================================
+  // FEED FILTER (Comentários / Arquivos / Sistema / Tudo)
+  // ============================================================
+  const VALID_FEED_FILTERS = new Set(["comments", "files", "system", "all"]);
+
+  function getFeedEl() {
+    return document.getElementById("cm-feed");
+  }
+
+  function getFeedFilterPersistUrl() {
+    const root = document.getElementById("cm-root");
+    return (root && root.dataset && root.dataset.activityFilterUrl)
+      ? root.dataset.activityFilterUrl
+      : "";
+  }
+
+  function getCsrfToken() {
+    return (
+      document.querySelector('#cm-root input[name="csrfmiddlewaretoken"]')?.value ||
+      document.querySelector('input[name="csrfmiddlewaretoken"]')?.value ||
+      ""
+    );
+  }
+
+  function persistFeedFilter(value) {
+    const normalized = String(value || "").trim().toLowerCase();
+    if (!VALID_FEED_FILTERS.has(normalized)) return;
+
+    const url = getFeedFilterPersistUrl();
+    const csrf = getCsrfToken();
+
+    if (!url || !csrf) {
+      console.error("[activity_filter] url/csrf ausente");
+      return;
+    }
+
+    fetch(url, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+        "X-CSRFToken": csrf,
+        "X-Requested-With": "XMLHttpRequest",
+      },
+      body: "value=" + encodeURIComponent(normalized),
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error("Falha ao salvar filtro");
+        return r.json();
+      })
+      .then((data) => {
+        if (!data || data.ok !== true) {
+          throw new Error("Backend não confirmou salvamento do filtro");
+        }
+      })
+      .catch((err) => {
+        console.error("[activity_filter] erro ao salvar:", err);
+      });
+  }
+
+  function applyFeedFilter() {
+    const sel = document.getElementById("cm-feed-filter");
+    const q = document.getElementById("cm-feed-q");
+    const feed = getFeedEl();
+    if (!sel || !feed) return;
+
+    const filter = (sel.value || "comments").toLowerCase();
+    const term = (q?.value || "").trim().toLowerCase();
+
+    const items = feed.querySelectorAll(".cm-feed-item");
+    items.forEach((it) => {
+      const type = (it.getAttribute("data-type") || "").trim().toLowerCase();
+      const text = (it.getAttribute("data-text") || "").toLowerCase();
+
+      const okType = filter === "all" || type === filter;
+      const okText = !term || text.includes(term);
+
+      it.classList.toggle("is-hidden", !(okType && okText));
+    });
+
+    const days = feed.querySelectorAll(".cm-feed-dayhdr");
+    days.forEach((hdr) => {
+      let node = hdr.nextElementSibling;
+      let hasVisible = false;
+
+      while (node && !node.classList.contains("cm-feed-dayhdr")) {
+        if (node.classList.contains("cm-feed-item") && !node.classList.contains("is-hidden")) {
+          hasVisible = true;
+          break;
+        }
+        node = node.nextElementSibling;
+      }
+
+      hdr.classList.toggle("is-hidden", !hasVisible);
+    });
+  }
+
+  function bindFeedFilterUI() {
+    const sel = document.getElementById("cm-feed-filter");
+    const q = document.getElementById("cm-feed-q");
+
+    if (sel && sel.dataset.cmBound !== "1") {
+      sel.dataset.cmBound = "1";
+      sel.addEventListener("change", function () {
+        applyFeedFilter();
+        persistFeedFilter(sel.value);
+      });
+    }
+
+    if (q && q.dataset.cmBound !== "1") {
+      q.dataset.cmBound = "1";
+      q.addEventListener("input", applyFeedFilter);
+    }
+  }
   // ============================================================
   // Upload de IMAGEM do Quill (paste/toolbar) — NÃO cria CardLog
   // ============================================================

@@ -657,7 +657,9 @@ def update_card(request, card_id):
     ctx["logs"] = _decorate_logs_for_feed(parents_qs)
 
     # SPLIT é o contrato
-    return render(request, "boards/partials/card_modal_split.html", ctx)
+    # Centraliza a renderização no mesmo caminho do load inicial,
+    # garantindo activity_filter_default e o template correto.
+    return _render_card_modal(request, card, ctx)
 
 
 

@@ -69,12 +69,10 @@
      data-cm-mode="split"
      data-card-id="{{ card.id }}"
      data-cm-active="desc"
+     data-activity-filter-url="{% url 'boards:set_activity_filter' %}"
      data-tag-colors='{{ card.tag_colors|default_if_none:"{}"|escape }}'
      {% if term_status %}data-term-status="{{ term_status }}"{% endif %}
      data-term-notify="{% if card.due_notify %}1{% else %}0{% endif %}">
-
-
-
 
 
 
@@ -1570,10 +1568,11 @@
 
 
 
+
+
 <script>
 (function(){
   function $(sel, root){ return (root||document).querySelector(sel); }
-  function $all(sel, root){ return Array.from((root||document).querySelectorAll(sel)); }
 
   function bootFeed(){
     const root = document.getElementById("cm-root");
@@ -1586,73 +1585,11 @@
     feedRoot.dataset.cmFeedBound = "1";
 
     const feed = $("#cm-feed", feedRoot);
-    const q = $("#cm-feed-q", feedRoot);
-    const filter = $("#cm-feed-filter", feedRoot);
-
     const preview = $("#cm-hover-preview", feedRoot);
     const pImg = $("#cm-hover-img", feedRoot);
     const pOpen = $("#cm-hover-open", feedRoot);
-
     const wrap = $("#activity-panel-wrapper", feedRoot);
     const pill = $("#cm-newmsg-pill", feedRoot);
-
-    function norm(s){ return String(s||"").toLowerCase(); }
-
-    function apply(){
-      if (!feed) return;
-
-      const query = norm(q && q.value).trim();
-      const f = filter ? filter.value : "comments";
-
-      $all(".cm-feed-item", feed).forEach((it) => {
-        const t = String(it.getAttribute("data-type") || "comments");
-        const text = norm(it.getAttribute("data-text") || it.textContent || "");
-
-        const okType = (f === "all") ? true : (t === f);
-        const okQ = !query || text.includes(query);
-
-        it.style.display = (okType && okQ) ? "" : "none";
-      });
-
-      $all(".cm-feed-dayhdr", feed).forEach((day) => {
-        const anyVisible = $all(".cm-feed-item", day).some((it) => it.style.display !== "none");
-        day.style.display = anyVisible ? "" : "none";
-      });
-    }
-    apply();
-
-
-    if (q) q.addEventListener("input", apply);
-    if (filter) {
-      filter.addEventListener("change", function() {
-
-        apply();
-
-        fetch("{% url 'boards:set_activity_filter' %}", {
-          method: "POST",
-          credentials: "same-origin",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-            "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value,
-            "X-Requested-With": "XMLHttpRequest"
-          },
-          body: "value=" + encodeURIComponent(filter.value)
-        })
-        .then((r) => {
-          if (!r.ok) throw new Error("Falha ao salvar filtro");
-          return r.json();
-        })
-        .then((data) => {
-          if (!data || data.ok !== true) {
-            throw new Error("Backend não confirmou salvamento do filtro");
-          }
-        })
-        .catch((err) => {
-          console.error("[activity_filter] erro ao salvar:", err);
-        });
-
-      });
-    }
 
     function hidePreview(){
       if (!preview) return;
@@ -1679,29 +1616,27 @@
         const thumb = e.target && e.target.closest ? e.target.closest(".cm-attach-thumb[data-preview-src]") : null;
         if (!thumb) return;
 
-        // ✅ Se o mouse está indo para dentro do preview, NÃO fecha
         const to = e.relatedTarget;
         if (to && preview && (to === preview || (preview.contains && preview.contains(to)))) return;
 
         hidePreview();
       }, true);
-
+    }
 
     document.addEventListener("keydown", function(e){
       if (e.key === "Escape") hidePreview();
     });
 
-      if (preview) {
-        preview.addEventListener("mouseenter", function(){
-          preview.classList.add("is-on");
-          preview.setAttribute("aria-hidden", "false");
-        }, true);
+    if (preview) {
+      preview.addEventListener("mouseenter", function(){
+        preview.classList.add("is-on");
+        preview.setAttribute("aria-hidden", "false");
+      }, true);
 
-        preview.addEventListener("mouseleave", function(){
-          hidePreview();
-        }, true);
-      }
-
+      preview.addEventListener("mouseleave", function(){
+        hidePreview();
+      }, true);
+    }
 
     if (pill && wrap){
       pill.addEventListener("click", function(){
@@ -1714,21 +1649,28 @@
   document.body.addEventListener("htmx:afterSwap", function(evt){
     if (!evt.target) return;
 
-    // 1) Quando o modal inteiro troca
     if (evt.target.id === "modal-body") {
       bootFeed();
       return;
     }
 
-    // 2) Quando SOMENTE o painel de atividade troca (ex.: etiqueta, anexo, etc.)
     if (evt.target.id === "cm-activity-panel") {
       bootFeed();
       return;
     }
   });
-
 })();
 </script>
+
+
+
+
+
+
+
+
+
+
 
 
 
