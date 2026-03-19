@@ -57,6 +57,9 @@ def sanitize_card_description_to_text(desc_html: str, *, limit: int = 450) -> st
 class CardSnapshot:
     card_id: int
     board_id: int
+    board_name: str
+    column_name: str
+    card_position: int
     title: str
     tags: str
     description: str
@@ -88,6 +91,9 @@ def build_card_snapshot(*, card: Card) -> CardSnapshot:
     return CardSnapshot(
         card_id=card_id,
         board_id=board_id,
+        board_name=(card.column.board.name or "").strip(),
+        column_name=(card.column.name or "").strip(),
+        card_position=int(card.position) + 1,
         title=(card.title or "").strip(),
         tags=(card.tags or "").strip(),
         description=sanitize_card_description_to_text(getattr(card, "description", "")),
@@ -134,9 +140,16 @@ def format_card_message(*, title_prefix: str, snap: CardSnapshot, extra_lines: O
     due_date = _wa_safe(snap.due_date)
     delivered_at = _wa_safe(getattr(snap, "delivered_at", ""))
 
+    board_name = _wa_safe(getattr(snap, 'board_name', ''))
+    column_name = _wa_safe(getattr(snap, 'column_name', ''))
+    card_position = getattr(snap, 'card_position', None)
+
     lines = [
-        # título em negrito para destacar o “tipo” da notificação
+        # título em negrito para destacar o "tipo" da notificação
         f"{_wa_bold(title)}",
+        f"{_wa_bold('Quadro:')} {board_name}" if board_name else None,
+        f"{_wa_bold('Coluna:')} {column_name}" if column_name else None,
+        f"{_wa_bold('Posição:')} #{card_position}" if card_position else None,
         f"{_wa_bold('Card:')} {card_title}",
         f"{_wa_bold('Tags:')} {tags}" if tags else f"{_wa_bold('Tags:')} (sem etiquetas)",
         f"{_wa_bold('Descrição:')} {desc}" if desc else f"{_wa_bold('Descrição:')} (vazia)",
@@ -150,7 +163,7 @@ def format_card_message(*, title_prefix: str, snap: CardSnapshot, extra_lines: O
         # mantém extras, mas também protege caracteres especiais
         lines.extend([_wa_safe(x) for x in extra_lines if x])
 
-    return "\n".join(lines).strip()
+    return "\n".join(x for x in lines if x is not None).strip()
 
 
 
