@@ -9,19 +9,19 @@
   window.Modal.breadcrumb = {
     render() {
       const host = qs("#modal-breadcrumb");
-      const title = qs("#modal-body input[name='title']");
+      if (!host) return;
 
-      if (!host || !title) return;
+      const root     = qs("#cm-root");
+      const board    = root?.dataset.board        || "";
+      const column   = root?.dataset.column       || "";
+      const position = root?.dataset.cardPosition || "";
 
-      host.textContent = title.value || "Card";
+      const parts = [board, column, position ? `#${position}` : ""].filter(Boolean);
+      host.textContent = parts.join("  ›  ");
     },
 
     bind() {
-      const input = qs("#modal-body input[name='title']");
-      if (!input || input.dataset.bcBound) return;
-
-      input.dataset.bcBound = "1";
-      input.addEventListener("input", this.render);
+      // dados vêm dos data-attributes do #cm-root, não precisam de listener
     },
   };
 })();

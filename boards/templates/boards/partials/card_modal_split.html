@@ -72,7 +72,10 @@
      data-activity-filter-url="{% url 'boards:set_activity_filter' %}"
      data-tag-colors='{{ card.tag_colors|default_if_none:"{}"|escape }}'
      {% if term_status %}data-term-status="{{ term_status }}"{% endif %}
-     data-term-notify="{% if card.due_notify %}1{% else %}0{% endif %}">
+     data-term-notify="{% if card.due_notify %}1{% else %}0{% endif %}"
+     data-board="{{ board.name|default:'' }}"
+     data-column="{{ card.column.name|default:'' }}"
+     data-card-position="{{ card.position|add:1 }}">
 
 
 
