@@ -819,16 +819,21 @@ html.dark #cm-root{
 }
 
 /* FLOATBAR — footer fixo fora do scroll (filho de #card-modal-root via JS) */
-.cm-floatbar{
+#card-modal-root .cm-floatbar{
   flex-shrink: 0;
-  border-top: 1px solid var(--cm-border);
-  background: var(--cm-bg);
+  border-top: 1px solid rgba(15,23,42,0.14);
+  background: rgba(255,255,255,0.92);
   padding: 10px 16px;
 }
-.cm-floatbar-inner{
+#card-modal-root.theme-dark .cm-floatbar,
+#card-modal-root.card-theme-dark .cm-floatbar{
+  border-top: 1px solid rgba(255,255,255,0.14);
+  background: rgba(10,18,40,0.92);
+}
+#card-modal-root .cm-floatbar-inner{
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 10px;
 }
 
