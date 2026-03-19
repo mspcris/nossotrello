@@ -818,6 +818,20 @@ html.dark #cm-root{
   color: var(--cm-muted) !important;
 }
 
+/* FLOATBAR — footer fixo fora do scroll (filho de #card-modal-root via JS) */
+.cm-floatbar{
+  flex-shrink: 0;
+  border-top: 1px solid var(--cm-border);
+  background: var(--cm-bg);
+  padding: 10px 16px;
+}
+.cm-floatbar-inner{
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 /* TOPBAR / TABS */
 .cm-topbar{
   position: sticky;

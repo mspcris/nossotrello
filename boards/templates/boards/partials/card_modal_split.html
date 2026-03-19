@@ -501,16 +501,6 @@
         </div>
       </form>
 
-      <div id="cm-floatbar" class="cm-floatbar hidden" aria-live="polite">
-        <div class="cm-floatbar-inner">
-          {% comment %} <button type="submit" form="cm-main-form" class="cm-btn primary" id="cm-float-save-btn"> {% endcomment %}
-          <button type="submit" form="cm-main-form" class="cm-btn primary" id="cm-tag-color-save-btn">
-  <span class="underline font-semibold">S</span>alvar
-</button>
-
-          <button type="button" class="cm-btn" id="cm-close-btn">Fechar</button>
-        </div>
-      </div>
 
     </div>
 
@@ -767,6 +757,16 @@
 
 </div>
 
+{# Floatbar (salvar/fechar) — fora do cm-wrap para sticky funcionar corretamente #}
+<div id="cm-floatbar" class="cm-floatbar hidden" aria-live="polite">
+  <div class="cm-floatbar-inner">
+    <button type="submit" form="cm-main-form" class="cm-btn primary" id="cm-tag-color-save-btn">
+      <span class="underline font-semibold">S</span>alvar
+    </button>
+    <button type="button" class="cm-btn" id="cm-close-btn">Fechar</button>
+  </div>
+</div>
+
 
 <script>
 (function () {
@@ -926,6 +926,14 @@
     const closeBtn = document.getElementById("cm-close-btn");
 
     if (!form || !floatbar) return;
+
+    // Move floatbar para fora do scroll (#card-modal-root é flex column)
+    const modalRoot = document.getElementById("card-modal-root");
+    if (modalRoot) {
+      const old = modalRoot.querySelector(":scope > #cm-floatbar");
+      if (old && old !== floatbar) old.remove();
+      if (floatbar.parentElement !== modalRoot) modalRoot.appendChild(floatbar);
+    }
 
     const WATCH = [
       "card_title",
