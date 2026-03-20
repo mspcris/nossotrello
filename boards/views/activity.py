@@ -189,27 +189,32 @@ def _extract_media_image_paths_from_delta(delta_obj: dict, folder: str = "quill"
 
 def _build_comment_log_html_for_images(actor_handle_or_email: str, relative_paths: list[str]) -> str:
     """
-    HTML simples para aparecer no FEED (thumb pequena + link).
+    HTML para aparecer no FEED: thumb pequena + link para cada imagem.
+    Exibe até 30 imagens por postagem.
     """
     if not relative_paths:
         return ""
 
-    rp = relative_paths[0].lstrip("/")
-    url = f"/media/{rp}"
-    filename = os.path.basename(rp)
-
     who = actor_handle_or_email.strip() if actor_handle_or_email else ""
-    prefix = f"{escape(who)} adicionou uma imagem na atividade:" if who else "Adicionou uma imagem na atividade:"
+    n = len(relative_paths)
+    noun = "uma imagem" if n == 1 else f"{n} imagens"
+    prefix = f"{escape(who)} adicionou {noun} na atividade:" if who else f"Adicionou {noun} na atividade:"
+
+    thumbs_html = ""
+    for rp in relative_paths[:30]:  # limite razoável de 30 imagens por postagem
+        rp = rp.lstrip("/")
+        url = f"/media/{rp}"
+        filename = os.path.basename(rp)
+        thumbs_html += f"""
+        <a href="{escape(url)}" target="_blank" rel="noopener" class="cm-attach-thumb" data-preview-src="{escape(url)}">
+          <img src="{escape(url)}" alt="{escape(filename)}">
+          <span class="cm-attach-zoom" aria-hidden="true">🔍</span>
+        </a>"""
 
     return f"""
     <div class="cm-activity-img-comment">
       <div class="cm-muted">{prefix}</div>
-      <div class="cm-attach">
-        <a class="cm-attach-file" href="{escape(url)}" target="_blank" rel="noopener">{escape(filename)}</a>
-        <a href="{escape(url)}" target="_blank" rel="noopener" class="cm-attach-thumb" data-preview-src="{escape(url)}">
-          <img src="{escape(url)}" alt="">
-          <span class="cm-attach-zoom" aria-hidden="true">🔍</span>
-        </a>
+      <div class="cm-attach cm-attach-grid">{thumbs_html}
       </div>
     </div>
     """.strip()
@@ -473,7 +478,7 @@ def add_activity(request, card_id):
                         reply_to=parent_log if parent_log else None,
                         content=files_html,
                         content_delta={},
-                        content_text="",  # vazio => cai em files
+                        content_text="[imagem]",  # não-vazio => classificado como comentário
                         attachment=None,
                     )
 
@@ -733,13 +738,6 @@ def _log_is_files(log) -> bool:
         pass
 
     html = (getattr(log, "content", "") or "").lower()
-
-    if "<img" in html:
-        return True
-
-    for ext in (".png", ".jpg", ".jpeg", ".webp", ".gif"):
-        if ext in html:
-            return True
 
     if ("attachments/" in html) or ("uploads/" in html) or ("/media/" in html):
         return True

@@ -7,6 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.urls import reverse
 from django.conf import settings
 from django.core.mail import send_mail
+from django.utils.html import escape
 from .models import Project, ActivityType, TimeEntry
 from boards.models import Card, Board, CardLog
 import re
@@ -35,6 +36,36 @@ from boards.services.notifications import (
 
 
 logger = logging.getLogger(__name__)
+
+
+def _actor_handle(user) -> str:
+    """Retorna @handle, display_name ou username do usuário."""
+    try:
+        prof = getattr(user, "profile", None)
+        if prof:
+            if getattr(prof, "handle", None):
+                return "@" + prof.handle.strip()
+            if getattr(prof, "display_name", None):
+                return prof.display_name.strip()
+    except Exception:
+        pass
+    return getattr(user, "username", None) or getattr(user, "email", "?")
+
+
+def _log_tracktime_feed(*, card, user, html_message: str) -> None:
+    """Registra no feed do card como entrada de sistema (sem content_text/delta)."""
+    try:
+        CardLog.objects.create(
+            card=card,
+            actor=user,
+            content=html_message,
+            content_delta={},
+            content_text="",
+            attachment=None,
+        )
+    except Exception as exc:
+        logger.exception("[tracktime] Falha ao gravar log no feed: %s", exc)
+
 
 def _send_whatsapp_two_messages(*, number: str, message: str, url: str) -> None:
     """
@@ -325,6 +356,16 @@ def card_tracktime_start(request, card_id):
     entry.set_confirmation_window(now=now)
     entry.save(update_fields=["confirm_due_at", "auto_stop_at"])
 
+    # Feed do card — entrada de sistema
+    _log_tracktime_feed(
+        card=card,
+        user=request.user,
+        html_message=(
+            f"<p><strong>{escape(_actor_handle(request.user))}</strong>"
+            f" iniciou track-time: {escape(project.name)} / {escape(activity.name)}.</p>"
+        ),
+    )
+
         # ✅ WhatsApp (MVP): dispara mensagem no start, sem quebrar o track-time se falhar
        # ✅ WhatsApp no START (2 mensagens: comunicado + link puro)
     try:
@@ -421,7 +462,24 @@ def card_tracktime_stop(request, card_id):
         except Exception as e:
             logger.exception("[tracktime] Notificação STOP falhou: %s", e)
 
-
+        # Feed do card — entrada de sistema
+        total_min = int(getattr(entry, "minutes", 0) or 0)
+        proj_name = escape(getattr(getattr(entry, "project", None), "name", "") or "")
+        act_name  = escape(getattr(getattr(entry, "activity_type", None), "name", "") or "")
+        if total_min >= 60:
+            h, m = divmod(total_min, 60)
+            dur = f"{h}h {m:02d}min" if m else f"{h}h"
+        else:
+            dur = f"{total_min} min"
+        context = f" — {proj_name} / {act_name}" if (proj_name or act_name) else ""
+        _log_tracktime_feed(
+            card=card,
+            user=request.user,
+            html_message=(
+                f"<p><strong>{escape(_actor_handle(request.user))}</strong>"
+                f" encerrou track-time{context}: {escape(dur)}.</p>"
+            ),
+        )
 
     return card_tracktime_panel(request, card_id)
 
@@ -488,6 +546,21 @@ def card_tracktime_manual(request, card_id):
     ),
 )
 
+    # Feed do card — lançamento manual
+    if minutes_int >= 60:
+        h, m = divmod(minutes_int, 60)
+        dur = f"{h}h {m:02d}min" if m else f"{h}h"
+    else:
+        dur = f"{minutes_int} min"
+    _log_tracktime_feed(
+        card=card,
+        user=request.user,
+        html_message=(
+            f"<p><strong>{escape(_actor_handle(request.user))}</strong>"
+            f" lançou track-time manual: {escape(project.name)} / {escape(activity.name)}"
+            f" — {escape(dur)}.</p>"
+        ),
+    )
 
     return card_tracktime_panel(request, card_id)
 

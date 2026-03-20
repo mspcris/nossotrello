@@ -285,7 +285,7 @@ def notify_users_for_card(
         return
 
     snap = snap or build_card_snapshot(card=card)
-    link = snap.tracktime_url or snap.card_url
+    link = snap.card_url  # usa sempre a URL do card (sem &tab=tracktime que ainda não tem handler)
     
     """
     Compliance com suas regras:

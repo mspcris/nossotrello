@@ -350,6 +350,7 @@ function bindQuillToTextarea(textarea, boardId) {
   ensureModalScrollable(modalScroll);
 
   const quill = new Quill(host, quillOptions);
+  quill.root.spellcheck = true;  // ativa corretor ortográfico nativo do navegador
   quill.__cmModalScroll = modalScroll || null;
   window.Modal.quill._descQuill = quill;
 
@@ -466,6 +467,7 @@ function bindQuillToDiv(div, hiddenInput, boardId) {
   ensureModalScrollable(modalScroll);
 
   const quill = new Quill(div, quillOptions);
+  quill.root.spellcheck = true;  // ativa corretor ortográfico nativo do navegador
   quill.__cmModalScroll = modalScroll || null;
   window.Modal.quill._descQuill = quill;
 
