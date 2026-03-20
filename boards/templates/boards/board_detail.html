@@ -2146,8 +2146,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // 🔁 ao fechar modal (quando backend marca como lido)
   document.addEventListener("modal:closed", refreshCardUnreadBadges);
 
-  // ⏱️ polling contínuo
-  setInterval(refreshCardUnreadBadges, 5000);
+  // ⏱️ polling — 30s (N+1 eliminado no backend, mas ainda assim não precisa ser agressivo)
+  setInterval(refreshCardUnreadBadges, 30000);
 })();
 </script>
 

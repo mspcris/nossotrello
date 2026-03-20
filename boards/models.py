@@ -207,6 +207,10 @@ class Column(models.Model):
 
     class Meta:
         ordering = ["position"]
+        indexes = [
+            models.Index(fields=["board", "is_deleted"], name="col_board_deleted_idx"),
+            models.Index(fields=["board", "position"], name="col_board_position_idx"),
+        ]
 
     def __str__(self):
         return f"{self.board.name} - {self.name}"
@@ -270,6 +274,11 @@ class Card(models.Model):
 
     class Meta:
         ordering = ["position", "id"]
+        indexes = [
+            models.Index(fields=["column", "is_deleted"], name="card_col_deleted_idx"),
+            models.Index(fields=["column", "position"], name="card_col_position_idx"),
+            models.Index(fields=["due_date"], name="card_due_date_idx"),
+        ]
 
     def __str__(self):
         return self.title
@@ -306,6 +315,12 @@ class CardLog(models.Model):
 
     attachment = models.FileField(upload_to="logs/", blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["card", "created_at"], name="cardlog_card_created_idx"),
+            models.Index(fields=["actor", "created_at"], name="cardlog_actor_created_idx"),
+        ]
 
 
 # ============================================================

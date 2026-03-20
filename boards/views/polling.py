@@ -146,34 +146,33 @@ def board_poll(request, board_id):
 def unread_activity_per_card(request, board_id):
     board = get_object_or_404(Board, id=board_id)
 
-    # segurança
     if not board.memberships.filter(user=request.user).exists():
         return JsonResponse({"error": "forbidden"}, status=403)
 
-    cards = Card.objects.filter(
-        column__board=board,
-        is_deleted=False
-    ).only("id")
+    # ── Uma única query SQL raw substitui N+1 (1 query por card) ──────
+    # LEFT JOIN com CardSeen para obter last_seen_at por card,
+    # depois conta CardLog entries mais recentes, excluindo o próprio usuário.
+    from django.db import connection
+    user_id = request.user.id
 
-    seen_map = {
-        cs.card_id: cs.last_seen_at
-        for cs in CardSeen.objects.filter(user=request.user, card__in=cards)
-    }
-
-    result = {}
-
-    for card in cards:
-        last_seen = seen_map.get(card.id, timezone.make_aware(timezone.datetime.min))
-
-        count = (
-            CardLog.objects
-            .filter(card=card, created_at__gt=last_seen)
-            .exclude(actor=request.user)
-            .count()
-        )
-
-        if count > 0:
-            result[str(card.id)] = count
+    with connection.cursor() as cur:
+        cur.execute("""
+            SELECT c.id, COUNT(cl.id) AS cnt
+            FROM boards_card c
+            INNER JOIN boards_column col ON col.id = c.column_id
+            LEFT JOIN boards_cardseen cs
+                ON cs.card_id = c.id AND cs.user_id = %s
+            LEFT JOIN boards_cardlog cl
+                ON cl.card_id = c.id
+               AND cl.created_at > COALESCE(cs.last_seen_at, '1970-01-01 00:00:00+00:00')
+               AND (cl.actor_id IS NULL OR cl.actor_id != %s)
+            WHERE col.board_id = %s
+              AND c.is_deleted = 0
+              AND col.is_deleted = 0
+            GROUP BY c.id
+            HAVING cnt > 0
+        """, [user_id, user_id, board_id])
+        result = {str(row[0]): row[1] for row in cur.fetchall()}
 
     return JsonResponse({"cards": result})
 
