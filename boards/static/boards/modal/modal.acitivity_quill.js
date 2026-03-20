@@ -5,16 +5,21 @@
   const STATE_KEY = "__cmActivityQuill";
   const STATE_EL_KEY = "__cmActivityQuillEl";
 
-  /** Força spellcheck=true e usa MutationObserver para impedir que o Quill reverta */
+  /**
+   * Força spellcheck=true de forma permanente:
+   * Intercepta o próprio setAttribute do elemento para que NENHUM código
+   * (incluindo o Quill) consiga setar spellcheck=false novamente.
+   */
   function _enableSpellcheck(editorEl) {
     if (!editorEl) return;
-    editorEl.setAttribute("spellcheck", "true");
-    const obs = new MutationObserver(() => {
-      if (editorEl.getAttribute("spellcheck") !== "true") {
-        editorEl.setAttribute("spellcheck", "true");
-      }
-    });
-    obs.observe(editorEl, { attributes: true, attributeFilter: ["spellcheck"] });
+    const _orig = editorEl.setAttribute.bind(editorEl);
+    editorEl.setAttribute = function(name, value) {
+      _orig(name, name === "spellcheck" ? "true" : value);
+    };
+    _orig("spellcheck", "true");
+    _orig("lang", "pt-BR");
+    Promise.resolve().then(() => _orig("spellcheck", "true"));
+    requestAnimationFrame(() => _orig("spellcheck", "true"));
   }
 
   function getRoot() {
