@@ -1696,10 +1696,8 @@ def board_history_unread_count(request, board_id):
     if last_seen:
         qs = qs.filter(created_at__gt=last_seen)
 
-    # 🔴 REGRA-CHAVE: ignora logs do próprio usuário
-    actor_label = _actor_label(request)
-    if actor_label:
-        qs = qs.exclude(content__icontains=actor_label)
+    # Ignora logs do próprio usuário — conta só ações de outras pessoas
+    qs = qs.exclude(actor=request.user)
 
     return JsonResponse({"unread": qs.count()})
 
