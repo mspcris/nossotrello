@@ -123,9 +123,9 @@
         <div id="col-menu-{{ column.id }}"
              data-col-menu-popover
              data-col-id="{{ column.id }}"
-             class="hidden absolute right-0 top-9 w-52 rounded-xl shadow-2xl overflow-visible
-                    bg-slate-900/97 text-white border border-white/10 backdrop-blur-md
-                    py-1.5 z-[9999]"
+             class="hidden absolute right-0 top-9 w-52 rounded-xl overflow-visible
+                    text-white py-1.5 z-[9999]"
+             style="background:#1a2035;border:1px solid rgba(255,255,255,.12);box-shadow:0 8px 32px rgba(0,0,0,.7),0 2px 8px rgba(0,0,0,.5);"
              onmouseleave="window.__cmDelayCloseSubMenus('{{ column.id }}');"
              onmouseenter="clearTimeout((window.__cmSubTimers||{})['{{ column.id }}']);">
 
@@ -137,11 +137,11 @@
                         cursor-pointer hover:bg-white/10 transition-colors select-none"
                  onclick="event.stopPropagation(); window.__cmOpenSubMenu('{{ column.id }}','export');">
               <span class="flex items-center gap-2.5"><span>📤</span><span>Exportar</span></span>
-              <span class="text-white/35 text-[10px]">▶</span>
+              <span class="text-white/50 text-[10px]">▶</span>
             </div>
             <div id="col-submenu-export-{{ column.id }}"
-                 class="hidden absolute right-full top-0 mr-1 w-48 rounded-xl shadow-2xl
-                        bg-slate-900/99 border border-white/10 backdrop-blur-md py-1.5 z-[9999]"
+                 class="hidden absolute top-0 w-48 rounded-xl py-1.5 z-[9999]"
+                 style="background:#1a2035;border:1px solid rgba(255,255,255,.12);box-shadow:0 8px 32px rgba(0,0,0,.7);"
                  onmouseenter="clearTimeout((window.__cmSubTimers||{})['{{ column.id }}']);"
                  onmouseleave="window.__cmDelayCloseSubMenus('{{ column.id }}');">
               <a href="{% url 'boards:export_column' column.id %}?fmt=csv"
@@ -149,14 +149,14 @@
                  class="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-white/10 transition-colors rounded-lg mx-1 no-underline text-white"
                  onpointerdown="event.stopPropagation();">
                 <span class="text-lg">📄</span>
-                <div><div class="font-semibold">CSV</div><div class="text-white/45 text-xs">Planilha / Excel</div></div>
+                <div><div class="font-semibold">CSV</div><div class="text-white/50 text-xs">Planilha / Excel</div></div>
               </a>
               <a href="{% url 'boards:export_column' column.id %}?fmt=json"
                  target="_blank"
                  class="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-white/10 transition-colors rounded-lg mx-1 no-underline text-white"
                  onpointerdown="event.stopPropagation();">
                 <span class="text-lg font-mono text-white/70">{}</span>
-                <div><div class="font-semibold">JSON</div><div class="text-white/45 text-xs">Formato estruturado</div></div>
+                <div><div class="font-semibold">JSON</div><div class="text-white/50 text-xs">Formato estruturado</div></div>
               </a>
             </div>
           </div>
@@ -169,14 +169,14 @@
                         cursor-pointer hover:bg-white/10 transition-colors select-none"
                  onclick="event.stopPropagation(); window.__cmOpenSubMenu('{{ column.id }}','sort');">
               <span class="flex items-center gap-2.5"><span>↕️</span><span>Organizar</span></span>
-              <span class="text-white/35 text-[10px]">▶</span>
+              <span class="text-white/50 text-[10px]">▶</span>
             </div>
             <div id="col-submenu-sort-{{ column.id }}"
-                 class="hidden absolute right-full top-0 mr-1 w-56 rounded-xl shadow-2xl
-                        bg-slate-900/99 border border-white/10 backdrop-blur-md py-1.5 z-[9999]"
+                 class="hidden absolute top-0 w-56 rounded-xl py-1.5 z-[9999]"
+                 style="background:#1a2035;border:1px solid rgba(255,255,255,.12);box-shadow:0 8px 32px rgba(0,0,0,.7);"
                  onmouseenter="clearTimeout((window.__cmSubTimers||{})['{{ column.id }}']);"
                  onmouseleave="window.__cmDelayCloseSubMenus('{{ column.id }}');">
-              <div class="px-4 py-1 text-[10px] text-white/40 font-bold uppercase tracking-widest">Por vencimento</div>
+              <div class="px-4 py-1 text-[10px] text-white/45 font-bold uppercase tracking-widest">Por vencimento</div>
               <button type="button" class="w-[calc(100%-8px)] mx-1 flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-white/10 rounded-lg transition-colors"
                       onpointerdown="event.stopPropagation();"
                       onclick="event.preventDefault(); event.stopPropagation(); window.__cmSortColumnByDue('{{ column.id }}','asc'); window.__cmHideAllColMenus();">
@@ -187,8 +187,8 @@
                       onclick="event.preventDefault(); event.stopPropagation(); window.__cmSortColumnByDue('{{ column.id }}','desc'); window.__cmHideAllColMenus();">
                 <span class="text-white/60">↓</span> Decrescente (mais recente)
               </button>
-              <div class="mx-3 my-1 border-t border-white/8"></div>
-              <div class="px-4 py-1 text-[10px] text-white/40 font-bold uppercase tracking-widest">Por início</div>
+              <div class="mx-3 my-1 border-t border-white/10"></div>
+              <div class="px-4 py-1 text-[10px] text-white/45 font-bold uppercase tracking-widest">Por início</div>
               <button type="button" class="w-[calc(100%-8px)] mx-1 flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-white/10 rounded-lg transition-colors"
                       onpointerdown="event.stopPropagation();"
                       onclick="event.preventDefault(); event.stopPropagation(); window.__cmSortColumnByStart('{{ column.id }}','asc'); window.__cmHideAllColMenus();">
@@ -210,14 +210,14 @@
                         cursor-pointer hover:bg-white/10 transition-colors select-none"
                  onclick="event.stopPropagation(); window.__cmOpenSubMenu('{{ column.id }}','color');">
               <span class="flex items-center gap-2.5"><span>🎨</span><span>Alterar cor</span></span>
-              <span class="text-white/35 text-[10px]">▶</span>
+              <span class="text-white/50 text-[10px]">▶</span>
             </div>
             <div id="col-submenu-color-{{ column.id }}"
-                 class="hidden absolute right-full top-0 mr-1 w-44 rounded-xl shadow-2xl
-                        bg-slate-900/99 border border-white/10 backdrop-blur-md p-3 z-[9999]"
+                 class="hidden absolute top-0 w-44 rounded-xl p-3 z-[9999]"
+                 style="background:#1a2035;border:1px solid rgba(255,255,255,.12);box-shadow:0 8px 32px rgba(0,0,0,.7);"
                  onmouseenter="clearTimeout((window.__cmSubTimers||{})['{{ column.id }}']);"
                  onmouseleave="window.__cmDelayCloseSubMenus('{{ column.id }}');">
-              <div class="text-[10px] text-white/40 font-bold uppercase tracking-widest mb-2">Cor da coluna</div>
+              <div class="text-[10px] text-white/45 font-bold uppercase tracking-widest mb-2">Cor da coluna</div>
               <div class="grid grid-cols-5 gap-2">
                 {% for value, label in column.THEME_CHOICES %}
                 <button type="button"
@@ -442,14 +442,41 @@
     clearTimeout(window.__cmSubTimers[colId]);
     const menu = document.getElementById("col-menu-" + colId);
     if (!menu) return;
+
     // fecha outros submenus da mesma coluna
     menu.querySelectorAll("[id^='col-submenu-']").forEach((el) => {
       if (el.id !== "col-submenu-" + subName + "-" + colId) {
         el.classList.add("hidden");
       }
     });
+
     const sub = document.getElementById("col-submenu-" + subName + "-" + colId);
-    if (sub) sub.classList.remove("hidden");
+    if (!sub) return;
+
+    // Reset posição: padrão = DIREITA (left-full)
+    sub.style.left = "";
+    sub.style.right = "";
+    sub.style.marginLeft = "";
+    sub.style.marginRight = "";
+
+    sub.classList.remove("hidden");
+
+    // Detecta se cabe à direita; se não, abre à esquerda
+    const rect = sub.getBoundingClientRect();
+    const vw = window.innerWidth;
+    if (rect.right > vw - 8) {
+      // não cabe à direita → abre à esquerda
+      sub.style.left = "auto";
+      sub.style.right = "100%";
+      sub.style.marginRight = "4px";
+      sub.style.marginLeft = "";
+    } else {
+      // cabe à direita → mantém
+      sub.style.left = "100%";
+      sub.style.right = "auto";
+      sub.style.marginLeft = "4px";
+      sub.style.marginRight = "";
+    }
   };
 
   window.__cmDelayCloseSubMenus = function (colId) {
