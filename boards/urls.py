@@ -48,6 +48,7 @@ from boards.views.boards import (
     board_leave,
     board_share,
     board_share_remove,
+    board_share_role_update,
     toggle_aggregator_column,
     # access request
     request_board_access,
@@ -209,6 +210,11 @@ urlpatterns = [
         "board/<int:board_id>/share/remove/<int:user_id>/",
         board_share_remove,
         name="board_share_remove",
+    ),
+    path(
+        "board/<int:board_id>/share/role/<int:user_id>/",
+        board_share_role_update,
+        name="board_share_role_update",
     ),
 
     # ============================================================

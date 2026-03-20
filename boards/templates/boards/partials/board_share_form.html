@@ -104,11 +104,34 @@
 
               <div class="flex items-center gap-2">
                 {% if m.role == "owner" %}
-                  <span class="text-xs px-2 py-1 rounded bg-gray-100 border">Dono</span>
-                {% elif m.role == "editor" %}
-                  <span class="text-xs px-2 py-1 rounded bg-blue-50 border">Pode editar</span>
+                  <span class="text-xs px-2 py-1 rounded bg-gray-100 border font-medium">Dono</span>
                 {% else %}
-                  <span class="text-xs px-2 py-1 rounded bg-green-50 border">Leitor</span>
+                  {# Botão clicável: alterna editor ↔ leitor e notifica via zap/email #}
+                  <form
+                    method="post"
+                    hx-post="{% url 'boards:board_share_role_update' board.id m.user.id %}"
+                    hx-target="#share-modal"
+                    hx-swap="outerHTML"
+                  >
+                    {% csrf_token %}
+                    {% if m.role == "editor" %}
+                      <input type="hidden" name="role" value="viewer">
+                      <button type="submit"
+                        class="text-xs px-2 py-1 rounded bg-blue-50 border border-blue-300
+                               text-blue-800 hover:bg-blue-100 cursor-pointer transition"
+                        title="Pode editar — clique para mudar para Leitor">
+                        Pode editar ↕
+                      </button>
+                    {% else %}
+                      <input type="hidden" name="role" value="editor">
+                      <button type="submit"
+                        class="text-xs px-2 py-1 rounded bg-green-50 border border-green-300
+                               text-green-800 hover:bg-green-100 cursor-pointer transition"
+                        title="Somente leitura — clique para mudar para Editor">
+                        Leitor ↕
+                      </button>
+                    {% endif %}
+                  </form>
                 {% endif %}
 
                 {% if m.user.id != request.user.id %}

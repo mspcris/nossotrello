@@ -1880,7 +1880,133 @@ def board_share_remove(request, board_id, user_id):
         f"<p><strong>{actor}</strong> removeu o acesso de <strong>{escape(removed_user.email or removed_user.get_username())}</strong> do quadro.</p>",
     )
 
-    return JsonResponse({"success": True})
+    # Re-render modal after removal
+    memberships = board.memberships.select_related("user").order_by("role", "user__username")
+    return render(request, "boards/partials/board_share_form.html", {
+        "board": board,
+        "memberships": memberships,
+        "msg_success": f"Acesso de {removed_user.email or removed_user.get_username()} removido.",
+    })
+
+
+# ======================================================================
+# ALTERAR PERMISSÃO (OWNER) — inline, sem remover e readicionar
+# ======================================================================
+
+@require_http_methods(["POST"])
+@login_required
+@transaction.atomic
+def board_share_role_update(request, board_id, user_id):
+    from boards.services.notifications import send_whatsapp, send_email_notification, _safe_digits_phone, _get_or_create_profile
+
+    board = get_object_or_404(Board, id=board_id, is_deleted=False)
+
+    my_membership = BoardMembership.objects.filter(
+        board=board, user=request.user, role=BoardMembership.Role.OWNER,
+    ).first()
+    if not my_membership:
+        return HttpResponse("Sem permissão.", status=403)
+
+    membership = (
+        BoardMembership.objects
+        .filter(board=board, user_id=user_id)
+        .select_related("user")
+        .first()
+    )
+    if not membership:
+        return HttpResponse("Membro não encontrado.", status=404)
+
+    if membership.role == BoardMembership.Role.OWNER:
+        memberships = board.memberships.select_related("user").order_by("role", "user__username")
+        return render(request, "boards/partials/board_share_form.html", {
+            "board": board,
+            "memberships": memberships,
+            "msg_error": "Não é possível alterar a permissão do Dono.",
+        })
+
+    new_role = (request.POST.get("role") or "").strip().lower()
+    if new_role not in {BoardMembership.Role.EDITOR, BoardMembership.Role.VIEWER}:
+        return HttpResponse("Permissão inválida.", status=400)
+
+    old_role = membership.role
+    target_user = membership.user
+
+    _ROLE_LABEL = {
+        BoardMembership.Role.EDITOR: "Pode editar",
+        BoardMembership.Role.VIEWER: "Somente leitura",
+    }
+
+    msg_success = None
+    if old_role != new_role:
+        membership.role = new_role
+        membership.save(update_fields=["role"])
+
+        actor_label = _actor_label(request)
+        _log_board(
+            board, request,
+            f"<p><strong>{actor_label}</strong> alterou a permissão de "
+            f"<strong>{escape(target_user.email or target_user.get_username())}</strong>: "
+            f"{_ROLE_LABEL.get(old_role, old_role)} → {_ROLE_LABEL.get(new_role, new_role)}.</p>",
+        )
+
+        # ── Notificações ───────────────────────────────────────────
+        base_url = (getattr(settings, "SITE_URL", "") or "").rstrip("/")
+        try:
+            board_path = reverse("boards:board_detail", kwargs={"board_id": board.id})
+            board_url = f"{base_url}{board_path}"
+        except Exception:
+            board_url = base_url
+
+        changer_name = (
+            getattr(getattr(request.user, "profile", None), "display_name", None)
+            or request.user.email
+            or request.user.get_username()
+        )
+        new_label = _ROLE_LABEL.get(new_role, new_role)
+        old_label = _ROLE_LABEL.get(old_role, old_role)
+
+        wa_msg = (
+            f"🔐 *Permissão alterada no quadro*\n"
+            f"*Quadro:* {board.name}\n"
+            f"*Permissão anterior:* {old_label}\n"
+            f"*Nova permissão:* {new_label}\n"
+            f"*Alterado por:* {changer_name}\n"
+        )
+        email_body = (
+            f"Sua permissão no quadro \"{board.name}\" foi alterada.\n\n"
+            f"Permissão anterior: {old_label}\n"
+            f"Nova permissão: {new_label}\n"
+            f"Alterado por: {changer_name}\n\n"
+            f"Acesse o quadro:\n{board_url}\n"
+        )
+        email_subj = f"[Tarefas CAMIM] Permissão alterada no quadro «{board.name}»"
+
+        try:
+            prof = _get_or_create_profile(target_user)
+            if getattr(prof, "notify_whatsapp", False):
+                phone_digits = _safe_digits_phone(getattr(prof, "telefone", ""))
+                if phone_digits:
+                    send_whatsapp(user=target_user, phone_digits=phone_digits, body=wa_msg)
+                    send_whatsapp(user=target_user, phone_digits=phone_digits, body=board_url)
+            if getattr(prof, "notify_email", False):
+                to_email = (getattr(target_user, "email", "") or "").strip()
+                if to_email:
+                    send_email_notification(to_email=to_email, subject=email_subj, body=email_body)
+        except Exception:
+            logger.exception("board_share_role_update: notification failed user_id=%s", target_user.id)
+
+        msg_success = (
+            f"Permissão de {target_user.email or target_user.get_username()} "
+            f"alterada para «{new_label}»."
+        )
+
+    memberships = board.memberships.select_related("user").order_by("role", "user__username")
+    return render(request, "boards/partials/board_share_form.html", {
+        "board": board,
+        "memberships": memberships,
+        "msg_success": msg_success,
+    })
+
 
 @login_required
 @require_POST
