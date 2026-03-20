@@ -407,8 +407,15 @@ def _send_mention_email(request, mentioned_user, actor_user, board, card, mentio
         path = reverse("boards:board_detail", kwargs={"board_id": board.id})
         url = request.build_absolute_uri(f"{path}?card={card.id}&tab=ativ&mention={mention.id}")
 
-        subject = f"Nova marcação em: {board.name}"
-        body = f"Você foi marcado por {actor_name}.\n\nQuadro: {board.name}\nCard: {card.title}\n\nLink: {url}"
+        column_name = getattr(getattr(card, "column", None), "name", "") or ""
+        subject = f"'{actor_name}' marcou você no card: '{card.title}'"
+        body = (
+            f"Você foi marcado por {actor_name}.\n\n"
+            f"Quadro: {board.name}\n"
+            f"Coluna: {column_name}\n"
+            f"Card: {card.title}\n\n"
+            f"Link: {url}"
+        )
 
         send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [to_email], fail_silently=True)
     except Exception:
@@ -455,13 +462,16 @@ def _send_mention_whatsapp(request, mentioned_user, actor_user, board, card, men
         path = reverse("boards:board_detail", kwargs={"board_id": board.id})
         url = request.build_absolute_uri(f"{path}?card={card.id}&tab=ativ&mention={mention.id}")
 
+        column_name = getattr(getattr(card, “column”, None), “name”, “”) or “”
+
         # Mensagem “super hiper descontraída e cheia de ícones”
         msg = (
-            "🏷️ Opa! Você foi marcado no Nosso Trello 😄✨\n"
-            f"👤 Quem te marcou: {actor_name}\n"
-            f"🧩 Quadro: {board.name}\n"
-            f"🗂️ Card: {card.title}\n"
-            "🔥 Bora dar uma olhada? 👇👀"
+            “🏷️ Opa! Você foi marcado no Nosso Trello 😄✨\n”
+            f”👤 Quem te marcou: {actor_name}\n”
+            f”🧩 Quadro: {board.name}\n”
+            f”📂 Coluna: {column_name}\n”
+            f”🗂️ Card: {card.title}\n”
+            “🔥 Bora dar uma olhada? 👇👀”
         )
 
         send_whatsapp(user=mentioned_user, phone_digits=phone_digits, body=msg)

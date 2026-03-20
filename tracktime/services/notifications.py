@@ -25,6 +25,8 @@ logger = logging.getLogger(__name__)
 class CardSnapshot:
     card_id: int
     board_id: int
+    board_name: str
+    column_name: str
     title: str
     tags: str
     description: str
@@ -89,7 +91,11 @@ def sanitize_card_description_to_text(desc_html: str, *, limit: int = 450) -> st
 
 
 def snapshot_card(*, card, site_url: str) -> CardSnapshot:
-    board_id = getattr(getattr(card, "column", None), "board_id", None) or 0
+    column = getattr(card, "column", None)
+    board_id = getattr(column, "board_id", None) or 0
+    board = getattr(column, "board", None)
+    board_name = _safe_str(getattr(board, "name", ""))
+    column_name = _safe_str(getattr(column, "name", ""))
 
     board_url = reverse("boards:board_detail", kwargs={"board_id": int(board_id or 0)})
     card_url = f"{board_url}?card={int(card.id)}"
@@ -99,8 +105,10 @@ def snapshot_card(*, card, site_url: str) -> CardSnapshot:
     return CardSnapshot(
         card_id=int(card.id),
         board_id=int(board_id or 0),
+        board_name=board_name,
+        column_name=column_name,
         title=_safe_str(getattr(card, "title", "")),
-        tags=_safe_str(getattr(card, "tags", "")),  # etiquetas estão em Card.tags :contentReference[oaicite:1]{index=1}
+        tags=_safe_str(getattr(card, "tags", "")),
         description=sanitize_card_description_to_text(getattr(card, "description", "")),
         start_date=_iso_or_none(getattr(card, "start_date", None)),
         warn_date=_iso_or_none(getattr(card, "due_warn_date", None)),
@@ -241,6 +249,8 @@ def notify_tracktime_extended(*, entry, request_user=None) -> None:
 
     msg = (
         "⏱️ Track-time estendido (+1h)\n"
+        f"Quadro: {snap.board_name}\n"
+        f"Coluna: {snap.column_name}\n"
         f"Card: {title}\n"
         f"Tags: {snap.tags}\n"
         f"Descrição: {snap.description}\n"
@@ -293,6 +303,8 @@ def notify_card_deadline(*, user, card, kind: str) -> None:
 
     msg = (
         f"{kind_label}\n"
+        f"Quadro: {snap.board_name}\n"
+        f"Coluna: {snap.column_name}\n"
         f"Card: {title}\n"
         f"Tags: {snap.tags}\n"
         f"Descrição: {snap.description}\n"
