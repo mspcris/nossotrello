@@ -334,6 +334,7 @@ urlpatterns = [
     path("column/<int:column_id>/rename/", columns_views.rename_column, name="rename_column"),
     path("column/<int:column_id>/theme/", columns_views.set_column_theme, name="set_column_theme"),
     path("column/<int:column_id>/reorder_cards/", cards_views.reorder_cards_in_column, name="reorder_cards_in_column"),
+    path("column/<int:column_id>/export/", columns_views.export_column, name="export_column"),
 
     # ============================================================
     # CARDS (modal / CRUD / mover / anexos / atividade)

@@ -194,3 +194,64 @@ def delete_column(request, column_id):
 
 # alias de compatibilidade
 column_delete = delete_column
+
+
+import csv
+from django.utils.html import strip_tags as _strip_tags
+
+
+@login_required
+def export_column(request, column_id):
+    column = get_object_or_404(Column, id=column_id, is_deleted=False)
+    fmt = request.GET.get("fmt", "csv").lower()
+
+    cards = (
+        Card.objects.filter(column=column, is_deleted=False)
+        .order_by("position")
+    )
+
+    fields = [
+        "posicao", "titulo", "tags", "descricao",
+        "data_inicio", "data_aviso", "data_vencimento",
+        "entregue", "arquivado",
+    ]
+
+    def card_row(card, i):
+        return {
+            "posicao": i + 1,
+            "titulo": card.title or "",
+            "tags": card.tags or "",
+            "descricao": _strip_tags(card.description or "").strip(),
+            "data_inicio": str(card.start_date) if card.start_date else "",
+            "data_aviso": str(card.due_warn_date) if card.due_warn_date else "",
+            "data_vencimento": str(card.due_date) if card.due_date else "",
+            "entregue": "sim" if getattr(card, "is_delivered", False) else "nao",
+            "arquivado": "sim" if getattr(card, "is_archived", False) else "nao",
+        }
+
+    rows = [card_row(c, i) for i, c in enumerate(cards)]
+    safe_name = column.name.replace(" ", "_")[:40]
+
+    if fmt == "json":
+        import json as _json
+        payload = {
+            "coluna": column.name,
+            "quadro": column.board.name,
+            "exportado_em": timezone.now().strftime("%Y-%m-%d %H:%M"),
+            "cards": rows,
+        }
+        resp = HttpResponse(
+            _json.dumps(payload, ensure_ascii=False, indent=2),
+            content_type="application/json; charset=utf-8",
+        )
+        resp["Content-Disposition"] = f'attachment; filename="{safe_name}.json"'
+        return resp
+
+    # CSV (default)
+    resp = HttpResponse(content_type="text/csv; charset=utf-8")
+    resp["Content-Disposition"] = f'attachment; filename="{safe_name}.csv"'
+    resp.write("\ufeff")  # BOM para Excel abrir UTF-8 corretamente
+    writer = csv.DictWriter(resp, fieldnames=fields)
+    writer.writeheader()
+    writer.writerows(rows)
+    return resp

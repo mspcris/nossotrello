@@ -108,89 +108,123 @@
       <!-- menu 3 dots (POPOVER) -->
       <div class="relative" data-col-menu-scope="{{ column.id }}">
         <button type="button"
-        class="px-2 py-1 rounded-lg bg-white/20 border border-white/40
-               text-gray-700 hover:text-gray-900 backdrop-blur-sm transition"
-        data-col-menu-btn
-        data-col-id="{{ column.id }}"
-        aria-expanded="false"
-        onpointerdown="event.stopPropagation();"
-        ontouchstart="event.stopPropagation();">
-  ⋮
-</button>
+          class="px-2 py-1 rounded-lg bg-white/20 border border-white/40
+                 text-gray-700 hover:text-gray-900 backdrop-blur-sm transition"
+          data-col-menu-btn
+          data-col-id="{{ column.id }}"
+          aria-expanded="false"
+          onpointerdown="event.stopPropagation();"
+          ontouchstart="event.stopPropagation();"
+          onclick="event.preventDefault(); event.stopPropagation(); window.__cmToggleColMenu('{{ column.id }}');">
+          ⋮
+        </button>
 
-
+        <!-- MENU PRINCIPAL -->
         <div id="col-menu-{{ column.id }}"
-     data-col-menu-popover
-     data-col-id="{{ column.id }}"
-     class="hidden w-60 rounded-xl shadow-2xl
-            bg-white/95 text-gray-900 border border-gray-400 p-3
-            max-h-[70vh] overflow-y-auto overscroll-contain">
+             data-col-menu-popover
+             data-col-id="{{ column.id }}"
+             class="hidden absolute right-0 top-9 w-52 rounded-xl shadow-2xl overflow-visible
+                    bg-slate-900/97 text-white border border-white/10 backdrop-blur-md
+                    py-1.5 z-[9999]"
+             onmouseleave="window.__cmDelayCloseSubMenus('{{ column.id }}');"
+             onmouseenter="clearTimeout((window.__cmSubTimers||{})['{{ column.id }}']);">
 
+          <!-- ── EXPORTAR (submenu) ─────────────────────────── -->
+          <div class="relative px-1"
+               onmouseenter="window.__cmOpenSubMenu('{{ column.id }}','export');"
+               onmouseleave="window.__cmDelayCloseSubMenus('{{ column.id }}');">
+            <div class="flex items-center justify-between px-3 py-2 text-sm rounded-lg
+                        cursor-pointer hover:bg-white/10 transition-colors select-none"
+                 onclick="event.stopPropagation(); window.__cmOpenSubMenu('{{ column.id }}','export');">
+              <span class="flex items-center gap-2.5"><span>📤</span><span>Exportar</span></span>
+              <span class="text-white/35 text-[10px]">▶</span>
+            </div>
+            <div id="col-submenu-export-{{ column.id }}"
+                 class="hidden absolute right-full top-0 mr-1 w-48 rounded-xl shadow-2xl
+                        bg-slate-900/99 border border-white/10 backdrop-blur-md py-1.5 z-[9999]"
+                 onmouseenter="clearTimeout((window.__cmSubTimers||{})['{{ column.id }}']);"
+                 onmouseleave="window.__cmDelayCloseSubMenus('{{ column.id }}');">
+              <a href="{% url 'boards:export_column' column.id %}?fmt=csv"
+                 target="_blank"
+                 class="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-white/10 transition-colors rounded-lg mx-1 no-underline text-white"
+                 onpointerdown="event.stopPropagation();">
+                <span class="text-lg">📄</span>
+                <div><div class="font-semibold">CSV</div><div class="text-white/45 text-xs">Planilha / Excel</div></div>
+              </a>
+              <a href="{% url 'boards:export_column' column.id %}?fmt=json"
+                 target="_blank"
+                 class="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-white/10 transition-colors rounded-lg mx-1 no-underline text-white"
+                 onpointerdown="event.stopPropagation();">
+                <span class="text-lg font-mono text-white/70">{}</span>
+                <div><div class="font-semibold">JSON</div><div class="text-white/45 text-xs">Formato estruturado</div></div>
+              </a>
+            </div>
+          </div>
 
+          <!-- ── ORGANIZAR (submenu) ────────────────────────── -->
+          <div class="relative px-1"
+               onmouseenter="window.__cmOpenSubMenu('{{ column.id }}','sort');"
+               onmouseleave="window.__cmDelayCloseSubMenus('{{ column.id }}');">
+            <div class="flex items-center justify-between px-3 py-2 text-sm rounded-lg
+                        cursor-pointer hover:bg-white/10 transition-colors select-none"
+                 onclick="event.stopPropagation(); window.__cmOpenSubMenu('{{ column.id }}','sort');">
+              <span class="flex items-center gap-2.5"><span>↕️</span><span>Organizar</span></span>
+              <span class="text-white/35 text-[10px]">▶</span>
+            </div>
+            <div id="col-submenu-sort-{{ column.id }}"
+                 class="hidden absolute right-full top-0 mr-1 w-56 rounded-xl shadow-2xl
+                        bg-slate-900/99 border border-white/10 backdrop-blur-md py-1.5 z-[9999]"
+                 onmouseenter="clearTimeout((window.__cmSubTimers||{})['{{ column.id }}']);"
+                 onmouseleave="window.__cmDelayCloseSubMenus('{{ column.id }}');">
+              <div class="px-4 py-1 text-[10px] text-white/40 font-bold uppercase tracking-widest">Por vencimento</div>
+              <button type="button" class="w-[calc(100%-8px)] mx-1 flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-white/10 rounded-lg transition-colors"
+                      onpointerdown="event.stopPropagation();"
+                      onclick="event.preventDefault(); event.stopPropagation(); window.__cmSortColumnByDue('{{ column.id }}','asc'); window.__cmHideAllColMenus();">
+                <span class="text-white/60">↑</span> Crescente (mais antigo)
+              </button>
+              <button type="button" class="w-[calc(100%-8px)] mx-1 flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-white/10 rounded-lg transition-colors"
+                      onpointerdown="event.stopPropagation();"
+                      onclick="event.preventDefault(); event.stopPropagation(); window.__cmSortColumnByDue('{{ column.id }}','desc'); window.__cmHideAllColMenus();">
+                <span class="text-white/60">↓</span> Decrescente (mais recente)
+              </button>
+              <div class="mx-3 my-1 border-t border-white/8"></div>
+              <div class="px-4 py-1 text-[10px] text-white/40 font-bold uppercase tracking-widest">Por início</div>
+              <button type="button" class="w-[calc(100%-8px)] mx-1 flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-white/10 rounded-lg transition-colors"
+                      onpointerdown="event.stopPropagation();"
+                      onclick="event.preventDefault(); event.stopPropagation(); window.__cmSortColumnByStart('{{ column.id }}','asc'); window.__cmHideAllColMenus();">
+                <span class="text-white/60">↑</span> Crescente
+              </button>
+              <button type="button" class="w-[calc(100%-8px)] mx-1 flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-white/10 rounded-lg transition-colors"
+                      onpointerdown="event.stopPropagation();"
+                      onclick="event.preventDefault(); event.stopPropagation(); window.__cmSortColumnByStart('{{ column.id }}','desc'); window.__cmHideAllColMenus();">
+                <span class="text-white/60">↓</span> Decrescente
+              </button>
+            </div>
+          </div>
 
-          <!-- A) Excluir cards (toggle: entrar/sair) -->
-          <button type="button"
-                  id="col-del-mode-btn-{{ column.id }}"
-                  class="w-full text-left text-sm px-3 py-2 rounded-lg
-                         bg-gray-900 text-white hover:bg-black transition"
-                  onpointerdown="event.stopPropagation();"
-                  ontouchstart="event.stopPropagation();"
-                  onclick="event.preventDefault(); event.stopPropagation(); window.__cmToggleDeleteCardsOnlyThisColumn('{{ column.id }}');">
-            Excluir Cards
-          </button>
-
-          <hr class="my-2">
-
-          <!-- A2) Arquivar cards (toggle: entrar/sair) -->
-          <button type="button"
-                  id="col-arch-mode-btn-{{ column.id }}"
-                  class="w-full text-left text-sm px-3 py-2 rounded-lg
-                         bg-slate-800 text-white hover:bg-slate-900 transition"
-                  onpointerdown="event.stopPropagation();"
-                  ontouchstart="event.stopPropagation();"
-                  onclick="event.preventDefault(); event.stopPropagation(); window.__cmToggleArchiveCardsOnlyThisColumn('{{ column.id }}');">
-            Arquivar Cards
-          </button>
-
-          <hr class="my-2">
-
-          <!-- B) Excluir coluna -->
-          <button type="button"
-                  class="w-full text-left text-sm px-3 py-2 rounded-lg
-                         bg-red-600 text-white hover:bg-red-700 transition"
-                  onpointerdown="event.stopPropagation();"
-                  ontouchstart="event.stopPropagation();"
-                  onclick="event.preventDefault(); event.stopPropagation(); if(confirm('Excluir esta coluna e todos os cards nela?')) { htmx.trigger(this, 'confirmed'); }"
-                  hx-post="{% url 'boards:delete_column' column.id %}"
-                  hx-trigger="confirmed"
-                  hx-target="#col-{{ column.id }}"
-                  hx-swap="delete">
-            Excluir coluna
-          </button>
-
-          <hr class="my-2">
-
-          <!-- C) Alterar cor (abre seletor atual) -->
-          <button type="button"
-                  class="w-full text-left text-sm px-3 py-2 rounded-lg
-                          bg-white/70 border border-gray-200 hover:bg-white transition text-gray-900 hover:text-gray-900"
-
-                  onpointerdown="event.stopPropagation();"
-                  ontouchstart="event.stopPropagation();"
-                  onclick="event.preventDefault(); event.stopPropagation(); window.__cmToggleColumnColorPicker('{{ column.id }}');">
-            Alterar cor
-          </button>
-
-          <div id="col-color-picker-{{ column.id }}" class="hidden mt-2">
-            <p class="text-xs text-gray-600 mb-2">Cor da coluna:</p>
-
-            <div class="grid grid-cols-5 gap-2">
-              {% for value, label in column.THEME_CHOICES %}
-                <!-- IMPORTANTE: virou BUTTON (anti-drag no mobile) -->
+          <!-- ── ALTERAR COR (submenu) ──────────────────────── -->
+          <div class="relative px-1"
+               onmouseenter="window.__cmOpenSubMenu('{{ column.id }}','color');"
+               onmouseleave="window.__cmDelayCloseSubMenus('{{ column.id }}');">
+            <div class="flex items-center justify-between px-3 py-2 text-sm rounded-lg
+                        cursor-pointer hover:bg-white/10 transition-colors select-none"
+                 onclick="event.stopPropagation(); window.__cmOpenSubMenu('{{ column.id }}','color');">
+              <span class="flex items-center gap-2.5"><span>🎨</span><span>Alterar cor</span></span>
+              <span class="text-white/35 text-[10px]">▶</span>
+            </div>
+            <div id="col-submenu-color-{{ column.id }}"
+                 class="hidden absolute right-full top-0 mr-1 w-44 rounded-xl shadow-2xl
+                        bg-slate-900/99 border border-white/10 backdrop-blur-md p-3 z-[9999]"
+                 onmouseenter="clearTimeout((window.__cmSubTimers||{})['{{ column.id }}']);"
+                 onmouseleave="window.__cmDelayCloseSubMenus('{{ column.id }}');">
+              <div class="text-[10px] text-white/40 font-bold uppercase tracking-widest mb-2">Cor da coluna</div>
+              <div class="grid grid-cols-5 gap-2">
+                {% for value, label in column.THEME_CHOICES %}
                 <button type="button"
-                        class="w-7 h-7 rounded-full cursor-pointer border border-gray-300
-                              hover:scale-110 transition"
+                        class="w-7 h-7 rounded-full cursor-pointer border-2 border-white/20
+                               hover:scale-110 hover:border-white/70 transition"
                         style="background-color: var(--{{ value }}-color);"
+                        title="{{ label }}"
                         onpointerdown="event.stopPropagation();"
                         ontouchstart="event.stopPropagation();"
                         hx-post="{% url 'boards:set_column_theme' column.id %}"
@@ -198,53 +232,56 @@
                         hx-target="#col-{{ column.id }}"
                         hx-swap="outerHTML">
                 </button>
-
-
-</button>
-
-              {% endfor %}
+                {% endfor %}
+              </div>
             </div>
           </div>
 
-          <hr class="my-2">
+          <!-- ── DIVIDER ────────────────────────────────────── -->
+          <div class="mx-3 my-1.5 border-t border-white/8"></div>
 
-          <!-- D) Organizar por vencimento -->
-          <p class="text-xs text-gray-600 mb-2">Organizar por vencimento:</p>
-          <div class="grid grid-cols-2 gap-2">
+          <!-- ── EXCLUIR CARDS ──────────────────────────────── -->
+          <div class="px-1">
             <button type="button"
-                    class="text-sm px-3 py-2 rounded-lg bg-white/70 border border-gray-200 hover:bg-white transition"
+                    id="col-del-mode-btn-{{ column.id }}"
+                    class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left
+                           hover:bg-white/10 transition-colors rounded-lg"
                     onpointerdown="event.stopPropagation();"
                     ontouchstart="event.stopPropagation();"
-                    onclick="event.preventDefault(); event.stopPropagation(); window.__cmSortColumnByDue('{{ column.id }}','asc'); window.__cmHideAllColMenus();">
-              Asc
-            </button>
-            <button type="button"
-                    class="text-sm px-3 py-2 rounded-lg bg-white/70 border border-gray-200 hover:bg-white transition"
-                    onpointerdown="event.stopPropagation();"
-                    ontouchstart="event.stopPropagation();"
-                    onclick="event.preventDefault(); event.stopPropagation(); window.__cmSortColumnByDue('{{ column.id }}','desc'); window.__cmHideAllColMenus();">
-              Desc
+                    onclick="event.preventDefault(); event.stopPropagation(); window.__cmToggleDeleteCardsOnlyThisColumn('{{ column.id }}');">
+              <span>🗑️</span><span>Excluir Cards</span>
             </button>
           </div>
 
-          <hr class="my-2">
-
-          <!-- E) Organizar por data de início -->
-          <p class="text-xs text-gray-600 mb-2">Organizar por início:</p>
-          <div class="grid grid-cols-2 gap-2">
+          <!-- ── ARQUIVAR CARDS ─────────────────────────────── -->
+          <div class="px-1">
             <button type="button"
-                    class="text-sm px-3 py-2 rounded-lg bg-white/70 border border-gray-200 hover:bg-white transition"
+                    id="col-arch-mode-btn-{{ column.id }}"
+                    class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left
+                           hover:bg-white/10 transition-colors rounded-lg"
                     onpointerdown="event.stopPropagation();"
                     ontouchstart="event.stopPropagation();"
-                    onclick="event.preventDefault(); event.stopPropagation(); window.__cmSortColumnByStart('{{ column.id }}','asc'); window.__cmHideAllColMenus();">
-              Asc
+                    onclick="event.preventDefault(); event.stopPropagation(); window.__cmToggleArchiveCardsOnlyThisColumn('{{ column.id }}');">
+              <span>📁</span><span>Arquivar Cards</span>
             </button>
+          </div>
+
+          <!-- ── DIVIDER ────────────────────────────────────── -->
+          <div class="mx-3 my-1.5 border-t border-white/8"></div>
+
+          <!-- ── EXCLUIR COLUNA (danger) ────────────────────── -->
+          <div class="px-1">
             <button type="button"
-                    class="text-sm px-3 py-2 rounded-lg bg-white/70 border border-gray-200 hover:bg-white transition"
+                    class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left
+                           text-red-400 hover:bg-red-500/15 transition-colors rounded-lg"
                     onpointerdown="event.stopPropagation();"
                     ontouchstart="event.stopPropagation();"
-                    onclick="event.preventDefault(); event.stopPropagation(); window.__cmSortColumnByStart('{{ column.id }}','desc'); window.__cmHideAllColMenus();">
-              Desc
+                    onclick="event.preventDefault(); event.stopPropagation(); if(confirm('Excluir esta coluna e todos os cards nela?')) { htmx.trigger(this, 'confirmed'); }"
+                    hx-post="{% url 'boards:delete_column' column.id %}"
+                    hx-trigger="confirmed"
+                    hx-target="#col-{{ column.id }}"
+                    hx-swap="delete">
+              <span>⚠️</span><span>Excluir coluna</span>
             </button>
           </div>
 
@@ -397,12 +434,35 @@
   }
 
   // =========================
-  // Color picker da coluna
+  // Submenus ERP (abre à esquerda)
   // =========================
+  window.__cmSubTimers = window.__cmSubTimers || {};
+
+  window.__cmOpenSubMenu = function (colId, subName) {
+    clearTimeout(window.__cmSubTimers[colId]);
+    const menu = document.getElementById("col-menu-" + colId);
+    if (!menu) return;
+    // fecha outros submenus da mesma coluna
+    menu.querySelectorAll("[id^='col-submenu-']").forEach((el) => {
+      if (el.id !== "col-submenu-" + subName + "-" + colId) {
+        el.classList.add("hidden");
+      }
+    });
+    const sub = document.getElementById("col-submenu-" + subName + "-" + colId);
+    if (sub) sub.classList.remove("hidden");
+  };
+
+  window.__cmDelayCloseSubMenus = function (colId) {
+    window.__cmSubTimers[colId] = setTimeout(() => {
+      const menu = document.getElementById("col-menu-" + colId);
+      if (!menu) return;
+      menu.querySelectorAll("[id^='col-submenu-']").forEach((el) => el.classList.add("hidden"));
+    }, 200);
+  };
+
+  // Color picker legado (agora virou submenu — mantém compatibilidade)
   window.__cmToggleColumnColorPicker = function (colId) {
-    const el = document.getElementById("col-color-picker-" + colId);
-    if (!el) return;
-    el.classList.toggle("hidden");
+    window.__cmOpenSubMenu(colId, "color");
   };
 
   // =========================
