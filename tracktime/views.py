@@ -1,5 +1,6 @@
 # tracktime/views.py
 
+import json
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponseBadRequest, HttpResponseForbidden, JsonResponse, HttpResponse
 from django.utils import timezone
@@ -15,7 +16,7 @@ from boards.models import UserProfile
 from tracktime.services.pressticket import send_text_message, PressTicketError
 import logging
 from django.db import IntegrityError, transaction
-from django.db.models import Max
+from django.db.models import Max, Sum
 from django.views.decorators.http import require_http_methods
 from datetime import timedelta
 from django.contrib.auth import get_user_model
@@ -234,6 +235,23 @@ def card_tracktime_panel(request, card_id):
         .order_by("-id")[:10]
     )
 
+    # Agrega minutos por usuário (todos os lançamentos, não só os 10 últimos)
+    per_user_qs = (
+        TimeEntry.objects
+        .filter(card_id=card.id, ended_at__isnull=False)
+        .values("user__id", "user__email", "user__first_name", "user__last_name")
+        .annotate(total_minutes=Sum("minutes"))
+        .order_by("-total_minutes")
+    )
+    chart_labels = []
+    chart_minutes = []
+    for row in per_user_qs:
+        fname = (row.get("user__first_name") or "").strip()
+        lname = (row.get("user__last_name") or "").strip()
+        label = (f"{fname} {lname}").strip() or (row.get("user__email") or "?")
+        chart_labels.append(label)
+        chart_minutes.append(int(row["total_minutes"] or 0))
+
     running = (
         TimeEntry.objects
         .filter(card_id=card.id, user=request.user, ended_at__isnull=True)
@@ -263,6 +281,8 @@ def card_tracktime_panel(request, card_id):
             "projects": projects,
             "activities": activities,
             "entries": entries,
+            "chart_labels_json": json.dumps(chart_labels, ensure_ascii=False),
+            "chart_minutes_json": json.dumps(chart_minutes),
             "running": running,
             "elapsed_seconds": elapsed_seconds,
             "elapsed_mmss": _format_mmss(elapsed_seconds),

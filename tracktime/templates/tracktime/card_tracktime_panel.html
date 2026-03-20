@@ -166,6 +166,87 @@
 
   <hr>
 
+  {% if chart_minutes_json and chart_minutes_json != "[]" %}
+  {# ====== GRÁFICO DE PIZZA: tempo por usuário ====== #}
+  <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:center;padding:8px 0;">
+    <canvas id="tt-pie-chart" width="180" height="180" style="max-width:180px;max-height:180px;flex-shrink:0;"></canvas>
+    <ul id="tt-pie-legend" style="list-style:none;padding:0;margin:0;font-size:.85em;display:flex;flex-direction:column;gap:6px;"></ul>
+  </div>
+  <script>
+  (function(){
+    const labels  = {{ chart_labels_json }};
+    const minutes = {{ chart_minutes_json }};
+    const palette = [
+      "#60a5fa","#34d399","#f59e0b","#f87171","#a78bfa",
+      "#fb7185","#38bdf8","#4ade80","#facc15","#c084fc"
+    ];
+
+    function fmtMin(m) {
+      if (m >= 60) {
+        const h = Math.floor(m / 60), rest = m % 60;
+        return h + "h" + (rest ? " " + rest + "min" : "");
+      }
+      return m + " min";
+    }
+
+    // Legenda
+    const legend = document.getElementById("tt-pie-legend");
+    if (legend) {
+      labels.forEach(function(lbl, i){
+        const li = document.createElement("li");
+        li.style.cssText = "display:flex;align-items:center;gap:8px;";
+        li.innerHTML =
+          '<span style="display:inline-block;width:12px;height:12px;border-radius:50%;flex-shrink:0;background:' + palette[i % palette.length] + '"></span>' +
+          '<span>' + lbl + '</span>' +
+          '<span style="opacity:.7">— ' + fmtMin(minutes[i] || 0) + '</span>';
+        legend.appendChild(li);
+      });
+    }
+
+    // Canvas
+    const canvas = document.getElementById("tt-pie-chart");
+    if (!canvas || !canvas.getContext) return;
+    const ctx = canvas.getContext("2d");
+    const total = minutes.reduce(function(a, b){ return a + b; }, 0);
+    if (!total) return;
+
+    const cx = canvas.width / 2, cy = canvas.height / 2;
+    const r  = Math.min(cx, cy) - 6;
+    const hole = r * 0.46;
+    let angle = -Math.PI / 2;
+
+    minutes.forEach(function(val, i){
+      const slice = (val / total) * 2 * Math.PI;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, r, angle, angle + slice);
+      ctx.closePath();
+      ctx.fillStyle = palette[i % palette.length];
+      ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,.18)";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      angle += slice;
+    });
+
+    // Buraco central
+    ctx.beginPath();
+    ctx.arc(cx, cy, hole, 0, 2 * Math.PI);
+    ctx.fillStyle = getComputedStyle(canvas.closest(".cm-card") || document.body).backgroundColor || "#1e293b";
+    ctx.fill();
+
+    // Total no centro
+    ctx.fillStyle = "rgba(255,255,255,.88)";
+    ctx.font = "bold 13px system-ui,sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(fmtMin(total), cx, cy);
+  })();
+  </script>
+  {% endif %}
+
+  <hr>
+
   <strong>Últimos lançamentos</strong>
 
   {% if entries %}
