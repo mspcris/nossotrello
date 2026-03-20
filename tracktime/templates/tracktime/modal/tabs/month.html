@@ -1,5 +1,537 @@
 {# tracktime/templates/tracktime/modal/tabs/month.html #}
-<div class="cm-card" style="padding:12px;">
-  <strong>Mês</strong>
-  <div class="tt-muted">Próxima entrega: consolidado por usuário/projeto/card, com links.</div>
-</div>
+
+<style>
+/* ── Reset / base ─────────────────────────────────────────── */
+.ttm-root { width:100%; font-size:13px; }
+
+/* ── Nav header ───────────────────────────────────────────── */
+.ttm-nav {
+  display:flex; align-items:center; justify-content:space-between;
+  gap:10px; margin-bottom:18px; flex-wrap:wrap;
+}
+.ttm-nav-center { flex:1; text-align:center; min-width:0; }
+.ttm-nav-title  { font-weight:900; font-size:16px; white-space:nowrap; }
+.ttm-nav-sub    { font-size:11px; opacity:.6; margin-top:2px; }
+
+.ttm-btn {
+  display:inline-flex; align-items:center; gap:5px;
+  padding:6px 14px; border-radius:999px;
+  border:1px solid rgba(255,255,255,.15);
+  background:rgba(255,255,255,.07);
+  color:inherit; font-size:12px; font-weight:700;
+  cursor:pointer; text-decoration:none; transition:background .15s;
+  white-space:nowrap;
+}
+.ttm-btn:hover { background:rgba(255,255,255,.14); }
+.ttm-btn:disabled, .ttm-btn.disabled {
+  opacity:.35; cursor:not-allowed; pointer-events:none;
+}
+
+/* ── KPI strip ────────────────────────────────────────────── */
+.ttm-kpis {
+  display:grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap:10px; margin-bottom:20px;
+}
+@media(max-width:560px){ .ttm-kpis{ grid-template-columns:1fr 1fr; } }
+.ttm-kpi {
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:14px; padding:14px 16px;
+  display:flex; flex-direction:column; gap:4px;
+}
+.ttm-kpi-label { font-size:11px; opacity:.6; font-weight:700; text-transform:uppercase; letter-spacing:.05em; }
+.ttm-kpi-value { font-size:22px; font-weight:900; line-height:1; }
+.ttm-kpi-sub   { font-size:11px; opacity:.5; }
+
+/* ── Section title ────────────────────────────────────────── */
+.ttm-section { margin-bottom:22px; }
+.ttm-section-title {
+  font-size:11px; font-weight:900; text-transform:uppercase;
+  letter-spacing:.08em; opacity:.5; margin-bottom:10px;
+}
+
+/* ── Chart grid ───────────────────────────────────────────── */
+.ttm-charts {
+  display:grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap:12px; margin-bottom:22px;
+}
+@media(max-width:1100px){ .ttm-charts{ grid-template-columns:1fr 1fr; } }
+@media(max-width:640px) { .ttm-charts{ grid-template-columns:1fr; } }
+.ttm-chart-box {
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.09);
+  border-radius:14px; padding:14px 16px;
+  display:flex; flex-direction:column; gap:8px;
+  min-height:220px;
+}
+.ttm-chart-box-title {
+  font-size:11px; font-weight:800; opacity:.6;
+  text-transform:uppercase; letter-spacing:.05em;
+}
+.ttm-chart-wrap { position:relative; flex:1; min-height:160px; }
+
+/* ── Weeks strip ──────────────────────────────────────────── */
+.ttm-weeks {
+  display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px;
+}
+.ttm-week-chip {
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:12px; padding:10px 14px;
+  min-width:120px; flex:1;
+}
+.ttm-week-chip-label { font-size:10px; opacity:.55; font-weight:700; text-transform:uppercase; }
+.ttm-week-chip-range { font-size:12px; font-weight:800; margin-top:2px; }
+.ttm-week-chip-hours { font-size:18px; font-weight:900; margin-top:4px; }
+
+/* ── Tables ───────────────────────────────────────────────── */
+.ttm-table-wrap { overflow-x:auto; border-radius:12px; border:1px solid rgba(255,255,255,.09); }
+.ttm-table {
+  width:100%; border-collapse:collapse; font-size:12px;
+}
+.ttm-table thead th {
+  padding:8px 12px; text-align:left;
+  font-size:10px; font-weight:800; text-transform:uppercase;
+  letter-spacing:.06em; opacity:.55;
+  border-bottom:1px solid rgba(255,255,255,.09);
+  white-space:nowrap; cursor:pointer; user-select:none;
+}
+.ttm-table thead th:hover { opacity:.9; }
+.ttm-table thead th.sorted-asc::after  { content:" ↑"; }
+.ttm-table thead th.sorted-desc::after { content:" ↓"; }
+.ttm-table tbody tr {
+  border-bottom:1px solid rgba(255,255,255,.05);
+  transition:background .1s;
+}
+.ttm-table tbody tr:last-child { border-bottom:none; }
+.ttm-table tbody tr:hover { background:rgba(255,255,255,.04); }
+.ttm-table tbody td { padding:8px 12px; vertical-align:middle; }
+.ttm-table .td-num { text-align:right; font-variant-numeric:tabular-nums; font-weight:700; }
+.ttm-table .td-pct {
+  text-align:right; opacity:.55; font-size:11px;
+  font-variant-numeric:tabular-nums;
+}
+
+/* Progress bar */
+.ttm-bar-wrap { display:flex; align-items:center; gap:8px; justify-content:flex-end; }
+.ttm-bar {
+  width:60px; height:5px; border-radius:99px;
+  background:rgba(255,255,255,.10); overflow:hidden; flex-shrink:0;
+}
+.ttm-bar-fill {
+  height:100%; border-radius:99px;
+  background:linear-gradient(90deg,#34d399,#60a5fa);
+}
+
+/* ── Badge / tag ──────────────────────────────────────────── */
+.ttm-badge {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:3px 8px; border-radius:999px; font-size:11px; font-weight:700;
+  border:1px solid rgba(255,255,255,.10);
+  background:rgba(255,255,255,.06);
+}
+.ttm-deleted { opacity:.45; text-decoration:line-through; }
+
+/* ── Entry link ───────────────────────────────────────────── */
+.ttm-card-link { color:inherit; text-decoration:none; font-weight:700; }
+.ttm-card-link:hover { text-decoration:underline; }
+
+/* ── Empty state ──────────────────────────────────────────── */
+.ttm-empty {
+  text-align:center; padding:48px 20px;
+  border:1px dashed rgba(255,255,255,.14); border-radius:14px;
+  opacity:.6;
+}
+.ttm-empty-icon { font-size:36px; margin-bottom:10px; }
+.ttm-empty-msg  { font-weight:700; font-size:14px; }
+.ttm-empty-sub  { font-size:12px; opacity:.7; margin-top:4px; }
+
+/* ── Handle ───────────────────────────────────────────────── */
+.ttm-handle { opacity:.55; font-size:11px; }
+</style>
+
+<div class="ttm-root">
+
+  {# ── Navigation header ───────────────────────────────────── #}
+  <div class="ttm-nav">
+    <button class="ttm-btn"
+            hx-get="{% url 'tracktime:tab_month' %}?m={{ prev_month }}"
+            hx-target="#tt-tab-body"
+            hx-swap="innerHTML">
+      ← Anterior
+    </button>
+
+    <div class="ttm-nav-center">
+      <div class="ttm-nav-title">{{ month_label }}</div>
+      <div class="ttm-nav-sub">{{ month_start|date:"d/m/Y" }} – {{ month_end|date:"d/m/Y" }}</div>
+    </div>
+
+    {% if next_month %}
+    <button class="ttm-btn"
+            hx-get="{% url 'tracktime:tab_month' %}?m={{ next_month }}"
+            hx-target="#tt-tab-body"
+            hx-swap="innerHTML">
+      Próximo →
+    </button>
+    {% else %}
+    <button class="ttm-btn disabled" disabled>Próximo →</button>
+    {% endif %}
+  </div>
+
+  {% if not has_data %}
+  {# ── Empty state ─────────────────────────────────────────── #}
+  <div class="ttm-empty">
+    <div class="ttm-empty-icon">📭</div>
+    <div class="ttm-empty-msg">Nenhum registro em {{ month_label }}</div>
+    <div class="ttm-empty-sub">Sem entradas de tempo entre {{ month_start|date:"d/m" }} e {{ month_end|date:"d/m/Y" }}.</div>
+  </div>
+
+  {% else %}
+
+  {# ── KPI strip ────────────────────────────────────────────── #}
+  <div class="ttm-kpis">
+    <div class="ttm-kpi">
+      <div class="ttm-kpi-label">Total horas</div>
+      <div class="ttm-kpi-value">{{ total_hours_display }}</div>
+      <div class="ttm-kpi-sub">{{ total_minutes }} min registrados</div>
+    </div>
+    <div class="ttm-kpi">
+      <div class="ttm-kpi-label">Usuários</div>
+      <div class="ttm-kpi-value">{{ num_users }}</div>
+      <div class="ttm-kpi-sub">com registros no mês</div>
+    </div>
+    <div class="ttm-kpi">
+      <div class="ttm-kpi-label">Registros</div>
+      <div class="ttm-kpi-value">{{ num_entries }}</div>
+      <div class="ttm-kpi-sub">entradas de tempo</div>
+    </div>
+  </div>
+
+  {# ── Weeks strip ──────────────────────────────────────────── #}
+  {% if by_week %}
+  <div class="ttm-section">
+    <div class="ttm-section-title">Semanas do mês</div>
+    <div class="ttm-weeks">
+      {% for w in by_week %}
+      <div class="ttm-week-chip">
+        <div class="ttm-week-chip-label">Semana</div>
+        <div class="ttm-week-chip-range">{{ w.label }}</div>
+        <div class="ttm-week-chip-hours">{{ w.hours_display }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── Charts row ───────────────────────────────────────────── #}
+  <div class="ttm-charts">
+
+    <div class="ttm-chart-box">
+      <div class="ttm-chart-box-title">Por usuário</div>
+      <div class="ttm-chart-wrap">
+        <canvas id="ttm-chart-user"></canvas>
+      </div>
+    </div>
+
+    <div class="ttm-chart-box">
+      <div class="ttm-chart-box-title">Por projeto</div>
+      <div class="ttm-chart-wrap">
+        <canvas id="ttm-chart-project"></canvas>
+      </div>
+    </div>
+
+    <div class="ttm-chart-box">
+      <div class="ttm-chart-box-title">Horas por semana</div>
+      <div class="ttm-chart-wrap">
+        <canvas id="ttm-chart-week"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+  {# ── By user table ────────────────────────────────────────── #}
+  <div class="ttm-section">
+    <div class="ttm-section-title">Por usuário</div>
+    <div class="ttm-table-wrap">
+      <table class="ttm-table" data-sortable>
+        <thead>
+          <tr>
+            <th>Usuário</th>
+            <th class="td-num">Horas</th>
+            <th class="td-num">Registros</th>
+            <th class="td-pct">% Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in by_user %}
+          <tr>
+            <td>
+              <div style="font-weight:700;">{{ u.name }}</div>
+              {% if u.handle %}<div class="ttm-handle">@{{ u.handle }}</div>{% endif %}
+            </td>
+            <td class="td-num">{{ u.hours_display }}</td>
+            <td class="td-num">{{ u.count }}</td>
+            <td class="td-pct">
+              <div class="ttm-bar-wrap">
+                <span>{{ u.pct }}%</span>
+                <div class="ttm-bar"><div class="ttm-bar-fill" style="width:{{ u.pct }}%"></div></div>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {# ── By project table ─────────────────────────────────────── #}
+  <div class="ttm-section">
+    <div class="ttm-section-title">Por projeto</div>
+    <div class="ttm-table-wrap">
+      <table class="ttm-table" data-sortable>
+        <thead>
+          <tr>
+            <th>Projeto</th>
+            <th class="td-num">Horas</th>
+            <th class="td-pct">% Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in by_project %}
+          <tr>
+            <td style="font-weight:700;">{{ p.name }}</td>
+            <td class="td-num">{{ p.hours_display }}</td>
+            <td class="td-pct">
+              <div class="ttm-bar-wrap">
+                <span>{{ p.pct }}%</span>
+                <div class="ttm-bar"><div class="ttm-bar-fill" style="width:{{ p.pct }}%"></div></div>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {# ── By board table ───────────────────────────────────────── #}
+  <div class="ttm-section">
+    <div class="ttm-section-title">Por quadro</div>
+    <div class="ttm-table-wrap">
+      <table class="ttm-table" data-sortable>
+        <thead>
+          <tr>
+            <th>Quadro</th>
+            <th class="td-num">Horas</th>
+            <th class="td-pct">% Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for b in by_board %}
+          <tr>
+            <td style="font-weight:700;">{{ b.name }}</td>
+            <td class="td-num">{{ b.hours_display }}</td>
+            <td class="td-pct">
+              <div class="ttm-bar-wrap">
+                <span>{{ b.pct }}%</span>
+                <div class="ttm-bar"><div class="ttm-bar-fill" style="width:{{ b.pct }}%"></div></div>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {# ── Detailed entries table ───────────────────────────────── #}
+  <div class="ttm-section">
+    <div class="ttm-section-title">Registros detalhados ({{ num_entries }})</div>
+    <div class="ttm-table-wrap">
+      <table class="ttm-table" data-sortable>
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Usuário</th>
+            <th>Quadro</th>
+            <th>Card</th>
+            <th>Projeto</th>
+            <th class="td-num">Horas</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in entries %}
+          <tr {% if e.deleted %}class="ttm-deleted"{% endif %}>
+            <td style="white-space:nowrap; opacity:.7;">{{ e.date }}</td>
+            <td style="font-weight:700; white-space:nowrap;">{{ e.user_name }}</td>
+            <td style="opacity:.75;">{{ e.board_name|default:"–" }}</td>
+            <td>
+              {% if e.card_url %}
+                <a class="ttm-card-link" href="{{ e.card_url }}" target="_blank" rel="noopener">
+                  {{ e.card_title|default:"(sem título)" }}
+                </a>
+              {% else %}
+                {{ e.card_title|default:"–" }}
+              {% endif %}
+              {% if e.deleted %}<span class="ttm-badge" style="margin-left:4px;">deletado</span>{% endif %}
+            </td>
+            <td>
+              <span class="ttm-badge">{{ e.project_name }}</span>
+            </td>
+            <td class="td-num">{{ e.hours_display }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% endif %}{# has_data #}
+
+</div>{# ttm-root #}
+
+<script>
+(function () {
+  /* ── Chart.js loader ──────────────────────────────────────── */
+  const CHART_CDN = "https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js";
+
+  const PALETTE = [
+    "#34d399","#60a5fa","#7c6af7","#f472b6","#facc15",
+    "#fb923c","#a78bfa","#38bdf8","#4ade80","#e879f9"
+  ];
+
+  function fmtMin(m) {
+    const h = Math.floor(m / 60), r = m % 60;
+    if (h && r) return `${h}h ${String(r).padStart(2,"0")}m`;
+    if (h) return `${h}h`;
+    return `${r}m`;
+  }
+
+  /* ── Data from Django context ─────────────────────────────── */
+  const byUser    = {{ by_user|safe }};
+  const byProject = {{ by_project|safe }};
+  const byWeek    = {{ by_week|safe }};
+
+  function buildCharts() {
+    const defaults = {
+      plugins: { legend: { labels: { color:"rgba(255,255,255,.75)", font:{size:11} } } },
+    };
+
+    /* doughnut: by user */
+    const ctxUser = document.getElementById("ttm-chart-user");
+    if (ctxUser && byUser.length) {
+      new Chart(ctxUser, {
+        type: "doughnut",
+        data: {
+          labels: byUser.map(u => u.name),
+          datasets:[{ data: byUser.map(u => u.minutes),
+            backgroundColor: PALETTE,
+            borderColor:"rgba(0,0,0,.3)", borderWidth:2 }]
+        },
+        options: {
+          ...defaults,
+          plugins: {
+            ...defaults.plugins,
+            tooltip: { callbacks: { label: ctx => ` ${fmtMin(ctx.raw)}` } }
+          },
+          cutout:"60%",
+        }
+      });
+    }
+
+    /* doughnut: by project */
+    const ctxProj = document.getElementById("ttm-chart-project");
+    if (ctxProj && byProject.length) {
+      new Chart(ctxProj, {
+        type: "doughnut",
+        data: {
+          labels: byProject.map(p => p.name),
+          datasets:[{ data: byProject.map(p => p.minutes),
+            backgroundColor: PALETTE,
+            borderColor:"rgba(0,0,0,.3)", borderWidth:2 }]
+        },
+        options: {
+          ...defaults,
+          plugins: {
+            ...defaults.plugins,
+            tooltip: { callbacks: { label: ctx => ` ${fmtMin(ctx.raw)}` } }
+          },
+          cutout:"60%",
+        }
+      });
+    }
+
+    /* bar: by week */
+    const ctxWeek = document.getElementById("ttm-chart-week");
+    if (ctxWeek && byWeek.length) {
+      new Chart(ctxWeek, {
+        type: "bar",
+        data: {
+          labels: byWeek.map(w => w.label),
+          datasets:[{
+            label:"Horas",
+            data: byWeek.map(w => +(w.minutes / 60).toFixed(2)),
+            backgroundColor: byWeek.map((_,i) => PALETTE[i % PALETTE.length] + "cc"),
+            borderColor:    byWeek.map((_,i) => PALETTE[i % PALETTE.length]),
+            borderWidth:1, borderRadius:6,
+          }]
+        },
+        options: {
+          responsive:true, maintainAspectRatio:false,
+          plugins: {
+            legend:{ display:false },
+            tooltip:{ callbacks:{ label: ctx => ` ${fmtMin(Math.round(ctx.raw*60))}` } }
+          },
+          scales:{
+            x:{ ticks:{ color:"rgba(255,255,255,.65)", font:{size:10}, maxRotation:30 },
+                grid:{ color:"rgba(255,255,255,.05)" } },
+            y:{ ticks:{ color:"rgba(255,255,255,.65)", font:{size:11},
+                callback: v => v + "h" }, grid:{ color:"rgba(255,255,255,.07)" }, beginAtZero:true }
+          }
+        }
+      });
+    }
+  }
+
+  /* ── Sortable tables ──────────────────────────────────────── */
+  function initSortable() {
+    document.querySelectorAll(".ttm-table[data-sortable]").forEach(tbl => {
+      tbl.querySelectorAll("thead th").forEach((th, colIdx) => {
+        th.addEventListener("click", () => {
+          const tbody = tbl.querySelector("tbody");
+          const rows = Array.from(tbody.querySelectorAll("tr"));
+          const asc = th.classList.contains("sorted-asc");
+          tbl.querySelectorAll("thead th").forEach(t => t.classList.remove("sorted-asc","sorted-desc"));
+          th.classList.add(asc ? "sorted-desc" : "sorted-asc");
+          rows.sort((a, b) => {
+            const av = (a.cells[colIdx] && a.cells[colIdx].textContent.trim()) || "";
+            const bv = (b.cells[colIdx] && b.cells[colIdx].textContent.trim()) || "";
+            const an = parseFloat(av.replace(/[^\d.]/g,"")), bn = parseFloat(bv.replace(/[^\d.]/g,""));
+            const cmp = isNaN(an) || isNaN(bn) ? av.localeCompare(bv,"pt") : an - bn;
+            return asc ? -cmp : cmp;
+          });
+          rows.forEach(r => tbody.appendChild(r));
+        });
+      });
+    });
+  }
+
+  /* ── Init ─────────────────────────────────────────────────── */
+  function init() {
+    buildCharts();
+    initSortable();
+  }
+
+  if (window.Chart) {
+    init();
+  } else {
+    const s = document.createElement("script");
+    s.src = CHART_CDN;
+    s.onload = init;
+    document.head.appendChild(s);
+  }
+})();
+</script>
+{# END month.html #}

@@ -900,14 +900,259 @@ def tracktime_live_json(request):
     return JsonResponse({"ts": now.isoformat(), "boards": boards})
 
 
+def _fmt_min(m):
+    """Format integer minutes as 'Xh Ym' string."""
+    h, rem = divmod(int(m or 0), 60)
+    if h and rem:
+        return f"{h}h {rem:02d}m"
+    elif h:
+        return f"{h}h"
+    else:
+        return f"{rem}m"
+
+
 @login_required
 def tracktime_tab_week(request):
-    return render(request, "tracktime/modal/tabs/week.html", {})
+    import datetime
+    from django.db.models import Sum
+    from collections import defaultdict
+
+    w_param = request.GET.get("w", "")
+    try:
+        week_start = datetime.date.fromisoformat(w_param)
+        week_start -= datetime.timedelta(days=week_start.weekday())
+    except Exception:
+        today = timezone.localdate()
+        week_start = today - datetime.timedelta(days=today.weekday())
+
+    week_end = week_start + datetime.timedelta(days=6)
+    prev_week = (week_start - datetime.timedelta(days=7)).isoformat()
+    today = timezone.localdate()
+    next_week_start = week_start + datetime.timedelta(days=7)
+    next_week = next_week_start.isoformat() if next_week_start <= today else None
+
+    entries_qs = (
+        TimeEntry.objects
+        .filter(created_at__date__gte=week_start, created_at__date__lte=week_end, minutes__gt=0)
+        .select_related("user", "user__profile", "project")
+        .order_by("-created_at")
+    )
+    entries = list(entries_qs)
+    total_minutes = sum(e.minutes for e in entries)
+
+    # Board names cache
+    board_ids = {e.board_id for e in entries if e.board_id}
+    from boards.models import Board
+    board_name_map = {b.id: b.name for b in Board.objects.filter(id__in=board_ids).only("id", "name")} if board_ids else {}
+
+    by_user = defaultdict(lambda: {"name": "", "handle": "", "minutes": 0, "count": 0})
+    by_project = defaultdict(lambda: {"name": "", "minutes": 0})
+    by_board = defaultdict(lambda: {"name": "", "minutes": 0})
+    day_minutes = {week_start + datetime.timedelta(days=i): 0 for i in range(7)}
+
+    entries_list = []
+    for e in entries:
+        u = e.user
+        prof = getattr(u, "profile", None)
+        name = ((getattr(prof, "display_name", "") or "").strip() or u.get_full_name() or u.get_username() or u.email or "?")
+        handle = (getattr(prof, "handle", "") or "").strip()
+        board_name = board_name_map.get(e.board_id, "") if e.board_id else ""
+        proj_name = e.project.name if e.project else "(sem projeto)"
+
+        uid = u.id
+        by_user[uid]["name"] = name
+        by_user[uid]["handle"] = handle
+        by_user[uid]["minutes"] += e.minutes
+        by_user[uid]["count"] += 1
+
+        pid = e.project_id or 0
+        by_project[pid]["name"] = proj_name
+        by_project[pid]["minutes"] += e.minutes
+
+        bid = e.board_id or 0
+        by_board[bid]["name"] = board_name or "(sem quadro)"
+        by_board[bid]["minutes"] += e.minutes
+
+        d = timezone.localtime(e.created_at).date()
+        if d in day_minutes:
+            day_minutes[d] += e.minutes
+
+        entries_list.append({
+            "date": timezone.localtime(e.created_at).date().isoformat(),
+            "user_name": name,
+            "project_name": proj_name,
+            "board_name": board_name,
+            "card_title": e.card_title_cache or "",
+            "card_url": e.card_url_cache or "",
+            "minutes": e.minutes,
+            "hours_display": _fmt_min(e.minutes),
+            "deleted": e.is_card_deleted_cache,
+        })
+
+    day_labels = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]
+    by_day = [
+        {"date": (week_start + datetime.timedelta(days=i)).isoformat(), "label": day_labels[i],
+         "minutes": day_minutes.get(week_start + datetime.timedelta(days=i), 0),
+         "hours_display": _fmt_min(day_minutes.get(week_start + datetime.timedelta(days=i), 0))}
+        for i in range(7)
+    ]
+
+    by_user_list = sorted(by_user.values(), key=lambda x: -x["minutes"])
+    by_project_list = sorted(by_project.values(), key=lambda x: -x["minutes"])
+    by_board_list = sorted(by_board.values(), key=lambda x: -x["minutes"])
+
+    for item in by_user_list:
+        item["hours_display"] = _fmt_min(item["minutes"])
+        item["pct"] = round(item["minutes"] / total_minutes * 100) if total_minutes else 0
+    for item in by_project_list:
+        item["hours_display"] = _fmt_min(item["minutes"])
+        item["pct"] = round(item["minutes"] / total_minutes * 100) if total_minutes else 0
+    for item in by_board_list:
+        item["hours_display"] = _fmt_min(item["minutes"])
+        item["pct"] = round(item["minutes"] / total_minutes * 100) if total_minutes else 0
+
+    ctx = {
+        "week_start": week_start, "week_end": week_end,
+        "prev_week": prev_week, "next_week": next_week,
+        "total_minutes": total_minutes,
+        "total_hours_display": _fmt_min(total_minutes),
+        "num_users": len(by_user),
+        "num_entries": len(entries_list),
+        "by_user": by_user_list,
+        "by_project": by_project_list,
+        "by_board": by_board_list,
+        "by_day": by_day, "entries": entries_list,
+        "has_data": total_minutes > 0,
+    }
+    return render(request, "tracktime/modal/tabs/week.html", ctx)
 
 
 @login_required
 def tracktime_tab_month(request):
-    return render(request, "tracktime/modal/tabs/month.html", {})
+    import datetime
+    import calendar
+    from collections import defaultdict
+
+    m_param = request.GET.get("m", "")
+    try:
+        year, month = m_param.split("-")
+        year, month = int(year), int(month)
+        month_start = datetime.date(year, month, 1)
+    except Exception:
+        today = timezone.localdate()
+        month_start = today.replace(day=1)
+
+    last_day = calendar.monthrange(month_start.year, month_start.month)[1]
+    month_end = month_start.replace(day=last_day)
+
+    prev_m = (month_start - datetime.timedelta(days=1)).replace(day=1)
+    prev_month = prev_m.strftime("%Y-%m")
+    today = timezone.localdate()
+    next_m_start = month_end + datetime.timedelta(days=1)
+    next_month = next_m_start.strftime("%Y-%m") if next_m_start <= today else None
+
+    PT_MONTHS = [
+        "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+        "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+    ]
+    month_label = f"{PT_MONTHS[month_start.month - 1]} {month_start.year}"
+
+    entries_qs = (
+        TimeEntry.objects
+        .filter(created_at__date__gte=month_start, created_at__date__lte=month_end, minutes__gt=0)
+        .select_related("user", "user__profile", "project")
+        .order_by("-created_at")
+    )
+    entries = list(entries_qs)
+    total_minutes = sum(e.minutes for e in entries)
+
+    board_ids = {e.board_id for e in entries if e.board_id}
+    from boards.models import Board
+    board_name_map = {b.id: b.name for b in Board.objects.filter(id__in=board_ids).only("id", "name")} if board_ids else {}
+
+    by_user = defaultdict(lambda: {"name": "", "handle": "", "minutes": 0, "count": 0})
+    by_project = defaultdict(lambda: {"name": "", "minutes": 0})
+    by_board = defaultdict(lambda: {"name": "", "minutes": 0})
+    by_week = defaultdict(lambda: {"label": "", "minutes": 0, "sort_key": ""})
+
+    entries_list = []
+    for e in entries:
+        u = e.user
+        prof = getattr(u, "profile", None)
+        name = ((getattr(prof, "display_name", "") or "").strip() or u.get_full_name() or u.get_username() or u.email or "?")
+        handle = (getattr(prof, "handle", "") or "").strip()
+        board_name = board_name_map.get(e.board_id, "") if e.board_id else ""
+        proj_name = e.project.name if e.project else "(sem projeto)"
+        d = timezone.localtime(e.created_at).date()
+        # ISO week within month
+        iso_week = d.isocalendar()[1]
+        week_key = f"{d.year}-W{iso_week:02d}"
+        # week label: Mon-Sun of that week
+        week_mon = d - datetime.timedelta(days=d.weekday())
+        week_sun = week_mon + datetime.timedelta(days=6)
+        by_week[week_key]["label"] = f"{week_mon.strftime('%d/%m')} – {week_sun.strftime('%d/%m')}"
+        by_week[week_key]["minutes"] += e.minutes
+        by_week[week_key]["sort_key"] = week_key
+
+        uid = u.id
+        by_user[uid]["name"] = name
+        by_user[uid]["handle"] = handle
+        by_user[uid]["minutes"] += e.minutes
+        by_user[uid]["count"] += 1
+
+        pid = e.project_id or 0
+        by_project[pid]["name"] = proj_name
+        by_project[pid]["minutes"] += e.minutes
+
+        bid = e.board_id or 0
+        by_board[bid]["name"] = board_name or "(sem quadro)"
+        by_board[bid]["minutes"] += e.minutes
+
+        entries_list.append({
+            "date": d.isoformat(),
+            "user_name": name,
+            "project_name": proj_name,
+            "board_name": board_name,
+            "card_title": e.card_title_cache or "",
+            "card_url": e.card_url_cache or "",
+            "minutes": e.minutes,
+            "hours_display": _fmt_min(e.minutes),
+            "deleted": e.is_card_deleted_cache,
+        })
+
+    by_user_list = sorted(by_user.values(), key=lambda x: -x["minutes"])
+    by_project_list = sorted(by_project.values(), key=lambda x: -x["minutes"])
+    by_board_list = sorted(by_board.values(), key=lambda x: -x["minutes"])
+    by_week_list = sorted(by_week.values(), key=lambda x: x.get("sort_key", ""))
+
+    for item in by_user_list:
+        item["hours_display"] = _fmt_min(item["minutes"])
+        item["pct"] = round(item["minutes"] / total_minutes * 100) if total_minutes else 0
+    for item in by_project_list:
+        item["hours_display"] = _fmt_min(item["minutes"])
+        item["pct"] = round(item["minutes"] / total_minutes * 100) if total_minutes else 0
+    for item in by_board_list:
+        item["hours_display"] = _fmt_min(item["minutes"])
+        item["pct"] = round(item["minutes"] / total_minutes * 100) if total_minutes else 0
+    for item in by_week_list:
+        item["hours_display"] = _fmt_min(item["minutes"])
+
+    ctx = {
+        "month_start": month_start, "month_end": month_end,
+        "prev_month": prev_month, "next_month": next_month,
+        "month_label": month_label,
+        "total_minutes": total_minutes,
+        "total_hours_display": _fmt_min(total_minutes),
+        "num_users": len(by_user),
+        "num_entries": len(entries_list),
+        "by_user": by_user_list,
+        "by_project": by_project_list,
+        "by_board": by_board_list,
+        "by_week": by_week_list,
+        "entries": entries_list,
+        "has_data": total_minutes > 0,
+    }
+    return render(request, "tracktime/modal/tabs/month.html", ctx)
 
 
 @login_required

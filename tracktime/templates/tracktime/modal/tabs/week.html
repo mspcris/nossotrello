@@ -1,5 +1,513 @@
 {# tracktime/templates/tracktime/modal/tabs/week.html #}
-<div class="cm-card" style="padding:12px;">
-  <strong>Semana</strong>
-  <div class="tt-muted">Próxima entrega: consolidado por usuário/projeto/card, com links.</div>
-</div>
+
+<style>
+/* ── Reset / base ─────────────────────────────────────────── */
+.ttw-root { width:100%; font-size:13px; }
+
+/* ── Nav header ───────────────────────────────────────────── */
+.ttw-nav {
+  display:flex; align-items:center; justify-content:space-between;
+  gap:10px; margin-bottom:18px; flex-wrap:wrap;
+}
+.ttw-nav-center {
+  flex:1; text-align:center; min-width:0;
+}
+.ttw-nav-title {
+  font-weight:900; font-size:15px; white-space:nowrap;
+}
+.ttw-nav-sub {
+  font-size:11px; opacity:.6; margin-top:2px;
+}
+.ttw-btn {
+  display:inline-flex; align-items:center; gap:5px;
+  padding:6px 14px; border-radius:999px;
+  border:1px solid rgba(255,255,255,.15);
+  background:rgba(255,255,255,.07);
+  color:inherit; font-size:12px; font-weight:700;
+  cursor:pointer; text-decoration:none; transition:background .15s;
+  white-space:nowrap;
+}
+.ttw-btn:hover { background:rgba(255,255,255,.14); }
+.ttw-btn:disabled, .ttw-btn.disabled {
+  opacity:.35; cursor:not-allowed; pointer-events:none;
+}
+
+/* ── KPI strip ────────────────────────────────────────────── */
+.ttw-kpis {
+  display:grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap:10px; margin-bottom:20px;
+}
+@media(max-width:560px){ .ttw-kpis{ grid-template-columns:1fr 1fr; } }
+.ttw-kpi {
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:14px; padding:14px 16px;
+  display:flex; flex-direction:column; gap:4px;
+}
+.ttw-kpi-label { font-size:11px; opacity:.6; font-weight:700; text-transform:uppercase; letter-spacing:.05em; }
+.ttw-kpi-value { font-size:22px; font-weight:900; line-height:1; }
+.ttw-kpi-sub   { font-size:11px; opacity:.5; }
+
+/* ── Section title ────────────────────────────────────────── */
+.ttw-section { margin-bottom:22px; }
+.ttw-section-title {
+  font-size:11px; font-weight:900; text-transform:uppercase;
+  letter-spacing:.08em; opacity:.5; margin-bottom:10px;
+}
+
+/* ── Chart grid ───────────────────────────────────────────── */
+.ttw-charts {
+  display:grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap:12px; margin-bottom:22px;
+}
+@media(max-width:1100px){ .ttw-charts{ grid-template-columns:1fr 1fr; } }
+@media(max-width:640px) { .ttw-charts{ grid-template-columns:1fr; } }
+.ttw-chart-box {
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.09);
+  border-radius:14px; padding:14px 16px;
+  display:flex; flex-direction:column; gap:8px;
+  min-height:220px;
+}
+.ttw-chart-box-title {
+  font-size:11px; font-weight:800; opacity:.6;
+  text-transform:uppercase; letter-spacing:.05em;
+}
+.ttw-chart-wrap { position:relative; flex:1; min-height:160px; }
+
+/* ── Tables ───────────────────────────────────────────────── */
+.ttw-table-wrap { overflow-x:auto; border-radius:12px; border:1px solid rgba(255,255,255,.09); }
+.ttw-table {
+  width:100%; border-collapse:collapse; font-size:12px;
+}
+.ttw-table thead th {
+  padding:8px 12px; text-align:left;
+  font-size:10px; font-weight:800; text-transform:uppercase;
+  letter-spacing:.06em; opacity:.55;
+  border-bottom:1px solid rgba(255,255,255,.09);
+  white-space:nowrap; cursor:pointer; user-select:none;
+}
+.ttw-table thead th:hover { opacity:.9; }
+.ttw-table thead th.sorted-asc::after  { content:" ↑"; }
+.ttw-table thead th.sorted-desc::after { content:" ↓"; }
+.ttw-table tbody tr {
+  border-bottom:1px solid rgba(255,255,255,.05);
+  transition:background .1s;
+}
+.ttw-table tbody tr:last-child { border-bottom:none; }
+.ttw-table tbody tr:hover { background:rgba(255,255,255,.04); }
+.ttw-table tbody td { padding:8px 12px; vertical-align:middle; }
+.ttw-table .td-num { text-align:right; font-variant-numeric:tabular-nums; font-weight:700; }
+.ttw-table .td-pct {
+  text-align:right; opacity:.55; font-size:11px;
+  font-variant-numeric:tabular-nums;
+}
+
+/* Progress bar inside pct cell */
+.ttw-bar-wrap { display:flex; align-items:center; gap:8px; justify-content:flex-end; }
+.ttw-bar {
+  width:60px; height:5px; border-radius:99px;
+  background:rgba(255,255,255,.10); overflow:hidden; flex-shrink:0;
+}
+.ttw-bar-fill {
+  height:100%; border-radius:99px;
+  background:linear-gradient(90deg,#7c6af7,#a78bfa);
+}
+
+/* ── Badge / tag ──────────────────────────────────────────── */
+.ttw-badge {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:3px 8px; border-radius:999px; font-size:11px; font-weight:700;
+  border:1px solid rgba(255,255,255,.10);
+  background:rgba(255,255,255,.06);
+}
+.ttw-deleted { opacity:.45; text-decoration:line-through; }
+
+/* ── Entry link ───────────────────────────────────────────── */
+.ttw-card-link { color:inherit; text-decoration:none; font-weight:700; }
+.ttw-card-link:hover { text-decoration:underline; }
+
+/* ── Empty state ──────────────────────────────────────────── */
+.ttw-empty {
+  text-align:center; padding:48px 20px;
+  border:1px dashed rgba(255,255,255,.14); border-radius:14px;
+  opacity:.6;
+}
+.ttw-empty-icon { font-size:36px; margin-bottom:10px; }
+.ttw-empty-msg  { font-weight:700; font-size:14px; }
+.ttw-empty-sub  { font-size:12px; opacity:.7; margin-top:4px; }
+
+/* ── Handle ───────────────────────────────────────────────── */
+.ttw-handle { opacity:.55; font-size:11px; }
+</style>
+
+<div class="ttw-root">
+
+  {# ── Navigation header ───────────────────────────────────── #}
+  <div class="ttw-nav">
+    <button class="ttw-btn"
+            hx-get="{% url 'tracktime:tab_week' %}?w={{ prev_week }}"
+            hx-target="#tt-tab-body"
+            hx-swap="innerHTML">
+      ← Anterior
+    </button>
+
+    <div class="ttw-nav-center">
+      <div class="ttw-nav-title">
+        Semana {{ week_start|date:"d/m" }} – {{ week_end|date:"d/m/Y" }}
+      </div>
+      <div class="ttw-nav-sub">{{ week_start|date:"l, d" }} até {{ week_end|date:"l, d" }}</div>
+    </div>
+
+    {% if next_week %}
+    <button class="ttw-btn"
+            hx-get="{% url 'tracktime:tab_week' %}?w={{ next_week }}"
+            hx-target="#tt-tab-body"
+            hx-swap="innerHTML">
+      Próxima →
+    </button>
+    {% else %}
+    <button class="ttw-btn disabled" disabled>Próxima →</button>
+    {% endif %}
+  </div>
+
+  {% if not has_data %}
+  {# ── Empty state ─────────────────────────────────────────── #}
+  <div class="ttw-empty">
+    <div class="ttw-empty-icon">📭</div>
+    <div class="ttw-empty-msg">Nenhum registro nesta semana</div>
+    <div class="ttw-empty-sub">Sem entradas de tempo entre {{ week_start|date:"d/m" }} e {{ week_end|date:"d/m/Y" }}.</div>
+  </div>
+
+  {% else %}
+
+  {# ── KPI strip ────────────────────────────────────────────── #}
+  <div class="ttw-kpis">
+    <div class="ttw-kpi">
+      <div class="ttw-kpi-label">Total horas</div>
+      <div class="ttw-kpi-value">{{ total_hours_display }}</div>
+      <div class="ttw-kpi-sub">{{ total_minutes }} min registrados</div>
+    </div>
+    <div class="ttw-kpi">
+      <div class="ttw-kpi-label">Usuários</div>
+      <div class="ttw-kpi-value">{{ num_users }}</div>
+      <div class="ttw-kpi-sub">com registros na semana</div>
+    </div>
+    <div class="ttw-kpi">
+      <div class="ttw-kpi-label">Registros</div>
+      <div class="ttw-kpi-value">{{ num_entries }}</div>
+      <div class="ttw-kpi-sub">entradas de tempo</div>
+    </div>
+  </div>
+
+  {# ── Charts row ───────────────────────────────────────────── #}
+  <div class="ttw-charts">
+
+    <div class="ttw-chart-box">
+      <div class="ttw-chart-box-title">Por usuário</div>
+      <div class="ttw-chart-wrap">
+        <canvas id="ttw-chart-user"></canvas>
+      </div>
+    </div>
+
+    <div class="ttw-chart-box">
+      <div class="ttw-chart-box-title">Por projeto</div>
+      <div class="ttw-chart-wrap">
+        <canvas id="ttw-chart-project"></canvas>
+      </div>
+    </div>
+
+    <div class="ttw-chart-box">
+      <div class="ttw-chart-box-title">Horas por dia</div>
+      <div class="ttw-chart-wrap">
+        <canvas id="ttw-chart-day"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+  {# ── By user table ────────────────────────────────────────── #}
+  <div class="ttw-section">
+    <div class="ttw-section-title">Por usuário</div>
+    <div class="ttw-table-wrap">
+      <table class="ttw-table" data-sortable>
+        <thead>
+          <tr>
+            <th>Usuário</th>
+            <th class="td-num">Horas</th>
+            <th class="td-num">Registros</th>
+            <th class="td-pct">% Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in by_user %}
+          <tr>
+            <td>
+              <div style="font-weight:700;">{{ u.name }}</div>
+              {% if u.handle %}<div class="ttw-handle">@{{ u.handle }}</div>{% endif %}
+            </td>
+            <td class="td-num">{{ u.hours_display }}</td>
+            <td class="td-num">{{ u.count }}</td>
+            <td class="td-pct">
+              <div class="ttw-bar-wrap">
+                <span>{{ u.pct }}%</span>
+                <div class="ttw-bar"><div class="ttw-bar-fill" style="width:{{ u.pct }}%"></div></div>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {# ── By project table ─────────────────────────────────────── #}
+  <div class="ttw-section">
+    <div class="ttw-section-title">Por projeto</div>
+    <div class="ttw-table-wrap">
+      <table class="ttw-table" data-sortable>
+        <thead>
+          <tr>
+            <th>Projeto</th>
+            <th class="td-num">Horas</th>
+            <th class="td-pct">% Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in by_project %}
+          <tr>
+            <td style="font-weight:700;">{{ p.name }}</td>
+            <td class="td-num">{{ p.hours_display }}</td>
+            <td class="td-pct">
+              <div class="ttw-bar-wrap">
+                <span>{{ p.pct }}%</span>
+                <div class="ttw-bar"><div class="ttw-bar-fill" style="width:{{ p.pct }}%"></div></div>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {# ── By board table ───────────────────────────────────────── #}
+  <div class="ttw-section">
+    <div class="ttw-section-title">Por quadro</div>
+    <div class="ttw-table-wrap">
+      <table class="ttw-table" data-sortable>
+        <thead>
+          <tr>
+            <th>Quadro</th>
+            <th class="td-num">Horas</th>
+            <th class="td-pct">% Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for b in by_board %}
+          <tr>
+            <td style="font-weight:700;">{{ b.name }}</td>
+            <td class="td-num">{{ b.hours_display }}</td>
+            <td class="td-pct">
+              <div class="ttw-bar-wrap">
+                <span>{{ b.pct }}%</span>
+                <div class="ttw-bar"><div class="ttw-bar-fill" style="width:{{ b.pct }}%"></div></div>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {# ── Detailed entries table ───────────────────────────────── #}
+  <div class="ttw-section">
+    <div class="ttw-section-title">Registros detalhados ({{ num_entries }})</div>
+    <div class="ttw-table-wrap">
+      <table class="ttw-table" data-sortable>
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Usuário</th>
+            <th>Quadro</th>
+            <th>Card</th>
+            <th>Projeto</th>
+            <th class="td-num">Horas</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in entries %}
+          <tr {% if e.deleted %}class="ttw-deleted"{% endif %}>
+            <td style="white-space:nowrap; opacity:.7;">{{ e.date }}</td>
+            <td style="font-weight:700; white-space:nowrap;">{{ e.user_name }}</td>
+            <td style="opacity:.75;">{{ e.board_name|default:"–" }}</td>
+            <td>
+              {% if e.card_url %}
+                <a class="ttw-card-link" href="{{ e.card_url }}" target="_blank" rel="noopener">
+                  {{ e.card_title|default:"(sem título)" }}
+                </a>
+              {% else %}
+                {{ e.card_title|default:"–" }}
+              {% endif %}
+              {% if e.deleted %}<span class="ttw-badge" style="margin-left:4px;">deletado</span>{% endif %}
+            </td>
+            <td>
+              <span class="ttw-badge">{{ e.project_name }}</span>
+            </td>
+            <td class="td-num">{{ e.hours_display }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% endif %}{# has_data #}
+
+</div>{# ttw-root #}
+
+<script>
+(function () {
+  /* ── Chart.js loader ──────────────────────────────────────── */
+  const CHART_CDN = "https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js";
+
+  const PALETTE = [
+    "#7c6af7","#a78bfa","#34d399","#60a5fa","#f472b6",
+    "#facc15","#fb923c","#38bdf8","#4ade80","#e879f9"
+  ];
+
+  function fmtMin(m) {
+    const h = Math.floor(m / 60), r = m % 60;
+    if (h && r) return `${h}h ${String(r).padStart(2,"0")}m`;
+    if (h) return `${h}h`;
+    return `${r}m`;
+  }
+
+  /* ── Data from Django context ─────────────────────────────── */
+  const byUser    = {{ by_user|safe }};
+  const byProject = {{ by_project|safe }};
+  const byDay     = {{ by_day|safe }};
+
+  function buildCharts() {
+    const defaults = {
+      plugins: { legend: { labels: { color:"rgba(255,255,255,.75)", font:{size:11} } } },
+    };
+
+    /* pie: by user */
+    const ctxUser = document.getElementById("ttw-chart-user");
+    if (ctxUser && byUser.length) {
+      new Chart(ctxUser, {
+        type: "doughnut",
+        data: {
+          labels: byUser.map(u => u.name),
+          datasets:[{ data: byUser.map(u => u.minutes),
+            backgroundColor: PALETTE,
+            borderColor:"rgba(0,0,0,.3)", borderWidth:2 }]
+        },
+        options: {
+          ...defaults,
+          plugins: {
+            ...defaults.plugins,
+            tooltip: { callbacks: { label: ctx => ` ${fmtMin(ctx.raw)}` } }
+          },
+          cutout:"60%",
+        }
+      });
+    }
+
+    /* pie: by project */
+    const ctxProj = document.getElementById("ttw-chart-project");
+    if (ctxProj && byProject.length) {
+      new Chart(ctxProj, {
+        type: "doughnut",
+        data: {
+          labels: byProject.map(p => p.name),
+          datasets:[{ data: byProject.map(p => p.minutes),
+            backgroundColor: PALETTE,
+            borderColor:"rgba(0,0,0,.3)", borderWidth:2 }]
+        },
+        options: {
+          ...defaults,
+          plugins: {
+            ...defaults.plugins,
+            tooltip: { callbacks: { label: ctx => ` ${fmtMin(ctx.raw)}` } }
+          },
+          cutout:"60%",
+        }
+      });
+    }
+
+    /* bar: by day */
+    const ctxDay = document.getElementById("ttw-chart-day");
+    if (ctxDay) {
+      new Chart(ctxDay, {
+        type: "bar",
+        data: {
+          labels: byDay.map(d => d.label),
+          datasets:[{
+            label:"Horas",
+            data: byDay.map(d => +(d.minutes / 60).toFixed(2)),
+            backgroundColor: byDay.map((_,i) => PALETTE[i % PALETTE.length] + "cc"),
+            borderColor:    byDay.map((_,i) => PALETTE[i % PALETTE.length]),
+            borderWidth:1, borderRadius:6,
+          }]
+        },
+        options: {
+          responsive:true, maintainAspectRatio:false,
+          plugins: {
+            legend:{ display:false },
+            tooltip:{ callbacks:{ label: ctx => ` ${fmtMin(Math.round(ctx.raw*60))}` } }
+          },
+          scales:{
+            x:{ ticks:{ color:"rgba(255,255,255,.65)", font:{size:11} }, grid:{ color:"rgba(255,255,255,.05)" } },
+            y:{ ticks:{ color:"rgba(255,255,255,.65)", font:{size:11},
+                callback: v => v + "h" }, grid:{ color:"rgba(255,255,255,.07)" }, beginAtZero:true }
+          }
+        }
+      });
+    }
+  }
+
+  /* ── Sortable tables ──────────────────────────────────────── */
+  function initSortable() {
+    document.querySelectorAll(".ttw-table[data-sortable]").forEach(tbl => {
+      tbl.querySelectorAll("thead th").forEach((th, colIdx) => {
+        th.addEventListener("click", () => {
+          const tbody = tbl.querySelector("tbody");
+          const rows = Array.from(tbody.querySelectorAll("tr"));
+          const asc = th.classList.contains("sorted-asc");
+          tbl.querySelectorAll("thead th").forEach(t => t.classList.remove("sorted-asc","sorted-desc"));
+          th.classList.add(asc ? "sorted-desc" : "sorted-asc");
+          rows.sort((a, b) => {
+            const av = (a.cells[colIdx] && a.cells[colIdx].textContent.trim()) || "";
+            const bv = (b.cells[colIdx] && b.cells[colIdx].textContent.trim()) || "";
+            const an = parseFloat(av.replace(/[^\d.]/g,"")), bn = parseFloat(bv.replace(/[^\d.]/g,""));
+            const cmp = isNaN(an) || isNaN(bn) ? av.localeCompare(bv,"pt") : an - bn;
+            return asc ? -cmp : cmp;
+          });
+          rows.forEach(r => tbody.appendChild(r));
+        });
+      });
+    });
+  }
+
+  /* ── Init ─────────────────────────────────────────────────── */
+  function init() {
+    buildCharts();
+    initSortable();
+  }
+
+  if (window.Chart) {
+    init();
+  } else {
+    const s = document.createElement("script");
+    s.src = CHART_CDN;
+    s.onload = init;
+    document.head.appendChild(s);
+  }
+})();
+</script>
+{# END week.html #}
