@@ -462,16 +462,16 @@ def _send_mention_whatsapp(request, mentioned_user, actor_user, board, card, men
         path = reverse("boards:board_detail", kwargs={"board_id": board.id})
         url = request.build_absolute_uri(f"{path}?card={card.id}&tab=ativ&mention={mention.id}")
 
-        column_name = getattr(getattr(card, “column”, None), “name”, “”) or “”
+        column_name = getattr(getattr(card, "column", None), "name", "") or ""
 
-        # Mensagem “super hiper descontraída e cheia de ícones”
+        # Mensagem "super hiper descontraída e cheia de ícones"
         msg = (
-            “🏷️ Opa! Você foi marcado no Nosso Trello 😄✨\n”
-            f”👤 Quem te marcou: {actor_name}\n”
-            f”🧩 Quadro: {board.name}\n”
-            f”📂 Coluna: {column_name}\n”
-            f”🗂️ Card: {card.title}\n”
-            “🔥 Bora dar uma olhada? 👇👀”
+            "🏷️ Opa! Você foi marcado no Nosso Trello 😄✨\n"
+            f"👤 Quem te marcou: {actor_name}\n"
+            f"🧩 Quadro: {board.name}\n"
+            f"📂 Coluna: {column_name}\n"
+            f"🗂️ Card: {card.title}\n"
+            "🔥 Bora dar uma olhada? 👇👀"
         )
 
         send_whatsapp(user=mentioned_user, phone_digits=phone_digits, body=msg)
