@@ -512,12 +512,13 @@
   <section class="cm-activity-panel cm-activity-panel--split" role="region">
 
 
-          <div class="cm-activity-togglebar" role="tablist" aria-label="Atividade">
-  <div class="flex items-center justify-between gap-2 flex-wrap">
-    <div class="cm-activity-tabs">
+          <div class="cm-topbar cm-activity-togglebar" role="tablist" aria-label="Atividade">
+  <div class="cm-bar">
+    <div class="cm-tabs">
+
       <button type="button"
               id="cm-activity-tab-feed"
-              class="cm-btn cm-activity-tab is-active"
+              class="cm-tabbtn cm-activity-tab is-active"
               role="tab"
               aria-selected="true"
               aria-controls="cm-activity-feed">
@@ -527,59 +528,46 @@
 
       <button type="button"
               id="cm-activity-tab-new"
-              class="cm-btn cm-activity-tab"
+              class="cm-tabbtn cm-activity-tab"
               role="tab"
               aria-selected="false"
               aria-controls="cm-activity-composer">
         Nova Atividade
       </button>
+
     </div>
 
-
-
-
-
-    
-    <div class="flex items-center gap-2">
-<form id="cm-delivered-form"
-      method="post"
-      hx-post="{% url 'boards:update_card' card.id %}"
-      hx-trigger="change from:#cm-is-delivered"
-      hx-target="#modal-body"
-      hx-swap="innerHTML"
-      hx-on::before-request="
-        try { window.CM && CM.setCardDelivering({{ card.id }}, 2500); } catch(_e){}
-      ">
-
-
-  {% csrf_token %}
-
-  <!-- garante envio de 0 quando desmarcar -->
-  <input type="hidden" name="is_delivered" value="0">
-
-  <label class="cm-delivered-toggle"
-       title="Marcar como entregue (para de notificar por prazo/cores)"
-       onpointerdown="event.stopPropagation();"
-       onclick="event.stopPropagation();">
-
- <input
-  type="checkbox"
-  id="cm-is-delivered"
-  name="is_delivered"
-  value="1"
-  onpointerdown="event.stopPropagation();"
-  onclick="event.stopPropagation();"
-  {% if card.is_delivered %}checked{% endif %}
-/>
-
-    <span class="cm-delivered-ui">
-      <span class="cm-delivered-dot" aria-hidden="true"></span>
-      <span class="cm-delivered-text">Entregue</span>
-    </span>
-  </label>
-</form>
-
-</div>
+    <div class="cm-actions">
+      <form id="cm-delivered-form"
+            method="post"
+            hx-post="{% url 'boards:update_card' card.id %}"
+            hx-trigger="change from:#cm-is-delivered"
+            hx-target="#modal-body"
+            hx-swap="innerHTML"
+            hx-on::before-request="
+              try { window.CM && CM.setCardDelivering({{ card.id }}, 2500); } catch(_e){}
+            ">
+        {% csrf_token %}
+        <input type="hidden" name="is_delivered" value="0">
+        <label class="cm-delivered-toggle"
+               title="Marcar como entregue (para de notificar por prazo/cores)"
+               onpointerdown="event.stopPropagation();"
+               onclick="event.stopPropagation();">
+          <input type="checkbox"
+                 id="cm-is-delivered"
+                 name="is_delivered"
+                 value="1"
+                 onpointerdown="event.stopPropagation();"
+                 onclick="event.stopPropagation();"
+                 {% if card.is_delivered %}checked{% endif %}>
+          <span class="cm-delivered-ui">
+            <span class="cm-delivered-dot" aria-hidden="true"></span>
+            <span class="cm-delivered-text">Entregue</span>
+          </span>
+        </label>
+      </form>
+    </div>
+  </div>
 
 
 

@@ -2055,30 +2055,12 @@ html.dark #modal #modal-breadcrumb{
 /* ============================================================
    ATIVIDADE — Tabs (Feed / Nova Atividade)
    ============================================================ */
+/* Right-side togglebar: same visual style as cm-topbar (left side) */
 #card-modal-root .cm-activity-togglebar{
   position: sticky;
   top: 0;
   z-index: 20;
-  padding: 8px 0 10px 0;
-  background: transparent;
-}
-
-#card-modal-root .cm-activity-tabs{
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-#card-modal-root .cm-activity-tab{
-  opacity: 0.88;
-  transform: none;
-}
-
-#card-modal-root .cm-activity-tab.is-active{
-  opacity: 1;
-  background: linear-gradient(180deg, rgba(37,99,235,0.22), rgba(37,99,235,0.12));
-  border-color: rgba(37,99,235,0.55);
+  /* inherits cm-topbar: border, bg, shadow, padding, radius */
 }
 
 
@@ -2129,30 +2111,12 @@ html.dark #modal #modal-breadcrumb{
   min-width: 0;
 }
 
-#cm-root .cm-activity-togglebar{
-  display: flex;
-  justify-content: flex-start;
-  gap: 10px;
-}
+/* cm-activity-togglebar now uses cm-topbar class — no extra styles needed here */
 
-#cm-root .cm-activity-tabs{
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-#cm-root .cm-activity-tab{
-  border-radius: 9999px;
-  padding: 8px 14px;
-  border: 1px solid rgba(15,23,42,0.12);
-  background: rgba(255,255,255,0.25);
-  backdrop-filter: blur(8px);
-}
-
+/* cm-activity-tab: inherits cm-tabbtn, active state matches left side */
 #cm-root .cm-activity-tab.is-active{
-  background: rgba(255,255,255,0.45);
-  border-color: rgba(255,255,255,0.35);
-  box-shadow: 0 6px 18px rgba(2,6,23,0.10);
+  background: linear-gradient(180deg, rgba(37,99,235,0.16), rgba(37,99,235,0.10));
+  border-color: rgba(37,99,235,0.38);
 }
 
 #cm-root .cm-feed-toolbar{
@@ -2167,19 +2131,24 @@ html.dark #modal #modal-breadcrumb{
 }
 
 #cm-root .cm-feed-search{
-  flex: 1 1 auto;
+  flex: 0 1 160px;       /* não cresce, encolhe até 160 px mínimo */
+  max-width: 180px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
 }
 
 #cm-root .cm-feed-search input{
   width: 100%;
   min-width: 0;
+  max-width: 100%;
   border: 0;
   outline: none;
   background: transparent;
+  /* impede que o campo cresça ao digitar (overflow hidden + ellipsis) */
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 #cm-root .cm-feed-filter{
@@ -3056,36 +3025,6 @@ html.dark #modal #modal-breadcrumb{
 
 
 
-/* PADRÃO PILL: força Feed / Nova Atividade / Entregue a ficarem iguais */
-#cm-root .cm-activity-togglebar .cm-activity-tabs > *{
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-
-  height: 28px !important;
-  padding: 0 12px !important;
-
-  border-radius: 9999px !important;
-  font-size: 13px !important;
-  line-height: 1 !important;
-  white-space: nowrap !important;
-}
-
-/* garante que a barra não “estique” */
-#cm-root .cm-activity-togglebar .cm-activity-tabs{
-  display: flex !important;
-  align-items: center !important;
-  gap: 10px !important;
-}
-
-/* remove qualquer min-width antigo que deixe um maior */
-#cm-root .cm-activity-togglebar .cm-activity-tabs .cm-btn,
-#cm-root .cm-activity-togglebar .cm-activity-tabs .cm-activity-tab{
-  min-width: 0 !important;
-}
-
-
-
 
 
 
@@ -3095,57 +3034,25 @@ html.dark #modal #modal-breadcrumb{
 
 
 /* ============================================================
-   PADRÃO ÚNICO (Feed / Nova Atividade / Entregue)
-   - os dois botões passam a “copiar” o tamanho do Entregue
+   ENTREGUE pill: mesmo tamanho que cm-tabbtn
    ============================================================ */
-#cm-root{
-  --pill-h: 32px;
-  --pill-px: 12px;
-  --pill-gap: 10px;
-  --pill-fz: 13px;
-  --pill-fw: 600;
-}
-
-/* Base do “pill” (aplica em button e no span do Entregue) */
-#cm-root .cm-activity-tab,
 #cm-root .cm-delivered-ui{
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-
-  height: var(--pill-h) !important;
-  padding: 0 var(--pill-px) !important;
-
-  border-radius: 9999px !important;
-  font-size: var(--pill-fz) !important;
-  font-weight: var(--pill-fw) !important;
-  line-height: 1 !important;
-  white-space: nowrap !important;
-  gap: var(--pill-gap) !important;
-
-  box-sizing: border-box !important;
+  /* visual já definido acima; garante sizing igual às tabs */
+  height: auto;
+  padding: 8px 12px;
+  font-size: 0.95em;
+  white-space: nowrap;
+  box-sizing: border-box;
 }
 
-/* Remove “diferenças herdadas” do cm-btn nos tabs */
-#cm-root .cm-activity-tab{
-  min-height: var(--pill-h) !important;
-  border-radius: 9999px !important;
-}
-
-/* Badge do Feed não pode alterar altura */
+/* Badge do Feed */
 #cm-root #cm-activity-tab-feed{
   position: relative;
 }
 #cm-root #cm-activity-feed-count{
-  line-height: 1 !important;
-  height: 18px !important; /* mantém o visual */
-}
-
-/* (Opcional) se quiser o badge sem afetar layout: vira “overlay” */
-#cm-root #cm-activity-feed-count:not(.hidden){
-  position: absolute;
-  right: 6px;
-  top: -6px;
+  line-height: 1;
+  height: 18px;
+  vertical-align: middle;
 }
 
 
