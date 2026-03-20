@@ -193,6 +193,21 @@
   min-width: 0;
   max-width: 100%;
 }
+/* Monitor retrato 1080px (ex: 1080×1920): layout compacto mas ainda lado a lado */
+@media (max-width: 1150px){
+  #card-modal-root .card-activity-layout{
+    gap: 8px;
+  }
+  #card-modal-root .card-modal-scroll{
+    padding: 10px 12px;
+  }
+  #card-modal-root .cm-topbar{
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+}
+
+/* Abaixo de 1024px: empilha em coluna única */
 @media (max-width: 1024px){
   #card-modal-root .card-activity-layout{
     grid-template-columns: minmax(0, 1fr);
