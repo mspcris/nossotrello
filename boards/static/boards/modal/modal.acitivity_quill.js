@@ -783,7 +783,8 @@
     if (modalScroll) quillOptions.scrollingContainer = modalScroll;
 
     const quill = new Quill(el, quillOptions);
-    quill.root.spellcheck = true;  // ativa corretor ortográfico nativo do navegador
+    quill.root.setAttribute("spellcheck", "true");
+    setTimeout(() => quill.root.setAttribute("spellcheck", "true"), 0);
 
     // ============================================================
     // ✅ IMAGEM: toolbar + paste => /quill/upload/ + embed (miniatura no texto)
