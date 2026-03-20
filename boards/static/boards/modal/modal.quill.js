@@ -8,6 +8,18 @@
   // Helpers
   // ---------------------------
 
+  /** Força spellcheck=true no editor e usa MutationObserver para impedir que o Quill reverta */
+  function _enableSpellcheck(editorEl) {
+    if (!editorEl) return;
+    editorEl.setAttribute("spellcheck", "true");
+    const obs = new MutationObserver(() => {
+      if (editorEl.getAttribute("spellcheck") !== "true") {
+        editorEl.setAttribute("spellcheck", "true");
+      }
+    });
+    obs.observe(editorEl, { attributes: true, attributeFilter: ["spellcheck"] });
+  }
+
     function pruneQuillOrphans(scope) {
     const root = scope || document;
 
@@ -350,9 +362,7 @@ function bindQuillToTextarea(textarea, boardId) {
   ensureModalScrollable(modalScroll);
 
   const quill = new Quill(host, quillOptions);
-  // ativa corretor ortográfico nativo do navegador (Quill define spellcheck=false, sobrescreve)
-  quill.root.setAttribute("spellcheck", "true");
-  setTimeout(() => quill.root.setAttribute("spellcheck", "true"), 0);
+  _enableSpellcheck(quill.root);
   quill.__cmModalScroll = modalScroll || null;
   window.Modal.quill._descQuill = quill;
 
@@ -469,8 +479,7 @@ function bindQuillToDiv(div, hiddenInput, boardId) {
   ensureModalScrollable(modalScroll);
 
   const quill = new Quill(div, quillOptions);
-  quill.root.setAttribute("spellcheck", "true");
-  setTimeout(() => quill.root.setAttribute("spellcheck", "true"), 0);
+  _enableSpellcheck(quill.root);
   quill.__cmModalScroll = modalScroll || null;
   window.Modal.quill._descQuill = quill;
 

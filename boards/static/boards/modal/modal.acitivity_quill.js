@@ -5,6 +5,18 @@
   const STATE_KEY = "__cmActivityQuill";
   const STATE_EL_KEY = "__cmActivityQuillEl";
 
+  /** Força spellcheck=true e usa MutationObserver para impedir que o Quill reverta */
+  function _enableSpellcheck(editorEl) {
+    if (!editorEl) return;
+    editorEl.setAttribute("spellcheck", "true");
+    const obs = new MutationObserver(() => {
+      if (editorEl.getAttribute("spellcheck") !== "true") {
+        editorEl.setAttribute("spellcheck", "true");
+      }
+    });
+    obs.observe(editorEl, { attributes: true, attributeFilter: ["spellcheck"] });
+  }
+
   function getRoot() {
     return document.getElementById("cm-root");
   }
@@ -783,8 +795,7 @@
     if (modalScroll) quillOptions.scrollingContainer = modalScroll;
 
     const quill = new Quill(el, quillOptions);
-    quill.root.setAttribute("spellcheck", "true");
-    setTimeout(() => quill.root.setAttribute("spellcheck", "true"), 0);
+    _enableSpellcheck(quill.root);
 
     // ============================================================
     // ✅ IMAGEM: toolbar + paste => /quill/upload/ + embed (miniatura no texto)
