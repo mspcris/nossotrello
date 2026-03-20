@@ -351,13 +351,13 @@
         </div>
 
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px;">
-          <button type="button" data-cm-move-cancel="1"
-            style="padding:10px 12px;border-radius:12px;border:1px solid rgba(15,23,42,.12);background:#fff;cursor:pointer;">
-            Cancelar
-          </button>
           <button type="button" data-cm-move-apply="1"
             style="padding:10px 12px;border-radius:12px;border:1px solid rgba(37,99,235,.25);background:rgba(37,99,235,.10);cursor:pointer;font-weight:800;">
             Aplicar
+          </button>
+          <button type="button" data-cm-move-cancel="1"
+            style="padding:10px 12px;border-radius:12px;border:1px solid rgba(15,23,42,.12);background:#fff;cursor:pointer;">
+            Cancelar
           </button>
         </div>
 

@@ -1926,6 +1926,10 @@ html.dark #modal #modal-breadcrumb{
   100%{ opacity: .15; }
 }
 
+@keyframes cm-spin{
+  to{ transform: rotate(360deg); }
+}
+
 /* Acessibilidade */
 @media (prefers-reduced-motion: reduce){
   #cm-root .avisoradical strong{ animation: none !important; }

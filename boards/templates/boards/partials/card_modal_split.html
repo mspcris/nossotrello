@@ -450,7 +450,7 @@
                 </label>
 
                 <!-- wrapper flex RESTAURADO (isso mantém o DOM válido e o layout split funcionando) -->
-                <div class="flex gap-2 flex-wrap">
+                <div class="flex gap-2 flex-wrap items-center">
                   <input type="text"
                          id="attachment-desc"
                          name="attachment_desc"
@@ -469,12 +469,23 @@
                          hx-trigger="change"
                          hx-encoding="multipart/form-data"
                          hx-include="#attachment-desc, input[name='csrfmiddlewaretoken']"
+                         hx-on::before-request="
+                           document.getElementById('attachment-spinner').style.display='inline-block';
+                           document.getElementById('attachment-file').disabled=true;
+                         "
                          hx-on::after-request="
+                           document.getElementById('attachment-spinner').style.display='none';
+                           document.getElementById('attachment-file').disabled=false;
                            if (event.detail && event.detail.successful) {
                              htmx.ajax('GET', '{% url 'boards:activity_panel' card.id %}', '#cm-activity-panel');
                              if (typeof window.refreshCardSnippet === 'function') { window.refreshCardSnippet({{ card.id }}); }
                            }
                          ">
+
+                  <!-- spinner de upload -->
+                  <span id="attachment-spinner"
+                        style="display:none; width:20px; height:20px; border:3px solid rgba(15,23,42,.15); border-top-color:rgba(15,23,42,.7); border-radius:50%; animation:cm-spin 0.7s linear infinite; flex-shrink:0;"
+                        title="Enviando arquivo…"></span>
                 </div>
 
                 <div class="cm-muted" style="margin-top:6px;">Limite: 50MB por arquivo.</div>
