@@ -9,7 +9,7 @@ from django.utils.html import strip_tags
 from urllib3 import request
 
 from ..permissions import can_edit_board
-from ..models import Card, CardAttachment
+from ..models import Card, CardAttachment, CardLog
 from .helpers import (
     _actor_label,
     _log_card,
@@ -47,6 +47,12 @@ def delete_attachment(request, card_id, attachment_id):
             attachment.file.delete(save=False)
         except Exception:
             pass
+
+        # Marca todos os logs do card que referenciam esse arquivo como deletados
+        CardLog.objects.filter(
+            card=card,
+            attachment=file_name,
+        ).update(attachment_deleted=True)
 
     attachment.delete()
 

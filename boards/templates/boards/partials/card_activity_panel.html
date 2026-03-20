@@ -1,5 +1,5 @@
 {# templates/boards/partials/card_activity_panel.html #}
-{% load tag_helpers %}
+{% load tag_helpers static %}
 
 <div id="card-activity-panel" class="cm-feed-root">
 
@@ -113,20 +113,29 @@
 
                         {% if log.attachment %}
                           <div class="cm-attach">
-                            <a class="cm-attach-file" href="{{ log.attachment.url }}" target="_blank" rel="noopener">
-                              {{ log.attachment.name|cut:"attachments/" }}
-                            </a>
-
-                            <a
-                              href="{{ log.attachment.url }}"
-                              target="_blank"
-                              rel="noopener"
-                              class="cm-attach-thumb"
-                              data-preview-src="{{ log.attachment.url }}"
-                            >
-                              <img src="{{ log.attachment.url }}" alt="">
-                              <span class="cm-attach-zoom" aria-hidden="true">🔍</span>
-                            </a>
+                            {% if log.attachment_deleted %}
+                              {# Arquivo removido: sem link, sem imagem clicável #}
+                              <span class="cm-attach-file cm-attach-deleted" title="Arquivo removido">
+                                {{ log.attachment.name|cut:"attachments/"|cut:"logs/" }}
+                              </span>
+                              <div class="cm-attach-thumb cm-attach-thumb-deleted">
+                                <img src="{% static 'boards/images/attachment_deleted.svg' %}" alt="Arquivo removido" title="Arquivo removido">
+                              </div>
+                            {% else %}
+                              <a class="cm-attach-file" href="{{ log.attachment.url }}" target="_blank" rel="noopener">
+                                {{ log.attachment.name|cut:"attachments/"|cut:"logs/" }}
+                              </a>
+                              <a
+                                href="{{ log.attachment.url }}"
+                                target="_blank"
+                                rel="noopener"
+                                class="cm-attach-thumb"
+                                data-preview-src="{{ log.attachment.url }}"
+                              >
+                                <img src="{{ log.attachment.url }}" alt="">
+                                <span class="cm-attach-zoom" aria-hidden="true">🔍</span>
+                              </a>
+                            {% endif %}
                           </div>
                         {% endif %}
 

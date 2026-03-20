@@ -197,7 +197,10 @@ column_delete = delete_column
 
 
 import csv
+import json as _json
+from collections import defaultdict
 from django.utils.html import strip_tags as _strip_tags
+from ..models import Checklist, ChecklistItem, CardLog
 
 
 @login_required
@@ -205,7 +208,7 @@ def export_column(request, column_id):
     column = get_object_or_404(Column, id=column_id, is_deleted=False)
     fmt = request.GET.get("fmt", "csv").lower()
 
-    cards = (
+    cards = list(
         Card.objects.filter(column=column, is_deleted=False)
         .order_by("position")
     )
@@ -216,7 +219,7 @@ def export_column(request, column_id):
         "entregue", "arquivado",
     ]
 
-    def card_row(card, i):
+    def card_row_csv(card, i):
         return {
             "posicao": i + 1,
             "titulo": card.title or "",
@@ -229,16 +232,73 @@ def export_column(request, column_id):
             "arquivado": "sim" if getattr(card, "is_archived", False) else "nao",
         }
 
-    rows = [card_row(c, i) for i, c in enumerate(cards)]
     safe_name = column.name.replace(" ", "_")[:40]
 
     if fmt == "json":
-        import json as _json
+        card_ids = [c.id for c in cards]
+
+        # Checklists + itens
+        checklists_map = defaultdict(list)
+        for cl in (
+            Checklist.objects
+            .filter(card_id__in=card_ids)
+            .prefetch_related("items")
+            .order_by("card_id", "position")
+        ):
+            checklists_map[cl.card_id].append({
+                "titulo": cl.title,
+                "posicao": cl.position,
+                "itens": [
+                    {
+                        "texto": item.text,
+                        "feito": item.is_done,
+                        "posicao": item.position,
+                    }
+                    for item in cl.items.order_by("position")
+                ],
+            })
+
+        # Atividades (logs)
+        logs_map = defaultdict(list)
+        for log in (
+            CardLog.objects
+            .filter(card_id__in=card_ids)
+            .select_related("actor", "actor__profile")
+            .order_by("card_id", "created_at")
+        ):
+            actor = log.actor
+            actor_handle = ""
+            if actor:
+                p = getattr(actor, "profile", None)
+                actor_handle = getattr(p, "handle", "") or actor.email or ""
+            logs_map[log.card_id].append({
+                "texto": log.content_text or "",
+                "autor": actor_handle,
+                "criado_em": log.created_at.strftime("%Y-%m-%d %H:%M"),
+            })
+
+        def card_full(card, i):
+            return {
+                "posicao": i + 1,
+                "titulo": card.title or "",
+                "tags": card.tags or "",
+                "tag_colors": card.tag_colors or {},
+                "descricao": card.description or "",
+                "data_inicio": str(card.start_date) if card.start_date else "",
+                "data_aviso": str(card.due_warn_date) if card.due_warn_date else "",
+                "data_vencimento": str(card.due_date) if card.due_date else "",
+                "entregue": card.is_delivered,
+                "arquivado": card.is_archived,
+                "checklists": checklists_map.get(card.id, []),
+                "atividades": logs_map.get(card.id, []),
+            }
+
         payload = {
+            "_formato": "nossotrello-coluna-v1",
             "coluna": column.name,
             "quadro": column.board.name,
             "exportado_em": timezone.now().strftime("%Y-%m-%d %H:%M"),
-            "cards": rows,
+            "cards": [card_full(c, i) for i, c in enumerate(cards)],
         }
         resp = HttpResponse(
             _json.dumps(payload, ensure_ascii=False, indent=2),
@@ -248,6 +308,7 @@ def export_column(request, column_id):
         return resp
 
     # CSV (default)
+    rows = [card_row_csv(c, i) for i, c in enumerate(cards)]
     resp = HttpResponse(content_type="text/csv; charset=utf-8")
     resp["Content-Disposition"] = f'attachment; filename="{safe_name}.csv"'
     resp.write("\ufeff")  # BOM para Excel abrir UTF-8 corretamente
@@ -255,3 +316,233 @@ def export_column(request, column_id):
     writer.writeheader()
     writer.writerows(rows)
     return resp
+
+
+# ============================================================
+# IMPORT COLUMN (nossotrello-coluna-v1 JSON)
+# ============================================================
+
+@login_required
+def import_column_form(request, board_id):
+    """Retorna o modal de import de coluna (nosso formato JSON)."""
+    board = get_object_or_404(Board, id=board_id)
+    if not BoardMembership.objects.filter(board=board, user=request.user).exists():
+        return HttpResponse("Acesso negado.", status=403)
+    return render(request, "boards/partials/import_column_modal.html", {"board": board})
+
+
+@login_required
+@require_POST
+def import_column_execute(request, board_id):
+    """Processa o upload de um JSON (nossotrello-coluna-v1) e cria a coluna no quadro."""
+    board = get_object_or_404(Board, id=board_id)
+    if not BoardMembership.objects.filter(board=board, user=request.user).exists():
+        return JsonResponse({"error": "Acesso negado."}, status=403)
+
+    uploaded = request.FILES.get("file")
+    if not uploaded:
+        return JsonResponse({"error": "Nenhum arquivo enviado."}, status=400)
+
+    try:
+        raw = uploaded.read().decode("utf-8-sig")
+        data = _json.loads(raw)
+    except Exception:
+        return JsonResponse({"error": "Arquivo JSON inválido."}, status=400)
+
+    if data.get("_formato") != "nossotrello-coluna-v1":
+        return JsonResponse({"error": "Formato não reconhecido. Use um arquivo exportado deste sistema."}, status=400)
+
+    col_name = data.get("coluna") or "Coluna importada"
+    cards_data = data.get("cards") or []
+
+    # Posição: após a última coluna existente
+    last_pos = (
+        Column.objects.filter(board=board, is_deleted=False)
+        .order_by("-position")
+        .values_list("position", flat=True)
+        .first()
+    ) or 0
+
+    with transaction.atomic():
+        column = Column.objects.create(
+            board=board,
+            name=col_name,
+            position=last_pos + 1,
+        )
+
+        for i, cd in enumerate(cards_data):
+            from datetime import date as _date
+            def _parse_date(v):
+                if not v:
+                    return None
+                try:
+                    return _date.fromisoformat(str(v))
+                except Exception:
+                    return None
+
+            card = Card.all_objects.create(
+                column=column,
+                title=(cd.get("titulo") or "").strip() or f"Card {i+1}",
+                description=cd.get("descricao") or "",
+                tags=cd.get("tags") or "",
+                tag_colors=cd.get("tag_colors") or {},
+                start_date=_parse_date(cd.get("data_inicio")),
+                due_warn_date=_parse_date(cd.get("data_aviso")),
+                due_date=_parse_date(cd.get("data_vencimento")),
+                is_delivered=bool(cd.get("entregue")),
+                is_archived=bool(cd.get("arquivado")),
+                position=i,
+            )
+
+            for cl_data in (cd.get("checklists") or []):
+                cl = Checklist.objects.create(
+                    card=card,
+                    title=cl_data.get("titulo") or "Checklist",
+                    position=cl_data.get("posicao") or 0,
+                )
+                for j, item_data in enumerate(cl_data.get("itens") or []):
+                    ChecklistItem.objects.create(
+                        card=card,
+                        checklist=cl,
+                        text=item_data.get("texto") or "",
+                        is_done=bool(item_data.get("feito")),
+                        position=item_data.get("posicao") or j,
+                    )
+
+        board.version += 1
+        board.save(update_fields=["version"])
+
+    board_url = f"/board/{board.id}/"
+    return JsonResponse({
+        "ok": True,
+        "board_url": board_url,
+        "coluna": col_name,
+        "cards_criados": len(cards_data),
+    })
+
+
+# ============================================================
+# IMPORT TRELLO JSON
+# ============================================================
+
+@login_required
+def import_trello_form(request):
+    """Modal para importar um JSON exportado do Trello."""
+    return render(request, "boards/partials/import_trello_modal.html")
+
+
+@login_required
+@require_POST
+def import_trello_execute(request):
+    """Processa o JSON do Trello e cria um novo quadro."""
+    uploaded = request.FILES.get("file")
+    if not uploaded:
+        return JsonResponse({"error": "Nenhum arquivo enviado."}, status=400)
+
+    try:
+        raw = uploaded.read().decode("utf-8-sig")
+        data = _json.loads(raw)
+    except Exception:
+        return JsonResponse({"error": "Arquivo JSON inválido."}, status=400)
+
+    # Valida estrutura mínima do Trello
+    if not isinstance(data.get("lists"), list) or not isinstance(data.get("cards"), list):
+        return JsonResponse({"error": "Não parece ser um export válido do Trello."}, status=400)
+
+    board_name = data.get("name") or "Importado do Trello"
+    now_str = timezone.now().strftime("%d/%m/%Y %H:%M")
+    new_board_name = f"IMPORTANDO DO TRELLO EM {now_str}: {board_name}"[:200]
+
+    lists_raw = sorted(
+        [l for l in data["lists"] if not l.get("closed")],
+        key=lambda x: x.get("pos", 0),
+    )
+    cards_raw = [c for c in data["cards"] if not c.get("closed")]
+
+    # Mapa idList -> cards
+    cards_by_list = defaultdict(list)
+    for c in cards_raw:
+        cards_by_list[c["idList"]].append(c)
+
+    # Mapa idChecklist -> checklist data
+    checklists_map = {cl["id"]: cl for cl in (data.get("checklists") or [])}
+
+    with transaction.atomic():
+        new_board = Board.objects.create(
+            name=new_board_name,
+            created_by=request.user,
+        )
+        BoardMembership.objects.get_or_create(
+            board=new_board,
+            user=request.user,
+            defaults={"role": BoardMembership.Role.OWNER},
+        )
+
+        for col_pos, lst in enumerate(lists_raw):
+            column = Column.objects.create(
+                board=new_board,
+                name=lst["name"],
+                position=col_pos,
+            )
+
+            col_cards = sorted(
+                cards_by_list.get(lst["id"], []),
+                key=lambda x: x.get("pos", 0),
+            )
+
+            for card_pos, tc in enumerate(col_cards):
+                # Labels → tags (nomes separados por vírgula)
+                labels = tc.get("labels") or []
+                tag_names = ", ".join(
+                    lbl["name"] for lbl in labels if lbl.get("name")
+                )
+
+                # Due date
+                due_date = None
+                if tc.get("due"):
+                    try:
+                        from datetime import datetime as _dt
+                        due_date = _dt.fromisoformat(
+                            tc["due"].replace("Z", "+00:00")
+                        ).date()
+                    except Exception:
+                        pass
+
+                card = Card.all_objects.create(
+                    column=column,
+                    title=(tc.get("name") or "").strip() or f"Card {card_pos+1}",
+                    description=tc.get("desc") or "",
+                    tags=tag_names,
+                    due_date=due_date,
+                    position=card_pos,
+                )
+
+                # Checklists
+                for cl_id in (tc.get("idChecklists") or []):
+                    cl_data = checklists_map.get(cl_id)
+                    if not cl_data:
+                        continue
+                    cl = Checklist.objects.create(
+                        card=card,
+                        title=cl_data.get("name") or "Checklist",
+                        position=0,
+                    )
+                    for j, item in enumerate(
+                        sorted(cl_data.get("checkItems") or [], key=lambda x: x.get("pos", 0))
+                    ):
+                        ChecklistItem.objects.create(
+                            card=card,
+                            checklist=cl,
+                            text=item.get("name") or "",
+                            is_done=(item.get("state") == "complete"),
+                            position=j,
+                        )
+
+    board_url = f"/board/{new_board.id}/"
+    return JsonResponse({
+        "ok": True,
+        "board_url": board_url,
+        "board_name": new_board_name,
+        "colunas": len(lists_raw),
+        "cards": len(cards_raw),
+    })

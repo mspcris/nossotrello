@@ -2637,6 +2637,23 @@ html.dark #modal #modal-breadcrumb{
   justify-content: center;
 }
 
+/* Anexo removido: sem interação */
+#cm-root .cm-attach-file.cm-attach-deleted{
+  color: #9ca3af;
+  text-decoration: line-through;
+  cursor: default;
+  font-weight: 600;
+}
+#cm-root .cm-attach-thumb.cm-attach-thumb-deleted{
+  cursor: default;
+  pointer-events: none;
+  opacity: 0.75;
+}
+#cm-root .cm-attach-thumb.cm-attach-thumb-deleted img{
+  object-fit: contain;
+  background: #fef2f2;
+}
+
 #cm-root .cm-replies{
   margin-top: 10px;
   padding-left: 44px;

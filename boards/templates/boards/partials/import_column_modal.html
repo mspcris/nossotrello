@@ -1,0 +1,123 @@
+{# import_column_modal.html — importar coluna (nossotrello-coluna-v1 JSON) #}
+<div id="import-col-modal"
+     class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+     onclick="if(event.target===this)this.remove()">
+  <div class="bg-[#1a2035] text-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6 relative" onclick="event.stopPropagation()">
+
+    <button class="absolute top-4 right-4 text-white/50 hover:text-white text-xl leading-none"
+            onclick="document.getElementById('import-col-modal').remove()">✕</button>
+
+    <h2 class="text-lg font-bold mb-1">Importar coluna</h2>
+    <p class="text-sm text-white/60 mb-5">
+      Selecione um arquivo <code>.json</code> exportado deste sistema (formato <em>nossotrello-coluna-v1</em>).
+      A coluna será adicionada ao quadro <strong>{{ board.name }}</strong>.
+    </p>
+
+    <div id="import-col-drop"
+         class="border-2 border-dashed border-white/20 rounded-xl p-6 text-center cursor-pointer
+                hover:border-blue-400/60 transition-colors mb-4"
+         onclick="document.getElementById('import-col-file').click()"
+         ondragover="event.preventDefault();this.classList.add('border-blue-400/80')"
+         ondragleave="this.classList.remove('border-blue-400/80')"
+         ondrop="event.preventDefault();this.classList.remove('border-blue-400/80');window.__importColHandleFile(event.dataTransfer.files[0])">
+      <div class="text-3xl mb-2">📂</div>
+      <p class="text-sm text-white/70">Clique ou arraste o arquivo JSON aqui</p>
+      <p id="import-col-fname" class="mt-2 text-xs text-blue-300 truncate"></p>
+    </div>
+    <input id="import-col-file" type="file" accept=".json" class="hidden"
+           onchange="window.__importColHandleFile(this.files[0])">
+
+    <!-- Barra de progresso -->
+    <div id="import-col-progress" class="hidden mb-4">
+      <div class="text-sm text-white/70 mb-2" id="import-col-status">Processando…</div>
+      <div class="h-2 rounded-full bg-white/10 overflow-hidden">
+        <div id="import-col-bar" class="h-full bg-blue-500 transition-all duration-300" style="width:0%"></div>
+      </div>
+    </div>
+
+    <div id="import-col-error" class="hidden text-red-400 text-sm mb-3"></div>
+
+    <div class="flex justify-end gap-3">
+      <button type="button"
+              class="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-sm transition"
+              onclick="document.getElementById('import-col-modal').remove()">
+        Cancelar
+      </button>
+      <button id="import-col-btn" type="button" disabled
+              class="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-sm font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed"
+              onclick="window.__importColSubmit('{{ board.id }}')">
+        Importar
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  let _file = null;
+
+  window.__importColHandleFile = function(f) {
+    if (!f || !f.name.endsWith('.json')) {
+      document.getElementById('import-col-error').textContent = 'Selecione um arquivo .json válido.';
+      document.getElementById('import-col-error').classList.remove('hidden');
+      return;
+    }
+    _file = f;
+    document.getElementById('import-col-fname').textContent = f.name;
+    document.getElementById('import-col-btn').disabled = false;
+    document.getElementById('import-col-error').classList.add('hidden');
+  };
+
+  window.__importColSubmit = async function(boardId) {
+    if (!_file) return;
+
+    const btn = document.getElementById('import-col-btn');
+    const prog = document.getElementById('import-col-progress');
+    const bar = document.getElementById('import-col-bar');
+    const status = document.getElementById('import-col-status');
+    const errEl = document.getElementById('import-col-error');
+
+    btn.disabled = true;
+    prog.classList.remove('hidden');
+    errEl.classList.add('hidden');
+
+    // Animação de progresso simulada
+    let pct = 5;
+    bar.style.width = pct + '%';
+    const timer = setInterval(() => {
+      if (pct < 85) { pct += Math.random() * 8; bar.style.width = Math.min(pct, 85) + '%'; }
+    }, 200);
+
+    try {
+      const fd = new FormData();
+      fd.append('file', _file);
+      fd.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]')?.value || '');
+
+      const r = await fetch(`/column-import/${boardId}/execute/`, { method: 'POST', body: fd });
+      const data = await r.json();
+
+      clearInterval(timer);
+
+      if (!r.ok || data.error) {
+        bar.style.width = '0%';
+        prog.classList.add('hidden');
+        errEl.textContent = data.error || 'Erro ao importar.';
+        errEl.classList.remove('hidden');
+        btn.disabled = false;
+        return;
+      }
+
+      bar.style.width = '100%';
+      status.textContent = `✅ Coluna "${data.coluna}" criada com ${data.cards_criados} card(s)! Redirecionando…`;
+      setTimeout(() => { window.location.href = data.board_url; }, 1200);
+
+    } catch(e) {
+      clearInterval(timer);
+      errEl.textContent = 'Erro de conexão.';
+      errEl.classList.remove('hidden');
+      prog.classList.add('hidden');
+      btn.disabled = false;
+    }
+  };
+})();
+</script>

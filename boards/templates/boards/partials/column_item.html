@@ -237,6 +237,21 @@
             </div>
           </div>
 
+          <!-- ── IMPORTAR COLUNA ───────────────────────────── -->
+          <div class="px-1">
+            <button type="button"
+                    class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left
+                           hover:bg-white/10 transition-colors rounded-lg"
+                    onpointerdown="event.stopPropagation();"
+                    ontouchstart="event.stopPropagation();"
+                    hx-get="{% url 'boards:import_column_form' column.board_id %}"
+                    hx-target="body"
+                    hx-swap="beforeend"
+                    onclick="event.stopPropagation(); window.__cmHideAllColMenus();">
+              <span>📥</span><span>Importar coluna</span>
+            </button>
+          </div>
+
           <!-- ── DIVIDER ────────────────────────────────────── -->
           <div class="mx-3 my-1.5 border-t border-white/8"></div>
 

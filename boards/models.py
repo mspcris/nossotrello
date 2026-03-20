@@ -314,6 +314,7 @@ class CardLog(models.Model):
     content_text = models.TextField(blank=True, default="")
 
     attachment = models.FileField(upload_to="logs/", blank=True, null=True)
+    attachment_deleted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

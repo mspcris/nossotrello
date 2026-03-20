@@ -124,6 +124,20 @@
   </a>
 </li>
 
+<li>
+  <button class="nt-link flex items-center gap-2" type="button"
+          hx-get="{% url 'boards:import_trello_form' %}"
+          hx-target="body" hx-swap="beforeend">
+    <!-- import trello -->
+    <svg class="h-5 w-5 opacity-90" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="3" y="3" width="7" height="14" rx="1.5" stroke="currentColor" stroke-width="2"/>
+      <rect x="14" y="3" width="7" height="9" rx="1.5" stroke="currentColor" stroke-width="2"/>
+      <path d="M17 16l3 3-3 3M20 19H14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span>Importar do Trello</span>
+  </button>
+</li>
+
 {% if can_share_board %}
 <li>
   <button class="nt-link flex items-center gap-2" type="button"

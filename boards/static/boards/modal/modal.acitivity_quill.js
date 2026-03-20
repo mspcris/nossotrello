@@ -36,13 +36,8 @@
   }
 
   function renderMentionCard(item) {
-    const name =
-      (item?.display_name || "").trim() ||
-      (item?.handle ? `@${item.handle}` : "") ||
-      (item?.email || "").trim();
-
     const handle = (item?.handle || "").trim();
-    const email = (item?.email || "").trim();
+    const display_name = (item?.display_name || "").trim();
     const avatar = (item?.avatar_url || "").trim();
 
     const root = document.createElement("div");
@@ -57,29 +52,22 @@
     } else {
       avatarEl = document.createElement("div");
       avatarEl.className = "mention-avatar mention-avatar-fallback";
-      avatarEl.textContent = (handle || name || "?").slice(0, 2).toUpperCase();
+      avatarEl.textContent = (handle || "?").slice(0, 2).toUpperCase();
     }
 
     const meta = document.createElement("div");
     meta.className = "mention-meta";
 
-    const nameEl = document.createElement("div");
-    nameEl.className = "mention-name";
-    nameEl.textContent = name;
-    meta.appendChild(nameEl);
+    const handleEl = document.createElement("div");
+    handleEl.className = "mention-name";
+    handleEl.textContent = `@${handle}`;
+    meta.appendChild(handleEl);
 
-    if (handle) {
-      const handleEl = document.createElement("div");
-      handleEl.className = "mention-handle";
-      handleEl.textContent = `@${handle}`;
-      meta.appendChild(handleEl);
-    }
-
-    if (email) {
-      const emailEl = document.createElement("div");
-      emailEl.className = "mention-email";
-      emailEl.textContent = email;
-      meta.appendChild(emailEl);
+    if (display_name) {
+      const nameEl = document.createElement("div");
+      nameEl.className = "mention-handle";
+      nameEl.textContent = display_name;
+      meta.appendChild(nameEl);
     }
 
     root.appendChild(avatarEl);

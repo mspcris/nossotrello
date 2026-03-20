@@ -21,38 +21,25 @@ def board_mentions(request, board_id: int):
 
     User = get_user_model()
 
+    # Busca apenas por handle — única forma de @marcar
     users = (
         User.objects
         .filter(id__in=member_user_ids)
-        .select_related("profile")  # ✅ aqui é "profile"
-        .filter(
-            Q(email__icontains=q_l) |
-            Q(first_name__icontains=q_l) |
-            Q(last_name__icontains=q_l) |
-            Q(profile__handle__icontains=q_l) |         # ✅
-            Q(profile__display_name__icontains=q_l)     # ✅
-        )
-        .order_by("profile__handle", "profile__display_name", "email")[:20]
+        .select_related("profile")
+        .filter(profile__handle__icontains=q_l)
+        .order_by("profile__handle")[:20]
     )
 
     results = []
     for u in users:
-        p = getattr(u, "profile", None)  # ✅
-
+        p = getattr(u, "profile", None)
         handle = (getattr(p, "handle", "") or "").strip()
+        if not handle:
+            continue
         display_name = (getattr(p, "display_name", "") or "").strip()
-
-        # value SEM '@' (evita @@ no dropdown do Quill)
-        if handle:
-            value = handle
-        else:
-            full = f"{(u.first_name or '').strip()} {(u.last_name or '').strip()}".strip()
-            value = display_name or full or (u.email or f"user{u.id}")
-
         results.append({
             "id": u.id,
-            "value": value,
-            "email": (u.email or ""),
+            "value": handle,
             "handle": handle,
             "display_name": display_name,
             "avatar_url": (p.avatar.url if (p and getattr(p, "avatar", None)) else ""),

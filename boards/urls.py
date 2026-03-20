@@ -335,6 +335,10 @@ urlpatterns = [
     path("column/<int:column_id>/theme/", columns_views.set_column_theme, name="set_column_theme"),
     path("column/<int:column_id>/reorder_cards/", cards_views.reorder_cards_in_column, name="reorder_cards_in_column"),
     path("column/<int:column_id>/export/", columns_views.export_column, name="export_column"),
+    path("column-import/<int:board_id>/", columns_views.import_column_form, name="import_column_form"),
+    path("column-import/<int:board_id>/execute/", columns_views.import_column_execute, name="import_column_execute"),
+    path("import/trello/", columns_views.import_trello_form, name="import_trello_form"),
+    path("import/trello/execute/", columns_views.import_trello_execute, name="import_trello_execute"),
 
     # ============================================================
     # CARDS (modal / CRUD / mover / anexos / atividade)
