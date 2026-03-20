@@ -1,0 +1,136 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Política de Privacidade — Tarefas CAMIM</title>
+  <link rel="icon" type="image/png" href="{% static 'images/logo-camim.png' %}">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config = { darkMode: 'class' }</script>
+  <link rel="stylesheet" href="{% static 'boards/auth.css' %}">
+  <style>
+    body { font-family: system-ui, sans-serif; background: #f3f4f6; color: #1f2937; padding: 0; margin: 0; }
+    .page-wrap { max-width: 760px; margin: 40px auto; background: #fff; border-radius: 12px;
+                 box-shadow: 0 4px 24px rgba(0,0,0,.1); padding: 40px 48px; }
+    h1 { font-size: 1.5rem; font-weight: 700; color: #065f46; margin-bottom: 4px; }
+    .subtitle { font-size: 0.82rem; color: #6b7280; margin-bottom: 32px; }
+    h2 { font-size: 1.05rem; font-weight: 700; color: #065f46; margin: 28px 0 8px; }
+    h3 { font-size: 0.95rem; font-weight: 600; margin: 16px 0 4px; }
+    p  { margin: 0 0 12px; line-height: 1.75; }
+    ul { list-style: disc; padding-left: 20px; margin: 0 0 12px; }
+    li { margin-bottom: 4px; line-height: 1.7; }
+    a  { color: #065f46; text-decoration: underline; }
+    .back-link { display:inline-block; margin-bottom: 24px; font-size:.88rem; color:#065f46; }
+    table { width:100%; border-collapse:collapse; margin: 0 0 12px; font-size:.88rem; }
+    th, td { border: 1px solid #e5e7eb; padding: 8px 12px; text-align: left; }
+    th { background: #f9fafb; font-weight: 600; }
+    @media (max-width: 640px) { .page-wrap { padding: 24px 20px; } }
+  </style>
+</head>
+<body>
+<div class="page-wrap">
+  <div style="display:flex; align-items:center; gap:14px; margin-bottom:20px;">
+    <img src="{% static 'images/logo-camim.png' %}" alt="CAMIM" style="height:52px; width:52px; border-radius:50%; object-fit:cover;">
+    <div>
+      <h1>Política de Privacidade</h1>
+      <div class="subtitle">Tarefas CAMIM · Grupo Camim · Versão 1.0 · Março/2026</div>
+    </div>
+  </div>
+
+  <a href="{% url 'terms' %}" class="back-link">← Voltar aos Termos de Uso</a>
+
+  <p>O <strong>Grupo Camim</strong> — operadora de planos de saúde com atuação desde 1975 — respeita sua
+  privacidade e está comprometido com a proteção dos seus dados pessoais, em conformidade com a
+  <strong>Lei Geral de Proteção de Dados (LGPD — Lei nº 13.709/2018)</strong>.</p>
+
+  <h2>1. Controlador dos Dados</h2>
+  <p>O controlador responsável pelo tratamento dos dados é o <strong>Grupo Camim</strong>,
+  com contato pelo e-mail <strong>ti@clinicacamim.com.br</strong>.</p>
+
+  <h2>2. Dados Coletados</h2>
+
+  <h3>2.1 Dados fornecidos pelo Usuário</h3>
+  <ul>
+    <li>Nome completo e nome de exibição (handle);</li>
+    <li>Endereço de e-mail institucional;</li>
+    <li>Foto de perfil (opcional);</li>
+    <li>Posto, setor, ramal e telefone (opcionais).</li>
+  </ul>
+
+  <h3>2.2 Dados gerados automaticamente</h3>
+  <ul>
+    <li>Registros de atividade (criação, edição, exclusão de tarefas e comentários);</li>
+    <li>Dados de sessão (IP, navegador, data/hora de acesso);</li>
+    <li>Cookies essenciais de sessão e CSRF.</li>
+  </ul>
+
+  <h3>2.3 Dados de terceiros</h3>
+  <p>Não coletamos dados de terceiros além dos necessários para autenticação institucional.</p>
+
+  <h2>3. Finalidades do Tratamento</h2>
+  <table>
+    <tr><th>Finalidade</th><th>Base Legal (LGPD)</th></tr>
+    <tr><td>Autenticação e controle de acesso</td><td>Legítimo interesse / Execução de contrato</td></tr>
+    <tr><td>Registro de atividades e auditoria</td><td>Legítimo interesse / Cumprimento de obrigação legal</td></tr>
+    <tr><td>Personalização da interface (preferências)</td><td>Consentimento</td></tr>
+    <tr><td>Envio de notificações de prazo por e-mail/WhatsApp</td><td>Legítimo interesse / Consentimento</td></tr>
+    <tr><td>Suporte técnico e resolução de incidentes</td><td>Legítimo interesse</td></tr>
+  </table>
+
+  <h2>4. Compartilhamento de Dados</h2>
+  <p>Seus dados <strong>não são vendidos, alugados ou cedidos</strong> a terceiros. O compartilhamento
+  ocorre somente nas seguintes situações:</p>
+  <ul>
+    <li>Com prestadores de serviços que auxiliam na operação da plataforma (hospedagem, e-mail transacional),
+        sempre com contrato de confidencialidade;</li>
+    <li>Por determinação judicial ou exigência de autoridade competente;</li>
+    <li>Com outros colaboradores do Grupo Camim, no contexto das tarefas compartilhadas.</li>
+  </ul>
+
+  <h2>5. Armazenamento e Segurança</h2>
+  <p>Os dados são armazenados em servidores localizados no Brasil, com acesso restrito, criptografia
+  de transporte (HTTPS/TLS) e controle de acesso baseado em função. Backups são realizados
+  periodicamente.</p>
+
+  <h2>6. Retenção de Dados</h2>
+  <p>Os dados são mantidos enquanto o vínculo do Usuário com o Grupo Camim estiver ativo. Após
+  encerramento do acesso, os dados podem ser retidos por até <strong>5 anos</strong> para cumprimento
+  de obrigações legais e fiscais, após o que são anonimizados ou excluídos.</p>
+
+  <h2>7. Seus Direitos (LGPD)</h2>
+  <p>Nos termos dos arts. 18 e seguintes da LGPD, você tem direito a:</p>
+  <ul>
+    <li><strong>Confirmação</strong> de que seus dados são tratados;</li>
+    <li><strong>Acesso</strong> aos dados que mantemos sobre você;</li>
+    <li><strong>Correção</strong> de dados incompletos ou desatualizados;</li>
+    <li><strong>Portabilidade</strong> dos dados, quando aplicável;</li>
+    <li><strong>Eliminação</strong> de dados desnecessários ou tratados com base em consentimento;</li>
+    <li><strong>Revogação</strong> do consentimento a qualquer momento;</li>
+    <li><strong>Oposição</strong> ao tratamento em caso de descumprimento da LGPD.</li>
+  </ul>
+  <p>Para exercer seus direitos, entre em contato pelo e-mail <strong>ti@clinicacamim.com.br</strong>.</p>
+
+  <h2>8. Cookies</h2>
+  <p>Consulte nossa
+    <a href="{% url 'cookie_policy' %}">Política de Cookies</a>
+    para informações detalhadas sobre os cookies utilizados.
+  </p>
+
+  <h2>9. Alterações nesta Política</h2>
+  <p>Esta Política pode ser atualizada periodicamente. A versão atual estará sempre disponível em
+    <a href="{% url 'privacy' %}">tarefas.camim.com.br/legal/privacidade/</a>.
+  </p>
+
+  <h2>10. Contato</h2>
+  <p>Dúvidas sobre privacidade ou proteção de dados:<br>
+    <strong>E-mail:</strong> ti@clinicacamim.com.br<br>
+    <strong>Responsável:</strong> Encarregado de Dados (DPO) — Grupo Camim
+  </p>
+
+  <p style="margin-top:32px; font-size:0.78rem; color:#9ca3af;">
+    Última atualização: março de 2026 · Versão 1.0
+  </p>
+</div>
+</body>
+</html>

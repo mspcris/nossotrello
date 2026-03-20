@@ -23,8 +23,25 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.views.generic import TemplateView
 
+from boards.views.legal import (
+    terms_view,
+    privacy_view,
+    cookie_policy_view,
+    manual_view,
+    cookie_accept_view,
+    cookie_reject_view,
+)
+
 urlpatterns = [
     path("admin/", admin.site.urls),
+
+    # ── Legal (isento de termos/cookies no middleware) ──────────────
+    path("legal/termos/",      terms_view,         name="terms"),
+    path("legal/privacidade/", privacy_view,        name="privacy"),
+    path("legal/cookies/",     cookie_policy_view,  name="cookie_policy"),
+    path("legal/manual/",      manual_view,         name="manual"),
+    path("cookies/accept/",    cookie_accept_view,  name="cookie_accept"),
+    path("cookies/reject/",    cookie_reject_view,  name="cookie_reject"),
 
     # App principal
     path("", include(("boards.urls", "boards"), namespace="boards")),

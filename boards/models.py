@@ -468,6 +468,11 @@ class UserProfile(models.Model):
 
     
 
+    # Aceite dos Termos de Uso e Política de Privacidade
+    terms_accepted = models.BooleanField(default=False)
+    terms_accepted_at = models.DateTimeField(null=True, blank=True)
+    terms_version = models.CharField(max_length=10, default="1.0", blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

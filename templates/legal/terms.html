@@ -1,0 +1,331 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Termos de Uso — Tarefas CAMIM</title>
+  <link rel="icon" type="image/png" href="{% static 'images/logo-camim.png' %}">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config = { darkMode: 'class' }</script>
+  <link rel="stylesheet" href="{% static 'boards/auth.css' %}">
+  <style>
+    html, body { height: 100%; margin: 0; padding: 0; }
+
+    .terms-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: rgba(0,0,0,0.75);
+      display: flex; align-items: center; justify-content: center;
+      padding: 16px;
+    }
+
+    .terms-box {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.45);
+      width: 100%; max-width: 760px;
+      max-height: 92vh;
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+
+    .terms-header {
+      padding: 20px 28px 14px;
+      border-bottom: 1px solid #e5e7eb;
+      flex-shrink: 0;
+    }
+
+    .terms-scroll {
+      overflow-y: auto;
+      flex: 1;
+      padding: 24px 28px;
+      font-size: 0.92rem;
+      line-height: 1.7;
+      color: #1f2937;
+    }
+
+    .terms-scroll h2 { font-size: 1.05rem; font-weight: 700; margin: 20px 0 6px; color: #065f46; }
+    .terms-scroll h3 { font-size: 0.95rem; font-weight: 600; margin: 14px 0 4px; color: #374151; }
+    .terms-scroll p  { margin: 0 0 10px; }
+    .terms-scroll ul { list-style: disc; padding-left: 20px; margin: 0 0 10px; }
+    .terms-scroll li { margin-bottom: 4px; }
+
+    .terms-footer {
+      padding: 16px 28px 20px;
+      border-top: 1px solid #e5e7eb;
+      flex-shrink: 0;
+      background: #f9fafb;
+    }
+
+    .scroll-hint {
+      text-align: center;
+      font-size: 0.78rem;
+      color: #6b7280;
+      margin-bottom: 10px;
+      transition: opacity .3s;
+    }
+
+    .accept-btn {
+      width: 100%;
+      padding: 12px;
+      background: #065f46;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    .accept-btn:hover:not(:disabled) { background: #047857; }
+    .accept-btn:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+
+    .checkbox-row {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 10px; font-size: 0.88rem; color: #374151;
+    }
+    .checkbox-row input[type=checkbox] { width: 18px; height: 18px; cursor: pointer; }
+
+    .error-msg {
+      background: #fef2f2; border: 1px solid #fca5a5;
+      color: #b91c1c; border-radius: 8px;
+      padding: 10px 14px; margin-bottom: 12px;
+      font-size: 0.88rem;
+    }
+  </style>
+</head>
+<body>
+
+<div class="terms-overlay">
+  <div class="terms-box" id="terms-box">
+
+    <!-- Cabeçalho -->
+    <div class="terms-header">
+      <div style="display:flex; align-items:center; gap:14px;">
+        <img src="{% static 'images/logo-camim.png' %}" alt="CAMIM" style="height:48px; width:48px; border-radius:50%; object-fit:cover;">
+        <div>
+          <div style="font-size:1.15rem; font-weight:700; color:#065f46;">Termos de Uso</div>
+          <div style="font-size:0.78rem; color:#6b7280;">Tarefas CAMIM · Versão 1.0 · Grupo Camim</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Corpo scrollável -->
+    <div class="terms-scroll" id="terms-scroll">
+
+      <p><strong>Leia atentamente antes de continuar.</strong> O uso da plataforma <em>Tarefas CAMIM</em> implica a
+      aceitação integral destes Termos de Uso. Esta ferramenta é de uso exclusivamente profissional e destinada a
+      maiores de 18 anos.</p>
+
+      <!-- ── 1 ── -->
+      <h2>1. Identificação do Fornecedor</h2>
+      <p>O sistema <strong>Tarefas CAMIM</strong> é uma ferramenta de gestão de tarefas e projetos desenvolvida e
+      operada pelo <strong>Grupo Camim</strong> — operadora de planos de saúde com atuação desde 1975, com sede no
+      Brasil. A ferramenta é disponibilizada exclusivamente para colaboradores, prestadores de serviços e parceiros
+      autorizados.</p>
+
+      <ul>
+        <li><strong>Razão Social:</strong> Grupo Camim</li>
+        <li><strong>Site institucional:</strong> camim.com.br</li>
+        <li><strong>Contato:</strong> ti@clinicacamim.com.br</li>
+      </ul>
+
+      <!-- ── 2 ── -->
+      <h2>2. Aceitação dos Termos</h2>
+      <p>Ao clicar em <strong>"Li e aceito os Termos de Uso"</strong> abaixo, o Usuário declara que:</p>
+      <ul>
+        <li>Tem <strong>18 anos ou mais</strong>;</li>
+        <li>Utiliza a plataforma exclusivamente para fins <strong>profissionais</strong>, dentro das atividades
+            autorizadas pelo Grupo Camim;</li>
+        <li>Leu e compreendeu na íntegra este documento;</li>
+        <li>Concorda com todas as cláusulas aqui descritas.</li>
+      </ul>
+
+      <!-- ── 3 ── -->
+      <h2>3. Definições</h2>
+      <ul>
+        <li><strong>Plataforma:</strong> sistema web <em>Tarefas CAMIM</em>, disponível em tarefas.camim.com.br.</li>
+        <li><strong>Usuário:</strong> qualquer pessoa física que acessa a plataforma mediante credenciais
+            fornecidas pelo Grupo Camim.</li>
+        <li><strong>Conteúdo:</strong> textos, comentários, arquivos, imagens e qualquer informação inserida
+            na plataforma.</li>
+        <li><strong>Dados Pessoais:</strong> informações que permitam identificar o Usuário, tratadas
+            conforme a Lei Geral de Proteção de Dados (LGPD — Lei nº 13.709/2018).</li>
+      </ul>
+
+      <!-- ── 4 ── -->
+      <h2>4. Condições de Uso</h2>
+
+      <h3>4.1 Uso Permitido</h3>
+      <p>A plataforma destina-se à gestão de tarefas, projetos e comunicação interna entre colaboradores
+      e parceiros autorizados do Grupo Camim. São usos permitidos:</p>
+      <ul>
+        <li>Criação e gerenciamento de quadros, colunas e cartões de tarefas;</li>
+        <li>Registro de atividades, prazos e responsáveis;</li>
+        <li>Compartilhamento de arquivos relacionados ao trabalho;</li>
+        <li>Uso das ferramentas de controle de tempo (Track-time).</li>
+      </ul>
+
+      <h3>4.2 Uso Proibido</h3>
+      <p>É expressamente vedado ao Usuário:</p>
+      <ul>
+        <li>Compartilhar credenciais de acesso com terceiros não autorizados;</li>
+        <li>Inserir conteúdo ilegal, ofensivo, discriminatório ou que viole direitos de terceiros;</li>
+        <li>Utilizar a plataforma para fins pessoais alheios às atividades profissionais;</li>
+        <li>Tentar acessar dados de outros usuários sem autorização;</li>
+        <li>Realizar engenharia reversa ou copiar o código-fonte da plataforma;</li>
+        <li>Divulgar informações confidenciais da organização obtidas por meio da plataforma.</li>
+      </ul>
+
+      <!-- ── 5 ── -->
+      <h2>5. Propriedade Intelectual</h2>
+      <p>Todo o código, layout, marca e demais elementos da plataforma são de propriedade exclusiva do
+      Grupo Camim. Os conteúdos inseridos pelos Usuários permanecem de responsabilidade de quem os criou;
+      todavia, ao inserir qualquer conteúdo, o Usuário concede ao Grupo Camim licença não exclusiva para
+      armazená-lo nos servidores da plataforma enquanto necessário ao funcionamento do serviço.</p>
+
+      <!-- ── 6 ── -->
+      <h2>6. Privacidade e Proteção de Dados (LGPD)</h2>
+      <p>O Grupo Camim coleta e trata dados pessoais dos Usuários apenas para finalidades legítimas,
+      específicas e informadas, em conformidade com a LGPD. Os principais dados coletados são:</p>
+      <ul>
+        <li>Nome, e-mail institucional e foto de perfil;</li>
+        <li>Registros de atividade dentro da plataforma (logs de criação, edição e exclusão);</li>
+        <li>Dados de sessão e cookies essenciais ao funcionamento.</li>
+      </ul>
+      <p>Para informações detalhadas, consulte nossa
+        <a href="{% url 'privacy' %}" target="_blank" style="color:#065f46; text-decoration:underline;">Política de Privacidade</a>.
+      </p>
+
+      <!-- ── 7 ── -->
+      <h2>7. Cookies</h2>
+      <p>A plataforma utiliza cookies estritamente necessários ao funcionamento (sessão, CSRF) e,
+      mediante seu consentimento, cookies de preferências. Você pode gerenciar suas preferências a
+      qualquer momento. Para mais detalhes, veja nossa
+        <a href="{% url 'cookie_policy' %}" target="_blank" style="color:#065f46; text-decoration:underline;">Política de Cookies</a>.
+      </p>
+
+      <!-- ── 8 ── -->
+      <h2>8. Segurança</h2>
+      <p>O Grupo Camim adota medidas técnicas e administrativas adequadas para proteger os dados
+      armazenados na plataforma. Todavia, nenhum sistema é 100% invulnerável. O Usuário é responsável
+      por manter sua senha segura e por comunicar imediatamente qualquer suspeita de uso não autorizado
+      de sua conta.</p>
+
+      <!-- ── 9 ── -->
+      <h2>9. Suspensão e Encerramento de Acesso</h2>
+      <p>O Grupo Camim reserva-se o direito de suspender ou cancelar o acesso do Usuário, a qualquer
+      momento e sem aviso prévio, nas seguintes hipóteses:</p>
+      <ul>
+        <li>Violação de qualquer cláusula destes Termos;</li>
+        <li>Desligamento do vínculo empregatício ou encerramento do contrato de prestação de serviços;</li>
+        <li>Determinação judicial ou administrativa;</li>
+        <li>Necessidade de manutenção de segurança da plataforma.</li>
+      </ul>
+
+      <!-- ── 10 ── -->
+      <h2>10. Limitação de Responsabilidade</h2>
+      <p>A plataforma é fornecida "como está", para uso interno. O Grupo Camim não se responsabiliza
+      por:</p>
+      <ul>
+        <li>Perdas de dados decorrentes de falhas de conectividade ou ações do próprio Usuário;</li>
+        <li>Danos indiretos resultantes do uso ou impossibilidade de uso da plataforma;</li>
+        <li>Conteúdo inserido por Usuários que viole direitos de terceiros.</li>
+      </ul>
+
+      <!-- ── 11 ── -->
+      <h2>11. Alterações nos Termos</h2>
+      <p>Estes Termos podem ser atualizados a qualquer momento. Em caso de alterações relevantes, o
+      Usuário será notificado e solicitado a aceitar a nova versão antes de continuar usando a
+      plataforma. A versão atual é sempre acessível em
+        <a href="{% url 'terms' %}" target="_blank" style="color:#065f46; text-decoration:underline;">tarefas.camim.com.br/legal/termos/</a>.
+      </p>
+
+      <!-- ── 12 ── -->
+      <h2>12. Foro e Legislação Aplicável</h2>
+      <p>Estes Termos são regidos pelas leis brasileiras. Fica eleito o foro da comarca da sede do
+      Grupo Camim para dirimir quaisquer controvérsias decorrentes deste instrumento, com renúncia
+      expressa a qualquer outro foro, por mais privilegiado que seja.</p>
+
+      <p style="margin-top:24px; font-size:0.8rem; color:#9ca3af;">
+        Última atualização: março de 2026 · Versão 1.0
+      </p>
+
+    </div><!-- /terms-scroll -->
+
+    <!-- Rodapé -->
+    <div class="terms-footer">
+      {% if error %}
+      <div class="error-msg">{{ error }}</div>
+      {% endif %}
+
+      <div id="scroll-hint" class="scroll-hint">
+        ↓ Role até o final para aceitar os termos
+      </div>
+
+      <form method="post" id="terms-form">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ next_url }}">
+
+        <div class="checkbox-row">
+          <input type="checkbox" name="cookies_accept" id="cookies_accept" value="1">
+          <label for="cookies_accept">
+            Aceito o uso de cookies de preferências
+            (<a href="{% url 'cookie_policy' %}" target="_blank" style="color:#065f46;">saiba mais</a>)
+          </label>
+        </div>
+
+        <div class="checkbox-row" style="margin-bottom:14px;">
+          <input type="checkbox" name="accept" id="accept" value="1" disabled>
+          <label for="accept" style="font-weight:600;">
+            Li e aceito os Termos de Uso e a
+            <a href="{% url 'privacy' %}" target="_blank" style="color:#065f46;">Política de Privacidade</a>
+          </label>
+        </div>
+
+        <button type="submit" class="accept-btn" id="accept-btn" disabled>
+          Continuar
+        </button>
+      </form>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function () {
+  const scroll   = document.getElementById("terms-scroll");
+  const hint     = document.getElementById("scroll-hint");
+  const checkbox = document.getElementById("accept");
+  const btn      = document.getElementById("accept-btn");
+
+  function unlock() {
+    checkbox.disabled = false;
+    if (hint) hint.style.opacity = "0";
+  }
+
+  function onScroll() {
+    const near = scroll.scrollTop + scroll.clientHeight >= scroll.scrollHeight - 40;
+    if (near) {
+      unlock();
+      scroll.removeEventListener("scroll", onScroll);
+    }
+  }
+
+  scroll.addEventListener("scroll", onScroll, { passive: true });
+
+  // Habilita botão somente quando checkbox marcado
+  checkbox.addEventListener("change", function () {
+    btn.disabled = !this.checked;
+  });
+
+  // Se já estava no final (texto curto / zoom alto)
+  onScroll();
+})();
+</script>
+
+</body>
+</html>

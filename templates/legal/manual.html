@@ -1,0 +1,221 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manual do Usuário — Tarefas CAMIM</title>
+  <link rel="icon" type="image/png" href="{% static 'images/logo-camim.png' %}">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="{% static 'boards/auth.css' %}">
+  <style>
+    body { font-family: system-ui, sans-serif; background: #f3f4f6; color: #1f2937; padding: 0; margin: 0; }
+    .page-wrap { max-width: 820px; margin: 40px auto; background: #fff; border-radius: 12px;
+                 box-shadow: 0 4px 24px rgba(0,0,0,.1); padding: 40px 48px; }
+    h1 { font-size: 1.5rem; font-weight: 700; color: #065f46; margin-bottom: 4px; }
+    .subtitle { font-size: 0.82rem; color: #6b7280; margin-bottom: 32px; }
+    h2 { font-size: 1.1rem; font-weight: 700; color: #065f46; margin: 32px 0 10px;
+         padding-bottom: 6px; border-bottom: 2px solid #d1fae5; }
+    h3 { font-size: 0.97rem; font-weight: 600; margin: 18px 0 6px; color: #374151; }
+    p  { margin: 0 0 12px; line-height: 1.75; }
+    ul { list-style: disc; padding-left: 20px; margin: 0 0 12px; }
+    ol { list-style: decimal; padding-left: 20px; margin: 0 0 12px; }
+    li { margin-bottom: 6px; line-height: 1.7; }
+    a  { color: #065f46; text-decoration: underline; }
+    .tip { background:#f0fdf4; border-left:4px solid #34d399; padding:10px 14px;
+           border-radius:4px; margin:0 0 14px; font-size:.88rem; }
+    .warn { background:#fffbeb; border-left:4px solid #fbbf24; padding:10px 14px;
+            border-radius:4px; margin:0 0 14px; font-size:.88rem; }
+    kbd { background:#f3f4f6; border:1px solid #d1d5db; border-radius:4px;
+          padding:1px 6px; font-size:.82rem; font-family:monospace; }
+    .toc { background:#f9fafb; border-radius:8px; padding:16px 20px; margin-bottom:28px; }
+    .toc ol { margin:0; }
+    .toc li { margin-bottom:2px; }
+    @media (max-width: 640px) { .page-wrap { padding: 24px 20px; } }
+  </style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <div style="display:flex; align-items:center; gap:14px; margin-bottom:20px;">
+    <img src="{% static 'images/logo-camim.png' %}" alt="CAMIM" style="height:52px; width:52px; border-radius:50%; object-fit:cover;">
+    <div>
+      <h1>Manual do Usuário</h1>
+      <div class="subtitle">Tarefas CAMIM · Guia de uso da plataforma · Versão 1.0</div>
+    </div>
+  </div>
+
+  <!-- Sumário -->
+  <div class="toc">
+    <strong style="display:block; margin-bottom:8px;">Sumário</strong>
+    <ol>
+      <li><a href="#inicio">Primeiros passos</a></li>
+      <li><a href="#quadros">Quadros</a></li>
+      <li><a href="#colunas">Colunas</a></li>
+      <li><a href="#cards">Cards (tarefas)</a></li>
+      <li><a href="#checklists">Checklists</a></li>
+      <li><a href="#etiquetas">Etiquetas</a></li>
+      <li><a href="#anexos">Anexos</a></li>
+      <li><a href="#mencoes">Menções</a></li>
+      <li><a href="#tracktime">Track-time</a></li>
+      <li><a href="#notificacoes">Notificações</a></li>
+      <li><a href="#conta">Minha conta</a></li>
+      <li><a href="#importacao">Importar / Exportar</a></li>
+    </ol>
+  </div>
+
+  <!-- ── 1 ── -->
+  <h2 id="inicio">1. Primeiros Passos</h2>
+  <p>Acesse a plataforma pelo endereço fornecido pela equipe de TI (ex.: tarefas.camim.com.br).
+  Na primeira vez que entrar, você verá a tela dos <strong>Termos de Uso</strong>. Role até o final,
+  marque a caixa de aceite e clique em <strong>Continuar</strong>.</p>
+
+  <div class="tip">💡 Seus dados de login são os mesmos do e-mail institucional ou as credenciais
+  fornecidas pelo administrador.</div>
+
+  <!-- ── 2 ── -->
+  <h2 id="quadros">2. Quadros</h2>
+  <p>O <strong>Quadro</strong> é a unidade principal de organização. Cada quadro representa um projeto,
+  equipe ou área de trabalho.</p>
+  <ul>
+    <li><strong>Criar quadro:</strong> na tela inicial clique no botão <kbd>+ Novo quadro</kbd>.</li>
+    <li><strong>Abrir quadro:</strong> clique no nome do quadro na lista inicial.</li>
+    <li><strong>Configurar quadro:</strong> clique no ícone de engrenagem no topo do quadro.</li>
+    <li><strong>Adicionar membros:</strong> no menu do quadro → "Membros" → busque o usuário e defina a função.</li>
+    <li><strong>Arquivar/excluir:</strong> somente administradores do quadro podem arquivar ou excluir.</li>
+  </ul>
+
+  <!-- ── 3 ── -->
+  <h2 id="colunas">3. Colunas</h2>
+  <p>As colunas organizam as tarefas em estágios (ex.: "A Fazer", "Em Andamento", "Concluído").</p>
+  <ul>
+    <li><strong>Adicionar coluna:</strong> clique em <kbd>+ Coluna</kbd> no final do quadro.</li>
+    <li><strong>Renomear:</strong> clique no nome da coluna e edite.</li>
+    <li><strong>Reordenar:</strong> arraste a coluna pelo cabeçalho.</li>
+    <li><strong>Menu da coluna:</strong> clique nos três pontos (⋯) para opções como exportar ou importar.</li>
+  </ul>
+
+  <!-- ── 4 ── -->
+  <h2 id="cards">4. Cards (Tarefas)</h2>
+  <p>O <strong>Card</strong> representa uma tarefa individual. Clique em qualquer card para abrir o
+  painel completo.</p>
+
+  <h3>Criar um card</h3>
+  <ol>
+    <li>Clique em <kbd>+ Card</kbd> no final de uma coluna;</li>
+    <li>Digite o título e pressione <kbd>Enter</kbd> ou clique em <kbd>Adicionar</kbd>.</li>
+  </ol>
+
+  <h3>Editar um card</h3>
+  <ul>
+    <li><strong>Título:</strong> clique no título dentro do modal para editar.</li>
+    <li><strong>Descrição:</strong> use o editor de texto rico com suporte a negrito, itálico, listas e código.</li>
+    <li><strong>Prazo:</strong> clique no campo de data para definir ou alterar o vencimento.</li>
+    <li><strong>Responsável:</strong> clique no avatar ou no campo de responsável.</li>
+    <li><strong>Cor/capa:</strong> use os botões de tema na barra superior do modal.</li>
+  </ul>
+
+  <h3>Mover um card</h3>
+  <ul>
+    <li><strong>Arrastar:</strong> segure e arraste o card para outra posição ou coluna.</li>
+    <li><strong>Menu rápido:</strong> clique nos três pontos do card → "Mover para coluna".</li>
+  </ul>
+
+  <h3>Marcar como Entregue</h3>
+  <p>Clique no botão <kbd>Marcar como Entregue</kbd> dentro do card. Cards entregues não recebem
+  mais alertas de prazo, mas mantêm as datas para consulta histórica.</p>
+
+  <div class="warn">⚠️ Somente membros com função de Editor ou superior podem editar e mover cards.</div>
+
+  <!-- ── 5 ── -->
+  <h2 id="checklists">5. Checklists</h2>
+  <p>Os checklists permitem dividir um card em subtarefas.</p>
+  <ol>
+    <li>Abra o card e clique na aba <strong>Checklists</strong>;</li>
+    <li>Clique em <kbd>+ Novo checklist</kbd>;</li>
+    <li>Adicione itens clicando em <kbd>+ Item</kbd>;</li>
+    <li>Marque itens concluídos clicando na caixa de seleção.</li>
+  </ol>
+  <p>O progresso do checklist é exibido em uma barra na visualização do card.</p>
+
+  <!-- ── 6 ── -->
+  <h2 id="etiquetas">6. Etiquetas</h2>
+  <p>As etiquetas (tags coloridas) categorizam os cards visualmente.</p>
+  <ul>
+    <li>Abra o card e clique na aba <strong>Etiquetas</strong>;</li>
+    <li>Selecione etiquetas existentes ou crie novas com nome e cor;</li>
+    <li>As etiquetas aparecem no card na visão do quadro.</li>
+  </ul>
+
+  <!-- ── 7 ── -->
+  <h2 id="anexos">7. Anexos</h2>
+  <ul>
+    <li>Abra o card e clique na aba <strong>Anexos</strong>;</li>
+    <li>Clique em <kbd>Adicionar arquivo</kbd> ou arraste um arquivo para a área indicada;</li>
+    <li>Imagens são exibidas como miniaturas; outros arquivos mostram o ícone correspondente;</li>
+    <li>Para excluir, clique no ícone de lixeira ao lado do anexo.</li>
+  </ul>
+
+  <div class="tip">💡 Limite de 100 MB por arquivo. Formatos aceitos: imagens, PDF, documentos Office.</div>
+
+  <!-- ── 8 ── -->
+  <h2 id="mencoes">8. Menções</h2>
+  <p>Mencione colegas nos comentários digitando <kbd>@</kbd> seguido do handle do usuário
+  (ex.: <kbd>@joao.silva</kbd>). O sistema irá sugerir usuários conforme você digita.</p>
+  <p>O usuário mencionado receberá uma notificação por e-mail ou WhatsApp (conforme preferências).</p>
+
+  <!-- ── 9 ── -->
+  <h2 id="tracktime">9. Track-time</h2>
+  <p>O <strong>Track-time</strong> é o módulo de controle de horas. Acesse pelo menu lateral (⏱).</p>
+  <ul>
+    <li>Inicie um registro clicando em <kbd>▶ Iniciar</kbd> no card ou no módulo;</li>
+    <li>Pare clicando em <kbd>⏹ Parar</kbd>;</li>
+    <li>O ícone <kbd>⏱</kbd> no cabeçalho aparece quando há um registro em andamento — clique nele
+        para ir direto ao card.</li>
+  </ul>
+
+  <!-- ── 10 ── -->
+  <h2 id="notificacoes">10. Notificações</h2>
+  <p>A plataforma envia notificações automáticas nas seguintes situações:</p>
+  <ul>
+    <li>Card prestes a vencer (prazo nos próximos dias);</li>
+    <li>Card vencido;</li>
+    <li>Menção em comentário;</li>
+    <li>Card marcado como entregue (notifica responsável e membros do quadro).</li>
+  </ul>
+  <p>Configure suas preferências de notificação em <strong>Minha Conta → Preferências</strong>.</p>
+  <div class="warn">⚠️ Cards marcados como <strong>Entregue</strong> não recebem alertas de prazo, mas o e-mail
+  de confirmação de entrega é enviado normalmente.</div>
+
+  <!-- ── 11 ── -->
+  <h2 id="conta">11. Minha Conta</h2>
+  <p>Clique na sua foto de perfil (canto superior direito) para abrir o painel de conta.</p>
+  <ul>
+    <li><strong>Perfil:</strong> edite nome, handle, posto, setor, ramal e telefone;</li>
+    <li><strong>Foto:</strong> envie uma foto ou escolha um avatar pré-definido;</li>
+    <li><strong>Senha:</strong> altere sua senha;</li>
+    <li><strong>Preferências:</strong> configure notificações, largura das colunas e barra de atividade.</li>
+  </ul>
+
+  <!-- ── 12 ── -->
+  <h2 id="importacao">12. Importar / Exportar</h2>
+
+  <h3>Exportar coluna</h3>
+  <p>No menu de uma coluna (⋯) → <strong>Exportar coluna</strong>. Você receberá um arquivo JSON
+  com todos os dados: cards, checklists, etiquetas e atividades.</p>
+
+  <h3>Importar coluna</h3>
+  <p>No menu de uma coluna (⋯) → <strong>Importar coluna</strong>. Envie um arquivo JSON exportado
+  anteriormente de outra coluna. A coluna será criada ao final do quadro atual.</p>
+
+  <h3>Importar do Trello</h3>
+  <p>No menu do quadro → <strong>Importar do Trello</strong>. Envie o JSON exportado pelo Trello
+  (Configurações do quadro → Mais → Exportar como JSON). Um novo quadro será criado com as
+  listas, cards e checklists do Trello.</p>
+
+  <p style="margin-top:40px; font-size:0.78rem; color:#9ca3af;">
+    Dúvidas e suporte: ti@clinicacamim.com.br · Versão 1.0 · Março/2026
+  </p>
+</div>
+</body>
+</html>

@@ -118,6 +118,9 @@ MIDDLEWARE = [
     # força login no app (exceto rotas liberadas)
     'nossotrello.middleware.LoginRequiredMiddleware',
 
+    # força aceite dos Termos de Uso (após login)
+    'nossotrello.middleware.TermsMiddleware',
+
     'django.contrib.messages.middleware.MessageMiddleware',
 
     'django.middleware.clickjacking.XFrameOptionsMiddleware',

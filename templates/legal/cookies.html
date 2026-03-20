@@ -1,0 +1,123 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Política de Cookies — Tarefas CAMIM</title>
+  <link rel="icon" type="image/png" href="{% static 'images/logo-camim.png' %}">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="{% static 'boards/auth.css' %}">
+  <style>
+    body { font-family: system-ui, sans-serif; background: #f3f4f6; color: #1f2937; padding: 0; margin: 0; }
+    .page-wrap { max-width: 760px; margin: 40px auto; background: #fff; border-radius: 12px;
+                 box-shadow: 0 4px 24px rgba(0,0,0,.1); padding: 40px 48px; }
+    h1 { font-size: 1.5rem; font-weight: 700; color: #065f46; margin-bottom: 4px; }
+    .subtitle { font-size: 0.82rem; color: #6b7280; margin-bottom: 32px; }
+    h2 { font-size: 1.05rem; font-weight: 700; color: #065f46; margin: 28px 0 8px; }
+    p  { margin: 0 0 12px; line-height: 1.75; }
+    ul { list-style: disc; padding-left: 20px; margin: 0 0 12px; }
+    li { margin-bottom: 4px; line-height: 1.7; }
+    a  { color: #065f46; text-decoration: underline; }
+    table { width:100%; border-collapse:collapse; margin: 0 0 12px; font-size:.88rem; }
+    th, td { border: 1px solid #e5e7eb; padding: 8px 12px; text-align: left; }
+    th { background: #f9fafb; font-weight: 600; }
+    .badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:.75rem; font-weight:600; }
+    .badge-essential { background:#d1fae5; color:#065f46; }
+    .badge-pref { background:#dbeafe; color:#1e40af; }
+    @media (max-width: 640px) { .page-wrap { padding: 24px 20px; } }
+  </style>
+</head>
+<body>
+<div class="page-wrap">
+  <div style="display:flex; align-items:center; gap:14px; margin-bottom:20px;">
+    <img src="{% static 'images/logo-camim.png' %}" alt="CAMIM" style="height:52px; width:52px; border-radius:50%; object-fit:cover;">
+    <div>
+      <h1>Política de Cookies</h1>
+      <div class="subtitle">Tarefas CAMIM · Grupo Camim · Versão 1.0 · Março/2026</div>
+    </div>
+  </div>
+
+  <a href="{% url 'terms' %}" style="display:inline-block; margin-bottom:24px; font-size:.88rem; color:#065f46;">
+    ← Voltar aos Termos de Uso
+  </a>
+
+  <p>Esta política explica o que são cookies, quais usamos na plataforma <strong>Tarefas CAMIM</strong>
+  e como você pode gerenciá-los.</p>
+
+  <h2>1. O que são Cookies?</h2>
+  <p>Cookies são pequenos arquivos de texto armazenados no seu navegador quando você visita um site.
+  Eles permitem que o site lembre suas preferências, mantenha sua sessão ativa e funcione corretamente.</p>
+
+  <h2>2. Cookies que Utilizamos</h2>
+
+  <table>
+    <tr>
+      <th>Nome</th>
+      <th>Tipo</th>
+      <th>Finalidade</th>
+      <th>Duração</th>
+    </tr>
+    <tr>
+      <td><code>sessionid</code></td>
+      <td><span class="badge badge-essential">Essencial</span></td>
+      <td>Mantém você autenticado durante a sessão</td>
+      <td>Sessão</td>
+    </tr>
+    <tr>
+      <td><code>csrftoken</code></td>
+      <td><span class="badge badge-essential">Essencial</span></td>
+      <td>Protege contra ataques CSRF (segurança)</td>
+      <td>1 ano</td>
+    </tr>
+    <tr>
+      <td><code>cookies_accepted</code></td>
+      <td><span class="badge badge-pref">Preferências</span></td>
+      <td>Registra que você aceitou os cookies</td>
+      <td>1 ano</td>
+    </tr>
+    <tr>
+      <td><code>theme</code></td>
+      <td><span class="badge badge-pref">Preferências</span></td>
+      <td>Salva sua preferência de tema (claro/escuro)</td>
+      <td>1 ano</td>
+    </tr>
+  </table>
+
+  <h2>3. Cookies Essenciais</h2>
+  <p>Os cookies <strong>essenciais</strong> são estritamente necessários para o funcionamento da
+  plataforma. Sem eles, você não consegue fazer login ou usar a ferramenta com segurança.
+  <strong>Eles não requerem consentimento</strong> e não podem ser desativados.</p>
+
+  <h2>4. Cookies de Preferências</h2>
+  <p>Os cookies de <strong>preferências</strong> lembram suas configurações para melhorar sua
+  experiência (como o tema escolhido e a confirmação de que você aceitou os termos). Você pode
+  recusar estes cookies; entretanto, algumas preferências não serão salvas entre sessões.</p>
+
+  <h2>5. Não Usamos Cookies de Rastreamento ou Publicidade</h2>
+  <p>A plataforma <strong>Tarefas CAMIM</strong> <strong>não utiliza</strong> cookies de rastreamento
+  de terceiros, cookies de publicidade ou qualquer ferramenta de análise comportamental externa
+  (como Google Analytics, Meta Pixel, etc.).</p>
+
+  <h2>6. Como Gerenciar seus Cookies</h2>
+  <p>Você pode gerenciar e excluir cookies diretamente pelo seu navegador:</p>
+  <ul>
+    <li><strong>Chrome:</strong> Configurações → Privacidade e segurança → Cookies</li>
+    <li><strong>Firefox:</strong> Configurações → Privacidade e segurança → Cookies e dados do site</li>
+    <li><strong>Edge:</strong> Configurações → Privacidade, pesquisa e serviços → Cookies</li>
+    <li><strong>Safari:</strong> Preferências → Privacidade → Gerenciar dados do site</li>
+  </ul>
+  <p>Note que excluir cookies essenciais (<code>sessionid</code>, <code>csrftoken</code>) encerrará
+  sua sessão e poderá impedir o uso normal da plataforma.</p>
+
+  <h2>7. Contato</h2>
+  <p>Dúvidas sobre cookies e privacidade:<br>
+    <strong>E-mail:</strong> ti@clinicacamim.com.br
+  </p>
+
+  <p style="margin-top:32px; font-size:0.78rem; color:#9ca3af;">
+    Última atualização: março de 2026 · Versão 1.0
+  </p>
+</div>
+</body>
+</html>

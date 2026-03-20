@@ -271,7 +271,7 @@ def account_avatar_update(request):
         return _render_account_modal(request, errors=errors, active_tab="avatar")
 
     prof.avatar = f
-    prof.avatar_choice = None
+    prof.avatar_choice = ""
     prof.save(update_fields=["avatar", "avatar_choice"])
 
 
