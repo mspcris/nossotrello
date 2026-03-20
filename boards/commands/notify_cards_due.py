@@ -60,7 +60,11 @@ class Command(BaseCommand):
         today = _local_today()
         tomorrow = today + timedelta(days=1)
 
-        qs = Card.objects.filter(is_deleted=False).select_related("column", "column__board")
+        qs = (
+            Card.objects
+            .filter(is_deleted=False, is_delivered=False)  # entregues não recebem alertas de prazo
+            .select_related("column", "column__board")
+        )
         if board_id:
             qs = qs.filter(column__board_id=board_id)
 

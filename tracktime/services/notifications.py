@@ -281,7 +281,17 @@ def notify_card_deadline(*, user, card, kind: str) -> None:
       - warn_minus_1
       - due_minus_1
       - due_today
+
+    Cards marcados como entregue nunca recebem alertas de prazo.
     """
+    # Guard: card entregue → silencioso
+    if getattr(card, "is_delivered", False):
+        logger.info(
+            "notify: deadline skipped (card delivered) user_id=%s card_id=%s kind=%s",
+            getattr(user, "id", None), getattr(card, "id", None), kind,
+        )
+        return
+
     site_url = _safe_str(getattr(settings, "SITE_URL", "")) or ""
     snap = snapshot_card(card=card, site_url=site_url)
 
