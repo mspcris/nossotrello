@@ -709,6 +709,9 @@ def delete_board(request, board_id):
     Column.objects.filter(board=board, is_deleted=False).update(is_deleted=True, deleted_at=now)
     Card.objects.filter(column__board=board, is_deleted=False).update(is_deleted=True, deleted_at=now)
 
+    # Remove o quadro de todos os agrupamentos e favoritos
+    BoardGroupItem.objects.filter(board=board).delete()
+
     return HttpResponse("")
 
 

@@ -114,8 +114,8 @@
     hx-confirm="Excluir este quadro?"
     hx-on::after-request="
       if (event.detail && event.detail.successful) {
-        const el = this.closest('.board-card');
-        if (el) el.remove();
+        const bid = '{{ board.id }}';
+        document.querySelectorAll('.board-card[data-board-id=\'' + bid + '\']').forEach(el => el.remove());
       }
     "
     onclick="event.preventDefault(); event.stopPropagation();">
