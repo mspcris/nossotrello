@@ -70,15 +70,18 @@ def social_posts_panel(request, user_id: int):
     if not _can_see_social(request, target_user):
         raise Http404
 
-    posts = SocialPost.objects.filter(user=target_user).order_by("-created_at")[:30]
+    try:
+        posts = SocialPost.objects.filter(user=target_user).order_by("-created_at")[:30]
 
-    # Marca que o viewer viu os posts agora
-    if request.user != target_user and posts.exists():
-        SocialPostSeen.objects.update_or_create(
-            viewer=request.user,
-            target_user=target_user,
-            defaults={"last_seen_post_at": timezone.now()},
-        )
+        # Marca que o viewer viu os posts agora
+        if request.user != target_user and posts.exists():
+            SocialPostSeen.objects.update_or_create(
+                viewer=request.user,
+                target_user=target_user,
+                defaults={"last_seen_post_at": timezone.now()},
+            )
+    except Exception:
+        posts = []
 
     return render(request, "boards/social_panel.html", {
         "target_user": target_user,
