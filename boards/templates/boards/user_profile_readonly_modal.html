@@ -55,6 +55,10 @@
     <button type="button"
             class="rp-tab px-3 py-1.5 text-sm rounded-t border-b-2 border-transparent bg-white/30 hover:bg-white/50"
             data-tab="social"
+            hx-get="{% url 'boards:social_posts_panel' user_obj.id %}"
+            hx-target="#rp-panel-social"
+            hx-swap="innerHTML"
+            hx-trigger="click once"
             onclick="rpOpenTab('social', this)">
       Espaço Social
     </button>
@@ -83,11 +87,8 @@
     <div class="mt-4 text-xs opacity-70">Somente visualização.</div>
   </div>
 
-  {# ── Painel: Espaço Social (carregado via HTMX ao clicar) ── #}
-  <div id="rp-panel-social" class="hidden"
-       hx-get="{% url 'boards:social_posts_panel' user_obj.id %}"
-       hx-trigger="revealed"
-       hx-swap="innerHTML">
+  {# ── Painel: Espaço Social ── #}
+  <div id="rp-panel-social" style="display:none">
     <div class="sp-loading">Carregando…</div>
   </div>
 </div>
@@ -102,8 +103,8 @@
     btn.classList.add('border-blue-500', 'bg-white/60', 'font-semibold');
     btn.classList.remove('border-transparent', 'bg-white/30');
 
-    document.getElementById('rp-panel-info').classList.toggle('hidden', tab !== 'info');
-    document.getElementById('rp-panel-social').classList.toggle('hidden', tab !== 'social');
+    document.getElementById('rp-panel-info').style.display = tab === 'info' ? '' : 'none';
+    document.getElementById('rp-panel-social').style.display = tab === 'social' ? '' : 'none';
 
     // dispara HTMX revealed ao mostrar painel pela primeira vez
     if (tab === 'social') {

@@ -91,6 +91,10 @@
           type="button"
           data-um-tab="social"
           class="px-3 py-1 rounded border bg-white/70 hover:bg-white {% if active_tab == 'social' %} font-semibold {% endif %}"
+          hx-get="{% url 'boards:social_posts_panel' request.user.id %}"
+          hx-target="#um-panel-social"
+          hx-swap="innerHTML"
+          hx-trigger="click once"
           onclick="window.umOpenTab('social')"
         >Espaço Social</button>
       </div>
@@ -438,11 +442,8 @@
         </div>
 
         <!-- ===================== ESPAÇO SOCIAL ===================== -->
-        <div id=”um-panel-social” style=”{% if active_tab != 'social' %}display:none{% endif %}”
-             hx-get=”{% url 'boards:social_posts_panel' request.user.id %}”
-             hx-trigger=”umSocialRevealed”
-             hx-swap=”innerHTML”>
-          <div class=”sp-loading”>Carregando…</div>
+        <div id=”um-panel-social” style=”{% if active_tab != 'social' %}display:none{% endif %}”>
+          <div class=”sp-loading”>Clique na aba para carregar…</div>
         </div>
 
       </div> <!-- /um-panels -->
@@ -554,15 +555,6 @@
     const aside = document.getElementById('um-right-el');
     if (divider) divider.style.display = tab === 'social' ? 'none' : '';
     if (aside) aside.style.display = tab === 'social' ? 'none' : '';
-
-    // Dispara carregamento HTMX do painel social na primeira vez
-    if (tab === 'social' && !window._umSocialLoaded) {
-      window._umSocialLoaded = true;
-      const socialPanel = document.getElementById('um-panel-social');
-      if (socialPanel && typeof htmx !== 'undefined') {
-        htmx.trigger(socialPanel, 'umSocialRevealed');
-      }
-    }
   };
 </script>
 
