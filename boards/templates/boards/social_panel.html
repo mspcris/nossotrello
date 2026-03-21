@@ -55,7 +55,7 @@
         Enviar
       </button>
     </div>
-    <div id="sp-mood-response" class="sp-mood-response hidden"></div>
+    <div id="sp-mood-response" class="sp-mood-response sp-hidden"></div>
   </div>
 
   {# ── Chatbot Tuca ── #}
@@ -64,7 +64,7 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
       Conversar com Tuca (coach de bem-estar)
     </button>
-    <div id="sp-chat-box" class="sp-chat-box hidden">
+    <div id="sp-chat-box" class="sp-chat-box sp-hidden">
       <div id="sp-chat-messages" class="sp-chat-messages">
         <div class="sp-chat-msg sp-chat-assistant">
           Olá! Sou o Tuca 🌱 Estou aqui para te ajudar com motivação e bem-estar. O que está na sua mente?
@@ -148,7 +148,7 @@ window.spSendMood = async function() {
   btn.disabled = true;
   btn.textContent = '…';
   resp.textContent = 'Analisando…';
-  resp.classList.remove('hidden');
+  resp.classList.remove('sp-hidden');
 
   const fd = new FormData();
   fd.append('text', text);
@@ -169,7 +169,7 @@ window.spSendMood = async function() {
 window._spChatHistory = [];
 window.spToggleChat = function() {
   const box = document.getElementById('sp-chat-box');
-  if (box) box.classList.toggle('hidden');
+  if (box) box.classList.toggle('sp-hidden');
 };
 window.spSendChat = async function() {
   const input = document.getElementById('sp-chat-input');

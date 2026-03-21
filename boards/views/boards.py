@@ -45,8 +45,6 @@ from ..models import (
     BoardAccessRequest,
     CardSeen,
     CardFollow,
-    SocialPost,
-    SocialPostSeen,
 )
 
 from .helpers import (
@@ -452,37 +450,6 @@ def board_detail(request, board_id):
             u._state.fields_cache["profile"] = SimpleNamespace(avatar=None)
 
         board_members.append(u)
-
-    # ── Aura social: detecta membros com posts novos não vistos ──
-    social_aura_ids = set()
-    try:
-        member_ids = [u.id for u in board_members if u.id != request.user.id]
-        if member_ids:
-            seen_map = {
-                s.target_user_id: s.last_seen_post_at
-                for s in SocialPostSeen.objects.filter(
-                    viewer=request.user,
-                    target_user_id__in=member_ids,
-                )
-            }
-            latest_posts = (
-                SocialPost.objects
-                .filter(user_id__in=member_ids)
-                .values("user_id")
-                .annotate(latest=Max("created_at"))
-            )
-            for row in latest_posts:
-                uid = row["user_id"]
-                latest = row["latest"]
-                last_seen = seen_map.get(uid)
-                if last_seen is None or latest > last_seen:
-                    social_aura_ids.add(uid)
-    except Exception:
-        pass  # tabelas ainda não migradas ou outro erro — não quebra o board
-
-    # Anota cada membro com flag de aura
-    for u in board_members:
-        u._social_aura = u.id in social_aura_ids
 
     pending_access_requests = []
     if can_share_board:
