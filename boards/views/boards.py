@@ -454,31 +454,31 @@ def board_detail(request, board_id):
         board_members.append(u)
 
     # ── Aura social: detecta membros com posts novos não vistos ──
-    member_ids = [u.id for u in board_members if u.id != request.user.id]
     social_aura_ids = set()
-    if member_ids:
-        # Para cada membro, verifica se tem post mais recente que o último visto pelo request.user
-        seen_map = {
-            s.target_user_id: s.last_seen_post_at
-            for s in SocialPostSeen.objects.filter(
-                viewer=request.user,
-                target_user_id__in=member_ids,
+    try:
+        member_ids = [u.id for u in board_members if u.id != request.user.id]
+        if member_ids:
+            seen_map = {
+                s.target_user_id: s.last_seen_post_at
+                for s in SocialPostSeen.objects.filter(
+                    viewer=request.user,
+                    target_user_id__in=member_ids,
+                )
+            }
+            latest_posts = (
+                SocialPost.objects
+                .filter(user_id__in=member_ids)
+                .values("user_id")
+                .annotate(latest=Max("created_at"))
             )
-        }
-        # Pega o post mais recente de cada membro
-        from django.db.models import Max as _Max
-        latest_posts = (
-            SocialPost.objects
-            .filter(user_id__in=member_ids)
-            .values("user_id")
-            .annotate(latest=_Max("created_at"))
-        )
-        for row in latest_posts:
-            uid = row["user_id"]
-            latest = row["latest"]
-            last_seen = seen_map.get(uid)
-            if last_seen is None or latest > last_seen:
-                social_aura_ids.add(uid)
+            for row in latest_posts:
+                uid = row["user_id"]
+                latest = row["latest"]
+                last_seen = seen_map.get(uid)
+                if last_seen is None or latest > last_seen:
+                    social_aura_ids.add(uid)
+    except Exception:
+        pass  # tabelas ainda não migradas ou outro erro — não quebra o board
 
     # Anota cada membro com flag de aura
     for u in board_members:
