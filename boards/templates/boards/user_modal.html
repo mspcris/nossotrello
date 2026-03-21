@@ -86,6 +86,13 @@
           class="px-3 py-1 rounded border bg-white/70 hover:bg-white {% if active_tab == 'avatar' %} font-semibold {% endif %}"
           onclick="window.umOpenTab('avatar')"
         >Foto</button>
+
+        <button
+          type="button"
+          data-um-tab="social"
+          class="px-3 py-1 rounded border bg-white/70 hover:bg-white {% if active_tab == 'social' %} font-semibold {% endif %}"
+          onclick="window.umOpenTab('social')"
+        >Espaço Social</button>
       </div>
 
       <!-- Alerts -->
@@ -430,21 +437,29 @@
           </form>
         </div>
 
+        <!-- ===================== ESPAÇO SOCIAL ===================== -->
+        <div id=”um-panel-social” style=”{% if active_tab != 'social' %}display:none{% endif %}”
+             hx-get=”{% url 'boards:social_posts_panel' request.user.id %}”
+             hx-trigger=”umSocialRevealed”
+             hx-swap=”innerHTML”>
+          <div class=”sp-loading”>Carregando…</div>
+        </div>
+
       </div> <!-- /um-panels -->
 
     </div> <!-- /um-left -->
 
-    <!-- Divider -->
-    <div class="um-divider" aria-hidden="true"></div>
+    <!-- Divider (oculto no painel social para dar mais espaço) -->
+    <div class=”um-divider” id=”um-divider-el” aria-hidden=”true”></div>
 
     <!-- =========================================================
-         RIGHT (rede social futura)
+         RIGHT
          ========================================================= -->
-    <aside class="um-right">
-      <div class="um-social">
-        <div class="um-social-title">Espaço social</div>
-        <div class="um-social-sub">
-          Esta área será a “rede social” do usuário (visível para outros).
+    <aside class=”um-right” id=”um-right-el”>
+      <div class=”um-social”>
+        <div class=”um-social-title”>Espaço social</div>
+        <div class=”um-social-sub”>
+          Publique atualizações, fotos e compartilhe como você está. Outros membros dos seus quadros podem ver.
         </div>
       </div>
     </aside>
@@ -515,16 +530,39 @@
 </script>
 
 <script>
+  window._umSocialLoaded = false;
   window.umOpenTab = function(tab) {
     const panels = {
       profile: document.getElementById("um-panel-profile"),
       password: document.getElementById("um-panel-password"),
-      avatar: document.getElementById("um-panel-avatar")
+      avatar: document.getElementById("um-panel-avatar"),
+      social: document.getElementById("um-panel-social"),
     };
 
     Object.keys(panels).forEach((k) => {
       if (panels[k]) panels[k].style.display = (k === tab) ? "block" : "none";
     });
+
+    // Atualiza botões de tab
+    document.querySelectorAll('[data-um-tab]').forEach(function(btn){
+      const active = btn.dataset.umTab === tab;
+      btn.classList.toggle('font-semibold', active);
+    });
+
+    // Oculta aside e divider no tab social para dar mais espaço
+    const divider = document.getElementById('um-divider-el');
+    const aside = document.getElementById('um-right-el');
+    if (divider) divider.style.display = tab === 'social' ? 'none' : '';
+    if (aside) aside.style.display = tab === 'social' ? 'none' : '';
+
+    // Dispara carregamento HTMX do painel social na primeira vez
+    if (tab === 'social' && !window._umSocialLoaded) {
+      window._umSocialLoaded = true;
+      const socialPanel = document.getElementById('um-panel-social');
+      if (socialPanel && typeof htmx !== 'undefined') {
+        htmx.trigger(socialPanel, 'umSocialRevealed');
+      }
+    }
   };
 </script>
 

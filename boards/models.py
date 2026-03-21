@@ -744,4 +744,51 @@ class UserBoardPreference(models.Model):
     def __str__(self):
         return f"Prefs {self.user}"
 
+
+# ============================================================
+# SOCIAL (scrapbook / mood / chatbot)
+# ============================================================
+class SocialPost(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="social_posts",
+        on_delete=models.CASCADE,
+    )
+    text = models.TextField(blank=True, default="")
+    photo = models.ImageField(upload_to="social/", blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "-created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user} — {self.created_at:%Y-%m-%d}"
+
+
+class SocialPostSeen(models.Model):
+    """Rastreia quando viewer viu os posts de target_user pela última vez (para o efeito de aura)."""
+    viewer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="social_seen",
+        on_delete=models.CASCADE,
+    )
+    target_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="social_seen_by",
+        on_delete=models.CASCADE,
+    )
+    last_seen_post_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ("viewer", "target_user")
+        indexes = [
+            models.Index(fields=["viewer", "target_user"]),
+        ]
+
+    def __str__(self):
+        return f"{self.viewer} viu posts de {self.target_user} até {self.last_seen_post_at}"
+
 # END boards/models.py

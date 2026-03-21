@@ -286,6 +286,12 @@ SITE_URL = (os.getenv("SITE_URL") or "http://localhost:8000").strip().rstrip("/"
 
 
 # ============================================================
+# GROQ AI API (mood check-in / chatbot motivacional)
+# ============================================================
+GROQ_API_KEY = (os.getenv("GROQ_API_KEY") or "").strip()
+
+
+# ============================================================
 # CACHE (Redis) — necessário para fluxos multi-instância (homolog/prod)
 # ============================================================
 

@@ -1,11 +1,18 @@
 {# templates/boards/user_profile_readonly_modal.html #}
+{% load static %}
 
 <div class="p-4 sm:p-6">
+  {# ── Cabeçalho ── #}
   <div class="flex items-start gap-4">
     <div class="shrink-0">
       {% if profile.avatar %}
         <img
           src="{{ profile.avatar.url }}"
+          alt="{{ display_name|default:user_obj.email }}"
+          class="w-20 h-20 rounded-2xl object-cover border border-white/30 shadow-sm">
+      {% elif profile.avatar_choice %}
+        <img
+          src="{% static 'images/avatar/' %}{{ profile.avatar_choice }}"
           alt="{{ display_name|default:user_obj.email }}"
           class="w-20 h-20 rounded-2xl object-cover border border-white/30 shadow-sm">
       {% else %}
@@ -19,8 +26,6 @@
       <div class="text-2xl font-extrabold leading-tight">
         {{ display_name|default:user_obj.email }}
       </div>
-
-      
       <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm opacity-90">
         {% if profile.handle %}
           <span class="font-semibold">@{{ profile.handle }}</span>
@@ -29,7 +34,6 @@
           <span class="opacity-80">{{ user_obj.email }}</span>
         {% endif %}
       </div>
-
       {% if profile.handle %}
         <div class="mt-2">
           <a class="text-sm underline underline-offset-2" href="{% url 'boards:public_profile' profile.handle %}">
@@ -40,29 +44,74 @@
     </div>
   </div>
 
-  <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-    <div class="bg-white/70 border border-white/25 rounded-xl p-4">
-      <div class="text-xs font-semibold opacity-70">Posto</div>
-      <div class="mt-1 text-sm font-semibold">{{ profile.posto|default:"-" }}</div>
-    </div>
-
-    <div class="bg-white/70 border border-white/25 rounded-xl p-4">
-      <div class="text-xs font-semibold opacity-70">Setor</div>
-      <div class="mt-1 text-sm font-semibold">{{ profile.setor|default:"-" }}</div>
-    </div>
-
-    <div class="bg-white/70 border border-white/25 rounded-xl p-4">
-      <div class="text-xs font-semibold opacity-70">Ramal</div>
-      <div class="mt-1 text-sm font-semibold">{{ profile.ramal|default:"-" }}</div>
-    </div>
-
-    <div class="bg-white/70 border border-white/25 rounded-xl p-4">
-      <div class="text-xs font-semibold opacity-70">Telefone</div>
-      <div class="mt-1 text-sm font-semibold">{{ profile.telefone|default:"-" }}</div>
-    </div>
+  {# ── Tabs ── #}
+  <div class="flex gap-2 mt-5 mb-4 border-b border-white/30">
+    <button type="button"
+            class="rp-tab px-3 py-1.5 text-sm font-semibold rounded-t border-b-2 border-blue-500 bg-white/60"
+            data-tab="info"
+            onclick="rpOpenTab('info', this)">
+      Informações
+    </button>
+    <button type="button"
+            class="rp-tab px-3 py-1.5 text-sm rounded-t border-b-2 border-transparent bg-white/30 hover:bg-white/50"
+            data-tab="social"
+            onclick="rpOpenTab('social', this)">
+      Espaço Social
+    </button>
   </div>
 
-  <div class="mt-6 text-xs opacity-70">
-    Somente visualização.
+  {# ── Painel: Informações ── #}
+  <div id="rp-panel-info">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div class="bg-white/70 border border-white/25 rounded-xl p-4">
+        <div class="text-xs font-semibold opacity-70">Posto</div>
+        <div class="mt-1 text-sm font-semibold">{{ profile.posto|default:"-" }}</div>
+      </div>
+      <div class="bg-white/70 border border-white/25 rounded-xl p-4">
+        <div class="text-xs font-semibold opacity-70">Setor</div>
+        <div class="mt-1 text-sm font-semibold">{{ profile.setor|default:"-" }}</div>
+      </div>
+      <div class="bg-white/70 border border-white/25 rounded-xl p-4">
+        <div class="text-xs font-semibold opacity-70">Ramal</div>
+        <div class="mt-1 text-sm font-semibold">{{ profile.ramal|default:"-" }}</div>
+      </div>
+      <div class="bg-white/70 border border-white/25 rounded-xl p-4">
+        <div class="text-xs font-semibold opacity-70">Telefone</div>
+        <div class="mt-1 text-sm font-semibold">{{ profile.telefone|default:"-" }}</div>
+      </div>
+    </div>
+    <div class="mt-4 text-xs opacity-70">Somente visualização.</div>
+  </div>
+
+  {# ── Painel: Espaço Social (carregado via HTMX ao clicar) ── #}
+  <div id="rp-panel-social" class="hidden"
+       hx-get="{% url 'boards:social_posts_panel' user_obj.id %}"
+       hx-trigger="revealed"
+       hx-swap="innerHTML">
+    <div class="sp-loading">Carregando…</div>
   </div>
 </div>
+
+<script>
+(function(){
+  window.rpOpenTab = function(tab, btn) {
+    document.querySelectorAll('.rp-tab').forEach(function(b){
+      b.classList.remove('border-blue-500', 'bg-white/60', 'font-semibold');
+      b.classList.add('border-transparent', 'bg-white/30');
+    });
+    btn.classList.add('border-blue-500', 'bg-white/60', 'font-semibold');
+    btn.classList.remove('border-transparent', 'bg-white/30');
+
+    document.getElementById('rp-panel-info').classList.toggle('hidden', tab !== 'info');
+    document.getElementById('rp-panel-social').classList.toggle('hidden', tab !== 'social');
+
+    // dispara HTMX revealed ao mostrar painel pela primeira vez
+    if (tab === 'social') {
+      const panel = document.getElementById('rp-panel-social');
+      if (panel && typeof htmx !== 'undefined') {
+        htmx.trigger(panel, 'revealed');
+      }
+    }
+  };
+})();
+</script>

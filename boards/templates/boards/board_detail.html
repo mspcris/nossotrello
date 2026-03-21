@@ -406,8 +406,8 @@
     {% with p=member.profile %}
       <button
         type="button"
-        class="board-member-avatar"
-        title="{{ p.display_name|default:member.get_full_name|default:member.email }}"
+        class="board-member-avatar{% if member._social_aura %} has-new-social{% endif %}"
+        title="{{ p.display_name|default:member.get_full_name|default:member.email }}{% if member._social_aura %} · tem novidades!{% endif %}"
         aria-label="Ver perfil de {{ p.display_name|default:member.get_full_name|default:member.email }}"
         data-user-id="{{ member.id }}"
         data-display-name="{{ p.display_name|default:member.get_full_name|default:member.email }}"
@@ -477,8 +477,9 @@
           {% if member.id != request.user.id %}
           {% with p=member.profile %}
             <button type="button"
-                    class="board-member-avatar"
+                    class="board-member-avatar{% if member._social_aura %} has-new-social{% endif %}"
                     onclick="openReadonlyUserProfile({{ member.id }})"
+                    title="{{ p.display_name|default:member.get_full_name|default:member.email }}{% if member._social_aura %} · tem novidades!{% endif %}"
                     aria-label="Ver perfil">
               {% if p and p.avatar %}
                 <img src="{{ p.avatar.url }}" alt="" loading="lazy">

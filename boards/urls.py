@@ -100,6 +100,14 @@ from .views import cards_state as cards_state_views
 
 from boards.views.column_follow import toggle_column_follow
 
+from boards.views.social import (
+    social_posts_panel,
+    social_post_create,
+    social_post_delete,
+    mood_checkin,
+    social_chatbot_message,
+)
+
 
 app_name = "boards"
 
@@ -113,6 +121,15 @@ urlpatterns = [
     # PERFIL PÚBLICO (rota curta por handle)
     # ============================================================
     path("u/<str:handle>/", public_profile, name="public_profile"),
+
+    # ============================================================
+    # SOCIAL (scrapbook / mood / chatbot)
+    # ============================================================
+    path("users/<int:user_id>/social/", social_posts_panel, name="social_posts_panel"),
+    path("social/post/create/", social_post_create, name="social_post_create"),
+    path("social/post/<int:post_id>/delete/", social_post_delete, name="social_post_delete"),
+    path("social/mood/", mood_checkin, name="mood_checkin"),
+    path("social/chat/", social_chatbot_message, name="social_chatbot_message"),
 
     # ============================================================
     # AUTH / CONTAS (login/logout/primeiro login/recuperação senha)
