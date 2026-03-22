@@ -1,3 +1,4 @@
+/* columns.css */
 /* Cores reais */
 :root {
     --gray-color: #e5e7eb;
@@ -28,10 +29,13 @@
 .slate-column-bg   { background: rgba(203, 213, 225, 0.45); }
 
 /* Header colorido */
-.column-header {
-    background: rgba(255, 255, 255, 0.55);
-    backdrop-filter: blur(6px);
+/* Header: NÃO cria um “painel” diferente — usa o mesmo glass da coluna */
+.column-header{
+  background: transparent !important;     /* remove o painel próprio */
+  backdrop-filter: none !important;       /* evita blur diferente */
+  border-bottom: 1px solid rgba(255,255,255,0.14);
 }
+
 
 /* ============================================================
    DARK MODE OVERRIDES (quando <html class="dark">)
@@ -50,13 +54,244 @@ html.dark .teal-column-bg  { background: rgba(20, 184, 166, 0.14) !important; }
 html.dark .slate-column-bg { background: rgba(51, 65, 85, 0.35) !important; }
 
 /* Header das colunas */
-html.dark .column-header {
-    background: rgba(0, 0, 0, 0.45) !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+html.dark .column-header{
+  background: transparent !important;
+  backdrop-filter: none !important;
+  border-bottom: 1px solid rgba(255,255,255,0.12) !important;
 }
+
 
 /* Texto dentro do header (garantia contra classes Tailwind/hardcode) */
 html.dark .column-header,
 html.dark .column-header * {
     color: rgba(241, 245, 249, 0.95) !important;
 }
+
+/* Boing: micro feedback de layout */
+@keyframes boingDown {
+  0%   { transform: translateY(-6px); }
+  60%  { transform: translateY(3px); }
+  100% { transform: translateY(0); }
+}
+
+@keyframes boingUp {
+  0%   { transform: translateY(6px); }
+  60%  { transform: translateY(-3px); }
+  100% { transform: translateY(0); }
+}
+
+[data-column-id].boing-top {
+  animation: boingDown 240ms ease-out;
+}
+
+[data-column-id].boing-bottom {
+  animation: boingUp 240ms ease-out;
+}
+
+
+@media (max-width: 768px) {
+  .board-column {
+    min-width: 48vw;
+  }
+}
+
+/* =========================================================
+   COLUNA AGRUPADORA
+   ========================================================= */
+
+.column-item[data-aggregator="1"] {
+  background: linear-gradient(
+    to bottom,
+    rgba(255,255,255,0.85),
+    rgba(255,255,255,0.65)
+  );
+}
+
+.column-item[data-aggregator="1"] .column-header {
+  padding-bottom: 12px;
+}
+
+.column-item[data-aggregator="1"] ul {
+  margin-top: 10px; /* 🔑 evita grudar no título */
+}
+
+/* Cards da coluna agrupadora */
+.column-item[data-aggregator="1"] li {
+  cursor: default;
+  user-select: none;
+}
+
+/* Conteúdo interno */
+.column-item[data-aggregator="1"] .aggregator-card {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+/* Número (contador) */
+.column-item[data-aggregator="1"] .aggregator-count {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #111;
+  min-width: 2.2ch; /* 00, 01, 16 */
+  text-align: right;
+}
+
+/* Nome da coluna */
+.column-item[data-aggregator="1"] .aggregator-name {
+  line-height: 1.25;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+
+
+/* =========================================================
+   MOBILE GRANDE: 2 colunas lado a lado no board
+   - ativa a partir de ~430px (ajuste fino)
+   ========================================================= */
+@media (min-width: 430px) and (max-width: 767px) {
+
+  /* container que segura as colunas deve permitir 2 "cards" */
+  .columns-container,
+  #columns,
+  .board-columns,
+  .columns {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+    align-items: start !important;
+  }
+
+  /* cada coluna não pode ter largura fixa gigante */
+  .column,
+  .board-column,
+  .column-wrapper {
+    width: auto !important;
+    min-width: 0 !important;
+  }
+
+  /* opcional: reduzir um pouco padding interno no mobile grande */
+  .column-header {
+    padding: 10px 10px !important;
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+/* =========================================================
+   FIX DEFINITIVO: header acompanha o raio do topo
+   (sem orelha / sem margin negativo)
+   ========================================================= */
+
+/* 1) container da coluna: garante clip */
+.column-item {
+  border-radius: 16px;
+  overflow: hidden;
+  padding: 0 !important;
+}
+
+/* 2) header: precisa ter o mesmo raio no topo */
+.column-item .column-header {
+  border-top-left-radius: 16px !important;
+  border-top-right-radius: 16px !important;
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+
+  margin: 0 !important;
+  /* padding do topo fica no header */
+  padding: 10px 12px !important;
+}
+
+/* 3) corpo/lista: padding só embaixo e laterais (não no topo) */
+.column-item .cards,
+.column-item .card-list,
+.column-item [data-card-list],
+.column-item ul {
+  box-sizing: border-box;
+  padding: 0 12px 12px 12px !important; /* topo zero */
+}
+
+
+/* =========================================================
+   LEGIBILIDADE: texto sempre legível sem “painel”
+   Estratégia:
+   1) texto com sombra (contra fundo claro/escuro)
+   2) scrim sutil no header (degradê transparente) para wallpapers
+   ========================================================= */
+
+/* Header sem painel, mas com scrim (não cria “orelha”) */
+.column-item .column-header{
+  background: linear-gradient(
+    to bottom,
+    rgba(0,0,0,0.22),
+    rgba(0,0,0,0.10),
+    rgba(0,0,0,0.00)
+  ) !important;
+
+  /* não mexe no blur do container */
+  backdrop-filter: none !important;
+}
+
+/* Texto do header: cor neutra + sombra dupla */
+.column-item .column-header,
+.column-item .column-header *{
+  color: rgba(255,255,255,0.92) !important;
+  text-shadow:
+    0 1px 2px rgba(0,0,0,0.55),
+    0 0 12px rgba(0,0,0,0.35);
+}
+
+/* Ícones/botões no header: ajuda a destacar no wallpaper */
+.column-item .column-header button,
+.column-item .column-header .btn,
+.column-item .column-header a{
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.45));
+}
+
+/* Dark mode: scrim um pouco mais leve (já é escuro) */
+html.dark .column-item .column-header{
+  background: linear-gradient(
+    to bottom,
+    rgba(0,0,0,0.18),
+    rgba(0,0,0,0.08),
+    rgba(0,0,0,0.00)
+  ) !important;
+}
+
+
+
+/* Olho do card */
+.card-follow-btn.is-following{
+  background: rgba(34,197,94,.85) !important; /* verde */
+  color: #fff !important;
+}
+
+/* Olho da coluna */
+.col-follow-btn.is-following{
+  background: rgba(34,197,94,.85) !important;
+  color: #fff !important;
+  border-color: rgba(34,197,94,.65) !important;
+}
+
+
+ /* Olho da coluna ativo (verde) */
+  [data-col-follow-btn].is-following {
+    background: rgba(16, 185, 129, 0.22);
+    border-color: rgba(16, 185, 129, 0.55);
+    color: rgb(5, 150, 105);
+  }

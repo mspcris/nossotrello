@@ -9,7 +9,8 @@ from django.conf import settings
 from django.core.mail import send_mail
 from django.urls import reverse
 
-from tracktime.services.pressticket import send_text_message, PressTicketError
+import threading
+from tracktime.services.evolution import send_text_message as evolution_send, EvolutionError
 
 import html
 import re
@@ -129,16 +130,6 @@ def _user_prefs(user) -> Tuple[bool, bool, str]:
     return allow_whatsapp, allow_email, phone
 
 
-def _pressticket_base_url() -> str:
-    base = _safe_str(getattr(settings, "PRESSTICKET_BASE_URL", ""))
-    base = base.rstrip("/")
-    if not base:
-        return ""
-    if base.endswith("/api/messages/send"):
-        return base
-    return base + "/api/messages/send"
-
-
 def send_whatsapp(*, user, phone: str, kind: str, message: str) -> None:
     allow_whatsapp, _, phone_cfg = _user_prefs(user)
 
@@ -154,51 +145,44 @@ def send_whatsapp(*, user, phone: str, kind: str, message: str) -> None:
     phone_raw = phone
     phone = re.sub(r"\D+", "", phone_raw)
 
+    if len(phone) in (10, 11):
+        phone = "55" + phone
+
     if len(phone) not in (12, 13):
         logger.info("notify: whatsapp skipped (invalid phone) user_id=%s kind=%s raw=%r digits=%r", user.id, kind, phone_raw, phone)
         return
 
-    token = _safe_str(getattr(settings, "PRESSTICKET_TOKEN", ""))
-    if not token:
-        logger.info("notify: whatsapp skipped (no token) user_id=%s kind=%s", user.id, kind)
+    base_url = _safe_str(getattr(settings, "EVOLUTION_BASE_URL", ""))
+    api_key = _safe_str(getattr(settings, "EVOLUTION_API_KEY", ""))
+    instance = _safe_str(getattr(settings, "EVOLUTION_INSTANCE", ""))
+
+    if not (base_url and api_key and instance):
+        logger.info("notify: whatsapp skipped (no evolution config) user_id=%s kind=%s", user.id, kind)
         return
 
-    user_id = int(getattr(settings, "PRESSTICKET_USER_ID", 0) or 0)
-    queue_id = int(getattr(settings, "PRESSTICKET_QUEUE_ID", 0) or 0)
-    whatsapp_id = int(getattr(settings, "PRESSTICKET_WHATSAPP_ID", 0) or 0)
+    number = phone
+    body = _safe_str(message)
+    uid = getattr(user, "id", None)
 
-    base_url = _pressticket_base_url()
+    logger.info("evolution: sending kind=%s number=%r instance=%r user_id=%s", kind, number, instance, uid)
 
-    logger.warning(
-        "pressticket: sending kind=%s number=%r base_url=%r user_id=%s queue_id=%s whatsapp_id=%s",
-        kind, phone, base_url, user_id, queue_id, whatsapp_id
-    )
+    def _send():
+        try:
+            evolution_send(
+                base_url=base_url,
+                api_key=api_key,
+                instance=instance,
+                number=number,
+                body=body,
+            )
+            logger.info("evolution: sent ok kind=%s user_id=%s", kind, uid)
+        except EvolutionError as e:
+            logger.warning("evolution: send failed (EvolutionError) user_id=%s kind=%s: %s", uid, kind, e)
+        except Exception as e:
+            logger.warning("evolution: send failed user_id=%s kind=%s: %s", uid, kind, e)
 
-    resp = send_text_message(
-        base_url=base_url,
-        token=token,
-        number=phone,
-        body=_safe_str(message),
-        user_id=user_id,
-        queue_id=queue_id,
-        whatsapp_id=whatsapp_id,
-    )
-
-    # A API do PressTicket parece responder sempre com "error", mas contém id/ack (você já viu isso).
-    try:
-        msg_id = (
-            (resp or {})
-            .get("error", {})
-            .get("_data", {})
-            .get("id", {})
-            .get("_serialized")
-        )
-        if msg_id:
-            logger.warning("pressticket: api ok msg_id=%r", msg_id)
-    except Exception:
-        pass
-
-    logger.warning("pressticket: sent ok kind=%s number=%r resp_keys=%s", kind, phone, list((resp or {}).keys())[:15])
+    t = threading.Thread(target=_send, daemon=True)
+    t.start()
 
 
 def send_email_notify(*, user, subject: str, body: str) -> None:
@@ -259,14 +243,9 @@ def notify_tracktime_extended(*, entry, request_user=None) -> None:
         f"Data Vencimento: {snap.due_date}\n"
     )
 
-    # WhatsApp: 2 mensagens (texto + link puro), padrão que você já adotou
-    try:
-        send_whatsapp(user=user, phone="", kind="extend_message", message=msg)
-        send_whatsapp(user=user, phone="", kind="extend_url", message=track_url)
-    except PressTicketError:
-        logger.exception("notify: whatsapp extend failed (PressTicketError) entry_id=%s", getattr(entry, "id", None))
-    except Exception:
-        logger.exception("notify: whatsapp extend failed (unexpected) entry_id=%s", getattr(entry, "id", None))
+    # WhatsApp: 2 mensagens (texto + link puro)
+    send_whatsapp(user=user, phone="", kind="extend_message", message=msg)
+    send_whatsapp(user=user, phone="", kind="extend_url", message=track_url)
 
     # Email: assunto + corpo + link
     subj = f"[NossoTrello] Track-time estendido (+1h) — {title}"
@@ -324,13 +303,8 @@ def notify_card_deadline(*, user, card, kind: str) -> None:
     )
 
     # WhatsApp: texto + link puro
-    try:
-        send_whatsapp(user=user, phone="", kind=f"card_{kind}_message", message=msg)
-        send_whatsapp(user=user, phone="", kind=f"card_{kind}_url", message=track_url)
-    except PressTicketError:
-        logger.exception("notify: whatsapp card deadline failed (PressTicketError) user_id=%s card_id=%s kind=%s", user.id, card.id, kind)
-    except Exception:
-        logger.exception("notify: whatsapp card deadline failed (unexpected) user_id=%s card_id=%s kind=%s", user.id, card.id, kind)
+    send_whatsapp(user=user, phone="", kind=f"card_{kind}_message", message=msg)
+    send_whatsapp(user=user, phone="", kind=f"card_{kind}_url", message=track_url)
 
     subj = f"[NossoTrello] {kind_label} — {title}"
     body = msg + "\nAbrir card (Track-time):\n" + track_url + "\n"

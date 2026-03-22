@@ -4,6 +4,7 @@ from __future__ import annotations
 import html
 import logging
 import re
+import threading
 from dataclasses import dataclass
 from typing import Iterable, Optional
 
@@ -14,7 +15,7 @@ from django.urls import reverse
 from django.utils.html import strip_tags
 
 from boards.models import BoardMembership, Mention, UserProfile, Card, CardFollow
-from tracktime.services.pressticket import send_text_message, PressTicketError
+from tracktime.services.evolution import send_text_message as evolution_send, EvolutionError
 
 from django.utils import timezone
 from django.db import transaction
@@ -220,37 +221,32 @@ def _safe_digits_phone(phone_raw: str) -> str:
 
 
 def send_whatsapp(*, user, phone_digits: str, body: str) -> None:
-    base_url = (getattr(settings, "PRESSTICKET_BASE_URL", "") or "").strip()
-    token = (getattr(settings, "PRESSTICKET_TOKEN", "") or "").strip()
-    user_id = int(getattr(settings, "PRESSTICKET_USER_ID", 0) or 0)
-    queue_id = int(getattr(settings, "PRESSTICKET_QUEUE_ID", 0) or 0)
-    whatsapp_id = int(getattr(settings, "PRESSTICKET_WHATSAPP_ID", 0) or 0)
+    base_url = (getattr(settings, "EVOLUTION_BASE_URL", "") or "").strip()
+    api_key = (getattr(settings, "EVOLUTION_API_KEY", "") or "").strip()
+    instance = (getattr(settings, "EVOLUTION_INSTANCE", "") or "").strip()
 
-    if not (base_url and token and user_id and queue_id and whatsapp_id):
-        logger.info("pressticket: skipped (missing config) user_id=%s", getattr(user, "id", None))
+    if not (base_url and api_key and instance):
+        logger.info("evolution: skipped (missing config) user_id=%s", getattr(user, "id", None))
         return
 
-    resp = send_text_message(
-        base_url=base_url,
-        token=token,
-        number=phone_digits,
-        body=body,
-        user_id=user_id,
-        queue_id=queue_id,
-        whatsapp_id=whatsapp_id,
-    )
+    user_id = getattr(user, "id", None)
 
-    try:
-        msg_id = (
-            (resp or {}).get("error", {})
-            .get("_data", {})
-            .get("id", {})
-            .get("_serialized", "")
-        )
-        if msg_id:
-            logger.info("pressticket: ok msg_id=%r user_id=%s", msg_id, getattr(user, "id", None))
-    except Exception:
-        pass
+    def _send():
+        try:
+            evolution_send(
+                base_url=base_url,
+                api_key=api_key,
+                instance=instance,
+                number=phone_digits,
+                body=body,
+            )
+        except EvolutionError as e:
+            logger.warning("evolution: send failed (EvolutionError) user_id=%s: %s", user_id, e)
+        except Exception as e:
+            logger.warning("evolution: send failed user_id=%s: %s", user_id, e)
+
+    t = threading.Thread(target=_send, daemon=True)
+    t.start()
 
 
 def send_email_notification(*, to_email: str, subject: str, body: str) -> None:
@@ -309,14 +305,9 @@ def notify_users_for_card(
         if getattr(prof, "notify_whatsapp", False):
             phone_digits = _safe_digits_phone(getattr(prof, "telefone", ""))
             if phone_digits:
-                try:
-                    send_whatsapp(user=u, phone_digits=phone_digits, body=message)
-                    if include_link_as_second_whatsapp_message:
-                        send_whatsapp(user=u, phone_digits=phone_digits, body=link)
-                except PressTicketError:
-                    logger.exception("pressticket: send failed (PressTicketError) user_id=%s card_id=%s", u.id, card.id)
-                except Exception:
-                    logger.exception("pressticket: send failed (unexpected) user_id=%s card_id=%s", u.id, card.id)
+                send_whatsapp(user=u, phone_digits=phone_digits, body=message)
+                if include_link_as_second_whatsapp_message:
+                    send_whatsapp(user=u, phone_digits=phone_digits, body=link)
 
         # Email
         if getattr(prof, "notify_email", False):

@@ -10,13 +10,11 @@ __pycache__/
 db.sqlite3
 db.sqlite3-journal
 
-# Arquivos de migração compilados
+# Migrações — não sobem para o git
+*/migrations/*.py
+!*/migrations/__init__.py
 */migrations/*.pyc
 */migrations/**/__pycache__/
-
-# Evitar migrações mal subidas (opcional corporativo)
-# Você pode descomentar se quiser:
-# */migrations/*.py
 
 
 # ============================================

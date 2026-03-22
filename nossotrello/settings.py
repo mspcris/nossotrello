@@ -261,6 +261,10 @@ PRESSTICKET_USER_ID = int(os.getenv("PRESSTICKET_USER_ID", "0") or 0)
 PRESSTICKET_QUEUE_ID = int(os.getenv("PRESSTICKET_QUEUE_ID", "0") or 0)
 PRESSTICKET_WHATSAPP_ID = int(os.getenv("PRESSTICKET_WHATSAPP_ID", "0") or 0)
 
+EVOLUTION_BASE_URL = os.getenv("EVOLUTION_BASE_URL", "").strip()
+EVOLUTION_API_KEY = os.getenv("EVOLUTION_API_KEY", "").strip()
+EVOLUTION_INSTANCE = os.getenv("EVOLUTION_INSTANCE", "").strip()
+
 
 
 # ============================================================

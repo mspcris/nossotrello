@@ -13,7 +13,8 @@ from .models import Project, ActivityType, TimeEntry
 from boards.models import Card, Board, CardLog
 import re
 from boards.models import UserProfile
-from tracktime.services.pressticket import send_text_message, PressTicketError
+import threading
+from tracktime.services.evolution import send_text_message as evolution_send, EvolutionError
 import logging
 from django.db import IntegrityError, transaction
 from django.db.models import Max, Sum
@@ -78,54 +79,26 @@ def _send_whatsapp_two_messages(*, number: str, message: str, url: str) -> None:
     message = (message or "").strip()
     url = (url or "").strip()
 
-    if not number or not getattr(settings, "PRESSTICKET_TOKEN", "").strip():
+    base_url = (getattr(settings, "EVOLUTION_BASE_URL", "") or "").strip()
+    api_key = (getattr(settings, "EVOLUTION_API_KEY", "") or "").strip()
+    instance = (getattr(settings, "EVOLUTION_INSTANCE", "") or "").strip()
+
+    if not number or not (base_url and api_key and instance):
         return
 
-    base_url = getattr(settings, "PRESSTICKET_BASE_URL", "https://api.atendimento.camim.com.br")
-    token = getattr(settings, "PRESSTICKET_TOKEN", "")
-    user_id = getattr(settings, "PRESSTICKET_USER_ID", 0)
-    queue_id = getattr(settings, "PRESSTICKET_QUEUE_ID", 0)
-    whatsapp_id = getattr(settings, "PRESSTICKET_WHATSAPP_ID", 0)
+    def _send(body):
+        try:
+            evolution_send(base_url=base_url, api_key=api_key, instance=instance, number=number, body=body)
+            logger.info("evolution: sent ok number=%r", number)
+        except EvolutionError as e:
+            logger.warning("evolution: send failed number=%r: %s", number, e)
+        except Exception as e:
+            logger.warning("evolution: send failed number=%r: %s", number, e)
 
-    # 1) comunicado
     if message:
-        logger.warning(
-            "pressticket: sending kind=message number=%r base_url=%r user_id=%s queue_id=%s whatsapp_id=%s",
-            number, base_url, user_id, queue_id, whatsapp_id
-        )
-        resp = send_text_message(
-            base_url=base_url,
-            token=token,
-            number=number,
-            body=message,
-            user_id=user_id,
-            queue_id=queue_id,
-            whatsapp_id=whatsapp_id,
-        )
-        logger.warning(
-            "pressticket: sent ok kind=message number=%r resp_keys=%s",
-            number, list((resp or {}).keys())[:15]
-        )
-
-    # 2) link puro (sem texto)
+        threading.Thread(target=_send, args=(message,), daemon=True).start()
     if url:
-        logger.warning(
-            "pressticket: sending kind=url number=%r base_url=%r user_id=%s queue_id=%s whatsapp_id=%s",
-            number, base_url, user_id, queue_id, whatsapp_id
-        )
-        resp = send_text_message(
-            base_url=base_url,
-            token=token,
-            number=number,
-            body=url,
-            user_id=user_id,
-            queue_id=queue_id,
-            whatsapp_id=whatsapp_id,
-        )
-        logger.warning(
-            "pressticket: sent ok kind=url number=%r resp_keys=%s",
-            number, list((resp or {}).keys())[:15]
-        )
+        threading.Thread(target=_send, args=(url,), daemon=True).start()
 
 
 def _get_or_create_activity_type_for_user(*, user, name: str) -> ActivityType:

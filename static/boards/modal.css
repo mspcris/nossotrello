@@ -1,0 +1,3079 @@
+/* =======================================================================
+   MODAL.CSS — CONSOLIDADO (SEM DUPLICIDADES)
+   Objetivo:
+   - Modal cabe em qualquer viewport
+   - Scroll interno único
+   - Conteúdo não vaza
+   - Temas sem concorrência (glass/dark)
+   - Blur proibido nos filhos (somente no ::before do root)
+   ======================================================================= */
+
+
+/* =======================================================================
+   [0] TOKENS DO MODAL (somente o que é do modal)
+   ======================================================================= */
+:root{
+  --modal-edge-gap: 10px;
+  --modal-radius: 16px;
+  --modal-pad-x: 20px;
+  --modal-pad-y: 18px;
+
+  /* vidro (aplicado SOMENTE no ::before do #card-modal-root.modal-glass) */
+  --glass-bg: rgba(255, 255, 255, 0.95);
+  --glass-blur: blur(12px) saturate(140%);
+
+  /* bordas/sombras */
+  --border-dark: rgba(255,255,255,0.14);
+  --shadow-thumb: rgba(0,0,0,0.25);
+
+  /* capa no modal */
+  --card-cover-modal-h: clamp(110px, 14vh, 180px);
+  --card-cover-bg: rgba(0,0,0,0.10);
+}
+
+
+/* =======================================================================
+   [1] VISIBILIDADE DO MODAL (GENIE É JS)
+   ======================================================================= */
+#modal{
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transition: opacity 160ms ease;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--modal-edge-gap);
+}
+
+#modal.modal-open{
+  opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
+}
+
+/* util */
+.is-hidden{ display: none !important; }
+
+
+/* =======================================================================
+   [2] MODAL — ARQUITETURA ROBUSTA (fullscreen estável)
+   ======================================================================= */
+#card-modal-root,
+#card-modal-root *{ box-sizing: border-box; }
+
+/* Root ocupa viewport; scroll único no body do modal */
+#card-modal-root.card-modal{
+  position: fixed !important;
+  inset: var(--modal-edge-gap) !important;
+
+  width: auto !important;
+  max-width: none !important;
+  height: auto !important;
+  max-height: none !important;
+  margin: 0 !important;
+
+  display: flex;
+  flex-direction: column;
+
+  min-width: 0;
+  min-height: 0;
+
+  border-radius: var(--modal-radius);
+  overflow: hidden;
+
+  isolation: isolate;
+
+  box-shadow:
+    0 18px 60px rgba(2, 6, 23, 0.22),
+    0 2px 10px rgba(2, 6, 23, 0.10);
+  border: 1px solid rgba(15, 23, 42, 0.10);
+}
+
+/* Cabeçalho (contenção) */
+#card-modal-root .card-aero-header{
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+  padding-right: 10px;
+}
+
+/* Scroll único */
+#modal-body.card-modal-scroll,
+#card-modal-root .card-modal-scroll{
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+
+  width: 100%;
+  max-width: 100%;
+
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  scrollbar-gutter: stable;
+  padding: var(--modal-pad-y) var(--modal-pad-x);
+  scroll-padding-bottom: 0; /* remove o “vazio” no fim */
+}
+
+#card-modal-root .card-modal-scroll::-webkit-scrollbar{ width: 10px; }
+#card-modal-root .card-modal-scroll::-webkit-scrollbar-thumb{
+  background: var(--shadow-thumb);
+  border-radius: 10px;
+}
+
+/* Contenção geral (somente no CM para não inflar telas antigas) */
+#card-modal-root #cm-root input,
+#card-modal-root #cm-root textarea,
+#card-modal-root #cm-root select,
+#card-modal-root #cm-root form,
+#card-modal-root #cm-root .card-tab-panel{
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+
+/* Quill contido */
+#card-modal-root #quill-editor,
+#card-modal-root #quill-editor-ativ,
+#card-modal-root .ql-container{
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+/* Toolbar: dropdown acima do resto */
+#card-modal-root .ql-toolbar{
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: visible !important;
+  position: relative;
+  z-index: 30;
+}
+#card-modal-root .ql-toolbar .ql-picker-options{ z-index: 9999; }
+
+#card-modal-root .ql-toolbar.ql-snow{
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 6px;
+  padding: 6px 8px !important;
+}
+#card-modal-root .ql-toolbar.ql-snow .ql-formats{ margin-right: 6px !important; }
+
+#card-modal-root .ql-editor,
+#card-modal-root .ql-editor *{
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Mídia contida */
+#card-modal-root img,
+#card-modal-root video,
+#card-modal-root iframe,
+#card-modal-root canvas{
+  max-width: 100% !important;
+  height: auto;
+}
+
+/* Atividade em 2 colunas */
+#card-modal-root .card-activity-layout{
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+  width: 100%;
+  min-width: 0;
+}
+#card-modal-root .card-activity-layout > *{
+  min-width: 0;
+  max-width: 100%;
+}
+/* Monitor retrato 1080px (ex: 1080×1920): layout compacto mas ainda lado a lado */
+@media (max-width: 1150px){
+  #card-modal-root .card-activity-layout{
+    gap: 8px;
+  }
+  #card-modal-root .card-modal-scroll{
+    padding: 10px 12px;
+  }
+  #card-modal-root .cm-topbar{
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+}
+
+/* Abaixo de 1024px: empilha em coluna única */
+@media (max-width: 1024px){
+  #card-modal-root .card-activity-layout{
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Checklist/histórico: overflow local quando necessário */
+#card-tab-check,
+#ativ-historico-panel{
+  overflow: auto;
+}
+
+
+/* =======================================================================
+   [3] THEME MODEL ÚNICO (root)
+   Padrão oficial: #card-modal-root.theme-glass | #card-modal-root.theme-dark
+   Compat: card-theme-white/aero/dark viram alias.
+   ======================================================================= */
+
+/* ALIAS */
+#card-modal-root.card-theme-white,
+#card-modal-root.card-theme-aero{
+  /* trata como glass */
+}
+#card-modal-root.card-theme-dark{
+  /* trata como dark */
+}
+
+/* GLASS (claro) */
+#card-modal-root.theme-glass,
+#card-modal-root.card-theme-white,
+#card-modal-root.card-theme-aero{
+  color: #0f172a !important;
+  --glass-bg: rgba(255,255,255,0.985);
+  --glass-blur: blur(10px) saturate(130%);
+}
+
+/* DARK */
+#card-modal-root.theme-dark,
+#card-modal-root.card-theme-dark{
+  color: rgba(241,245,249,0.95) !important;
+  --glass-bg: rgba(0,0,0,0.86);
+  --glass-blur: blur(12px) saturate(130%);
+  border: 1px solid rgba(255,255,255,0.12) !important;
+}
+
+/* Inputs no dark */
+#card-modal-root.theme-dark input,
+#card-modal-root.theme-dark textarea,
+#card-modal-root.theme-dark select,
+#card-modal-root.theme-dark .ql-container,
+#card-modal-root.theme-dark .ql-editor,
+#card-modal-root.card-theme-dark input,
+#card-modal-root.card-theme-dark textarea,
+#card-modal-root.card-theme-dark select,
+#card-modal-root.card-theme-dark .ql-container,
+#card-modal-root.card-theme-dark .ql-editor{
+  background: rgba(20,20,20,0.55) !important;
+  border: 1px solid rgba(255,255,255,0.14) !important;
+  color: rgba(241,245,249,0.95) !important;
+}
+
+#card-modal-root.theme-dark label,
+#card-modal-root.card-theme-dark label{
+  color: rgba(241,245,249,0.85) !important;
+}
+
+
+/* =======================================================================
+   [4] VIDRO (base) + FIX DEFINITIVO: BACKDROP-FILTER BLEED (Chromium)
+   - blur só no ::before
+   - filhos SEM blur (hard rule)
+   ======================================================================= */
+
+/* não aplicar blur no container */
+.modal-glass{
+  background: transparent !important;
+  border: 1px solid rgba(255, 255, 255, 0.40) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+#card-modal-root.modal-glass{
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--modal-radius);
+}
+
+#card-modal-root.modal-glass::before{
+  content: "";
+  position: absolute;
+  inset: 0;
+
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+}
+
+#card-modal-root.modal-glass > *{
+  position: relative;
+  z-index: 1;
+}
+
+
+
+/* =======================================================================
+   [5] SAVE BAR — sticky top
+   ======================================================================= */
+.card-savebar{
+  position: sticky;
+  top: 0;
+  z-index: 20;
+
+  padding: 6px 8px;
+  margin: 6px 0 8px 0;
+  border-radius: 10px;
+
+  background: rgba(255,255,255,0.82);
+  border: 1px solid rgba(0,0,0,0.10);
+}
+
+.card-savebar.hidden{ display: none !important; }
+
+#card-modal-root.theme-dark .card-savebar,
+#card-modal-root.card-theme-dark .card-savebar{
+  background: rgba(0,0,0,0.40);
+  border: 1px solid rgba(255,255,255,0.12);
+}
+
+#card-modal-root .card-savebar button{
+  padding: 6px 10px !important;
+  font-size: 0.92rem !important;
+}
+
+
+/* =======================================================================
+   [6] DOTS (troca de tema)
+   ======================================================================= */
+.theme-dot{
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.65);
+  cursor: pointer;
+  transition: 0.2s;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+}
+.theme-dot:hover{
+  transform: scale(1.15);
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.45);
+}
+
+
+/* =======================================================================
+   [7] MINI-ABAS ATIVIDADE (mantém modelo original)
+   ======================================================================= */
+#card-modal-root .ativ-subtab-wrap{ width: 100%; min-width: 0; }
+#card-modal-root .ativ-subtab-radio{
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+#card-modal-root .ativ-subtab-buttons{
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  margin-bottom: 12px;
+  width: 100%;
+  min-width: 0;
+}
+#card-modal-root .ativ-subtab-btn{
+  padding: 8px 16px;
+  background: rgba(255,255,255,0.25);
+  border-radius: 8px 8px 0 0;
+  cursor: pointer;
+  transition: 0.2s ease;
+  user-select: none;
+}
+#card-modal-root .ativ-subtab-btn:hover{ background: rgba(255,255,255,0.40); }
+#card-modal-root .ativ-subtab-views{ width: 100%; min-width: 0; }
+#card-modal-root .ativ-view{ display: none; width: 100%; min-width: 0; }
+
+#card-modal-root #ativ-tab-new:checked ~ .ativ-subtab-buttons label[for="ativ-tab-new"],
+#card-modal-root #ativ-tab-hist:checked ~ .ativ-subtab-buttons label[for="ativ-tab-hist"]{
+  background: rgba(255,255,255,0.60) !important;
+  border-bottom: 2px solid #444 !important;
+}
+#card-modal-root #ativ-tab-new:checked ~ .ativ-subtab-views .ativ-view-new{ display: block; }
+#card-modal-root #ativ-tab-hist:checked ~ .ativ-subtab-views .ativ-view-hist{ display: block; }
+
+
+/* =======================================================================
+   [8] ATIVIDADE — estilo compacto + legibilidade no dark
+   ======================================================================= */
+.activity-panel{
+  padding: 8px !important;
+  border-radius: 10px !important;
+  background: rgba(255, 255, 255, 0.55) !important;
+  border: 1px solid rgba(160, 160, 160, 0.25) !important;
+  overflow-y: auto !important;
+}
+
+.activity-item{
+  padding: 6px 10px !important;
+  border-radius: 8px !important;
+  background: rgba(255, 255, 255, 0.75) !important;
+  border: 1px solid rgba(200, 200, 200, 0.35) !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+}
+
+.activity-meta{
+  font-size: 0.70rem !important;
+  margin-bottom: 2px !important;
+  color: #555 !important;
+}
+
+.activity-content{
+  font-size: 0.80rem !important;
+  line-height: 1.25rem !important;
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.activity-item pre,
+.activity-item code{
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+  background: transparent !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+}
+
+#activity-panel-wrapper{
+  padding: 8px !important;
+  margin: 0 !important;
+  height: auto !important;
+  overflow-y: auto !important;
+}
+
+.activity-panel > *{
+  margin-top: 6px !important;
+  margin-bottom: 6px !important;
+}
+
+/* HOTFIX: atividade legível no modal dark */
+#card-modal-root.theme-dark .activity-panel,
+#card-modal-root.card-theme-dark .activity-panel{
+  background: rgba(0, 0, 0, 0.45) !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  color: rgba(241,245,249,0.95) !important;
+}
+#card-modal-root.theme-dark .activity-item,
+#card-modal-root.card-theme-dark .activity-item{
+  background: rgba(0, 0, 0, 0.60) !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  color: rgba(241,245,249,0.95) !important;
+}
+#card-modal-root.theme-dark .activity-meta,
+#card-modal-root.card-theme-dark .activity-meta{
+  color: rgba(226, 232, 240, 0.75) !important;
+}
+#card-modal-root.theme-dark .activity-content,
+#card-modal-root.card-theme-dark .activity-content{
+  color: rgba(241,245,249,0.95) !important;
+}
+/* se vier style inline de background branco */
+#card-modal-root.theme-dark .activity-panel [style*="background"],
+#card-modal-root.card-theme-dark .activity-panel [style*="background"]{
+  background: transparent !important;
+}
+
+
+/* =======================================================================
+   [9] FIX: <code>/<pre> legível no MODAL DARK
+   ======================================================================= */
+#card-modal-root.theme-dark :where(code, pre),
+#card-modal-root.card-theme-dark :where(code, pre){
+  color: rgba(241,245,249,0.95) !important;
+}
+
+/* inline code */
+#card-modal-root.theme-dark code,
+#card-modal-root.card-theme-dark code{
+  background: rgba(255,255,255,0.10) !important;
+  border: 1px solid rgba(255,255,255,0.14) !important;
+  border-radius: 6px;
+  padding: 0.12em 0.35em;
+}
+
+/* code block */
+#card-modal-root.theme-dark pre,
+#card-modal-root.card-theme-dark pre{
+  background: rgba(0,0,0,0.35) !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  border-radius: 10px;
+  padding: 10px 12px;
+  overflow-x: auto;
+}
+#card-modal-root.theme-dark pre code,
+#card-modal-root.card-theme-dark pre code{
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0;
+}
+
+
+/* =======================================================================
+   [10] CONTRASTE — FIX (robusto)
+   ======================================================================= */
+/* Caso CLARO: modal aberto e root não está em dark */
+html:not(.dark) #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-dark){
+  color: #111 !important;
+}
+html:not(.dark) #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-dark)
+:where(p,span,small,li,dt,dd,label,pre,code,h1,h2,h3,h4,h5,h6){
+  color: #111 !important;
+}
+html:not(.dark) #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-dark)
+:where(input,textarea,select,.ql-container,.ql-editor){
+  color: #111 !important;
+}
+html:not(.dark) #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-dark)
+:where(input,textarea)::placeholder{
+  color: rgba(0,0,0,0.55) !important;
+}
+
+/* Fallback DARK: se html.dark mas root não está em theme-dark */
+html.dark #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-dark){
+  color: rgba(241,245,249,0.95) !important;
+}
+html.dark #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-dark)
+:where(p,span,small,li,dt,dd,label,pre,code,h1,h2,h3,h4,h5,h6){
+  color: rgba(241,245,249,0.95) !important;
+}
+html.dark #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-dark)
+:where(input,textarea,select,.ql-container,.ql-editor){
+  color: rgba(241,245,249,0.95) !important;
+}
+html.dark #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-dark)
+:where(input,textarea)::placeholder{
+  color: rgba(226,232,240,0.55) !important;
+}
+
+
+/* =======================================================================
+   [11] REMOVER BARRA DE ABAS DO TOPO
+   ======================================================================= */
+#card-modal-root #card-tabs{ display: none !important; }
+/* compat */
+#card-modal-root.cm-mode #card-tabs{ display: none !important; }
+
+/* Opção B (remover header/capa) — manter comentado
+#card-modal-root .card-aero-header{ display: none !important; }
+*/
+
+
+/* =======================================================================
+   [12] CAPA/IMAGEM — MODAL
+   ======================================================================= */
+#card-modal-root .card-cover-wrap{
+  max-height: var(--card-cover-modal-h) !important;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  width: 100%;
+}
+#card-modal-root .card-cover-img{
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  background: var(--card-cover-bg) !important;
+  display: block;
+}
+#card-modal-root .card-cover-img:not(img){
+  background-size: contain !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-color: var(--card-cover-bg) !important;
+}
+#card-modal-root .card-cover-img{ cursor: zoom-in; }
+
+
+/* =======================================================================
+   [13] X DO MODAL — metalizado
+   ======================================================================= */
+#modal .modal-top-x{
+  position: relative;
+
+  width: auto;
+  height: auto;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+
+  padding: 8px 10px;
+
+  color: transparent !important;
+  font-size: 0 !important;
+  line-height: 0 !important;
+
+  cursor: pointer;
+  transition: transform .18s ease, filter .18s ease;
+  will-change: transform, filter;
+}
+#modal .modal-top-x::after{ content: none !important; }
+#modal .modal-top-x::before{
+  content: "✖";
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1;
+
+  background: linear-gradient(
+    115deg,
+    #ffffff 0%,
+    #9aa7ff 18%,
+    #ffffff 32%,
+    #ffb7f2 50%,
+    #ffffff 68%,
+    #a7f3ff 82%,
+    #ffffff 100%
+  );
+  background-size: 220% 220%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+
+  filter:
+    drop-shadow(0 1px 1px rgba(0,0,0,0.85))
+    drop-shadow(0 0 10px rgba(255,255,255,0.25));
+
+  animation: modalXMetal 2.4s linear infinite;
+}
+@keyframes modalXMetal{
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+#modal .modal-top-x:hover{
+  transform: scale(1.12);
+  filter:
+    drop-shadow(0 0 10px rgba(255,255,255,0.55))
+    drop-shadow(0 0 22px rgba(170,140,255,0.65))
+    drop-shadow(0 0 34px rgba(255,170,220,0.40));
+}
+#modal .modal-top-x:focus-visible{
+  outline: none;
+  filter:
+    drop-shadow(0 0 10px rgba(255,255,255,0.55))
+    drop-shadow(0 0 24px rgba(120,220,255,0.35));
+}
+
+
+/* =======================================================================
+   [14] NOVA ATIVIDADE — fechado por padrão (CM)
+   ======================================================================= */
+#cm-activity-composer{ display: none; }
+#cm-activity-gap{ display: none; }
+
+
+/* =======================================================================
+   [15] ETIQUETAS — UI (chips) no modal (CM)
+   ======================================================================= */
+#card-modal-root .cm-tag-catalog{ margin-top: 10px; }
+
+#card-modal-root .cm-tag-create{
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+#card-modal-root .cm-tag-create input{ flex: 1; }
+
+#card-modal-root .cm-tag-list{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+#card-modal-root .cm-tag-chip{
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.08);
+  border: 1px solid rgba(0,0,0,0.10);
+  cursor: pointer;
+  font-size: 0.92em;
+  line-height: 1.2;
+  position: relative;
+  user-select: none;
+}
+#card-modal-root .cm-tag-chip:hover{
+  background: rgba(0,0,0,0.13);
+}
+
+#card-modal-root .cm-tag-chip .cm-tag-remove{
+  display: none;
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #e11d48;
+  color: #fff;
+  font-size: 11px;
+  line-height: 16px;
+  text-align: center;
+  cursor: pointer;
+}
+#card-modal-root .cm-tag-list.delete-mode .cm-tag-remove{ display: block; }
+
+
+/* =======================================================================
+   [16] CM (card_modal_split.html) — INLINE (SEM SPLIT)
+   Tokens + UI base (sem mexer no layout split)
+   ======================================================================= */
+
+/* TOKENS (fonte única de verdade p/ CM) */
+#cm-root{
+  --cm-radius: 14px;
+  --cm-radius-sm: 10px;
+  --cm-pad: 14px;
+
+  /* LIGHT */
+  --cm-bg: rgba(255,255,255,0.58);
+  --cm-surface: rgba(255,255,255,0.62);
+  --cm-surface-2: rgba(255,255,255,0.52);
+
+  --cm-border: rgba(15,23,42,0.12);
+  --cm-border-2: rgba(15,23,42,0.08);
+  --cm-text: rgba(15,23,42,0.92);
+  --cm-muted: rgba(15,23,42,0.62);
+  --cm-placeholder: rgba(15,23,42,0.45);
+
+  --cm-link: #2563eb;
+  --cm-link-hover: #1d4ed8;
+
+  --cm-accent: rgb(37 99 235);
+  --cm-accent-2: rgba(37,99,235,0.12);
+  --cm-danger: rgb(220 38 38);
+
+  --cm-shadow: 0 10px 30px rgba(2,6,23,0.10);
+  --cm-shadow-sm: 0 6px 18px rgba(2,6,23,0.08);
+
+  --cm-focus: rgba(37,99,235,0.35);
+  --cm-ring: 0 0 0 3px rgba(37,99,235,0.22);
+
+  /* overlay de prazo */
+  --cm-term-rgb: 0,0,0;
+  --cm-term-opacity: 0;
+}
+
+/* DARK tokens */
+#card-modal-root.theme-dark #cm-root,
+#card-modal-root.card-theme-dark #cm-root,
+html.dark #cm-root{
+  --cm-bg: rgba(2,6,23,0.55);
+  --cm-surface: rgba(2,6,23,0.62);
+  --cm-surface-2: rgba(15,23,42,0.56);
+  --cm-border: rgba(255,255,255,0.14);
+  --cm-border-2: rgba(255,255,255,0.10);
+  --cm-text: rgba(241,245,249,0.94);
+  --cm-muted: rgba(226,232,240,0.72);
+  --cm-placeholder: rgba(226,232,240,0.52);
+  --cm-accent: rgb(96 165 250);
+  --cm-shadow: 0 14px 40px rgba(0,0,0,0.35);
+  --cm-shadow-sm: 0 10px 26px rgba(0,0,0,0.30);
+  --cm-ring: 0 0 0 3px rgba(59,130,246,0.25);
+
+  --cm-link: #93c5fd;
+  --cm-link-hover: #bfdbfe;
+
+  --cm-focus: rgba(147,197,253,0.35);
+}
+
+/* BASE */
+.cm-wrap{
+  padding: 16px;
+  width: 100%;
+  min-width: 0;
+  color: var(--cm-text) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+/* overlay do prazo */
+#cm-root::before{
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--cm-radius);
+  background: rgba(var(--cm-term-rgb), var(--cm-term-opacity));
+  pointer-events: none;
+  z-index: 0;
+}
+#cm-root > *{
+  position: relative;
+  z-index: 1;
+}
+
+/* cards/painéis */
+.cm-card{
+  border-radius: var(--cm-radius);
+  border: 1px solid var(--cm-border);
+  background: var(--cm-surface);
+  box-shadow: var(--cm-shadow-sm);
+  padding: var(--cm-pad);
+  color: var(--cm-text);
+}
+.cm-panel .cm-card + .cm-card{ margin-top: 14px; }
+.cm-muted{
+  font-size: 0.92em;
+  color: var(--cm-muted) !important;
+}
+
+/* FLOATBAR — footer fixo fora do scroll (filho de #card-modal-root via JS) */
+#card-modal-root .cm-floatbar{
+  flex-shrink: 0;
+  border-top: 1px solid rgba(15,23,42,0.14);
+  background: rgba(255,255,255,0.92);
+  padding: 10px 16px;
+}
+#card-modal-root.theme-dark .cm-floatbar,
+#card-modal-root.card-theme-dark .cm-floatbar{
+  border-top: 1px solid rgba(255,255,255,0.14);
+  background: rgba(10,18,40,0.92);
+}
+#card-modal-root .cm-floatbar-inner{
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+}
+
+/* TOPBAR / TABS */
+.cm-topbar{
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  border-radius: var(--cm-radius);
+  border: 1px solid var(--cm-border);
+  background: var(--cm-bg);
+  box-shadow: var(--cm-shadow);
+  padding: 10px;
+  margin-bottom: 8px;
+}
+
+.cm-bar{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+}
+
+.cm-tabs{
+  display:flex;
+  gap: 8px;
+  flex: 1;
+  overflow-x: auto;
+}
+
+.cm-tabbtn{
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 0.95em;
+  border: 1px solid var(--cm-border-2);
+  background: var(--cm-surface-2);
+  color: var(--cm-text);
+  cursor: pointer;
+  user-select: none;
+}
+.cm-tabbtn.is-active{
+  background: linear-gradient(180deg, rgba(37,99,235,0.16), rgba(37,99,235,0.10));
+  border-color: rgba(37,99,235,0.38);
+}
+
+/* PANELS */
+.cm-panel{ display: none; }
+.cm-panel.is-active{ display: block; }
+
+/* PRAZO — overlay final */
+#cm-root[data-term-notify="1"][data-term-status="ok"],
+#cm-root[data-term-notify="1"][data-term-status="warn"],
+#cm-root[data-term-notify="1"][data-term-status="overdue"]{
+  --cm-term-opacity: 0.12;
+}
+#cm-root:not([data-term-notify="1"]),
+#cm-root[data-term-notify="0"]{
+  --cm-term-opacity: 0;
+}
+
+#cm-root[data-term-status="ok"]{ --cm-term-rgb: 22, 163, 74; }
+#cm-root[data-term-status="warn"]{ --cm-term-rgb: 245, 158, 11; }
+#cm-root[data-term-status="overdue"]{ --cm-term-rgb: 220, 38, 38; }
+
+/* CM: desativar Salvar do topo */
+#cm-actions,
+#cm-save-btn{ display: none !important; }
+
+/* bolinha */
+.cm-color-dot{
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  display: inline-block;
+  background: transparent;
+  border: 1px solid var(--cm-border);
+}
+
+/* Inputs / foco */
+#card-modal-root #cm-root .cm-input,
+#card-modal-root #cm-root .cm-textarea,
+#card-modal-root #cm-root .cm-select{
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--cm-border);
+  background: var(--cm-surface-2);
+  color: var(--cm-text);
+  padding: 10px 12px;
+  outline: none;
+}
+/* padrão mais compacto */
+#card-modal-root #cm-root .cm-textarea{ min-height: 120px; }
+
+/* descrição (Quill) já controla altura pelo card; não precisa min-height aqui */
+
+#card-modal-root #cm-root .cm-input:focus,
+#card-modal-root #cm-root .cm-textarea:focus,
+#card-modal-root #cm-root .cm-select:focus{
+  box-shadow: 0 0 0 3px var(--cm-focus);
+  border-color: rgba(37,99,235,0.55);
+}
+
+/* Links */
+#card-modal-root #cm-root a{
+  color: var(--cm-link);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+#card-modal-root #cm-root a:hover{ color: var(--cm-link-hover); }
+
+/* Checklist: garante leitura */
+#card-modal-root #cm-root #checklist-list,
+#card-modal-root #cm-root #checklist-list *{
+  color: var(--cm-text);
+}
+#card-modal-root #cm-root #checklist-list input,
+#card-modal-root #cm-root #checklist-list textarea,
+#card-modal-root #cm-root #checklist-list select{
+  background: var(--cm-surface-2);
+  border-color: var(--cm-border);
+}
+
+/* Checklist: blindagem */
+#card-modal-root #cm-root .checklist-input{
+  color: var(--cm-text) !important;
+}
+#card-modal-root #cm-root .checklist-input::placeholder{
+  color: var(--cm-muted) !important;
+}
+
+/* CHECKLIST — layout robusto (GRID) */
+#card-modal-root #checklist-list,
+#card-modal-root .checklists-container,
+#card-modal-root .checklist-block,
+#card-modal-root .checklist-head{
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+#card-modal-root .checklist-items{
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+#card-modal-root .checklist-item-handle{
+  font-size: 14px;
+  width: 18px;
+  text-align: center;
+  line-height: 1;
+  user-select: none;
+}
+#card-modal-root .checklist-item input[type="checkbox"]{
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+}
+#card-modal-root .checklist-item-text{
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+}
+#card-modal-root .checklist-item-remove{
+  justify-self: end;
+  white-space: nowrap;
+}
+#card-modal-root .checklist-item.is-done{ opacity: 0.6; }
+#card-modal-root .checklist-item.is-done .checklist-item-text{ text-decoration: line-through; }
+#card-modal-root .checklist-item.is-done input[type="checkbox"]{ opacity: 1; }
+#card-modal-root .checklist-item{
+  display: grid;
+  grid-template-columns: 18px 16px minmax(0, 1fr) auto;
+  column-gap: 10px;
+  align-items: start;
+  padding: 6px 0;
+  width: 100%;
+  max-width: 100%;
+  transition: opacity .15s ease, background .15s ease;
+}
+
+/* Action dock (⋮) */
+#cm-action-dock{
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 999999;
+  pointer-events: auto;
+}
+#cm-action-dock .dock-wrap{ position: relative; }
+#cm-action-dock .dock-toggle{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.35);
+  background: rgba(0,0,0,0.45);
+  color: #fff;
+  line-height: 1;
+}
+#cm-dock-actions{
+  position: absolute;
+  right: 0;
+  bottom: 52px;
+  z-index: 999999;
+}
+
+/* Drag & drop de anexo no modal */
+#card-modal-root.cm-dragover #cm-root .cm-wrap{
+  outline: 2px dashed var(--cm-focus);
+  outline-offset: 6px;
+}
+
+/* QUILL — Nova Atividade */
+.cm-activity-quill{
+  border: 1px solid var(--cm-border);
+  border-radius: var(--cm-radius);
+  background: var(--cm-surface-2);
+  overflow: hidden;
+}
+.cm-activity-quill .ql-toolbar.ql-snow{
+  border: 0;
+  border-bottom: 1px solid var(--cm-border-2);
+  background: transparent;
+}
+.cm-activity-quill .ql-container.ql-snow{
+  border: 0;
+  background: transparent;
+}
+.cm-activity-quill .ql-editor{
+  min-height: 140px;
+  font-size: inherit;
+  line-height: inherit;
+  color: var(--cm-text);
+}
+.cm-activity-quill .ql-editor.ql-blank::before{
+  color: var(--cm-placeholder);
+}
+#cm-activity-editor{
+  min-height: 140px;
+  padding: 10px;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+/* Atividade (itens) — sem mexer no layout split */
+.cm-activity .cm-activity-sep{
+  height: 1px;
+  background: rgba(15,23,42,0.10);
+  margin: 12px 0;
+}
+#cm-activity-panel .cm-activity-list{
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+#cm-activity-panel .cm-activity-item{
+  border: 1px solid var(--cm-border);
+  background: var(--cm-surface);
+  border-radius: var(--cm-radius);
+  padding: 12px;
+  box-shadow: var(--cm-shadow-sm);
+}
+#cm-activity-panel .cm-activity-item .cm-activity-meta{
+  font-size: inherit;
+  line-height: inherit;
+  color: var(--cm-muted);
+  margin-bottom: 6px;
+}
+
+
+/* =======================================================================
+   [17] BACKDROP DO CORPO DO MODAL (leve, sem blur)
+   - blur interno é proibido (hard rule)
+   ======================================================================= */
+/* [17] BACKDROP DO CORPO DO MODAL (leve, sem blur) */
+
+/* LIGHT */
+#card-modal-root .modal-content,
+#modal .modal-content,
+#modal-body{
+  background: rgba(255,255,255,0.55);
+}
+
+/* DARK (override) */
+html.dark #modal-body,
+html.dark #modal .modal-content,
+#card-modal-root.theme-dark #modal-body,
+#card-modal-root.card-theme-dark #modal-body{
+  background: rgba(0,0,0,0.45) !important;
+}
+
+
+
+/* =======================================================================
+   [18] COMPACT MODE — 1366x768
+   ======================================================================= */
+@media (max-width: 1366px) and (max-height: 768px){
+  #card-modal-root{ font-size: 14px; }
+
+  #card-modal-root .card-aero-header{
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+  }
+
+  #card-modal-root .theme-dot{
+    width: 14px;
+    height: 14px;
+  }
+
+  #card-modal-root label{
+    font-size: 0.85rem !important;
+    margin-bottom: 4px !important;
+  }
+
+  #card-modal-root input,
+  #card-modal-root textarea,
+  #card-modal-root select{
+    padding: 6px 10px !important;
+    font-size: 0.90rem !important;
+  }
+
+  #card-modal-root .card-modal-scroll{ padding: 12px 14px; }
+
+  #card-modal-root #quill-editor .ql-editor{ min-height: 140px; }
+  #card-modal-root #quill-editor-ativ .ql-editor{ min-height: 110px; }
+}
+
+
+/* =======================================================================
+   [19] FULLSCREEN MOBILE (crítico de ordem)
+   ======================================================================= */
+@media (max-width: 767px){
+  #modal{
+    padding: 0 !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+  }
+
+  #card-modal-root{
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+  }
+
+  #modal-body{
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    overflow: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  html, body{ overflow-x: hidden !important; }
+  #modal, #modal *{ box-sizing: border-box; }
+}
+
+
+/* =======================================================================
+   [20] Z-INDEX / CLICK SAFETY (sem quebrar estado fechado)
+   ======================================================================= */
+#modal{
+  z-index: 99999 !important;
+}
+#card-modal-root,
+#modal-body{
+  pointer-events: auto !important;
+}
+
+
+
+
+/* =======================================================================
+   PRAZO — FAIXA SOMENTE NO TOPO DO MODAL (SEM PINTAR FUNDO)
+   Implementação robusta: inset box-shadow no #card-modal-root.card-modal
+   ======================================================================= */
+
+/* mata qualquer tentativa anterior de pseudo-elemento de faixa */
+#card-modal-root::before,
+#card-modal-root .card-aero-header::before{
+  content: none !important;
+}
+
+/* cor default (sem notificação) */
+#card-modal-root.card-modal{
+  --termbar: transparent;
+}
+
+/* define a cor via :has() olhando o estado do #cm-root */
+#card-modal-root.card-modal:has(#cm-root[data-term-notify="1"][data-term-status="ok"]){
+  --termbar: rgba(22, 163, 74, 0.90);
+}
+#card-modal-root.card-modal:has(#cm-root[data-term-notify="1"][data-term-status="warn"]){
+  --termbar: rgba(245, 158, 11, 0.92);
+}
+#card-modal-root.card-modal:has(#cm-root[data-term-notify="1"][data-term-status="overdue"]){
+  --termbar: rgba(220, 38, 38, 0.92);
+}
+
+/* aplica a faixa (10px) SEM alterar layout, SEM overlay */
+#card-modal-root.card-modal{
+  box-shadow:
+    inset 0 10px 0 var(--termbar),
+    0 18px 60px rgba(2, 6, 23, 0.22),
+    0 2px 10px rgba(2, 6, 23, 0.10) !important;
+}
+
+
+/* ============================================================
+   AAA — ATIVIDADE com fonte maior (sem mexer no resto)
+   - aumenta 1 step na Atividade
+   - respeita sm/md/lg (A/AA/AAA)
+   ============================================================ */
+
+/* 1) Definições específicas da Atividade */
+#card-modal-root{
+  --cm-aa-activity-font-sm: 14px; /* era 12 no geral */
+  --cm-aa-activity-font-md: 16px; /* era 14 no geral */
+  --cm-aa-activity-font-lg: 18px; /* AAA de verdade */
+  --cm-aa-activity-line: 1.60;
+
+  --cm-aa-activity-font: var(--cm-aa-activity-font-sm);
+}
+
+#card-modal-root[data-font="md"]{ --cm-aa-activity-font: var(--cm-aa-activity-font-md); }
+#card-modal-root[data-font="lg"]{ --cm-aa-activity-font: var(--cm-aa-activity-font-lg); }
+
+/* 2) Aplica na Atividade (conteúdo + editor) */
+#card-modal-root .cm-activity,
+#card-modal-root #cm-activity-panel,
+#card-modal-root #cm-activity-panel * ,
+#card-modal-root .cm-activity-content,
+#card-modal-root .cm-activity-content * ,
+#card-modal-root .cm-activity-quill,
+#card-modal-root .cm-activity-quill .ql-editor,
+#card-modal-root #cm-activity-editor,
+#card-modal-root #cm-activity-editor *{
+  font-size: var(--cm-aa-activity-font) !important;
+  line-height: var(--cm-aa-activity-line) !important;
+}
+
+/* 3) Garante que inline font-size do Quill não quebre o AAA */
+#card-modal-root .cm-activity-quill .ql-editor [style*="font-size"],
+#card-modal-root #cm-activity-editor .ql-editor [style*="font-size"]{
+  font-size: inherit !important;
+}
+
+
+
+
+/* ============================================================
+   BOTÕES DO MODAL — vidro fosco, retângulo arredondado,
+   hover/active claros (sem sair do padrão)
+   Alvos: Nova Atividade / Fechar / Salvar
+   ============================================================ */
+
+#card-modal-root{
+  --cm-btn-radius: 12px;
+  --cm-btn-pad-y: 10px;
+  --cm-btn-pad-x: 14px;
+
+  --cm-btn-bg: rgba(255,255,255,0.14);
+  --cm-btn-bg-hover: rgba(255,255,255,0.22);
+  --cm-btn-border: rgba(255,255,255,0.26);
+  --cm-btn-border-hover: rgba(255,255,255,0.40);
+
+  --cm-btn-text: rgba(15,23,42,0.92);
+  --cm-btn-shadow: 0 10px 22px rgba(2,6,23,0.14);
+  --cm-btn-shadow-hover: 0 14px 30px rgba(2,6,23,0.18);
+}
+
+/* Dark mode */
+#card-modal-root.theme-dark,
+#card-modal-root.card-theme-dark,
+html.dark #card-modal-root{
+  --cm-btn-bg: rgba(2,6,23,0.26);
+  --cm-btn-bg-hover: rgba(2,6,23,0.34);
+  --cm-btn-border: rgba(255,255,255,0.20);
+  --cm-btn-border-hover: rgba(255,255,255,0.34);
+  --cm-btn-text: rgba(241,245,249,0.94);
+  --cm-btn-shadow: 0 12px 26px rgba(0,0,0,0.28);
+  --cm-btn-shadow-hover: 0 16px 34px rgba(0,0,0,0.34);
+}
+
+/* Base: todos os cm-btn dentro do modal */
+#card-modal-root .cm-btn{
+  appearance: none;
+  border: 1px solid var(--cm-btn-border);
+  border-radius: var(--cm-btn-radius);
+  padding: var(--cm-btn-pad-y) var(--cm-btn-pad-x);
+  background: var(--cm-btn-bg);
+  color: var(--cm-btn-text);
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+
+  /* backdrop-filter: blur(14px); */
+  /* -webkit-backdrop-filter: blur(14px); */
+
+  box-shadow: var(--cm-btn-shadow);
+  transition: transform .08s ease, box-shadow .18s ease, background .18s ease, border-color .18s ease;
+}
+
+#card-modal-root .cm-btn:hover{
+  background: var(--cm-btn-bg-hover);
+  border-color: var(--cm-btn-border-hover);
+  box-shadow: var(--cm-btn-shadow-hover);
+}
+
+#card-modal-root .cm-btn:active{
+  transform: scale(.98);
+}
+
+#card-modal-root .cm-btn:focus-visible{
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.28), var(--cm-btn-shadow-hover);
+}
+
+/* Primary: manter “Salvar” destacado, mas ainda glass */
+#card-modal-root .cm-btn.primary{
+  background: linear-gradient(180deg, rgba(37,99,235,0.20), rgba(37,99,235,0.10));
+  border-color: rgba(37,99,235,0.40);
+}
+
+#card-modal-root .cm-btn.primary:hover{
+  background: linear-gradient(180deg, rgba(37,99,235,0.28), rgba(37,99,235,0.14));
+  border-color: rgba(37,99,235,0.55);
+}
+
+/* Alvos explícitos (garantia de cobertura) */
+#card-modal-root #cm-activity-toggle,
+#card-modal-root #cm-close-btn,
+#card-modal-root #cm-float-save-btn{
+  border-radius: var(--cm-btn-radius);
+}
+
+/* Se algum desses botões estiver "sem cara de botão" por reset externo */
+#card-modal-root #cm-activity-toggle,
+#card-modal-root #cm-close-btn,
+#card-modal-root #cm-float-save-btn{
+  text-decoration: none !important;
+}
+
+/* Disabled */
+#card-modal-root .cm-btn:disabled{
+  opacity: .55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+
+/* ============================================================
+   NOVA ATIVIDADE — estado único por .is-hidden (anti rerender)
+   ============================================================ */
+#cm-activity-composer,
+#cm-activity-gap{
+  display: block;
+}
+
+#cm-activity-composer.is-hidden,
+#cm-activity-gap.is-hidden{
+  display: none !important;
+}
+
+
+
+/* ============================================================
+   QUILL — DARK MODE: toolbar/ícones legíveis + painel consistente
+   Aplica tanto no editor principal quanto no Nova Atividade
+   ============================================================ */
+
+/* 1) Painel do Quill (toolbar + container) */
+#card-modal-root.theme-dark .ql-toolbar.ql-snow,
+#card-modal-root.card-theme-dark .ql-toolbar.ql-snow,
+#card-modal-root.theme-dark .ql-container.ql-snow,
+#card-modal-root.card-theme-dark .ql-container.ql-snow{
+  background: rgba(2,6,23,0.55) !important;
+  border-color: rgba(255,255,255,0.16) !important;
+}
+
+/* separador entre toolbar e editor */
+#card-modal-root.theme-dark .ql-toolbar.ql-snow,
+#card-modal-root.card-theme-dark .ql-toolbar.ql-snow{
+  border-bottom: 1px solid rgba(255,255,255,0.14) !important;
+}
+
+/* 2) Botões/ícones do Quill (stroke/fill/opacidade) */
+#card-modal-root.theme-dark .ql-snow .ql-stroke,
+#card-modal-root.card-theme-dark .ql-snow .ql-stroke{
+  stroke: rgba(241,245,249,0.92) !important;
+}
+
+#card-modal-root.theme-dark .ql-snow .ql-fill,
+#card-modal-root.card-theme-dark .ql-snow .ql-fill{
+  fill: rgba(241,245,249,0.92) !important;
+}
+
+#card-modal-root.theme-dark .ql-snow .ql-picker,
+#card-modal-root.card-theme-dark .ql-snow .ql-picker{
+  color: rgba(241,245,249,0.92) !important;
+}
+
+/* 3) Hover/active: destaque claro (sem estourar) */
+#card-modal-root.theme-dark .ql-snow.ql-toolbar button:hover,
+#card-modal-root.card-theme-dark .ql-snow.ql-toolbar button:hover,
+#card-modal-root.theme-dark .ql-snow.ql-toolbar button.ql-active,
+#card-modal-root.card-theme-dark .ql-snow.ql-toolbar button.ql-active{
+  background: rgba(255,255,255,0.10) !important;
+  border-radius: 8px;
+}
+
+/* 4) Picker (dropdown) no dark */
+#card-modal-root.theme-dark .ql-snow .ql-picker-options,
+#card-modal-root.card-theme-dark .ql-snow .ql-picker-options{
+  background: rgba(2,6,23,0.95) !important;
+  border: 1px solid rgba(255,255,255,0.14) !important;
+  color: rgba(241,245,249,0.92) !important;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.40) !important;
+}
+
+#card-modal-root.theme-dark .ql-snow .ql-picker-item,
+#card-modal-root.card-theme-dark .ql-snow .ql-picker-item{
+  color: rgba(241,245,249,0.92) !important;
+}
+
+/* 5) Texto do editor */
+#card-modal-root.theme-dark .ql-editor,
+#card-modal-root.card-theme-dark .ql-editor{
+  color: rgba(241,245,249,0.94) !important;
+}
+#card-modal-root.theme-dark .ql-editor.ql-blank::before,
+#card-modal-root.card-theme-dark .ql-editor.ql-blank::before{
+  color: rgba(226,232,240,0.55) !important;
+}
+
+
+/* ============================================================
+   QUILL (Descrição) — container arredondado igual Nova Atividade
+   ============================================================ */
+
+/* Aplica o mesmo "shell" no Quill fora do bloco .cm-activity-quill */
+#card-modal-root #cm-root .ql-toolbar.ql-snow{
+  border: 1px solid var(--cm-border) !important;
+  border-bottom: 1px solid var(--cm-border-2) !important;
+  border-top-left-radius: var(--cm-radius) !important;
+  border-top-right-radius: var(--cm-radius) !important;
+  background: var(--cm-surface-2) !important;
+}
+
+#card-modal-root #cm-root .ql-container.ql-snow{
+  border: 1px solid var(--cm-border) !important;
+  border-top: 0 !important;
+  border-bottom-left-radius: var(--cm-radius) !important;
+  border-bottom-right-radius: var(--cm-radius) !important;
+  background: var(--cm-surface-2) !important;
+  
+}
+
+/* Garante que o editor respeite o arredondado */
+#card-modal-root #cm-root .ql-editor{
+  border-bottom-left-radius: var(--cm-radius) !important;
+  border-bottom-right-radius: var(--cm-radius) !important;
+}
+
+/* Dark: mantém legível e consistente com o painel */
+#card-modal-root.theme-dark #cm-root .ql-toolbar.ql-snow,
+#card-modal-root.card-theme-dark #cm-root .ql-toolbar.ql-snow,
+#card-modal-root.theme-dark #cm-root .ql-container.ql-snow,
+#card-modal-root.card-theme-dark #cm-root .ql-container.ql-snow{
+  background: rgba(2,6,23,0.55) !important;
+  border-color: rgba(255,255,255,0.16) !important;
+}
+
+/* ============================================================
+   MODAL TOP — TÍTULO (breadcrumb) maior e sempre legível
+   Alvo real: #modal-breadcrumb (templates/base.html)
+   ============================================================ */
+
+#modal #modal-breadcrumb{
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  letter-spacing: .2px;
+  line-height: 1.15;
+
+  /* chip de contraste */
+  color: rgba(255,255,255,0.96) !important;
+  background: rgba(0,0,0,0.28) !important;
+  border: 1px solid rgba(255,255,255,0.14) !important;
+  border-radius: 999px !important;
+  padding: 4px 10px !important;
+
+  /* legibilidade em cima do blur */
+  text-shadow:
+    0 1px 2px rgba(0,0,0,0.90),
+    0 10px 24px rgba(0,0,0,0.35) !important;
+
+  /* mantém o truncate funcionando */
+  max-width: min(70vw, 820px);
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Dark: chip um pouco mais discreto, mantendo leitura */
+#modal.theme-dark #modal-breadcrumb,
+#modal.card-theme-dark #modal-breadcrumb,
+html.dark #modal #modal-breadcrumb{
+  background: rgba(0,0,0,0.20) !important;
+  border-color: rgba(255,255,255,0.10) !important;
+}
+
+/* telas menores */
+@media (max-width: 768px){
+  #modal #modal-breadcrumb{
+    font-size: 15px !important;
+    max-width: 62vw;
+  }
+}
+
+/* Aba Etiquetas */
+#cm-root #cm-tags-input,
+#cm-root #cm-tag-new {
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 12px;
+}
+
+#cm-root .cm-tag-create button,
+#cm-root .cm-btn {
+  border-radius: 12px;
+}
+
+
+/* ============================================================
+   ANEXOS – ampliar área de drag & drop (split modal)
+   ============================================================ */
+#cm-root [data-cm-panel="files"] .cm-input {
+  min-height: 96px;          /* ~2x o padrão */
+  display: flex;
+  align-items: center;
+}
+
+/* input[type=file] precisa parecer uma área dropável */
+#cm-root [data-cm-panel="files"] input[type="file"].cm-input {
+  padding: 24px;
+  cursor: pointer;
+}
+
+/* Descrição acompanha a altura para manter harmonia visual */
+#cm-root [data-cm-panel="files"] #attachment-desc {
+  resize: vertical;          /* opcional, UX friendly */
+}
+
+/* 🔒 A topbar NÃO deve capturar cliques fora dos botões */
+.cm-topbar {
+  pointer-events: none;
+}
+
+/* 🔓 Mas os botões da topbar continuam funcionando */
+.cm-topbar * {
+  pointer-events: auto;
+}
+
+/* 🔓 Garante que as etiquetas sempre recebam clique */
+#cm-tags-wrap,
+#cm-tags-wrap * {
+  pointer-events: auto;
+}
+
+.card-unread-badge {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 9999px;
+  background-color: #dc2626;
+  color: #ffffff;
+
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+
+  z-index: 50;           /* 🔑 acima da imagem */
+  pointer-events: none;
+}
+
+#columns-wrapper li[data-card-id] > *:not(.card-unread-badge) {
+  position: relative;
+  z-index: 1;
+}
+
+
+
+/* ============================================================
+   QUILL — DESCRIÇÃO (AUTO-GROW CANÔNICO)
+   Objetivo:
+   - Descrição cresce com o conteúdo
+   - Sem scroll interno no editor
+   - Quem rola é o modal (scroll único)
+   ============================================================ */
+
+/* Card da descrição NÃO pode ter height fixo */
+/* Só o card que tem o Quill (Descrição) pode ter “layout especial” */
+#cm-root .cm-panel[data-cm-panel="desc"] .cm-card:has(.cm-quill),
+#cm-root .cm-panel[data-cm-panel="desc"] .cm-card:has(.ql-toolbar){
+  display: flex;
+  flex-direction: column;
+
+  height: auto !important;
+  min-height: 0 !important;     /* 🔑 não força cards a ficarem gigantes */
+  max-height: none !important;
+
+  resize: none !important;
+  overflow: visible !important;
+}
+
+/* Garantia extra: cards comuns (Prazo/Capa) ficam compactos */
+#cm-root .cm-panel[data-cm-panel="desc"] .cm-card{
+  min-height: 0 !important;
+}
+
+
+/* Toolbar ok */
+#cm-root .cm-panel[data-cm-panel="desc"] .ql-toolbar.ql-snow{
+  flex: 0 0 auto;
+}
+
+/* Container do Quill: altura será controlada via JS */
+#cm-root .cm-panel[data-cm-panel="desc"] .ql-container.ql-snow{
+  flex: 0 0 auto;
+
+  /* JS vai controlar a altura */
+  height: 80px;
+  min-height: 60px;
+  max-height: none;
+
+  overflow: hidden !important; /* sem scroll interno */
+}
+
+
+/* Editor: cresce com conteúdo (JS garante que container acompanha) */
+#cm-root .cm-panel[data-cm-panel="desc"] .ql-editor{
+  height: auto !important;
+  overflow: hidden !important; /* evita o texto “passar” por cima do Prazo */
+}
+
+
+
+/* QUILL — Descrição: editor sempre ancorado no topo e preenchendo */
+#cm-root .cm-panel[data-cm-panel="desc"] .ql-container.ql-snow{
+  display: block !important;
+}
+
+#cm-root .cm-panel[data-cm-panel="desc"] .ql-editor{
+  display: block !important;
+  height: auto !important;
+  min-height: 0 !important;
+
+  /* 🔑 garante topo (se algum ancestor virar flex) */
+  align-self: flex-start !important;
+
+  /* padding padrão do Quill (evita “colar” no topo) */
+  padding-top: 12px !important;
+}
+
+
+
+
+/* ============================================================
+   HOTFIX — PRAZO + CAPA (compactar sem tocar no Quill/Descrição)
+   Colar NO FINAL do modal.css
+   ============================================================ */
+
+/* 1) Prazo: impedir card de “esticar” e criar vazio */
+#cm-root [data-cm-panel="term"] .cm-card,
+#cm-root [data-cm-panel="prazo"] .cm-card{
+  height: auto !important;
+  min-height: 0 !important;
+  align-self: flex-start !important;
+}
+
+/* 2) Capa (files): reverter o “dropzone gigante” */
+#cm-root [data-cm-panel="files"] .cm-input{
+  min-height: 44px !important;
+  display: block !important;
+  align-items: initial !important;
+}
+
+#cm-root [data-cm-panel="files"] input[type="file"].cm-input{
+  padding: 10px 12px !important; /* volta pro padrão */
+  cursor: pointer;
+}
+
+/* 3) (opcional) Descrição do anexo não inflar */
+#cm-root [data-cm-panel="files"] #attachment-desc{
+  min-height: 44px !important;
+  resize: vertical;
+}
+
+
+
+/* ============================================================
+   ATIVIDADE (LISTA/HISTÓRICO) — NÃO ESTICAR CARDS
+   Objetivo:
+   - cada atividade ocupa só o necessário (auto)
+   - sem “vazios” gigantes
+   - texto fica no topo, não “ancorado” no fundo
+   ============================================================ */
+
+#card-modal-root #cm-activity-panel,
+#card-modal-root #activity-panel-wrapper{
+  align-content: flex-start !important;
+}
+
+/* garante que a lista NÃO seja grid com rows 1fr e nem flex com stretch estranho */
+#card-modal-root #cm-activity-panel .cm-activity-list,
+#card-modal-root #activity-panel-wrapper .cm-activity-list{
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+}
+
+/* mata qualquer height/min-height herdado que esteja inflando os itens */
+#card-modal-root #cm-activity-panel .cm-activity-item,
+#card-modal-root #activity-panel-wrapper .cm-activity-item,
+#card-modal-root #cm-activity-panel .activity-item,
+#card-modal-root #activity-panel-wrapper .activity-item{
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+
+  /* se o template estiver usando flex e “space-between”, isso elimina o “texto no fundo” */
+  display: block !important;
+}
+
+/* garante que o conteúdo interno não force altura */
+#card-modal-root #cm-activity-panel .cm-activity-content,
+#card-modal-root #activity-panel-wrapper .cm-activity-content,
+#card-modal-root #cm-activity-panel .activity-content,
+#card-modal-root #activity-panel-wrapper .activity-content{
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  margin: 0 !important;
+}
+
+
+/* ============================================================
+   ATIVIDADE (LISTA/HISTÓRICO) — KILL STRETCH (flex/grid)
+   - impede items de virarem 1fr / flex:1
+   - força empilhamento no topo
+   ============================================================ */
+
+/* 1) o container da lista não pode distribuir espaço vertical */
+#card-modal-root #cm-activity-panel .cm-activity-list,
+#card-modal-root #activity-panel-wrapper .cm-activity-list{
+  justify-content: flex-start !important;
+  align-content: flex-start !important;
+}
+
+/* 2) cada item precisa ser “auto”, nunca “flex:1” */
+#card-modal-root #cm-activity-panel .cm-activity-item,
+#card-modal-root #activity-panel-wrapper .cm-activity-item,
+#card-modal-root #cm-activity-panel .activity-item,
+#card-modal-root #activity-panel-wrapper .activity-item{
+  flex: 0 0 auto !important;        /* 🔑 mata flex-grow */
+  align-self: stretch !important;
+}
+
+/* 3) se algum wrapper estiver em GRID com rows 1fr, força auto */
+#card-modal-root #cm-activity-panel .cm-activity-list{
+  grid-auto-rows: auto !important;
+}
+
+/* 4) se o item (ou filhos) estiverem como flex + space-between, neutraliza */
+#card-modal-root #cm-activity-panel .cm-activity-item,
+#card-modal-root #activity-panel-wrapper .cm-activity-item{
+  display: block !important;
+}
+
+#card-modal-root #cm-activity-panel .cm-activity-item > *,
+#card-modal-root #activity-panel-wrapper .cm-activity-item > *{
+  flex: 0 0 auto !important;
+}
+
+/* 5) por segurança, não deixar conteúdo “empurrar” altura via min-height */
+#card-modal-root #cm-activity-panel .cm-activity-meta,
+#card-modal-root #cm-activity-panel .cm-activity-content,
+#card-modal-root #activity-panel-wrapper .activity-meta,
+#card-modal-root #activity-panel-wrapper .activity-content{
+  min-height: 0 !important;
+}
+
+
+
+/* Botão de áudio no Quill */
+.cm-activity-quill .ql-toolbar .ql-audio::before{
+  content: "🎤";
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* Estado gravando */
+.cm-activity-quill .ql-toolbar .ql-audio.is-recording{
+  filter: saturate(2);
+  transform: scale(1.05);
+}
+
+
+/* Mic visível e clicável */
+.ql-toolbar .ql-audio {
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+/* Feedback ao tocar */
+.ql-toolbar .ql-audio:active {
+  transform: translateY(1px);
+}
+
+/* Estado gravando = “afundado” */
+.ql-toolbar .ql-audio.is-recording {
+  box-shadow: inset 0 0 0 2px rgba(255, 0, 0, 0.55);
+  transform: translateY(1px);
+}
+
+/* Opcional: pequeno “REC” ao lado do botão */
+.ql-toolbar .ql-audio.is-recording::after {
+  content: " REC";
+  font-size: 10px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+
+/* Aviso "ATENÇÃO" (modo legado) */
+/* Aviso legível e “limpo” */
+#cm-root .avisoradical{
+  position: sticky;
+  top: 0;
+  z-index: 9999;
+
+  display: flex;
+  align-items: center;
+
+  padding: 8px 12px;
+  margin: 8px 0 10px 0;
+
+  background: #fff5f5;                 /* fundo claro */
+  border: 2px solid #dc2626;           /* vermelho forte */
+  border-radius: 10px;
+
+  box-shadow: 0 6px 18px rgba(0,0,0,.18);
+}
+
+/* Texto bem legível */
+#cm-root .avisoradical span{
+  font-size: 15px;
+  line-height: 1.35;
+  font-weight: 700;
+  color: #111827;                       /* quase preto */
+  text-shadow: none;
+}
+
+/* Só o ATENÇÃO pisca */
+#cm-root .avisoradical strong{
+  color: #dc2626;
+  font-weight: 900;
+  margin-right: 6px;
+
+  animation: atencaoBlink 1s steps(2,end) infinite;
+}
+
+/* Pisca simples (sem “neon”) */
+@keyframes atencaoBlink{
+  0%{ opacity: 1; }
+  100%{ opacity: .15; }
+}
+
+@keyframes cm-spin{
+  to{ transform: rotate(360deg); }
+}
+
+/* Acessibilidade */
+@media (prefers-reduced-motion: reduce){
+  #cm-root .avisoradical strong{ animation: none !important; }
+}
+
+
+/* ============================================================
+   Reply button (Atividade)
+   ============================================================ */
+#cm-root #activity-panel-wrapper .cm-activity-reply-btn{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+
+  border: 1px solid var(--cm-border);
+  background: rgba(255,255,255,0.35);
+  backdrop-filter: blur(8px);
+
+  cursor: pointer;
+  transition: transform 120ms ease, background 120ms ease, box-shadow 120ms ease;
+}
+
+#cm-root #activity-panel-wrapper .cm-activity-reply-ico{
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+  opacity: 0.9;
+}
+
+#cm-root #activity-panel-wrapper .cm-activity-reply-btn:hover{
+  background: rgba(255,255,255,0.55);
+  transform: translateY(-1px) scale(1.04);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.10);
+}
+
+#cm-root #activity-panel-wrapper .cm-activity-reply-btn:active{
+  transform: translateY(0px) scale(0.98);
+  box-shadow: none;
+}
+
+/* Tooltip (sem JS): usa data-tooltip */
+#cm-root #activity-panel-wrapper .cm-activity-reply-btn{
+  position: relative;
+}
+
+#cm-root #activity-panel-wrapper .cm-activity-reply-btn::after{
+  content: attr(data-tooltip);
+  position: absolute;
+  right: 0;
+  top: -34px;
+
+  font-size: 11px;
+  line-height: 1;
+  padding: 6px 8px;
+  border-radius: 10px;
+
+  background: rgba(0,0,0,0.75);
+  color: #fff;
+
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+  transition: opacity 120ms ease, transform 120ms ease;
+  white-space: nowrap;
+}
+
+#cm-root #activity-panel-wrapper .cm-activity-reply-btn:hover::after{
+  opacity: 1;
+  transform: translateY(0);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* trava layout: o textarea não pode crescer infinito e bagunçar o scroll do modal */
+#cm-root .cm-textarea-resizable{
+  max-height: 55vh;     /* ajuste fino */
+  overflow: auto;       /* scroll interno */
+  resize: vertical;     /* mantém UX */
+}
+
+
+/* Desliga o “scroll anchoring” do Chromium (causa pulo em auto-grow) */
+#modal-body.card-modal-scroll,
+#card-modal-root .card-modal-scroll{
+  overflow-anchor: none !important;
+}
+
+/* E também no que cresce (Quill/textarea) */
+#cm-root .ql-container,
+#cm-root .ql-editor,
+#cm-root textarea{
+  overflow-anchor: none !important;
+}
+
+
+
+
+#modal-body.card-modal-scroll,
+#card-modal-root .card-modal-scroll {
+  overflow-anchor: none;
+}
+
+#modal-body .ql-container,
+#modal-body .ql-editor {
+  overflow-anchor: none;
+}
+
+
+
+
+
+/* ============================================================
+   ATIVIDADE — Tabs (Feed / Nova Atividade)
+   ============================================================ */
+/* Right-side togglebar: same visual style as cm-topbar (left side) */
+#card-modal-root .cm-activity-togglebar{
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  /* inherits cm-topbar: border, bg, shadow, padding, radius */
+}
+
+
+
+/* Badge contador do Feed */
+#card-modal-root .cm-activity-badge{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 18px;
+  padding: 0 6px;
+  margin-left: 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 18px;
+  border: 1px solid rgba(15,23,42,0.14);
+  background: rgba(15,23,42,0.06);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* ============================================================
+   FEED (Atividade) — UI do print (split modal)
+   Arquivo: boards/static/boards/modal/modal.css
+   ============================================================ */
+
+#cm-root .cm-activity-panel{
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* cm-activity-togglebar now uses cm-topbar class — no extra styles needed here */
+
+/* cm-activity-tab: inherits cm-tabbtn, active state matches left side */
+#cm-root .cm-activity-tab.is-active{
+  background: linear-gradient(180deg, rgba(37,99,235,0.16), rgba(37,99,235,0.10));
+  border-color: rgba(37,99,235,0.38);
+}
+
+#cm-root .cm-feed-toolbar{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255,255,255,0.35);
+  background: rgba(255,255,255,0.28);
+  backdrop-filter: blur(10px);
+}
+
+#cm-root .cm-feed-search{
+  flex: 0 1 160px;       /* não cresce, encolhe até 160 px mínimo */
+  max-width: 180px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+#cm-root .cm-feed-search input{
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  /* impede que o campo cresça ao digitar (overflow hidden + ellipsis) */
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#cm-root .cm-feed-filter{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+#cm-root .cm-feed-filter select{
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-weight: 600;
+}
+
+#cm-root .cm-feed-toolbar .cm-feed-iconbtn{
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(15,23,42,0.10);
+  background: rgba(255,255,255,0.18);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Lista / grupos por data */
+#cm-root .cm-feed{
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+#cm-root .cm-feed-day{
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#cm-root .cm-feed-dayhdr{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  opacity: 0.75;
+  font-weight: 600;
+  padding: 6px 0;
+}
+
+#cm-root .cm-feed-dayhdr::before,
+#cm-root .cm-feed-dayhdr::after{
+  content: "";
+  height: 1px;
+  flex: 1 1 auto;
+  background: rgba(15,23,42,0.10);
+}
+
+/* Card do feed */
+#cm-root .cm-feed-item{
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.28);
+  background: rgba(255,255,255,0.22);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 26px rgba(2,6,23,0.10);
+  padding: 12px;
+}
+
+#cm-root .cm-feed-row{
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 10px;
+  align-items: start;
+  min-width: 0;
+}
+
+#cm-root .cm-feed-avatar{
+  width: 34px;
+  height: 34px;
+  border-radius: 9999px;
+  overflow: hidden;
+  background: rgba(15,23,42,0.10);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+}
+
+#cm-root .cm-feed-meta{
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+#cm-root .cm-feed-handle{
+  font-weight: 800;
+}
+
+#cm-root .cm-feed-time{
+  opacity: 0.75;
+}
+
+#cm-root .cm-feed-body{
+  margin-top: 6px;
+}
+
+#cm-root .cm-feed-body .cm-muted{
+  opacity: 0.75;
+}
+
+/* “Sistema ... moveram este card” estilo banner */
+#cm-root .cm-feed-system-banner{
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(15,23,42,0.08);
+  background: rgba(15,23,42,0.05);
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* Anexo thumb + preview */
+#cm-root .cm-attach{
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+#cm-root .cm-attach-thumb{
+  width: 72px;
+  height: 48px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.30);
+  background: rgba(15,23,42,0.08);
+  position: relative;
+}
+
+#cm-root .cm-attach-thumb img{
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+#cm-root .cm-hover-preview{
+  position: fixed;
+  right: 26px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 340px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.28);
+  background: rgba(255,255,255,0.20);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 20px 50px rgba(2,6,23,0.22);
+  z-index: 99999;
+  display: none;
+}
+
+#cm-root .cm-hover-preview.is-on{ display: block; }
+
+#cm-root .cm-hover-preview img{
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+  display: block;
+}
+
+#cm-root .cm-hover-preview .cm-hover-footer{
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+}
+
+/* Replies */
+#cm-root .cm-replies{
+  margin-top: 10px;
+  padding-left: 44px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#cm-root .cm-reply{
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+#cm-root .cm-reply-avatar{
+  width: 26px;
+  height: 26px;
+  border-radius: 9999px;
+  overflow: hidden;
+  background: rgba(15,23,42,0.10);
+}
+
+/* Pill “novas mensagens” no rodapé */
+#cm-root .cm-newmsg-pill{
+  position: sticky;
+  bottom: 8px;
+  align-self: flex-end;
+  margin-top: 8px;
+  padding: 10px 14px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255,255,255,0.30);
+  background: rgba(255,255,255,0.28);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 26px rgba(2,6,23,0.14);
+  font-weight: 700;
+  display: none;
+}
+
+#cm-root .cm-newmsg-pill.is-on{ display: inline-flex; gap: 10px; align-items: center; }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* ============================================================
+   FEED (Atividade) — layout do print (scoped)
+   ============================================================ */
+
+#cm-root .cm-activity{
+  /* garante que o painel direito não “coma” espaço estranho */
+  min-width: 0;
+}
+
+#cm-root .cm-feed-root{
+  position: relative;
+  min-width: 0;
+}
+
+#cm-root .cm-feed-toolbar{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  padding: 10px 12px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255,255,255,0.30);
+  background: rgba(255,255,255,0.20);
+  box-shadow: 0 10px 26px rgba(2,6,23,0.10);
+
+  /* sem blur aqui (seu hard rule já mata blur interno) */
+}
+
+#cm-root .cm-feed-search{
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#cm-root .cm-feed-search input{
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--cm-text);
+}
+
+#cm-root .cm-feed-filter{
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+#cm-root .cm-feed-filter-label{
+  font-weight: 800;
+  color: var(--cm-text);
+}
+
+#cm-root .cm-feed-filter select{
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--cm-text);
+  font-weight: 700;
+}
+
+#cm-root .cm-feed-iconbtn{
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.25);
+  background: rgba(255,255,255,0.14);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#cm-root .cm-feed-scroll{
+  margin-top: 10px;
+}
+
+#cm-root .cm-feed{
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+#cm-root .cm-feed-day{
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#cm-root .cm-feed-dayhdr{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+
+  font-weight: 800;
+  opacity: 0.75;
+  padding: 6px 0;
+}
+
+#cm-root .cm-feed-dayhdr::before,
+#cm-root .cm-feed-dayhdr::after{
+  content: "";
+  height: 1px;
+  flex: 1 1 auto;
+  background: rgba(15,23,42,0.10);
+}
+
+#cm-root .cm-feed-item{
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.24);
+  background: rgba(255,255,255,0.20);
+  box-shadow: 0 10px 26px rgba(2,6,23,0.10);
+  padding: 12px;
+}
+
+#cm-root .cm-feed-row{
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+#cm-root .cm-feed-avatar{
+  width: 34px;
+  height: 34px;
+  border-radius: 9999px;
+  background: rgba(15,23,42,0.10);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+}
+
+#cm-root .cm-feed-main{
+  min-width: 0;
+}
+
+#cm-root .cm-feed-meta{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+#cm-root .cm-feed-handle{
+  font-weight: 900;
+}
+
+#cm-root .cm-feed-time{
+  opacity: 0.75;
+}
+
+#cm-root .cm-feed-reply-btn{
+  margin-left: auto;
+}
+
+#cm-root .cm-feed-body{
+  margin-top: 8px;
+  font-size: 0.95em;
+  line-height: 1.35;
+}
+
+#cm-root .cm-attach{
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+#cm-root .cm-attach-file{
+  font-weight: 700;
+}
+
+#cm-root .cm-attach-thumb{
+  width: 240px;
+  max-width: 100%;
+  height: 140px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.25);
+  position: relative;
+  display: block;
+}
+
+#cm-root .cm-attach-thumb img{
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+#cm-root .cm-attach-zoom{
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Anexo removido: sem interação */
+#cm-root .cm-attach-file.cm-attach-deleted{
+  color: #9ca3af;
+  text-decoration: line-through;
+  cursor: default;
+  font-weight: 600;
+}
+#cm-root .cm-attach-thumb.cm-attach-thumb-deleted{
+  cursor: default;
+  pointer-events: none;
+  opacity: 0.75;
+}
+#cm-root .cm-attach-thumb.cm-attach-thumb-deleted img{
+  object-fit: contain;
+  background: #fef2f2;
+}
+
+#cm-root .cm-replies{
+  margin-top: 10px;
+  padding-left: 44px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#cm-root .cm-replies-title{
+  font-weight: 800;
+  opacity: 0.8;
+}
+
+#cm-root .cm-reply{
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+#cm-root .cm-reply-avatar{
+  width: 26px;
+  height: 26px;
+  border-radius: 9999px;
+  background: rgba(15,23,42,0.10);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+}
+
+#cm-root .cm-feed-foot{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0 0 0;
+}
+
+#cm-root .cm-feed-more{
+  border-radius: 9999px;
+  border: 1px solid rgba(255,255,255,0.25);
+  background: rgba(255,255,255,0.14);
+  padding: 10px 14px;
+  font-weight: 800;
+}
+
+#cm-root .cm-newmsg-pill{
+  border-radius: 9999px;
+  border: 1px solid rgba(255,255,255,0.25);
+  background: rgba(255,255,255,0.18);
+  padding: 10px 14px;
+  font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Preview flutuante */
+#cm-root .cm-hover-preview{
+  position: fixed;
+  right: 26px;
+  top: 50%;
+  transform: translateY(-50%);
+
+  width: 340px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.25);
+  background: rgba(255,255,255,0.20);
+  box-shadow: 0 20px 50px rgba(2,6,23,0.22);
+  z-index: 99999;
+  display: none;
+}
+
+#cm-root .cm-hover-preview.is-on{ display: block; }
+
+#cm-root .cm-hover-preview img{
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+  display: block;
+}
+
+#cm-root .cm-hover-footer{
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+}
+
+#cm-root .cm-hover-zoom{
+  font-weight: 900;
+  opacity: 0.85;
+}
+
+/* Dark: harmoniza bordas/fundos */
+#card-modal-root.theme-dark #cm-root .cm-feed-toolbar,
+#card-modal-root.card-theme-dark #cm-root .cm-feed-toolbar,
+#card-modal-root.theme-dark #cm-root .cm-feed-item,
+#card-modal-root.card-theme-dark #cm-root .cm-feed-item,
+#card-modal-root.theme-dark #cm-root .cm-hover-preview,
+#card-modal-root.card-theme-dark #cm-root .cm-hover-preview{
+  border-color: rgba(255,255,255,0.14);
+  background: rgba(2,6,23,0.42);
+}
+
+
+
+
+
+
+
+.cm-feed-item.is-hidden { display: none !important; }
+.cm-feed-dayhdr.is-hidden { display: none !important; }
+
+
+
+
+
+
+
+
+
+
+
+
+.cm-feed-avatar,
+.cm-reply-avatar { overflow: hidden; border-radius: 999px; }
+
+.cm-avatar-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cm-avatar-initial { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+
+
+
+
+
+#cm-root .cm-split{
+  display: flex;
+  gap: 16px;
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+}
+
+
+
+
+#cm-root .cm-activity{
+  flex: 0 0 40%;
+  min-width: 0;
+  border-left: 1px solid rgba(15,23,42,0.12);
+  padding-left: 16px;
+}
+
+
+#cm-root .cm-activity-panel{
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+#cm-root #cm-activity-feed{
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+#cm-root #activity-panel-wrapper{
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none !important; /* mata o 60vh */
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* ============================================================
+   MODAL SPLIT — 2 scrolls independentes (esquerda / direita)
+   ============================================================ */
+
+/* 1) no modo split, o modal NÃO rola */
+#cm-root[data-cm-mode="split"]{
+  height: 100%;
+}
+
+#cm-root[data-cm-mode="split"] #modal-body.card-modal-scroll,
+#cm-root[data-cm-mode="split"] #card-modal-root .card-modal-scroll{
+  overflow: hidden !important;  /* desliga scroll “mestre” */
+}
+
+/* 2) o split precisa preencher a altura disponível */
+#cm-root[data-cm-mode="split"] .cm-split{
+  height: 100%;
+  min-height: 0;
+}
+
+/* 3) cada coluna vira um “painel” com scroll próprio */
+#cm-root[data-cm-mode="split"] .cm-main,
+#cm-root[data-cm-mode="split"] .cm-activity{
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+}
+
+/* ============================================================
+   MOBILE FIX — no split, voltar para 1 scroll mestre no modal
+   Motivo: em mobile o split vira coluna e o 2º painel fica inacessível
+   ============================================================ */
+@media (max-width: 1024px){
+  /* reativa o scroll do modal (mestre) */
+  #cm-root[data-cm-mode="split"] #modal-body.card-modal-scroll,
+  #cm-root[data-cm-mode="split"] #card-modal-root .card-modal-scroll{
+    overflow: auto !important;
+  }
+
+  /* deixa o container crescer (sem “height: 100%” travando a pilha) */
+  #cm-root[data-cm-mode="split"]{
+    height: auto;
+  }
+  #cm-root[data-cm-mode="split"] .cm-split{
+    height: auto !important;
+    min-height: 0;
+  }
+
+  /* desliga os 2 scrolls no mobile; quem rola é o modal */
+  #cm-root[data-cm-mode="split"] .cm-main,
+  #cm-root[data-cm-mode="split"] .cm-activity{
+    overflow: visible !important;
+  }
+}
+
+
+
+
+
+
+/* remove blur dos botões (mantém aparência via background/border/shadow) */
+#card-modal-root #cm-root .cm-btn,
+#card-modal-root #cm-root .cm-btn.primary{
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+
+
+
+/* HARD RULE: dentro do modal ninguém usa blur */
+/* #card-modal-root *{
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+} */
+
+
+
+/* ============================================================
+   FIX — QUILL (Descrição) auto-grow via CSS (sem JS)
+   AJUSTE PARA FEED FICAR DESTRAVADO EM BAIXO DA DESCRIÇÃO EM MOBILE (QUANDO O TECLADO ABRE)
+      - o Quill tem height: 100% hardcoded, então precisamos forçar auto-grow via CSS
+      - o ideal seria fazer isso via JS, mas esse é um fix rápido e “bom o suficiente” para destravar o feed em mobile (que estava preso com o teclado aberto) 
+   ============================================================ */
+
+/* Snow theme do Quill costuma forçar height: 100%; então precisamos quebrar isso */
+#cm-root .cm-panel[data-cm-panel="desc"] .ql-container.ql-snow{
+  height: auto !important;
+  min-height: 120px !important;     /* ajuste fino */
+  max-height: none !important;
+  overflow: visible !important;      /* sem scroll interno */
+}
+
+/* O editor precisa poder crescer */
+#cm-root .cm-panel[data-cm-panel="desc"] .ql-editor{
+  height: auto !important;
+  min-height: 120px !important;
+  overflow: visible !important;
+}
+
+/* Segurança: se alguma regra antiga estiver “cortando” por overflow hidden */
+#cm-root .cm-panel[data-cm-panel="desc"] .cm-card:has(.ql-container),
+#cm-root .cm-panel[data-cm-panel="desc"] .cm-card:has(.cm-quill){
+  overflow: visible !important;
+}
+
+
+
+
+/* FEED — remover controls sem função */
+#cm-root .cm-feed-toolbar .cm-feed-iconbtn{
+  display: none !important;
+}
+/* FEED — remover CTA decorativo */
+#cm-root .cm-feed-more,
+#cm-root .cm-newmsg-pill{
+  display: none !important;
+}
+/* FEED — remove contagem se não for unread */
+#cm-root .cm-activity-badge{
+  display: none !important;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* ============================================================
+   ENTREGA: toggle no topbar (à direita)
+   ============================================================ */
+#cm-root .cm-bar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+
+#cm-root .cm-actions{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-left:auto;
+}
+
+#cm-root .cm-delivered-toggle{
+  display:inline-flex;
+  align-items:center;
+  cursor:pointer;
+  user-select:none;
+}
+
+#cm-root .cm-delivered-toggle input{
+  position:absolute;
+  opacity:0;
+  width:1px;
+  height:1px;
+  pointer-events:none;
+}
+
+#cm-root .cm-delivered-ui{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  padding:8px 12px;
+  border-radius:999px;
+  border:1px solid rgba(15,23,42,0.14);
+  background: rgba(255,255,255,0.70);
+  box-shadow: 0 6px 18px rgba(2,6,23,0.06);
+  transition: transform .08s ease, background .12s ease, border-color .12s ease;
+}
+
+#cm-root .cm-delivered-dot{
+  width:10px;
+  height:10px;
+  border-radius:999px;
+  border:2px solid rgba(15,23,42,0.25);
+  background: transparent;
+  transition: background .12s ease, border-color .12s ease;
+}
+
+#cm-root .cm-delivered-text{
+  font-size:13px;
+  font-weight:600;
+  color: rgba(15,23,42,0.85);
+}
+
+#cm-root .cm-delivered-toggle:hover .cm-delivered-ui{
+  transform: translateY(-1px);
+}
+
+#cm-root .cm-delivered-toggle input:checked + .cm-delivered-ui{
+  border-color: rgba(16,185,129,0.35);
+  background: rgba(16,185,129,0.10);
+}
+
+#cm-root .cm-delivered-toggle input:checked + .cm-delivered-ui .cm-delivered-dot{
+  border-color: rgba(16,185,129,0.75);
+  background: rgba(16,185,129,0.85);
+}
+
+
+
+
+
+
+
+
+
+
+
+/* ============================================================
+   ENTREGUE pill: mesmo tamanho que cm-tabbtn
+   ============================================================ */
+#cm-root .cm-delivered-ui{
+  /* visual já definido acima; garante sizing igual às tabs */
+  height: auto;
+  padding: 8px 12px;
+  font-size: 0.95em;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+/* Badge do Feed */
+#cm-root #cm-activity-tab-feed{
+  position: relative;
+}
+#cm-root #cm-activity-feed-count{
+  line-height: 1;
+  height: 18px;
+  vertical-align: middle;
+}
+
+
+
+
