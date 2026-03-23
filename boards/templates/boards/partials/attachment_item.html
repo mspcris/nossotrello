@@ -1,8 +1,16 @@
 <!-- ATTACHMENT_ITEM.HTML -->
 <div id="attachment-{{ attachment.id }}"
      class="p-3 rounded border bg-white/40 backdrop-blur-sm shadow-sm flex justify-between items-center">
-    
+
   <div class="flex flex-col min-w-0">
+    {% if attachment.created_by %}
+      <span class="text-xs text-gray-500 dark:text-slate-400 mb-0.5">
+        {% with p=attachment.created_by.profile %}
+          {% if p and p.handle %}@{{ p.handle }}{% else %}{{ attachment.created_by.email }}{% endif %}
+        {% endwith %}
+      </span>
+    {% endif %}
+
     <a href="{{ attachment.file.url }}"
        target="_blank"
        class="text-blue-600 font-medium hover:underline text-sm break-words">
@@ -20,13 +28,28 @@
     </span>
   </div>
 
-  <button type="button"
-          class="ml-3 bg-red-600 text-white text-xs px-2 py-1 rounded"
-          onclick="event.stopPropagation();"
-          hx-post="{% url 'boards:delete_attachment' attachment.card.id attachment.id %}"
-          hx-target="#attachment-{{ attachment.id }}"
-          hx-swap="outerHTML">
-    X
-  </button>
+  <div class="flex items-center gap-2 ml-3 shrink-0">
+    <button type="button"
+            class="cm-attachment-reply-btn text-gray-400 hover:text-blue-500 transition-colors"
+            title="Responder este anexo"
+            data-attachment-url="{{ attachment.file.url }}"
+            data-attachment-name="{{ attachment.file.name|cut:'attachments/'|cut:'quill/' }}">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+           class="w-4 h-4">
+        <polyline points="9 17 4 12 9 7"></polyline>
+        <path d="M20 18v-2a4 4 0 0 0-4-4H4"></path>
+      </svg>
+    </button>
+
+    <button type="button"
+            class="bg-red-600 text-white text-xs px-2 py-1 rounded"
+            onclick="event.stopPropagation();"
+            hx-post="{% url 'boards:delete_attachment' attachment.card.id attachment.id %}"
+            hx-target="#attachment-{{ attachment.id }}"
+            hx-swap="outerHTML">
+      X
+    </button>
+  </div>
 
 </div>

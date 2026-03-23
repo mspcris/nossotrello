@@ -99,6 +99,7 @@ def add_attachment(request, card_id):
         card=card,
         file=uploaded,
         description=desc,
+        created_by=request.user,
     )
 
     board.version += 1

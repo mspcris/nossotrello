@@ -343,6 +343,12 @@ class CardAttachment(models.Model):
     card = models.ForeignKey(Card, related_name="attachments", on_delete=models.CASCADE)
     file = models.FileField(upload_to="attachments/")
     description = models.CharField(max_length=255, blank=True, default="")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name="attachments_created",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
