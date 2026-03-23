@@ -1256,6 +1256,8 @@
 
         onEnd: (evt) => {
           window.__isDraggingCard = false;
+          // Cooldown: impede que poll/tick sobreponha o board logo após o drag
+          window.__lastDragEndMs = Date.now();
           afterLocalMoveUpdateUI(); // ✅ garante update sempre (origem/destino)
         },
 

@@ -290,6 +290,13 @@ SITE_URL = (os.getenv("SITE_URL") or "http://localhost:8000").strip().rstrip("/"
 
 
 # ============================================================
+# IDCamim OAuth2/OIDC
+# ============================================================
+CAMIM_CLIENT_ID     = (os.getenv("CAMIM_CLIENT_ID") or "").strip()
+CAMIM_CLIENT_SECRET = (os.getenv("CAMIM_CLIENT_SECRET") or "").strip()
+
+
+# ============================================================
 # GROQ AI API (mood check-in / chatbot motivacional)
 # ============================================================
 GROQ_API_KEY = (os.getenv("GROQ_API_KEY") or "").strip()

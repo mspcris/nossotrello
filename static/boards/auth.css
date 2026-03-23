@@ -103,6 +103,52 @@ body.auth-body{
   background: var(--primary-hover);
 }
 
+/* ── Botão OAuth Camim ─────────────────────────────────────── */
+.auth-btn-camim{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 14px;
+  border: 2px solid #1a56db;
+  border-radius: 12px;
+  background: #fff;
+  color: #1a56db;
+  font-weight: 700;
+  font-size: 0.97rem;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s;
+}
+.auth-btn-camim:hover{
+  background: #1a56db;
+  color: #fff;
+}
+.auth-btn-camim:hover svg circle{
+  fill: #fff;
+}
+.auth-btn-camim:hover svg text{
+  fill: #1a56db;
+}
+
+/* ── Divisor "ou" ──────────────────────────────────────────── */
+.auth-divider{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0;
+  color: #9ca3af;
+  font-size: 0.85rem;
+}
+.auth-divider::before,
+.auth-divider::after{
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #e5e7eb;
+}
+
 .auth-links{
   margin-top: 14px;
   display: flex;

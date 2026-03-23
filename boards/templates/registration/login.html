@@ -8,9 +8,32 @@
     <h1 class="auth-title">Entrar</h1>
     <p class="auth-sub">Acesse com seu usuário e senha.</p>
 
+    {% if messages %}
+      {% for message in messages %}
+        <div class="auth-alert {% if message.tags %}auth-alert--{{ message.tags }}{% endif %}">
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endif %}
+
     {% if form.errors %}
       <div class="auth-alert">Email ou senha inválidos.</div>
     {% endif %}
+
+    {# ── Botão IDCamim ─────────────────────────────────────── #}
+    <a href="{% url 'boards:camim_login' %}{% if next %}?next={{ next|urlencode }}{% endif %}"
+       class="auth-btn-camim">
+      <svg width="20" height="20" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <circle cx="16" cy="16" r="16" fill="#1a56db"/>
+        <text x="16" y="21" text-anchor="middle" font-size="13" font-weight="700"
+              font-family="sans-serif" fill="#fff">C</text>
+      </svg>
+      Entrar com Camim
+    </a>
+
+    <div class="auth-divider">
+      <span>ou</span>
+    </div>
 
     <form method="post" class="auth-form" action="{% url 'boards:login' %}" novalidate>
       {% csrf_token %}

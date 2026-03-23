@@ -251,13 +251,17 @@ def send_whatsapp(*, user, phone_digits: str, body: str) -> None:
 
 def send_email_notification(*, to_email: str, subject: str, body: str) -> None:
     from_email = getattr(settings, "DEFAULT_FROM_EMAIL", "") or None
-    send_mail(
-        subject=(subject or "").strip(),
-        message=(body or "").strip(),
-        from_email=from_email,
-        recipient_list=[to_email],
-        fail_silently=True,  # notificação não pode derrubar fluxo
-    )
+
+    def _send():
+        send_mail(
+            subject=(subject or "").strip(),
+            message=(body or "").strip(),
+            from_email=from_email,
+            recipient_list=[to_email],
+            fail_silently=True,
+        )
+
+    threading.Thread(target=_send, daemon=True).start()
 
 
 def notify_users_for_card(

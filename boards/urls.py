@@ -23,6 +23,7 @@ from .views.mentions import board_mentions
 from .views.polling import board_poll
 
 from boards.views.modal_card_term import set_card_term_due, set_board_term_colors
+from boards.views import camim_auth
 
 
 from .views.activity import (
@@ -130,6 +131,12 @@ urlpatterns = [
     path("social/post/<int:post_id>/delete/", social_post_delete, name="social_post_delete"),
     path("social/mood/", mood_checkin, name="mood_checkin"),
     path("social/chat/", social_chatbot_message, name="social_chatbot_message"),
+
+    # ============================================================
+    # IDCamim OAuth2
+    # ============================================================
+    path("auth/camim/login/",    camim_auth.camim_login,    name="camim_login"),
+    path("auth/camim/callback/", camim_auth.camim_callback, name="camim_callback"),
 
     # ============================================================
     # AUTH / CONTAS (login/logout/primeiro login/recuperação senha)

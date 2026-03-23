@@ -28,6 +28,7 @@ from .helpers import (
     _log_card,
     _save_base64_images_to_media,
     process_mentions_and_notify,
+    build_notify_toast_html,
 )
 
 # Mantido por compatibilidade com o projeto
@@ -137,15 +138,15 @@ def add_card(request, column_id):
             board.save(update_fields=["version"])
 
             try:
-                process_mentions_and_notify(
+                _add_card_notify_plans = process_mentions_and_notify(
                     request=request,
                     board=board,
                     card=card,
                     source="description",
                     raw_text=raw_desc,
-                )
+                ) or []
             except Exception:
-                pass
+                _add_card_notify_plans = []
 
             _log_card(
                 card,
@@ -168,7 +169,11 @@ def add_card(request, column_id):
                 context_label="descrição",
             )
 
-        return render(request, "boards/partials/card_item.html", {"card": card})
+        response = render(request, "boards/partials/card_item.html", {"card": card})
+        toast_html = build_notify_toast_html(_add_card_notify_plans)
+        if toast_html:
+            response.content += toast_html.encode()
+        return response
 
     return render(
         request,
@@ -268,6 +273,7 @@ def update_card(request, card_id):
     card = get_object_or_404(Card, id=card_id)
     actor = _actor_label(request)
     board = card.column.board
+    _update_card_notify_plans = []
 
     # ✅ Escrita: bloqueio forte para VIEWER
     if not _user_can_edit_board(request.user, board):
@@ -503,15 +509,15 @@ def update_card(request, card_id):
         # Notifica usuários mencionados na edição da descrição
         # ============================================================
         try:
-            process_mentions_and_notify(
+            _update_card_notify_plans = process_mentions_and_notify(
                 request=request,
                 board=board,
                 card=card,
                 source="description",
                 raw_text=raw_desc,
-            )
+            ) or []
         except Exception:
-            pass
+            _update_card_notify_plans = []
 
 
 
@@ -659,7 +665,11 @@ def update_card(request, card_id):
     # SPLIT é o contrato
     # Centraliza a renderização no mesmo caminho do load inicial,
     # garantindo activity_filter_default e o template correto.
-    return _render_card_modal(request, card, ctx)
+    response = _render_card_modal(request, card, ctx)
+    toast_html = build_notify_toast_html(_update_card_notify_plans)
+    if toast_html:
+        response.content += toast_html.encode()
+    return response
 
 
 

@@ -5,6 +5,7 @@ import logging
 import os
 import re
 import requests
+import threading
 import uuid
 from collections import Counter
 from typing import List
@@ -417,7 +418,12 @@ def _send_mention_email(request, mentioned_user, actor_user, board, card, mentio
             f"Link: {url}"
         )
 
-        send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [to_email], fail_silently=True)
+        threading.Thread(
+            target=send_mail,
+            args=(subject, body, settings.DEFAULT_FROM_EMAIL, [to_email]),
+            kwargs={"fail_silently": True},
+            daemon=True,
+        ).start()
     except Exception:
         pass
 
@@ -492,9 +498,60 @@ def _send_mention_whatsapp(request, mentioned_user, actor_user, board, card, men
 
 
 
+def _get_mention_notify_plan(mentioned_user) -> dict:
+    """Verifica quais canais serão usados para este usuário ANTES de enviar."""
+    prof = getattr(mentioned_user, "profile", None)
+    name = (
+        (prof and (getattr(prof, "display_name", "") or getattr(prof, "handle", "")))
+        or getattr(mentioned_user, "get_full_name", lambda: "")()
+        or getattr(mentioned_user, "username", "?")
+    )
+    name = (name or "?").strip()
+
+    to_email = (getattr(mentioned_user, "email", "") or "").strip()
+    will_email = bool(to_email) and bool(getattr(prof, "notify_email", True) if prof else True)
+
+    phone_raw = (getattr(prof, "telefone", "") or "").strip() if prof else ""
+    phone_digits = re.sub(r"\D+", "", phone_raw)
+    if len(phone_digits) in (10, 11):
+        phone_digits = "55" + phone_digits
+    will_whatsapp = (
+        bool(getattr(prof, "notify_whatsapp", False) if prof else False)
+        and len(phone_digits) in (12, 13)
+    )
+
+    return {"name": name, "email": will_email, "whatsapp": will_whatsapp}
+
+
+def build_notify_toast_html(plans: list) -> str:
+    """Retorna snippet OOB HTMX que injeta um toast em #nt-toast-container."""
+    if not plans:
+        return ""
+    lines = []
+    for p in plans:
+        channels = []
+        if p.get("whatsapp"):
+            channels.append("WhatsApp")
+        if p.get("email"):
+            channels.append("Email")
+        if channels:
+            lines.append(f"{p.get('name', '?')} via {' e '.join(channels)}")
+    if not lines:
+        return ""
+    lines_html = "".join(f'<div class="nt-toast-line">{l}</div>' for l in lines)
+    return (
+        '<div hx-swap-oob="beforeend:#nt-toast-container">'
+        '<div class="nt-toast">'
+        '<div class="nt-toast-title">🔔 Notificação enviada</div>'
+        f'{lines_html}'
+        '</div>'
+        '</div>'
+    )
+
+
 def process_mentions_and_notify(*, request, board, card, source, raw_text):
     if not getattr(request, "user", None) or not request.user.is_authenticated:
-        return
+        return []
 
     # Cache por request (evita dupla execução dentro do mesmo request sem vazar memória)
     if not hasattr(request, "_mentions_notify_cache"):
@@ -502,6 +559,7 @@ def process_mentions_and_notify(*, request, board, card, source, raw_text):
 
     user_counts = _resolve_users_counts_from_mentions(raw_text or "")
     current_user_ids = set(u.id for u in user_counts.keys())
+    notify_plans = []
 
     with transaction.atomic():
         # 1) Trata usuários que EXISTIAM antes e foram REMOVIDOS completamente no texto
@@ -559,7 +617,12 @@ def process_mentions_and_notify(*, request, board, card, source, raw_text):
                     # seguir não pode quebrar fluxo de comentário
                     pass
 
-                # Dispara notificação (1 vez por save, sem spam)
+                # Coleta plano ANTES de enviar (sincrono e rapido)
+                plan = _get_mention_notify_plan(mentioned_user)
+                if plan.get("email") or plan.get("whatsapp"):
+                    notify_plans.append(plan)
+
+                # Dispara notificação (1 vez por save, sem spam) — ambas já assíncronas
                 _send_mention_email(request, mentioned_user, request.user, board, card, mention_obj)
                 _send_mention_whatsapp(request, mentioned_user, request.user, board, card, mention_obj)
 
@@ -576,7 +639,7 @@ def process_mentions_and_notify(*, request, board, card, source, raw_text):
 
             request._mentions_notify_cache.add(cache_key)
 
-
+    return notify_plans
 
 
 

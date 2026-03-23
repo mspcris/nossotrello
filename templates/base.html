@@ -901,5 +901,59 @@ window.addEventListener("popstate", () => {
 </script>
 {% endif %}
 
+<!-- ===== TOAST DE NOTIFICAÇÃO ===== -->
+<div id="nt-toast-container"></div>
+<style>
+#nt-toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+.nt-toast {
+  background: #1a2236;
+  color: #e2e8f0;
+  border-left: 4px solid #22c55e;
+  border-radius: 10px;
+  padding: 12px 16px;
+  min-width: 220px;
+  max-width: 320px;
+  box-shadow: 0 6px 28px rgba(0,0,0,.4);
+  animation: nt-in .3s ease;
+  pointer-events: auto;
+  cursor: default;
+}
+.nt-toast-title {
+  font-weight: 700;
+  font-size: .84rem;
+  margin-bottom: 5px;
+}
+.nt-toast-line {
+  font-size: .78rem;
+  opacity: .85;
+  line-height: 1.5;
+}
+@keyframes nt-in  { from { transform: translateX(115%); opacity: 0 } to { transform: translateX(0); opacity: 1 } }
+@keyframes nt-out { from { transform: translateX(0); opacity: 1 } to { transform: translateX(115%); opacity: 0 } }
+</style>
+<script>
+(function () {
+  function initToasts() {
+    document.querySelectorAll(".nt-toast:not([data-nt])").forEach(function (el) {
+      el.setAttribute("data-nt", "1");
+      setTimeout(function () {
+        el.style.animation = "nt-out .35s ease forwards";
+        setTimeout(function () { el.remove(); }, 370);
+      }, 5000);
+    });
+  }
+  document.body.addEventListener("htmx:afterSettle", initToasts);
+  document.addEventListener("DOMContentLoaded", initToasts);
+})();
+</script>
 </body>
 </html>

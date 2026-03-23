@@ -378,12 +378,20 @@ header{ position: relative; z-index: 50; }
 .cm-btn:hover{ filter: brightness(1.06); }
 
 /* =========================
-   Column belly (efeito largura)
+   Column belly (efeito barriga no meio)
 ========================= */
 @keyframes col-belly-width{
-  0%{ flex-basis: var(--col-w, var(--col-base, 240px)); }
-  45%{ flex-basis: calc(var(--col-w, var(--col-base, 240px)) + 36px); }
+  0%  { flex-basis: var(--col-w, var(--col-base, 240px)); }
+  40% { flex-basis: calc(var(--col-w, var(--col-base, 240px)) + 32px); }
+  70% { flex-basis: calc(var(--col-w, var(--col-base, 240px)) + 10px); }
   100%{ flex-basis: var(--col-w, var(--col-base, 240px)); }
+}
+
+/* Pseudo-element que faz a "barriga" visual no meio da coluna */
+@keyframes col-belly-bulge{
+  0%  { opacity: 0; transform: scaleX(1)   scaleY(1);   }
+  40% { opacity: 1; transform: scaleX(1.06) scaleY(0.7); }
+  100%{ opacity: 0; transform: scaleX(1)   scaleY(1);   }
 }
 
 /* Largura da coluna  */
@@ -395,7 +403,6 @@ header{ position: relative; z-index: 50; }
   position: relative;
 }
 
-
 /* Largura da coluna var */
 #columns-wrapper{
   --col-base: 240px; /* default */
@@ -404,18 +411,33 @@ header{ position: relative; z-index: 50; }
 }
 
 .column-item.col-belly{
-  animation: col-belly-width 260ms ease-out;
-  will-change: flex-basis, width;
+  animation: col-belly-width 320ms cubic-bezier(.22,.68,0,1.2);
+  will-change: flex-basis;
 }
+/* Anel de "barriga" centralizado verticalmente */
 .column-item.col-belly::before{
   content: "";
   position: absolute;
-  inset: -6px -10px;
-  border-radius: 18px;
-  background: rgba(255,255,255,0.10);
-  filter: blur(0.2px);
-  transform: scaleX(1.02);
+  left: -12px; right: -12px;
+  top: 30%; bottom: 30%;   /* ocupa só o miolo da coluna */
+  border-radius: 50%;
+  background: rgba(255,255,255,0.18);
+  filter: blur(4px);
   pointer-events: none;
+  animation: col-belly-bulge 320ms cubic-bezier(.22,.68,0,1.2) forwards;
+}
+
+/* =========================
+   Novo card: pulso de entrada
+========================= */
+@keyframes card-new-pulse{
+  0%  { transform: scale(0.94); box-shadow: 0 0 0 0 rgba(59,130,246,0.5); }
+  45% { transform: scale(1.03); box-shadow: 0 0 0 8px rgba(59,130,246,0.15); }
+  75% { transform: scale(0.99); box-shadow: 0 0 0 3px rgba(59,130,246,0.08); }
+  100%{ transform: scale(1);    box-shadow: none; }
+}
+li.card-new-pulse{
+  animation: card-new-pulse 650ms cubic-bezier(.22,.68,0,1.2) both;
 }
 
 /* =========================

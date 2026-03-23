@@ -28,6 +28,7 @@ from .helpers import (
     _ensure_attachments_and_activity_for_images,
     _extract_media_image_paths,
     process_mentions_and_notify,
+    build_notify_toast_html,
 )
 
 from boards.services.notifications import (
@@ -315,15 +316,15 @@ def add_activity(request, card_id):
             if who:
                 raw_for_mentions = f"{who} {raw_for_mentions}"
 
-        process_mentions_and_notify(
+        notify_plans = process_mentions_and_notify(
             request=request,
             board=board,
             card=card,
             source="activity",
             raw_text=raw_for_mentions,
-        )
+        ) or []
     except Exception:
-        pass
+        notify_plans = []
 
     # ============================================================
     # Descobrir imagens vindas do HTML e do DELTA
@@ -567,7 +568,8 @@ def add_activity(request, card_id):
         + "</div>"
     )
 
-    return HttpResponse(activity_html + oob_html)
+    toast_html = build_notify_toast_html(notify_plans)
+    return HttpResponse(activity_html + oob_html + toast_html)
 
 
 @login_required

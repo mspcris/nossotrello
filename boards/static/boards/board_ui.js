@@ -1125,3 +1125,40 @@ if (!window.__colorPopoverOutsideInstalled) {
   });
 })();
 
+// ============================================================
+// NOVO CARD: scroll + pulso após HTMX swap
+// ============================================================
+(function () {
+  if (window.__cmNewCardScrollInstalled) return;
+  window.__cmNewCardScrollInstalled = true;
+
+  document.body.addEventListener("htmx:afterSwap", (e) => {
+    const target = e.detail?.target || e.target;
+    if (!target) return;
+
+    // Só age em swaps na lista de cards
+    const isList = target.matches?.("[id^='cards-col-']");
+    if (!isList) return;
+
+    // Descobre se foi add no topo ou no fim
+    // O form guarda data-where; busca pelo form ativo na coluna
+    const colId = (target.id || "").replace("cards-col-", "");
+    const form = document.querySelector(
+      `[data-add-card-form][data-column-id="${colId}"]`
+    );
+    const where = form?.getAttribute("data-where") || "bottom";
+
+    const newCard = where === "top" ? target.firstElementChild : target.lastElementChild;
+    if (!newCard || !newCard.matches("li[data-card-id]")) return;
+
+    // Scroll suave até o novo card dentro da lista
+    requestAnimationFrame(() => {
+      newCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+      // Pulso visual
+      newCard.classList.add("card-new-pulse");
+      setTimeout(() => newCard.classList.remove("card-new-pulse"), 700);
+    });
+  });
+})();
+

@@ -172,6 +172,11 @@ const UNREAD_FETCH_EVERY_MS = 60000;// 60s é mais que suficiente para     atual
       // ✅ BLOQUEIO FINAL (race): se modal abriu DURANTE o request, não faz swap
       if (window.Modal?.state?.isOpen) return;
 
+      // Não sobrepõe o board se houve drag recente (evita snap-back visual)
+      const dragCooldown = 3000; // 3s após soltar o card
+      const sinceLastDrag = Date.now() - (window.__lastDragEndMs || 0);
+      if (sinceLastDrag < dragCooldown) return;
+
       if (data.changed && data.html && String(data.html).trim()) {
         list.outerHTML = data.html;
       }

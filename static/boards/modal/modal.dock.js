@@ -671,11 +671,52 @@
             return;
           }
 
-          // refresh snippet e fecha modal
-          if (typeof window.refreshCardSnippet === "function") {
-            try {
+          // Move o card no DOM para a coluna destino imediatamente
+          try {
+            const moveData = JSON.parse(res.text || "{}");
+            const newColId = moveData.column_id;
+            const snippet  = moveData.snippet || "";
+
+            const cardLi = document.querySelector(`li[data-card-id="${cardId2}"]`);
+            const destList = newColId
+              ? document.getElementById(`cards-col-${newColId}`)
+              : null;
+
+            if (cardLi && destList && snippet) {
+              // Substitui o li pelo snippet atualizado e move para a coluna destino
+              const tmp = document.createElement("div");
+              tmp.innerHTML = snippet.trim();
+              const newLi = tmp.firstElementChild;
+              if (newLi) {
+                cardLi.replaceWith(newLi);
+                destList.appendChild(newLi);
+
+                // Pulso de chegada + scroll
+                newLi.classList.add("card-new-pulse");
+                setTimeout(() => newLi.classList.remove("card-new-pulse"), 700);
+                requestAnimationFrame(() =>
+                  newLi.scrollIntoView({ behavior: "smooth", block: "nearest" })
+                );
+
+                // Barriga na coluna destino
+                const destColEl = destList.closest("[data-column-id]");
+                if (destColEl) {
+                  destColEl.classList.remove("col-belly");
+                  void destColEl.offsetWidth;
+                  destColEl.classList.add("col-belly");
+                  setTimeout(() => destColEl.classList.remove("col-belly"), 400);
+                }
+
+                // Reinit sortable no destino
+                try { if (window.initSortable) window.initSortable(); } catch (_) {}
+              }
+            } else if (typeof window.refreshCardSnippet === "function") {
               window.refreshCardSnippet(cardId2);
-            } catch (_e) {}
+            }
+          } catch (_e) {
+            if (typeof window.refreshCardSnippet === "function") {
+              try { window.refreshCardSnippet(cardId2); } catch (_) {}
+            }
           }
 
           closeMenu(dock);
