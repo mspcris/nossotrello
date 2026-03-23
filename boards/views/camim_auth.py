@@ -15,7 +15,7 @@ from django.shortcuts import redirect
 from django.views.decorators.http import require_GET
 
 CAMIM_BASE     = "https://auth.camim.com.br"
-AUTHORIZE_URL  = f"{CAMIM_BASE}/authorize"
+AUTHORIZE_URL  = f"{CAMIM_BASE}/auth"
 TOKEN_URL      = f"{CAMIM_BASE}/token"
 USERINFO_URL   = f"{CAMIM_BASE}/me"
 
