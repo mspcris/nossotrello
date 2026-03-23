@@ -1,7 +1,8 @@
 # boards/views/camim_auth.py
 """
 Login com IDCamim — OAuth2/OIDC
-Regra: só loga se o e-mail já existir como usuário no sistema.
+Qualquer usuário autenticado pelo IDCamim pode logar.
+Se não existir conta local, cria automaticamente na primeira vez.
 """
 import secrets
 import urllib.parse
@@ -128,18 +129,30 @@ def camim_callback(request):
         messages.error(request, "E-mail não retornado pelo Camim.")
         return redirect("boards:login")
 
-    # ── Regra: só loga se o usuário JÁ existir no sistema ────────
+    # ── Busca ou cria o usuário pelo e-mail ──────────────────────
+    name       = (userinfo.get("name") or "").strip()
+    first_name = (userinfo.get("given_name") or name.split()[0] if name else "").strip()
+    last_name  = (userinfo.get("family_name") or " ".join(name.split()[1:]) if name else "").strip()
+
     try:
         user = User.objects.get(email__iexact=email)
     except User.DoesNotExist:
-        messages.error(
-            request,
-            "Seu e-mail Camim não está cadastrado neste sistema. "
-            "Fale com o administrador para obter acesso.",
+        # Primeira vez: cria conta sem senha (só acessa via IDCamim)
+        username = email.split("@")[0]
+        # Garante username único
+        base_username = username
+        counter = 1
+        while User.objects.filter(username=username).exists():
+            username = f"{base_username}{counter}"
+            counter += 1
+        user = User.objects.create_user(
+            username=username,
+            email=email,
+            first_name=first_name,
+            last_name=last_name,
+            password=None,  # sem senha — login só via IDCamim
         )
-        return redirect("boards:login")
     except User.MultipleObjectsReturned:
-        # desempata pelo mais antigo
         user = User.objects.filter(email__iexact=email).order_by("id").first()
 
     if not user.is_active:
