@@ -10,6 +10,7 @@ _ALWAYS_FREE = [
     "/admin/",
     "/legal/",        # termos, privacidade, cookies, manual
     "/cookies/",      # aceitar/rejeitar cookies via POST
+    "/auth/camim/",   # OAuth2 IDCamim (login + callback)
 ]
 
 
