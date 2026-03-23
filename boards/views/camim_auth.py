@@ -4,6 +4,7 @@ Login com IDCamim — OAuth2/OIDC
 Qualquer usuário autenticado pelo IDCamim pode logar.
 Se não existir conta local, cria automaticamente na primeira vez.
 """
+import logging
 import secrets
 import urllib.parse
 
@@ -13,6 +14,8 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model, login
 from django.shortcuts import redirect
 from django.views.decorators.http import require_GET
+
+logger = logging.getLogger(__name__)
 
 CAMIM_BASE     = "https://auth.camim.com.br"
 AUTHORIZE_URL  = f"{CAMIM_BASE}/auth"
@@ -117,10 +120,13 @@ def camim_callback(request):
             USERINFO_URL,
             headers={"Authorization": f"Bearer {access_token}"},
             timeout=10,
+            verify=False,
         )
+        logger.error("CAMIM /me status=%s body=%s", user_resp.status_code, user_resp.text[:500])
         user_resp.raise_for_status()
         userinfo = user_resp.json()
-    except Exception:
+    except Exception as exc:
+        logger.exception("CAMIM /me falhou: %s", exc)
         messages.error(request, "Falha ao buscar dados do usuário no Camim.")
         return redirect("boards:login")
 
