@@ -101,6 +101,11 @@ const UNREAD_FETCH_EVERY_MS = 60000;// 60s é mais que suficiente para     atual
     // pausa durante drag
     if (window.__isDraggingCard) return true;
 
+    // pausa após movimento de card (evita race condition)
+    if (window.__skipBoardPollUntil && Date.now() < window.__skipBoardPollUntil) {
+      return true;
+    }
+
     // pausa durante edição / foco em input/textarea/contenteditable
     const ae = document.activeElement;
     if (

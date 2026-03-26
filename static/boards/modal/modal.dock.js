@@ -709,20 +709,60 @@
 
                 // Reinit sortable no destino
                 try { if (window.initSortable) window.initSortable(); } catch (_) {}
+
+                // Atualiza contadores de cards nas colunas
+                try { if (window.updateAggregatorCounts) window.updateAggregatorCounts(); } catch (_) {}
               }
-            } else if (typeof window.refreshCardSnippet === "function") {
-              window.refreshCardSnippet(cardId2);
+            } else {
+              // Fallback: se não conseguiu mover via DOM, refaz o snippet do card
+              try {
+                const r = await fetch(`/card/${cardId2}/snippet/`, {
+                  headers: { "X-Requested-With": "XMLHttpRequest" },
+                });
+                if (r.ok) {
+                  const html = (await r.text()).trim();
+                  if (html) {
+                    const el = document.querySelector(`[data-card-id="${cardId2}"]`);
+                    if (el) {
+                      const tmp = document.createElement("div");
+                      tmp.innerHTML = html;
+                      const node = tmp.firstElementChild;
+                      if (node) el.replaceWith(node);
+                    }
+                  }
+                }
+              } catch (_) {}
             }
           } catch (_e) {
-            if (typeof window.refreshCardSnippet === "function") {
-              try { window.refreshCardSnippet(cardId2); } catch (_) {}
-            }
+            // Fallback: se tudo falhar, refaz o snippet do card
+            try {
+              const r = await fetch(`/card/${cardId2}/snippet/`, {
+                headers: { "X-Requested-With": "XMLHttpRequest" },
+              });
+              if (r.ok) {
+                const html = (await r.text()).trim();
+                if (html) {
+                  const el = document.querySelector(`[data-card-id="${cardId2}"]`);
+                  if (el) {
+                    const tmp = document.createElement("div");
+                    tmp.innerHTML = html;
+                    const node = tmp.firstElementChild;
+                    if (node) el.replaceWith(node);
+                  }
+                }
+              }
+            } catch (_) {}
           }
 
           closeMenu(dock);
           closePanel(dock);
 
-          setTimeout(() => closeCardModal(), 0);
+          // Pausa o polling por um tempo para evitar race condition
+          // onde board.poll.js refaz o DOM antes da mudança ser visível
+          window.__skipBoardPollUntil = Date.now() + 500;
+
+          // Aguarda um pouco para permitir que a mudança visual seja processada
+          setTimeout(() => closeCardModal(), 100);
           return;
         } catch (err) {
           setPanelHtml(dock, renderMoveUI({ boards: [], columns_by_board: {}, current: {} }));

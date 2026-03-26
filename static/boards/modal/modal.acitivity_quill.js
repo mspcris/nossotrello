@@ -539,6 +539,41 @@
 
 
   // ============================================================
+  // ATTACHMENT REPLY BUTTON
+  // ============================================================
+  document.addEventListener(
+    "click",
+    function (e) {
+      const btn = e.target?.closest?.(".cm-attachment-reply-btn");
+      if (!btn) return;
+
+      const url = (btn.getAttribute("data-attachment-url") || "").trim();
+      const name = (btn.getAttribute("data-attachment-name") || url).trim();
+
+      if (!url) return;
+
+      setActivityTab("new");
+      openComposer();
+
+      try {
+        ensureQuill();
+        const q = window[STATE_KEY];
+        if (q) {
+          const len = q.getLength();
+          const pos = len > 1 ? len - 1 : 0;
+          if (pos > 0) q.insertText(pos, "\n");
+          q.insertText(pos === 0 ? 0 : pos + 1, name, "link", url);
+          const afterLink = (pos === 0 ? 0 : pos + 1) + name.length;
+          q.insertText(afterLink, "\n");
+          q.setSelection(afterLink + 1, 0);
+          if (typeof q.focus === "function") q.focus();
+        }
+      } catch (_e) {}
+    },
+    true
+  );
+
+  // ============================================================
   // FEED FILTER (Comentários / Arquivos / Sistema / Tudo)
   // ============================================================
   const VALID_FEED_FILTERS = new Set(["comments", "files", "system", "all"]);
