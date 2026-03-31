@@ -557,6 +557,78 @@ def social_avatar_upload(request):
 
 
 # ---------------------------------------------------------------
+# Social unread counts (GET → JSON) — para badge nos avatares
+# ---------------------------------------------------------------
+@login_required
+def social_unread_counts(request):
+    """
+    Retorna quantos posts novos cada usuário publicou desde
+    que o viewer viu o perfil dele pela última vez.
+    Também detecta posts publicados nos últimos 30s (balão).
+    """
+    from django.utils import timezone as tz
+    from datetime import timedelta
+
+    # Pegar os user_ids que nos interessam (query param ids=1,2,3)
+    ids_param = (request.GET.get("ids") or "").strip()
+    if not ids_param:
+        return JsonResponse({"counts": {}, "fresh": []})
+
+    try:
+        user_ids = [int(i) for i in ids_param.split(",") if i.strip().isdigit()]
+    except ValueError:
+        return JsonResponse({"counts": {}, "fresh": []})
+
+    if not user_ids:
+        return JsonResponse({"counts": {}, "fresh": []})
+
+    now = tz.now()
+    fresh_threshold = now - timedelta(seconds=40)  # posts dos últimos 40s
+
+    # Mapa de last_seen_post_at por target_user_id
+    seen_map = {
+        s.target_user_id: s.last_seen_post_at
+        for s in SocialPostSeen.objects.filter(
+            viewer=request.user,
+            target_user_id__in=user_ids,
+        )
+    }
+
+    counts = {}
+    fresh = []  # user_ids com post fresquinho (balão)
+
+    posts_qs = SocialPost.objects.filter(
+        user_id__in=user_ids
+    ).values("user_id", "created_at").order_by("user_id", "-created_at")
+
+    from collections import defaultdict
+    posts_by_user = defaultdict(list)
+    for p in posts_qs:
+        posts_by_user[p["user_id"]].append(p["created_at"])
+
+    for uid in user_ids:
+        last_seen = seen_map.get(uid)
+        user_posts = posts_by_user.get(uid, [])
+
+        if last_seen:
+            unread = sum(1 for t in user_posts if t > last_seen)
+        else:
+            unread = len(user_posts)
+
+        if unread > 0:
+            counts[str(uid)] = unread
+
+        # Balão: tem post publicado nos últimos 40s que o viewer ainda não viu?
+        for t in user_posts:
+            if t > fresh_threshold:
+                if last_seen is None or t > last_seen:
+                    fresh.append(uid)
+                    break
+
+    return JsonResponse({"counts": counts, "fresh": fresh})
+
+
+# ---------------------------------------------------------------
 # Camila.AI — Página de treinamento (staff only)
 # ---------------------------------------------------------------
 @login_required
