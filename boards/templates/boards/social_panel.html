@@ -225,7 +225,7 @@
         <div class="sp-onboard-input-row">
           <input type="text" name="unidade" id="sp-unidade-input"
                  class="sp-onboard-input"
-                 placeholder="Ex: UTI, Centro Cirúrgico, RH..."
+                 placeholder="Higienização, Enfermagem, Recepção..."
                  list="sp-unidades-list"
                  required autocomplete="off">
           <datalist id="sp-unidades-list">
@@ -1706,7 +1706,7 @@ var _CAMILA_AVATARS = {
     var _spUserPostCount = {{ posts|length }};
     var IS_NEW_USER      = (_spUserPostCount < 10);
     var _spProactiveCnt  = 0;            // quantas vezes Camila abriu proativamente
-    var NUDGE_INTERVAL   = IS_NEW_USER ? 60000 : 2 * 60 * 1000;
+    var NUDGE_INTERVAL   = 5 * 60 * 1000;   // 5 minutos
     var NUDGE_SHOW_MS    = 12000;        // 12s visível
     var NEWS_INTERVAL    = 3 * 60 * 60 * 1000; // 3 horas
     var _nudgeTimer      = null;
@@ -1913,11 +1913,21 @@ var _CAMILA_AVATARS = {
       }, 350);
     }
 
+    var _nudgeCount = parseInt(sessionStorage.getItem('_spNudgeCnt') || '0', 10);
+    var _userPublished = sessionStorage.getItem('_spPublished') === '1';
+
     function spShowNudge() {
       if (document.hidden) return;
+      /* Máximo 3 nudges por sessão */
+      if (_nudgeCount >= 3) return;
+      /* Se já publicou, não incomoda mais */
+      if (_userPublished) return;
       /* Não mostra se algum sheet já estiver aberto */
       var sheets = document.querySelectorAll('.sp-sheet-overlay:not(.sp-hidden)');
       if (sheets.length) return;
+
+      _nudgeCount++;
+      sessionStorage.setItem('_spNudgeCnt', _nudgeCount);
 
       /* ── Modo novo usuário: abre Camila proativamente (máx 3x) ── */
       if (IS_NEW_USER) {
@@ -2131,7 +2141,13 @@ var _CAMILA_AVATARS = {
     _fetchNews();
     setInterval(_fetchNews, NEWS_INTERVAL);
 
-    /* Disparo a cada 2 min */
+    /* Marca publicação feita (para não mostrar nudge) */
+    var _sheetForm = document.getElementById('sp-sheet-form');
+    if (_sheetForm) {
+      _sheetForm.addEventListener('submit', function(){ sessionStorage.setItem('_spPublished', '1'); });
+    }
+
+    /* Disparo a cada 5 min, max 3x */
     setInterval(spShowNudge, NUDGE_INTERVAL);
   })();
 
