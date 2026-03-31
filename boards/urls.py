@@ -136,6 +136,7 @@ from boards.views.social import (
     camila_pop_upload,
     camila_pop_delete,
     camila_pop_toggle,
+    camila_pop_resummarize,
 )
 
 
@@ -193,6 +194,7 @@ urlpatterns = [
     path("camila/pops/upload/", camila_pop_upload, name="camila_pop_upload"),
     path("camila/pops/<int:pop_id>/delete/", camila_pop_delete, name="camila_pop_delete"),
     path("camila/pops/<int:pop_id>/toggle/", camila_pop_toggle, name="camila_pop_toggle"),
+    path("camila/pops/<int:pop_id>/resummarize/", camila_pop_resummarize, name="camila_pop_resummarize"),
 
     # ============================================================
     # IDCamim OAuth2

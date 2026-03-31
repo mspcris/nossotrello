@@ -1312,51 +1312,107 @@ def camila_pop_list(request):
     return JsonResponse({"pops": data})
 
 
+_CLAUDE_SUMMARIZE_PROMPT = """Você recebeu o texto bruto de um POP (Procedimento Operacional Padrão) interno da CAMIM.
+
+Gere um resumo estruturado e objetivo, otimizado para ser usado como contexto em uma IA de atendimento interno. O resumo deve:
+- Ser conciso (máximo 600 palavras)
+- Manter TODAS as regras críticas, condições de decisão e exceções
+- Preservar valores, prazos, telefones, e-mails e dados específicos
+- Usar linguagem direta, sem floreios ou introduções desnecessárias
+- Estruturar nas seções: **Objetivo**, **Quando aplicar**, **Passos**, **Regras críticas**, **Contatos/Escalação**
+- Manter qualquer código, número de matrícula ou referência sistêmica mencionada
+
+Responda APENAS com o resumo estruturado, sem comentários adicionais."""
+
+
+def _extract_text_pdfplumber(pdf_bytes: bytes) -> str:
+    """Extrai texto bruto do PDF usando pdfplumber (melhor qualidade que pypdf)."""
+    import io
+    try:
+        import pdfplumber
+        with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+            pages = []
+            for page in pdf.pages:
+                text = page.extract_text() or ""
+                pages.append(text)
+            return "\n".join(pages).strip()
+    except ImportError:
+        # fallback para pypdf se pdfplumber não estiver disponível
+        try:
+            from pypdf import PdfReader
+            import io as _io
+            reader = PdfReader(_io.BytesIO(pdf_bytes))
+            return "\n".join(p.extract_text() or "" for p in reader.pages).strip()
+        except Exception as exc:
+            return f"[Erro na extração: {exc}]"
+    except Exception as exc:
+        return f"[Erro na extração: {exc}]"
+
+
+def _summarize_with_claude(raw_text: str, title: str) -> str:
+    """Envia o texto bruto para Claude e recebe um resumo otimizado para Groq."""
+    api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
+    if not api_key:
+        # Sem chave: retorna texto bruto truncado
+        return raw_text[:4000]
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=api_key)
+        message = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=1024,
+            messages=[
+                {
+                    "role": "user",
+                    "content": (
+                        f"{_CLAUDE_SUMMARIZE_PROMPT}\n\n"
+                        f"Título do POP: {title}\n\n"
+                        f"Texto extraído do PDF:\n\n{raw_text[:12000]}"
+                    ),
+                }
+            ],
+        )
+        return message.content[0].text.strip()
+    except Exception as exc:
+        # Se Claude falhar, usa texto bruto truncado
+        return raw_text[:4000]
+
+
 @login_required
 @staff_member_required
 @require_POST
 def camila_pop_upload(request):
-    """Upload de ZIP (com vários PDFs) ou PDF individual. Extrai texto e salva CamilaPOP."""
+    """Upload de ZIP (com vários PDFs) ou PDF individual.
+    Extrai texto com pdfplumber e sumariza com Claude antes de salvar."""
     import zipfile
     import io
-
-    try:
-        from pypdf import PdfReader
-    except ImportError:
-        return JsonResponse({"error": "Biblioteca pypdf não instalada no servidor."}, status=500)
+    import re
 
     uploaded = request.FILES.get("file")
     if not uploaded:
         return JsonResponse({"error": "Nenhum arquivo enviado."}, status=400)
 
-    results = {"imported": 0, "errors": []}
+    results = {"imported": 0, "errors": [], "summarized": 0}
 
-    def _extract_text(pdf_bytes: bytes) -> str:
-        try:
-            reader = PdfReader(io.BytesIO(pdf_bytes))
-            pages = []
-            for page in reader.pages:
-                text = page.extract_text() or ""
-                pages.append(text)
-            return "\n".join(pages).strip()
-        except Exception as exc:
-            return f"[Erro na extração: {exc}]"
-
-    def _save_pop(filename: str, pdf_bytes: bytes, file_obj=None):
-        name = filename.removesuffix(".pdf").removesuffix(".PDF")
-        # Tenta identificar código no nome (ex: "POP-001 Cancelamento.pdf")
-        import re
+    def _parse_name(filename: str):
+        name = filename
+        for ext in (".pdf", ".PDF"):
+            name = name.removesuffix(ext)
         code_match = re.match(r"^(POP[\s\-_]?\d+)", name, re.IGNORECASE)
         code = code_match.group(1).upper().replace(" ", "-") if code_match else ""
-        title = name.strip()
+        return name.strip(), code
 
-        text = _extract_text(pdf_bytes)
-
+    def _save_pop(filename: str, pdf_bytes: bytes):
         from django.core.files.base import ContentFile
+        title, code = _parse_name(filename)
+        raw_text = _extract_text_pdfplumber(pdf_bytes)
+        summary = _summarize_with_claude(raw_text, title)
+        if summary != raw_text[:4000]:
+            results["summarized"] += 1
         pop = CamilaPOP(
             title=title,
             code=code,
-            extracted_text=text,
+            extracted_text=summary,
             is_active=True,
             uploaded_by=request.user,
         )
@@ -1371,9 +1427,10 @@ def camila_pop_upload(request):
         try:
             with zipfile.ZipFile(io.BytesIO(raw)) as zf:
                 for member in zf.infolist():
-                    if member.filename.lower().endswith(".pdf") and not member.filename.startswith("__MACOSX"):
-                        pdf_bytes = zf.read(member.filename)
-                        base = member.filename.split("/")[-1]
+                    mname = member.filename
+                    if mname.lower().endswith(".pdf") and not mname.startswith("__MACOSX"):
+                        pdf_bytes = zf.read(mname)
+                        base = mname.split("/")[-1]
                         try:
                             _save_pop(base, pdf_bytes)
                         except Exception as exc:
@@ -1391,6 +1448,24 @@ def camila_pop_upload(request):
 
     results["ok"] = True
     return JsonResponse(results)
+
+
+@login_required
+@staff_member_required
+@require_POST
+def camila_pop_resummarize(request, pop_id: int):
+    """Re-sumariza um POP existente com Claude (re-processa o PDF salvo)."""
+    import io
+    pop = get_object_or_404(CamilaPOP, id=pop_id)
+    try:
+        pdf_bytes = pop.pdf_file.read()
+        raw_text = _extract_text_pdfplumber(pdf_bytes)
+        summary = _summarize_with_claude(raw_text, pop.title)
+        pop.extracted_text = summary
+        pop.save(update_fields=["extracted_text", "updated_at"])
+        return JsonResponse({"ok": True, "chars": len(summary)})
+    except Exception as exc:
+        return JsonResponse({"error": str(exc)}, status=500)
 
 
 @login_required

@@ -183,7 +183,7 @@
       <span class="ca-card-arrow">▸</span>
     </div>
     <div id="ca-pops" class="ca-card-body ca-hidden">
-      <p class="ca-hint">Envie um <strong>.zip</strong> com vários PDFs ou um <strong>.pdf</strong> individual. O texto será extraído automaticamente e a Camila poderá responder com base nos procedimentos e disponibilizar o link de download.</p>
+      <p class="ca-hint">Envie um <strong>.zip</strong> com vários PDFs ou um <strong>.pdf</strong> individual. O texto é extraído e <strong>resumido automaticamente pelo Claude</strong> antes de ser enviado ao Groq — só o essencial vai pro contexto. O PDF original fica disponível para download. Use 🤖 para re-sumarizar um POP existente.</p>
 
       <div class="ca-field ca-row" style="gap:12px;align-items:center;flex-wrap:wrap;">
         <label class="ca-btn ca-btn-blue" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
@@ -500,8 +500,9 @@
         + '<td style="padding:4px 8px;text-align:center">'
         +   (p.pdf_url ? '<a href="'+p.pdf_url+'" target="_blank" rel="noopener" title="Baixar PDF" style="color:#7c3aed;text-decoration:none;font-size:1.1rem">📄</a>' : '—')
         + '</td>'
-        + '<td style="padding:4px 8px;text-align:center">'
-        +   '<button onclick="caPopDelete('+p.id+')" style="background:none;border:none;cursor:pointer;color:#dc2626;font-size:.85rem">🗑</button>'
+        + '<td style="padding:4px 8px;text-align:center;white-space:nowrap">'
+        +   '<button onclick="caPopResum('+p.id+',this)" style="background:none;border:none;cursor:pointer;font-size:.85rem" title="Re-sumarizar com Claude">🤖</button>'
+        +   ' <button onclick="caPopDelete('+p.id+')" style="background:none;border:none;cursor:pointer;color:#dc2626;font-size:.85rem" title="Remover">🗑</button>'
         + '</td>'
         + '</tr>';
     });
@@ -554,6 +555,24 @@
       var d = await r.json();
       if(d.ok){ btn.textContent = d.is_active ? '✅' : '⏸️'; }
     }catch(e){ caToast('Erro','#dc2626'); }
+  };
+
+  window.caPopResum = async function(id, btn){
+    var orig = btn.textContent;
+    btn.textContent = '⏳';
+    btn.disabled = true;
+    try{
+      var r = await fetch('/camila/pops/'+id+'/resummarize/', {method:'POST',headers:{'X-CSRFToken':csrfVal}});
+      var d = await r.json();
+      if(d.ok){
+        caToast('Re-sumarizado! ' + d.chars.toLocaleString() + ' chars');
+        caPopLoad();
+      } else {
+        caToast(d.error || 'Erro','#dc2626');
+      }
+    }catch(e){ caToast('Erro','#dc2626'); }
+    btn.textContent = orig;
+    btn.disabled = false;
   };
 
 })();
