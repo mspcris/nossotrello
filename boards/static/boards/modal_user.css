@@ -300,7 +300,7 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  padding: 8px 14px;
+  padding: 10px 16px;
   border-radius: 20px;
   background: rgba(0,0,0,0.5);
   color: #fff;
@@ -308,11 +308,12 @@
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   transition: background 0.15s;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
-  min-height: 36px;
+  min-height: 44px;
+  -webkit-tap-highlight-color: transparent;
 }
-.sp-cover-btn:hover { background: rgba(0,0,0,0.7); }
+.sp-cover-btn:active { background: rgba(0,0,0,0.8); }
 
 /* Avatar overlapping cover */
 .sp-avatar-over-cover {
@@ -360,6 +361,32 @@
   font-size: 0.75rem;
   border: 2px solid #fff;
   box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+
+/* Avatar menu (camera/gallery) */
+.sp-avatar-menu {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+.sp-avatar-menu-btn {
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1.5px solid #e5e7eb;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #374151;
+  min-height: 38px;
+  -webkit-tap-highlight-color: transparent;
+  transition: all 0.15s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.sp-avatar-menu-btn:active {
+  transform: scale(0.95);
+  border-color: #3b82f6;
+  background: #eff6ff;
 }
 
 .sp-profile-info {
@@ -637,6 +664,32 @@
   -webkit-tap-highlight-color: transparent;
 }
 .sp-photo-sm:hover { background: #eff6ff; }
+
+/* Lunch capture options */
+.sp-lunch-capture {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.sp-lunch-cap-btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1.5px solid #e5e7eb;
+  background: #f9fafb;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #374151;
+  min-height: 44px;
+  -webkit-tap-highlight-color: transparent;
+  transition: all 0.15s;
+}
+.sp-lunch-cap-btn:active {
+  transform: scale(0.95);
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
 
 .sp-lunch-preview {
   border-radius: 12px;
@@ -990,6 +1043,95 @@ video.sp-post-media {
   -webkit-tap-highlight-color: transparent;
 }
 .sp-comment-send:hover { background: #1d4ed8; }
+
+/* ═══════════ CAMILA BUTTON (bottom sheet) ═══════════ */
+.sp-sheet-divider {
+  height: 1px;
+  background: #e5e7eb;
+  margin: 12px 0;
+}
+.sp-camila-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 12px;
+  border-radius: 14px;
+  border: 2px solid #e9d5ff;
+  background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
+  cursor: pointer;
+  transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.sp-camila-btn:active {
+  transform: scale(0.98);
+  border-color: #a855f7;
+}
+.sp-camila-btn-avatar {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+.sp-camila-btn-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  flex: 1;
+  min-width: 0;
+}
+.sp-camila-btn-name {
+  font-weight: 700;
+  font-size: 0.9375rem;
+  color: #6b21a8;
+}
+.sp-camila-btn-hint {
+  font-size: 0.75rem;
+  color: #9333ea;
+  opacity: 0.8;
+}
+.sp-camila-btn-arrow {
+  font-size: 1.5rem;
+  color: #a855f7;
+  flex-shrink: 0;
+}
+
+/* ═══════════ CAMILA CHAT SHEET ═══════════ */
+.sp-camila-sheet {
+  display: flex;
+  flex-direction: column;
+  max-height: 85vh;
+}
+.sp-camila-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.sp-camila-header-icon {
+  font-size: 1.5rem;
+}
+.sp-camila-header-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #6b21a8;
+}
+.sp-camila-messages {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+  max-height: 55vh;
+  min-height: 200px;
+  -webkit-overflow-scrolling: touch;
+}
+.sp-camila-send {
+  background: #7c3aed !important;
+}
+.sp-camila-send:hover {
+  background: #6d28d9 !important;
+}
 
 /* ═══════════ FAB ═══════════ */
 .sp-fab {

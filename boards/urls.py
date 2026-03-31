@@ -114,6 +114,7 @@ from boards.views.social import (
     daily_checkin_save,
     social_cover_upload,
     social_avatar_upload,
+    social_camila_chat,
 )
 
 
@@ -146,6 +147,7 @@ urlpatterns = [
     path("social/checkin/", daily_checkin_save, name="daily_checkin_save"),
     path("social/cover/", social_cover_upload, name="social_cover_upload"),
     path("social/avatar/", social_avatar_upload, name="social_avatar_upload"),
+    path("social/camila/", social_camila_chat, name="social_camila_chat"),
 
     # ============================================================
     # IDCamim OAuth2

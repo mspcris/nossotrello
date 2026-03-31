@@ -15,7 +15,7 @@
         <label class="sp-cover-btn" title="Alterar capa">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
           <span>Capa</span>
-          <input type="file" name="cover_photo" accept="image/*"
+          <input type="file" name="cover_photo" accept="image/*,image/gif"
                  style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;"
                  onchange="this.closest('form').requestSubmit()">
         </label>
@@ -26,7 +26,7 @@
     <!-- Avatar overlapping cover -->
     <div class="sp-avatar-over-cover">
       {% if is_me %}
-      <div class="sp-avatar-tap" onclick="document.getElementById('sp-avatar-input').click()" title="Alterar foto">
+      <div class="sp-avatar-tap" onclick="spToggleAvatarMenu()" title="Alterar foto">
         {% if profile.avatar %}
           <img src="{{ profile.avatar.url }}" alt="" class="sp-avatar" id="sp-avatar-img">
         {% elif profile.avatar_choice %}
@@ -37,6 +37,10 @@
           </div>
         {% endif %}
         <div class="sp-avatar-cam">📷</div>
+      </div>
+      <div id="sp-avatar-menu" class="sp-avatar-menu sp-hidden">
+        <button type="button" class="sp-avatar-menu-btn" onclick="spAvatarCapture('camera')">📸 Câmera</button>
+        <button type="button" class="sp-avatar-menu-btn" onclick="spAvatarCapture('gallery')">🖼️ Galeria</button>
       </div>
       <input type="file" id="sp-avatar-input" accept="image/*" style="display:none"
              onchange="spOpenCropper(this)">
@@ -189,11 +193,13 @@
           <input type="text" name="lunch_text" class="sp-input sp-input-lunch" id="sp-lunch-input"
                  placeholder="Frango e salada"
                  value="{{ checkin.lunch_text|default:'' }}" maxlength="200">
-          <label class="sp-photo-sm" title="Foto do almoço">
-            📷
-            <input type="file" name="lunch_photo" accept="image/*" style="display:none"
-                   onchange="spPreviewLunch(this)">
-          </label>
+          <button type="button" class="sp-photo-sm" title="Foto do almoço" onclick="spOpenLunchCapture()">📷</button>
+        </div>
+        <input type="file" id="sp-lunch-file" name="lunch_photo" style="display:none"
+               onchange="spPreviewLunch(this)">
+        <div class="sp-lunch-capture sp-hidden" id="sp-lunch-capture">
+          <button type="button" class="sp-lunch-cap-btn" onclick="spLunchCapture('photo')">📸 Foto</button>
+          <button type="button" class="sp-lunch-cap-btn" onclick="spLunchCapture('gallery')">🖼️ Galeria</button>
         </div>
         <div id="sp-lunch-preview" class="sp-lunch-preview {% if not checkin.lunch_photo %}sp-hidden{% endif %}">
           {% if checkin.lunch_photo %}
@@ -318,6 +324,37 @@
 
         <button type="submit" class="sp-btn sp-btn-blue">Publicar 🚀</button>
       </form>
+
+      <div class="sp-sheet-divider"></div>
+
+      <button type="button" class="sp-camila-btn" onclick="spCloseSheet();spOpenCamila()">
+        <span class="sp-camila-btn-avatar">🤖</span>
+        <span class="sp-camila-btn-text">
+          <span class="sp-camila-btn-name">Fale com a Camila.AI</span>
+          <span class="sp-camila-btn-hint">Sua assistente da rede social</span>
+        </span>
+        <span class="sp-camila-btn-arrow">›</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══ CAMILA CHAT (bottom sheet) ═══ -->
+  <div id="sp-camila-overlay" class="sp-sheet-overlay sp-hidden" onclick="spCloseCamila()">
+    <div class="sp-sheet sp-camila-sheet" onclick="event.stopPropagation()">
+      <div class="sp-sheet-handle"></div>
+      <div class="sp-camila-header">
+        <span class="sp-camila-header-icon">🤖</span>
+        <span class="sp-camila-header-title">Camila.AI</span>
+      </div>
+      <div id="sp-camila-messages" class="sp-camila-messages">
+        <div class="sp-chat-msg sp-chat-bot">Oi! Sou a Camila 🤖✨ A IA da rede social da CAMIM. Como posso te ajudar?</div>
+      </div>
+      <div class="sp-chat-input-row">
+        <input type="text" id="sp-camila-input" class="sp-chat-input"
+               placeholder="Fale com a Camila..." maxlength="1000"
+               onkeydown="if(event.key==='Enter')spSendCamila()">
+        <button type="button" class="sp-chat-send sp-camila-send" onclick="spSendCamila()">➤</button>
+      </div>
     </div>
   </div>
   {% endif %}
@@ -372,7 +409,26 @@
     lunchInput.placeholder = lunchPh[Math.floor(Math.random() * lunchPh.length)];
   }
 
-  /* ── Lunch photo preview ── */
+  /* ── Lunch capture (photo/gallery) ── */
+  window.spOpenLunchCapture = function(){
+    var el = document.getElementById('sp-lunch-capture');
+    if(el) el.classList.toggle('sp-hidden');
+  };
+  window.spLunchCapture = function(type){
+    var inp = document.getElementById('sp-lunch-file');
+    if(!inp) return;
+    if(type === 'photo'){
+      inp.accept = 'image/*';
+      inp.setAttribute('capture', 'environment');
+    } else {
+      inp.accept = 'image/*';
+      inp.removeAttribute('capture');
+    }
+    inp.value = '';
+    inp.click();
+    var el = document.getElementById('sp-lunch-capture');
+    if(el) el.classList.add('sp-hidden');
+  };
   window.spPreviewLunch = function(input){
     var wrap = document.getElementById('sp-lunch-preview');
     if(!wrap || !input.files[0]) return;
@@ -558,6 +614,76 @@
       list.appendChild(el);
       list.classList.remove('sp-hidden');
     }catch(e){}
+  };
+
+  /* ═══ CAMILA CHAT ═══ */
+  window.spOpenCamila = function(){
+    var o = document.getElementById('sp-camila-overlay');
+    if(o) o.classList.remove('sp-hidden');
+    document.body.style.overflow = 'hidden';
+    setTimeout(function(){
+      var inp = document.getElementById('sp-camila-input');
+      if(inp) inp.focus();
+    }, 350);
+  };
+  window.spCloseCamila = function(){
+    var o = document.getElementById('sp-camila-overlay');
+    if(o) o.classList.add('sp-hidden');
+    document.body.style.overflow = '';
+  };
+  window._spCamilaHistory = window._spCamilaHistory || [];
+  window.spSendCamila = async function(){
+    var input = document.getElementById('sp-camila-input');
+    var msgs = document.getElementById('sp-camila-messages');
+    if(!input || !msgs) return;
+    var text = (input.value||'').trim();
+    if(!text) return;
+    input.value = '';
+
+    var ub = document.createElement('div');
+    ub.className = 'sp-chat-msg sp-chat-user';
+    ub.textContent = text;
+    msgs.appendChild(ub);
+
+    var th = document.createElement('div');
+    th.className = 'sp-chat-msg sp-chat-bot';
+    th.textContent = 'Pensando...';
+    msgs.appendChild(th);
+    msgs.scrollTop = msgs.scrollHeight;
+
+    window._spCamilaHistory.push({role:'user',content:text});
+    try{
+      var csrf = document.querySelector('meta[name="csrf-token"]');
+      var r = await fetch('{% url "boards:social_camila_chat" %}',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-CSRFToken': csrf ? csrf.content : ''},
+        body:JSON.stringify({message:text,history:window._spCamilaHistory})
+      });
+      var d = await r.json();
+      th.textContent = d.response || d.error || 'Erro.';
+      if(d.response) window._spCamilaHistory.push({role:'assistant',content:d.response});
+    }catch(e){ th.textContent='Erro de conexão.'; }
+    msgs.scrollTop = msgs.scrollHeight;
+  };
+
+  /* ═══ AVATAR MENU ═══ */
+  window.spToggleAvatarMenu = function(){
+    var m = document.getElementById('sp-avatar-menu');
+    if(m) m.classList.toggle('sp-hidden');
+  };
+  window.spAvatarCapture = function(type){
+    var inp = document.getElementById('sp-avatar-input');
+    if(!inp) return;
+    inp.accept = 'image/*';
+    if(type === 'camera'){
+      inp.setAttribute('capture', 'environment');
+    } else {
+      inp.removeAttribute('capture');
+    }
+    inp.value = '';
+    inp.click();
+    var m = document.getElementById('sp-avatar-menu');
+    if(m) m.classList.add('sp-hidden');
   };
 
   /* ═══ AVATAR CROPPER ═══ */

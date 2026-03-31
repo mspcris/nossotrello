@@ -311,6 +311,15 @@ def daily_checkin_save(request):
         prof.fixed_posto = False
         prof.save(update_fields=["fixed_posto"])
 
+    # Auto-post lunch to feed
+    if lunch_text or lunch_photo:
+        post_text = f"🍽️ {lunch_text}" if lunch_text else "🍽️ Almoço do dia"
+        SocialPost.objects.create(
+            user=request.user,
+            text=post_text,
+            photo=lunch_photo or None,
+        )
+
     # AI react trigger
     parts = []
     if checkin.mood:
@@ -428,6 +437,41 @@ def social_ai_react(request):
         [{"role": "user", "content": context}],
         _CAMILA_SYSTEM,
     )
+    return JsonResponse({"response": response})
+
+
+# ---------------------------------------------------------------
+# Camila.AI — chat conversacional (POST → JSON)
+# ---------------------------------------------------------------
+_CAMILA_CHAT_SYSTEM = (
+    "Você é Camila, a IA simpática e inteligente da rede social de trabalho da CAMIM. "
+    "Você é uma assistente conversacional. Os colaboradores podem falar com você "
+    "sobre qualquer assunto: trabalho, dúvidas, desabafos, ideias, piadas, "
+    "curiosidades, dicas de produtividade, etc. "
+    "Seja calorosa, divertida, use emojis com moderação e mantenha um tom "
+    "profissional mas descontraído. Respostas curtas e diretas (máx 3 parágrafos). "
+    "Se perceber sofrimento intenso, sugira buscar apoio profissional. "
+    "Português brasileiro. Nunca diagnostique doenças."
+)
+
+
+@login_required
+@require_POST
+def social_camila_chat(request):
+    """Chat conversacional com a Camila.AI."""
+    try:
+        data = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "JSON inválido."}, status=400)
+
+    message = (data.get("message") or "").strip()
+    history = data.get("history") or []
+
+    if not message:
+        return JsonResponse({"error": "Mensagem vazia."}, status=400)
+
+    messages = [*history[-10:], {"role": "user", "content": message}]
+    response = _groq_chat(messages, _CAMILA_CHAT_SYSTEM)
     return JsonResponse({"response": response})
 
 
