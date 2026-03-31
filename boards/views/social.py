@@ -628,6 +628,7 @@ def social_unread_counts(request):
         posts_by_user[p["user_id"]].append(p)
 
     fresh_texts = {}  # uid -> text do post fresquinho
+    fresh_ts = {}     # uid -> timestamp ISO do post (chave única para sessionStorage)
 
     for uid in user_ids:
         last_seen = seen_map.get(uid)
@@ -647,9 +648,10 @@ def social_unread_counts(request):
                 if last_seen is None or p["created_at"] > last_seen:
                     fresh.append(uid)
                     fresh_texts[str(uid)] = (p["text"] or "").strip()[:80]
+                    fresh_ts[str(uid)] = p["created_at"].isoformat()
                     break
 
-    return JsonResponse({"counts": counts, "fresh": fresh, "fresh_texts": fresh_texts})
+    return JsonResponse({"counts": counts, "fresh": fresh, "fresh_texts": fresh_texts, "fresh_ts": fresh_ts})
 
 
 # ---------------------------------------------------------------

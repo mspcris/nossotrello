@@ -427,6 +427,7 @@ class UserProfile(models.Model):
 
     notify_whatsapp = models.BooleanField(default=True)
     notify_email = models.BooleanField(default=True)
+    notify_social = models.BooleanField(default=True)
 
     notify_only_owned_or_mentioned = models.BooleanField(default=False)
 

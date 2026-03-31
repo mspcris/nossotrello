@@ -2390,6 +2390,10 @@ document.addEventListener("pointerup", (e) => {
 <!-- ═══ SOCIAL AVATAR NOTIFICATIONS ═══ -->
 <script>
 (function(){
+  // Notificações sociais desativadas pelo usuário → não faz nada
+  var socialNotifyEnabled = {{ request.user.profile.notify_social|yesno:"true,false" }};
+  if(!socialNotifyEnabled) return;
+
   // Coleta todos os user IDs da barra
   var wraps = document.querySelectorAll('.bma-wrap[data-uid]');
   if(!wraps.length) return;
@@ -2397,18 +2401,23 @@ document.addEventListener("pointerup", (e) => {
   var uids = Array.from(wraps).map(function(w){ return w.dataset.uid; });
   var csrf = document.querySelector('meta[name="csrf-token"]');
 
-  // Balão já mostrado para não repetir nesta sessão
-  var shownBalloon = {};
-  // Controle de clique (se tem unread, vai pro social)
+  // sessionStorage para não repetir o balão mesmo entre polls
+  // Chave: "bma_balloon_<uid>_<boardId>" → valor: postId ou timestamp do post já exibido
+  var boardId = '{{ board.id }}';
+  function balloonKey(uid){ return 'bma_shown_' + boardId + '_' + uid; }
+  function wasBalloonShown(uid, postTs){ return sessionStorage.getItem(balloonKey(uid)) === String(postTs); }
+  function markBalloonShown(uid, postTs){ sessionStorage.setItem(balloonKey(uid), String(postTs)); }
+
+  // Controle de clique
   window._bmaUnread = {};
 
   window.bmaClick = function(uid, btn){
     window.location.href = '/social/' + uid + '/';
   };
 
-  function showBalloon(uid, name, postText){
-    if(shownBalloon[uid]) return;
-    shownBalloon[uid] = true;
+  function showBalloon(uid, name, postText, postTs){
+    if(wasBalloonShown(uid, postTs)) return;
+    markBalloonShown(uid, postTs);
 
     // Cria balão em TODAS as bma-wrap deste uid (desktop + mobile)
     document.querySelectorAll('.bma-wrap[data-uid="'+uid+'"]').forEach(function(wrap){
@@ -2416,14 +2425,12 @@ document.addEventListener("pointerup", (e) => {
       balloon.className = 'bma-balloon';
       var firstName = name.split(' ')[0];
       var text = postText ? postText : 'publicou algo novo!';
-      // Limita e trunca se muito longo
       if(text.length > 60) text = text.substring(0, 57) + '…';
       balloon.innerHTML = '<span class="bma-balloon-name">' + firstName + '</span>' +
         '<span class="bma-balloon-text">' + text.replace(/</g,'&lt;') + '</span>' +
         '<span class="bma-balloon-cta">Vem ver 👀</span>';
       wrap.appendChild(balloon);
 
-      // Após 4s some
       setTimeout(function(){
         balloon.style.animation = 'bma-balloon-out 0.3s ease forwards';
         setTimeout(function(){ balloon.remove(); }, 320);
@@ -2431,12 +2438,11 @@ document.addEventListener("pointerup", (e) => {
     });
   }
 
-  function updateBadges(counts, fresh, freshTexts){
+  function updateBadges(counts, fresh, freshTexts, freshTs){
     window._bmaUnread = {};
     freshTexts = freshTexts || {};
+    freshTs = freshTs || {};
 
-    // Atualiza badges em AMBAS as barras (desktop + mobile)
-    // Agrupa por uid para não processar 2x
     var processed = {};
     document.querySelectorAll('.bma-wrap[data-uid]').forEach(function(wrap){
       var uid = wrap.dataset.uid;
@@ -2447,10 +2453,7 @@ document.addEventListener("pointerup", (e) => {
 
       if(count > 0){
         window._bmaUnread[uid] = count;
-        if(badge){
-          badge.textContent = count;
-          badge.style.display = 'flex';
-        }
+        if(badge){ badge.textContent = count; badge.style.display = 'flex'; }
         if(btn) btn.classList.add('bma-has-unread');
       } else {
         delete window._bmaUnread[uid];
@@ -2458,10 +2461,9 @@ document.addEventListener("pointerup", (e) => {
         if(btn) btn.classList.remove('bma-has-unread');
       }
 
-      // Balão só uma vez por uid
       if(!processed[uid] && fresh && fresh.indexOf(parseInt(uid)) !== -1){
         processed[uid] = true;
-        showBalloon(uid, name, freshTexts[uid] || '');
+        showBalloon(uid, name, freshTexts[uid] || '', freshTs[uid] || '');
       }
     });
   }
@@ -2469,7 +2471,7 @@ document.addEventListener("pointerup", (e) => {
   function poll(){
     fetch('/social/unread/?ids=' + uids.join(','))
       .then(function(r){ return r.json(); })
-      .then(function(d){ updateBadges(d.counts || {}, d.fresh || [], d.fresh_texts || {}); })
+      .then(function(d){ updateBadges(d.counts || {}, d.fresh || [], d.fresh_texts || {}, d.fresh_ts || {}); })
       .catch(function(){});
   }
 

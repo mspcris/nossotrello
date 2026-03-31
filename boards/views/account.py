@@ -216,6 +216,13 @@ def account_profile_update(request):
         prof.notify_email = False
         update_fields.append("notify_email")
 
+    if "notify_social" in request.POST:
+        prof.notify_social = True
+        update_fields.append("notify_social")
+    else:
+        prof.notify_social = False
+        update_fields.append("notify_social")
+
     # ── Agenda de notificações ──
     raw_start = (request.POST.get("notify_start_time") or "").strip()
     raw_end = (request.POST.get("notify_end_time") or "").strip()
