@@ -37,8 +37,9 @@
       <div class="shrink-0 hidden md:block">
         {% if board and board.image %}
           <div class="relative group">
-            <div class="h-10 w-24 border border-gray-300 rounded-lg overflow-hidden bg-white">
-              <img src="{{ board.image.url }}" class="h-full w-full object-cover">
+            <div class="h-10 w-24 border border-gray-300 rounded-lg overflow-hidden bg-white cursor-pointer"
+                 onclick="openBoardImageModal('{{ board.image.url }}')" title="Ver imagem">
+              <img src="{{ board.image.url }}" class="h-full w-full object-cover pointer-events-none">
             </div>
 
             <button class="absolute -top-2 -right-2 h-6 w-6 rounded-full
@@ -318,12 +319,15 @@
   <div class="relative group">
     {% if board and board.image %}
       <div class="cm-cover cm-cover--header"
-           style="--cm-cover-url: url('{{ board.image.url }}');">
+           style="--cm-cover-url: url('{{ board.image.url }}'); cursor:pointer;"
+           onclick="openBoardImageModal('{{ board.image.url }}')"
+           title="Ver imagem em tamanho completo">
         <img
           src="{{ board.image.url }}"
           alt="{{ board.name }}"
           class="cm-cover__img"
           loading="lazy"
+          style="pointer-events:none;"
         >
       </div>
 
@@ -2663,5 +2667,40 @@ document.addEventListener("pointerup", (e) => {
   to   { opacity: 0; transform: translateY(-6px); }
 }
 </style>
+
+<!-- ═══ LIGHTBOX IMAGEM DO QUADRO ═══ -->
+<div id="board-img-modal"
+     style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.88);
+            align-items:center;justify-content:center;cursor:zoom-out;"
+     onclick="closeBoardImageModal()">
+  <img id="board-img-modal-img"
+       src=""
+       alt=""
+       style="max-width:95vw;max-height:92vh;object-fit:contain;border-radius:8px;
+              box-shadow:0 8px 40px rgba(0,0,0,0.6);pointer-events:none;">
+  <button onclick="event.stopPropagation();closeBoardImageModal()"
+          style="position:fixed;top:16px;right:16px;background:rgba(0,0,0,0.6);
+                 color:#fff;border:none;border-radius:50%;width:36px;height:36px;
+                 font-size:1.1rem;cursor:pointer;display:flex;align-items:center;
+                 justify-content:center;z-index:1;">✕</button>
+</div>
+<script>
+function openBoardImageModal(url){
+  var m = document.getElementById('board-img-modal');
+  var img = document.getElementById('board-img-modal-img');
+  if(!m || !img) return;
+  img.src = url;
+  m.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+function closeBoardImageModal(){
+  var m = document.getElementById('board-img-modal');
+  if(m) m.style.display = 'none';
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape') closeBoardImageModal();
+});
+</script>
 
 {% endblock content %}
