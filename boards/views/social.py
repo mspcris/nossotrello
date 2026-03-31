@@ -749,15 +749,21 @@ def _friendship_status(me, other):
 
 def _user_card(user):
     """Dict resumido de um usuário para JSON."""
+    from django.templatetags.static import static
     try:
         prof = user.profile
     except Exception:
         prof = None
+    avatar = None
+    if prof and prof.avatar:
+        avatar = prof.avatar.url
+    elif prof and prof.avatar_choice:
+        avatar = static(f"images/avatar/{prof.avatar_choice}")
     return {
         "id": user.id,
         "name": (prof.display_name if prof else None) or user.get_full_name() or user.email,
         "handle": (prof.handle if prof else "") or "",
-        "avatar": prof.avatar.url if (prof and prof.avatar) else None,
+        "avatar": avatar,
     }
 
 
