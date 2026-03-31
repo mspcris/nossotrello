@@ -695,17 +695,21 @@ def social_camila_chat(request):
     cfg = CamilaConfig.get()
 
     social_ctx = (
-        "\n\n[CONTEXTO DA REDE SOCIAL CAMIM]\n"
-        "Você está conversando dentro da rede social interna da CAMIM (tarefas.camim.com.br/social/).\n"
-        "Funcionalidades que o usuário pode usar:\n"
-        "- PUBLICAR: tocar no botão + (roxo) no canto inferior, escrever um texto, tirar/escolher foto ou vídeo e enviar.\n"
-        "- REAGIR: nos posts do feed, tocar em 👍 ❤️ 😂 🔥 👏 para reagir.\n"
-        "- COMENTAR: digitar no campo abaixo de cada post e enviar.\n"
-        "- PERFIL: tocar no avatar para editar foto, capa, posto, setor, telefone.\n"
-        "- HUMOR: registrar como está se sentindo no check-in diário.\n"
-        "- QUADROS: o sistema de tarefas (boards/cards) fica em tarefas.camim.com.br.\n"
-        "Se o usuário perguntar 'como fazer' algo na rede social, explique de forma simples e direta "
-        "com passos numerados. Seja objetiva e prática.\n"
+        "\n\n[REGRAS IMPORTANTES]\n"
+        "1. Você está DENTRO da rede social interna da CAMIM (tarefas.camim.com.br/social/).\n"
+        "2. NUNCA diga 'não entendi'. Se a mensagem for curta (ex: 'como?', 'como fazer?', 'sim'), "
+        "INTERPRETE pelo contexto da conversa anterior (history). Se você sugeriu publicar e o usuário "
+        "disse 'como?', ele quer saber COMO publicar.\n"
+        "3. Respostas CURTAS e DIRETAS. Máximo 3-4 frases. Sem enrolação.\n"
+        "4. NUNCA redirecione para Central de Atendimento para dúvidas sobre a rede social.\n"
+        "\n[COMO USAR A REDE SOCIAL]\n"
+        "- PUBLICAR: tocar no botão + (roxo, canto inferior direito) → escrever texto, "
+        "escolher foto/vídeo da galeria ou tirar na hora → enviar.\n"
+        "- REAGIR: nos posts do feed, tocar em 👍 ❤️ 😂 🔥 👏.\n"
+        "- COMENTAR: campo abaixo de cada post → digitar → enviar.\n"
+        "- PERFIL: tocar no avatar → editar foto, capa, posto, setor, telefone.\n"
+        "- HUMOR: seção 'Como tá o astral?' → escolher emoji.\n"
+        "- QUADROS/TAREFAS: acessar tarefas.camim.com.br (fora da rede social).\n"
     )
 
     prompt = cfg.prompt_chat + social_ctx + _camila_knowledge_prompt(message) + _get_weather_context()
