@@ -521,31 +521,82 @@ def social_chatbot_message(request):
 # ---------------------------------------------------------------
 # Camila.AI — base de conhecimento helper
 # ---------------------------------------------------------------
-def _camila_knowledge_prompt():
-    """Monta bloco de conhecimento a partir do banco."""
-    entries = CamilaKnowledge.objects.filter(is_active=True)
-    if not entries.exists():
-        return ""
-    lines = ["\n\n--- BASE DE CONHECIMENTO DA CAMIM ---"]
-    for e in entries:
-        lines.append(f"\n[{e.get_category_display()}] {e.title}:\n{e.content}")
-    lines.append("\n--- FIM DA BASE DE CONHECIMENTO ---\n")
 
-    # POPs — Procedimentos Operacionais Padrão (agrupados por categoria)
-    pops = CamilaPOP.objects.filter(is_active=True).exclude(extracted_text="").order_by("category", "code")
-    if pops.exists():
-        lines.append("\n\n--- POPs — PROCEDIMENTOS OPERACIONAIS PADRÃO ---")
-        lines.append("Ao citar um POP: informe código, título, setor e ofereça o link de download do PDF.")
-        current_cat = None
-        for pop in pops:
-            if pop.category != current_cat:
-                current_cat = pop.category
-                lines.append(f"\n## Setor: {current_cat or 'Geral'}")
+def _pop_relevance_score(pop: "CamilaPOP", query_words: set) -> int:
+    """Pontua um POP pela quantidade de palavras da query que aparecem nele."""
+    haystack = " ".join([
+        pop.title, pop.code, pop.category, pop.raw_text, pop.extracted_text
+    ]).lower()
+    return sum(1 for w in query_words if w in haystack)
+
+
+def _find_relevant_pops(query: str, max_pops: int = 6):
+    """Retorna os POPs mais relevantes para a query (busca por palavras-chave)."""
+    import re as _re
+    query_words = set(_re.findall(r"[a-záàâãéêíóôõúüç]{4,}", query.lower()))
+    pops = list(CamilaPOP.objects.filter(is_active=True))
+    if not pops:
+        return []
+    if not query_words:
+        return pops[:max_pops]
+    scored = [(pop, _pop_relevance_score(pop, query_words)) for pop in pops]
+    scored.sort(key=lambda x: -x[1])
+    # Retorna os relevantes (score > 0) + completa com os primeiros se precisar
+    relevant = [p for p, s in scored if s > 0][:max_pops]
+    if not relevant:
+        relevant = [p for p, _ in scored[:3]]
+    return relevant
+
+
+def _pop_index_block(pops) -> str:
+    """Bloco compacto com título + código + link de todos os POPs (índice)."""
+    if not pops:
+        return ""
+    lines = ["\n\n--- ÍNDICE DE POPs DISPONÍVEIS (todos os procedimentos) ---"]
+    lines.append("Para qualquer um destes POPs, informe o título, código e o link de download.")
+    current_cat = None
+    for pop in sorted(pops, key=lambda p: (p.category, p.code)):
+        if pop.category != current_cat:
+            current_cat = pop.category
+            lines.append(f"\nSetor: {current_cat or 'Geral'}")
+        prefix = f"[{pop.code}] " if pop.code else ""
+        pdf_link = f" — PDF: /media/{pop.pdf_file.name}" if pop.pdf_file else ""
+        lines.append(f"  • {prefix}{pop.title}{pdf_link}")
+    return "\n".join(lines)
+
+
+def _camila_knowledge_prompt(query: str = "") -> str:
+    """Monta bloco de conhecimento.
+    - Inclui base de conhecimento completa
+    - Inclui texto INTEGRAL dos POPs relevantes para a query
+    - Inclui índice compacto de todos os POPs (títulos + links)
+    """
+    lines = []
+
+    entries = CamilaKnowledge.objects.filter(is_active=True)
+    if entries.exists():
+        lines.append("\n\n--- BASE DE CONHECIMENTO DA CAMIM ---")
+        for e in entries:
+            lines.append(f"\n[{e.get_category_display()}] {e.title}:\n{e.content}")
+        lines.append("\n--- FIM DA BASE DE CONHECIMENTO ---\n")
+
+    all_pops = list(CamilaPOP.objects.filter(is_active=True))
+    if all_pops:
+        # Índice de todos os POPs (compacto — sempre presente)
+        lines.append(_pop_index_block(all_pops))
+
+        # Texto completo dos POPs relevantes para esta query
+        relevant = _find_relevant_pops(query, max_pops=5) if query else all_pops[:3]
+        lines.append("\n\n--- CONTEÚDO COMPLETO DOS POPs RELEVANTES ---")
+        lines.append("Use estas informações para responder com precisão. Cite o código, setor e ofereça o link de download.")
+        for pop in relevant:
             prefix = f"[{pop.code}] " if pop.code else ""
-            lines.append(f"\n### {prefix}{pop.title}")
+            lines.append(f"\n### {prefix}{pop.title} — Setor: {pop.category or 'Geral'}")
             if pop.pdf_file:
-                lines.append(f"PDF para download: /media/{pop.pdf_file.name}")
-            lines.append(pop.extracted_text[:3000])
+                lines.append(f"Download do PDF completo: /media/{pop.pdf_file.name}")
+            # Usa texto integral; se não tiver, usa o resumo
+            content = pop.raw_text or pop.extracted_text
+            lines.append(content[:8000])  # até 8000 chars por POP relevante
 
     return "\n".join(lines)
 
@@ -598,7 +649,7 @@ def social_camila_chat(request):
         return JsonResponse({"error": "Mensagem vazia."}, status=400)
 
     cfg = CamilaConfig.get()
-    prompt = cfg.prompt_chat + _camila_knowledge_prompt()
+    prompt = cfg.prompt_chat + _camila_knowledge_prompt(message)
     messages = [*history[-10:], {"role": "user", "content": message}]
     response = _groq_chat(messages, prompt, config=cfg)
     return JsonResponse({"response": response})
@@ -1152,7 +1203,7 @@ def camila_test_chat(request):
         return JsonResponse({"error": "Mensagem vazia."}, status=400)
 
     cfg = CamilaConfig.get()
-    prompt = cfg.prompt_chat + _camila_knowledge_prompt()
+    prompt = cfg.prompt_chat + _camila_knowledge_prompt(message)
     messages = [*history[-10:], {"role": "user", "content": message}]
     response = _groq_chat(messages, prompt, config=cfg)
     return JsonResponse({"response": response or "Sem resposta da IA."})
@@ -1456,19 +1507,21 @@ def camila_pop_upload(request):
         from django.core.files.base import ContentFile
         filename = member_path.replace("\\", "/").split("/")[-1]
         title, code = _parse_name(filename)
-        raw_text = _extract_text_pdfplumber(pdf_bytes)
-        summary = _summarize_with_claude(raw_text, title)
-        if summary != raw_text[:4000]:
+        # Texto completo — base de conhecimento real
+        raw = _extract_text_pdfplumber(pdf_bytes)
+        # Resumo estruturado — índice compacto para quando há muitos POPs
+        summary = _summarize_with_claude(raw, title)
+        if summary != raw[:4000]:
             results["summarized"] += 1
         pop = CamilaPOP(
             title=title,
             code=code,
             category=category,
-            extracted_text=summary,
+            raw_text=raw,            # texto integral
+            extracted_text=summary,  # resumo IA
             is_active=True,
             uploaded_by=request.user,
         )
-        # Salva dentro de subpasta por categoria para organizar os arquivos
         safe_cat = re.sub(r"[^\w\s\-\.]", "", category).strip() or "geral"
         pop.pdf_file.save(f"{safe_cat}/{filename}", ContentFile(pdf_bytes), save=False)
         pop.save()
@@ -1508,16 +1561,16 @@ def camila_pop_upload(request):
 @staff_member_required
 @require_POST
 def camila_pop_resummarize(request, pop_id: int):
-    """Re-sumariza um POP existente com Claude (re-processa o PDF salvo)."""
-    import io
+    """Re-extrai texto completo E re-sumariza um POP existente."""
     pop = get_object_or_404(CamilaPOP, id=pop_id)
     try:
         pdf_bytes = pop.pdf_file.read()
-        raw_text = _extract_text_pdfplumber(pdf_bytes)
-        summary = _summarize_with_claude(raw_text, pop.title)
+        raw = _extract_text_pdfplumber(pdf_bytes)
+        summary = _summarize_with_claude(raw, pop.title)
+        pop.raw_text = raw
         pop.extracted_text = summary
-        pop.save(update_fields=["extracted_text", "updated_at"])
-        return JsonResponse({"ok": True, "chars": len(summary)})
+        pop.save(update_fields=["raw_text", "extracted_text", "updated_at"])
+        return JsonResponse({"ok": True, "chars": len(raw), "summary_chars": len(summary)})
     except Exception as exc:
         return JsonResponse({"error": str(exc)}, status=500)
 

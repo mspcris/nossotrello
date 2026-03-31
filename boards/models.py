@@ -1133,7 +1133,8 @@ class CamilaPOP(models.Model):
     code = models.CharField(max_length=50, blank=True, default="")
     category = models.CharField(max_length=100, blank=True, default="", verbose_name="Setor/Categoria")
     pdf_file = models.FileField(upload_to="camila/pops/")
-    extracted_text = models.TextField(blank=True, default="")
+    raw_text = models.TextField(blank=True, default="", verbose_name="Texto completo extraído do PDF")
+    extracted_text = models.TextField(blank=True, default="", verbose_name="Resumo inteligente (IA)")
     is_active = models.BooleanField(default=True)
     uploaded_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
