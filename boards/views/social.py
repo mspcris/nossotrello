@@ -262,7 +262,7 @@ def _build_social_context(request, target_user, extra=None):
             .order_by("-created_at")[:10]
         )
         for r in unread_reply_items:
-            r._replier_name = _get_or_create_profile(r.user).display_name or r.user.email
+            r.replier_name = _get_or_create_profile(r.user).display_name or r.user.email
 
     # Mood choices para o seletor
     mood_choices = DailyCheckIn.MOOD_CHOICES

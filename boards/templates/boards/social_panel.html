@@ -267,7 +267,7 @@
             data-reply-id="{{ reply.id }}"
             onclick="spDismissReplyPill(this, {{ reply.id }}, {{ reply.post.user_id }})">
       <span class="sp-cpill-icon">↩</span>
-      <span class="sp-cpill-text">{{ reply._replier_name|truncatechars:20 }} respondeu ao seu comentário</span>
+      <span class="sp-cpill-text">{{ reply.replier_name|truncatechars:20 }} respondeu ao seu comentário</span>
     </button>
     {% endfor %}
   </div>
