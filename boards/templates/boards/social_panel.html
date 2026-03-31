@@ -5,23 +5,28 @@
 
   <!-- ═══ PROFILE CARD ═══ -->
   <div class="sp-card sp-profile-card">
-    <div class="sp-cover" {% if profile.cover_photo %}style="background-image:url('{{ profile.cover_photo.url }}')"{% endif %}>
-      {% if is_me %}
-      <form id="sp-cover-form" class="sp-cover-form"
-            hx-post="{% url 'boards:social_cover_upload' %}"
-            hx-target="#social-panel" hx-swap="outerHTML"
-            hx-encoding="multipart/form-data" enctype="multipart/form-data">
-        {% csrf_token %}
-        <input type="file" id="sp-cover-input" name="cover_photo" accept="image/*,image/gif"
-               style="display:none"
-               onchange="document.getElementById('sp-cover-form').requestSubmit()">
-        <button type="button" class="sp-cover-btn" onclick="document.getElementById('sp-cover-input').click()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-          <span>Capa</span>
-        </button>
-      </form>
-      {% endif %}
-    </div>
+    {% if is_me %}
+    <form id="sp-cover-form"
+          hx-post="{% url 'boards:social_cover_upload' %}"
+          hx-target="#social-panel" hx-swap="outerHTML"
+          hx-encoding="multipart/form-data" enctype="multipart/form-data"
+          style="margin:0;padding:0;display:block;">
+      {% csrf_token %}
+      <input type="file" id="sp-cover-input" name="cover_photo" accept="image/*,image/gif"
+             style="display:none"
+             onchange="document.getElementById('sp-cover-form').requestSubmit()">
+      <div class="sp-cover sp-cover-tappable"
+           {% if profile.cover_photo %}style="background-image:url('{{ profile.cover_photo.url }}')"{% endif %}
+           onclick="document.getElementById('sp-cover-input').click()">
+        <div class="sp-cover-hint">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          <span>Tocar para trocar a capa</span>
+        </div>
+      </div>
+    </form>
+    {% else %}
+    <div class="sp-cover" {% if profile.cover_photo %}style="background-image:url('{{ profile.cover_photo.url }}')"{% endif %}></div>
+    {% endif %}
 
     <!-- Avatar overlapping cover -->
     <div class="sp-avatar-over-cover">
