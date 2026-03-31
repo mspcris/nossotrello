@@ -103,6 +103,7 @@ from boards.views.column_follow import toggle_column_follow
 
 from boards.views.social import (
     social_page,
+    social_set_unidade,
     social_posts_panel,
     social_post_create,
     social_post_delete,
@@ -159,6 +160,7 @@ urlpatterns = [
     path("social/<int:user_id>/friend-request/", social_friend_request, name="social_friend_request"),
     path("social/<int:user_id>/friend-accept/", social_friend_accept, name="social_friend_accept"),
     path("social/board-share/", social_board_share, name="social_board_share"),
+    path("social/set-unidade/", social_set_unidade, name="social_set_unidade"),
     path("social/mood/", mood_checkin, name="mood_checkin"),
     path("social/chat/", social_chatbot_message, name="social_chatbot_message"),
     path("social/ai-react/", social_ai_react, name="social_ai_react"),

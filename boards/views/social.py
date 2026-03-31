@@ -176,6 +176,39 @@ def _build_social_context(request, target_user, extra=None):
             else:
                 today_tasks.append(c)
 
+    # Sugestões de amigos por unidade + tutorial de onboarding
+    show_unit_tutorial = False
+    unit_suggestions = []
+    available_units = []
+    if is_me:
+        show_unit_tutorial = not prof.unidade
+        available_units = list(
+            UserProfile.objects
+            .exclude(unidade="")
+            .values_list("unidade", flat=True)
+            .distinct()
+            .order_by("unidade")
+        )
+        if prof.unidade:
+            # IDs já na minha rede (board + amigos aceitos)
+            my_net_ids = set(_board_member_ids(target_user))
+            accepted = SocialFriendship.objects.filter(
+                requester=target_user, status="accepted"
+            ).values_list("receiver_id", flat=True)
+            accepted2 = SocialFriendship.objects.filter(
+                receiver=target_user, status="accepted"
+            ).values_list("requester_id", flat=True)
+            my_net_ids.update(accepted)
+            my_net_ids.update(accepted2)
+            my_net_ids.add(target_user.id)
+
+            unit_suggestions = list(
+                User.objects.filter(profile__unidade=prof.unidade)
+                .exclude(id__in=my_net_ids)
+                .select_related("profile")
+                .order_by("profile__display_name")[:20]
+            )
+
     # Amigos (co-membros de quadros) — só para o dono
     board_friends = []
     my_boards = []
@@ -232,6 +265,9 @@ def _build_social_context(request, target_user, extra=None):
         "unread_comment_posts": unread_comment_posts,
         "board_friends": board_friends,
         "my_boards": my_boards,
+        "show_unit_tutorial": show_unit_tutorial,
+        "unit_suggestions": unit_suggestions,
+        "available_units": available_units,
     }
     if extra:
         ctx.update(extra)
@@ -719,6 +755,20 @@ def social_unread_counts(request):
         "fresh_ts": fresh_ts,
         "my_comment_count": my_comment_count,
     })
+
+
+# ---------------------------------------------------------------
+# Definir unidade (onboarding)
+# ---------------------------------------------------------------
+@login_required
+@require_POST
+def social_set_unidade(request):
+    unidade = (request.POST.get("unidade") or "").strip()[:80]
+    prof = _get_or_create_profile(request.user)
+    prof.unidade = unidade
+    prof.save(update_fields=["unidade"])
+    ctx = _build_social_context(request, request.user)
+    return render(request, "boards/social_panel.html", ctx)
 
 
 # ---------------------------------------------------------------

@@ -111,6 +111,106 @@
   {% else %}
   <!-- ═══ OWNER VIEW: check-in → tasks → chatbot → feed ═══ -->
 
+  <!-- ═══ TUTORIAL DE ONBOARDING (Camila) ═══ -->
+  {% if show_unit_tutorial %}
+  <div class="sp-onboard-card" id="sp-onboard-card">
+    {% load static %}
+    <img src="{% static 'images/camila-avatar.png' %}" class="sp-onboard-av" alt="Camila">
+    <div class="sp-onboard-bubble">
+      <p class="sp-onboard-hi">Olá! Eu sou a <strong>Camila</strong> 👋</p>
+      <p class="sp-onboard-txt">Bem-vindo ao Espaço Social da CAMIM! Para conectar você com seus colegas, me conta: <strong>qual é a sua unidade?</strong></p>
+      <form id="sp-unidade-form"
+            hx-post="{% url 'boards:social_set_unidade' %}"
+            hx-target="#social-panel" hx-swap="outerHTML"
+            hx-encoding="multipart/form-data">
+        {% csrf_token %}
+        <div class="sp-onboard-input-row">
+          <input type="text" name="unidade" id="sp-unidade-input"
+                 class="sp-onboard-input"
+                 placeholder="Ex: UTI, Centro Cirúrgico, RH..."
+                 list="sp-unidades-list"
+                 required autocomplete="off">
+          <datalist id="sp-unidades-list">
+            {% for u in available_units %}<option value="{{ u }}">{% endfor %}
+          </datalist>
+          <button type="submit" class="sp-onboard-btn">Confirmar ✅</button>
+        </div>
+        <button type="button" class="sp-onboard-skip"
+                hx-post="{% url 'boards:social_set_unidade' %}"
+                hx-target="#social-panel" hx-swap="outerHTML"
+                hx-vals='{"unidade": ""}'>
+          Pular por agora
+        </button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ═══ SUGESTÕES POR UNIDADE ═══ -->
+  {% if unit_suggestions %}
+  <div class="sp-friends-bar">
+    <div class="sp-friends-label">✨ Sugestões — {{ profile.unidade }}</div>
+    <div class="sp-friends-row">
+      {% for sug in unit_suggestions %}
+      {% with sp=sug.profile %}
+      <button type="button" class="sp-friend-btn" onclick="spOpenFriendSheet({{ sug.id }})"
+              title="{{ sp.display_name|default:sug.email }}">
+        {% if sp and sp.avatar %}
+          <img src="{{ sp.avatar.url }}" alt="" class="sp-friend-av-img">
+        {% elif sp and sp.avatar_choice %}
+          <img src="{% static 'images/avatar/' %}{{ sp.avatar_choice }}" alt="" class="sp-friend-av-img">
+        {% else %}
+          <span class="sp-friend-av-fb">{{ sp.display_name|default:sug.email|first|upper }}</span>
+        {% endif %}
+        <span class="sp-friend-name">{{ sp.display_name|default:sug.email|truncatechars:8 }}</span>
+      </button>
+      {% endwith %}
+      {% endfor %}
+    </div>
+    <button type="button" class="sp-change-unit-btn"
+            onclick="document.getElementById('sp-change-unit-form').classList.toggle('sp-hidden')">
+      ✏️ Mudar unidade
+    </button>
+    <form id="sp-change-unit-form" class="sp-hidden"
+          hx-post="{% url 'boards:social_set_unidade' %}"
+          hx-target="#social-panel" hx-swap="outerHTML"
+          hx-encoding="multipart/form-data">
+      {% csrf_token %}
+      <div class="sp-onboard-input-row" style="margin-top:8px">
+        <input type="text" name="unidade" class="sp-onboard-input"
+               placeholder="Nova unidade..." list="sp-unidades-list2" required>
+        <datalist id="sp-unidades-list2">
+          {% for u in available_units %}<option value="{{ u }}">{% endfor %}
+        </datalist>
+        <button type="submit" class="sp-onboard-btn">OK</button>
+      </div>
+    </form>
+  </div>
+  {% elif profile.unidade and not show_unit_tutorial %}
+  <!-- Tem unidade mas sem sugestões (todos já são amigos) -->
+  <div class="sp-friends-bar">
+    <div class="sp-friends-label" style="color:#10b981">✅ Unidade: {{ profile.unidade }}</div>
+    <button type="button" class="sp-change-unit-btn"
+            onclick="document.getElementById('sp-change-unit-form2').classList.toggle('sp-hidden')">
+      ✏️ Mudar unidade
+    </button>
+    <form id="sp-change-unit-form2" class="sp-hidden"
+          hx-post="{% url 'boards:social_set_unidade' %}"
+          hx-target="#social-panel" hx-swap="outerHTML"
+          hx-encoding="multipart/form-data">
+      {% csrf_token %}
+      <div class="sp-onboard-input-row" style="margin-top:8px">
+        <input type="text" name="unidade" class="sp-onboard-input"
+               placeholder="Nova unidade..." list="sp-unidades-list3" required>
+        <datalist id="sp-unidades-list3">
+          {% for u in available_units %}<option value="{{ u }}">{% endfor %}
+        </datalist>
+        <button type="submit" class="sp-onboard-btn">OK</button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+
   <!-- ═══ AMIGOS (co-membros de quadros) ═══ -->
   {% if board_friends %}
   <div class="sp-friends-bar">

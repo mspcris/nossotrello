@@ -431,6 +431,13 @@ class UserProfile(models.Model):
 
     notify_only_owned_or_mentioned = models.BooleanField(default=False)
 
+    unidade = models.CharField(
+        max_length=80,
+        blank=True,
+        default="",
+        help_text="Unidade/setor onde trabalha — usado para sugestões de amigos",
+    )
+
     tag_catalog = models.JSONField(
         default=dict,
         blank=True,
