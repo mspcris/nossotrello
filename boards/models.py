@@ -461,6 +461,18 @@ class UserProfile(models.Model):
     ramal = models.CharField(max_length=20, blank=True, default="")
     telefone = models.CharField(max_length=30, blank=True, default="")
 
+    # Flags de compartilhamento social (o que aparece no perfil público)
+    share_posto = models.BooleanField(default=True)
+    share_setor = models.BooleanField(default=True)
+    share_ramal = models.BooleanField(default=False)
+    share_telefone = models.BooleanField(default=False)
+
+    # Capa do perfil social
+    cover_photo = models.ImageField(upload_to="covers/", blank=True, null=True)
+
+    # Posto fixo (se sempre vai ao mesmo, não pergunta todo dia)
+    fixed_posto = models.BooleanField(default=False)
+
     preferred_identity_label = models.CharField(
         max_length=20,
         choices=[
@@ -846,5 +858,65 @@ class SocialPostSeen(models.Model):
 
     def __str__(self):
         return f"{self.viewer} viu posts de {self.target_user} até {self.last_seen_post_at}"
+
+
+# ============================================================
+# DAILY CHECK-IN (humor, almoço, posto do dia)
+# ============================================================
+class DailyCheckIn(models.Model):
+    MOOD_CHOICES = [
+        ("excited", "Animado"),
+        ("happy", "Bem"),
+        ("calm", "Tranquilo"),
+        ("neutral", "Normal"),
+        ("tired", "Cansado"),
+        ("stressed", "Estressado"),
+        ("sick", "Indisposto"),
+    ]
+    MOOD_EMOJIS = {
+        "excited": "\U0001f929",   # 🤩
+        "happy": "\U0001f60a",     # 😊
+        "calm": "\U0001f60c",      # 😌
+        "neutral": "\U0001f610",   # 😐
+        "tired": "\U0001f614",     # 😔
+        "stressed": "\U0001f624",  # 😤
+        "sick": "\U0001f912",      # 🤒
+    }
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="daily_checkins",
+        on_delete=models.CASCADE,
+    )
+    date = models.DateField()
+
+    mood = models.CharField(max_length=20, choices=MOOD_CHOICES, blank=True, default="")
+    mood_note = models.CharField(max_length=300, blank=True, default="")
+
+    lunch_text = models.CharField(max_length=200, blank=True, default="")
+    lunch_photo = models.ImageField(upload_to="social/lunch/", blank=True, null=True)
+
+    daily_posto = models.CharField(max_length=120, blank=True, default="")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("user", "date")
+        ordering = ["-date"]
+        indexes = [
+            models.Index(fields=["user", "-date"]),
+        ]
+
+    @property
+    def mood_emoji(self):
+        return self.MOOD_EMOJIS.get(self.mood, "")
+
+    @property
+    def mood_label(self):
+        return dict(self.MOOD_CHOICES).get(self.mood, "")
+
+    def __str__(self):
+        return f"{self.user} — {self.date} — {self.mood_emoji} {self.mood_label}"
 
 # END boards/models.py

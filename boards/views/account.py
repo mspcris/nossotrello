@@ -187,6 +187,12 @@ def account_profile_update(request):
     prof.activity_sidebar = ("activity_sidebar" in request.POST)
     prof.activity_counts  = (request.POST.get("activity_counts") == "1")
 
+    # Share flags para perfil social
+    share_fields = ["share_posto", "share_setor", "share_ramal", "share_telefone"]
+    for sf in share_fields:
+        setattr(prof, sf, sf in request.POST)
+        update_fields.append(sf)
+
     if "notify_whatsapp" in request.POST:
         prof.notify_whatsapp = True
         update_fields.append("notify_whatsapp")

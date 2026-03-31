@@ -107,6 +107,8 @@ from boards.views.social import (
     social_post_delete,
     mood_checkin,
     social_chatbot_message,
+    daily_checkin_save,
+    social_cover_upload,
 )
 
 
@@ -131,6 +133,8 @@ urlpatterns = [
     path("social/post/<int:post_id>/delete/", social_post_delete, name="social_post_delete"),
     path("social/mood/", mood_checkin, name="mood_checkin"),
     path("social/chat/", social_chatbot_message, name="social_chatbot_message"),
+    path("social/checkin/", daily_checkin_save, name="daily_checkin_save"),
+    path("social/cover/", social_cover_upload, name="social_cover_upload"),
 
     # ============================================================
     # IDCamim OAuth2

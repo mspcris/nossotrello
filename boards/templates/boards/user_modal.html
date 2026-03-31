@@ -136,7 +136,13 @@
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 
                 <div>
-                  <label class="block text-sm font-semibold mb-1">Posto</label>
+                  <div class="flex items-center justify-between mb-1">
+                    <label class="block text-sm font-semibold">Posto</label>
+                    <label class="inline-flex items-center gap-1 text-xs text-gray-500 cursor-pointer" title="Mostrar no perfil social">
+                      <input type="checkbox" name="share_posto" value="1" {% if profile.share_posto %}checked{% endif %} class="h-3 w-3">
+                      social
+                    </label>
+                  </div>
                   <select name="posto" class="w-full border rounded px-3 py-2">
                     <option value="" {% if not profile.posto %}selected{% endif %}>-</option>
 
@@ -161,7 +167,13 @@
                 </div>
 
                 <div>
-                  <label class="block text-sm font-semibold mb-1">Setor</label>
+                  <div class="flex items-center justify-between mb-1">
+                    <label class="block text-sm font-semibold">Setor</label>
+                    <label class="inline-flex items-center gap-1 text-xs text-gray-500 cursor-pointer" title="Mostrar no perfil social">
+                      <input type="checkbox" name="share_setor" value="1" {% if profile.share_setor %}checked{% endif %} class="h-3 w-3">
+                      social
+                    </label>
+                  </div>
                   <input name="setor" value="{{ profile.setor }}" class="w-full border rounded px-3 py-2" placeholder="-">
                   {% if errors.setor %}
                     <div class="mt-1 text-sm text-red-700">{{ errors.setor }}</div>
@@ -169,7 +181,13 @@
                 </div>
 
                 <div>
-                  <label class="block text-sm font-semibold mb-1">Ramal</label>
+                  <div class="flex items-center justify-between mb-1">
+                    <label class="block text-sm font-semibold">Ramal</label>
+                    <label class="inline-flex items-center gap-1 text-xs text-gray-500 cursor-pointer" title="Mostrar no perfil social">
+                      <input type="checkbox" name="share_ramal" value="1" {% if profile.share_ramal %}checked{% endif %} class="h-3 w-3">
+                      social
+                    </label>
+                  </div>
                   <input name="ramal" value="{{ profile.ramal }}" class="w-full border rounded px-3 py-2" placeholder="-">
                   {% if errors.ramal %}
                     <div class="mt-1 text-sm text-red-700">{{ errors.ramal }}</div>
@@ -177,7 +195,13 @@
                 </div>
 
                 <div>
-                  <label class="block text-sm font-semibold mb-1">Telefone</label>
+                  <div class="flex items-center justify-between mb-1">
+                    <label class="block text-sm font-semibold">Telefone</label>
+                    <label class="inline-flex items-center gap-1 text-xs text-gray-500 cursor-pointer" title="Mostrar no perfil social">
+                      <input type="checkbox" name="share_telefone" value="1" {% if profile.share_telefone %}checked{% endif %} class="h-3 w-3">
+                      social
+                    </label>
+                  </div>
                   <input
                     id="um-telefone"
                     name="telefone"

@@ -1,6 +1,7 @@
 # boards/views/social.py
 """
-Espaço social: scrapbook, check-in de humor e chatbot motivacional.
+Espaço social: rede social de trabalho — check-in diário, humor,
+almoço, pendências do dia, feed de fotos do trabalho.
 """
 import json
 import os
@@ -13,7 +14,10 @@ from django.views.decorators.http import require_POST
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
-from ..models import BoardMembership, SocialPost, SocialPostSeen
+from ..models import (
+    BoardMembership, SocialPost, SocialPostSeen,
+    DailyCheckIn, Card, CardFollow, UserProfile,
+)
 
 User = get_user_model()
 
@@ -25,7 +29,7 @@ def _groq_chat(messages: list[dict], system_prompt: str = "") -> str:
     """Chama a Groq API e retorna o texto da resposta."""
     api_key = os.getenv("GROQ_API_KEY", "").strip()
     if not api_key:
-        return "⚠️ Recurso de IA não configurado. Adicione GROQ_API_KEY no .env."
+        return ""
     model = os.getenv("GROQ_MODEL", "").strip() or _GROQ_MODEL_DEFAULT
     payload = {
         "model": model,
@@ -49,7 +53,7 @@ def _groq_chat(messages: list[dict], system_prompt: str = "") -> str:
         r.raise_for_status()
         return r.json()["choices"][0]["message"]["content"].strip()
     except Exception as exc:
-        return f"⚠️ Erro ao contatar a IA: {exc}"
+        return f"Erro ao contatar a IA: {exc}"
 
 
 def _can_see_social(request, target_user) -> bool:
@@ -61,33 +65,107 @@ def _can_see_social(request, target_user) -> bool:
     ).exists()
 
 
+def _get_or_create_profile(user):
+    prof, _ = UserProfile.objects.get_or_create(user=user)
+    return prof
+
+
+def _get_today_checkin(user):
+    today = timezone.localdate()
+    checkin, _ = DailyCheckIn.objects.get_or_create(
+        user=user, date=today,
+    )
+    return checkin
+
+
+def _get_today_tasks(user):
+    """Retorna cards que o usuário segue com vencimento hoje ou pendentes."""
+    today = timezone.localdate()
+
+    # Cards que o usuário segue, não deletados, não arquivados, não entregues
+    followed_ids = CardFollow.objects.filter(user=user).values_list("card_id", flat=True)
+
+    cards = (
+        Card.objects
+        .filter(id__in=followed_ids, is_deleted=False, is_archived=False, is_delivered=False)
+        .select_related("column", "column__board")
+        .order_by("due_date", "position")[:20]
+    )
+    return cards
+
+
+def _build_social_context(request, target_user, extra=None):
+    is_me = request.user.id == target_user.id
+    prof = _get_or_create_profile(target_user)
+    today = timezone.localdate()
+
+    # Check-in de hoje
+    checkin = None
+    if is_me:
+        checkin = _get_today_checkin(target_user)
+
+    # Último check-in (para exibir no perfil de outros)
+    latest_checkin = (
+        DailyCheckIn.objects
+        .filter(user=target_user, mood__gt="")
+        .order_by("-date")
+        .first()
+    )
+
+    # Posts
+    posts = SocialPost.objects.filter(user=target_user).order_by("-created_at")[:30]
+
+    # Marca visto
+    if not is_me and posts.exists():
+        SocialPostSeen.objects.update_or_create(
+            viewer=request.user,
+            target_user=target_user,
+            defaults={"last_seen_post_at": timezone.now()},
+        )
+
+    # Tarefas do dia (só para o próprio)
+    today_tasks = []
+    overdue_tasks = []
+    if is_me:
+        all_tasks = _get_today_tasks(target_user)
+        for c in all_tasks:
+            if c.due_date and c.due_date < today:
+                overdue_tasks.append(c)
+            else:
+                today_tasks.append(c)
+
+    # Mood choices para o seletor
+    mood_choices = DailyCheckIn.MOOD_CHOICES
+    mood_emojis = DailyCheckIn.MOOD_EMOJIS
+
+    ctx = {
+        "target_user": target_user,
+        "profile": prof,
+        "posts": posts,
+        "is_me": is_me,
+        "checkin": checkin,
+        "latest_checkin": latest_checkin,
+        "today_tasks": today_tasks,
+        "overdue_tasks": overdue_tasks,
+        "today": today,
+        "mood_choices": mood_choices,
+        "mood_emojis": mood_emojis,
+    }
+    if extra:
+        ctx.update(extra)
+    return ctx
+
+
 # ---------------------------------------------------------------
-# Painel de posts (GET)
+# Painel social principal (GET)
 # ---------------------------------------------------------------
 @login_required
 def social_posts_panel(request, user_id: int):
     target_user = get_object_or_404(User, id=user_id)
     if not _can_see_social(request, target_user):
         raise Http404
-
-    try:
-        posts = SocialPost.objects.filter(user=target_user).order_by("-created_at")[:30]
-
-        # Marca que o viewer viu os posts agora
-        if request.user != target_user and posts.exists():
-            SocialPostSeen.objects.update_or_create(
-                viewer=request.user,
-                target_user=target_user,
-                defaults={"last_seen_post_at": timezone.now()},
-            )
-    except Exception:
-        posts = []
-
-    return render(request, "boards/social_panel.html", {
-        "target_user": target_user,
-        "posts": posts,
-        "is_me": request.user.id == target_user.id,
-    })
+    ctx = _build_social_context(request, target_user)
+    return render(request, "boards/social_panel.html", ctx)
 
 
 # ---------------------------------------------------------------
@@ -99,22 +177,14 @@ def social_post_create(request):
     text = (request.POST.get("text") or "").strip()
     photo = request.FILES.get("photo")
 
+    extra = {}
     if not text and not photo:
-        return render(request, "boards/social_panel.html", {
-            "target_user": request.user,
-            "posts": SocialPost.objects.filter(user=request.user).order_by("-created_at")[:30],
-            "is_me": True,
-            "post_error": "Adicione um texto ou foto antes de publicar.",
-        })
+        extra["post_error"] = "Adicione um texto ou foto antes de publicar."
+    else:
+        SocialPost.objects.create(user=request.user, text=text, photo=photo or None)
 
-    SocialPost.objects.create(user=request.user, text=text, photo=photo or None)
-
-    posts = SocialPost.objects.filter(user=request.user).order_by("-created_at")[:30]
-    return render(request, "boards/social_panel.html", {
-        "target_user": request.user,
-        "posts": posts,
-        "is_me": True,
-    })
+    ctx = _build_social_context(request, request.user, extra)
+    return render(request, "boards/social_panel.html", ctx)
 
 
 # ---------------------------------------------------------------
@@ -125,17 +195,77 @@ def social_post_create(request):
 def social_post_delete(request, post_id: int):
     post = get_object_or_404(SocialPost, id=post_id, user=request.user)
     post.delete()
-
-    posts = SocialPost.objects.filter(user=request.user).order_by("-created_at")[:30]
-    return render(request, "boards/social_panel.html", {
-        "target_user": request.user,
-        "posts": posts,
-        "is_me": True,
-    })
+    ctx = _build_social_context(request, request.user)
+    return render(request, "boards/social_panel.html", ctx)
 
 
 # ---------------------------------------------------------------
-# Mood check-in (POST → JSON)
+# Daily check-in (POST)
+# ---------------------------------------------------------------
+@login_required
+@require_POST
+def daily_checkin_save(request):
+    today = timezone.localdate()
+    checkin, _ = DailyCheckIn.objects.get_or_create(user=request.user, date=today)
+
+    mood = (request.POST.get("mood") or "").strip()
+    mood_note = (request.POST.get("mood_note") or "").strip()
+    lunch_text = (request.POST.get("lunch_text") or "").strip()
+    daily_posto = (request.POST.get("daily_posto") or "").strip()
+    lunch_photo = request.FILES.get("lunch_photo")
+
+    if mood:
+        checkin.mood = mood
+    if mood_note:
+        checkin.mood_note = mood_note
+    if lunch_text:
+        checkin.lunch_text = lunch_text
+    if daily_posto:
+        checkin.daily_posto = daily_posto
+    if lunch_photo:
+        checkin.lunch_photo = lunch_photo
+
+    update_fields = ["mood", "mood_note", "lunch_text", "daily_posto"]
+    if lunch_photo:
+        update_fields.append("lunch_photo")
+
+    checkin.save(update_fields=update_fields)
+
+    # Se marcou posto fixo
+    prof = _get_or_create_profile(request.user)
+    if request.POST.get("fixed_posto") == "1":
+        prof.fixed_posto = True
+        prof.posto = daily_posto or prof.posto
+        prof.save(update_fields=["fixed_posto", "posto"])
+    elif request.POST.get("fixed_posto") == "0":
+        prof.fixed_posto = False
+        prof.save(update_fields=["fixed_posto"])
+
+    ctx = _build_social_context(request, request.user)
+    return render(request, "boards/social_panel.html", ctx)
+
+
+# ---------------------------------------------------------------
+# Cover photo upload (POST)
+# ---------------------------------------------------------------
+@login_required
+@require_POST
+def social_cover_upload(request):
+    prof = _get_or_create_profile(request.user)
+    f = request.FILES.get("cover_photo")
+    extra = {}
+    if f:
+        prof.cover_photo = f
+        prof.save(update_fields=["cover_photo"])
+    else:
+        extra["cover_error"] = "Selecione uma imagem."
+
+    ctx = _build_social_context(request, request.user, extra)
+    return render(request, "boards/social_panel.html", ctx)
+
+
+# ---------------------------------------------------------------
+# Mood check-in via IA (POST → JSON)
 # ---------------------------------------------------------------
 @login_required
 @require_POST
@@ -181,7 +311,6 @@ def social_chatbot_message(request):
         "Respostas curtas e diretas (máximo 3 parágrafos). Português brasileiro."
     )
 
-    # Mantém apenas as últimas 10 mensagens para não explodir o contexto
     messages = [*history[-10:], {"role": "user", "content": message}]
     response = _groq_chat(messages, system_prompt)
     return JsonResponse({"response": response})

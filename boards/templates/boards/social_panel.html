@@ -1,97 +1,296 @@
 {# boards/templates/boards/social_panel.html #}
 {% load static %}
 
-<div id="social-panel" class="social-panel">
+<div id="social-panel" class="sp">
 
+  {# ═══════════════════════════════════════════════════════════
+     PROFILE CARD — estilo Facebook/Instagram
+     ═══════════════════════════════════════════════════════════ #}
+  <div class="sp-profile-card">
+    {# Cover photo #}
+    <div class="sp-cover" {% if profile.cover_photo %}style="background-image:url('{{ profile.cover_photo.url }}')"{% endif %}>
+      {% if is_me %}
+        <form class="sp-cover-form"
+              hx-post="{% url 'boards:social_cover_upload' %}"
+              hx-target="#social-panel" hx-swap="outerHTML"
+              hx-encoding="multipart/form-data" enctype="multipart/form-data">
+          {% csrf_token %}
+          <label class="sp-cover-btn" title="Alterar capa">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            <input type="file" name="cover_photo" accept="image/*" class="hidden"
+                   onchange="this.closest('form').requestSubmit()">
+          </label>
+        </form>
+      {% endif %}
+    </div>
+
+    {# Avatar + info #}
+    <div class="sp-profile-info">
+      <div class="sp-avatar-wrap">
+        {% if profile.avatar %}
+          <img src="{{ profile.avatar.url }}" alt="" class="sp-avatar">
+        {% elif profile.avatar_choice %}
+          <img src="{% static 'images/avatar/' %}{{ profile.avatar_choice }}" alt="" class="sp-avatar">
+        {% else %}
+          <div class="sp-avatar sp-avatar-placeholder">
+            {{ profile.display_name|default:target_user.email|truncatechars:1 }}
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="sp-profile-name">
+        <h2 class="sp-name">{{ profile.display_name|default:target_user.email }}</h2>
+        {% if profile.handle %}<span class="sp-handle">@{{ profile.handle }}</span>{% endif %}
+      </div>
+
+      {# Mood badge #}
+      {% if latest_checkin and latest_checkin.mood %}
+        <div class="sp-mood-badge">
+          <span class="sp-mood-emoji">{{ latest_checkin.mood_emoji }}</span>
+          <span class="sp-mood-text">{{ latest_checkin.mood_label }}</span>
+          {% if latest_checkin.mood_note %}
+            <span class="sp-mood-note">— {{ latest_checkin.mood_note|truncatechars:60 }}</span>
+          {% endif %}
+        </div>
+      {% endif %}
+
+      {# Shared info pills #}
+      <div class="sp-info-pills">
+        {% if profile.share_posto and profile.posto %}
+          <span class="sp-pill">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            {% if latest_checkin and latest_checkin.daily_posto %}{{ latest_checkin.daily_posto }}{% else %}{{ profile.posto }}{% endif %}
+          </span>
+        {% endif %}
+        {% if profile.share_setor and profile.setor %}
+          <span class="sp-pill">{{ profile.setor }}</span>
+        {% endif %}
+        {% if profile.share_ramal and profile.ramal %}
+          <span class="sp-pill">Ramal {{ profile.ramal }}</span>
+        {% endif %}
+      </div>
+
+      {# Lunch badge #}
+      {% if latest_checkin and latest_checkin.lunch_text %}
+        <div class="sp-lunch-badge">
+          <span>🍽️ {{ latest_checkin.lunch_text }}</span>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if is_me %}
+  {# ═══════════════════════════════════════════════════════════
+     DAILY CHECK-IN — Como está seu dia?
+     ═══════════════════════════════════════════════════════════ #}
+  <form id="sp-checkin-form" class="sp-checkin"
+        hx-post="{% url 'boards:daily_checkin_save' %}"
+        hx-target="#social-panel" hx-swap="outerHTML"
+        hx-encoding="multipart/form-data" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <div class="sp-checkin-title">Como vai seu dia?</div>
+
+    {# Mood picker #}
+    <div class="sp-mood-picker">
+      <label class="sp-mood-opt {% if checkin.mood == 'excited' %}sp-mood-active{% endif %}">
+        <input type="radio" name="mood" value="excited" class="hidden" {% if checkin.mood == "excited" %}checked{% endif %}>
+        <span class="sp-mood-face">🤩</span><span class="sp-mood-lbl">Animado</span>
+      </label>
+      <label class="sp-mood-opt {% if checkin.mood == 'happy' %}sp-mood-active{% endif %}">
+        <input type="radio" name="mood" value="happy" class="hidden" {% if checkin.mood == "happy" %}checked{% endif %}>
+        <span class="sp-mood-face">😊</span><span class="sp-mood-lbl">Bem</span>
+      </label>
+      <label class="sp-mood-opt {% if checkin.mood == 'calm' %}sp-mood-active{% endif %}">
+        <input type="radio" name="mood" value="calm" class="hidden" {% if checkin.mood == "calm" %}checked{% endif %}>
+        <span class="sp-mood-face">😌</span><span class="sp-mood-lbl">Tranquilo</span>
+      </label>
+      <label class="sp-mood-opt {% if checkin.mood == 'neutral' %}sp-mood-active{% endif %}">
+        <input type="radio" name="mood" value="neutral" class="hidden" {% if checkin.mood == "neutral" %}checked{% endif %}>
+        <span class="sp-mood-face">😐</span><span class="sp-mood-lbl">Normal</span>
+      </label>
+      <label class="sp-mood-opt {% if checkin.mood == 'tired' %}sp-mood-active{% endif %}">
+        <input type="radio" name="mood" value="tired" class="hidden" {% if checkin.mood == "tired" %}checked{% endif %}>
+        <span class="sp-mood-face">😔</span><span class="sp-mood-lbl">Cansado</span>
+      </label>
+      <label class="sp-mood-opt {% if checkin.mood == 'stressed' %}sp-mood-active{% endif %}">
+        <input type="radio" name="mood" value="stressed" class="hidden" {% if checkin.mood == "stressed" %}checked{% endif %}>
+        <span class="sp-mood-face">😤</span><span class="sp-mood-lbl">Estressado</span>
+      </label>
+      <label class="sp-mood-opt {% if checkin.mood == 'sick' %}sp-mood-active{% endif %}">
+        <input type="radio" name="mood" value="sick" class="hidden" {% if checkin.mood == "sick" %}checked{% endif %}>
+        <span class="sp-mood-face">🤒</span><span class="sp-mood-lbl">Indisposto</span>
+      </label>
+    </div>
+
+    {# Mood note #}
+    <input type="text" name="mood_note" class="sp-input"
+           placeholder="Quer contar mais? (opcional)"
+           value="{{ checkin.mood_note|default:'' }}" maxlength="300">
+
+    {# Posto do dia #}
+    {% if not profile.fixed_posto %}
+      <div class="sp-field-row">
+        <label class="sp-field-label">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          Onde vai trabalhar hoje?
+        </label>
+        <select name="daily_posto" class="sp-select">
+          <option value="">-</option>
+          <option value="Realengo" {% if checkin.daily_posto == "Realengo" or not checkin.daily_posto and profile.posto == "Realengo" %}selected{% endif %}>Realengo</option>
+          <option value="Campinho" {% if checkin.daily_posto == "Campinho" or not checkin.daily_posto and profile.posto == "Campinho" %}selected{% endif %}>Campinho</option>
+          <option value="Anchieta" {% if checkin.daily_posto == "Anchieta" or not checkin.daily_posto and profile.posto == "Anchieta" %}selected{% endif %}>Anchieta</option>
+          <option value="Jacarepaguá" {% if checkin.daily_posto == "Jacarepaguá" or not checkin.daily_posto and profile.posto == "Jacarepaguá" %}selected{% endif %}>Jacarepaguá</option>
+          <option value="Campo Grande" {% if checkin.daily_posto == "Campo Grande" or not checkin.daily_posto and profile.posto == "Campo Grande" %}selected{% endif %}>Campo Grande</option>
+          <option value="Nova Iguaçu" {% if checkin.daily_posto == "Nova Iguaçu" or not checkin.daily_posto and profile.posto == "Nova Iguaçu" %}selected{% endif %}>Nova Iguaçu</option>
+          <option value="Bangu" {% if checkin.daily_posto == "Bangu" or not checkin.daily_posto and profile.posto == "Bangu" %}selected{% endif %}>Bangu</option>
+          <option value="Nilópolis" {% if checkin.daily_posto == "Nilópolis" or not checkin.daily_posto and profile.posto == "Nilópolis" %}selected{% endif %}>Nilópolis</option>
+          <option value="Del Castilho" {% if checkin.daily_posto == "Del Castilho" or not checkin.daily_posto and profile.posto == "Del Castilho" %}selected{% endif %}>Del Castilho</option>
+          <option value="X Campo Grande" {% if checkin.daily_posto == "X Campo Grande" or not checkin.daily_posto and profile.posto == "X Campo Grande" %}selected{% endif %}>X Campo Grande</option>
+          <option value="Madureira" {% if checkin.daily_posto == "Madureira" or not checkin.daily_posto and profile.posto == "Madureira" %}selected{% endif %}>Madureira</option>
+          <option value="Rio das Pedras" {% if checkin.daily_posto == "Rio das Pedras" or not checkin.daily_posto and profile.posto == "Rio das Pedras" %}selected{% endif %}>Rio das Pedras</option>
+          <option value="Y Campo Grande" {% if checkin.daily_posto == "Y Campo Grande" or not checkin.daily_posto and profile.posto == "Y Campo Grande" %}selected{% endif %}>Y Campo Grande</option>
+        </select>
+        <label class="sp-check-inline">
+          <input type="checkbox" name="fixed_posto" value="1">
+          <span class="text-xs">Sempre neste posto</span>
+        </label>
+      </div>
+    {% else %}
+      <input type="hidden" name="daily_posto" value="{{ profile.posto }}">
+      <div class="sp-fixed-posto">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        {{ profile.posto }}
+        <button type="button" class="sp-link-btn" onclick="this.closest('.sp-fixed-posto').innerHTML='<input type=hidden name=fixed_posto value=0><span class=text-xs>Salve para alterar</span>'">
+          alterar
+        </button>
+      </div>
+    {% endif %}
+
+    {# Almoço #}
+    <div class="sp-field-row">
+      <label class="sp-field-label">🍽️ O que vai almoçar?</label>
+      <div class="sp-lunch-row">
+        <input type="text" name="lunch_text" class="sp-input sp-input-lunch"
+               placeholder="Ex: Marmita de frango grelhado"
+               value="{{ checkin.lunch_text|default:'' }}" maxlength="200">
+        <label class="sp-photo-sm" title="Registrar foto do almoço">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          <input type="file" name="lunch_photo" accept="image/*" class="hidden"
+                 onchange="spPreviewLunch(this)">
+        </label>
+      </div>
+      <div id="sp-lunch-preview" class="sp-lunch-preview {% if not checkin.lunch_photo %}hidden{% endif %}">
+        {% if checkin.lunch_photo %}
+          <img src="{{ checkin.lunch_photo.url }}" alt="Almoço">
+        {% endif %}
+      </div>
+    </div>
+
+    <button type="submit" class="sp-checkin-btn">Salvar check-in</button>
+  </form>
+
+  {# ═══════════════════════════════════════════════════════════
+     PENDÊNCIAS DO DIA
+     ═══════════════════════════════════════════════════════════ #}
+  {% if overdue_tasks or today_tasks %}
+  <div class="sp-tasks">
+    <div class="sp-tasks-title">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      Suas pendências
+    </div>
+
+    {% if overdue_tasks %}
+      <div class="sp-tasks-group sp-tasks-overdue">
+        <div class="sp-tasks-group-label">Atrasadas</div>
+        {% for card in overdue_tasks %}
+          <a href="/board/{{ card.column.board_id }}/?card={{ card.id }}" class="sp-task-item sp-task-overdue">
+            <span class="sp-task-title">{{ card.title|truncatechars:50 }}</span>
+            <span class="sp-task-meta">
+              {{ card.column.board.name|truncatechars:20 }} &middot;
+              {{ card.due_date|date:"d/m" }}
+            </span>
+          </a>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% if today_tasks %}
+      <div class="sp-tasks-group">
+        <div class="sp-tasks-group-label">Em andamento</div>
+        {% for card in today_tasks %}
+          <a href="/board/{{ card.column.board_id }}/?card={{ card.id }}" class="sp-task-item">
+            <span class="sp-task-title">{{ card.title|truncatechars:50 }}</span>
+            <span class="sp-task-meta">
+              {{ card.column.board.name|truncatechars:20 }}
+              {% if card.due_date %}&middot; {{ card.due_date|date:"d/m" }}{% endif %}
+            </span>
+          </a>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {# ═══════════════════════════════════════════════════════════
+     POST — Registrar momento do trabalho
+     ═══════════════════════════════════════════════════════════ #}
   {% if post_error %}
     <div class="sp-error">{{ post_error }}</div>
   {% endif %}
 
-  {% if is_me %}
-  {# ── Formulário de publicação (visível só para o próprio usuário) ── #}
-  <form
-    id="sp-new-post-form"
-    hx-post="{% url 'boards:social_post_create' %}"
-    hx-target="#social-panel"
-    hx-swap="outerHTML"
-    hx-encoding="multipart/form-data"
-    class="sp-new-post"
-  >
+  <form id="sp-new-post-form"
+        hx-post="{% url 'boards:social_post_create' %}"
+        hx-target="#social-panel" hx-swap="outerHTML"
+        hx-encoding="multipart/form-data"
+        class="sp-new-post">
     {% csrf_token %}
-    <textarea
-      name="text"
-      class="sp-textarea"
-      placeholder="O que você quer compartilhar hoje?"
-      rows="3"
-      maxlength="1000"
-    ></textarea>
-
+    <textarea name="text" class="sp-textarea"
+              placeholder="Registre um momento do seu dia de trabalho..."
+              rows="2" maxlength="1000"></textarea>
     <div class="sp-new-post-footer">
       <label class="sp-photo-label" title="Adicionar foto">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
         <span id="sp-photo-name">Foto</span>
         <input type="file" name="photo" id="sp-photo-input" accept="image/*" class="hidden">
       </label>
-
       <button type="submit" class="sp-publish-btn">Publicar</button>
     </div>
   </form>
 
-  {# ── Check-in de humor ── #}
-  <div class="sp-mood-section">
-    <div class="sp-mood-title">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
-      Como você está hoje?
-    </div>
-    <div class="sp-mood-input-row">
-      <input
-        type="text"
-        id="sp-mood-input"
-        class="sp-mood-input"
-        placeholder="Ex: Estou cansado e ansioso…"
-        maxlength="300"
-      >
-      <button type="button" id="sp-mood-btn" class="sp-mood-btn" onclick="spSendMood()">
-        Enviar
-      </button>
-    </div>
-    <div id="sp-mood-response" class="sp-mood-response sp-hidden"></div>
-  </div>
-
-  {# ── Chatbot Tuca ── #}
+  {# Chatbot Tuca (minimizado) #}
   <div class="sp-chat-section">
     <button type="button" class="sp-chat-toggle" onclick="spToggleChat()">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-      Conversar com Tuca (coach de bem-estar)
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Tuca — coach de bem-estar
     </button>
     <div id="sp-chat-box" class="sp-chat-box sp-hidden">
       <div id="sp-chat-messages" class="sp-chat-messages">
         <div class="sp-chat-msg sp-chat-assistant">
-          Olá! Sou o Tuca 🌱 Estou aqui para te ajudar com motivação e bem-estar. O que está na sua mente?
+          Oi! Sou o Tuca. Como posso te ajudar hoje?
         </div>
       </div>
       <div class="sp-chat-input-row">
-        <input
-          type="text"
-          id="sp-chat-input"
-          class="sp-chat-input"
-          placeholder="Digite sua mensagem…"
-          maxlength="500"
-          onkeydown="if(event.key==='Enter')spSendChat()"
-        >
-        <button type="button" class="sp-mood-btn" onclick="spSendChat()">Enviar</button>
+        <input type="text" id="sp-chat-input" class="sp-chat-input"
+               placeholder="Digite sua mensagem..."
+               maxlength="500" onkeydown="if(event.key==='Enter')spSendChat()">
+        <button type="button" class="sp-send-btn" onclick="spSendChat()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
       </div>
     </div>
   </div>
   {% endif %}
 
-  {# ── Feed de posts ── #}
+  {# ═══════════════════════════════════════════════════════════
+     FEED DE POSTS
+     ═══════════════════════════════════════════════════════════ #}
   <div class="sp-feed">
     {% if posts %}
       {% for post in posts %}
         <div class="sp-post">
           {% if post.photo %}
-            <img src="{{ post.photo.url }}" alt="Publicação" class="sp-post-photo" loading="lazy">
+            <img src="{{ post.photo.url }}" alt="" class="sp-post-photo" loading="lazy">
           {% endif %}
           {% if post.text %}
             <p class="sp-post-text">{{ post.text }}</p>
@@ -99,14 +298,10 @@
           <div class="sp-post-meta">
             <span>{{ post.created_at|date:"d/m/Y H:i" }}</span>
             {% if is_me %}
-              <button
-                type="button"
-                class="sp-delete-btn"
-                hx-post="{% url 'boards:social_post_delete' post.id %}"
-                hx-target="#social-panel"
-                hx-swap="outerHTML"
-                hx-confirm="Excluir esta publicação?"
-              >Excluir</button>
+              <button type="button" class="sp-delete-btn"
+                      hx-post="{% url 'boards:social_post_delete' post.id %}"
+                      hx-target="#social-panel" hx-swap="outerHTML"
+                      hx-confirm="Excluir esta publicação?">Excluir</button>
             {% endif %}
           </div>
         </div>
@@ -114,103 +309,76 @@
     {% else %}
       <div class="sp-empty">
         {% if is_me %}
-          Seu espaço social está vazio. Publique algo!
+          Registre momentos do seu dia de trabalho!
         {% else %}
-          {{ target_user.profile.display_name|default:target_user.username }} ainda não publicou nada.
+          {{ profile.display_name|default:"Este usuário" }} ainda não publicou nada.
         {% endif %}
       </div>
     {% endif %}
   </div>
+
 </div>
 
 <script>
-// ── foto preview ──
 (function(){
-  const input = document.getElementById('sp-photo-input');
-  const label = document.getElementById('sp-photo-name');
-  if (!input) return;
-  input.addEventListener('change', function(){
-    label.textContent = this.files[0]?.name || 'Foto';
+  // Photo preview no post
+  var inp = document.getElementById('sp-photo-input');
+  var lbl = document.getElementById('sp-photo-name');
+  if(inp) inp.addEventListener('change', function(){ lbl.textContent = this.files[0]?.name || 'Foto'; });
+
+  // Mood picker: highlight on click
+  document.querySelectorAll('.sp-mood-opt').forEach(function(opt){
+    opt.addEventListener('click', function(){
+      document.querySelectorAll('.sp-mood-opt').forEach(function(o){ o.classList.remove('sp-mood-active'); });
+      opt.classList.add('sp-mood-active');
+      opt.querySelector('input').checked = true;
+    });
   });
 })();
 
-// ── mood check-in ──
-window._spMoodLoading = false;
-window.spSendMood = async function() {
-  if (window._spMoodLoading) return;
-  const input = document.getElementById('sp-mood-input');
-  const resp  = document.getElementById('sp-mood-response');
-  const btn   = document.getElementById('sp-mood-btn');
-  const text  = (input?.value || '').trim();
-  if (!text || !resp) return;
-
-  window._spMoodLoading = true;
-  btn.disabled = true;
-  btn.textContent = '…';
-  resp.textContent = 'Analisando…';
-  resp.classList.remove('sp-hidden');
-
-  const fd = new FormData();
-  fd.append('text', text);
-  fd.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]')?.value || getCookie('csrftoken'));
-  try {
-    const r = await fetch('{% url "boards:mood_checkin" %}', { method: 'POST', body: fd });
-    const data = await r.json();
-    resp.textContent = data.response || data.error || 'Erro.';
-  } catch(e) {
-    resp.textContent = 'Erro de conexão.';
-  }
-  btn.disabled = false;
-  btn.textContent = 'Enviar';
-  window._spMoodLoading = false;
+// Lunch photo preview
+window.spPreviewLunch = function(input){
+  var wrap = document.getElementById('sp-lunch-preview');
+  if(!wrap || !input.files[0]) return;
+  wrap.classList.remove('hidden');
+  wrap.innerHTML = '';
+  var img = document.createElement('img');
+  img.src = URL.createObjectURL(input.files[0]);
+  img.alt = 'Preview almoço';
+  wrap.appendChild(img);
 };
 
-// ── chatbot Tuca ──
+// Chatbot
 window._spChatHistory = [];
-window.spToggleChat = function() {
-  const box = document.getElementById('sp-chat-box');
-  if (box) box.classList.toggle('sp-hidden');
-};
-window.spSendChat = async function() {
-  const input = document.getElementById('sp-chat-input');
-  const msgs  = document.getElementById('sp-chat-messages');
-  if (!input || !msgs) return;
-  const text = (input.value || '').trim();
-  if (!text) return;
-
+window.spToggleChat = function(){ var b=document.getElementById('sp-chat-box'); if(b)b.classList.toggle('sp-hidden'); };
+window.spSendChat = async function(){
+  var input = document.getElementById('sp-chat-input');
+  var msgs  = document.getElementById('sp-chat-messages');
+  if(!input||!msgs) return;
+  var text = (input.value||'').trim();
+  if(!text) return;
   input.value = '';
-  const userBubble = document.createElement('div');
-  userBubble.className = 'sp-chat-msg sp-chat-user';
-  userBubble.textContent = text;
-  msgs.appendChild(userBubble);
-
-  const thinking = document.createElement('div');
-  thinking.className = 'sp-chat-msg sp-chat-assistant';
-  thinking.textContent = 'Tuca está digitando…';
-  msgs.appendChild(thinking);
+  var ub = document.createElement('div');
+  ub.className = 'sp-chat-msg sp-chat-user';
+  ub.textContent = text;
+  msgs.appendChild(ub);
+  var th = document.createElement('div');
+  th.className = 'sp-chat-msg sp-chat-assistant';
+  th.textContent = 'Digitando...';
+  msgs.appendChild(th);
   msgs.scrollTop = msgs.scrollHeight;
-
-  window._spChatHistory.push({ role: 'user', content: text });
-
-  try {
-    const r = await fetch('{% url "boards:social_chatbot_message" %}', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
-      body: JSON.stringify({ message: text, history: window._spChatHistory }),
+  window._spChatHistory.push({role:'user',content:text});
+  try{
+    var r = await fetch('{% url "boards:social_chatbot_message" %}',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
+      body:JSON.stringify({message:text,history:window._spChatHistory})
     });
-    const data = await r.json();
-    thinking.textContent = data.response || data.error || 'Erro.';
-    if (data.response) {
-      window._spChatHistory.push({ role: 'assistant', content: data.response });
-    }
-  } catch(e) {
-    thinking.textContent = 'Erro de conexão.';
-  }
+    var d = await r.json();
+    th.textContent = d.response||d.error||'Erro.';
+    if(d.response) window._spChatHistory.push({role:'assistant',content:d.response});
+  }catch(e){ th.textContent='Erro de conexão.'; }
   msgs.scrollTop = msgs.scrollHeight;
 };
-
-function getCookie(name) {
-  const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
-  return v ? v.pop() : '';
-}
+function getCookie(n){var v=document.cookie.match('(^|;)\\s*'+n+'\\s*=\\s*([^;]+)');return v?v.pop():'';}
 </script>
