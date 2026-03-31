@@ -474,6 +474,14 @@ class UserProfile(models.Model):
 
     
 
+    # Track-time: limite por usuário (minutos até pedir confirmação)
+    # 0 = usa o padrão do sistema (60 min confirmação, 75 min auto-stop)
+    tracktime_limit_minutes = models.PositiveIntegerField(
+        default=0,
+        help_text="Tempo em minutos até pedir confirmação do timer. "
+                  "0 = padrão do sistema (60 min).",
+    )
+
     # Aceite dos Termos de Uso e Política de Privacidade
     terms_accepted = models.BooleanField(default=False)
     terms_accepted_at = models.DateTimeField(null=True, blank=True)
@@ -712,6 +720,28 @@ class CardFollow(models.Model):
 
     def __str__(self):
         return f"{self.user_id} follows {self.card_id}"
+
+
+class NotificationBuffer(models.Model):
+    """
+    Buffer de notificações de atividade em cards.
+    Acumula eventos por card+usuário e envia consolidado a cada 5 min.
+    """
+    card = models.ForeignKey("Card", on_delete=models.CASCADE, related_name="notification_buffer")
+    recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notification_buffer")
+    actor_name = models.CharField(max_length=200, default="")
+    event_summary = models.CharField(max_length=500)
+    created_at = models.DateTimeField(auto_now_add=True)
+    sent = models.BooleanField(default=False)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["sent", "created_at"]),
+            models.Index(fields=["card", "recipient", "sent"]),
+        ]
+
+    def __str__(self):
+        return f"buf:{self.card_id}→{self.recipient_id} [{self.event_summary[:40]}]"
 
 
 class ColumnFollow(models.Model):

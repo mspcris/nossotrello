@@ -48,6 +48,7 @@ from ..models import (
     ChecklistItem,
     Column,
     Mention,
+    NotificationBuffer,
     Organization,
     OrganizationMembership,
     UserProfile,
@@ -126,7 +127,8 @@ def _actor_html(request) -> str:
 
 def _log_card(card: Card, request, message_html: str, attachment=None):
     """
-    Registra no histórico do card (CardLog) e notifica seguidores.
+    Registra no histórico do card (CardLog) e enfileira notificação
+    no buffer (consolidada a cada 5 min pelo flush_notifications).
     """
     try:
         actor = None
@@ -140,30 +142,41 @@ def _log_card(card: Card, request, message_html: str, attachment=None):
             attachment=attachment,
         )
 
-        # seguidores recebem notificação de qualquer atividade do card
-        # (exceto quando a própria pessoa fez a ação)
+        # Enfileira no buffer para envio consolidado
         try:
+            from django.utils.html import strip_tags as _st
+            event_text = _st(message_html or "").strip()
+            if len(event_text) > 490:
+                event_text = event_text[:490] + "…"
+
+            actor_name = ""
+            if actor:
+                prof = getattr(actor, "profile", None)
+                actor_name = (
+                    (getattr(prof, "display_name", "") or "").strip()
+                    or actor.get_full_name()
+                    or actor.get_username()
+                    or ""
+                )
+
             followers = [cf.user for cf in card.follows.select_related("user").all()]
             if actor:
                 followers = [u for u in followers if u.id != actor.id]
 
             if followers:
-                snap = build_card_snapshot(card=card)
-                msg = format_card_message(
-                    title_prefix="📝 Atividade no card",
-                    snap=snap,
-                )
-
-                notify_users_for_card(
-                    card=card,
-                    recipients=followers,
-                    subject=f"Atividade no card: {snap.title}",
-                    message=msg,
-                    include_link_as_second_whatsapp_message=False,
-                )
+                buffers = [
+                    NotificationBuffer(
+                        card=card,
+                        recipient=u,
+                        actor_name=actor_name,
+                        event_summary=event_text,
+                    )
+                    for u in followers
+                ]
+                NotificationBuffer.objects.bulk_create(buffers)
 
         except Exception:
-            # notificação nunca derruba a auditoria
+            # buffer nunca derruba a auditoria
             pass
 
         return log
