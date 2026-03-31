@@ -3,9 +3,7 @@
 
 <div id="social-panel" class="sp">
 
-  {# ═══════════════════════════════════════════════════════════
-     PROFILE CARD — estilo Facebook/Instagram
-     ═══════════════════════════════════════════════════════════ #}
+  <!-- PROFILE CARD -->
   <div class="sp-profile-card">
     {# Cover photo #}
     <div class="sp-cover" {% if profile.cover_photo %}style="background-image:url('{{ profile.cover_photo.url }}')"{% endif %}>
@@ -80,9 +78,7 @@
   </div>
 
   {% if is_me %}
-  {# ═══════════════════════════════════════════════════════════
-     DAILY CHECK-IN — Como está seu dia?
-     ═══════════════════════════════════════════════════════════ #}
+  <!-- DAILY CHECK-IN -->
   <form id="sp-checkin-form" class="sp-checkin"
         hx-post="{% url 'boards:daily_checkin_save' %}"
         hx-target="#social-panel" hx-swap="outerHTML"
@@ -190,9 +186,7 @@
     <button type="submit" class="sp-checkin-btn">Salvar check-in</button>
   </form>
 
-  {# ═══════════════════════════════════════════════════════════
-     PENDÊNCIAS DO DIA
-     ═══════════════════════════════════════════════════════════ #}
+  <!-- PENDENCIAS DO DIA -->
   {% if overdue_tasks or today_tasks %}
   <div class="sp-tasks">
     <div class="sp-tasks-title">
@@ -232,9 +226,7 @@
   </div>
   {% endif %}
 
-  {# ═══════════════════════════════════════════════════════════
-     POST — Registrar momento do trabalho
-     ═══════════════════════════════════════════════════════════ #}
+  <!-- POST -->
   {% if post_error %}
     <div class="sp-error">{{ post_error }}</div>
   {% endif %}
@@ -282,9 +274,7 @@
   </div>
   {% endif %}
 
-  {# ═══════════════════════════════════════════════════════════
-     FEED DE POSTS
-     ═══════════════════════════════════════════════════════════ #}
+  <!-- FEED DE POSTS -->
   <div class="sp-feed">
     {% if posts %}
       {% for post in posts %}

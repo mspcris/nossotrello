@@ -15,6 +15,7 @@
       profile: document.getElementById("um-panel-profile"),
       password: document.getElementById("um-panel-password"),
       avatar: document.getElementById("um-panel-avatar"),
+      social: document.getElementById("um-panel-social"),
     };
 
     Object.keys(panels).forEach((k) => {
@@ -25,6 +26,12 @@
       const isActive = btn.getAttribute("data-um-tab") === tab;
       btn.classList.toggle("font-semibold", isActive);
     });
+
+    // Oculta aside e divider no tab social para dar mais espaço
+    const divider = document.getElementById("um-divider-el");
+    const aside = document.getElementById("um-right-el");
+    if (divider) divider.style.display = tab === "social" ? "none" : "";
+    if (aside) aside.style.display = tab === "social" ? "none" : "";
 
     // mantém o estado (pra quando der swap)
     const root = document.getElementById("um-root");
@@ -96,9 +103,23 @@
     // 🔑 ativa hx-* dentro do HTML injetado (evita navegar para /account/avatar/choose/)
     htmxProcess(body);
 
+    // Executa inline <script> tags (innerHTML não os roda automaticamente)
+    body.querySelectorAll("script").forEach(function(old) {
+      var ns = document.createElement("script");
+      ns.textContent = old.textContent;
+      old.parentNode.replaceChild(ns, old);
+    });
+
     // garante abas e seleção sempre ok
     umInitFromDom();
     umRefreshAvatarSelection(document);
+
+    // Garante que o aside carregue o painel social via HTMX
+    // (só se ainda tem o placeholder, evita request duplicado)
+    var aside = document.getElementById("um-right-el");
+    if (aside && window.htmx && aside.querySelector(".sp-loading")) {
+      try { window.htmx.trigger(aside, "load"); } catch(_e) {}
+    }
   }
 
   window.Modal.user = {
