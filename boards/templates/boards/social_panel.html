@@ -95,6 +95,12 @@
       {% if latest_checkin and latest_checkin.lunch_text %}
       <div class="sp-lunch-badge">🍽️ {{ latest_checkin.lunch_text }}</div>
       {% endif %}
+
+      <!-- Link direto do perfil -->
+      <button type="button" class="sp-share-btn"
+        onclick="spCopyProfileLink('{% if profile.handle %}/social/@{{ profile.handle }}/{% else %}/social/{{ target_user.id }}/{% endif %}', this)">
+        🔗 Copiar link do perfil
+      </button>
     </div>
   </div>
 
@@ -837,6 +843,22 @@ var _camilaAvatarUrl = "{% static 'images/camila-avatar.png' %}";
       setTimeout(function(){ toast.remove(); }, 370);
     }, 8000);
   }
+
+  /* ═══ COPIAR LINK DO PERFIL ═══ */
+  window.spCopyProfileLink = function(path, btn){
+    var url = location.origin + path;
+    if(navigator.share){
+      navigator.share({title: 'Espaço Social', url: url}).catch(function(){});
+    } else if(navigator.clipboard){
+      navigator.clipboard.writeText(url).then(function(){
+        var orig = btn.textContent;
+        btn.textContent = '✅ Link copiado!';
+        setTimeout(function(){ btn.textContent = orig; }, 2500);
+      });
+    } else {
+      prompt('Copie o link:', url);
+    }
+  };
 
   /* ═══ AMIGOS — SHEET ═══ */
   var _myBoards = {{ my_boards|default:"[]"|safe }};

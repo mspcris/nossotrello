@@ -1537,3 +1537,20 @@ video.sp-post-media {
   color: #374151;
 }
 .sp-board-picker-item:hover { background: #f3f4f6; }
+
+/* ═══════════ BOTÃO COMPARTILHAR PERFIL ═══════════ */
+.sp-share-btn {
+  margin-top: 8px;
+  background: none;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 0.72rem;
+  color: #6b7280;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.sp-share-btn:hover, .sp-share-btn:active {
+  background: #f3f4f6;
+  color: #374151;
+}

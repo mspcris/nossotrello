@@ -242,9 +242,11 @@ def _build_social_context(request, target_user, extra=None):
 # Página social standalone (GET) — /social/ ou /social/<user_id>/
 # ---------------------------------------------------------------
 @login_required
-def social_page(request, user_id: int = None):
+def social_page(request, user_id: int = None, handle: str = None):
     """Página standalone do espaço social — pode dar F5 e continuar."""
-    if user_id:
+    if handle:
+        target_user = get_object_or_404(UserProfile, handle=handle).user
+    elif user_id:
         target_user = get_object_or_404(User, id=user_id)
     else:
         target_user = request.user

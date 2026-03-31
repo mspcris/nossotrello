@@ -148,6 +148,7 @@ urlpatterns = [
     # ============================================================
     path("social/", social_page, name="social_page"),
     path("social/<int:user_id>/", social_page, name="social_page_user"),
+    path("social/@<str:handle>/", social_page, name="social_page_handle"),
     path("users/<int:user_id>/social/", social_posts_panel, name="social_posts_panel"),
     path("social/post/create/", social_post_create, name="social_post_create"),
     path("social/post/<int:post_id>/delete/", social_post_delete, name="social_post_delete"),
