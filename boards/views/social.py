@@ -1350,32 +1350,40 @@ def _extract_text_pdfplumber(pdf_bytes: bytes) -> str:
 
 
 def _summarize_with_claude(raw_text: str, title: str) -> str:
-    """Envia o texto bruto para Claude e recebe um resumo otimizado para Groq."""
-    api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
-    if not api_key:
-        # Sem chave: retorna texto bruto truncado
-        return raw_text[:4000]
-    try:
-        import anthropic
-        client = anthropic.Anthropic(api_key=api_key)
-        message = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=1024,
-            messages=[
-                {
-                    "role": "user",
-                    "content": (
-                        f"{_CLAUDE_SUMMARIZE_PROMPT}\n\n"
-                        f"Título do POP: {title}\n\n"
-                        f"Texto extraído do PDF:\n\n{raw_text[:12000]}"
-                    ),
-                }
-            ],
-        )
-        return message.content[0].text.strip()
-    except Exception as exc:
-        # Se Claude falhar, usa texto bruto truncado
-        return raw_text[:4000]
+    """Sumariza o texto do POP.
+    Prioridade: Claude (ANTHROPIC_API_KEY) → Groq (GROQ_API_KEY) → truncamento.
+    """
+    user_content = (
+        f"{_CLAUDE_SUMMARIZE_PROMPT}\n\n"
+        f"Título do POP: {title}\n\n"
+        f"Texto extraído do PDF:\n\n{raw_text[:12000]}"
+    )
+
+    # 1. Claude (melhor qualidade, mais barato por token)
+    anthropic_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
+    if anthropic_key:
+        try:
+            import anthropic
+            client = anthropic.Anthropic(api_key=anthropic_key)
+            message = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=1024,
+                messages=[{"role": "user", "content": user_content}],
+            )
+            return message.content[0].text.strip()
+        except Exception:
+            pass  # cai para Groq
+
+    # 2. Groq (fallback — já configurado)
+    summary = _groq_chat(
+        [{"role": "user", "content": user_content}],
+        system_prompt="Você é um especialista em documentação operacional. Responda apenas com o resumo estruturado, sem comentários adicionais.",
+    )
+    if summary and not summary.startswith("Erro"):
+        return summary
+
+    # 3. Último recurso: texto bruto truncado
+    return raw_text[:4000]
 
 
 @login_required
