@@ -1374,15 +1374,40 @@ def _summarize_with_claude(raw_text: str, title: str) -> str:
         except Exception:
             pass  # cai para Groq
 
-    # 2. Groq (fallback — já configurado)
-    summary = _groq_chat(
-        [{"role": "user", "content": user_content}],
-        system_prompt="Você é um especialista em documentação operacional. Responda apenas com o resumo estruturado, sem comentários adicionais.",
-    )
-    if summary and not summary.startswith("Erro"):
-        return summary
+    # 2. Groq (fallback)
+    groq_key = os.getenv("GROQ_API_KEY", "").strip()
+    if groq_key:
+        summary = _groq_chat(
+            [{"role": "user", "content": user_content}],
+            system_prompt="Você é um especialista em documentação operacional. Responda apenas com o resumo estruturado, sem comentários adicionais.",
+        )
+        if summary and not summary.startswith("Erro"):
+            return summary
 
-    # 3. Último recurso: texto bruto truncado
+    # 3. OpenAI (fallback)
+    openai_key = os.getenv("OPENAI_API_KEY", "").strip()
+    if openai_key:
+        try:
+            from openai import OpenAI
+            client = OpenAI(api_key=openai_key)
+            resp = client.chat.completions.create(
+                model="gpt-4o-mini",
+                max_tokens=1024,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "Você é um especialista em documentação operacional. Responda apenas com o resumo estruturado, sem comentários adicionais.",
+                    },
+                    {"role": "user", "content": user_content},
+                ],
+            )
+            text = resp.choices[0].message.content.strip()
+            if text:
+                return text
+        except Exception:
+            pass
+
+    # 4. Último recurso: texto bruto truncado
     return raw_text[:4000]
 
 
