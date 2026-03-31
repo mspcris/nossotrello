@@ -563,12 +563,12 @@
     <!-- =========================================================
          RIGHT
          ========================================================= -->
-    <aside class=”um-right” id=”um-right-el”>
+    <aside class=”um-right” id=”um-right-el”
+           hx-get=”{% url 'boards:social_posts_panel' request.user.id %}”
+           hx-trigger=”load”
+           hx-swap=”innerHTML”>
       <div class=”um-social”>
-        <div class=”um-social-title”>Espaço social</div>
-        <div class=”um-social-sub”>
-          Publique atualizações, fotos e compartilhe como você está. Outros membros dos seus quadros podem ver.
-        </div>
+        <div class=”sp-loading”>Carregando perfil social...</div>
       </div>
     </aside>
 

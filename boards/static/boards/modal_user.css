@@ -768,6 +768,14 @@
   color: #9ca3af;
 }
 
+/* Quando dentro do aside (right), adapta */
+#um-right-el .sp { max-width: 100%; }
+#um-right-el .sp-cover { height: 100px; }
+#um-right-el .sp-mood-picker { gap: 4px; }
+#um-right-el .sp-mood-opt { min-width: 40px; padding: 5px 3px; }
+#um-right-el .sp-mood-face { font-size: 1.2rem; }
+#um-right-el .sp-mood-lbl { font-size: 0.5625rem; }
+
 /* ═══════════ MOBILE TWEAKS ═══════════ */
 @media (max-width: 480px) {
   .sp { max-width: 100%; gap: 8px; }
