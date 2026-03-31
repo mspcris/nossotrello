@@ -10,6 +10,31 @@
     } catch (_e) {}
   }
 
+  // ── Carrega painel social via fetch ────────────────────────
+  function loadSocialPanel(container) {
+    if (!container) return;
+    var uid = Number(window.CURRENT_USER_ID || 0);
+    if (!uid) return;
+    // Evita recarregar se já carregou
+    if (container.querySelector("#social-panel")) return;
+    container.innerHTML = '<div class="sp-loading">Carregando...</div>';
+    fetch("/users/" + uid + "/social/", { credentials: "same-origin" })
+      .then(function(r) { return r.text(); })
+      .then(function(html) {
+        container.innerHTML = html;
+        htmxProcess(container);
+        // Executa scripts inline do social_panel.html
+        container.querySelectorAll("script").forEach(function(old) {
+          var ns = document.createElement("script");
+          ns.textContent = old.textContent;
+          old.parentNode.replaceChild(ns, old);
+        });
+      })
+      .catch(function() {
+        container.innerHTML = '<div class="sp-loading">Erro ao carregar painel social.</div>';
+      });
+  }
+
   function umOpenTab(tab) {
     const panels = {
       profile: document.getElementById("um-panel-profile"),
@@ -32,6 +57,11 @@
     const aside = document.getElementById("um-right-el");
     if (divider) divider.style.display = tab === "social" ? "none" : "";
     if (aside) aside.style.display = tab === "social" ? "none" : "";
+
+    // Ao abrir tab social, carrega o conteúdo
+    if (tab === "social" && panels.social) {
+      loadSocialPanel(panels.social);
+    }
 
     // mantém o estado (pra quando der swap)
     const root = document.getElementById("um-root");
@@ -100,7 +130,7 @@
     const body = document.getElementById("modal-body");
     if (!body) return;
 
-    // 🔑 ativa hx-* dentro do HTML injetado (evita navegar para /account/avatar/choose/)
+    // ativa hx-* dentro do HTML injetado
     htmxProcess(body);
 
     // Executa inline <script> tags (innerHTML não os roda automaticamente)
@@ -114,11 +144,10 @@
     umInitFromDom();
     umRefreshAvatarSelection(document);
 
-    // Garante que o aside carregue o painel social via HTMX
-    // (só se ainda tem o placeholder, evita request duplicado)
+    // Carrega painel social no aside direito via fetch
     var aside = document.getElementById("um-right-el");
-    if (aside && window.htmx && aside.querySelector(".sp-loading")) {
-      try { window.htmx.trigger(aside, "load"); } catch(_e) {}
+    if (aside) {
+      loadSocialPanel(aside);
     }
   }
 
@@ -166,25 +195,25 @@
     }
   });
 
-    // ============================================================
+  // ============================================================
   // Avatar runtime update (header + modal + board) via HX-Trigger
   // ============================================================
   function applyAvatarEverywhere(url) {
     if (!url) return;
 
-    // 1) Header (base.html) — botão do usuário no topo
+    // 1) Header (base.html)
     const headerImg = document.querySelector("#open-user-settings img");
     if (headerImg) {
       headerImg.src = url;
     }
 
-    // 2) Modal — avatar grande no topo do modal
+    // 2) Modal — avatar grande no topo
     const modalTopImg = document.querySelector("#um-root #um-avatar-img");
     if (modalTopImg) {
       modalTopImg.src = url;
     }
 
-    // 3) Board — bolinha do próprio usuário na barra de membros
+    // 3) Board — bolinha do próprio usuário
     try {
       const me = Number(window.CURRENT_USER_ID || 0);
       if (me) {
@@ -192,7 +221,6 @@
         if (btn) {
           let img = btn.querySelector("img");
           if (!img) {
-            // se estava fallback (letra), troca por img
             btn.innerHTML = "";
             img = document.createElement("img");
             img.loading = "lazy";
@@ -208,7 +236,5 @@
     const url = e && e.detail && e.detail.url;
     applyAvatarEverywhere(url);
   });
-
-
 
 })();
