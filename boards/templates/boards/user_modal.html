@@ -99,17 +99,6 @@
         >Espaço Social</button>
       </div>
 
-      <!-- Alerts -->
-      {% if ok.profile %}
-        <div class="mb-3 text-sm bg-green-50 border border-green-200 text-green-800 rounded px-3 py-2">{{ ok.profile }}</div>
-      {% endif %}
-      {% if ok.password %}
-        <div class="mb-3 text-sm bg-green-50 border border-green-200 text-green-800 rounded px-3 py-2">{{ ok.password }}</div>
-      {% endif %}
-      {% if ok.avatar %}
-        <div class="mb-3 text-sm bg-green-50 border border-green-200 text-green-800 rounded px-3 py-2">{{ ok.avatar }}</div>
-      {% endif %}
-
       <!-- Panels -->
       <div id="um-panels">
 
@@ -362,6 +351,10 @@
                 </p>
               </div>
 
+              {% if ok.profile %}
+                <div id="um-alert-profile" class="mt-3 text-sm bg-green-50 border border-green-200 text-green-800 rounded px-3 py-2">{{ ok.profile }}</div>
+              {% endif %}
+
               <div class="mt-3 um-actions">
                 <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded w-fit">Salvar</button>
               </div>
@@ -405,6 +398,10 @@
                   <div class="mt-1 text-sm text-red-700">{{ errors.new_password2 }}</div>
                 {% endif %}
               </div>
+
+              {% if ok.password %}
+                <div class="text-sm bg-green-50 border border-green-200 text-green-800 rounded px-3 py-2">{{ ok.password }}</div>
+              {% endif %}
 
               <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded w-fit">Alterar senha</button>
             </div>
@@ -518,6 +515,10 @@
                 <div class="mt-1 text-xs opacity-70">Limite recomendado: 5MB.</div>
               </div>
 
+              {% if ok.avatar %}
+                <div class="text-sm bg-green-50 border border-green-200 text-green-800 rounded px-3 py-2">{{ ok.avatar }}</div>
+              {% endif %}
+
               <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded w-fit">Salvar foto</button>
             </div>
           </form>
@@ -551,6 +552,12 @@
 
 </div> <!-- /um-root -->
 
+<script>
+(function(){
+  var el = document.getElementById("um-alert-profile");
+  if (el) el.scrollIntoView({behavior:"smooth", block:"center"});
+})();
+</script>
 
 {# FORM HIDDEN: salva preferred_identity_label #}
 <form
