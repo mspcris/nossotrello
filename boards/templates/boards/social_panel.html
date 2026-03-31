@@ -105,6 +105,43 @@
   {% else %}
   <!-- ═══ OWNER VIEW: check-in → tasks → chatbot → feed ═══ -->
 
+  <!-- ═══ AMIGOS (co-membros de quadros) ═══ -->
+  {% if board_friends %}
+  <div class="sp-friends-bar">
+    <div class="sp-friends-label">👥 Amigos</div>
+    <div class="sp-friends-row">
+      {% for friend in board_friends %}
+      {% with fp=friend.profile %}
+      <button type="button" class="sp-friend-btn" onclick="spOpenFriendSheet({{ friend.id }})"
+              title="{{ fp.display_name|default:friend.email }}">
+        {% if fp and fp.avatar %}
+          <img src="{{ fp.avatar.url }}" alt="" class="sp-friend-av-img">
+        {% elif fp and fp.avatar_choice %}
+          <img src="{% static 'images/avatar/' %}{{ fp.avatar_choice }}" alt="" class="sp-friend-av-img">
+        {% else %}
+          <span class="sp-friend-av-fb">{{ fp.display_name|default:friend.email|first|upper }}</span>
+        {% endif %}
+        <span class="sp-friend-name">{{ fp.display_name|default:friend.email|truncatechars:8 }}</span>
+      </button>
+      {% endwith %}
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Sheet de rede do amigo -->
+  <div id="sp-friend-sheet-overlay" class="sp-sheet-overlay sp-hidden" onclick="spCloseFriendSheet()">
+    <div class="sp-sheet" onclick="event.stopPropagation()">
+      <div class="sp-friend-sheet-header">
+        <button class="sp-sheet-close" onclick="spCloseFriendSheet()">✕</button>
+        <div id="sp-friend-sheet-profile" class="sp-friend-sheet-prof"></div>
+      </div>
+      <div id="sp-friend-sheet-body" class="sp-friend-sheet-body">
+        <div class="sp-friend-sheet-loading">Carregando...</div>
+      </div>
+    </div>
+  </div>
+
   <!-- ═══ PÍLULAS DE COMENTÁRIOS NÃO VISTOS ═══ -->
   {% if unread_comment_posts %}
   <div id="sp-comment-pills" class="sp-comment-pills">
@@ -800,6 +837,139 @@ var _camilaAvatarUrl = "{% static 'images/camila-avatar.png' %}";
       setTimeout(function(){ toast.remove(); }, 370);
     }, 8000);
   }
+
+  /* ═══ AMIGOS — SHEET ═══ */
+  var _myBoards = {{ my_boards|default:"[]"|safe }};
+
+  window.spOpenFriendSheet = function(uid){
+    var overlay = document.getElementById('sp-friend-sheet-overlay');
+    var body = document.getElementById('sp-friend-sheet-body');
+    var prof = document.getElementById('sp-friend-sheet-profile');
+    if(!overlay) return;
+    overlay.classList.remove('sp-hidden');
+    document.body.style.overflow = 'hidden';
+    body.innerHTML = '<div class="sp-friend-sheet-loading">Carregando...</div>';
+    prof.innerHTML = '';
+
+    var csrf = document.querySelector('meta[name="csrf-token"]');
+    fetch('/social/' + uid + '/network/', {
+      headers: {'X-CSRFToken': csrf ? csrf.content : ''}
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      // Header do perfil
+      var av = d.profile.avatar
+        ? '<img src="'+d.profile.avatar+'" class="sp-friend-sheet-av">'
+        : '<span class="sp-friend-sheet-av sp-friend-av-fb">'+(d.profile.name||'?')[0].toUpperCase()+'</span>';
+      prof.innerHTML = av +
+        '<div class="sp-friend-sheet-info">' +
+          '<strong>'+d.profile.name+'</strong>' +
+          (d.profile.handle ? '<span class="sp-friend-sheet-handle">@'+d.profile.handle+'</span>' : '') +
+        '</div>' +
+        '<a href="/social/'+uid+'/" class="sp-friend-sheet-view-btn">Ver perfil</a>';
+
+      // Botão de amizade
+      var fsBtn = _friendshipBtn(uid, d.friendship_status, d.i_am_requester);
+
+      // Seções de amigos
+      var html = fsBtn + _friendSection('Em comum', d.common, uid) + _friendSection('Outros amigos', d.others, uid, true);
+      body.innerHTML = html || '<p style="padding:16px;color:#6b7280;font-size:0.85rem;">Nenhuma rede encontrada.</p>';
+    })
+    .catch(function(){ body.innerHTML = '<p style="padding:16px;color:#ef4444;">Erro ao carregar.</p>'; });
+  };
+
+  window.spCloseFriendSheet = function(){
+    var overlay = document.getElementById('sp-friend-sheet-overlay');
+    if(overlay) overlay.classList.add('sp-hidden');
+    document.body.style.overflow = '';
+  };
+
+  function _friendshipBtn(uid, status, iAmReq){
+    var html = '<div class="sp-fs-actions">';
+    if(!status){
+      html += '<button class="sp-fs-btn sp-fs-add" onclick="spSendFriendReq('+uid+', this)">➕ Convidar como amigo</button>';
+    } else if(status === 'pending' && iAmReq){
+      html += '<button class="sp-fs-btn sp-fs-cancel" onclick="spSendFriendReq('+uid+', this)">⏳ Convite enviado (cancelar)</button>';
+    } else if(status === 'pending' && !iAmReq){
+      html += '<button class="sp-fs-btn sp-fs-accept" onclick="spAcceptFriend('+uid+', this)">✅ Aceitar convite</button>';
+    } else if(status === 'accepted'){
+      html += '<span class="sp-fs-friends-tag">✅ Amigos</span>';
+    }
+    // Compartilhar quadro
+    if(_myBoards.length){
+      html += '<button class="sp-fs-btn sp-fs-share" onclick="spShareBoardMenu('+uid+', this)">🔗 Compartilhar quadro</button>';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function _friendSection(label, list, targetUid, showInvite){
+    if(!list || !list.length) return '';
+    var html = '<div class="sp-fs-section"><div class="sp-fs-section-title">'+label+' ('+list.length+')</div><div class="sp-fs-grid">';
+    list.forEach(function(f){
+      var av = f.avatar
+        ? '<img src="'+f.avatar+'" class="sp-friend-av-img">'
+        : '<span class="sp-friend-av-fb">'+(f.name||'?')[0].toUpperCase()+'</span>';
+      html += '<div class="sp-fs-person">' +
+        '<button class="sp-friend-btn" onclick="spOpenFriendSheet('+f.id+')">' + av +
+          '<span class="sp-friend-name">'+(f.name||'').split(' ')[0]+'</span></button>' +
+        (showInvite ? '<button class="sp-fs-mini-add" title="Convidar" onclick="spSendFriendReq('+f.id+', this)">+</button>' : '') +
+        '</div>';
+    });
+    html += '</div></div>';
+    return html;
+  }
+
+  window.spSendFriendReq = function(uid, btn){
+    var csrf = document.querySelector('meta[name="csrf-token"]');
+    fetch('/social/'+uid+'/friend-request/', {method:'POST', headers:{'X-CSRFToken': csrf ? csrf.content : ''}})
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(d.action === 'sent'){
+        btn.textContent = '⏳ Convite enviado (cancelar)';
+        btn.classList.remove('sp-fs-add'); btn.classList.add('sp-fs-cancel');
+      } else {
+        btn.textContent = '➕ Convidar como amigo';
+        btn.classList.remove('sp-fs-cancel'); btn.classList.add('sp-fs-add');
+      }
+    }).catch(function(){});
+  };
+
+  window.spAcceptFriend = function(uid, btn){
+    var csrf = document.querySelector('meta[name="csrf-token"]');
+    fetch('/social/'+uid+'/friend-accept/', {method:'POST', headers:{'X-CSRFToken': csrf ? csrf.content : ''}})
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(d.action === 'accepted') btn.replaceWith(Object.assign(document.createElement('span'), {className:'sp-fs-friends-tag', textContent:'✅ Amigos'}));
+    }).catch(function(){});
+  };
+
+  window.spShareBoardMenu = function(uid, btn){
+    var existing = document.getElementById('sp-board-picker');
+    if(existing){ existing.remove(); return; }
+    var menu = document.createElement('div');
+    menu.id = 'sp-board-picker';
+    menu.className = 'sp-board-picker';
+    _myBoards.forEach(function(b){
+      var item = document.createElement('button');
+      item.className = 'sp-board-picker-item';
+      item.textContent = b.name;
+      item.onclick = function(){
+        var fd = new FormData();
+        fd.append('board_id', b.id);
+        fd.append('user_id', uid);
+        var csrf = document.querySelector('meta[name="csrf-token"]');
+        fetch('/social/board-share/', {method:'POST', headers:{'X-CSRFToken': csrf ? csrf.content : ''}, body:fd})
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          item.textContent = d.created ? '✅ ' + b.name + ' (adicionado)' : '✅ ' + b.name + ' (já membro)';
+          item.disabled = true;
+        }).catch(function(){});
+      };
+      menu.appendChild(item);
+    });
+    btn.parentNode.insertBefore(menu, btn.nextSibling);
+  };
 
   /* ═══ PÍLULAS DE COMENTÁRIOS ═══ */
   window.spDismissPill = async function(btn, postId){

@@ -1076,4 +1076,25 @@ class CamilaConfig(models.Model):
         return obj
 
 
+class SocialFriendship(models.Model):
+    """Convite/amizade explícita entre dois usuários."""
+    STATUS_PENDING  = "pending"
+    STATUS_ACCEPTED = "accepted"
+    STATUS_CHOICES  = [
+        ("pending",  "Pendente"),
+        ("accepted", "Amigos"),
+    ]
+    requester  = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="sent_friendships",     on_delete=models.CASCADE)
+    receiver   = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="received_friendships", on_delete=models.CASCADE)
+    status     = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [("requester", "receiver")]
+        verbose_name = "Amizade Social"
+
+    def __str__(self):
+        return f"{self.requester} → {self.receiver} ({self.status})"
+
+
 # END boards/models.py

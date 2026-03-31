@@ -17,10 +17,10 @@ from django.utils import timezone
 from collections import Counter, defaultdict
 
 from ..models import (
-    BoardMembership, SocialPost, SocialPostSeen,
+    Board, BoardMembership, SocialPost, SocialPostSeen,
     SocialPostReaction, SocialPostComment,
     DailyCheckIn, Card, CardFollow, UserProfile,
-    CamilaKnowledge, CamilaConfig,
+    CamilaKnowledge, CamilaConfig, SocialFriendship,
 )
 
 User = get_user_model()
@@ -176,6 +176,24 @@ def _build_social_context(request, target_user, extra=None):
             else:
                 today_tasks.append(c)
 
+    # Amigos (co-membros de quadros) — só para o dono
+    board_friends = []
+    my_boards = []
+    if is_me:
+        friend_ids = _board_member_ids(target_user)
+        board_friends = list(
+            User.objects.filter(id__in=friend_ids)
+            .select_related("profile")
+            .order_by("profile__display_name")
+        )
+        # Quadros que o usuário pode compartilhar (owner ou editor)
+        my_boards = list(
+            Board.objects.filter(
+                memberships__user=target_user,
+                memberships__role__in=["owner", "editor"],
+            ).values("id", "name").distinct()
+        )
+
     # Pílulas de comentários não vistos (só para o dono)
     unread_comment_posts = []
     if is_me:
@@ -212,6 +230,8 @@ def _build_social_context(request, target_user, extra=None):
         "mood_choices": mood_choices,
         "mood_emojis": mood_emojis,
         "unread_comment_posts": unread_comment_posts,
+        "board_friends": board_friends,
+        "my_boards": my_boards,
     }
     if extra:
         ctx.update(extra)
@@ -697,6 +717,135 @@ def social_unread_counts(request):
         "fresh_ts": fresh_ts,
         "my_comment_count": my_comment_count,
     })
+
+
+# ---------------------------------------------------------------
+# Amizades Sociais
+# ---------------------------------------------------------------
+
+def _board_member_ids(user):
+    """IDs de todos os co-membros de quadros do usuário (excluindo ele mesmo)."""
+    from django.db.models import Q
+    my_board_ids = BoardMembership.objects.filter(user=user).values_list("board_id", flat=True)
+    return set(
+        BoardMembership.objects
+        .filter(board_id__in=my_board_ids)
+        .exclude(user=user)
+        .values_list("user_id", flat=True)
+        .distinct()
+    )
+
+
+def _friendship_status(me, other):
+    """Retorna (status, is_requester) entre me e other. None se não existir."""
+    fs = SocialFriendship.objects.filter(
+        requester_id__in=[me.id, other.id],
+        receiver_id__in=[me.id, other.id],
+    ).first()
+    if not fs:
+        return None, False
+    return fs.status, (fs.requester_id == me.id)
+
+
+def _user_card(user):
+    """Dict resumido de um usuário para JSON."""
+    try:
+        prof = user.profile
+    except Exception:
+        prof = None
+    return {
+        "id": user.id,
+        "name": (prof.display_name if prof else None) or user.get_full_name() or user.email,
+        "handle": (prof.handle if prof else "") or "",
+        "avatar": prof.avatar.url if (prof and prof.avatar) else None,
+    }
+
+
+@login_required
+def social_user_network(request, user_id: int):
+    """
+    Retorna a rede de um usuário: seus co-membros de quadros,
+    separados em 'em comum comigo' e 'outros'.
+    """
+    target = get_object_or_404(User, id=user_id)
+    target_friend_ids = _board_member_ids(target)
+    my_friend_ids     = _board_member_ids(request.user)
+
+    common = []
+    others = []
+    users  = User.objects.filter(id__in=target_friend_ids).select_related("profile")
+
+    for u in users:
+        if u.id == request.user.id:
+            continue  # não mostrar a si mesmo
+        card = _user_card(u)
+        if u.id in my_friend_ids:
+            common.append(card)
+        else:
+            others.append(card)
+
+    status, is_req = _friendship_status(request.user, target)
+    return JsonResponse({
+        "profile": _user_card(target),
+        "common": common,
+        "others": others,
+        "friendship_status": status,
+        "i_am_requester": is_req,
+    })
+
+
+@login_required
+@require_POST
+def social_friend_request(request, user_id: int):
+    """Envia ou cancela um convite de amizade."""
+    target = get_object_or_404(User, id=user_id)
+    if target == request.user:
+        return JsonResponse({"error": "Não pode adicionar a si mesmo."}, status=400)
+
+    fs = SocialFriendship.objects.filter(
+        requester=request.user, receiver=target
+    ).first()
+
+    if fs:
+        # Já enviou → cancela
+        fs.delete()
+        return JsonResponse({"action": "cancelled"})
+    else:
+        SocialFriendship.objects.create(requester=request.user, receiver=target)
+        return JsonResponse({"action": "sent"})
+
+
+@login_required
+@require_POST
+def social_friend_accept(request, user_id: int):
+    """Aceita um convite recebido de user_id."""
+    fs = get_object_or_404(SocialFriendship, requester_id=user_id, receiver=request.user)
+    fs.status = SocialFriendship.STATUS_ACCEPTED
+    fs.save(update_fields=["status"])
+    return JsonResponse({"action": "accepted"})
+
+
+@login_required
+@require_POST
+def social_board_share(request):
+    """Adiciona um usuário a um quadro do qual o solicitante é owner/editor."""
+    board_id = (request.POST.get("board_id") or "").strip()
+    target_id = (request.POST.get("user_id") or "").strip()
+    if not board_id or not target_id:
+        return JsonResponse({"error": "Parâmetros inválidos."}, status=400)
+
+    board = get_object_or_404(Board, id=board_id)
+    target = get_object_or_404(User, id=target_id)
+
+    my_mem = BoardMembership.objects.filter(board=board, user=request.user).first()
+    if not my_mem or my_mem.role == BoardMembership.Role.VIEWER:
+        return JsonResponse({"error": "Sem permissão."}, status=403)
+
+    _, created = BoardMembership.objects.get_or_create(
+        board=board, user=target,
+        defaults={"role": BoardMembership.Role.EDITOR},
+    )
+    return JsonResponse({"ok": True, "created": created, "board": board.name})
 
 
 # ---------------------------------------------------------------

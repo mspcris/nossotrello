@@ -1347,3 +1347,193 @@ video.sp-post-media {
   padding: 0 5px;
   flex-shrink: 0;
 }
+
+/* ═══════════ STRIP DE AMIGOS ═══════════ */
+.sp-friends-bar {
+  padding: 12px 16px 4px;
+}
+.sp-friends-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #6b7280;
+  margin-bottom: 8px;
+}
+.sp-friends-row {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scrollbar-width: none;
+}
+.sp-friends-row::-webkit-scrollbar { display: none; }
+.sp-friend-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.sp-friend-av-img {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  object-fit: cover;
+  border: 2px solid #e5e7eb;
+}
+.sp-friend-av-fb {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  background: linear-gradient(135deg,#7c3aed,#a78bfa);
+  color: #fff;
+  font-size: 1.3rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #e5e7eb;
+}
+.sp-friend-name {
+  font-size: 0.65rem;
+  color: #374151;
+  max-width: 56px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ═══════════ SHEET DE AMIGOS ═══════════ */
+.sp-friend-sheet-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.sp-friend-sheet-prof {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+.sp-friend-sheet-av {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.sp-friend-sheet-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.sp-friend-sheet-handle {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+.sp-friend-sheet-view-btn {
+  background: #7c3aed;
+  color: #fff;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.sp-friend-sheet-body {
+  padding: 12px 16px;
+  overflow-y: auto;
+  max-height: 60vh;
+}
+.sp-friend-sheet-loading {
+  color: #9ca3af;
+  font-size: 0.85rem;
+  padding: 20px 0;
+  text-align: center;
+}
+.sp-fs-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.sp-fs-btn {
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1.5px solid;
+  transition: opacity 0.15s;
+}
+.sp-fs-add    { background:#ede9fe; color:#7c3aed; border-color:#7c3aed; }
+.sp-fs-cancel { background:#fef3c7; color:#b45309; border-color:#f59e0b; }
+.sp-fs-accept { background:#d1fae5; color:#065f46; border-color:#10b981; }
+.sp-fs-share  { background:#f0f9ff; color:#0369a1; border-color:#38bdf8; }
+.sp-fs-friends-tag { font-size:0.78rem; color:#065f46; font-weight:600; }
+.sp-fs-section { margin-bottom: 16px; }
+.sp-fs-section-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 10px;
+}
+.sp-fs-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.sp-fs-person {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+.sp-fs-mini-add {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #7c3aed;
+  color: #fff;
+  font-size: 0.9rem;
+  line-height: 1;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sp-board-picker {
+  background: #fff;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  padding: 6px;
+  margin-top: 4px;
+  min-width: 180px;
+}
+.sp-board-picker-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.82rem;
+  color: #374151;
+}
+.sp-board-picker-item:hover { background: #f3f4f6; }
