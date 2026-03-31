@@ -5,6 +5,7 @@ almoço, pendências do dia, feed de fotos do trabalho.
 """
 import json
 import os
+import xml.etree.ElementTree as ET
 
 import requests as http_requests
 from django.contrib.auth.decorators import login_required
@@ -685,6 +686,40 @@ def social_reply_seen(request, comment_id: int):
         reply_seen=False,
     ).update(reply_seen=True)
     return JsonResponse({"ok": True})
+
+
+# Cache simples em memória para notícias (evita requisição a cada poll)
+_news_cache: dict = {"ts": 0, "headlines": []}
+_NEWS_TTL = 3 * 3600  # 3 horas
+
+@login_required
+def social_news_nudge(request):
+    """Retorna manchetes do Google News Brasil (cache 3h)."""
+    import time
+    now = time.time()
+    if now - _news_cache["ts"] > _NEWS_TTL:
+        try:
+            resp = http_requests.get(
+                "https://news.google.com/rss?hl=pt-BR&gl=BR&ceid=BR:pt-419",
+                timeout=6,
+                headers={"User-Agent": "Mozilla/5.0"},
+            )
+            root = ET.fromstring(resp.content)
+            items = root.findall(".//item")[:6]
+            headlines = []
+            for item in items:
+                title = (item.findtext("title") or "").strip()
+                link  = (item.findtext("link")  or "").strip()
+                # Remove source suffix " - Jornal X" do título do Google News
+                if " - " in title:
+                    title = title.rsplit(" - ", 1)[0].strip()
+                if title and link:
+                    headlines.append({"title": title[:120], "url": link})
+            _news_cache["ts"] = now
+            _news_cache["headlines"] = headlines
+        except Exception:
+            pass  # retorna cache anterior se houver falha
+    return JsonResponse({"headlines": _news_cache["headlines"]})
 
 
 # ---------------------------------------------------------------

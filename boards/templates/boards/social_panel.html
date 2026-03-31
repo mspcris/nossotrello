@@ -454,12 +454,25 @@
 
   <!-- ═══ FAB (Floating Action Button) ═══ -->
   {% if is_me %}
-  <button type="button" class="sp-fab" onclick="spOpenSheet()" aria-label="Novo post">
+  <button type="button" class="sp-fab" id="sp-fab" onclick="spOpenSheet()" aria-label="Novo post">
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
       <line x1="12" y1="5" x2="12" y2="19"/>
       <line x1="5" y1="12" x2="19" y2="12"/>
     </svg>
   </button>
+
+  <!-- ═══ CAMILA NUDGE (sugestão de publicação a cada 2 min) ═══ -->
+  <div id="sp-nudge" class="sp-nudge sp-hidden">
+    <div class="sp-nudge-bubble" onclick="spNudgeClick()">
+      <button type="button" class="sp-nudge-close" onclick="event.stopPropagation();spHideNudge()">✕</button>
+      <p id="sp-nudge-text" class="sp-nudge-text"></p>
+      <a id="sp-nudge-link" class="sp-nudge-link sp-hidden" target="_blank" rel="noopener"
+         onclick="event.stopPropagation()"></a>
+      <span id="sp-nudge-cta" class="sp-nudge-cta">Tocar para publicar ✨</span>
+    </div>
+    <img src="{% static 'images/camila-avatar.png' %}" class="sp-nudge-av" alt="Camila"
+         onclick="spNudgeClick()">
+  </div>
 
   <!-- ═══ BOTTOM SHEET — Post Creation ═══ -->
   <div id="sp-sheet-overlay" class="sp-sheet-overlay sp-hidden" onclick="spCloseSheet()">
@@ -1288,6 +1301,166 @@ var _camilaAvatarUrl = "{% static 'images/camila-avatar.png' %}";
       setTimeout(function(){ row.remove(); }, 200);
     }
   };
+
+  /* ════════════════════════════════════════════
+     CAMILA NUDGE — sugestão de publicação a cada 2 min
+     ════════════════════════════════════════════ */
+  (function(){
+    var NUDGE_INTERVAL  = 2 * 60 * 1000;   // 2 minutos
+    var NUDGE_SHOW_MS   = 12000;            // 12s visível
+    var NEWS_INTERVAL   = 3 * 60 * 60 * 1000; // 3 horas
+    var _nudgeTimer = null;
+    var _newsPool   = [];   // sugestões de notícias (carregadas do servidor)
+
+    /* ── 55 sugestões estáticas ── */
+    var _SP_NUDGE_STATIC = [
+      /* foto / conteúdo */
+      "Tem uma foto do almoço de hoje? 🍽️ Conta pra galera o que rolou!",
+      "Que tal registrar um momento do seu dia? Fotos rápidas contam histórias! 📸",
+      "Tem uma foto legal da semana guardada no celular? Hora de compartilhar!",
+      "Um vídeo rápido do que está rolando por aí? A turma vai curtir! 🎥",
+      "Rolou algo engraçado hoje? Conta aqui — todo mundo precisa de uma risada 😄",
+      "Uma selfie do dia faz bem para o astral! Compartilha aqui 🤳",
+      "Foto antes e depois de um projeto? A galera vai adorar ver a evolução! 🏆",
+      /* fim de semana / passeio */
+      "Fim de semana chegando! Vai rolar praia? Chama a galera! 🌊",
+      "Sexta se aproximando! O que você está planejando? Compartilha!",
+      "Tem algum evento legal esse final de semana? Convida a turma! 🎉",
+      "Ninguém melhor que você para organizar o rolê do fim de semana... chama a galera!",
+      "Passear em família no final de semana? Registra aqui depois! 🏖️",
+      /* comida */
+      "Tá frio hoje, né? Que tal chamar a galera para um pastel quentinho depois do trabalho? 🥟",
+      "Um café da tarde com a turma anima qualquer dia! Quem topa? ☕",
+      "Já é hora do cafezinho! Chama alguém para compartilhar um momento! 🫖",
+      "Almoço especial hoje? Registra aqui antes que acabe! 🍱",
+      "Tá com fome? Publica uma foto do seu lanche — a galera vai querer um! 😋",
+      "Aquele salgadinho da cantina merece destaque! Publica aqui 🥐",
+      /* humor / check-in */
+      "Como você está chegando hoje? Conta um pouquinho... 💙",
+      "Seu humor ainda não foi registrado hoje. Como está o astral? 🌟",
+      "Animado, cansado ou tranquilo? Registra como está se sentindo! 🎭",
+      "Está com energia hoje? Ou precisando de uma pausa? Conta aqui!",
+      "Dois minutinhos de pausa? Como você está de verdade? ✨",
+      /* descanso / pausa */
+      "Dois minutos longe das cobranças... registra esse momentinho aqui! 🌿",
+      "Pausa! Você merece um respiro. O que está sentindo agora? 💜",
+      "Uma pausa de qualidade começa com uma publicação aqui 😌",
+      "Respirou? Agora registra esse momentinho de paz! 🍃",
+      "Minutinho de descanso? Compartilha o que está rolando na sua cabeça!",
+      "O supervisor foi tomar café — seus 2 minutos começam agora! Publica aqui 😄",
+      /* conquistas */
+      "Que conquista você teve hoje, por menor que seja? Celebra aqui! 🎉",
+      "Uma meta batida hoje merece ser registrada! O que você conquistou?",
+      "Você está arrasando! Conta alguma coisa boa do seu dia 💪",
+      "Uma frase que te inspirou hoje? Compartilha com a galera! ✨",
+      "O que te deixou feliz hoje? Publica aqui! 😊",
+      "Resolveu um problema difícil hoje? Celebra esse momento! 🎯",
+      /* colegas / equipe */
+      "Tem algum colega que merece um elogio hoje? Publica e alegra o dia dele! 💜",
+      "Sua equipe é top! Que tal uma foto do time hoje? 📸",
+      "Alguém te ajudou hoje e merece ser lembrado? Registra aqui! 🤝",
+      "Um obrigado público para quem merece... quem é? 🙏",
+      "Como está o clima na equipe hoje? Registra um momentinho!",
+      /* aprendizado */
+      "O que você aprendeu hoje? Um insight rápido sempre inspira! 💡",
+      "Uma dica profissional que funcionou pra você hoje? Compartilha!",
+      "Descobriu algo novo? Registra aqui — conhecimento compartilhado vale dobrado! 📚",
+      "Resolveu algo de um jeito diferente hoje? Conta como! 🔍",
+      /* clima / casual */
+      "Tá calor aí? Um coco gelado imaginário para você! Publica algo! 🥥",
+      "Dia de chuva = dia perfeito para um post! O que está fazendo aí dentro? 🌧️",
+      "Sol bonito hoje! Tem uma foto para registrar esse dia lindo? ☀️",
+      "Final de tarde chegando... como foi seu dia? Registra aqui! 🌅",
+      "Manhã animada ou sonolenta? Conta pra galera como começou o dia! ☕",
+      "Uma curiosidade do seu trabalho que poucos sabem... conta aqui! 🤫",
+      "Já mandou um oi pra galera hoje? Um post é um jeito gostoso de fazer isso! 👋",
+      "Está orgulhoso de algo que fez hoje? Compartilha sem modéstia! 🌟",
+      "Um pensamento positivo para animar a equipe? Publica aqui! 💫",
+      "Foto, vídeo ou só um textinho — o que importa é registrar! 📱",
+      "A galera está esperando novidades suas! O que rolou hoje? 👀"
+    ];
+
+    function _pickSuggestion() {
+      /* 35% de chance de pegar da pool de notícias, se existir */
+      if (_newsPool.length && Math.random() < 0.35) {
+        return _newsPool[Math.floor(Math.random() * _newsPool.length)];
+      }
+      return { text: _SP_NUDGE_STATIC[Math.floor(Math.random() * _SP_NUDGE_STATIC.length)], url: null };
+    }
+
+    function spShowNudge() {
+      if (document.hidden) return;
+      /* Não mostra se algum sheet já estiver aberto */
+      var sheets = document.querySelectorAll('.sp-sheet-overlay:not(.sp-hidden)');
+      if (sheets.length) return;
+
+      var fab = document.getElementById('sp-fab');
+      if (!fab) return;
+
+      /* Redemoinho no + */
+      fab.classList.add('sp-fab-whirl');
+      setTimeout(function(){
+        fab.classList.remove('sp-fab-whirl');
+        fab.style.visibility = 'hidden';
+
+        /* Preenche o nudge */
+        var sug  = _pickSuggestion();
+        var txt  = document.getElementById('sp-nudge-text');
+        var lnk  = document.getElementById('sp-nudge-link');
+        var cta  = document.getElementById('sp-nudge-cta');
+        var nudge = document.getElementById('sp-nudge');
+        if (!nudge || !txt) return;
+
+        txt.textContent = sug.text;
+        if (sug.url) {
+          lnk.href = sug.url;
+          lnk.textContent = '🔗 Ler a notícia completa ↗';
+          lnk.classList.remove('sp-hidden');
+          cta.textContent = '📝 Publicar sobre isso';
+        } else {
+          lnk.classList.add('sp-hidden');
+          cta.textContent = 'Tocar para publicar ✨';
+        }
+
+        nudge.classList.remove('sp-hidden');
+        void nudge.offsetWidth; /* force reflow for animation */
+        nudge.classList.add('sp-nudge-in');
+
+        _nudgeTimer = setTimeout(spHideNudge, NUDGE_SHOW_MS);
+      }, 900);
+    }
+
+    window.spHideNudge = function() {
+      var fab   = document.getElementById('sp-fab');
+      var nudge = document.getElementById('sp-nudge');
+      if (nudge) { nudge.classList.add('sp-hidden'); nudge.classList.remove('sp-nudge-in'); }
+      if (fab)   { fab.style.visibility = ''; }
+      if (_nudgeTimer) { clearTimeout(_nudgeTimer); _nudgeTimer = null; }
+    };
+
+    window.spNudgeClick = function() {
+      spHideNudge();
+      if (window.spOpenSheet) spOpenSheet();
+    };
+
+    /* Busca notícias a cada 3h */
+    function _fetchNews() {
+      fetch('{% url "boards:social_news_nudge" %}')
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (d.headlines && d.headlines.length) {
+            _newsPool = d.headlines.map(function(h){
+              return { text: '📰 Bombando agora: ' + h.title, url: h.url };
+            });
+          }
+        }).catch(function(){});
+    }
+    _fetchNews();
+    setInterval(_fetchNews, NEWS_INTERVAL);
+
+    /* Disparo a cada 2 min */
+    setInterval(spShowNudge, NUDGE_INTERVAL);
+  })();
 
   /* ── Auto-trigger AI reaction if flag is set ── */
   var trigger = document.getElementById('sp-ai-trigger');
