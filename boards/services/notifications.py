@@ -220,7 +220,12 @@ def _safe_digits_phone(phone_raw: str) -> str:
     return phone_digits
 
 
-def send_whatsapp(*, user, phone_digits: str, body: str) -> None:
+def send_whatsapp(*, user, phone_digits: str, body: str, sync: bool = False) -> None:
+    """
+    Envia mensagem WhatsApp via Evolution API.
+    sync=True → envia no mesmo thread (bloqueia até completar).
+    sync=False → envia em background thread (fire-and-forget).
+    """
     base_url = (getattr(settings, "EVOLUTION_BASE_URL", "") or "").strip()
     api_key = (getattr(settings, "EVOLUTION_API_KEY", "") or "").strip()
     instance = (getattr(settings, "EVOLUTION_INSTANCE", "") or "").strip()
@@ -245,8 +250,11 @@ def send_whatsapp(*, user, phone_digits: str, body: str) -> None:
         except Exception as e:
             logger.warning("evolution: send failed user_id=%s: %s", user_id, e)
 
-    t = threading.Thread(target=_send, daemon=True)
-    t.start()
+    if sync:
+        _send()
+    else:
+        t = threading.Thread(target=_send, daemon=True)
+        t.start()
 
 
 def send_email_notification(*, to_email: str, subject: str, body: str) -> None:

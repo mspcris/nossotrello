@@ -1,8 +1,26 @@
 from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.contrib.auth import get_user_model
 
-# Register your models here.
-from django.contrib import admin
-from .models import Board, Column, Card, CardLog
+from .models import Board, Column, Card, CardLog, UserProfile
+
+User = get_user_model()
+
+
+class UserProfileInline(admin.StackedInline):
+    model = UserProfile
+    can_delete = False
+    fields = ("tracktime_limit_minutes",)
+    verbose_name = "Perfil Track-time"
+    verbose_name_plural = "Perfil Track-time"
+
+
+class UserAdmin(BaseUserAdmin):
+    inlines = (UserProfileInline,)
+
+
+admin.site.unregister(User)
+admin.site.register(User, UserAdmin)
 
 
 

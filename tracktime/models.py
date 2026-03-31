@@ -261,15 +261,26 @@ class TimeEntry(models.Model):
     # Confirmação / extensões do timer
     # =========================================================
 
+    def _user_limit_minutes(self):
+        """Retorna o limite em minutos configurado no perfil do usuário (ou 60)."""
+        try:
+            limit = self.user.profile.tracktime_limit_minutes
+            if limit and limit > 0:
+                return limit
+        except Exception:
+            pass
+        return 60  # padrão do sistema
+
     def set_confirmation_window(self, *, now=None):
         """
         Define a janela:
-        - pedir confirmação em 1h
-        - auto-stop em 1h15m
+        - pedir confirmação em N min (configurável por usuário)
+        - auto-stop em N+15 min
         """
         now = now or timezone.now()
-        self.confirm_due_at = now + timezone.timedelta(hours=1)
-        self.auto_stop_at = now + timezone.timedelta(hours=1, minutes=15)
+        limit = self._user_limit_minutes()
+        self.confirm_due_at = now + timezone.timedelta(minutes=limit)
+        self.auto_stop_at = now + timezone.timedelta(minutes=limit + 15)
 
     def needs_confirmation(self, *, now=None) -> bool:
         now = now or timezone.now()
@@ -314,8 +325,9 @@ class TimeEntry(models.Model):
         self.last_confirmed_at = now
 
         # Rearma janela a partir de agora (não do started_at)
-        self.confirm_due_at = now + timezone.timedelta(hours=1)
-        self.auto_stop_at = now + timezone.timedelta(hours=1, minutes=15)
+        limit = self._user_limit_minutes()
+        self.confirm_due_at = now + timezone.timedelta(minutes=limit)
+        self.auto_stop_at = now + timezone.timedelta(minutes=limit + 15)
 
         # Permite novo e-mail no próximo ciclo
         self.confirmation_sent_at = None
