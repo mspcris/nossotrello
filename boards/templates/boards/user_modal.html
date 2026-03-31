@@ -549,7 +549,7 @@
 
         <!-- ===================== ESPAÇO SOCIAL ===================== -->
         <div id=”um-panel-social” style=”{% if active_tab != 'social' %}display:none{% endif %}”>
-          <div class=”sp-loading”>Clique na aba para carregar…</div>
+          {% include “boards/social_panel.html” %}
         </div>
 
       </div> <!-- /um-panels -->
@@ -562,12 +562,9 @@
     <!-- =========================================================
          RIGHT
          ========================================================= -->
-    <aside class=”um-right” id=”um-right-el”
-           hx-get=”{% url 'boards:social_posts_panel' request.user.id %}”
-           hx-trigger=”load”
-           hx-swap=”innerHTML”>
+    <aside class=”um-right” id=”um-right-el”>
       <div class=”um-social”>
-        <div class=”sp-loading”>Carregando perfil social...</div>
+        {% include “boards/social_panel.html” %}
       </div>
     </aside>
 

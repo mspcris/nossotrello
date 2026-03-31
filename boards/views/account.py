@@ -81,12 +81,21 @@ def _list_avatar_presets():
 def _render_account_modal(request, errors=None, ok=None, active_tab="profile"):
     prof = _get_or_create_profile(request.user)
 
+    # Build social panel context inline (no async load needed)
+    from boards.views.social import _build_social_context
+    social_ctx = {}
+    try:
+        social_ctx = _build_social_context(request, request.user)
+    except Exception:
+        pass
+
     ctx = {
         "profile": prof,
         "active_tab": active_tab,
         "errors": errors or {},
         "ok": ok or {},
         "avatar_presets": _list_avatar_presets(),
+        **social_ctx,
     }
     return render(request, "boards/user_modal.html", ctx)
 
