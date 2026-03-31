@@ -1133,9 +1133,148 @@ def camila_test_chat(request):
     if not message:
         return JsonResponse({"error": "Mensagem vazia."}, status=400)
 
-    prompt = _CAMILA_CHAT_BASE + _camila_knowledge_prompt()
+    cfg = CamilaConfig.get()
+    prompt = cfg.prompt_chat + _camila_knowledge_prompt()
     response = _groq_chat(
         [{"role": "user", "content": message}],
         prompt,
+        config=cfg,
     )
-    return JsonResponse({"response": response, "prompt_preview": prompt[:500] + "..."})
+    return JsonResponse({"response": response or "Sem resposta da IA.", "prompt_preview": prompt[:500] + "..."})
+
+
+# Mapeamento de categorias externas → categorias internas do CamilaKnowledge
+_CATEGORY_MAP = {
+    "about": "about",
+    "sobre": "about",
+    "services": "services",
+    "servicos": "services",
+    "serviços": "services",
+    "products": "services",
+    "produtos": "services",
+    "planos": "services",
+    "financeiro": "services",
+    "financeiro_planos": "services",
+    "rules": "rules",
+    "regras": "rules",
+    "politicas": "rules",
+    "políticas": "rules",
+    "processes": "processes",
+    "processos": "processes",
+    "faq": "faq",
+    "perguntas": "faq",
+    "contacts": "contacts",
+    "contatos": "contacts",
+    "enderecos": "contacts",
+    "endereços": "contacts",
+    "culture": "culture",
+    "cultura": "culture",
+    "valores": "culture",
+    "other": "other",
+    "outros": "other",
+    "geral": "other",
+}
+
+_VALID_CATEGORIES = {c[0] for c in CamilaKnowledge.CATEGORY_CHOICES}
+
+
+def _map_category(raw: str) -> str:
+    if not raw:
+        return "other"
+    raw_lower = raw.strip().lower()
+    if raw_lower in _VALID_CATEGORIES:
+        return raw_lower
+    return _CATEGORY_MAP.get(raw_lower, "other")
+
+
+@login_required
+@staff_member_required
+@require_POST
+def camila_import_json(request):
+    """Importa base de conhecimento a partir de JSON (fixture Django ou array simples)."""
+    try:
+        data = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "JSON inválido."}, status=400)
+
+    items = data.get("items")
+    mode = (data.get("mode") or "skip").strip()
+
+    if not isinstance(items, list):
+        return JsonResponse({"error": "Campo 'items' deve ser uma lista."}, status=400)
+
+    imported = 0
+    skipped = 0
+    overwritten = 0
+    errors = []
+
+    for idx, item in enumerate(items):
+        try:
+            # Suporta tanto fixture Django quanto objeto simples
+            if "fields" in item:
+                fields = item["fields"]
+            else:
+                fields = item
+
+            title = (fields.get("topic") or fields.get("title") or "").strip()
+            content = (fields.get("content") or "").strip()
+            raw_category = fields.get("category") or ""
+            query_patterns = fields.get("query_patterns") or []
+            is_active = fields.get("is_active", True)
+
+            if not title or not content:
+                errors.append(f"Item {idx + 1}: título ou conteúdo vazio, ignorado.")
+                continue
+
+            # Anexa query_patterns ao conteúdo para enriquecer o contexto
+            if query_patterns:
+                if isinstance(query_patterns, list):
+                    patterns_str = ", ".join(str(p) for p in query_patterns if p)
+                else:
+                    patterns_str = str(query_patterns).strip()
+                if patterns_str:
+                    content = content + "\n\nPerguntas relacionadas: " + patterns_str
+
+            category = _map_category(raw_category)
+
+            existing = CamilaKnowledge.objects.filter(title=title).first()
+
+            if existing:
+                if mode == "skip":
+                    skipped += 1
+                    continue
+                elif mode == "overwrite":
+                    existing.content = content
+                    existing.category = category
+                    existing.is_active = bool(is_active)
+                    existing.save(update_fields=["content", "category", "is_active", "updated_at"])
+                    overwritten += 1
+                else:  # add — duplica mesmo assim
+                    CamilaKnowledge.objects.create(
+                        title=title,
+                        content=content,
+                        category=category,
+                        is_active=bool(is_active),
+                        created_by=request.user,
+                    )
+                    imported += 1
+            else:
+                CamilaKnowledge.objects.create(
+                    title=title,
+                    content=content,
+                    category=category,
+                    is_active=bool(is_active),
+                    created_by=request.user,
+                )
+                imported += 1
+
+        except Exception as exc:
+            errors.append(f"Item {idx + 1}: {exc}")
+
+    return JsonResponse({
+        "ok": True,
+        "imported": imported,
+        "skipped": skipped,
+        "overwritten": overwritten,
+        "errors": errors,
+    })

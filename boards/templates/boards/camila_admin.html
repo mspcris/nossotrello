@@ -176,6 +176,32 @@
   </div>
   {% endif %}
 
+  <!-- ═══ IMPORTAR JSON ═══ -->
+  <div class="ca-card">
+    <div class="ca-card-header" onclick="caToggle('ca-import')">
+      <span class="ca-card-title">📥 Importar Base de Conhecimento (JSON)</span>
+      <span class="ca-card-arrow">▸</span>
+    </div>
+    <div id="ca-import" class="ca-card-body ca-hidden">
+      <p class="ca-hint">Cole aqui o JSON exportado de outro sistema (formato Django fixtures ou array com <code>fields.content</code>, <code>fields.topic</code>, <code>fields.query_patterns</code>).</p>
+      <div class="ca-field">
+        <label class="ca-label">Modo de importação</label>
+        <select id="ca-import-mode" class="ca-input" style="max-width:260px">
+          <option value="skip">Ignorar duplicatas (mesmo título)</option>
+          <option value="overwrite">Substituir duplicatas</option>
+          <option value="add">Adicionar tudo (pode duplicar)</option>
+        </select>
+      </div>
+      <div class="ca-field">
+        <label class="ca-label">JSON</label>
+        <textarea id="ca-import-json" class="ca-textarea" rows="10"
+                  placeholder='[{"model":"chat.knowledgebase","pk":1,"fields":{"topic":"...","content":"...","query_patterns":["..."],"category":"financeiro_planos","is_active":true}}]'></textarea>
+      </div>
+      <div id="ca-import-result" class="ca-hint" style="display:none"></div>
+      <button type="button" class="ca-btn ca-btn-blue" onclick="caImportJson()">Importar</button>
+    </div>
+  </div>
+
   <!-- ═══ TEST CHAT ═══ -->
   <div class="ca-card">
     <div class="ca-card-header" onclick="caToggle('ca-test-chat')">
@@ -348,6 +374,51 @@
       else caToast(d.error || 'Erro', '#dc2626');
     }catch(err){ caToast('Erro de conexao', '#dc2626'); }
     return false;
+  };
+
+  window.caImportJson = async function(){
+    var textarea = document.getElementById('ca-import-json');
+    var modeEl = document.getElementById('ca-import-mode');
+    var resultEl = document.getElementById('ca-import-result');
+    var raw = (textarea.value || '').trim();
+    if(!raw){ caToast('Cole o JSON antes de importar.', '#dc2626'); return; }
+
+    var parsed;
+    try{ parsed = JSON.parse(raw); }
+    catch(e){ caToast('JSON inválido: ' + e.message, '#dc2626'); return; }
+
+    if(!Array.isArray(parsed)){
+      caToast('O JSON deve ser uma lista [ ... ].', '#dc2626'); return;
+    }
+
+    resultEl.style.display = 'none';
+    caToast('Importando ' + parsed.length + ' item(s)...');
+
+    try{
+      var r = await fetch('{% url "boards:camila_import_json" %}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfVal},
+        body: JSON.stringify({ items: parsed, mode: modeEl.value })
+      });
+      var d = await r.json();
+      if(!d.ok){ caToast(d.error || 'Erro no servidor.', '#dc2626'); return; }
+
+      var lines = [];
+      if(d.imported)    lines.push('✅ ' + d.imported + ' importado(s)');
+      if(d.overwritten) lines.push('🔄 ' + d.overwritten + ' sobrescrito(s)');
+      if(d.skipped)     lines.push('⏭ '  + d.skipped   + ' ignorado(s) (duplicata)');
+      if(d.errors && d.errors.length){
+        lines.push('⚠️ ' + d.errors.length + ' erro(s):');
+        d.errors.forEach(function(e){ lines.push('  • ' + e); });
+      }
+
+      resultEl.innerHTML = lines.join('<br>');
+      resultEl.style.display = 'block';
+      caToast('Importação concluída!');
+      setTimeout(function(){ location.reload(); }, 1500);
+    }catch(err){
+      caToast('Erro de conexão.', '#dc2626');
+    }
   };
 
   window.caTestSend = async function(){

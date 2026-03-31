@@ -131,6 +131,7 @@ from boards.views.social import (
     camila_knowledge_toggle,
     camila_test_chat,
     camila_config_save,
+    camila_import_json,
 )
 
 
@@ -183,6 +184,7 @@ urlpatterns = [
     path("camila/<int:entry_id>/toggle/", camila_knowledge_toggle, name="camila_knowledge_toggle"),
     path("camila/test/", camila_test_chat, name="camila_test_chat"),
     path("camila/config/", camila_config_save, name="camila_config_save"),
+    path("camila/import-json/", camila_import_json, name="camila_import_json"),
 
     # ============================================================
     # IDCamim OAuth2
