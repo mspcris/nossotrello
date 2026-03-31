@@ -133,13 +133,6 @@
     // ativa hx-* dentro do HTML injetado
     htmxProcess(body);
 
-    // Executa inline <script> tags (innerHTML não os roda automaticamente)
-    body.querySelectorAll("script").forEach(function(old) {
-      var ns = document.createElement("script");
-      ns.textContent = old.textContent;
-      old.parentNode.replaceChild(ns, old);
-    });
-
     // garante abas e seleção sempre ok
     umInitFromDom();
     umRefreshAvatarSelection(document);
@@ -149,6 +142,18 @@
     if (aside) {
       loadSocialPanel(aside);
     }
+
+    // Executa inline <script> tags (innerHTML não os roda automaticamente)
+    // Protegido com try/catch para não bloquear o carregamento do social
+    try {
+      body.querySelectorAll("script").forEach(function(old) {
+        try {
+          var ns = document.createElement("script");
+          ns.textContent = old.textContent;
+          old.parentNode.replaceChild(ns, old);
+        } catch(e) { console.error("[modal.user] script exec error:", e); }
+      });
+    } catch(e) { console.error("[modal.user] script loop error:", e); }
   }
 
   window.Modal.user = {
