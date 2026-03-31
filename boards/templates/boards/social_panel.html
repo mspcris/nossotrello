@@ -754,7 +754,8 @@ var _camilaAvatarUrl = "{% static 'images/camila-avatar.png' %}";
     var d = await _spRetryFetch('{% url "boards:social_chatbot_message" %}',
       {message:text, history:window._spChatHistory}, th);
     if(d){
-      th.textContent = d.response || d.error || 'Hmm, algo deu errado.';
+      var reply = d.response || d.error || 'Hmm, algo deu errado.';
+      th.innerHTML = _spLinkify(reply);
       if(d.response) window._spChatHistory.push({role:'assistant',content:d.response});
     }
     msgs.scrollTop = msgs.scrollHeight;
@@ -910,6 +911,16 @@ var _camilaAvatarUrl = "{% static 'images/camila-avatar.png' %}";
     if(o) o.classList.add('sp-hidden');
     document.body.style.overflow = '';
   };
+  /* Converte URLs em links clicáveis com segurança (sem XSS) */
+  function _spLinkify(text){
+    var escaped = text
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;');
+    return escaped.replace(/(https?:\/\/[^\s<>"]+)/g, function(url){
+      return '<a href="'+url+'" target="_blank" rel="noopener" style="color:#7c3aed;text-decoration:underline;word-break:break-all;">'+url+'</a>';
+    });
+  }
+
   window._spCamilaHistory = window._spCamilaHistory || [];
   window.spSendCamila = async function(){
     var input = document.getElementById('sp-camila-input');
@@ -934,7 +945,8 @@ var _camilaAvatarUrl = "{% static 'images/camila-avatar.png' %}";
     var d = await _spRetryFetch('{% url "boards:social_camila_chat" %}',
       {message:text, history:window._spCamilaHistory}, th);
     if(d){
-      th.textContent = d.response || d.error || 'Hmm, algo deu errado.';
+      var reply = d.response || d.error || 'Hmm, algo deu errado.';
+      th.innerHTML = _spLinkify(reply);
       if(d.response) window._spCamilaHistory.push({role:'assistant',content:d.response});
     }
     msgs.scrollTop = msgs.scrollHeight;
