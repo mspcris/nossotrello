@@ -213,7 +213,7 @@
   {% if show_unit_tutorial %}
   <div class="sp-onboard-card" id="sp-onboard-card">
     {% load static %}
-    <img src="{% static 'images/camila-avatar.png' %}" class="sp-onboard-av" alt="Camila">
+    <img id="sp-camila-onboard-img" src="{% static 'images/camila-avatar.png' %}" class="sp-onboard-av" alt="Camila" style="transition:opacity 0.4s">
     <div class="sp-onboard-bubble">
       <p class="sp-onboard-hi">Olá! Eu sou a <strong>Camila</strong> 👋</p>
       <p class="sp-onboard-txt">Bem-vindo ao Espaço Social da CAMIM! Para conectar você com seus colegas, me conta: <strong>qual é a sua unidade?</strong></p>
@@ -1766,7 +1766,7 @@ var _CAMILA_AVATARS = {
       var src = _CAMILA_AVATARS[key] || _CAMILA_AVATARS['default'];
 
       /* Troca todas as imgs da Camila com fade */
-      ['sp-camila-header-img', 'sp-camila-nudge-img', 'sp-camila-btn-img'].forEach(function(id) {
+      ['sp-camila-header-img', 'sp-camila-nudge-img', 'sp-camila-btn-img', 'sp-camila-onboard-img'].forEach(function(id) {
         var el = document.getElementById(id);
         if (!el) return;
         el.style.opacity = '0';
