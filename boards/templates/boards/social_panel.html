@@ -471,7 +471,7 @@
       <span id="sp-nudge-cta" class="sp-nudge-cta">Tocar para publicar ✨</span>
     </div>
     <div style="position:relative;display:inline-block" onclick="spNudgeClick()">
-      <img src="{% static 'images/camila-avatar.png' %}" class="sp-nudge-av" alt="Camila">
+      <img id="sp-camila-nudge-img" src="{% static 'images/camila-avatar.png' %}" class="sp-nudge-av" alt="Camila" style="transition:opacity 0.4s">
       <span id="sp-nudge-weather" style="position:absolute;bottom:-2px;right:-2px;font-size:0.85rem;line-height:1;background:#fff;border-radius:50%;padding:2px"></span>
     </div>
   </div>
@@ -516,7 +516,7 @@
       <div class="sp-sheet-divider"></div>
 
       <button type="button" class="sp-camila-btn" onclick="spCloseSheet();spOpenCamila()">
-        <img src="{% static 'images/camila-avatar.png' %}" alt="Camila" class="sp-camila-btn-avatar">
+        <img id="sp-camila-btn-img" src="{% static 'images/camila-avatar.png' %}" alt="Camila" class="sp-camila-btn-avatar" style="transition:opacity 0.4s">
         <span class="sp-camila-btn-text">
           <span class="sp-camila-btn-name">Fale com a Camila.AI</span>
           <span class="sp-camila-btn-hint">Sua assistente da rede social</span>
@@ -584,6 +584,16 @@
 
 <script>
 var _camilaAvatarUrl = "{% static 'images/camila-avatar.png' %}";
+/* Avatares da Camila por clima */
+var _CAMILA_AVATARS = {
+  sunny:    "{% static 'images/avatar/avatar10.png' %}",   /* abelhinha amarela — sol ☀️ */
+  fair:     "{% static 'images/avatar/avatar5.png' %}",    /* óculos amarelos — parcialmente nublado ⛅ */
+  default:  "{% static 'images/camila-avatar.png' %}",     /* padrão — nublado */
+  dark:     "{% static 'images/avatar/avatar6.png' %}",    /* tech azul escuro — neblina/noite */
+  rain:     "{% static 'images/avatar/avatar8.png' %}",    /* hoodie preto — chuva ☔ */
+  storm:    "{% static 'images/avatar/avatar7.png' %}",    /* capuz neon — trovoada ⛈️ */
+  wind:     "{% static 'images/avatar/avatar11.png' %}",   /* macacão laranja — vento */
+};
 (function(){
   /* ── Mood picker: tap to select ── */
   document.querySelectorAll('.sp-mood-card').forEach(function(card){
@@ -1353,24 +1363,30 @@ var _camilaAvatarUrl = "{% static 'images/camila-avatar.png' %}";
       return '⛈️';
     }
 
-    /* ── Filtro CSS + badge por clima ── */
+    /* ── Troca avatar + badge por clima ── */
     function _applyWeatherToAvatar(code) {
-      var img   = document.getElementById('sp-camila-header-img');
-      var badge = document.getElementById('sp-camila-av-badge');
-      var nudgeBadge = document.getElementById('sp-nudge-weather');
+      var key, sticker;
+      if      (code === 0)                              { key = 'sunny';   sticker = '☀️'; }
+      else if (code <= 2)                               { key = 'fair';    sticker = '⛅'; }
+      else if (code === 3)                              { key = 'default'; sticker = '☁️'; }
+      else if (code <= 48)                              { key = 'dark';    sticker = '🌫️'; }
+      else if (code <= 67 || (code >= 80 && code <= 82)){ key = 'rain';    sticker = '☔'; }
+      else if (code <= 77)                              { key = 'dark';    sticker = '❄️'; }
+      else                                              { key = 'storm';   sticker = '⛈️'; }
+
+      var src = _CAMILA_AVATARS[key] || _CAMILA_AVATARS['default'];
+
+      /* Troca todas as imgs da Camila com fade */
+      ['sp-camila-header-img', 'sp-camila-nudge-img', 'sp-camila-btn-img'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.style.opacity = '0';
+        setTimeout(function(){ el.src = src; el.style.opacity = '1'; }, 300);
+      });
+
+      var badge       = document.getElementById('sp-camila-av-badge');
+      var nudgeBadge  = document.getElementById('sp-nudge-weather');
       var headerBadge = document.getElementById('sp-camila-weather');
-
-      var filter = '', sticker = '';
-      if      (code === 0)          { filter = 'brightness(1.08) saturate(1.15)';              sticker = '☀️'; }
-      else if (code <= 2)           { filter = 'brightness(1.02)';                             sticker = '⛅'; }
-      else if (code === 3)          { filter = 'brightness(0.92) saturate(0.85)';              sticker = '☁️'; }
-      else if (code <= 48)          { filter = 'brightness(0.82) saturate(0.5) blur(0.4px)';   sticker = '🌫️'; }
-      else if (code <= 67 || (code >= 80 && code <= 82)) {
-                                      filter = 'hue-rotate(185deg) saturate(0.75) brightness(0.78)'; sticker = '☔'; }
-      else if (code <= 77)          { filter = 'brightness(0.85) saturate(0.4) hue-rotate(150deg)'; sticker = '❄️'; }
-      else                          { filter = 'hue-rotate(210deg) saturate(0.6) brightness(0.65)'; sticker = '⛈️'; }
-
-      if (img)         img.style.filter = filter;
       if (badge)       badge.textContent = sticker;
       if (nudgeBadge)  nudgeBadge.textContent = sticker;
       if (headerBadge) headerBadge.textContent = _camilaWeatherEmoji;
