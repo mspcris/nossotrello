@@ -8,11 +8,16 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('boards', '0056_add_tracktime_limit_minutes'),
+        ('boards', '0056_cardattachment_created_by'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
+        migrations.AddField(
+            model_name='userprofile',
+            name='tracktime_limit_minutes',
+            field=models.PositiveIntegerField(default=0, help_text='Tempo em minutos até pedir confirmação do timer. 0 = padrão do sistema (60 min).'),
+        ),
         migrations.CreateModel(
             name='NotificationBuffer',
             fields=[
