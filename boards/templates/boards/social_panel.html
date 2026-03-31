@@ -248,8 +248,8 @@
     </div>
   </div>
 
-  <!-- ═══ PÍLULAS DE COMENTÁRIOS NÃO VISTOS ═══ -->
-  {% if unread_comment_posts %}
+  <!-- ═══ PÍLULAS DE COMENTÁRIOS / RESPOSTAS NÃO VISTOS ═══ -->
+  {% if unread_comment_posts or unread_reply_items %}
   <div id="sp-comment-pills" class="sp-comment-pills">
     {% for item in unread_comment_posts %}
     <button type="button"
@@ -259,6 +259,15 @@
       <span class="sp-cpill-icon">💬</span>
       <span class="sp-cpill-text">{{ item.text|default:"(sem texto)"|truncatechars:35 }}</span>
       <span class="sp-cpill-badge">{{ item.count }}</span>
+    </button>
+    {% endfor %}
+    {% for reply in unread_reply_items %}
+    <button type="button"
+            class="sp-comment-pill sp-reply-pill"
+            data-reply-id="{{ reply.id }}"
+            onclick="spDismissReplyPill(this, {{ reply.id }}, {{ reply.post.user_id }})">
+      <span class="sp-cpill-icon">↩</span>
+      <span class="sp-cpill-text">{{ reply._replier_name|truncatechars:20 }} respondeu ao seu comentário</span>
     </button>
     {% endfor %}
   </div>
@@ -512,7 +521,7 @@
         <button type="button" class="sp-camila-close" onclick="spCloseCamila()">✕</button>
       </div>
       <div id="sp-camila-messages" class="sp-camila-messages">
-        <div class="sp-chat-msg sp-chat-bot">Oi! Sou a Camila 🤖✨ A IA da rede social da CAMIM. Como posso te ajudar?</div>
+        <div class="sp-chat-msg sp-chat-bot">Oi! Sou a Camila ✨ A IA da rede social da CAMIM. Como posso te ajudar?</div>
       </div>
       <div class="sp-chat-input-row">
         <input type="text" id="sp-camila-input" class="sp-chat-input"
@@ -612,6 +621,97 @@ var _camilaAvatarUrl = "{% static 'images/camila-avatar.png' %}";
     if(b) b.classList.toggle('sp-hidden');
   };
 
+  /* ── Pool de frases offline-safe (50 variações) ── */
+  var _SP_CONN_PHRASES = [
+    "Hmm, tive um probleminha de conexão... 😅 Pode dar uma olhada na sua internet?",
+    "Ops! Parece que o sinal está fraquinho. Está online aí?",
+    "A conexão ficou um pouco caprichosa... pode verificar sua rede?",
+    "Parece que estou com dificuldade para alcançar o servidor. Internet ok?",
+    "Oops, algo atrapalhou a conexão 😕 Pode checar sua internet rapidinho?",
+    "Hmm, o caminho até o servidor ficou bloqueado... rede ok?",
+    "Tive uma dificuldadezinha de conexão. Pode testar sua internet?",
+    "Parece que a internet tirou uma pausa... está tudo ok aí?",
+    "A rede ficou instável por aqui. Consegue verificar sua conexão?",
+    "Ops! Não consegui me conectar agora. Sua internet está funcionando?",
+    "Hmm, o servidor não respondeu... pode ser sua conexão ou a nossa 😊",
+    "Pequeno problema de rede detectado. Está online aí?",
+    "Parece que o sinal sumiu por um instante... internet ok?",
+    "Não consegui carregar a resposta. Pode verificar sua conexão?",
+    "Dificuldade de conexão por aqui 🌐 Sua internet está estável?",
+    "A resposta não chegou... pode ser um problema de conexão passageiro.",
+    "Hmm, o servidor ficou silencioso... sua rede está ok?",
+    "Tive um tropeço na conexão 😬 Pode testar sua internet?",
+    "Parece que algo barrou a comunicação. Internet ok por aí?",
+    "A mensagem não chegou ao destino. Consegue checar sua conexão?"
+  ];
+  var _SP_RETRY_PHRASES = [
+    "Vou tentar de novo em instantes... ⏳",
+    "Tentando novamente em um momentinho...",
+    "Aguardando para tentar outra vez... 🔄",
+    "Preparando uma nova tentativa...",
+    "Vou dar mais uma chance em alguns segundos...",
+    "Tentando reconectar... ⏱️",
+    "Aguardando antes de tentar novamente...",
+    "Mais uma tentativa a caminho...",
+    "Recomeçando em instantes...",
+    "Vou tentar outra vez logo...",
+    "Testando a conexão novamente em breve...",
+    "Nova tentativa chegando...",
+    "Não desisti ainda! Tentando de novo... 💪",
+    "Dando mais uma chance à conexão...",
+    "Quase lá... tentando mais uma vez...",
+    "Em breve tentarei novamente...",
+    "Aguardando para reconectar...",
+    "Outro round de tentativa chegando...",
+    "Não desisto facilmente! Mais uma tentativa...",
+    "Paciência, tentando outra vez...",
+    "Esperando o momento certo para tentar de novo...",
+    "Reconectando em instantes...",
+    "Bora tentar mais uma vez!",
+    "Mais uma oportunidade de conexão chegando...",
+    "Tentando com ainda mais empenho desta vez...",
+    "Ok, mais uma rodada...",
+    "Ainda aqui! Tentando reconectar...",
+    "Hmm, vou insistir um pouco mais...",
+    "Resistindo como zumbi apocalíptico... nova tentativa! 🧟",
+    "Última chance antes de chamar reforços..."
+  ];
+  function _spRandPhrase(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
+
+  /* Retry até 5x: tentativa 1 silenciosa, 2+ com mensagens e delay de 10s */
+  async function _spRetryFetch(url, payload, th) {
+    var MAX = 5, DELAY = 10000;
+    var csrf = document.querySelector('meta[name="csrf-token"]');
+    for (var attempt = 1; attempt <= MAX; attempt++) {
+      try {
+        var r = await fetch(url, {
+          method: 'POST',
+          headers: {'Content-Type':'application/json','X-CSRFToken': csrf ? csrf.content : ''},
+          body: JSON.stringify(payload)
+        });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return await r.json();
+      } catch(e) {
+        if (attempt === MAX) {
+          th.innerHTML = 'Não consegui me conectar após várias tentativas 😔<br>' +
+            'Tente dar um <strong>refresh na tela</strong> (F5 ou arrastar para baixo no celular).<br>' +
+            'Se ainda não resolver, <strong>abra um chamado com o help desk</strong>.';
+          return null;
+        }
+        if (attempt === 2) {
+          th.textContent = _spRandPhrase(_SP_CONN_PHRASES);
+        } else if (attempt > 2) {
+          th.textContent = _spRandPhrase(_SP_RETRY_PHRASES);
+        }
+        // attempt 1: silencioso (mantém "Pensando...")
+        if (attempt >= 2) {
+          await new Promise(function(res){ setTimeout(res, DELAY); });
+        }
+      }
+    }
+    return null;
+  }
+
   window._spChatHistory = window._spChatHistory || [];
   window.spSendChat = async function(){
     var input = document.getElementById('sp-chat-input');
@@ -633,17 +733,12 @@ var _camilaAvatarUrl = "{% static 'images/camila-avatar.png' %}";
     msgs.scrollTop = msgs.scrollHeight;
 
     window._spChatHistory.push({role:'user',content:text});
-    try{
-      var csrf = document.querySelector('meta[name="csrf-token"]');
-      var r = await fetch('{% url "boards:social_chatbot_message" %}',{
-        method:'POST',
-        headers:{'Content-Type':'application/json','X-CSRFToken': csrf ? csrf.content : ''},
-        body:JSON.stringify({message:text,history:window._spChatHistory})
-      });
-      var d = await r.json();
-      th.textContent = d.response || d.error || 'Erro.';
+    var d = await _spRetryFetch('{% url "boards:social_chatbot_message" %}',
+      {message:text, history:window._spChatHistory}, th);
+    if(d){
+      th.textContent = d.response || d.error || 'Hmm, algo deu errado.';
       if(d.response) window._spChatHistory.push({role:'assistant',content:d.response});
-    }catch(e){ th.textContent='Erro de conexão.'; }
+    }
     msgs.scrollTop = msgs.scrollHeight;
   };
 
@@ -818,17 +913,12 @@ var _camilaAvatarUrl = "{% static 'images/camila-avatar.png' %}";
     msgs.scrollTop = msgs.scrollHeight;
 
     window._spCamilaHistory.push({role:'user',content:text});
-    try{
-      var csrf = document.querySelector('meta[name="csrf-token"]');
-      var r = await fetch('{% url "boards:social_camila_chat" %}',{
-        method:'POST',
-        headers:{'Content-Type':'application/json','X-CSRFToken': csrf ? csrf.content : ''},
-        body:JSON.stringify({message:text,history:window._spCamilaHistory})
-      });
-      var d = await r.json();
-      th.textContent = d.response || d.error || 'Erro.';
+    var d = await _spRetryFetch('{% url "boards:social_camila_chat" %}',
+      {message:text, history:window._spCamilaHistory}, th);
+    if(d){
+      th.textContent = d.response || d.error || 'Hmm, algo deu errado.';
       if(d.response) window._spCamilaHistory.push({role:'assistant',content:d.response});
-    }catch(e){ th.textContent='Erro de conexão.'; }
+    }
     msgs.scrollTop = msgs.scrollHeight;
   };
 
@@ -1123,6 +1213,64 @@ var _camilaAvatarUrl = "{% static 'images/camila-avatar.png' %}";
         container.remove();
       }
     }, 300);
+  };
+
+  /* ── Pílula de resposta: navega para o perfil do dono do post ── */
+  window.spDismissReplyPill = function(btn, replyId, postOwnerId) {
+    var csrf = document.querySelector('meta[name="csrf-token"]');
+    fetch('/social/comment/' + replyId + '/reply-seen/', {
+      method: 'POST',
+      headers: {'X-CSRFToken': csrf ? csrf.content : ''}
+    }).catch(function(){});
+    btn.style.transition = 'opacity 0.3s, transform 0.3s';
+    btn.style.opacity = '0';
+    btn.style.transform = 'scale(0.8)';
+    setTimeout(function(){
+      btn.remove();
+      var container = document.getElementById('sp-comment-pills');
+      if(container && !container.querySelector('.sp-comment-pill')){ container.remove(); }
+      window.location.href = '/social/' + postOwnerId + '/';
+    }, 300);
+  };
+
+  /* ── Resposta a comentário ── */
+  window.spShowReply = function(commentId, authorName, postId) {
+    document.querySelectorAll('.sp-reply-form').forEach(function(f){ f.classList.add('sp-hidden'); });
+    var form = document.getElementById('sp-reply-form-' + commentId);
+    if (!form) return;
+    form.classList.remove('sp-hidden');
+    var inp = document.getElementById('sp-reply-input-' + commentId);
+    if (inp) { inp.placeholder = 'Respondendo a ' + authorName + '...'; inp.focus(); }
+  };
+
+  window.spSendReply = async function(replyToId, postId) {
+    var inp = document.getElementById('sp-reply-input-' + replyToId);
+    if (!inp) return;
+    var text = (inp.value || '').trim();
+    if (!text) return;
+    inp.value = '';
+    var form = document.getElementById('sp-reply-form-' + replyToId);
+    if (form) form.classList.add('sp-hidden');
+    var csrf = document.querySelector('meta[name="csrf-token"]');
+    try {
+      var r = await fetch('/social/post/' + postId + '/comment/', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': csrf ? csrf.content : ''},
+        body: 'text=' + encodeURIComponent(text) + '&reply_to_id=' + replyToId
+      });
+      var d = await r.json();
+      if (d.error) return;
+      var list = document.getElementById('sp-comments-' + postId);
+      if (!list) return;
+      var el = document.createElement('div');
+      el.className = 'sp-comment sp-reply-comment';
+      el.innerHTML = '<span class="sp-reply-indicator">↩</span>' +
+        '<span class="sp-comment-author">' + d.user.replace(/</g,'&lt;') + '</span> ' +
+        '<span class="sp-comment-text">' + d.text.replace(/</g,'&lt;') + '</span>' +
+        '<span class="sp-comment-time">' + d.created_at + '</span>';
+      list.appendChild(el);
+      list.classList.remove('sp-hidden');
+    } catch(e) {}
   };
 
   /* ── Dismiss task (persistente, reseta no dia seguinte) ── */

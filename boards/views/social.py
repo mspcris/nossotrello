@@ -235,6 +235,7 @@ def _build_social_context(request, target_user, extra=None):
 
     # Pílulas de comentários não vistos (só para o dono)
     unread_comment_posts = []
+    unread_reply_items = []
     if is_me:
         from django.db.models import Count
         unseen_qs = (
@@ -251,6 +252,17 @@ def _build_social_context(request, target_user, extra=None):
                 "text": (row["post__text"] or "")[:50],
                 "count": row["count"],
             })
+
+        # Pílulas de respostas não vistas (Paulo respondeu ao meu comentário)
+        unread_reply_items = list(
+            SocialPostComment.objects
+            .filter(reply_to__user=target_user, reply_seen=False)
+            .exclude(user=target_user)
+            .select_related("user", "post__user")
+            .order_by("-created_at")[:10]
+        )
+        for r in unread_reply_items:
+            r._replier_name = _get_or_create_profile(r.user).display_name or r.user.email
 
     # Mood choices para o seletor
     mood_choices = DailyCheckIn.MOOD_CHOICES
@@ -269,6 +281,7 @@ def _build_social_context(request, target_user, extra=None):
         "mood_choices": mood_choices,
         "mood_emojis": mood_emojis,
         "unread_comment_posts": unread_comment_posts,
+        "unread_reply_items": unread_reply_items,
         "board_friends": board_friends,
         "my_boards": my_boards,
         "show_unit_tutorial": show_unit_tutorial,
@@ -625,21 +638,53 @@ def social_post_comment(request, post_id: int):
     if not text:
         return JsonResponse({"error": "Comentário vazio."}, status=400)
 
+    # Resposta a outro comentário?
+    reply_to = None
+    reply_to_id = request.POST.get("reply_to_id")
+    if reply_to_id:
+        try:
+            reply_to = SocialPostComment.objects.get(id=int(reply_to_id), post=post)
+        except (SocialPostComment.DoesNotExist, ValueError):
+            pass
+
+    # reply_seen=True se quem responde É o autor do comentário-pai (sem notificação)
+    reply_seen = reply_to is None or (reply_to.user_id == request.user.id)
+
     # seen_by_owner=True se quem comenta é o próprio dono do post
     comment = SocialPostComment.objects.create(
         user=request.user,
         post=post,
         text=text,
         seen_by_owner=(request.user.id == post.user_id),
+        reply_to=reply_to,
+        reply_seen=reply_seen,
     )
     prof = _get_or_create_profile(request.user)
+    reply_to_user = None
+    if reply_to:
+        rp = _get_or_create_profile(reply_to.user)
+        reply_to_user = rp.display_name or reply_to.user.email
 
     return JsonResponse({
         "id": comment.id,
         "user": prof.display_name or request.user.email,
         "text": comment.text,
         "created_at": comment.created_at.strftime("%d/%m %H:%M"),
+        "reply_to_id": reply_to.id if reply_to else None,
+        "reply_to_user": reply_to_user,
     })
+
+
+@login_required
+@require_POST
+def social_reply_seen(request, comment_id: int):
+    """Marca uma resposta como vista pelo autor do comentário-pai."""
+    SocialPostComment.objects.filter(
+        id=comment_id,
+        reply_to__user=request.user,
+        reply_seen=False,
+    ).update(reply_seen=True)
+    return JsonResponse({"ok": True})
 
 
 # ---------------------------------------------------------------
@@ -754,12 +799,18 @@ def social_unread_counts(request):
         seen_by_owner=False,
     ).exclude(user=request.user).count()
 
+    # Respostas não vistas aos meus comentários
+    my_reply_count = SocialPostComment.objects.filter(
+        reply_to__user=request.user,
+        reply_seen=False,
+    ).exclude(user=request.user).count()
+
     return JsonResponse({
         "counts": counts,
         "fresh": fresh,
         "fresh_texts": fresh_texts,
         "fresh_ts": fresh_ts,
-        "my_comment_count": my_comment_count,
+        "my_comment_count": my_comment_count + my_reply_count,
     })
 
 

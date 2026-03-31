@@ -910,6 +910,16 @@ class SocialPostComment(models.Model):
     text = models.TextField(max_length=500)
     created_at = models.DateTimeField(auto_now_add=True)
     seen_by_owner = models.BooleanField(default=False)
+    # Resposta a outro comentário
+    reply_to = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="replies",
+    )
+    # True quando o autor do comentário-pai viu esta resposta
+    reply_seen = models.BooleanField(default=True)
 
     class Meta:
         ordering = ["created_at"]

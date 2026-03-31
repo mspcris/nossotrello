@@ -1078,6 +1078,7 @@ video.sp-post-media {
   height: 44px;
   border-radius: 50%;
   object-fit: cover;
+  object-position: center top;
   flex-shrink: 0;
   border: 2px solid #e9d5ff;
 }
@@ -1137,10 +1138,12 @@ video.sp-post-media {
   background: #f3f4f6;
 }
 .sp-camila-header-img {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   object-fit: cover;
+  object-position: center top;
+  flex-shrink: 0;
   border: 2px solid #e9d5ff;
 }
 .sp-camila-header-title {
@@ -1571,6 +1574,7 @@ video.sp-post-media {
   height: 52px;
   border-radius: 50%;
   object-fit: cover;
+  object-position: center top;
   flex-shrink: 0;
   box-shadow: 0 2px 8px rgba(124,58,237,0.3);
 }
@@ -1630,4 +1634,60 @@ video.sp-post-media {
   cursor: pointer;
   padding: 4px 0;
   display: block;
+}
+
+/* ── Reply feature ── */
+.sp-reply-comment {
+  padding-left: 18px;
+  border-left: 2px solid #e9d5ff;
+  margin-left: 4px;
+}
+.sp-reply-indicator {
+  font-size: 0.7rem;
+  color: #8b5cf6;
+  margin-right: 3px;
+}
+.sp-reply-btn {
+  background: none;
+  border: none;
+  color: #c4b5fd;
+  font-size: 0.7rem;
+  cursor: pointer;
+  padding: 1px 4px;
+  margin-left: 4px;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  vertical-align: middle;
+}
+.sp-comment:hover .sp-reply-btn,
+.sp-comment:active .sp-reply-btn {
+  opacity: 1;
+}
+.sp-reply-form {
+  display: flex;
+  gap: 4px;
+  padding: 4px 4px 4px 18px;
+}
+.sp-reply-input {
+  flex: 1;
+  font-size: 0.78rem;
+  padding: 5px 8px;
+}
+.sp-reply-pill {
+  background: linear-gradient(90deg, #ede9fe 0%, #f3e8ff 100%);
+  border-color: #c4b5fd;
+}
+.sp-reply-pill .sp-cpill-icon {
+  color: #7c3aed;
+}
+
+/* ── Camila avatar (crop to circle, no stretch) ── */
+.sp-camila-header-av {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center top;
+  flex-shrink: 0;
 }
