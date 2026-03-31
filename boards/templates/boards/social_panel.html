@@ -108,7 +108,88 @@
   </div>
 
   {% if not is_me %}
-  <!-- ═══ VISITOR VIEW: feed right after profile ═══ -->
+  <!-- ═══ VISITOR VIEW: botão de amizade + feed ═══ -->
+  <div class="sp-visitor-actions" id="sp-visitor-actions">
+    <button type="button" class="sp-visitor-friend-btn" id="sp-visitor-friend-btn"
+            onclick="spVisitorFriend({{ target_user.id }}, this)">
+      Carregando...
+    </button>
+  </div>
+  <script>
+  (function(){
+    var uid = {{ target_user.id }};
+    var csrf = document.querySelector("[name=csrfmiddlewaretoken]")?.value || '';
+    fetch('/social/' + uid + '/network/')
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var btn = document.getElementById('sp-visitor-friend-btn');
+        if(!btn) return;
+        btn.dataset.status = d.friendship_status || '';
+        btn.dataset.iAmReq = d.i_am_requester ? '1' : '0';
+        _renderVisitorBtn(btn);
+      });
+
+    function _renderVisitorBtn(btn){
+      var s = btn.dataset.status;
+      var iAmReq = btn.dataset.iAmReq === '1';
+      btn.className = 'sp-visitor-friend-btn';
+      if(!s){
+        btn.textContent = '➕ Convidar como amigo';
+        btn.classList.add('sp-vfb-add');
+        btn.onclick = function(){ _sendReq(btn); };
+      } else if(s === 'pending' && iAmReq){
+        btn.textContent = '⏳ Convite enviado';
+        btn.classList.add('sp-vfb-pending');
+        btn.onclick = function(){ _sendReq(btn); };
+      } else if(s === 'pending' && !iAmReq){
+        btn.textContent = '✅ Aceitar convite';
+        btn.classList.add('sp-vfb-accept');
+        btn.onclick = function(){ _acceptReq(btn); };
+      } else if(s === 'accepted'){
+        btn.textContent = '💜 Amigos';
+        btn.classList.add('sp-vfb-friends');
+        /* Adiciona botão remover ao lado */
+        var rm = document.getElementById('sp-visitor-remove-btn');
+        if(!rm){
+          rm = document.createElement('button');
+          rm.id = 'sp-visitor-remove-btn';
+          rm.className = 'sp-visitor-remove-btn';
+          rm.textContent = 'Remover amizade';
+          rm.onclick = function(){ _removeReq(btn, rm); };
+          btn.parentNode.appendChild(rm);
+        }
+        btn.onclick = null;
+      }
+    }
+    function _sendReq(btn){
+      fetch('/social/'+uid+'/friend-request/', {method:'POST', headers:{'X-CSRFToken':csrf}})
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if(d.action === 'sent'){ btn.dataset.status='pending'; btn.dataset.iAmReq='1'; }
+          else { btn.dataset.status=''; }
+          _renderVisitorBtn(btn);
+        });
+    }
+    function _acceptReq(btn){
+      fetch('/social/'+uid+'/friend-accept/', {method:'POST', headers:{'X-CSRFToken':csrf}})
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if(d.action === 'accepted'){ btn.dataset.status='accepted'; }
+          _renderVisitorBtn(btn);
+        });
+    }
+    function _removeReq(btn, rmBtn){
+      if(!confirm('Remover esta amizade?')) return;
+      fetch('/social/'+uid+'/friend-remove/', {method:'POST', headers:{'X-CSRFToken':csrf}})
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          btn.dataset.status='';
+          if(rmBtn) rmBtn.remove();
+          _renderVisitorBtn(btn);
+        });
+    }
+  })();
+  </script>
   {% include "boards/social_feed_block.html" %}
 
   {% else %}
@@ -1339,7 +1420,8 @@ var _CAMILA_AVATARS = {
     } else if(status === 'pending' && !iAmReq){
       html += '<button class="sp-fs-btn sp-fs-accept" onclick="spAcceptFriend('+uid+', this)">✅ Aceitar convite</button>';
     } else if(status === 'accepted'){
-      html += '<span class="sp-fs-friends-tag">✅ Amigos</span>';
+      html += '<span class="sp-fs-friends-tag">💜 Amigos</span>';
+      html += '<button class="sp-fs-btn sp-fs-remove" onclick="spRemoveFriend('+uid+', this)">Remover amizade</button>';
     }
     // Compartilhar quadro
     if(_myBoards.length){
@@ -1386,7 +1468,20 @@ var _CAMILA_AVATARS = {
     fetch('/social/'+uid+'/friend-accept/', {method:'POST', headers:{'X-CSRFToken': csrf ? csrf.content : ''}})
     .then(function(r){ return r.json(); })
     .then(function(d){
-      if(d.action === 'accepted') btn.replaceWith(Object.assign(document.createElement('span'), {className:'sp-fs-friends-tag', textContent:'✅ Amigos'}));
+      if(d.action === 'accepted') btn.replaceWith(Object.assign(document.createElement('span'), {className:'sp-fs-friends-tag', textContent:'💜 Amigos'}));
+    }).catch(function(){});
+  };
+
+  window.spRemoveFriend = function(uid, btn){
+    if(!confirm('Remover esta amizade?')) return;
+    var csrf = document.querySelector('meta[name="csrf-token"]');
+    fetch('/social/'+uid+'/friend-remove/', {method:'POST', headers:{'X-CSRFToken': csrf ? csrf.content : ''}})
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(d.action === 'removed'){
+        var actions = btn.closest('.sp-fs-actions');
+        if(actions) actions.innerHTML = '<button class="sp-fs-btn sp-fs-add" onclick="spSendFriendReq('+uid+', this)">➕ Convidar como amigo</button>';
+      }
     }).catch(function(){});
   };
 

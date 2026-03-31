@@ -140,6 +140,7 @@ from boards.views.social import (
     camila_pop_resummarize,
     card_like_social,
     social_friends_feed,
+    social_friend_remove,
 )
 
 
@@ -171,6 +172,7 @@ urlpatterns = [
     path("social/<int:user_id>/network/", social_user_network, name="social_user_network"),
     path("social/<int:user_id>/friend-request/", social_friend_request, name="social_friend_request"),
     path("social/<int:user_id>/friend-accept/", social_friend_accept, name="social_friend_accept"),
+    path("social/<int:user_id>/friend-remove/", social_friend_remove, name="social_friend_remove"),
     path("social/board-share/", social_board_share, name="social_board_share"),
     path("social/set-unidade/", social_set_unidade, name="social_set_unidade"),
     path("social/task/<int:card_id>/dismiss/", social_dismiss_task, name="social_dismiss_task"),

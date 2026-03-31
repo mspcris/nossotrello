@@ -1617,7 +1617,30 @@ video.sp-post-media {
 .sp-fs-cancel { background:#fef3c7; color:#b45309; border-color:#f59e0b; }
 .sp-fs-accept { background:#d1fae5; color:#065f46; border-color:#10b981; }
 .sp-fs-share  { background:#f0f9ff; color:#0369a1; border-color:#38bdf8; }
-.sp-fs-friends-tag { font-size:0.78rem; color:#065f46; font-weight:600; }
+.sp-fs-remove { background:#fee2e2; color:#dc2626; border-color:#dc2626; }
+.sp-fs-remove:hover { opacity:.8; }
+.sp-fs-friends-tag { font-size:0.78rem; color:#7c3aed; font-weight:600; }
+
+/* ── Visitor friendship button (top of profile) ── */
+.sp-visitor-actions{
+  display:flex; align-items:center; gap:8px; justify-content:center;
+  padding:4px 0;
+}
+.sp-visitor-friend-btn{
+  border-radius:999px; padding:10px 24px; font-size:.9rem; font-weight:700;
+  cursor:pointer; border:2px solid; transition:all .2s;
+}
+.sp-vfb-add    { background:#7c3aed; color:#fff; border-color:#7c3aed; }
+.sp-vfb-add:hover { background:#6d28d9; }
+.sp-vfb-pending{ background:#fef3c7; color:#b45309; border-color:#f59e0b; }
+.sp-vfb-accept { background:#10b981; color:#fff; border-color:#10b981; }
+.sp-vfb-accept:hover { background:#059669; }
+.sp-vfb-friends{ background:#ede9fe; color:#7c3aed; border-color:#7c3aed; cursor:default; }
+.sp-visitor-remove-btn{
+  background:none; border:1px solid #dc2626; color:#dc2626; border-radius:999px;
+  padding:8px 16px; font-size:.8rem; font-weight:600; cursor:pointer;
+}
+.sp-visitor-remove-btn:hover{ background:#fee2e2; }
 .sp-fs-section { margin-bottom: 16px; }
 .sp-fs-section-title {
   font-size: 0.72rem;

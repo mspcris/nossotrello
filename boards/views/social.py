@@ -1302,6 +1302,18 @@ def social_friend_accept(request, user_id: int):
 
 @login_required
 @require_POST
+def social_friend_remove(request, user_id: int):
+    """Remove uma amizade aceita (de qualquer lado)."""
+    from django.db.models import Q
+    deleted, _ = SocialFriendship.objects.filter(
+        Q(requester=request.user, receiver_id=user_id)
+        | Q(requester_id=user_id, receiver=request.user)
+    ).delete()
+    return JsonResponse({"action": "removed", "deleted": deleted})
+
+
+@login_required
+@require_POST
 def social_board_share(request):
     """Adiciona um usuário a um quadro do qual o solicitante é owner/editor."""
     board_id = (request.POST.get("board_id") or "").strip()
