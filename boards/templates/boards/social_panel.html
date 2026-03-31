@@ -386,6 +386,7 @@
 </div>
 
 <script>
+var _camilaAvatarUrl = "{% static 'images/camila-avatar.png' %}";
 (function(){
   /* ── Mood picker: tap to select ── */
   document.querySelectorAll('.sp-mood-card').forEach(function(card){
@@ -770,7 +771,7 @@
     var toast = document.createElement('div');
     toast.className = 'nt-toast';
     toast.style.borderLeftColor = '#8b5cf6';
-    toast.innerHTML = '<div class="nt-toast-title"><img src="{% static \'images/camila-avatar.png\' %}" style="width:20px;height:20px;border-radius:50%;vertical-align:middle;margin-right:4px"> Camila.AI</div><div class="nt-toast-line">' +
+    toast.innerHTML = '<div class="nt-toast-title"><img src="' + _camilaAvatarUrl + '" style="width:20px;height:20px;border-radius:50%;vertical-align:middle;margin-right:4px"> Camila.AI</div><div class="nt-toast-line">' +
       text.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>';
     container.appendChild(toast);
     setTimeout(function(){
