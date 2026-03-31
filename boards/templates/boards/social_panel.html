@@ -424,14 +424,14 @@
   </div>
   {% endif %}
 
-  <!-- ═══ CHATBOT TUCA ═══ -->
+  <!-- ═══ CHATBOT SAÚDE ═══ -->
   <div class="sp-card">
     <button type="button" class="sp-chat-toggle" onclick="spToggleChat()">
-      💬 Camilo — coach de bem-estar
+      💚 Saúde &amp; Bem-Estar
     </button>
     <div id="sp-chat-box" class="sp-chat-box sp-hidden">
       <div id="sp-chat-messages" class="sp-chat-messages">
-        <div class="sp-chat-msg sp-chat-bot">Oi! Sou o Camilo 😊 Como posso te ajudar?</div>
+        <div class="sp-chat-msg sp-chat-bot">Oi! 👋 Pode falar sobre saúde, alimentação, bem-estar ou qualquer dúvida sobre cuidar de você. 💚</div>
       </div>
       <div class="sp-chat-input-row">
         <input type="text" id="sp-chat-input" class="sp-chat-input"
@@ -470,8 +470,10 @@
          onclick="event.stopPropagation()"></a>
       <span id="sp-nudge-cta" class="sp-nudge-cta">Tocar para publicar ✨</span>
     </div>
-    <img src="{% static 'images/camila-avatar.png' %}" class="sp-nudge-av" alt="Camila"
-         onclick="spNudgeClick()">
+    <div style="position:relative;display:inline-block" onclick="spNudgeClick()">
+      <img src="{% static 'images/camila-avatar.png' %}" class="sp-nudge-av" alt="Camila">
+      <span id="sp-nudge-weather" style="position:absolute;bottom:-2px;right:-2px;font-size:0.85rem;line-height:1;background:#fff;border-radius:50%;padding:2px"></span>
+    </div>
   </div>
 
   <!-- ═══ BOTTOM SHEET — Post Creation ═══ -->
@@ -531,6 +533,7 @@
       <div class="sp-camila-header">
         <img src="{% static 'images/camila-avatar.png' %}" alt="Camila" class="sp-camila-header-img">
         <span class="sp-camila-header-title">Camila.AI</span>
+        <span id="sp-camila-weather" style="font-size:1.1rem;margin-left:2px;line-height:1;vertical-align:middle"></span>
         <a href="https://wa.me/552124559600?text=Ol%C3%A1,%20gostaria%20de%20mais%20informa%C3%A7%C3%B5es"
            target="_blank" rel="noopener" class="sp-camila-wa" title="Falar com atendente humano">
           <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
@@ -1320,14 +1323,49 @@ var _camilaAvatarUrl = "{% static 'images/camila-avatar.png' %}";
   };
 
   /* ════════════════════════════════════════════
-     CAMILA NUDGE — sugestão de publicação a cada 2 min
+     CAMILA NUDGE — sugestão de publicação / proativo
      ════════════════════════════════════════════ */
   (function(){
-    var NUDGE_INTERVAL  = 2 * 60 * 1000;   // 2 minutos
-    var NUDGE_SHOW_MS   = 12000;            // 12s visível
-    var NEWS_INTERVAL   = 3 * 60 * 60 * 1000; // 3 horas
-    var _nudgeTimer = null;
-    var _newsPool   = [];   // sugestões de notícias (carregadas do servidor)
+    var _spUserPostCount = {{ posts|length }};
+    var IS_NEW_USER      = (_spUserPostCount < 10);
+    var _spProactiveCnt  = 0;            // quantas vezes Camila abriu proativamente
+    var NUDGE_INTERVAL   = IS_NEW_USER ? 60000 : 2 * 60 * 1000;
+    var NUDGE_SHOW_MS    = 12000;        // 12s visível
+    var NEWS_INTERVAL    = 3 * 60 * 60 * 1000; // 3 horas
+    var _nudgeTimer      = null;
+    var _newsPool        = [];   // sugestões de notícias (carregadas do servidor)
+    var _camilaWeatherEmoji = '';
+    var _camilaTemp         = '';
+
+    /* ── WMO weather-code → emoji ── */
+    function _wmoEmoji(code) {
+      if (code === undefined || code === null) return '';
+      if (code === 0) return '☀️';
+      if (code <= 3)  return '⛅';
+      if (code <= 48) return '🌫️';
+      if (code <= 57) return '🌦️';
+      if (code <= 67) return '🌧️';
+      if (code <= 77) return '❄️';
+      if (code <= 82) return '🌧️';
+      return '⛈️';
+    }
+
+    /* ── Busca clima do Rio a cada 30 min ── */
+    function _fetchWeather() {
+      fetch('https://api.open-meteo.com/v1/forecast?latitude=-22.9068&longitude=-43.1729&current=weather_code,temperature_2m&timezone=America%2FSao_Paulo')
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          var cur = d.current || {};
+          _camilaWeatherEmoji = _wmoEmoji(cur.weather_code);
+          _camilaTemp = cur.temperature_2m != null ? Math.round(cur.temperature_2m) + '°' : '';
+          var badge = document.getElementById('sp-camila-weather');
+          if (badge) badge.textContent = _camilaWeatherEmoji;
+          var nudgeBadge = document.getElementById('sp-nudge-weather');
+          if (nudgeBadge) nudgeBadge.textContent = _camilaWeatherEmoji;
+        }).catch(function(){});
+    }
+    _fetchWeather();
+    setInterval(_fetchWeather, 30 * 60 * 1000);
 
     /* ── 55 sugestões estáticas ── */
     var _SP_NUDGE_STATIC = [
@@ -1405,12 +1443,44 @@ var _camilaAvatarUrl = "{% static 'images/camila-avatar.png' %}";
       return { text: _SP_NUDGE_STATIC[Math.floor(Math.random() * _SP_NUDGE_STATIC.length)], url: null };
     }
 
+    /* ── Frases proativas para novos usuários ── */
+    var _SP_PROACTIVE = [
+      'Oi! 👋 Bem-vindo à rede social da CAMIM. Que tal fazer sua primeira publicação? Conta como está sendo seu dia!',
+      'Olá de novo! 😊 A galera adoraria te conhecer melhor. Publica um momento, uma foto ou um pensamento aqui!',
+      'Ei, ainda estou aqui! 💜 Uma última dica: publicações com foto geram muito mais engajamento. Vamos lá?'
+    ];
+
+    function _spOpenCamilaProactive(idx) {
+      if (window.spOpenCamila) window.spOpenCamila();
+      setTimeout(function(){
+        var msgs = document.getElementById('sp-camila-messages');
+        if (!msgs) return;
+        /* Só adiciona se a última mensagem do bot não for exatamente essa */
+        var last = msgs.querySelector('.sp-chat-bot:last-child');
+        if (last && last.textContent === _SP_PROACTIVE[idx]) return;
+        var bot = document.createElement('div');
+        bot.className = 'sp-chat-msg sp-chat-bot';
+        bot.textContent = _SP_PROACTIVE[idx];
+        msgs.appendChild(bot);
+        msgs.scrollTop = msgs.scrollHeight;
+      }, 350);
+    }
+
     function spShowNudge() {
       if (document.hidden) return;
       /* Não mostra se algum sheet já estiver aberto */
       var sheets = document.querySelectorAll('.sp-sheet-overlay:not(.sp-hidden)');
       if (sheets.length) return;
 
+      /* ── Modo novo usuário: abre Camila proativamente (máx 3x) ── */
+      if (IS_NEW_USER) {
+        if (_spProactiveCnt >= 3) return;
+        _spOpenCamilaProactive(_spProactiveCnt);
+        _spProactiveCnt++;
+        return;
+      }
+
+      /* ── Modo usuário experiente: nudge com animação no FAB ── */
       var fab = document.getElementById('sp-fab');
       if (!fab) return;
 
@@ -1428,7 +1498,12 @@ var _camilaAvatarUrl = "{% static 'images/camila-avatar.png' %}";
         var nudge = document.getElementById('sp-nudge');
         if (!nudge || !txt) return;
 
-        txt.textContent = sug.text;
+        /* Injeta info de clima se disponível */
+        var weatherHint = _camilaWeatherEmoji && _camilaTemp
+          ? ' (' + _camilaWeatherEmoji + ' ' + _camilaTemp + ' no Rio)'
+          : (_camilaWeatherEmoji ? ' (' + _camilaWeatherEmoji + ' no Rio)' : '');
+        txt.textContent = sug.text + weatherHint;
+
         if (sug.url) {
           lnk.href = sug.url;
           lnk.textContent = '🔗 Ler a notícia completa ↗';
@@ -1459,6 +1534,85 @@ var _camilaAvatarUrl = "{% static 'images/camila-avatar.png' %}";
       spHideNudge();
       if (window.spOpenSheet) spOpenSheet();
     };
+
+    /* ── Polling de pílulas a cada 15 s ── */
+    var _spPillKnownComments = new Set();
+    var _spPillKnownReplies  = new Set();
+
+    // Inicializa com pílulas já no DOM
+    document.querySelectorAll('[data-post-id]').forEach(function(el){
+      _spPillKnownComments.add(parseInt(el.dataset.postId, 10));
+    });
+    document.querySelectorAll('[data-reply-id]').forEach(function(el){
+      _spPillKnownReplies.add(parseInt(el.dataset.replyId, 10));
+    });
+
+    function _spEnsurePillContainer() {
+      var c = document.getElementById('sp-comment-pills');
+      if (!c) {
+        c = document.createElement('div');
+        c.id = 'sp-comment-pills';
+        c.className = 'sp-comment-pills';
+        var panel = document.getElementById('social-panel');
+        var anchor = panel ? panel.querySelector('.sp-card') : null;
+        if (anchor) anchor.parentNode.insertBefore(c, anchor);
+        else if (panel) panel.prepend(c);
+      }
+      return c;
+    }
+
+    function _spAddPill(btn) {
+      var c = _spEnsurePillContainer();
+      btn.style.opacity = '0';
+      btn.style.transform = 'scale(0.7)';
+      c.prepend(btn);
+      requestAnimationFrame(function(){
+        btn.style.transition = 'opacity 0.35s, transform 0.35s';
+        btn.style.opacity = '1';
+        btn.style.transform = 'scale(1)';
+      });
+    }
+
+    function _spPollPills() {
+      fetch('{% url "boards:social_pills_poll" %}')
+        .then(function(r){ return r.json(); })
+        .then(function(d) {
+          (d.comment_pills || []).forEach(function(p) {
+            if (_spPillKnownComments.has(p.post_id)) return;
+            if (document.querySelector('[data-post-id="' + p.post_id + '"]')) {
+              _spPillKnownComments.add(p.post_id); return;
+            }
+            _spPillKnownComments.add(p.post_id);
+            var txt = (p.text || '(sem texto)').slice(0, 35);
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'sp-comment-pill';
+            btn.dataset.postId = p.post_id;
+            btn.setAttribute('onclick', 'spDismissPill(this,' + p.post_id + ')');
+            btn.innerHTML = '<span class="sp-cpill-icon">💬</span>'
+              + '<span class="sp-cpill-text">' + txt + '</span>'
+              + '<span class="sp-cpill-badge">' + p.count + '</span>';
+            _spAddPill(btn);
+          });
+          (d.reply_pills || []).forEach(function(rp) {
+            if (_spPillKnownReplies.has(rp.id)) return;
+            if (document.querySelector('[data-reply-id="' + rp.id + '"]')) {
+              _spPillKnownReplies.add(rp.id); return;
+            }
+            _spPillKnownReplies.add(rp.id);
+            var name = (rp.replier_name || '').slice(0, 20);
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'sp-comment-pill sp-reply-pill';
+            btn.dataset.replyId = rp.id;
+            btn.setAttribute('onclick', 'spDismissReplyPill(this,' + rp.id + ',' + rp.post_owner_id + ')');
+            btn.innerHTML = '<span class="sp-cpill-icon">↩</span>'
+              + '<span class="sp-cpill-text">' + name + ' respondeu ao seu comentário</span>';
+            _spAddPill(btn);
+          });
+        }).catch(function(){});
+    }
+    setInterval(_spPollPills, 15000);
 
     /* Busca notícias a cada 3h */
     function _fetchNews() {

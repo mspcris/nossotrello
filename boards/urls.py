@@ -121,6 +121,7 @@ from boards.views.social import (
     social_avatar_upload,
     social_camila_chat,
     social_unread_counts,
+    social_pills_poll,
     social_user_network,
     social_friend_request,
     social_friend_accept,
@@ -180,6 +181,7 @@ urlpatterns = [
     path("social/cover/", social_cover_upload, name="social_cover_upload"),
     path("social/avatar/", social_avatar_upload, name="social_avatar_upload"),
     path("social/unread/", social_unread_counts, name="social_unread_counts"),
+    path("social/pills/", social_pills_poll, name="social_pills_poll"),
     path("social/camila/", social_camila_chat, name="social_camila_chat"),
 
     # Camila.AI Admin (staff only)

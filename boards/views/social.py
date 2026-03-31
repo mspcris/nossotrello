@@ -635,6 +635,50 @@ def social_ai_react(request):
 
 @login_required
 @require_POST
+def _get_weather_context() -> str:
+    """Busca clima atual do Rio de Janeiro via OpenMeteo (cache 30 min)."""
+    from django.core.cache import cache
+    import requests as _requests
+
+    cached = cache.get("camila_weather_ctx")
+    if cached:
+        return cached
+
+    _WMO = {
+        0: "céu limpo ☀️", 1: "principalmente limpo ☀️", 2: "parcialmente nublado ⛅",
+        3: "nublado ☁️", 45: "névoa 🌫️", 48: "névoa 🌫️",
+        51: "garoa leve 🌦️", 53: "garoa 🌦️", 55: "garoa intensa 🌦️",
+        61: "chuva leve 🌧️", 63: "chuva 🌧️", 65: "chuva forte 🌧️",
+        71: "neve leve ❄️", 73: "neve ❄️", 75: "neve forte ❄️",
+        80: "pancadas de chuva 🌧️", 81: "pancadas 🌧️", 82: "pancadas fortes 🌧️",
+        95: "trovoada ⛈️", 96: "trovoada ⛈️", 99: "trovoada ⛈️",
+    }
+    try:
+        r = _requests.get(
+            "https://api.open-meteo.com/v1/forecast",
+            params={
+                "latitude": -22.9068, "longitude": -43.1729,
+                "current": "weather_code,temperature_2m,relative_humidity_2m,wind_speed_10m",
+                "timezone": "America/Sao_Paulo",
+            },
+            timeout=3,
+        )
+        cur = r.json().get("current", {})
+        code = cur.get("weather_code")
+        temp = cur.get("temperature_2m")
+        hum  = cur.get("relative_humidity_2m")
+        wind = cur.get("wind_speed_10m")
+        desc = _WMO.get(int(code), "tempo variável") if code is not None else "tempo variável"
+        parts = [f"{desc}", f"{temp:.0f}°C" if temp is not None else None,
+                 f"umidade {hum:.0f}%" if hum is not None else None,
+                 f"vento {wind:.0f} km/h" if wind is not None else None]
+        ctx = "\n\n[Clima atual no Rio de Janeiro: " + ", ".join(p for p in parts if p) + "]"
+        cache.set("camila_weather_ctx", ctx, 1800)
+        return ctx
+    except Exception:
+        return ""
+
+
 def social_camila_chat(request):
     """Chat conversacional com a Camila.AI."""
     try:
@@ -649,7 +693,7 @@ def social_camila_chat(request):
         return JsonResponse({"error": "Mensagem vazia."}, status=400)
 
     cfg = CamilaConfig.get()
-    prompt = cfg.prompt_chat + _camila_knowledge_prompt(message)
+    prompt = cfg.prompt_chat + _camila_knowledge_prompt(message) + _get_weather_context()
     messages = [*history[-10:], {"role": "user", "content": message}]
     response = _groq_chat(messages, prompt, config=cfg)
     return JsonResponse({"response": response})
@@ -712,7 +756,9 @@ def social_post_comment(request, post_id: int):
     reply_to_id = request.POST.get("reply_to_id")
     if reply_to_id:
         try:
-            reply_to = SocialPostComment.objects.get(id=int(reply_to_id), post=post)
+            reply_to = SocialPostComment.objects.select_related("user").get(
+                id=int(reply_to_id), post=post
+            )
         except (SocialPostComment.DoesNotExist, ValueError):
             pass
 
@@ -728,6 +774,33 @@ def social_post_comment(request, post_id: int):
         reply_to=reply_to,
         reply_seen=reply_seen,
     )
+
+    # Notificações sociais (email + WhatsApp)
+    try:
+        from boards.services.notifications import notify_social_interaction
+        if reply_to:
+            # Resposta a um comentário → avisa o autor do comentário
+            if reply_to.user_id != request.user.id:
+                notify_social_interaction(
+                    recipient=reply_to.user,
+                    actor=request.user,
+                    kind="reply",
+                    post_id=post.id,
+                )
+        else:
+            # Comentário simples → avisa o dono do post
+            if post.user_id != request.user.id:
+                notify_social_interaction(
+                    recipient=post.user,
+                    actor=request.user,
+                    kind="comment",
+                    post_text=post.text or "",
+                    post_id=post.id,
+                )
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception("social notify: unexpected error")
+
     prof = _get_or_create_profile(request.user)
     reply_to_user = None
     if reply_to:
@@ -915,6 +988,52 @@ def social_unread_counts(request):
         "fresh_ts": fresh_ts,
         "my_comment_count": my_comment_count + my_reply_count,
     })
+
+
+# ---------------------------------------------------------------
+# Pills poll (GET → JSON) — atualiza pílulas sem F5
+# ---------------------------------------------------------------
+@login_required
+def social_pills_poll(request):
+    """
+    Retorna pílulas de comentários/respostas não vistas para polling JS.
+    Usado pelo front a cada 15 s para mostrar novos alertas sem recarregar.
+    """
+    from django.db.models import Count
+
+    comment_pills = []
+    unseen_qs = (
+        SocialPostComment.objects
+        .filter(post__user=request.user, seen_by_owner=False)
+        .exclude(user=request.user)
+        .values("post_id", "post__text")
+        .annotate(count=Count("id"))
+        .order_by("-post_id")
+    )
+    for row in unseen_qs:
+        comment_pills.append({
+            "post_id": row["post_id"],
+            "text": (row["post__text"] or "")[:50],
+            "count": row["count"],
+        })
+
+    reply_pills = []
+    reply_qs = (
+        SocialPostComment.objects
+        .filter(reply_to__user=request.user, reply_seen=False)
+        .exclude(user=request.user)
+        .select_related("user")
+        .order_by("-created_at")[:10]
+    )
+    for r in reply_qs:
+        prof = _get_or_create_profile(r.user)
+        reply_pills.append({
+            "id": r.id,
+            "post_owner_id": r.post_id,  # para navegar ao post
+            "replier_name": prof.display_name or r.user.email,
+        })
+
+    return JsonResponse({"comment_pills": comment_pills, "reply_pills": reply_pills})
 
 
 # ---------------------------------------------------------------
