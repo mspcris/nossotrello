@@ -15,6 +15,7 @@ from django.views.decorators.http import require_POST
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
+from django.db import models
 from collections import Counter, defaultdict
 
 from ..models import (
@@ -320,6 +321,76 @@ def social_posts_panel(request, user_id: int):
         raise Http404
     ctx = _build_social_context(request, target_user)
     return render(request, "boards/social_panel.html", ctx)
+
+
+# ---------------------------------------------------------------
+# Feed de amigos (JSON) — para o reel horizontal
+# ---------------------------------------------------------------
+@login_required
+def social_friends_feed(request):
+    """Retorna posts de amigos (board co-members + accepted friendships) como JSON."""
+    me = request.user
+
+    # Coleta IDs de amigos
+    friend_ids = set(_board_member_ids(me))
+    accepted_out = SocialFriendship.objects.filter(
+        requester=me, status="accepted"
+    ).values_list("receiver_id", flat=True)
+    accepted_in = SocialFriendship.objects.filter(
+        receiver=me, status="accepted"
+    ).values_list("requester_id", flat=True)
+    friend_ids.update(accepted_out)
+    friend_ids.update(accepted_in)
+    friend_ids.discard(me.id)
+
+    if not friend_ids:
+        return JsonResponse({"posts": []})
+
+    posts = list(
+        SocialPost.objects
+        .filter(user_id__in=friend_ids)
+        .select_related("user", "user__profile")
+        .order_by("-created_at")[:60]
+    )
+
+    if not posts:
+        return JsonResponse({"posts": []})
+
+    # Prefetch reactions
+    post_ids = [p.id for p in posts]
+    reactions_by_post = defaultdict(list)
+    for r in SocialPostReaction.objects.filter(post_id__in=post_ids).select_related("user"):
+        reactions_by_post[r.post_id].append(r)
+    comments_by_post = defaultdict(int)
+    for pid, cnt in (
+        SocialPostComment.objects
+        .filter(post_id__in=post_ids)
+        .values_list("post_id")
+        .annotate(cnt=models.Count("id"))
+    ):
+        comments_by_post[pid] = cnt
+
+    result = []
+    for p in posts:
+        prof = getattr(p.user, "profile", None)
+        p_reactions = reactions_by_post.get(p.id, [])
+        my_reaction = next((r.reaction for r in p_reactions if r.user_id == me.id), None)
+        result.append({
+            "id": p.id,
+            "user_name": prof.display_name if prof else p.user.get_full_name(),
+            "user_avatar": prof.avatar.url if prof and prof.avatar else "",
+            "user_id": p.user_id,
+            "text": p.text,
+            "photo": p.photo.url if p.photo else "",
+            "video": p.video.url if p.video else "",
+            "created_at": p.created_at.strftime("%d/%m %H:%M"),
+            "reaction_counts": dict(Counter(r.reaction for r in p_reactions)),
+            "total_reactions": len(p_reactions),
+            "my_reaction": my_reaction,
+            "comment_count": comments_by_post.get(p.id, 0),
+        })
+
+    return JsonResponse({"posts": result})
 
 
 # ---------------------------------------------------------------

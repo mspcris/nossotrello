@@ -139,6 +139,7 @@ from boards.views.social import (
     camila_pop_toggle,
     camila_pop_resummarize,
     card_like_social,
+    social_friends_feed,
 )
 
 
@@ -174,6 +175,7 @@ urlpatterns = [
     path("social/set-unidade/", social_set_unidade, name="social_set_unidade"),
     path("social/task/<int:card_id>/dismiss/", social_dismiss_task, name="social_dismiss_task"),
     path("card/<int:card_id>/like-social/", card_like_social, name="card_like_social"),
+    path("social/friends-feed/", social_friends_feed, name="social_friends_feed"),
     path("social/comment/<int:comment_id>/reply-seen/", social_reply_seen, name="social_reply_seen"),
     path("social/news-nudge/", social_news_nudge, name="social_news_nudge"),
     path("social/mood/", mood_checkin, name="mood_checkin"),

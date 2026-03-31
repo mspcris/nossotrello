@@ -112,6 +112,20 @@
   {% include "boards/social_feed_block.html" %}
 
   {% else %}
+  <!-- ═══ TABS: Meu Espaço / Amigos ═══ -->
+  <div class="sp-tabs" id="sp-tabs">
+    <button type="button" class="sp-tab active" data-tab="mine" onclick="spSwitchTab('mine')">Meu Espaço</button>
+    <button type="button" class="sp-tab" data-tab="friends" onclick="spSwitchTab('friends')">Amigos</button>
+  </div>
+
+  <!-- ═══ REEL DE AMIGOS (tab friends) ═══ -->
+  <div id="sp-friends-reel-wrap" class="sp-friends-reel-wrap sp-hidden">
+    <div class="sp-reel" id="sp-reel">
+      <div class="sp-reel-loading">Carregando...</div>
+    </div>
+  </div>
+
+  <div id="sp-mine-content">
   <!-- ═══ OWNER VIEW: check-in → tasks → chatbot → feed ═══ -->
 
   <!-- ═══ TUTORIAL DE ONBOARDING (Camila) ═══ -->
@@ -448,6 +462,7 @@
   <!-- ═══ OWNER FEED ═══ -->
   {% include "boards/social_feed_block.html" %}
 
+  </div><!-- /sp-mine-content -->
   {% endif %}
 
   <!-- ═══ POST ERROR ═══ -->
@@ -602,6 +617,189 @@ var _CAMILA_AVATARS = {
   snow:          "{% static 'images/avatar/camila_snow.png' %}",          /* neve — hoodie azul ❄️ */
   blizzard:      "{% static 'images/avatar/camila_blizzard.png' %}",      /* nevasca — parka com capuz 🌨️ */
 };
+
+/* ════════════════════════════════════════════
+   TABS + REEL DE AMIGOS
+   ════════════════════════════════════════════ */
+(function(){
+  var _reelLoaded = false;
+  var _reelPosts = [];
+  var _reelIdx = 0;
+  var _csrf = function(){ return document.querySelector("[name=csrfmiddlewaretoken]")?.value || ""; };
+
+  window.spSwitchTab = function(tab){
+    document.querySelectorAll('.sp-tab').forEach(function(b){ b.classList.toggle('active', b.dataset.tab === tab); });
+    var mine = document.getElementById('sp-mine-content');
+    var reel = document.getElementById('sp-friends-reel-wrap');
+    if(!mine || !reel) return;
+    if(tab === 'friends'){
+      mine.classList.add('sp-hidden');
+      reel.classList.remove('sp-hidden');
+      if(!_reelLoaded) _loadReelFeed();
+    } else {
+      mine.classList.remove('sp-hidden');
+      reel.classList.add('sp-hidden');
+    }
+  };
+
+  function _loadReelFeed(){
+    _reelLoaded = true;
+    fetch('{% url "boards:social_friends_feed" %}')
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        _reelPosts = d.posts || [];
+        _renderReel();
+      })
+      .catch(function(){ document.getElementById('sp-reel').innerHTML = '<div class="sp-reel-empty">Erro ao carregar.</div>'; });
+  }
+
+  function _renderReel(){
+    var el = document.getElementById('sp-reel');
+    if(!_reelPosts.length){
+      el.innerHTML = '<div class="sp-reel-empty">Seus amigos ainda não publicaram nada.<br>Convide colegas! 🤝</div>';
+      return;
+    }
+    var html = '';
+    _reelPosts.forEach(function(p, i){
+      var initials = (p.user_name || '?').charAt(0).toUpperCase();
+      var avHtml = p.user_avatar
+        ? '<img class="sp-reel-av" src="'+p.user_avatar+'" alt="">'
+        : '<span class="sp-reel-av-placeholder">'+initials+'</span>';
+
+      html += '<div class="sp-reel-slide" data-idx="'+i+'" data-post-id="'+p.id+'">';
+      html += '<div class="sp-reel-header">';
+      html += '<a href="/social/'+p.user_id+'/" style="display:flex;align-items:center;gap:8px;text-decoration:none">'+avHtml;
+      html += '<div><span class="sp-reel-name">'+p.user_name+'</span><br><span class="sp-reel-time">'+p.created_at+'</span></div></a>';
+      html += '</div>';
+
+      if(p.video){
+        html += '<video src="'+p.video+'" class="sp-reel-media" controls preload="metadata" playsinline></video>';
+      } else if(p.photo){
+        html += '<img src="'+p.photo+'" alt="" loading="lazy">';
+      }
+      if(p.text){
+        html += '<div class="sp-reel-text">'+_escHtml(p.text)+'</div>';
+      }
+
+      /* Actions overlay */
+      var likeClass = p.my_reaction === 'like' ? ' liked' : '';
+      var likeCount = p.reaction_counts.like || 0;
+      html += '<div class="sp-reel-actions">';
+      html += '<button class="sp-reel-action sp-reel-like'+likeClass+'" onclick="spReelLike('+p.id+',this)" title="Curtir">❤️ <span class="count">'+(likeCount||'')+'</span></button>';
+      html += '<input class="sp-reel-comment-input" placeholder="Comentar..." maxlength="500" onkeydown="if(event.key===\'Enter\')spReelComment('+p.id+',this)">';
+      html += '<button class="sp-reel-comment-send" onclick="spReelComment('+p.id+',this.previousElementSibling)">➤</button>';
+      html += '</div>';
+
+      html += '</div>';
+    });
+    el.innerHTML = html;
+
+    /* Dots */
+    _renderDots();
+    el.addEventListener('scroll', _onReelScroll);
+
+    /* Double-tap to like */
+    el.querySelectorAll('.sp-reel-slide').forEach(function(slide){
+      var lastTap = 0;
+      slide.addEventListener('touchend', function(e){
+        if(e.target.closest('.sp-reel-actions') || e.target.closest('.sp-reel-header')) return;
+        var now = Date.now();
+        if(now - lastTap < 350){
+          e.preventDefault();
+          var postId = parseInt(slide.dataset.postId);
+          var likeBtn = slide.querySelector('.sp-reel-like');
+          _doReelLike(postId, likeBtn, slide);
+        }
+        lastTap = now;
+      });
+      slide.addEventListener('dblclick', function(e){
+        if(e.target.closest('.sp-reel-actions') || e.target.closest('.sp-reel-header')) return;
+        var postId = parseInt(slide.dataset.postId);
+        var likeBtn = slide.querySelector('.sp-reel-like');
+        _doReelLike(postId, likeBtn, slide);
+      });
+    });
+  }
+
+  function _renderDots(){
+    var existing = document.querySelector('.sp-reel-dots');
+    if(existing) existing.remove();
+    if(_reelPosts.length < 2) return;
+    var wrap = document.getElementById('sp-friends-reel-wrap');
+    var dots = document.createElement('div');
+    dots.className = 'sp-reel-dots';
+    var max = Math.min(_reelPosts.length, 15);
+    for(var i=0; i<max; i++){
+      dots.innerHTML += '<span class="sp-reel-dot'+(i===0?' active':'')+'"></span>';
+    }
+    wrap.appendChild(dots);
+  }
+
+  function _onReelScroll(){
+    var el = document.getElementById('sp-reel');
+    var w = el.offsetWidth;
+    if(!w) return;
+    var idx = Math.round(el.scrollLeft / w);
+    _reelIdx = idx;
+    var dots = document.querySelectorAll('.sp-reel-dot');
+    dots.forEach(function(d, i){ d.classList.toggle('active', i === idx % dots.length); });
+
+    /* Infinite loop: se chegar ao penúltimo, volta pro começo */
+    if(idx >= _reelPosts.length - 1 && _reelPosts.length > 1){
+      setTimeout(function(){
+        el.scrollTo({left: 0, behavior: 'auto'});
+      }, 400);
+    }
+  }
+
+  function _doReelLike(postId, btn, slide){
+    /* Heart animation */
+    var heart = document.createElement('div');
+    heart.className = 'sp-reel-heart';
+    heart.textContent = '❤️';
+    slide.appendChild(heart);
+    setTimeout(function(){ heart.remove(); }, 800);
+
+    if(!btn.classList.contains('liked')){
+      spReelLike(postId, btn);
+    }
+  }
+
+  window.spReelLike = function(postId, btn){
+    btn.classList.toggle('liked');
+    var reaction = btn.classList.contains('liked') ? 'like' : 'like';
+    fetch('{% url "boards:social_post_react" 0 %}'.replace('/0/','/'+postId+'/'), {
+      method:'POST', headers:{'X-CSRFToken':_csrf(), 'Content-Type':'application/x-www-form-urlencoded'},
+      body:'reaction=like'
+    }).then(function(r){ return r.json(); })
+      .then(function(d){
+        btn.classList.toggle('liked', !!d.my_reaction);
+        var cnt = btn.querySelector('.count');
+        if(cnt) cnt.textContent = d.counts.like || '';
+      });
+  };
+
+  window.spReelComment = function(postId, input){
+    var text = (input.value||'').trim();
+    if(!text) return;
+    input.value = '';
+    fetch('{% url "boards:social_post_comment" 0 %}'.replace('/0/','/'+postId+'/'), {
+      method:'POST', headers:{'X-CSRFToken':_csrf(), 'Content-Type':'application/x-www-form-urlencoded'},
+      body:'text='+encodeURIComponent(text)
+    }).then(function(r){ return r.json(); })
+      .then(function(d){
+        if(d.ok || d.comment) input.placeholder = 'Comentário enviado ✓';
+        setTimeout(function(){ input.placeholder = 'Comentar...'; }, 2000);
+      });
+  };
+
+  function _escHtml(s){
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML.replace(/\n/g, '<br>');
+  }
+})();
+
 (function(){
   /* ── Mood picker: tap to select ── */
   document.querySelectorAll('.sp-mood-card').forEach(function(card){
