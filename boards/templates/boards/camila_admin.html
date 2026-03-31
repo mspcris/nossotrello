@@ -480,33 +480,41 @@
       el.innerHTML = '<p class="ca-hint">Nenhum POP cadastrado ainda.</p>';
       return;
     }
-    var html = '<table style="width:100%;border-collapse:collapse;font-size:.85rem">'
-      + '<thead><tr style="border-bottom:1px solid #e5e7eb">'
-      + '<th style="text-align:left;padding:4px 8px">Código</th>'
-      + '<th style="text-align:left;padding:4px 8px">Título</th>'
-      + '<th style="padding:4px 8px">Chars</th>'
-      + '<th style="padding:4px 8px">Ativo</th>'
-      + '<th style="padding:4px 8px">PDF</th>'
-      + '<th style="padding:4px 8px"></th>'
-      + '</tr></thead><tbody>';
+    // Agrupa por categoria
+    var groups = {};
     pops.forEach(function(p){
-      html += '<tr style="border-bottom:1px solid #f3f4f6" id="ca-pop-row-'+p.id+'">'
-        + '<td style="padding:4px 8px;color:#6b7280">'+p.code+'</td>'
-        + '<td style="padding:4px 8px;font-weight:500">'+p.title+'</td>'
-        + '<td style="padding:4px 8px;text-align:center;color:#6b7280">'+p.chars.toLocaleString()+'</td>'
-        + '<td style="padding:4px 8px;text-align:center">'
-        +   '<button onclick="caPopToggle('+p.id+',this)" style="background:none;border:none;cursor:pointer;font-size:1.1rem" title="Ativar/Desativar">'+(p.is_active?'✅':'⏸️')+'</button>'
-        + '</td>'
-        + '<td style="padding:4px 8px;text-align:center">'
-        +   (p.pdf_url ? '<a href="'+p.pdf_url+'" target="_blank" rel="noopener" title="Baixar PDF" style="color:#7c3aed;text-decoration:none;font-size:1.1rem">📄</a>' : '—')
-        + '</td>'
-        + '<td style="padding:4px 8px;text-align:center;white-space:nowrap">'
-        +   '<button onclick="caPopResum('+p.id+',this)" style="background:none;border:none;cursor:pointer;font-size:.85rem" title="Re-sumarizar com Claude">🤖</button>'
-        +   ' <button onclick="caPopDelete('+p.id+')" style="background:none;border:none;cursor:pointer;color:#dc2626;font-size:.85rem" title="Remover">🗑</button>'
-        + '</td>'
-        + '</tr>';
+      var cat = p.category || '(sem categoria)';
+      if(!groups[cat]) groups[cat] = [];
+      groups[cat].push(p);
     });
-    html += '</tbody></table>';
+
+    var html = '';
+    Object.keys(groups).sort().forEach(function(cat){
+      html += '<div style="margin-bottom:16px">'
+        + '<div style="background:#f5f3ff;border-left:3px solid #7c3aed;padding:6px 10px;font-weight:700;font-size:.8rem;color:#6b21a8;letter-spacing:.05em;text-transform:uppercase">'
+        + '📁 ' + cat + ' <span style="font-weight:400;color:#9ca3af">('+groups[cat].length+')</span>'
+        + '</div>'
+        + '<table style="width:100%;border-collapse:collapse;font-size:.82rem">'
+        + '<tbody>';
+      groups[cat].forEach(function(p){
+        html += '<tr style="border-bottom:1px solid #f3f4f6" id="ca-pop-row-'+p.id+'">'
+          + '<td style="padding:4px 8px;color:#6b7280;white-space:nowrap">'+p.code+'</td>'
+          + '<td style="padding:4px 8px;font-weight:500">'+p.title+'</td>'
+          + '<td style="padding:4px 8px;text-align:center;color:#9ca3af;font-size:.75rem">'+p.chars.toLocaleString()+'</td>'
+          + '<td style="padding:4px 8px;text-align:center">'
+          +   '<button onclick="caPopToggle('+p.id+',this)" style="background:none;border:none;cursor:pointer;font-size:1rem" title="Ativar/Desativar">'+(p.is_active?'✅':'⏸️')+'</button>'
+          + '</td>'
+          + '<td style="padding:4px 8px;text-align:center">'
+          +   (p.pdf_url ? '<a href="'+p.pdf_url+'" target="_blank" rel="noopener" title="Baixar PDF" style="color:#7c3aed;text-decoration:none">📄</a>' : '—')
+          + '</td>'
+          + '<td style="padding:4px 8px;text-align:center;white-space:nowrap">'
+          +   '<button onclick="caPopResum('+p.id+',this)" style="background:none;border:none;cursor:pointer;font-size:.85rem" title="Re-sumarizar">🤖</button>'
+          +   ' <button onclick="caPopDelete('+p.id+')" style="background:none;border:none;cursor:pointer;color:#dc2626;font-size:.85rem" title="Remover">🗑</button>'
+          + '</td>'
+          + '</tr>';
+      });
+      html += '</tbody></table></div>';
+    });
     el.innerHTML = html;
   }
 

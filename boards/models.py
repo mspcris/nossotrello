@@ -1131,6 +1131,7 @@ class CamilaPOP(models.Model):
     """POP — Procedimento Operacional Padrão armazenado como PDF."""
     title = models.CharField(max_length=200)
     code = models.CharField(max_length=50, blank=True, default="")
+    category = models.CharField(max_length=100, blank=True, default="", verbose_name="Setor/Categoria")
     pdf_file = models.FileField(upload_to="camila/pops/")
     extracted_text = models.TextField(blank=True, default="")
     is_active = models.BooleanField(default=True)
@@ -1143,13 +1144,14 @@ class CamilaPOP(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ["code", "title"]
+        ordering = ["category", "code", "title"]
         verbose_name = "Camila — POP"
         verbose_name_plural = "Camila — POPs"
 
     def __str__(self):
         prefix = f"[{self.code}] " if self.code else ""
-        return f"{prefix}{self.title}"
+        cat = f"({self.category}) " if self.category else ""
+        return f"{cat}{prefix}{self.title}"
 
 
 # END boards/models.py

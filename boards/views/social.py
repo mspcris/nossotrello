@@ -531,16 +531,20 @@ def _camila_knowledge_prompt():
         lines.append(f"\n[{e.get_category_display()}] {e.title}:\n{e.content}")
     lines.append("\n--- FIM DA BASE DE CONHECIMENTO ---\n")
 
-    # POPs — Procedimentos Operacionais Padrão
-    pops = CamilaPOP.objects.filter(is_active=True).exclude(extracted_text="")
+    # POPs — Procedimentos Operacionais Padrão (agrupados por categoria)
+    pops = CamilaPOP.objects.filter(is_active=True).exclude(extracted_text="").order_by("category", "code")
     if pops.exists():
         lines.append("\n\n--- POPs — PROCEDIMENTOS OPERACIONAIS PADRÃO ---")
-        lines.append("Quando citar um POP, informe o nome, código e disponibilize o link para download do PDF.")
+        lines.append("Ao citar um POP: informe código, título, setor e ofereça o link de download do PDF.")
+        current_cat = None
         for pop in pops:
+            if pop.category != current_cat:
+                current_cat = pop.category
+                lines.append(f"\n## Setor: {current_cat or 'Geral'}")
             prefix = f"[{pop.code}] " if pop.code else ""
             lines.append(f"\n### {prefix}{pop.title}")
             if pop.pdf_file:
-                lines.append(f"Download do PDF: /media/{pop.pdf_file.name}")
+                lines.append(f"PDF para download: /media/{pop.pdf_file.name}")
             lines.append(pop.extracted_text[:3000])
 
     return "\n".join(lines)
@@ -1296,14 +1300,15 @@ def camila_import_json(request):
 @login_required
 @staff_member_required
 def camila_pop_list(request):
-    """Retorna lista de POPs em JSON."""
-    pops = CamilaPOP.objects.all().order_by("code", "title")
+    """Retorna lista de POPs em JSON, agrupada por categoria."""
+    pops = CamilaPOP.objects.all().order_by("category", "code", "title")
     data = []
     for p in pops:
         data.append({
             "id": p.id,
             "title": p.title,
             "code": p.code,
+            "category": p.category,
             "is_active": p.is_active,
             "pdf_url": p.pdf_file.url if p.pdf_file else "",
             "chars": len(p.extracted_text),
@@ -1428,15 +1433,30 @@ def camila_pop_upload(request):
     results = {"imported": 0, "errors": [], "summarized": 0}
 
     def _parse_name(filename: str):
+        """Extrai título e código do nome do arquivo.
+        Aceita: POP-001, TI-17001, ENF-001, CA-001, etc."""
         name = filename
         for ext in (".pdf", ".PDF"):
             name = name.removesuffix(ext)
-        code_match = re.match(r"^(POP[\s\-_]?\d+)", name, re.IGNORECASE)
-        code = code_match.group(1).upper().replace(" ", "-") if code_match else ""
+        # Código: 2-5 letras + hífen + 3-6 dígitos no início do nome
+        code_match = re.match(r"^([A-ZÀ-Ú]{1,5}[\s\-_]\d{3,6})", name, re.IGNORECASE)
+        code = re.sub(r"[\s_]", "-", code_match.group(1)).upper() if code_match else ""
         return name.strip(), code
 
-    def _save_pop(filename: str, pdf_bytes: bytes):
+    def _extract_category(member_path: str) -> str:
+        """Extrai a categoria (pasta) do caminho do arquivo dentro do ZIP.
+        Ex: 'ENFERMAGEM/ENF-001.pdf' → 'ENFERMAGEM'
+            'T.I/subpasta/TI-001.pdf' → 'T.I'
+        """
+        parts = member_path.replace("\\", "/").split("/")
+        # Ignora o arquivo em si (último elemento) e pega a primeira pasta
+        if len(parts) >= 2:
+            return parts[0].strip()
+        return ""
+
+    def _save_pop(member_path: str, pdf_bytes: bytes, category: str = ""):
         from django.core.files.base import ContentFile
+        filename = member_path.replace("\\", "/").split("/")[-1]
         title, code = _parse_name(filename)
         raw_text = _extract_text_pdfplumber(pdf_bytes)
         summary = _summarize_with_claude(raw_text, title)
@@ -1445,11 +1465,14 @@ def camila_pop_upload(request):
         pop = CamilaPOP(
             title=title,
             code=code,
+            category=category,
             extracted_text=summary,
             is_active=True,
             uploaded_by=request.user,
         )
-        pop.pdf_file.save(filename, ContentFile(pdf_bytes), save=False)
+        # Salva dentro de subpasta por categoria para organizar os arquivos
+        safe_cat = re.sub(r"[^\w\s\-\.]", "", category).strip() or "geral"
+        pop.pdf_file.save(f"{safe_cat}/{filename}", ContentFile(pdf_bytes), save=False)
         pop.save()
         results["imported"] += 1
 
@@ -1461,19 +1484,19 @@ def camila_pop_upload(request):
             with zipfile.ZipFile(io.BytesIO(raw)) as zf:
                 for member in zf.infolist():
                     mname = member.filename
-                    if mname.lower().endswith(".pdf") and not mname.startswith("__MACOSX"):
+                    if mname.lower().endswith(".pdf") and "__MACOSX" not in mname:
                         pdf_bytes = zf.read(mname)
-                        base = mname.split("/")[-1]
+                        category = _extract_category(mname)
                         try:
-                            _save_pop(base, pdf_bytes)
+                            _save_pop(mname, pdf_bytes, category)
                         except Exception as exc:
-                            results["errors"].append(f"{base}: {exc}")
+                            results["errors"].append(f"{mname}: {exc}")
         except zipfile.BadZipFile:
             return JsonResponse({"error": "Arquivo ZIP inválido."}, status=400)
 
     elif fname.endswith(".pdf"):
         try:
-            _save_pop(uploaded.name, uploaded.read())
+            _save_pop(uploaded.name, uploaded.read(), category="")
         except Exception as exc:
             results["errors"].append(f"{uploaded.name}: {exc}")
     else:
