@@ -246,13 +246,19 @@
         </form>
       {% endif %}
 
-      <a href="#" id="open-user-settings" class="block">
-        <img src="{% if user_avatar_url %}{{ user_avatar_url }}{% else %}{% static brand_logo %}{% endif %}"
-             alt="Perfil"
-             class="h-10 w-10 md:h-12 md:w-12 rounded-full object-cover border border-white/50 shadow">
-
-             {% comment %} class="h-12 w-12 rounded-full object-cover border border-white/50 shadow"> {% endcomment %}
-      </a>
+      <div id="my-avatar-wrap" style="position:relative;display:inline-block;">
+        <a href="#" id="open-user-settings" class="block">
+          <img src="{% if user_avatar_url %}{{ user_avatar_url }}{% else %}{% static brand_logo %}{% endif %}"
+               alt="Perfil"
+               class="h-10 w-10 md:h-12 md:w-12 rounded-full object-cover border border-white/50 shadow">
+        </a>
+        <span id="my-social-badge"
+              style="display:none;position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;
+                     border-radius:9px;background:#ef4444;color:#fff;font-size:0.625rem;font-weight:700;
+                     align-items:center;justify-content:center;padding:0 4px;
+                     border:2px solid transparent;box-shadow:0 1px 4px rgba(0,0,0,.25);
+                     z-index:10;pointer-events:none;"></span>
+      </div>
 
       <button
   type="button"

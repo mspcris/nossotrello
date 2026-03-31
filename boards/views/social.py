@@ -684,7 +684,19 @@ def social_unread_counts(request):
                     fresh_ts[str(uid)] = p["created_at"].isoformat()
                     break
 
-    return JsonResponse({"counts": counts, "fresh": fresh, "fresh_texts": fresh_texts, "fresh_ts": fresh_ts})
+    # Comentários não vistos nas MINHAS publicações
+    my_comment_count = SocialPostComment.objects.filter(
+        post__user=request.user,
+        seen_by_owner=False,
+    ).exclude(user=request.user).count()
+
+    return JsonResponse({
+        "counts": counts,
+        "fresh": fresh,
+        "fresh_texts": fresh_texts,
+        "fresh_ts": fresh_ts,
+        "my_comment_count": my_comment_count,
+    })
 
 
 # ---------------------------------------------------------------

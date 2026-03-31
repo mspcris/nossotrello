@@ -2390,64 +2390,121 @@ document.addEventListener("pointerup", (e) => {
 <!-- ═══ SOCIAL AVATAR NOTIFICATIONS ═══ -->
 <script>
 (function(){
-  // Notificações sociais desativadas pelo usuário → não faz nada
   var socialNotifyEnabled = {{ request.user.profile.notify_social|yesno:"true,false" }};
   if(!socialNotifyEnabled) return;
 
-  // Coleta todos os user IDs da barra
   var wraps = document.querySelectorAll('.bma-wrap[data-uid]');
-  if(!wraps.length) return;
-
   var uids = Array.from(wraps).map(function(w){ return w.dataset.uid; });
-  var csrf = document.querySelector('meta[name="csrf-token"]');
 
-  // sessionStorage para não repetir o balão mesmo entre polls
-  // Chave: "bma_balloon_<uid>_<boardId>" → valor: postId ou timestamp do post já exibido
   var boardId = '{{ board.id }}';
-  function balloonKey(uid){ return 'bma_shown_' + boardId + '_' + uid; }
-  function wasBalloonShown(uid, postTs){ return sessionStorage.getItem(balloonKey(uid)) === String(postTs); }
-  function markBalloonShown(uid, postTs){ sessionStorage.setItem(balloonKey(uid), String(postTs)); }
+  var RESHOW_MS = 5 * 60 * 1000;   // 5 minutos entre reexibições
+  var balloonLastShown = {};        // uid → timestamp(ms) da última exibição em memória
 
-  // Controle de clique
+  // Dismissão persistente: sessionStorage "bma_dim_<boardId>_<uid>" = postTs clicado
+  function dismissKey(uid){ return 'bma_dim_' + boardId + '_' + uid; }
+  function isDismissed(uid, postTs){ return sessionStorage.getItem(dismissKey(uid)) === String(postTs); }
+  function dismiss(uid, postTs){ sessionStorage.setItem(dismissKey(uid), String(postTs)); }
+
+  function canShow(uid, postTs){
+    if(!postTs || isDismissed(uid, postTs)) return false;
+    return (Date.now() - (balloonLastShown[uid] || 0)) >= RESHOW_MS;
+  }
+
   window._bmaUnread = {};
+  window.bmaClick = function(uid){ window.location.href = '/social/' + uid + '/'; };
 
-  window.bmaClick = function(uid, btn){
-    window.location.href = '/social/' + uid + '/';
-  };
+  /* ── Cria um balão numa wrap específica ── */
+  function makeBalloon(wrapEl, label, text, href, dismissFn){
+    // Remove balão anterior se existir
+    var old = wrapEl.querySelector('.bma-balloon');
+    if(old) old.remove();
 
+    var b = document.createElement('div');
+    b.className = 'bma-balloon';
+    if(text.length > 55) text = text.substring(0, 52) + '…';
+    b.innerHTML = '<span class="bma-balloon-name">' + label + '</span>' +
+                  '<span class="bma-balloon-text">' + text.replace(/</g,'&lt;') + '</span>' +
+                  '<span class="bma-balloon-cta">Toque para ver 👀</span>';
+
+    b.addEventListener('click', function(e){
+      e.stopPropagation();
+      if(dismissFn) dismissFn();
+      window.location.href = href;
+    });
+
+    wrapEl.appendChild(b);
+
+    var timer = setTimeout(function(){
+      b.style.animation = 'bma-balloon-out 0.3s ease forwards';
+      setTimeout(function(){ b.remove(); }, 320);
+    }, 8000);
+    b.addEventListener('mouseenter', function(){ clearTimeout(timer); });
+    b.addEventListener('touchstart', function(){ clearTimeout(timer); }, {passive:true});
+  }
+
+  /* ── Balão para outros usuários ── */
   function showBalloon(uid, name, postText, postTs){
-    if(wasBalloonShown(uid, postTs)) return;
-    markBalloonShown(uid, postTs);
+    if(!canShow(uid, postTs)) return;
+    balloonLastShown[uid] = Date.now();
 
     document.querySelectorAll('.bma-wrap[data-uid="'+uid+'"]').forEach(function(wrap){
-      var balloon = document.createElement('div');
-      balloon.className = 'bma-balloon';
-      var firstName = name.split(' ')[0];
-      var text = postText ? postText : 'publicou algo novo!';
-      if(text.length > 60) text = text.substring(0, 57) + '…';
-      balloon.innerHTML = '<span class="bma-balloon-name">' + firstName + '</span>' +
-        '<span class="bma-balloon-text">' + text.replace(/</g,'&lt;') + '</span>' +
-        '<span class="bma-balloon-cta">Toque para ver 👀</span>';
-
-      // Clicar no balão vai direto para o social deste usuário
-      balloon.addEventListener('click', function(e){
-        e.stopPropagation();
-        window.location.href = '/social/' + uid + '/';
-      });
-
-      wrap.appendChild(balloon);
-
-      var timer = setTimeout(function(){
-        balloon.style.animation = 'bma-balloon-out 0.3s ease forwards';
-        setTimeout(function(){ balloon.remove(); }, 320);
-      }, 8000);
-
-      // Toque/clique cancela o timer de sumição (não some enquanto o dedo está lá)
-      balloon.addEventListener('mouseenter', function(){ clearTimeout(timer); });
+      makeBalloon(
+        wrap,
+        name.split(' ')[0],
+        postText || 'publicou algo novo!',
+        '/social/' + uid + '/',
+        function(){ dismiss(uid, postTs); }
+      );
     });
   }
 
-  function updateBadges(counts, fresh, freshTexts, freshTs){
+  /* ── Badge e balão no MEU PRÓPRIO avatar ── */
+  var myWrap = document.getElementById('my-avatar-wrap');
+  var myBadge = document.getElementById('my-social-badge');
+  var MY_TS_KEY = 'bma_my_ts_' + boardId;
+  var MY_DIM_KEY = 'bma_my_dim_' + boardId;
+
+  function updateMyAvatar(count){
+    if(!myWrap) return;
+    if(count > 0){
+      // Badge
+      if(myBadge){
+        myBadge.textContent = count;
+        myBadge.style.display = 'flex';
+      }
+      // Destaca o avatar
+      var img = myWrap.querySelector('img');
+      if(img) img.style.outline = '2.5px solid #f97316';
+
+      // Balão a cada 5 min, até clicar
+      var ts = sessionStorage.getItem(MY_TS_KEY) || 'my';
+      var dismissed = sessionStorage.getItem(MY_DIM_KEY) === ts;
+      if(!dismissed && (Date.now() - (balloonLastShown['me'] || 0)) >= RESHOW_MS){
+        balloonLastShown['me'] = Date.now();
+        makeBalloon(
+          myWrap,
+          'Você',
+          count + ' novo(s) comentário(s) no seu espaço!',
+          '/social/',
+          function(){
+            sessionStorage.setItem(MY_DIM_KEY, ts);
+            if(myBadge) myBadge.style.display = 'none';
+            var img = myWrap ? myWrap.querySelector('img') : null;
+            if(img) img.style.outline = '';
+          }
+        );
+      }
+    } else {
+      if(myBadge) myBadge.style.display = 'none';
+      var img = myWrap ? myWrap.querySelector('img') : null;
+      if(img) img.style.outline = '';
+      // Zera timestamp de dismiss quando não há mais notificações
+      sessionStorage.removeItem(MY_DIM_KEY);
+    }
+  }
+
+  /* ── Atualiza badges da barra de membros ── */
+  function updateBadges(counts, fresh, freshTexts, freshTs, myCommentCount){
     window._bmaUnread = {};
     freshTexts = freshTexts || {};
     freshTs = freshTs || {};
@@ -2475,21 +2532,22 @@ document.addEventListener("pointerup", (e) => {
         showBalloon(uid, name, freshTexts[uid] || '', freshTs[uid] || '');
       }
     });
+
+    updateMyAvatar(myCommentCount || 0);
   }
 
   function poll(){
-    fetch('/social/unread/?ids=' + uids.join(','))
+    var q = uids.length ? '?ids=' + uids.join(',') : '?ids=';
+    fetch('/social/unread/' + q)
       .then(function(r){ return r.json(); })
-      .then(function(d){ updateBadges(d.counts || {}, d.fresh || [], d.fresh_texts || {}, d.fresh_ts || {}); })
+      .then(function(d){
+        updateBadges(d.counts || {}, d.fresh || [], d.fresh_texts || {}, d.fresh_ts || {}, d.my_comment_count || 0);
+      })
       .catch(function(){});
   }
 
-  // Primeira chamada depois de 2s
   setTimeout(poll, 2000);
-  // Polling a cada 30s
   setInterval(poll, 30000);
-
-  // Quando o usuário volta para a aba, atualiza logo
   document.addEventListener('visibilitychange', function(){
     if(!document.hidden) setTimeout(poll, 500);
   });
@@ -2535,7 +2593,8 @@ document.addEventListener("pointerup", (e) => {
 }
 .bma-balloon {
   position: absolute;
-  bottom: calc(100% + 14px);
+  top: calc(100% + 10px);   /* ABAIXO do avatar */
+  bottom: auto;
   right: 0;
   left: auto;
   transform: none;
@@ -2558,23 +2617,26 @@ document.addEventListener("pointerup", (e) => {
   gap: 3px;
 }
 .bma-balloon:hover { background: #f5f3ff; }
+/* Setinha ACIMA do balão (aponta para o avatar) */
 .bma-balloon::after {
   content: '';
   position: absolute;
-  top: 100%;
+  bottom: 100%;
+  top: auto;
   right: 14px;
   left: auto;
   border: 7px solid transparent;
-  border-top-color: #1f2937;
+  border-bottom-color: #1f2937;
 }
 .bma-balloon::before {
   content: '';
   position: absolute;
-  top: calc(100% - 2px);
+  bottom: calc(100% - 2px);
+  top: auto;
   right: 16px;
   left: auto;
   border: 5px solid transparent;
-  border-top-color: #fff;
+  border-bottom-color: #fff;
   z-index: 1;
 }
 .bma-balloon-name {
