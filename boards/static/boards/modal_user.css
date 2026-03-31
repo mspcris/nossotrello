@@ -1107,6 +1107,25 @@ video.sp-post-media {
   gap: 8px;
   margin-bottom: 12px;
 }
+.sp-camila-close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 4px;
+  min-height: 44px;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  -webkit-tap-highlight-color: transparent;
+}
+.sp-camila-close:active {
+  background: #f3f4f6;
+}
 .sp-camila-header-icon {
   font-size: 1.5rem;
 }
