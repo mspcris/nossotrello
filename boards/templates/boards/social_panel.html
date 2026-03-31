@@ -193,6 +193,21 @@
   {% include "boards/social_feed_block.html" %}
 
   {% else %}
+
+  <!-- ═══ PÍLULAS DE CONVITES DE AMIZADE PENDENTES (sempre visível, acima das tabs) ═══ -->
+  {% if pending_friend_requests %}
+  <div id="sp-friend-pills" class="sp-comment-pills" style="padding-top:8px">
+    {% for fr in pending_friend_requests %}
+    <div class="sp-friend-pill" data-friend-uid="{{ fr.requester_id }}">
+      <span class="sp-cpill-icon">🤝</span>
+      <span class="sp-cpill-text">{{ fr.requester.profile.display_name|default:fr.requester.email|truncatechars:20 }} quer ser seu amigo</span>
+      <button type="button" class="sp-fpill-accept" onclick="spAnswerFriend({{ fr.requester_id }},'accept',this)">Aceitar</button>
+      <button type="button" class="sp-fpill-reject" onclick="spAnswerFriend({{ fr.requester_id }},'reject',this)">Recusar</button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
   <!-- ═══ TABS: Meu Espaço / Amigos ═══ -->
   <div class="sp-tabs" id="sp-tabs">
     <button type="button" class="sp-tab active" data-tab="mine" onclick="spSwitchTab('mine')">Meu Espaço</button>
@@ -335,20 +350,6 @@
       </div>
     </div>
   </div>
-
-  <!-- ═══ PÍLULAS DE CONVITES DE AMIZADE PENDENTES ═══ -->
-  {% if pending_friend_requests %}
-  <div id="sp-friend-pills" class="sp-comment-pills">
-    {% for fr in pending_friend_requests %}
-    <div class="sp-friend-pill" data-friend-uid="{{ fr.requester_id }}">
-      <span class="sp-cpill-icon">🤝</span>
-      <span class="sp-cpill-text">{{ fr.requester.profile.display_name|default:fr.requester.email|truncatechars:20 }} quer ser seu amigo</span>
-      <button type="button" class="sp-fpill-accept" onclick="spAnswerFriend({{ fr.requester_id }},'accept',this)">Aceitar</button>
-      <button type="button" class="sp-fpill-reject" onclick="spAnswerFriend({{ fr.requester_id }},'reject',this)">Recusar</button>
-    </div>
-    {% endfor %}
-  </div>
-  {% endif %}
 
   <!-- ═══ PÍLULAS DE COMENTÁRIOS / RESPOSTAS NÃO VISTOS ═══ -->
   {% if unread_comment_posts or unread_reply_items %}
