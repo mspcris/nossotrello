@@ -314,45 +314,69 @@
 }
 .sp-cover-btn:hover { background: rgba(0,0,0,0.7); }
 
-.sp-profile-info {
-  padding: 0 16px 16px;
-}
-
-.sp-profile-row {
+/* Avatar overlapping cover */
+.sp-avatar-over-cover {
+  position: relative;
   display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: -24px;
+  justify-content: center;
+  margin-top: -40px;
+  z-index: 2;
 }
-
-.sp-avatar-wrap { flex-shrink: 0; }
-
+.sp-avatar-tap {
+  position: relative;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
 .sp-avatar {
-  width: 56px;
-  height: 56px;
+  width: 72px;
+  height: 72px;
   border-radius: 50%;
   border: 3px solid #fff;
   object-fit: cover;
   background: #e5e7eb;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.15);
 }
 .sp-avatar-placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.25rem;
+  font-size: 1.5rem;
   font-weight: 700;
   color: #fff;
   background: #6366f1;
   text-transform: uppercase;
 }
+.sp-avatar-cam {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
 
-.sp-profile-text {
-  min-width: 0;
-  padding-top: 28px;
+.sp-profile-info {
+  padding: 0 16px 16px;
+}
+.sp-profile-info-with-avatar {
+  padding-top: 8px;
+  text-align: center;
+}
+.sp-profile-name-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
 }
 .sp-name {
-  font-size: 1rem;
+  font-size: 1.125rem;
   font-weight: 700;
   color: #111827;
   margin: 0;
@@ -364,6 +388,64 @@
 .sp-handle {
   font-size: 0.8125rem;
   color: #6b7280;
+}
+
+/* Crop modal */
+.sp-crop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 7000;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.sp-crop-modal {
+  background: #fff;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 400px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+.sp-crop-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.sp-crop-title {
+  font-weight: 700;
+  font-size: 1rem;
+  color: #111827;
+}
+.sp-crop-close {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 4px;
+  min-height: 44px;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sp-crop-container {
+  width: 100%;
+  max-height: 60vh;
+  overflow: hidden;
+  background: #1f2937;
+}
+.sp-crop-container img {
+  display: block;
+  max-width: 100%;
+}
+.sp-crop-actions {
+  padding: 12px 16px;
 }
 
 /* Mood badge (profile display) */
@@ -378,6 +460,10 @@
   margin-top: 8px;
   font-size: 0.8125rem;
 }
+.sp-profile-info-with-avatar .sp-mood-badge {
+  margin-left: auto;
+  margin-right: auto;
+}
 .sp-mood-emoji-sm { font-size: 1.1rem; }
 .sp-mood-text-sm { font-weight: 600; color: #92400e; }
 .sp-mood-note-sm { color: #b45309; font-style: italic; }
@@ -388,6 +474,7 @@
   flex-wrap: wrap;
   gap: 6px;
   margin-top: 8px;
+  justify-content: center;
 }
 .sp-pill {
   display: inline-flex;
@@ -405,6 +492,7 @@
   margin-top: 6px;
   font-size: 0.8125rem;
   color: #6b7280;
+  text-align: center;
 }
 
 /* ═══════════ CHECK-IN FORM ═══════════ */
@@ -1025,10 +1113,9 @@ video.sp-post-media {
 @media (min-width: 520px) {
   .sp { max-width: 480px; margin: 0 auto; }
   .sp-cover { height: 120px; }
-  .sp-avatar { width: 72px; height: 72px; }
-  .sp-profile-row { margin-top: -32px; }
-  .sp-profile-text { padding-top: 36px; }
-  .sp-name { font-size: 1.125rem; }
+  .sp-avatar { width: 80px; height: 80px; }
+  .sp-avatar-over-cover { margin-top: -44px; }
+  .sp-name { font-size: 1.25rem; }
   .sp-mood-grid { grid-template-columns: repeat(4, 1fr); }
 }
 

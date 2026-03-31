@@ -494,3 +494,24 @@ def social_post_comment(request, post_id: int):
         "text": comment.text,
         "created_at": comment.created_at.strftime("%d/%m %H:%M"),
     })
+
+
+# ---------------------------------------------------------------
+# Avatar upload via social page (POST → JSON)
+# ---------------------------------------------------------------
+@login_required
+@require_POST
+def social_avatar_upload(request):
+    prof = _get_or_create_profile(request.user)
+    f = request.FILES.get("avatar")
+    if not f:
+        return JsonResponse({"error": "Selecione uma imagem."}, status=400)
+    ctype = (getattr(f, "content_type", "") or "").lower()
+    if not ctype.startswith("image/"):
+        return JsonResponse({"error": "Arquivo inválido."}, status=400)
+    if f.size > 5 * 1024 * 1024:
+        return JsonResponse({"error": "Imagem muito grande (máx 5MB)."}, status=400)
+    prof.avatar = f
+    prof.avatar_choice = ""
+    prof.save(update_fields=["avatar", "avatar_choice"])
+    return JsonResponse({"url": prof.avatar.url})

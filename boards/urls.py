@@ -113,6 +113,7 @@ from boards.views.social import (
     social_ai_react,
     daily_checkin_save,
     social_cover_upload,
+    social_avatar_upload,
 )
 
 
@@ -144,6 +145,7 @@ urlpatterns = [
     path("social/ai-react/", social_ai_react, name="social_ai_react"),
     path("social/checkin/", daily_checkin_save, name="daily_checkin_save"),
     path("social/cover/", social_cover_upload, name="social_cover_upload"),
+    path("social/avatar/", social_avatar_upload, name="social_avatar_upload"),
 
     # ============================================================
     # IDCamim OAuth2

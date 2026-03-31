@@ -5,6 +5,10 @@
 
 {% block body_class %}sp-standalone-page{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css">
+{% endblock %}
+
 {% block header_center %}
 <span class="text-white/90 font-semibold text-sm">Espaço Social</span>
 {% endblock %}
@@ -13,4 +17,8 @@
 <div class="sp-page-wrap">
   {% include "boards/social_panel.html" %}
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
 {% endblock %}

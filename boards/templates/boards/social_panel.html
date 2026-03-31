@@ -23,23 +23,42 @@
       {% endif %}
     </div>
 
-    <div class="sp-profile-info">
-      <div class="sp-profile-row">
-        <div class="sp-avatar-wrap">
-          {% if profile.avatar %}
-            <img src="{{ profile.avatar.url }}" alt="" class="sp-avatar">
-          {% elif profile.avatar_choice %}
-            <img src="{% static 'images/avatar/' %}{{ profile.avatar_choice }}" alt="" class="sp-avatar">
-          {% else %}
-            <div class="sp-avatar sp-avatar-placeholder">
-              {{ profile.display_name|default:target_user.email|truncatechars:1 }}
-            </div>
-          {% endif %}
-        </div>
-        <div class="sp-profile-text">
-          <h2 class="sp-name">{{ profile.display_name|default:target_user.email }}</h2>
-          {% if profile.handle %}<span class="sp-handle">@{{ profile.handle }}</span>{% endif %}
-        </div>
+    <!-- Avatar overlapping cover -->
+    <div class="sp-avatar-over-cover">
+      {% if is_me %}
+      <div class="sp-avatar-tap" onclick="document.getElementById('sp-avatar-input').click()" title="Alterar foto">
+        {% if profile.avatar %}
+          <img src="{{ profile.avatar.url }}" alt="" class="sp-avatar" id="sp-avatar-img">
+        {% elif profile.avatar_choice %}
+          <img src="{% static 'images/avatar/' %}{{ profile.avatar_choice }}" alt="" class="sp-avatar" id="sp-avatar-img">
+        {% else %}
+          <div class="sp-avatar sp-avatar-placeholder" id="sp-avatar-img">
+            {{ profile.display_name|default:target_user.email|truncatechars:1 }}
+          </div>
+        {% endif %}
+        <div class="sp-avatar-cam">📷</div>
+      </div>
+      <input type="file" id="sp-avatar-input" accept="image/*" style="display:none"
+             onchange="spOpenCropper(this)">
+      {% else %}
+      <div class="sp-avatar-tap">
+        {% if profile.avatar %}
+          <img src="{{ profile.avatar.url }}" alt="" class="sp-avatar">
+        {% elif profile.avatar_choice %}
+          <img src="{% static 'images/avatar/' %}{{ profile.avatar_choice }}" alt="" class="sp-avatar">
+        {% else %}
+          <div class="sp-avatar sp-avatar-placeholder">
+            {{ profile.display_name|default:target_user.email|truncatechars:1 }}
+          </div>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="sp-profile-info sp-profile-info-with-avatar">
+      <div class="sp-profile-name-row">
+        <h2 class="sp-name">{{ profile.display_name|default:target_user.email }}</h2>
+        {% if profile.handle %}<span class="sp-handle">@{{ profile.handle }}</span>{% endif %}
       </div>
 
       {% if latest_checkin and latest_checkin.mood %}
@@ -308,6 +327,24 @@
   <div id="sp-ai-trigger" data-text="{{ ai_react_text }}" style="display:none"></div>
   {% endif %}
 
+  <!-- ═══ AVATAR CROP MODAL ═══ -->
+  {% if is_me %}
+  <div id="sp-crop-overlay" class="sp-crop-overlay sp-hidden" onclick="spCloseCropper()">
+    <div class="sp-crop-modal" onclick="event.stopPropagation()">
+      <div class="sp-crop-header">
+        <span class="sp-crop-title">Ajustar foto</span>
+        <button type="button" class="sp-crop-close" onclick="spCloseCropper()">✕</button>
+      </div>
+      <div class="sp-crop-container">
+        <img id="sp-crop-image" src="" alt="">
+      </div>
+      <div class="sp-crop-actions">
+        <button type="button" class="sp-btn sp-btn-blue" onclick="spSaveCrop()">Salvar foto</button>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
 </div>
 
 <script>
@@ -521,6 +558,82 @@
       list.appendChild(el);
       list.classList.remove('sp-hidden');
     }catch(e){}
+  };
+
+  /* ═══ AVATAR CROPPER ═══ */
+  window._spCropper = null;
+  window.spOpenCropper = function(input){
+    var file = input.files[0];
+    if(!file) return;
+    var overlay = document.getElementById('sp-crop-overlay');
+    var img = document.getElementById('sp-crop-image');
+    if(!overlay || !img) return;
+    img.src = URL.createObjectURL(file);
+    overlay.classList.remove('sp-hidden');
+    document.body.style.overflow = 'hidden';
+    // wait for image to load then init cropper
+    img.onload = function(){
+      if(window._spCropper) window._spCropper.destroy();
+      if(typeof Cropper !== 'undefined'){
+        window._spCropper = new Cropper(img, {
+          aspectRatio: 1,
+          viewMode: 1,
+          dragMode: 'move',
+          cropBoxResizable: true,
+          cropBoxMovable: true,
+          toggleDragModeOnDblclick: false,
+          minCropBoxWidth: 80,
+          minCropBoxHeight: 80,
+          background: false,
+        });
+      }
+    };
+  };
+  window.spCloseCropper = function(){
+    var overlay = document.getElementById('sp-crop-overlay');
+    if(overlay) overlay.classList.add('sp-hidden');
+    document.body.style.overflow = '';
+    if(window._spCropper){ window._spCropper.destroy(); window._spCropper = null; }
+    var inp = document.getElementById('sp-avatar-input');
+    if(inp) inp.value = '';
+  };
+  window.spSaveCrop = async function(){
+    if(!window._spCropper) return;
+    var canvas = window._spCropper.getCroppedCanvas({
+      width: 400, height: 400, imageSmoothingQuality: 'high'
+    });
+    canvas.toBlob(async function(blob){
+      if(!blob) return;
+      var fd = new FormData();
+      fd.append('avatar', blob, 'avatar.jpg');
+      var csrf = document.querySelector('meta[name="csrf-token"]');
+      try{
+        var r = await fetch('{% url "boards:social_avatar_upload" %}', {
+          method:'POST',
+          headers:{'X-CSRFToken': csrf ? csrf.content : ''},
+          body: fd
+        });
+        var d = await r.json();
+        if(d.url){
+          // update avatar on page
+          var avatarEl = document.getElementById('sp-avatar-img');
+          if(avatarEl){
+            if(avatarEl.tagName === 'IMG'){
+              avatarEl.src = d.url;
+            } else {
+              // replace placeholder div with img
+              var newImg = document.createElement('img');
+              newImg.src = d.url;
+              newImg.alt = '';
+              newImg.className = 'sp-avatar';
+              newImg.id = 'sp-avatar-img';
+              avatarEl.parentNode.replaceChild(newImg, avatarEl);
+            }
+          }
+        }
+      }catch(e){}
+      spCloseCropper();
+    }, 'image/jpeg', 0.9);
   };
 
   /* ── Camila.AI toast reaction ── */
