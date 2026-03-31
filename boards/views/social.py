@@ -330,15 +330,15 @@ def daily_checkin_save(request):
             photo=lunch_photo or None,
         )
 
-    # AI react trigger
+    # AI react trigger — só o que foi ALTERADO nesta requisição
     parts = []
-    if checkin.mood:
+    if mood:
         mood_labels = dict(DailyCheckIn.MOOD_CHOICES)
-        parts.append(f"Humor: {mood_labels.get(checkin.mood, checkin.mood)}")
-    if checkin.lunch_text:
-        parts.append(f"Almoço: {checkin.lunch_text}")
-    if checkin.daily_posto:
-        parts.append(f"Posto: {checkin.daily_posto}")
+        parts.append(f"Atualizei meu humor para: {mood_labels.get(mood, mood)}")
+    if lunch_text:
+        parts.append(f"Vou almoçar: {lunch_text}")
+    if lunch_photo and not lunch_text:
+        parts.append("Postei uma foto do meu almoço")
     ai_react_text = "; ".join(parts) if parts else ""
 
     ctx = _build_social_context(request, request.user, extra={"ai_react_text": ai_react_text})
