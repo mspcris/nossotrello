@@ -292,11 +292,19 @@ def _build_social_context(request, target_user, extra=None):
 
     # Convites de amizade pendentes recebidos
     pending_friend_requests = []
+    # Convites que EU enviei (pendentes)
+    sent_friend_requests = []
     if is_me:
         pending_friend_requests = list(
             SocialFriendship.objects.filter(
                 receiver=target_user, status="pending"
             ).select_related("requester", "requester__profile")
+            .order_by("-created_at")
+        )
+        sent_friend_requests = list(
+            SocialFriendship.objects.filter(
+                requester=target_user, status="pending"
+            ).select_related("receiver", "receiver__profile")
             .order_by("-created_at")
         )
 
@@ -325,6 +333,7 @@ def _build_social_context(request, target_user, extra=None):
         "unit_suggestions": unit_suggestions,
         "available_units": available_units,
         "pending_friend_requests": pending_friend_requests,
+        "sent_friend_requests": sent_friend_requests,
     }
     if extra:
         ctx.update(extra)
