@@ -1140,24 +1140,22 @@ def camila_knowledge_toggle(request, entry_id: int):
 @staff_member_required
 @require_POST
 def camila_test_chat(request):
-    """Testa a Camila com a base de conhecimento atual."""
+    """Testa a Camila com a base de conhecimento atual — com histórico de conversa."""
     try:
         data = json.loads(request.body or "{}")
     except json.JSONDecodeError:
         return JsonResponse({"error": "JSON inválido."}, status=400)
 
     message = (data.get("message") or "").strip()
+    history = data.get("history") or []
     if not message:
         return JsonResponse({"error": "Mensagem vazia."}, status=400)
 
     cfg = CamilaConfig.get()
     prompt = cfg.prompt_chat + _camila_knowledge_prompt()
-    response = _groq_chat(
-        [{"role": "user", "content": message}],
-        prompt,
-        config=cfg,
-    )
-    return JsonResponse({"response": response or "Sem resposta da IA.", "prompt_preview": prompt[:500] + "..."})
+    messages = [*history[-10:], {"role": "user", "content": message}]
+    response = _groq_chat(messages, prompt, config=cfg)
+    return JsonResponse({"response": response or "Sem resposta da IA."})
 
 
 # Mapeamento de categorias externas → categorias internas do CamilaKnowledge

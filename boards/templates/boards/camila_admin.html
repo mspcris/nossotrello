@@ -230,12 +230,13 @@
       <span class="ca-card-arrow">▸</span>
     </div>
     <div id="ca-test-chat" class="ca-card-body ca-hidden">
-      <p class="ca-hint">Teste como a Camila responde com a base de conhecimento atual.</p>
+      <p class="ca-hint">Teste como a Camila responde com a base de conhecimento atual. O histórico da conversa é mantido — ela lembra do contexto anterior.</p>
       <div id="ca-test-messages" class="ca-test-messages"></div>
       <div class="ca-test-input-row">
         <input type="text" id="ca-test-input" class="ca-input" placeholder="Pergunte algo para a Camila..."
                onkeydown="if(event.key==='Enter')caTestSend()">
         <button type="button" class="ca-btn ca-btn-blue ca-btn-sm" onclick="caTestSend()">Enviar</button>
+        <button type="button" class="ca-btn ca-btn-sm" onclick="caTestClear()" title="Limpar conversa" style="background:#f3f4f6;color:#6b7280">🗑 Limpar</button>
       </div>
     </div>
   </div>
@@ -442,6 +443,8 @@
     }
   };
 
+  var _caTestHistory = [];
+
   window.caTestSend = async function(){
     var input = document.getElementById('ca-test-input');
     var msgs = document.getElementById('ca-test-messages');
@@ -465,12 +468,23 @@
       var r = await fetch('{% url "boards:camila_test_chat" %}', {
         method:'POST',
         headers:{'Content-Type':'application/json','X-CSRFToken': csrfVal},
-        body: JSON.stringify({message: text})
+        body: JSON.stringify({message: text, history: _caTestHistory})
       });
       var d = await r.json();
-      th.textContent = d.response || d.error || 'Erro.';
+      var reply = d.response || d.error || 'Erro.';
+      th.textContent = reply;
+      // Mantém histórico para próximas mensagens
+      _caTestHistory.push({role:'user', content: text});
+      _caTestHistory.push({role:'assistant', content: reply});
+      if(_caTestHistory.length > 20) _caTestHistory = _caTestHistory.slice(-20);
     }catch(e){ th.textContent = 'Erro de conexao.'; }
     msgs.scrollTop = msgs.scrollHeight;
+  };
+
+  window.caTestClear = function(){
+    _caTestHistory = [];
+    var msgs = document.getElementById('ca-test-messages');
+    if(msgs) msgs.innerHTML = '<div class="ca-test-msg ca-test-bot">Contexto limpo. Nova conversa iniciada.</div>';
   };
 
   // ── POPs ──────────────────────────────────────────────
