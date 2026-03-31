@@ -8,3 +8,4 @@ gunicorn==22.0.0
 whitenoise==6.5.0
 sqlalchemy>=2,<3
 django-redis>=5.4.0
+pypdf>=4.0.0

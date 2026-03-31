@@ -176,6 +176,27 @@
   </div>
   {% endif %}
 
+  <!-- ═══ POPs ═══ -->
+  <div class="ca-card">
+    <div class="ca-card-header" onclick="caToggle('ca-pops')">
+      <span class="ca-card-title">📄 POPs — Procedimentos Operacionais Padrão</span>
+      <span class="ca-card-arrow">▸</span>
+    </div>
+    <div id="ca-pops" class="ca-card-body ca-hidden">
+      <p class="ca-hint">Envie um <strong>.zip</strong> com vários PDFs ou um <strong>.pdf</strong> individual. O texto será extraído automaticamente e a Camila poderá responder com base nos procedimentos e disponibilizar o link de download.</p>
+
+      <div class="ca-field ca-row" style="gap:12px;align-items:center;flex-wrap:wrap;">
+        <label class="ca-btn ca-btn-blue" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+          📎 Selecionar arquivo
+          <input type="file" id="ca-pop-file" accept=".pdf,.zip" style="display:none" onchange="caPopUpload(this)">
+        </label>
+        <span id="ca-pop-upload-status" class="ca-hint" style="margin:0"></span>
+      </div>
+
+      <div id="ca-pop-list" style="margin-top:16px"></div>
+    </div>
+  </div>
+
   <!-- ═══ IMPORTAR JSON ═══ -->
   <div class="ca-card">
     <div class="ca-card-header" onclick="caToggle('ca-import')">
@@ -450,6 +471,89 @@
       th.textContent = d.response || d.error || 'Erro.';
     }catch(e){ th.textContent = 'Erro de conexao.'; }
     msgs.scrollTop = msgs.scrollHeight;
+  };
+
+  // ── POPs ──────────────────────────────────────────────
+  function caPopRender(pops){
+    var el = document.getElementById('ca-pop-list');
+    if(!pops || !pops.length){
+      el.innerHTML = '<p class="ca-hint">Nenhum POP cadastrado ainda.</p>';
+      return;
+    }
+    var html = '<table style="width:100%;border-collapse:collapse;font-size:.85rem">'
+      + '<thead><tr style="border-bottom:1px solid #e5e7eb">'
+      + '<th style="text-align:left;padding:4px 8px">Código</th>'
+      + '<th style="text-align:left;padding:4px 8px">Título</th>'
+      + '<th style="padding:4px 8px">Chars</th>'
+      + '<th style="padding:4px 8px">Ativo</th>'
+      + '<th style="padding:4px 8px">PDF</th>'
+      + '<th style="padding:4px 8px"></th>'
+      + '</tr></thead><tbody>';
+    pops.forEach(function(p){
+      html += '<tr style="border-bottom:1px solid #f3f4f6" id="ca-pop-row-'+p.id+'">'
+        + '<td style="padding:4px 8px;color:#6b7280">'+p.code+'</td>'
+        + '<td style="padding:4px 8px;font-weight:500">'+p.title+'</td>'
+        + '<td style="padding:4px 8px;text-align:center;color:#6b7280">'+p.chars.toLocaleString()+'</td>'
+        + '<td style="padding:4px 8px;text-align:center">'
+        +   '<button onclick="caPopToggle('+p.id+',this)" style="background:none;border:none;cursor:pointer;font-size:1.1rem" title="Ativar/Desativar">'+(p.is_active?'✅':'⏸️')+'</button>'
+        + '</td>'
+        + '<td style="padding:4px 8px;text-align:center">'
+        +   (p.pdf_url ? '<a href="'+p.pdf_url+'" target="_blank" rel="noopener" title="Baixar PDF" style="color:#7c3aed;text-decoration:none;font-size:1.1rem">📄</a>' : '—')
+        + '</td>'
+        + '<td style="padding:4px 8px;text-align:center">'
+        +   '<button onclick="caPopDelete('+p.id+')" style="background:none;border:none;cursor:pointer;color:#dc2626;font-size:.85rem">🗑</button>'
+        + '</td>'
+        + '</tr>';
+    });
+    html += '</tbody></table>';
+    el.innerHTML = html;
+  }
+
+  function caPopLoad(){
+    fetch('{% url "boards:camila_pop_list" %}')
+      .then(function(r){ return r.json(); })
+      .then(function(d){ caPopRender(d.pops); })
+      .catch(function(){ });
+  }
+  caPopLoad();
+
+  window.caPopUpload = async function(input){
+    var file = input.files[0];
+    if(!file) return;
+    var status = document.getElementById('ca-pop-upload-status');
+    status.textContent = 'Enviando ' + file.name + '...';
+    var fd = new FormData();
+    fd.append('file', file);
+    try{
+      var r = await fetch('{% url "boards:camila_pop_upload" %}', {
+        method:'POST', headers:{'X-CSRFToken':csrfVal}, body:fd
+      });
+      var d = await r.json();
+      if(d.error){ caToast(d.error,'#dc2626'); status.textContent=''; return; }
+      var msg = d.imported + ' POP(s) importado(s)';
+      if(d.errors && d.errors.length) msg += ' — ' + d.errors.length + ' erro(s)';
+      status.textContent = msg;
+      caToast('POPs importados!');
+      caPopLoad();
+    }catch(e){ caToast('Erro de conexão','#dc2626'); status.textContent=''; }
+    input.value='';
+  };
+
+  window.caPopDelete = async function(id){
+    if(!confirm('Remover este POP?')) return;
+    try{
+      var r = await fetch('/camila/pops/'+id+'/delete/', {method:'POST',headers:{'X-CSRFToken':csrfVal}});
+      var d = await r.json();
+      if(d.ok){ document.getElementById('ca-pop-row-'+id).remove(); caToast('POP removido.'); }
+    }catch(e){ caToast('Erro','#dc2626'); }
+  };
+
+  window.caPopToggle = async function(id, btn){
+    try{
+      var r = await fetch('/camila/pops/'+id+'/toggle/', {method:'POST',headers:{'X-CSRFToken':csrfVal}});
+      var d = await r.json();
+      if(d.ok){ btn.textContent = d.is_active ? '✅' : '⏸️'; }
+    }catch(e){ caToast('Erro','#dc2626'); }
   };
 
 })();

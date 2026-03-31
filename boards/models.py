@@ -1127,4 +1127,29 @@ class SocialFriendship(models.Model):
         return f"{self.requester} → {self.receiver} ({self.status})"
 
 
+class CamilaPOP(models.Model):
+    """POP — Procedimento Operacional Padrão armazenado como PDF."""
+    title = models.CharField(max_length=200)
+    code = models.CharField(max_length=50, blank=True, default="")
+    pdf_file = models.FileField(upload_to="camila/pops/")
+    extracted_text = models.TextField(blank=True, default="")
+    is_active = models.BooleanField(default=True)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["code", "title"]
+        verbose_name = "Camila — POP"
+        verbose_name_plural = "Camila — POPs"
+
+    def __str__(self):
+        prefix = f"[{self.code}] " if self.code else ""
+        return f"{prefix}{self.title}"
+
+
 # END boards/models.py

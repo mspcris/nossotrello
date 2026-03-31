@@ -132,6 +132,10 @@ from boards.views.social import (
     camila_test_chat,
     camila_config_save,
     camila_import_json,
+    camila_pop_list,
+    camila_pop_upload,
+    camila_pop_delete,
+    camila_pop_toggle,
 )
 
 
@@ -185,6 +189,10 @@ urlpatterns = [
     path("camila/test/", camila_test_chat, name="camila_test_chat"),
     path("camila/config/", camila_config_save, name="camila_config_save"),
     path("camila/import-json/", camila_import_json, name="camila_import_json"),
+    path("camila/pops/", camila_pop_list, name="camila_pop_list"),
+    path("camila/pops/upload/", camila_pop_upload, name="camila_pop_upload"),
+    path("camila/pops/<int:pop_id>/delete/", camila_pop_delete, name="camila_pop_delete"),
+    path("camila/pops/<int:pop_id>/toggle/", camila_pop_toggle, name="camila_pop_toggle"),
 
     # ============================================================
     # IDCamim OAuth2

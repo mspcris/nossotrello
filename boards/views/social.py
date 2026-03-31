@@ -21,7 +21,7 @@ from ..models import (
     Board, BoardMembership, SocialPost, SocialPostSeen,
     SocialPostReaction, SocialPostComment,
     DailyCheckIn, Card, CardFollow, UserProfile,
-    CamilaKnowledge, CamilaConfig, SocialFriendship, SocialCardDismiss,
+    CamilaKnowledge, CamilaConfig, SocialFriendship, SocialCardDismiss, CamilaPOP,
 )
 
 User = get_user_model()
@@ -530,6 +530,19 @@ def _camila_knowledge_prompt():
     for e in entries:
         lines.append(f"\n[{e.get_category_display()}] {e.title}:\n{e.content}")
     lines.append("\n--- FIM DA BASE DE CONHECIMENTO ---\n")
+
+    # POPs — Procedimentos Operacionais Padrão
+    pops = CamilaPOP.objects.filter(is_active=True).exclude(extracted_text="")
+    if pops.exists():
+        lines.append("\n\n--- POPs — PROCEDIMENTOS OPERACIONAIS PADRÃO ---")
+        lines.append("Quando citar um POP, informe o nome, código e disponibilize o link para download do PDF.")
+        for pop in pops:
+            prefix = f"[{pop.code}] " if pop.code else ""
+            lines.append(f"\n### {prefix}{pop.title}")
+            if pop.pdf_file:
+                lines.append(f"Download do PDF: /media/{pop.pdf_file.name}")
+            lines.append(pop.extracted_text[:3000])
+
     return "\n".join(lines)
 
 
@@ -1278,3 +1291,125 @@ def camila_import_json(request):
         "overwritten": overwritten,
         "errors": errors,
     })
+
+
+@login_required
+@staff_member_required
+def camila_pop_list(request):
+    """Retorna lista de POPs em JSON."""
+    pops = CamilaPOP.objects.all().order_by("code", "title")
+    data = []
+    for p in pops:
+        data.append({
+            "id": p.id,
+            "title": p.title,
+            "code": p.code,
+            "is_active": p.is_active,
+            "pdf_url": p.pdf_file.url if p.pdf_file else "",
+            "chars": len(p.extracted_text),
+            "created_at": p.created_at.strftime("%d/%m/%Y"),
+        })
+    return JsonResponse({"pops": data})
+
+
+@login_required
+@staff_member_required
+@require_POST
+def camila_pop_upload(request):
+    """Upload de ZIP (com vários PDFs) ou PDF individual. Extrai texto e salva CamilaPOP."""
+    import zipfile
+    import io
+
+    try:
+        from pypdf import PdfReader
+    except ImportError:
+        return JsonResponse({"error": "Biblioteca pypdf não instalada no servidor."}, status=500)
+
+    uploaded = request.FILES.get("file")
+    if not uploaded:
+        return JsonResponse({"error": "Nenhum arquivo enviado."}, status=400)
+
+    results = {"imported": 0, "errors": []}
+
+    def _extract_text(pdf_bytes: bytes) -> str:
+        try:
+            reader = PdfReader(io.BytesIO(pdf_bytes))
+            pages = []
+            for page in reader.pages:
+                text = page.extract_text() or ""
+                pages.append(text)
+            return "\n".join(pages).strip()
+        except Exception as exc:
+            return f"[Erro na extração: {exc}]"
+
+    def _save_pop(filename: str, pdf_bytes: bytes, file_obj=None):
+        name = filename.removesuffix(".pdf").removesuffix(".PDF")
+        # Tenta identificar código no nome (ex: "POP-001 Cancelamento.pdf")
+        import re
+        code_match = re.match(r"^(POP[\s\-_]?\d+)", name, re.IGNORECASE)
+        code = code_match.group(1).upper().replace(" ", "-") if code_match else ""
+        title = name.strip()
+
+        text = _extract_text(pdf_bytes)
+
+        from django.core.files.base import ContentFile
+        pop = CamilaPOP(
+            title=title,
+            code=code,
+            extracted_text=text,
+            is_active=True,
+            uploaded_by=request.user,
+        )
+        pop.pdf_file.save(filename, ContentFile(pdf_bytes), save=False)
+        pop.save()
+        results["imported"] += 1
+
+    fname = uploaded.name.lower()
+
+    if fname.endswith(".zip"):
+        raw = uploaded.read()
+        try:
+            with zipfile.ZipFile(io.BytesIO(raw)) as zf:
+                for member in zf.infolist():
+                    if member.filename.lower().endswith(".pdf") and not member.filename.startswith("__MACOSX"):
+                        pdf_bytes = zf.read(member.filename)
+                        base = member.filename.split("/")[-1]
+                        try:
+                            _save_pop(base, pdf_bytes)
+                        except Exception as exc:
+                            results["errors"].append(f"{base}: {exc}")
+        except zipfile.BadZipFile:
+            return JsonResponse({"error": "Arquivo ZIP inválido."}, status=400)
+
+    elif fname.endswith(".pdf"):
+        try:
+            _save_pop(uploaded.name, uploaded.read())
+        except Exception as exc:
+            results["errors"].append(f"{uploaded.name}: {exc}")
+    else:
+        return JsonResponse({"error": "Envie um arquivo .pdf ou .zip com PDFs."}, status=400)
+
+    results["ok"] = True
+    return JsonResponse(results)
+
+
+@login_required
+@staff_member_required
+@require_POST
+def camila_pop_delete(request, pop_id: int):
+    """Remove um POP."""
+    pop = get_object_or_404(CamilaPOP, id=pop_id)
+    pop.pdf_file.delete(save=False)
+    pop.delete()
+    return JsonResponse({"ok": True})
+
+
+@login_required
+@staff_member_required
+@require_POST
+def camila_pop_toggle(request, pop_id: int):
+    """Ativa/desativa um POP."""
+    pop = get_object_or_404(CamilaPOP, id=pop_id)
+    pop.is_active = not pop.is_active
+    pop.save(update_fields=["is_active"])
+    return JsonResponse({"ok": True, "is_active": pop.is_active})
