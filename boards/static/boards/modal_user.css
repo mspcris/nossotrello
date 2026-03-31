@@ -2000,123 +2000,43 @@ video.sp-post-media {
   color: #7c3aed;
 }
 
-/* ── Friend request cards ── */
-.sp-req-group { margin-bottom: 10px; }
-.sp-req-group-label {
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  padding: 4px 0 6px;
-}
-.sp-req-received .sp-req-group-label { color: #dc2626; }
-.sp-req-sent .sp-req-group-label { color: #6b7280; }
+/* ── Friend request carousel items ── */
+.sp-req-item { position: relative; }
+.sp-req-av-wrap { position: relative; cursor: pointer; }
+.sp-req-av-received { border: 2.5px solid #ef4444 !important; }
+.sp-req-av-sent     { border: 2.5px solid #f59e0b !important; opacity: 0.75; }
 
-.sp-req-card {
+/* Overlay de ações (aparece ao tocar no avatar) */
+.sp-req-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.55);
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: 12px;
-  margin-bottom: 6px;
-  animation: sp-req-in 0.35s ease;
-}
-@keyframes sp-req-in {
-  from { opacity: 0; transform: translateX(-10px); }
-  to   { opacity: 1; transform: translateX(0); }
-}
-.sp-req-in  { background: linear-gradient(90deg, #fef2f2 0%, #fee2e2 100%); border: 1px solid #fca5a5; }
-.sp-req-out { background: #f3f4f6; border: 1px solid #e5e7eb; }
-
-.sp-req-avatar { flex-shrink: 0; cursor: pointer; }
-.sp-req-av-img {
-  width: 40px; height: 40px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid #fff;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
-}
-.sp-req-av-fb {
-  width: 40px; height: 40px;
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(135deg, #8b5cf6, #a78bfa);
-  color: #fff; font-weight: 700; font-size: 1rem;
-}
-.sp-req-info {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-.sp-req-name {
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: #1f2937;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.sp-req-date {
-  font-size: 0.65rem;
-  color: #9ca3af;
-}
-.sp-req-actions {
-  display: flex;
+  justify-content: center;
   gap: 6px;
-  align-items: center;
-  flex-shrink: 0;
+  animation: sp-ov-in 0.2s ease;
 }
-.sp-req-btn {
-  border: none;
-  border-radius: 8px;
-  padding: 6px 14px;
-  font-size: 0.75rem;
+@keyframes sp-ov-in {
+  from { opacity: 0; transform: scale(0.8); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.sp-req-ob {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
-  transition: background 0.15s, transform 0.1s;
+  transition: transform 0.1s;
 }
-.sp-req-btn:active { transform: scale(0.95); }
-.sp-req-accept { background: #10b981; color: #fff; }
-.sp-req-accept:hover { background: #059669; }
-.sp-req-reject { background: #fff; color: #ef4444; border: 1px solid #fca5a5; }
-.sp-req-reject:hover { background: #fef2f2; }
-.sp-req-cancel { background: #fff; color: #6b7280; border: 1px solid #d1d5db; }
-.sp-req-cancel:hover { background: #f9fafb; }
-.sp-req-pending-badge {
-  font-size: 0.68rem;
-  color: #f59e0b;
-  font-weight: 600;
-  background: #fffbeb;
-  padding: 3px 8px;
-  border-radius: 6px;
-}
-
-/* Keep old class for polling-generated pills */
-.sp-friend-pill {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: linear-gradient(90deg, #fef2f2 0%, #fee2e2 100%);
-  border: 1px solid #fca5a5;
-  border-radius: 12px;
-  padding: 8px 10px;
-  margin-bottom: 6px;
-  animation: sp-req-in 0.35s ease;
-}
-.sp-fpill-accept {
-  background: #10b981; color: #fff; border: none;
-  border-radius: 8px; padding: 6px 14px;
-  font-size: 0.75rem; font-weight: 700; cursor: pointer;
-}
-.sp-fpill-accept:hover { background: #059669; }
-.sp-fpill-reject {
-  background: #fff; color: #ef4444; border: 1px solid #fca5a5;
-  border-radius: 8px; padding: 6px 12px;
-  font-size: 0.75rem; font-weight: 600; cursor: pointer;
-}
-.sp-fpill-reject:hover { background: #fef2f2; }
+.sp-req-ob:active { transform: scale(0.8); }
+.sp-req-ob-yes    { background: #10b981; color: #fff; }
+.sp-req-ob-no     { background: #ef4444; color: #fff; }
+.sp-req-ob-cancel { background: #6b7280; color: #fff; }
 
 /* ── Camila avatar (crop to circle, no stretch) ── */
 .sp-camila-header-av {

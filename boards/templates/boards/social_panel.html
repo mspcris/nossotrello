@@ -273,70 +273,70 @@
   </div>
   {% endif %}
 
-  <!-- ═══ SOLICITAÇÕES DE AMIZADE ═══ -->
-  {% if pending_friend_requests or sent_friend_requests %}
+  <!-- ═══ SOLICITAÇÕES RECEBIDAS (carrossel — borda vermelha, tap p/ ações) ═══ -->
+  {% if pending_friend_requests %}
+  <div class="sp-friends-bar" id="sp-friend-pills">
+    <div class="sp-section-title">📩 Pediram sua amizade</div>
+    <div class="sp-friends-scroll-wrap">
+      <button type="button" class="sp-scroll-arrow sp-scroll-left sp-hidden" onclick="spScrollRow(this,1)">‹</button>
+      <div class="sp-friends-row">
+        {% for fr in pending_friend_requests %}
+        {% with fp=fr.requester.profile %}
+        <button type="button" class="sp-friend-btn sp-req-item" data-friend-uid="{{ fr.requester_id }}"
+                onclick="spToggleReqActions(this)">
+          <div class="sp-req-av-wrap">
+            {% if fp and fp.avatar %}
+              <img src="{{ fp.avatar.url }}" alt="" class="sp-friend-av-img sp-req-av-received">
+            {% elif fp and fp.avatar_choice %}
+              <img src="{% static 'images/avatar/' %}{{ fp.avatar_choice }}" alt="" class="sp-friend-av-img sp-req-av-received">
+            {% else %}
+              <span class="sp-friend-av-fb sp-req-av-received">{{ fp.display_name|default:fr.requester.email|first|upper }}</span>
+            {% endif %}
+            <div class="sp-req-overlay sp-hidden">
+              <span class="sp-req-ob sp-req-ob-yes" onclick="event.stopPropagation();spAnswerFriend({{ fr.requester_id }},'accept',this)">✓</span>
+              <span class="sp-req-ob sp-req-ob-no" onclick="event.stopPropagation();spAnswerFriend({{ fr.requester_id }},'reject',this)">✕</span>
+            </div>
+          </div>
+          <span class="sp-friend-name">{{ fp.display_name|default:fr.requester.email|truncatechars:8 }}</span>
+        </button>
+        {% endwith %}
+        {% endfor %}
+      </div>
+      <button type="button" class="sp-scroll-arrow sp-scroll-right" onclick="spScrollRow(this,-1)">›</button>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ═══ SOLICITAÇÕES ENVIADAS (carrossel — borda amarela, tap p/ cancelar) ═══ -->
+  {% if sent_friend_requests %}
   <div class="sp-friends-bar">
-    <div class="sp-section-title">📬 Solicitações de Amizade</div>
-
-    {% if pending_friend_requests %}
-    <div class="sp-req-group sp-req-received">
-      <div class="sp-req-group-label">Pediram amizade para mim</div>
-      <div id="sp-friend-pills">
-      {% for fr in pending_friend_requests %}
-      {% with fp=fr.requester.profile %}
-      <div class="sp-req-card sp-req-in" data-friend-uid="{{ fr.requester_id }}">
-        <div class="sp-req-avatar" onclick="spOpenFriendSheet({{ fr.requester_id }})">
-          {% if fp and fp.avatar %}
-            <img src="{{ fp.avatar.url }}" alt="" class="sp-req-av-img">
-          {% elif fp and fp.avatar_choice %}
-            <img src="{% static 'images/avatar/' %}{{ fp.avatar_choice }}" alt="" class="sp-req-av-img">
-          {% else %}
-            <span class="sp-req-av-fb">{{ fp.display_name|default:fr.requester.email|first|upper }}</span>
-          {% endif %}
-        </div>
-        <div class="sp-req-info">
-          <span class="sp-req-name">{{ fp.display_name|default:fr.requester.email }}</span>
-          <span class="sp-req-date">{{ fr.created_at|timesince }} atrás</span>
-        </div>
-        <div class="sp-req-actions">
-          <button type="button" class="sp-req-btn sp-req-accept" onclick="spAnswerFriend({{ fr.requester_id }},'accept',this)">Aceitar</button>
-          <button type="button" class="sp-req-btn sp-req-reject" onclick="spAnswerFriend({{ fr.requester_id }},'reject',this)">Recusar</button>
-        </div>
+    <div class="sp-section-title">📤 Aguardando resposta</div>
+    <div class="sp-friends-scroll-wrap">
+      <button type="button" class="sp-scroll-arrow sp-scroll-left sp-hidden" onclick="spScrollRow(this,1)">‹</button>
+      <div class="sp-friends-row">
+        {% for fr in sent_friend_requests %}
+        {% with fp=fr.receiver.profile %}
+        <button type="button" class="sp-friend-btn sp-req-item"
+                onclick="spToggleReqActions(this)">
+          <div class="sp-req-av-wrap">
+            {% if fp and fp.avatar %}
+              <img src="{{ fp.avatar.url }}" alt="" class="sp-friend-av-img sp-req-av-sent">
+            {% elif fp and fp.avatar_choice %}
+              <img src="{% static 'images/avatar/' %}{{ fp.avatar_choice }}" alt="" class="sp-friend-av-img sp-req-av-sent">
+            {% else %}
+              <span class="sp-friend-av-fb sp-req-av-sent">{{ fp.display_name|default:fr.receiver.email|first|upper }}</span>
+            {% endif %}
+            <div class="sp-req-overlay sp-hidden">
+              <span class="sp-req-ob sp-req-ob-cancel" onclick="event.stopPropagation();spCancelFriendReq({{ fr.receiver_id }},this)">✕</span>
+            </div>
+          </div>
+          <span class="sp-friend-name">{{ fp.display_name|default:fr.receiver.email|truncatechars:8 }}</span>
+        </button>
+        {% endwith %}
+        {% endfor %}
       </div>
-      {% endwith %}
-      {% endfor %}
-      </div>
+      <button type="button" class="sp-scroll-arrow sp-scroll-right" onclick="spScrollRow(this,-1)">›</button>
     </div>
-    {% endif %}
-
-    {% if sent_friend_requests %}
-    <div class="sp-req-group sp-req-sent">
-      <div class="sp-req-group-label">Meus pedidos enviados</div>
-      {% for fr in sent_friend_requests %}
-      {% with fp=fr.receiver.profile %}
-      <div class="sp-req-card sp-req-out">
-        <div class="sp-req-avatar" onclick="spOpenFriendSheet({{ fr.receiver_id }})">
-          {% if fp and fp.avatar %}
-            <img src="{{ fp.avatar.url }}" alt="" class="sp-req-av-img">
-          {% elif fp and fp.avatar_choice %}
-            <img src="{% static 'images/avatar/' %}{{ fp.avatar_choice }}" alt="" class="sp-req-av-img">
-          {% else %}
-            <span class="sp-req-av-fb">{{ fp.display_name|default:fr.receiver.email|first|upper }}</span>
-          {% endif %}
-        </div>
-        <div class="sp-req-info">
-          <span class="sp-req-name">{{ fp.display_name|default:fr.receiver.email }}</span>
-          <span class="sp-req-date">{{ fr.created_at|timesince }} atrás</span>
-        </div>
-        <div class="sp-req-actions">
-          <span class="sp-req-pending-badge">Aguardando</span>
-          <button type="button" class="sp-req-btn sp-req-cancel" onclick="spCancelFriendReq({{ fr.receiver_id }},this)">Cancelar</button>
-        </div>
-      </div>
-      {% endwith %}
-      {% endfor %}
-    </div>
-    {% endif %}
   </div>
   {% endif %}
 
@@ -1718,12 +1718,29 @@ var _CAMILA_AVATARS = {
   };
 
   /* ── Aceitar / Recusar convite de amizade ── */
+  /* ── Tap no avatar para mostrar/esconder botões ── */
+  window.spToggleReqActions = function(el) {
+    var overlay = el.querySelector('.sp-req-overlay');
+    if (!overlay) return;
+    // Fecha todos os outros
+    document.querySelectorAll('.sp-req-overlay').forEach(function(o){
+      if (o !== overlay) o.classList.add('sp-hidden');
+    });
+    overlay.classList.toggle('sp-hidden');
+  };
+  // Fecha overlay ao tocar fora
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.sp-req-item')) {
+      document.querySelectorAll('.sp-req-overlay').forEach(function(o){ o.classList.add('sp-hidden'); });
+    }
+  });
+
   function _spFadeOutCard(btn) {
-    var card = btn.closest('.sp-req-card') || btn.closest('.sp-friend-pill');
+    var card = btn.closest('.sp-req-item') || btn.closest('.sp-friend-pill');
     if (card) {
-      card.style.transition = 'opacity 0.3s, transform 0.3s';
+      card.style.transition = 'opacity 0.3s, transform 0.3s, width 0.3s';
       card.style.opacity = '0';
-      card.style.transform = 'scale(0.9)';
+      card.style.transform = 'scale(0.7)';
       setTimeout(function(){ card.remove(); }, 300);
     }
   }
@@ -2223,14 +2240,18 @@ var _CAMILA_AVATARS = {
               _spPillKnownFriends.add(fp.user_id); return;
             }
             _spPillKnownFriends.add(fp.user_id);
-            var name = (fp.name || '').slice(0, 20);
+            var name = (fp.name || '').slice(0, 8);
+            var initial = (fp.name || '?').charAt(0).toUpperCase();
             var div = document.createElement('div');
-            div.className = 'sp-friend-pill';
+            div.className = 'sp-friend-btn sp-req-item sp-req-in-item';
             div.dataset.friendUid = fp.user_id;
-            div.innerHTML = '<span class="sp-cpill-icon">🤝</span>'
-              + '<span class="sp-cpill-text">' + name + ' quer ser seu amigo</span>'
-              + '<button type="button" class="sp-fpill-accept" onclick="spAnswerFriend(' + fp.user_id + ',\'accept\',this)">Aceitar</button>'
-              + '<button type="button" class="sp-fpill-reject" onclick="spAnswerFriend(' + fp.user_id + ',\'reject\',this)">Recusar</button>';
+            div.innerHTML = '<div class="sp-req-av-wrap" onclick="spOpenFriendSheet(' + fp.user_id + ')">'
+              + '<span class="sp-friend-av-fb sp-req-av-received">' + initial + '</span></div>'
+              + '<span class="sp-friend-name">' + name + '</span>'
+              + '<div class="sp-req-mini-actions">'
+              + '<button type="button" class="sp-req-mini-btn sp-req-mini-yes" onclick="spAnswerFriend(' + fp.user_id + ',\'accept\',this)" title="Aceitar">✓</button>'
+              + '<button type="button" class="sp-req-mini-btn sp-req-mini-no" onclick="spAnswerFriend(' + fp.user_id + ',\'reject\',this)" title="Recusar">✕</button>'
+              + '</div>';
             _spAddFriendPill(div);
           });
         }).catch(function(){});
