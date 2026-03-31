@@ -355,8 +355,18 @@ def social_cover_upload(request):
     f = request.FILES.get("cover_photo")
     extra = {}
     if f:
+        from django.core.files.base import ContentFile
+        f.seek(0)
+        cover_bytes = f.read()
+        f.seek(0)
         prof.cover_photo = f
         prof.save(update_fields=["cover_photo"])
+        SocialPost.objects.create(
+            user=request.user,
+            text="📸 Atualizei minha foto de capa!",
+            photo=ContentFile(cover_bytes, name="cover.jpg"),
+        )
+        extra["ai_react_text"] = "Troquei a foto de capa do meu perfil"
     else:
         extra["cover_error"] = "Selecione uma imagem."
 
@@ -551,8 +561,19 @@ def social_avatar_upload(request):
     if f.size > 5 * 1024 * 1024:
         return JsonResponse({"error": "Imagem muito grande (máx 5MB)."}, status=400)
     prof.avatar = f
+    from django.core.files.base import ContentFile
     prof.avatar_choice = ""
+    # Read file content before saving (Django moves the file pointer)
+    f.seek(0)
+    avatar_bytes = f.read()
+    f.seek(0)
     prof.save(update_fields=["avatar", "avatar_choice"])
+    # Auto-post with a copy of the file
+    SocialPost.objects.create(
+        user=request.user,
+        text="🤳 Nova foto de perfil!",
+        photo=ContentFile(avatar_bytes, name="avatar.jpg"),
+    )
     return JsonResponse({"url": prof.avatar.url})
 
 
