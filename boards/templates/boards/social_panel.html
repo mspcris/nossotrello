@@ -14,8 +14,10 @@
               hx-encoding="multipart/form-data" enctype="multipart/form-data">
           {% csrf_token %}
           <label class="sp-cover-btn" title="Alterar capa">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-            <input type="file" name="cover_photo" accept="image/*" class="hidden"
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            <span class="sp-cover-btn-text">Capa</span>
+            <input type="file" name="cover_photo" accept="image/*"
+                   style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;"
                    onchange="this.closest('form').requestSubmit()">
           </label>
         </form>
@@ -198,13 +200,18 @@
       <div class="sp-tasks-group sp-tasks-overdue">
         <div class="sp-tasks-group-label">Atrasadas</div>
         {% for card in overdue_tasks %}
-          <a href="/board/{{ card.column.board_id }}/?card={{ card.id }}" class="sp-task-item sp-task-overdue">
-            <span class="sp-task-title">{{ card.title|truncatechars:50 }}</span>
-            <span class="sp-task-meta">
-              {{ card.column.board.name|truncatechars:20 }} &middot;
-              {{ card.due_date|date:"d/m" }}
-            </span>
-          </a>
+          <div class="sp-task-row">
+            <a href="/board/{{ card.column.board_id }}/?card={{ card.id }}" class="sp-task-item sp-task-overdue" target="_blank">
+              <span class="sp-task-title">{{ card.title|truncatechars:50 }}</span>
+              <span class="sp-task-meta">
+                {{ card.column.board.name|truncatechars:20 }} &middot;
+                {{ card.due_date|date:"d/m" }}
+              </span>
+            </a>
+            <button type="button" class="sp-task-done" title="Ocultar" onclick="this.closest('.sp-task-row').remove()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/></svg>
+            </button>
+          </div>
         {% endfor %}
       </div>
     {% endif %}
@@ -213,13 +220,18 @@
       <div class="sp-tasks-group">
         <div class="sp-tasks-group-label">Em andamento</div>
         {% for card in today_tasks %}
-          <a href="/board/{{ card.column.board_id }}/?card={{ card.id }}" class="sp-task-item">
-            <span class="sp-task-title">{{ card.title|truncatechars:50 }}</span>
-            <span class="sp-task-meta">
-              {{ card.column.board.name|truncatechars:20 }}
-              {% if card.due_date %}&middot; {{ card.due_date|date:"d/m" }}{% endif %}
-            </span>
-          </a>
+          <div class="sp-task-row">
+            <a href="/board/{{ card.column.board_id }}/?card={{ card.id }}" class="sp-task-item" target="_blank">
+              <span class="sp-task-title">{{ card.title|truncatechars:50 }}</span>
+              <span class="sp-task-meta">
+                {{ card.column.board.name|truncatechars:20 }}
+                {% if card.due_date %}&middot; {{ card.due_date|date:"d/m" }}{% endif %}
+              </span>
+            </a>
+            <button type="button" class="sp-task-done" title="Ocultar" onclick="this.closest('.sp-task-row').remove()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/></svg>
+            </button>
+          </div>
         {% endfor %}
       </div>
     {% endif %}
