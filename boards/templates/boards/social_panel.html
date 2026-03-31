@@ -7,18 +7,18 @@
   <div class="sp-card sp-profile-card">
     <div class="sp-cover" {% if profile.cover_photo %}style="background-image:url('{{ profile.cover_photo.url }}')"{% endif %}>
       {% if is_me %}
-      <form class="sp-cover-form"
+      <form id="sp-cover-form" class="sp-cover-form"
             hx-post="{% url 'boards:social_cover_upload' %}"
             hx-target="#social-panel" hx-swap="outerHTML"
             hx-encoding="multipart/form-data" enctype="multipart/form-data">
         {% csrf_token %}
-        <label class="sp-cover-btn" title="Alterar capa">
+        <input type="file" id="sp-cover-input" name="cover_photo" accept="image/*,image/gif"
+               style="display:none"
+               onchange="document.getElementById('sp-cover-form').requestSubmit()">
+        <button type="button" class="sp-cover-btn" onclick="document.getElementById('sp-cover-input').click()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
           <span>Capa</span>
-          <input type="file" name="cover_photo" accept="image/*,image/gif"
-                 style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;"
-                 onchange="this.closest('form').requestSubmit()">
-        </label>
+        </button>
       </form>
       {% endif %}
     </div>
