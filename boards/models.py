@@ -825,6 +825,12 @@ class UserBoardPreference(models.Model):
 # SOCIAL (scrapbook / mood / chatbot)
 # ============================================================
 class SocialPost(models.Model):
+    VISIBILITY_ALL = "all"
+    VISIBILITY_FRIENDS = "friends"
+    VISIBILITY_CHOICES = [
+        ("all", "Todos"),
+        ("friends", "Apenas amigos"),
+    ]
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name="social_posts",
@@ -833,6 +839,7 @@ class SocialPost(models.Model):
     text = models.TextField(blank=True, default="")
     photo = models.ImageField(upload_to="social/", blank=True, null=True)
     video = models.FileField(upload_to="social/videos/", blank=True, null=True)
+    visibility = models.CharField(max_length=10, choices=VISIBILITY_CHOICES, default="all")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

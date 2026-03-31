@@ -140,7 +140,9 @@ from boards.views.social import (
     camila_pop_resummarize,
     card_like_social,
     social_friends_feed,
+    social_friend_reject,
     social_friend_remove,
+    social_post_toggle_visibility,
 )
 
 
@@ -166,12 +168,14 @@ urlpatterns = [
     path("users/<int:user_id>/social/", social_posts_panel, name="social_posts_panel"),
     path("social/post/create/", social_post_create, name="social_post_create"),
     path("social/post/<int:post_id>/delete/", social_post_delete, name="social_post_delete"),
+    path("social/post/<int:post_id>/toggle-visibility/", social_post_toggle_visibility, name="social_post_toggle_visibility"),
     path("social/post/<int:post_id>/react/", social_post_react, name="social_post_react"),
     path("social/post/<int:post_id>/comment/", social_post_comment, name="social_post_comment"),
     path("social/post/<int:post_id>/comments/seen/", social_comments_mark_seen, name="social_comments_mark_seen"),
     path("social/<int:user_id>/network/", social_user_network, name="social_user_network"),
     path("social/<int:user_id>/friend-request/", social_friend_request, name="social_friend_request"),
     path("social/<int:user_id>/friend-accept/", social_friend_accept, name="social_friend_accept"),
+    path("social/<int:user_id>/friend-reject/", social_friend_reject, name="social_friend_reject"),
     path("social/<int:user_id>/friend-remove/", social_friend_remove, name="social_friend_remove"),
     path("social/board-share/", social_board_share, name="social_board_share"),
     path("social/set-unidade/", social_set_unidade, name="social_set_unidade"),

@@ -134,7 +134,16 @@ def _build_social_context(request, target_user, extra=None):
     )
 
     # Posts + prefetch reactions/comments
-    posts = list(SocialPost.objects.filter(user=target_user).order_by("-created_at")[:30])
+    posts_qs = SocialPost.objects.filter(user=target_user).order_by("-created_at")
+    if not is_me:
+        # Visitor: hide "friends only" posts unless they are an accepted friend
+        is_friend = SocialFriendship.objects.filter(
+            models.Q(requester=request.user, receiver=target_user, status="accepted")
+            | models.Q(requester=target_user, receiver=request.user, status="accepted")
+        ).exists()
+        if not is_friend:
+            posts_qs = posts_qs.exclude(visibility="friends")
+    posts = list(posts_qs[:30])
 
     if posts:
         post_ids = [p.id for p in posts]
@@ -281,6 +290,16 @@ def _build_social_context(request, target_user, extra=None):
         for r in unread_reply_items:
             r.replier_name = _get_or_create_profile(r.user).display_name or r.user.email
 
+    # Convites de amizade pendentes recebidos
+    pending_friend_requests = []
+    if is_me:
+        pending_friend_requests = list(
+            SocialFriendship.objects.filter(
+                receiver=target_user, status="pending"
+            ).select_related("requester", "requester__profile")
+            .order_by("-created_at")
+        )
+
     # Mood choices para o seletor
     mood_choices = DailyCheckIn.MOOD_CHOICES
     mood_emojis = DailyCheckIn.MOOD_EMOJIS
@@ -305,6 +324,7 @@ def _build_social_context(request, target_user, extra=None):
         "show_unit_tutorial": show_unit_tutorial,
         "unit_suggestions": unit_suggestions,
         "available_units": available_units,
+        "pending_friend_requests": pending_friend_requests,
     }
     if extra:
         ctx.update(extra)
@@ -427,6 +447,10 @@ def social_post_create(request):
         else:
             photo = media
 
+    visibility = (request.POST.get("visibility") or "all").strip()
+    if visibility not in ("all", "friends"):
+        visibility = "all"
+
     extra = {}
     if not text and not photo and not video:
         extra["post_error"] = "Adicione um texto, foto ou vídeo antes de publicar."
@@ -436,6 +460,7 @@ def social_post_create(request):
             text=text,
             photo=photo or None,
             video=video or None,
+            visibility=visibility,
         )
         # AI react trigger
         parts = []
@@ -461,6 +486,18 @@ def social_post_delete(request, post_id: int):
     post.delete()
     ctx = _build_social_context(request, request.user)
     return render(request, "boards/social_panel.html", ctx)
+
+
+# ---------------------------------------------------------------
+# Alternar visibilidade do post (all ↔ friends)
+# ---------------------------------------------------------------
+@login_required
+@require_POST
+def social_post_toggle_visibility(request, post_id: int):
+    post = get_object_or_404(SocialPost, id=post_id, user=request.user)
+    post.visibility = "friends" if post.visibility == "all" else "all"
+    post.save(update_fields=["visibility"])
+    return JsonResponse({"visibility": post.visibility})
 
 
 # ---------------------------------------------------------------
@@ -1158,7 +1195,22 @@ def social_pills_poll(request):
             "replier_name": prof.display_name or r.user.email,
         })
 
-    return JsonResponse({"comment_pills": comment_pills, "reply_pills": reply_pills})
+    # Convites de amizade pendentes
+    friend_pills = []
+    for fs in SocialFriendship.objects.filter(
+        receiver=request.user, status="pending"
+    ).select_related("requester", "requester__profile").order_by("-created_at"):
+        prof = _get_or_create_profile(fs.requester)
+        friend_pills.append({
+            "user_id": fs.requester_id,
+            "name": prof.display_name or fs.requester.email,
+        })
+
+    return JsonResponse({
+        "comment_pills": comment_pills,
+        "reply_pills": reply_pills,
+        "friend_pills": friend_pills,
+    })
 
 
 # ---------------------------------------------------------------
@@ -1298,6 +1350,16 @@ def social_friend_accept(request, user_id: int):
     fs.status = SocialFriendship.STATUS_ACCEPTED
     fs.save(update_fields=["status"])
     return JsonResponse({"action": "accepted"})
+
+
+@login_required
+@require_POST
+def social_friend_reject(request, user_id: int):
+    """Rejeita (deleta) um convite recebido de user_id."""
+    deleted, _ = SocialFriendship.objects.filter(
+        requester_id=user_id, receiver=request.user, status="pending"
+    ).delete()
+    return JsonResponse({"action": "rejected", "deleted": deleted})
 
 
 @login_required

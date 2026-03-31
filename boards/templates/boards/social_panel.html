@@ -328,6 +328,20 @@
     </div>
   </div>
 
+  <!-- ═══ PÍLULAS DE CONVITES DE AMIZADE PENDENTES ═══ -->
+  {% if pending_friend_requests %}
+  <div id="sp-friend-pills" class="sp-comment-pills">
+    {% for fr in pending_friend_requests %}
+    <div class="sp-friend-pill" data-friend-uid="{{ fr.requester_id }}">
+      <span class="sp-cpill-icon">🤝</span>
+      <span class="sp-cpill-text">{{ fr.requester.profile.display_name|default:fr.requester.email|truncatechars:20 }} quer ser seu amigo</span>
+      <button type="button" class="sp-fpill-accept" onclick="spAnswerFriend({{ fr.requester_id }},'accept',this)">Aceitar</button>
+      <button type="button" class="sp-fpill-reject" onclick="spAnswerFriend({{ fr.requester_id }},'reject',this)">Recusar</button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
   <!-- ═══ PÍLULAS DE COMENTÁRIOS / RESPOSTAS NÃO VISTOS ═══ -->
   {% if unread_comment_posts or unread_reply_items %}
   <div id="sp-comment-pills" class="sp-comment-pills">
@@ -591,7 +605,14 @@
           </button>
         </div>
 
-        <button type="submit" class="sp-btn sp-btn-blue">Publicar 🚀</button>
+        <input type="hidden" name="visibility" id="sp-vis-input" value="all">
+        <div class="sp-vis-row">
+          <button type="button" class="sp-vis-toggle" id="sp-vis-btn" onclick="spToggleVis()">
+            <span id="sp-vis-icon">🌍</span>
+            <span id="sp-vis-label">Todos</span>
+          </button>
+          <button type="submit" class="sp-btn sp-btn-blue" style="flex:1">Publicar 🚀</button>
+        </div>
       </form>
 
       <div class="sp-sheet-divider"></div>
@@ -1056,6 +1077,38 @@ var _CAMILA_AVATARS = {
     var o = document.getElementById('sp-sheet-overlay');
     if(o) o.classList.add('sp-hidden');
     document.body.style.overflow = '';
+  };
+
+  /* ── Visibility toggle (creation form) ── */
+  window.spToggleVis = function(){
+    var inp = document.getElementById('sp-vis-input');
+    var icon = document.getElementById('sp-vis-icon');
+    var label = document.getElementById('sp-vis-label');
+    if (!inp) return;
+    if (inp.value === 'all') {
+      inp.value = 'friends';
+      icon.textContent = '🔒';
+      label.textContent = 'Amigos';
+    } else {
+      inp.value = 'all';
+      icon.textContent = '🌍';
+      label.textContent = 'Todos';
+    }
+  };
+
+  /* ── Toggle visibility on existing post ── */
+  window.spTogglePostVis = function(postId){
+    var csrf = document.querySelector('meta[name="csrf-token"]');
+    fetch('/social/post/' + postId + '/toggle-visibility/', {
+      method: 'POST',
+      headers: {'X-CSRFToken': csrf ? csrf.content : ''}
+    }).then(function(r){ return r.json(); }).then(function(d){
+      var btn = document.getElementById('sp-vis-post-' + postId);
+      if (btn) {
+        btn.textContent = d.visibility === 'friends' ? '🔒' : '🌍';
+        btn.title = d.visibility === 'friends' ? 'Apenas amigos' : 'Todos';
+      }
+    }).catch(function(){});
   };
 
   /* ── Media capture: set accept/capture and trigger file picker ── */
@@ -1562,6 +1615,34 @@ var _CAMILA_AVATARS = {
     }, 300);
   };
 
+  /* ── Aceitar / Recusar convite de amizade ── */
+  window.spAnswerFriend = function(uid, action, btn) {
+    var csrf = document.querySelector('meta[name="csrf-token"]');
+    var url = action === 'accept'
+      ? '/social/' + uid + '/friend-accept/'
+      : '/social/' + uid + '/friend-reject/';
+    fetch(url, {
+      method: 'POST',
+      headers: {'X-CSRFToken': csrf ? csrf.content : ''}
+    }).then(function(r){ return r.json(); }).then(function(d){
+      var pill = btn.closest('.sp-friend-pill');
+      if (pill) {
+        pill.style.transition = 'opacity 0.3s, transform 0.3s';
+        pill.style.opacity = '0';
+        pill.style.transform = 'scale(0.8)';
+        setTimeout(function(){
+          pill.remove();
+          var container = document.getElementById('sp-friend-pills');
+          if(container && !container.querySelector('.sp-friend-pill')) container.remove();
+        }, 300);
+      }
+      if (action === 'accept') {
+        // Recarrega para atualizar lista de amigos
+        location.reload();
+      }
+    }).catch(function(){});
+  };
+
   /* ── Resposta a comentário ── */
   window.spShowReply = function(commentId, authorName, postId) {
     document.querySelectorAll('.sp-reply-form').forEach(function(f){ f.classList.add('sp-hidden'); });
@@ -1632,6 +1713,7 @@ var _CAMILA_AVATARS = {
     var _newsPool        = [];   // sugestões de notícias (carregadas do servidor)
     var _camilaWeatherEmoji = '';
     var _camilaTemp         = '';
+    var _camilaWeatherKey   = '';
 
     /* ── WMO weather-code → emoji ── */
     function _wmoEmoji(code) {
@@ -1680,6 +1762,7 @@ var _CAMILA_AVATARS = {
         key = 'cold'; sticker = '🧣';
       }
 
+      _camilaWeatherKey = key;
       var src = _CAMILA_AVATARS[key] || _CAMILA_AVATARS['default'];
 
       /* Troca todas as imgs da Camila com fade */
@@ -1804,6 +1887,14 @@ var _CAMILA_AVATARS = {
 
     function _spOpenCamilaProactive(idx) {
       if (window.spOpenCamila) window.spOpenCamila();
+      /* Garante avatar correto na Camila ao abrir proativamente */
+      if (_camilaWeatherKey) {
+        var wSrc = _CAMILA_AVATARS[_camilaWeatherKey] || _CAMILA_AVATARS['default'];
+        ['sp-camila-header-img', 'sp-camila-btn-img'].forEach(function(id) {
+          var el = document.getElementById(id);
+          if (el && el.src.indexOf(wSrc) === -1) el.src = wSrc;
+        });
+      }
       setTimeout(function(){
         var msgs = document.getElementById('sp-camila-messages');
         if (!msgs) return;
@@ -1870,6 +1961,13 @@ var _CAMILA_AVATARS = {
           cta.textContent = 'Tocar para publicar ✨';
         }
 
+        /* Garante avatar correto no nudge */
+        var nudgeImg = document.getElementById('sp-camila-nudge-img');
+        if (nudgeImg && _camilaWeatherKey) {
+          var wSrc = _CAMILA_AVATARS[_camilaWeatherKey] || _CAMILA_AVATARS['default'];
+          if (nudgeImg.src.indexOf(wSrc) === -1) nudgeImg.src = wSrc;
+        }
+
         nudge.classList.remove('sp-hidden');
         void nudge.offsetWidth; /* force reflow for animation */
         nudge.classList.add('sp-nudge-in');
@@ -1894,6 +1992,7 @@ var _CAMILA_AVATARS = {
     /* ── Polling de pílulas a cada 15 s ── */
     var _spPillKnownComments = new Set();
     var _spPillKnownReplies  = new Set();
+    var _spPillKnownFriends  = new Set();
 
     // Inicializa com pílulas já no DOM
     document.querySelectorAll('[data-post-id]').forEach(function(el){
@@ -1901,6 +2000,9 @@ var _CAMILA_AVATARS = {
     });
     document.querySelectorAll('[data-reply-id]').forEach(function(el){
       _spPillKnownReplies.add(parseInt(el.dataset.replyId, 10));
+    });
+    document.querySelectorAll('[data-friend-uid]').forEach(function(el){
+      _spPillKnownFriends.add(parseInt(el.dataset.friendUid, 10));
     });
 
     function _spEnsurePillContainer() {
@@ -1915,6 +2017,33 @@ var _CAMILA_AVATARS = {
         else if (panel) panel.prepend(c);
       }
       return c;
+    }
+
+    function _spEnsureFriendPillContainer() {
+      var c = document.getElementById('sp-friend-pills');
+      if (!c) {
+        c = document.createElement('div');
+        c.id = 'sp-friend-pills';
+        c.className = 'sp-comment-pills';
+        var panel = document.getElementById('social-panel');
+        var commentPills = document.getElementById('sp-comment-pills');
+        var anchor = commentPills || (panel ? panel.querySelector('.sp-card') : null);
+        if (anchor) anchor.parentNode.insertBefore(c, anchor);
+        else if (panel) panel.prepend(c);
+      }
+      return c;
+    }
+
+    function _spAddFriendPill(div) {
+      var c = _spEnsureFriendPillContainer();
+      div.style.opacity = '0';
+      div.style.transform = 'scale(0.7)';
+      c.appendChild(div);
+      requestAnimationFrame(function(){
+        div.style.transition = 'opacity 0.35s, transform 0.35s';
+        div.style.opacity = '1';
+        div.style.transform = 'scale(1)';
+      });
     }
 
     function _spAddPill(btn) {
@@ -1965,6 +2094,23 @@ var _CAMILA_AVATARS = {
             btn.innerHTML = '<span class="sp-cpill-icon">↩</span>'
               + '<span class="sp-cpill-text">' + name + ' respondeu ao seu comentário</span>';
             _spAddPill(btn);
+          });
+          // Convites de amizade
+          (d.friend_pills || []).forEach(function(fp) {
+            if (_spPillKnownFriends.has(fp.user_id)) return;
+            if (document.querySelector('[data-friend-uid="' + fp.user_id + '"]')) {
+              _spPillKnownFriends.add(fp.user_id); return;
+            }
+            _spPillKnownFriends.add(fp.user_id);
+            var name = (fp.name || '').slice(0, 20);
+            var div = document.createElement('div');
+            div.className = 'sp-friend-pill';
+            div.dataset.friendUid = fp.user_id;
+            div.innerHTML = '<span class="sp-cpill-icon">🤝</span>'
+              + '<span class="sp-cpill-text">' + name + ' quer ser seu amigo</span>'
+              + '<button type="button" class="sp-fpill-accept" onclick="spAnswerFriend(' + fp.user_id + ',\'accept\',this)">Aceitar</button>'
+              + '<button type="button" class="sp-fpill-reject" onclick="spAnswerFriend(' + fp.user_id + ',\'reject\',this)">Recusar</button>';
+            _spAddFriendPill(div);
           });
         }).catch(function(){});
     }

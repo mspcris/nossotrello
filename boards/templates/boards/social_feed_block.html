@@ -70,10 +70,17 @@
       <div class="sp-post-footer">
         <span>{{ post.created_at|date:"d/m/Y H:i" }}</span>
         {% if is_me %}
+        <button type="button" class="sp-vis-post-btn" id="sp-vis-post-{{ post.id }}"
+                onclick="spTogglePostVis({{ post.id }})"
+                title="{% if post.visibility == 'friends' %}Apenas amigos{% else %}Todos{% endif %}">
+          {% if post.visibility == "friends" %}🔒{% else %}🌍{% endif %}
+        </button>
         <button type="button" class="sp-post-delete"
                 hx-post="{% url 'boards:social_post_delete' post.id %}"
                 hx-target="#social-panel" hx-swap="outerHTML"
                 hx-confirm="Excluir?">Excluir</button>
+        {% else %}
+          {% if post.visibility == "friends" %}<span class="sp-vis-badge" title="Apenas amigos">🔒</span>{% endif %}
         {% endif %}
       </div>
     </div>
