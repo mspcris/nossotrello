@@ -193,7 +193,7 @@
     <div class="cm-header-center flex items-center justify-center">
       {% block header_center %}
         {% if board.cover_image %}
-        <div class="cm-header-board-cover">
+        <div class="cm-header-board-cover" style="cursor:pointer" onclick="openCoverLightbox('{{ board.cover_image.url }}')">
           <div
             class="cm-header-board-cover-blur"
             style="background-image: url('{{ board.cover_image.url }}');"
@@ -906,6 +906,36 @@ window.addEventListener("popstate", () => {
 })();
 </script>
 {% endif %}
+
+<!-- ===== LIGHTBOX IMAGEM DO QUADRO ===== -->
+<div id="cover-lightbox"
+     style="position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.85);
+            display:none;align-items:center;justify-content:center;
+            cursor:pointer;-webkit-tap-highlight-color:transparent;"
+     onclick="closeCoverLightbox()">
+  <img id="cover-lightbox-img" src="" alt=""
+       style="max-width:92vw;max-height:88vh;object-fit:contain;border-radius:12px;
+              box-shadow:0 8px 40px rgba(0,0,0,0.5);pointer-events:none;">
+</div>
+<script>
+function openCoverLightbox(url){
+  var lb = document.getElementById('cover-lightbox');
+  var img = document.getElementById('cover-lightbox-img');
+  if(!lb||!img) return;
+  img.src = url;
+  lb.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+function closeCoverLightbox(){
+  var lb = document.getElementById('cover-lightbox');
+  if(!lb) return;
+  lb.style.display = 'none';
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape') closeCoverLightbox();
+});
+</script>
 
 <!-- ===== TOAST DE NOTIFICAÇÃO ===== -->
 <div id="nt-toast-container"></div>
