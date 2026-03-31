@@ -693,7 +693,22 @@ def social_camila_chat(request):
         return JsonResponse({"error": "Mensagem vazia."}, status=400)
 
     cfg = CamilaConfig.get()
-    prompt = cfg.prompt_chat + _camila_knowledge_prompt(message) + _get_weather_context()
+
+    social_ctx = (
+        "\n\n[CONTEXTO DA REDE SOCIAL CAMIM]\n"
+        "Você está conversando dentro da rede social interna da CAMIM (tarefas.camim.com.br/social/).\n"
+        "Funcionalidades que o usuário pode usar:\n"
+        "- PUBLICAR: tocar no botão + (roxo) no canto inferior, escrever um texto, tirar/escolher foto ou vídeo e enviar.\n"
+        "- REAGIR: nos posts do feed, tocar em 👍 ❤️ 😂 🔥 👏 para reagir.\n"
+        "- COMENTAR: digitar no campo abaixo de cada post e enviar.\n"
+        "- PERFIL: tocar no avatar para editar foto, capa, posto, setor, telefone.\n"
+        "- HUMOR: registrar como está se sentindo no check-in diário.\n"
+        "- QUADROS: o sistema de tarefas (boards/cards) fica em tarefas.camim.com.br.\n"
+        "Se o usuário perguntar 'como fazer' algo na rede social, explique de forma simples e direta "
+        "com passos numerados. Seja objetiva e prática.\n"
+    )
+
+    prompt = cfg.prompt_chat + social_ctx + _camila_knowledge_prompt(message) + _get_weather_context()
     messages = [*history[-10:], {"role": "user", "content": message}]
     response = _groq_chat(messages, prompt, config=cfg)
     return JsonResponse({"response": response})
@@ -737,6 +752,26 @@ def social_post_react(request, post_id: int):
         "counts": counts,
         "total": sum(counts.values()),
     })
+
+
+# ---------------------------------------------------------------
+# Like em card → publica no feed social
+# ---------------------------------------------------------------
+@login_required
+@require_POST
+def card_like_social(request, card_id: int):
+    """Curte um card e publica automaticamente no feed social."""
+    card = get_object_or_404(Card, id=card_id)
+    board = card.column.board
+    user_name = request.user.get_full_name() or request.user.username
+    board_url = request.build_absolute_uri(f"/board/{board.id}/")
+    text = (
+        f"👍 {user_name} curtiu o card: {card.title}\n"
+        f"📋 Quadro: {board.name}\n"
+        f"🔗 {board_url}"
+    )
+    SocialPost.objects.create(user=request.user, text=text)
+    return JsonResponse({"ok": True})
 
 
 # ---------------------------------------------------------------

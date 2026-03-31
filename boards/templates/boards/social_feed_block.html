@@ -11,7 +11,7 @@
         <img src="{{ post.photo.url }}" alt="" class="sp-post-media" loading="lazy">
       {% endif %}
       {% if post.text %}
-        <p class="sp-post-text">{{ post.text }}</p>
+        <p class="sp-post-text">{{ post.text|urlize|linebreaksbr }}</p>
       {% endif %}
 
       <!-- Reactions -->

@@ -171,9 +171,18 @@
     </div>
   {% endif %}
 
-  {# TÍTULO #}
-  <div class="text-sm font-semibold">
-    {{ card.title }}
+  {# TÍTULO + LIKE #}
+  <div class="text-sm font-semibold flex items-center justify-between gap-1">
+    <span>{{ card.title }}</span>
+    <button type="button"
+            class="card-like-btn"
+            title="Curtir este card"
+            aria-label="Curtir card"
+            onpointerdown="event.stopPropagation();"
+            ontouchstart="event.stopPropagation();"
+            onclick="event.stopPropagation(); cardLikeSocial({{ card.id }}, this);">
+      👍
+    </button>
   </div>
 
   {# META #}

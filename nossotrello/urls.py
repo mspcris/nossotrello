@@ -57,6 +57,5 @@ urlpatterns = [
     path("track-time/", include(("tracktime.urls", "tracktime"), namespace="tracktime")),
 ]
 
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 # END nossotrello/urls.py

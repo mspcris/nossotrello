@@ -90,6 +90,9 @@
         {% if profile.share_ramal and profile.ramal %}
           <span class="sp-pill">📞 {{ profile.ramal }}</span>
         {% endif %}
+        {% if profile.share_telefone and profile.telefone %}
+          <span class="sp-pill">📱 {{ profile.telefone }}</span>
+        {% endif %}
       </div>
 
       {% if latest_checkin and latest_checkin.lunch_text %}
@@ -586,13 +589,18 @@
 var _camilaAvatarUrl = "{% static 'images/camila-avatar.png' %}";
 /* Avatares da Camila por clima */
 var _CAMILA_AVATARS = {
-  sunny:    "{% static 'images/avatar/avatar10.png' %}",   /* abelhinha amarela — sol ☀️ */
-  fair:     "{% static 'images/avatar/avatar5.png' %}",    /* óculos amarelos — parcialmente nublado ⛅ */
-  default:  "{% static 'images/camila-avatar.png' %}",     /* padrão — nublado */
-  dark:     "{% static 'images/avatar/avatar6.png' %}",    /* tech azul escuro — neblina/noite */
-  rain:     "{% static 'images/avatar/avatar8.png' %}",    /* hoodie preto — chuva ☔ */
-  storm:    "{% static 'images/avatar/avatar7.png' %}",    /* capuz neon — trovoada ⛈️ */
-  wind:     "{% static 'images/avatar/avatar11.png' %}",   /* macacão laranja — vento */
+  extreme_heat:  "{% static 'images/avatar/camila_extreme_heat.png' %}",  /* calor extremo — sol escaldante 🔥 */
+  hot:           "{% static 'images/avatar/camila_hot.png' %}",           /* quente — sol forte ☀️ */
+  sunny:         "{% static 'images/avatar/camila_sunny_beach.png' %}",   /* ensolarado — praia com coco 😎 */
+  fair:          "{% static 'images/avatar/camila_fair_tropical.png' %}",  /* parcialmente nublado ⛅ */
+  default:       "{% static 'images/camila-avatar.png' %}",               /* padrão — nublado ☁️ */
+  overcast:      "{% static 'images/avatar/camila_overcast.png' %}",      /* nublado/cinza 🌥️ */
+  rain_light:    "{% static 'images/avatar/camila_rain_light.png' %}",    /* garoa — guarda-chuva sorrindo 🌦️ */
+  rain:          "{% static 'images/avatar/camila_rain_heavy.png' %}",    /* chuva forte — guarda-chuva formal ☔ */
+  storm:         "{% static 'images/avatar/camila_storm.png' %}",         /* trovoada — raio ⛈️ */
+  cold:          "{% static 'images/avatar/camila_cold_winter.png' %}",   /* frio — gorro vermelho 🧣 */
+  snow:          "{% static 'images/avatar/camila_snow.png' %}",          /* neve — hoodie azul ❄️ */
+  blizzard:      "{% static 'images/avatar/camila_blizzard.png' %}",      /* nevasca — parka com capuz 🌨️ */
 };
 (function(){
   /* ── Mood picker: tap to select ── */
@@ -1364,15 +1372,38 @@ var _CAMILA_AVATARS = {
     }
 
     /* ── Troca avatar + badge por clima ── */
-    function _applyWeatherToAvatar(code) {
+    function _applyWeatherToAvatar(code, temp) {
       var key, sticker;
-      if      (code === 0)                              { key = 'sunny';   sticker = '☀️'; }
-      else if (code <= 2)                               { key = 'fair';    sticker = '⛅'; }
-      else if (code === 3)                              { key = 'default'; sticker = '☁️'; }
-      else if (code <= 48)                              { key = 'dark';    sticker = '🌫️'; }
-      else if (code <= 67 || (code >= 80 && code <= 82)){ key = 'rain';    sticker = '☔'; }
-      else if (code <= 77)                              { key = 'dark';    sticker = '❄️'; }
-      else                                              { key = 'storm';   sticker = '⛈️'; }
+      /* Trovoada (95-99) */
+      if      (code >= 95)                               { key = 'storm';      sticker = '⛈️'; }
+      /* Neve / nevasca (71-77, 85-86) */
+      else if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86)) {
+        if (temp != null && temp < 0)                    { key = 'blizzard';   sticker = '🌨️'; }
+        else                                             { key = 'snow';       sticker = '❄️'; }
+      }
+      /* Chuva (61-67, 80-82) */
+      else if ((code >= 61 && code <= 67) || (code >= 80 && code <= 82)) { key = 'rain'; sticker = '☔'; }
+      /* Garoa (51-57) */
+      else if (code >= 51 && code <= 57)                 { key = 'rain_light'; sticker = '🌦️'; }
+      /* Neblina (45, 48) */
+      else if (code >= 45 && code <= 48)                 { key = 'overcast';   sticker = '🌫️'; }
+      /* Nublado (3) */
+      else if (code === 3)                               { key = 'overcast';   sticker = '☁️'; }
+      /* Parcialmente nublado (1-2) */
+      else if (code <= 2 && code >= 1)                   { key = 'fair';       sticker = '⛅'; }
+      /* Céu limpo (0) — varia com temperatura */
+      else if (code === 0) {
+        if      (temp != null && temp >= 35)             { key = 'extreme_heat'; sticker = '🔥'; }
+        else if (temp != null && temp >= 30)             { key = 'hot';          sticker = '☀️'; }
+        else                                             { key = 'sunny';        sticker = '☀️'; }
+      }
+      /* Fallback */
+      else                                               { key = 'default';     sticker = '☁️'; }
+
+      /* Frio independe do código — sobrescreve se temp baixa */
+      if (temp != null && temp < 15 && key !== 'storm' && key !== 'rain' && key !== 'rain_light' && key !== 'snow' && key !== 'blizzard') {
+        key = 'cold'; sticker = '🧣';
+      }
 
       var src = _CAMILA_AVATARS[key] || _CAMILA_AVATARS['default'];
 
@@ -1400,8 +1431,8 @@ var _CAMILA_AVATARS = {
           var cur = d.current || {};
           var code = cur.weather_code;
           _camilaWeatherEmoji = _wmoEmoji(code);
-          _camilaTemp = cur.temperature_2m != null ? Math.round(cur.temperature_2m) + '°' : '';
-          _applyWeatherToAvatar(code);
+          _camilaTemp = cur.temperature_2m != null ? Math.round(cur.temperature_2m) + '°C' : '';
+          _applyWeatherToAvatar(code, cur.temperature_2m);
         }).catch(function(){});
     }
     _fetchWeather();
@@ -1484,25 +1515,35 @@ var _CAMILA_AVATARS = {
     }
 
     /* ── Frases proativas para novos usuários ── */
-    var _SP_PROACTIVE = [
-      'Oi! 👋 Bem-vindo à rede social da CAMIM. Que tal fazer sua primeira publicação? Conta como está sendo seu dia!',
-      'Olá de novo! 😊 A galera adoraria te conhecer melhor. Publica um momento, uma foto ou um pensamento aqui!',
-      'Ei, ainda estou aqui! 💜 Uma última dica: publicações com foto geram muito mais engajamento. Vamos lá?'
-    ];
+    var _SP_PROACTIVE = _spUserPostCount === 0
+      ? [
+          'Oi! 👋 Bem-vindo à rede social da CAMIM. Que tal fazer sua primeira publicação? Conta como está sendo seu dia!',
+          'Olá de novo! 😊 A galera adoraria te conhecer melhor. Publica um momento, uma foto ou um pensamento aqui!',
+          'Ei, ainda estou aqui! 💜 Uma última dica: publicações com foto geram muito mais engajamento. Vamos lá?'
+        ]
+      : [
+          'Oi! 👋 Que tal publicar algo hoje? Uma foto, um pensamento ou como está sendo o dia!',
+          'Olá! 😊 A galera gosta de ver novidades suas. Publica um momento do dia!',
+          'Ei! 💜 Dica: publicações com foto geram muito mais engajamento. Bora? 📸'
+        ];
 
     function _spOpenCamilaProactive(idx) {
       if (window.spOpenCamila) window.spOpenCamila();
       setTimeout(function(){
         var msgs = document.getElementById('sp-camila-messages');
         if (!msgs) return;
+        var txt = _SP_PROACTIVE[idx];
         /* Só adiciona se a última mensagem do bot não for exatamente essa */
         var last = msgs.querySelector('.sp-chat-bot:last-child');
-        if (last && last.textContent === _SP_PROACTIVE[idx]) return;
+        if (last && last.textContent === txt) return;
         var bot = document.createElement('div');
         bot.className = 'sp-chat-msg sp-chat-bot';
-        bot.textContent = _SP_PROACTIVE[idx];
+        bot.textContent = txt;
         msgs.appendChild(bot);
         msgs.scrollTop = msgs.scrollHeight;
+        /* Inclui no histórico para a LLM ter contexto */
+        window._spCamilaHistory = window._spCamilaHistory || [];
+        window._spCamilaHistory.push({role: 'assistant', content: txt});
       }, 350);
     }
 

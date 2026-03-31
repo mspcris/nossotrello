@@ -2703,4 +2703,23 @@ document.addEventListener('keydown', function(e){
 });
 </script>
 
+<script>
+/* ── Like card → social post ── */
+function cardLikeSocial(cardId, btn){
+  if(btn.classList.contains('liked')) return;
+  btn.classList.add('liked');
+  var csrf = document.querySelector("[name=csrfmiddlewaretoken]")?.value || "";
+  fetch("/card/" + cardId + "/like-social/", {
+    method: "POST",
+    headers: {"X-CSRFToken": csrf}
+  }).then(function(r){ return r.json(); })
+    .then(function(d){
+      if(d.ok) btn.title = "Curtido!";
+    })
+    .catch(function(){
+      btn.classList.remove('liked');
+    });
+}
+</script>
+
 {% endblock content %}
