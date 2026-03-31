@@ -176,6 +176,25 @@ def _build_social_context(request, target_user, extra=None):
             else:
                 today_tasks.append(c)
 
+    # Pílulas de comentários não vistos (só para o dono)
+    unread_comment_posts = []
+    if is_me:
+        from django.db.models import Count
+        unseen_qs = (
+            SocialPostComment.objects
+            .filter(post__user=target_user, seen_by_owner=False)
+            .exclude(user=target_user)
+            .values("post_id", "post__text")
+            .annotate(count=Count("id"))
+            .order_by("-post_id")
+        )
+        for row in unseen_qs:
+            unread_comment_posts.append({
+                "post_id": row["post_id"],
+                "text": (row["post__text"] or "")[:50],
+                "count": row["count"],
+            })
+
     # Mood choices para o seletor
     mood_choices = DailyCheckIn.MOOD_CHOICES
     mood_emojis = DailyCheckIn.MOOD_EMOJIS
@@ -192,6 +211,7 @@ def _build_social_context(request, target_user, extra=None):
         "today": today,
         "mood_choices": mood_choices,
         "mood_emojis": mood_emojis,
+        "unread_comment_posts": unread_comment_posts,
     }
     if extra:
         ctx.update(extra)
@@ -437,6 +457,15 @@ def _camila_knowledge_prompt():
 
 @login_required
 @require_POST
+def social_comments_mark_seen(request, post_id: int):
+    """Marca todos os comentários não vistos de um post como vistos pelo dono."""
+    post = get_object_or_404(SocialPost, id=post_id, user=request.user)
+    SocialPostComment.objects.filter(post=post, seen_by_owner=False).update(seen_by_owner=True)
+    return JsonResponse({"ok": True})
+
+
+@login_required
+@require_POST
 def social_ai_react(request):
     """Retorna uma reação rápida da Camila.AI sobre a ação do usuário."""
     try:
@@ -532,8 +561,12 @@ def social_post_comment(request, post_id: int):
     if not text:
         return JsonResponse({"error": "Comentário vazio."}, status=400)
 
+    # seen_by_owner=True se quem comenta é o próprio dono do post
     comment = SocialPostComment.objects.create(
-        user=request.user, post=post, text=text,
+        user=request.user,
+        post=post,
+        text=text,
+        seen_by_owner=(request.user.id == post.user_id),
     )
     prof = _get_or_create_profile(request.user)
 

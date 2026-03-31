@@ -1302,3 +1302,48 @@ video.sp-post-media {
 #um-right-el .sp-cover { height: 90px; }
 #um-right-el .sp-fab { display: none; }
 #um-right-el .sp-sheet-overlay { display: none; }
+
+/* ═══════════ PÍLULAS DE COMENTÁRIOS NÃO VISTOS ═══════════ */
+.sp-comment-pills {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 16px 4px;
+}
+.sp-comment-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  border: 1.5px solid #8b5cf6;
+  border-radius: 999px;
+  padding: 8px 14px 8px 10px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s, transform 0.15s;
+  box-shadow: 0 1px 4px rgba(139,92,246,0.15);
+}
+.sp-comment-pill:active { transform: scale(0.97); background: #f5f3ff; }
+.sp-cpill-icon { font-size: 1rem; flex-shrink: 0; }
+.sp-cpill-text {
+  flex: 1;
+  font-size: 0.78rem;
+  color: #374151;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sp-cpill-badge {
+  background: #8b5cf6;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  flex-shrink: 0;
+}

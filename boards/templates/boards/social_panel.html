@@ -105,6 +105,22 @@
   {% else %}
   <!-- ═══ OWNER VIEW: check-in → tasks → chatbot → feed ═══ -->
 
+  <!-- ═══ PÍLULAS DE COMENTÁRIOS NÃO VISTOS ═══ -->
+  {% if unread_comment_posts %}
+  <div id="sp-comment-pills" class="sp-comment-pills">
+    {% for item in unread_comment_posts %}
+    <button type="button"
+            class="sp-comment-pill"
+            data-post-id="{{ item.post_id }}"
+            onclick="spDismissPill(this, {{ item.post_id }})">
+      <span class="sp-cpill-icon">💬</span>
+      <span class="sp-cpill-text">{{ item.text|default:"(sem texto)"|truncatechars:35 }}</span>
+      <span class="sp-cpill-badge">{{ item.count }}</span>
+    </button>
+    {% endfor %}
+  </div>
+  {% endif %}
+
   <!-- ═══ DAILY CHECK-IN ═══ -->
   <div class="sp-card">
     <form id="sp-checkin-form" class="sp-checkin"
@@ -784,6 +800,38 @@ var _camilaAvatarUrl = "{% static 'images/camila-avatar.png' %}";
       setTimeout(function(){ toast.remove(); }, 370);
     }, 8000);
   }
+
+  /* ═══ PÍLULAS DE COMENTÁRIOS ═══ */
+  window.spDismissPill = async function(btn, postId){
+    var csrf = document.querySelector('meta[name="csrf-token"]');
+    // Marca visto no servidor
+    try{
+      await fetch('/social/post/' + postId + '/comments/seen/', {
+        method: 'POST',
+        headers: {'X-CSRFToken': csrf ? csrf.content : ''}
+      });
+    }catch(e){}
+    // Scroll para o post
+    var postEl = document.getElementById('sp-post-' + postId);
+    if(postEl){
+      postEl.scrollIntoView({behavior:'smooth', block:'center'});
+      postEl.style.transition = 'box-shadow 0.4s';
+      postEl.style.boxShadow = '0 0 0 3px #8b5cf6';
+      setTimeout(function(){ postEl.style.boxShadow = ''; }, 2000);
+    }
+    // Remove a pílula
+    btn.style.transition = 'opacity 0.3s, transform 0.3s';
+    btn.style.opacity = '0';
+    btn.style.transform = 'scale(0.8)';
+    setTimeout(function(){
+      btn.remove();
+      // Se não tem mais pílulas, remove o container
+      var container = document.getElementById('sp-comment-pills');
+      if(container && !container.querySelector('.sp-comment-pill')){
+        container.remove();
+      }
+    }, 300);
+  };
 
   /* ── Auto-trigger AI reaction if flag is set ── */
   var trigger = document.getElementById('sp-ai-trigger');

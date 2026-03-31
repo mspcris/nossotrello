@@ -2419,7 +2419,6 @@ document.addEventListener("pointerup", (e) => {
     if(wasBalloonShown(uid, postTs)) return;
     markBalloonShown(uid, postTs);
 
-    // Cria balão em TODAS as bma-wrap deste uid (desktop + mobile)
     document.querySelectorAll('.bma-wrap[data-uid="'+uid+'"]').forEach(function(wrap){
       var balloon = document.createElement('div');
       balloon.className = 'bma-balloon';
@@ -2428,13 +2427,23 @@ document.addEventListener("pointerup", (e) => {
       if(text.length > 60) text = text.substring(0, 57) + '…';
       balloon.innerHTML = '<span class="bma-balloon-name">' + firstName + '</span>' +
         '<span class="bma-balloon-text">' + text.replace(/</g,'&lt;') + '</span>' +
-        '<span class="bma-balloon-cta">Vem ver 👀</span>';
+        '<span class="bma-balloon-cta">Toque para ver 👀</span>';
+
+      // Clicar no balão vai direto para o social deste usuário
+      balloon.addEventListener('click', function(e){
+        e.stopPropagation();
+        window.location.href = '/social/' + uid + '/';
+      });
+
       wrap.appendChild(balloon);
 
-      setTimeout(function(){
+      var timer = setTimeout(function(){
         balloon.style.animation = 'bma-balloon-out 0.3s ease forwards';
         setTimeout(function(){ balloon.remove(); }, 320);
-      }, 4000);
+      }, 8000);
+
+      // Toque/clique cancela o timer de sumição (não some enquanto o dedo está lá)
+      balloon.addEventListener('mouseenter', function(){ clearTimeout(timer); });
     });
   }
 
@@ -2527,8 +2536,9 @@ document.addEventListener("pointerup", (e) => {
 .bma-balloon {
   position: absolute;
   bottom: calc(100% + 14px);
-  left: 50%;
-  transform: translateX(-50%);
+  right: 0;
+  left: auto;
+  transform: none;
   background: #fff;
   color: #1f2937;
   font-size: 0.72rem;
@@ -2539,18 +2549,21 @@ document.addEventListener("pointerup", (e) => {
   z-index: 9999;
   box-shadow: 3px 3px 0 #1f2937;
   animation: bma-balloon-in 0.3s ease;
-  pointer-events: none;
-  width: 160px;
+  pointer-events: auto;
+  cursor: pointer;
+  width: 170px;
   text-align: left;
   display: flex;
   flex-direction: column;
   gap: 3px;
 }
+.bma-balloon:hover { background: #f5f3ff; }
 .bma-balloon::after {
   content: '';
   position: absolute;
   top: 100%;
-  left: 28px;
+  right: 14px;
+  left: auto;
   border: 7px solid transparent;
   border-top-color: #1f2937;
 }
@@ -2558,7 +2571,8 @@ document.addEventListener("pointerup", (e) => {
   content: '';
   position: absolute;
   top: calc(100% - 2px);
-  left: 30px;
+  right: 16px;
+  left: auto;
   border: 5px solid transparent;
   border-top-color: #fff;
   z-index: 1;
@@ -2579,12 +2593,12 @@ document.addEventListener("pointerup", (e) => {
   margin-top: 2px;
 }
 @keyframes bma-balloon-in {
-  from { opacity: 0; transform: translateX(-50%) translateY(6px); }
-  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 @keyframes bma-balloon-out {
-  from { opacity: 1; transform: translateX(-50%) translateY(0); }
-  to   { opacity: 0; transform: translateX(-50%) translateY(-6px); }
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-6px); }
 }
 </style>
 

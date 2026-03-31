@@ -902,6 +902,7 @@ class SocialPostComment(models.Model):
     post = models.ForeignKey(SocialPost, related_name="comments", on_delete=models.CASCADE)
     text = models.TextField(max_length=500)
     created_at = models.DateTimeField(auto_now_add=True)
+    seen_by_owner = models.BooleanField(default=False)
 
     class Meta:
         ordering = ["created_at"]
