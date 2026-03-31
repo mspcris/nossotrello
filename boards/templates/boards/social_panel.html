@@ -163,10 +163,34 @@
   </div>
   {% endif %}
 
-  <!-- ═══ SUGESTÕES POR UNIDADE ═══ -->
+  <!-- ═══ MEUS AMIGOS (amizades aceitas) ═══ -->
+  {% if real_friends %}
+  <div class="sp-friends-bar">
+    <div class="sp-friends-label">💜 Meus Amigos</div>
+    <div class="sp-friends-row">
+      {% for friend in real_friends %}
+      {% with fp=friend.profile %}
+      <button type="button" class="sp-friend-btn" onclick="spOpenFriendSheet({{ friend.id }})"
+              title="{{ fp.display_name|default:friend.email }}">
+        {% if fp and fp.avatar %}
+          <img src="{{ fp.avatar.url }}" alt="" class="sp-friend-av-img">
+        {% elif fp and fp.avatar_choice %}
+          <img src="{% static 'images/avatar/' %}{{ fp.avatar_choice }}" alt="" class="sp-friend-av-img">
+        {% else %}
+          <span class="sp-friend-av-fb">{{ fp.display_name|default:friend.email|first|upper }}</span>
+        {% endif %}
+        <span class="sp-friend-name">{{ fp.display_name|default:friend.email|truncatechars:8 }}</span>
+      </button>
+      {% endwith %}
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ═══ SUGESTÕES DE AMIZADE (todos os ativos) ═══ -->
   {% if unit_suggestions %}
   <div class="sp-friends-bar">
-    <div class="sp-friends-label">✨ Sugestões — {{ profile.unidade }}</div>
+    <div class="sp-friends-label">✨ Sugestões de amizade</div>
     <div class="sp-friends-row">
       {% for sug in unit_suggestions %}
       {% with sp=sug.profile %}
@@ -184,10 +208,15 @@
       {% endwith %}
       {% endfor %}
     </div>
-    <button type="button" class="sp-change-unit-btn"
-            onclick="document.getElementById('sp-change-unit-form').classList.toggle('sp-hidden')">
-      ✏️ Mudar unidade
-    </button>
+  </div>
+  {% endif %}
+
+  {% if profile.unidade %}
+  <div class="sp-friends-bar" style="padding:6px 12px">
+    <div class="sp-friends-label" style="font-size:.8rem;color:#10b981">✅ Unidade: {{ profile.unidade }}
+      <button type="button" class="sp-change-unit-btn" style="font-size:.75rem;margin-left:8px"
+              onclick="document.getElementById('sp-change-unit-form').classList.toggle('sp-hidden')">✏️ Mudar</button>
+    </div>
     <form id="sp-change-unit-form" class="sp-hidden"
           hx-post="{% url 'boards:social_set_unidade' %}"
           hx-target="#social-panel" hx-swap="outerHTML"
@@ -202,53 +231,6 @@
         <button type="submit" class="sp-onboard-btn">OK</button>
       </div>
     </form>
-  </div>
-  {% elif profile.unidade and not show_unit_tutorial %}
-  <!-- Tem unidade mas sem sugestões (todos já são amigos) -->
-  <div class="sp-friends-bar">
-    <div class="sp-friends-label" style="color:#10b981">✅ Unidade: {{ profile.unidade }}</div>
-    <button type="button" class="sp-change-unit-btn"
-            onclick="document.getElementById('sp-change-unit-form2').classList.toggle('sp-hidden')">
-      ✏️ Mudar unidade
-    </button>
-    <form id="sp-change-unit-form2" class="sp-hidden"
-          hx-post="{% url 'boards:social_set_unidade' %}"
-          hx-target="#social-panel" hx-swap="outerHTML"
-          hx-encoding="multipart/form-data">
-      {% csrf_token %}
-      <div class="sp-onboard-input-row" style="margin-top:8px">
-        <input type="text" name="unidade" class="sp-onboard-input"
-               placeholder="Nova unidade..." list="sp-unidades-list3" required>
-        <datalist id="sp-unidades-list3">
-          {% for u in available_units %}<option value="{{ u }}">{% endfor %}
-        </datalist>
-        <button type="submit" class="sp-onboard-btn">OK</button>
-      </div>
-    </form>
-  </div>
-  {% endif %}
-
-  <!-- ═══ AMIGOS (co-membros de quadros) ═══ -->
-  {% if board_friends %}
-  <div class="sp-friends-bar">
-    <div class="sp-friends-label">👥 Amigos</div>
-    <div class="sp-friends-row">
-      {% for friend in board_friends %}
-      {% with fp=friend.profile %}
-      <button type="button" class="sp-friend-btn" onclick="spOpenFriendSheet({{ friend.id }})"
-              title="{{ fp.display_name|default:friend.email }}">
-        {% if fp and fp.avatar %}
-          <img src="{{ fp.avatar.url }}" alt="" class="sp-friend-av-img">
-        {% elif fp and fp.avatar_choice %}
-          <img src="{% static 'images/avatar/' %}{{ fp.avatar_choice }}" alt="" class="sp-friend-av-img">
-        {% else %}
-          <span class="sp-friend-av-fb">{{ fp.display_name|default:friend.email|first|upper }}</span>
-        {% endif %}
-        <span class="sp-friend-name">{{ fp.display_name|default:friend.email|truncatechars:8 }}</span>
-      </button>
-      {% endwith %}
-      {% endfor %}
-    </div>
   </div>
   {% endif %}
 

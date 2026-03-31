@@ -197,36 +197,51 @@ def _build_social_context(request, target_user, extra=None):
             .distinct()
             .order_by("unidade")
         )
-        if prof.unidade:
-            # IDs já na minha rede (board + amigos aceitos)
-            my_net_ids = set(_board_member_ids(target_user))
-            accepted = SocialFriendship.objects.filter(
-                requester=target_user, status="accepted"
-            ).values_list("receiver_id", flat=True)
-            accepted2 = SocialFriendship.objects.filter(
-                receiver=target_user, status="accepted"
-            ).values_list("requester_id", flat=True)
-            my_net_ids.update(accepted)
-            my_net_ids.update(accepted2)
-            my_net_ids.add(target_user.id)
+        # IDs de amigos aceitos (SocialFriendship)
+        accepted_out = set(SocialFriendship.objects.filter(
+            requester=target_user, status="accepted"
+        ).values_list("receiver_id", flat=True))
+        accepted_in = set(SocialFriendship.objects.filter(
+            receiver=target_user, status="accepted"
+        ).values_list("requester_id", flat=True))
+        my_friend_ids = accepted_out | accepted_in
 
-            unit_suggestions = list(
-                User.objects.filter(profile__unidade=prof.unidade)
-                .exclude(id__in=my_net_ids)
-                .select_related("profile")
-                .order_by("profile__display_name")[:20]
-            )
+        # Pendentes enviados/recebidos (para não mostrar botão duplo)
+        pending_out = set(SocialFriendship.objects.filter(
+            requester=target_user, status="pending"
+        ).values_list("receiver_id", flat=True))
+        pending_in = set(SocialFriendship.objects.filter(
+            receiver=target_user, status="pending"
+        ).values_list("requester_id", flat=True))
 
-    # Amigos (co-membros de quadros) — só para o dono
-    board_friends = []
+        exclude_ids = my_friend_ids | pending_out | pending_in | {target_user.id}
+
+        # Sugestões = TODOS os usuários ativos (exceto eu e amigos/pendentes)
+        unit_suggestions = list(
+            User.objects.filter(is_active=True)
+            .exclude(id__in=exclude_ids)
+            .select_related("profile")
+            .order_by("profile__display_name")[:40]
+        )
+
+    # Meus Amigos (amizades aceitas) — só para o dono
+    real_friends = []
+    board_friends = []  # mantém para compat
     my_boards = []
     if is_me:
-        friend_ids = _board_member_ids(target_user)
-        board_friends = list(
-            User.objects.filter(id__in=friend_ids)
-            .select_related("profile")
-            .order_by("profile__display_name")
-        )
+        accepted_out = set(SocialFriendship.objects.filter(
+            requester=target_user, status="accepted"
+        ).values_list("receiver_id", flat=True))
+        accepted_in = set(SocialFriendship.objects.filter(
+            receiver=target_user, status="accepted"
+        ).values_list("requester_id", flat=True))
+        real_friend_ids = accepted_out | accepted_in
+        if real_friend_ids:
+            real_friends = list(
+                User.objects.filter(id__in=real_friend_ids)
+                .select_related("profile")
+                .order_by("profile__display_name")
+            )
         # Quadros que o usuário pode compartilhar (owner ou editor)
         my_boards = list(
             Board.objects.filter(
@@ -285,6 +300,7 @@ def _build_social_context(request, target_user, extra=None):
         "unread_comment_posts": unread_comment_posts,
         "unread_reply_items": unread_reply_items,
         "board_friends": board_friends,
+        "real_friends": real_friends,
         "my_boards": my_boards,
         "show_unit_tutorial": show_unit_tutorial,
         "unit_suggestions": unit_suggestions,
@@ -328,18 +344,17 @@ def social_posts_panel(request, user_id: int):
 # ---------------------------------------------------------------
 @login_required
 def social_friends_feed(request):
-    """Retorna posts de amigos (board co-members + accepted friendships) como JSON."""
+    """Retorna posts de amigos (accepted friendships) como JSON."""
     me = request.user
 
-    # Coleta IDs de amigos
-    friend_ids = set(_board_member_ids(me))
+    # Somente amizades aceitas
     accepted_out = SocialFriendship.objects.filter(
         requester=me, status="accepted"
     ).values_list("receiver_id", flat=True)
     accepted_in = SocialFriendship.objects.filter(
         receiver=me, status="accepted"
     ).values_list("requester_id", flat=True)
-    friend_ids.update(accepted_out)
+    friend_ids = set(accepted_out)
     friend_ids.update(accepted_in)
     friend_ids.discard(me.id)
 
