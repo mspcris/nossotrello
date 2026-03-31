@@ -14,8 +14,11 @@ from django.views.decorators.http import require_POST
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
+from collections import Counter, defaultdict
+
 from ..models import (
     BoardMembership, SocialPost, SocialPostSeen,
+    SocialPostReaction, SocialPostComment,
     DailyCheckIn, Card, CardFollow, UserProfile,
 )
 
@@ -112,11 +115,40 @@ def _build_social_context(request, target_user, extra=None):
         .first()
     )
 
-    # Posts
-    posts = SocialPost.objects.filter(user=target_user).order_by("-created_at")[:30]
+    # Posts + prefetch reactions/comments
+    posts = list(SocialPost.objects.filter(user=target_user).order_by("-created_at")[:30])
+
+    if posts:
+        post_ids = [p.id for p in posts]
+
+        # Prefetch reactions
+        reactions_by_post = defaultdict(list)
+        for r in SocialPostReaction.objects.filter(post_id__in=post_ids).select_related("user"):
+            reactions_by_post[r.post_id].append(r)
+
+        # Prefetch comments
+        comments_by_post = defaultdict(list)
+        for c in (
+            SocialPostComment.objects
+            .filter(post_id__in=post_ids)
+            .select_related("user")
+            .order_by("created_at")
+        ):
+            comments_by_post[c.post_id].append(c)
+
+        # Annotate each post
+        for post in posts:
+            post_reactions = reactions_by_post.get(post.id, [])
+            post.reaction_counts = dict(Counter(r.reaction for r in post_reactions))
+            post.total_reactions = len(post_reactions)
+            post.my_reaction = next(
+                (r.reaction for r in post_reactions if r.user_id == request.user.id), None
+            )
+            post.comment_list = comments_by_post.get(post.id, [])
+            post.comment_count = len(post.comment_list)
 
     # Marca visto
-    if not is_me and posts.exists():
+    if not is_me and posts:
         SocialPostSeen.objects.update_or_create(
             viewer=request.user,
             target_user=target_user,
@@ -157,12 +189,16 @@ def _build_social_context(request, target_user, extra=None):
 
 
 # ---------------------------------------------------------------
-# Página social standalone (GET) — /social/
+# Página social standalone (GET) — /social/ ou /social/<user_id>/
 # ---------------------------------------------------------------
 @login_required
-def social_page(request):
+def social_page(request, user_id: int = None):
     """Página standalone do espaço social — pode dar F5 e continuar."""
-    ctx = _build_social_context(request, request.user)
+    if user_id:
+        target_user = get_object_or_404(User, id=user_id)
+    else:
+        target_user = request.user
+    ctx = _build_social_context(request, target_user)
     return render(request, "boards/social_page.html", ctx)
 
 
@@ -393,3 +429,68 @@ def social_ai_react(request):
         _CAMILA_SYSTEM,
     )
     return JsonResponse({"response": response})
+
+
+# ---------------------------------------------------------------
+# Reação a post (POST → JSON)
+# ---------------------------------------------------------------
+@login_required
+@require_POST
+def social_post_react(request, post_id: int):
+    post = get_object_or_404(SocialPost, id=post_id)
+    reaction_type = (request.POST.get("reaction") or "").strip()
+
+    valid = dict(SocialPostReaction.REACTION_CHOICES)
+    if reaction_type not in valid:
+        return JsonResponse({"error": "Reação inválida."}, status=400)
+
+    existing = SocialPostReaction.objects.filter(user=request.user, post=post).first()
+    my_reaction = None
+
+    if existing:
+        if existing.reaction == reaction_type:
+            existing.delete()  # toggle off
+        else:
+            existing.reaction = reaction_type
+            existing.save()
+            my_reaction = reaction_type
+    else:
+        SocialPostReaction.objects.create(
+            user=request.user, post=post, reaction=reaction_type,
+        )
+        my_reaction = reaction_type
+
+    counts = dict(Counter(
+        SocialPostReaction.objects.filter(post=post).values_list("reaction", flat=True)
+    ))
+
+    return JsonResponse({
+        "my_reaction": my_reaction,
+        "counts": counts,
+        "total": sum(counts.values()),
+    })
+
+
+# ---------------------------------------------------------------
+# Comentário em post (POST → JSON)
+# ---------------------------------------------------------------
+@login_required
+@require_POST
+def social_post_comment(request, post_id: int):
+    post = get_object_or_404(SocialPost, id=post_id)
+    text = (request.POST.get("text") or "").strip()
+
+    if not text:
+        return JsonResponse({"error": "Comentário vazio."}, status=400)
+
+    comment = SocialPostComment.objects.create(
+        user=request.user, post=post, text=text,
+    )
+    prof = _get_or_create_profile(request.user)
+
+    return JsonResponse({
+        "id": comment.id,
+        "user": prof.display_name or request.user.email,
+        "text": comment.text,
+        "created_at": comment.created_at.strftime("%d/%m %H:%M"),
+    })

@@ -1,4 +1,4 @@
-{# boards/templates/boards/social_panel.html — mobile-first v3 #}
+{# boards/templates/boards/social_panel.html — mobile-first v4 #}
 {% load static %}
 
 <div id="social-panel" class="sp">
@@ -70,7 +70,13 @@
     </div>
   </div>
 
-  {% if is_me %}
+  {% if not is_me %}
+  <!-- ═══ VISITOR VIEW: feed right after profile ═══ -->
+  {% include "boards/social_feed_block.html" %}
+
+  {% else %}
+  <!-- ═══ OWNER VIEW: check-in → tasks → chatbot → feed ═══ -->
+
   <!-- ═══ DAILY CHECK-IN ═══ -->
   <div class="sp-card">
     <form id="sp-checkin-form" class="sp-checkin"
@@ -237,48 +243,16 @@
       </div>
     </div>
   </div>
+
+  <!-- ═══ OWNER FEED ═══ -->
+  {% include "boards/social_feed_block.html" %}
+
   {% endif %}
 
   <!-- ═══ POST ERROR ═══ -->
   {% if post_error %}
   <div class="sp-error">{{ post_error }}</div>
   {% endif %}
-
-  <!-- ═══ FEED ═══ -->
-  <div class="sp-feed">
-    <div class="sp-section-title">📸 Feed</div>
-    {% if posts %}
-      {% for post in posts %}
-      <div class="sp-post">
-        {% if post.video %}
-          <video src="{{ post.video.url }}" class="sp-post-media" controls preload="metadata" playsinline></video>
-        {% elif post.photo %}
-          <img src="{{ post.photo.url }}" alt="" class="sp-post-media" loading="lazy">
-        {% endif %}
-        {% if post.text %}
-          <p class="sp-post-text">{{ post.text }}</p>
-        {% endif %}
-        <div class="sp-post-footer">
-          <span>{{ post.created_at|date:"d/m/Y H:i" }}</span>
-          {% if is_me %}
-          <button type="button" class="sp-post-delete"
-                  hx-post="{% url 'boards:social_post_delete' post.id %}"
-                  hx-target="#social-panel" hx-swap="outerHTML"
-                  hx-confirm="Excluir?">Excluir</button>
-          {% endif %}
-        </div>
-      </div>
-      {% endfor %}
-    {% else %}
-      <div class="sp-empty">
-        {% if is_me %}
-          Registre momentos do seu dia! Toque no <b>+</b> para começar 📸
-        {% else %}
-          {{ profile.display_name|default:"Este usuário" }} ainda não publicou nada.
-        {% endif %}
-      </div>
-    {% endif %}
-  </div>
 
   <!-- ═══ FAB (Floating Action Button) ═══ -->
   {% if is_me %}
@@ -476,6 +450,78 @@
       preview.appendChild(img);
     }
   });
+
+  /* ═══ REACTIONS ═══ */
+  window.spReact = async function(postId, reaction){
+    var csrf = document.querySelector('meta[name="csrf-token"]');
+    try{
+      var fd = new FormData();
+      fd.append('reaction', reaction);
+      var r = await fetch('/social/post/' + postId + '/react/', {
+        method:'POST',
+        headers:{'X-CSRFToken': csrf ? csrf.content : ''},
+        body: fd
+      });
+      var d = await r.json();
+      if(d.error) return;
+
+      // update UI
+      var wrap = document.getElementById('sp-reactions-' + postId);
+      if(!wrap) return;
+      var btns = wrap.querySelectorAll('.sp-react-btn');
+      btns.forEach(function(btn){
+        var r = btn.dataset.reaction;
+        var count = (d.counts && d.counts[r]) || 0;
+        var badge = btn.querySelector('.sp-react-count');
+        if(count > 0){
+          if(!badge){
+            badge = document.createElement('span');
+            badge.className = 'sp-react-count';
+            btn.appendChild(badge);
+          }
+          badge.textContent = count;
+        } else if(badge){
+          badge.remove();
+        }
+        if(d.my_reaction === r){
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+    }catch(e){}
+  };
+
+  /* ═══ COMMENTS ═══ */
+  window.spComment = async function(postId){
+    var inp = document.getElementById('sp-comment-input-' + postId);
+    if(!inp) return;
+    var text = (inp.value||'').trim();
+    if(!text) return;
+    inp.value = '';
+    var csrf = document.querySelector('meta[name="csrf-token"]');
+    try{
+      var fd = new FormData();
+      fd.append('text', text);
+      var r = await fetch('/social/post/' + postId + '/comment/', {
+        method:'POST',
+        headers:{'X-CSRFToken': csrf ? csrf.content : ''},
+        body: fd
+      });
+      var d = await r.json();
+      if(d.error) return;
+
+      var list = document.getElementById('sp-comments-' + postId);
+      if(!list) return;
+      var el = document.createElement('div');
+      el.className = 'sp-comment';
+      el.innerHTML = '<span class="sp-comment-author">' + d.user.replace(/</g,'&lt;') + '</span> ' +
+        '<span class="sp-comment-text">' + d.text.replace(/</g,'&lt;') + '</span>' +
+        '<span class="sp-comment-time">' + d.created_at + '</span>';
+      list.appendChild(el);
+      list.classList.remove('sp-hidden');
+    }catch(e){}
+  };
 
   /* ── Camila.AI toast reaction ── */
   function spShowAiToast(text){

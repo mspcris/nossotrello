@@ -866,6 +866,50 @@ class SocialPostSeen(models.Model):
 
 
 # ============================================================
+# REACTIONS & COMMENTS em posts
+# ============================================================
+class SocialPostReaction(models.Model):
+    REACTION_CHOICES = [
+        ("like", "👍"),
+        ("love", "❤️"),
+        ("haha", "😂"),
+        ("fire", "🔥"),
+        ("clap", "👏"),
+    ]
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="social_reactions",
+        on_delete=models.CASCADE,
+    )
+    post = models.ForeignKey(SocialPost, related_name="reactions", on_delete=models.CASCADE)
+    reaction = models.CharField(max_length=10, choices=REACTION_CHOICES)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "post")
+
+    def __str__(self):
+        return f"{self.user} → {self.get_reaction_display()} em post {self.post_id}"
+
+
+class SocialPostComment(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="social_comments",
+        on_delete=models.CASCADE,
+    )
+    post = models.ForeignKey(SocialPost, related_name="comments", on_delete=models.CASCADE)
+    text = models.TextField(max_length=500)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"{self.user} comentou em post {self.post_id}"
+
+
+# ============================================================
 # DAILY CHECK-IN (humor, almoço, posto do dia)
 # ============================================================
 class DailyCheckIn(models.Model):

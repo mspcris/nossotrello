@@ -1,0 +1,81 @@
+{# boards/templates/boards/social_feed_block.html — reusable feed with reactions & comments #}
+
+<div class="sp-feed">
+  <div class="sp-section-title">📸 Feed</div>
+  {% if posts %}
+    {% for post in posts %}
+    <div class="sp-post" id="sp-post-{{ post.id }}">
+      {% if post.video %}
+        <video src="{{ post.video.url }}" class="sp-post-media" controls preload="metadata" playsinline></video>
+      {% elif post.photo %}
+        <img src="{{ post.photo.url }}" alt="" class="sp-post-media" loading="lazy">
+      {% endif %}
+      {% if post.text %}
+        <p class="sp-post-text">{{ post.text }}</p>
+      {% endif %}
+
+      <!-- Reactions -->
+      <div class="sp-reactions" id="sp-reactions-{{ post.id }}">
+        <button type="button" class="sp-react-btn {% if post.my_reaction == 'like' %}active{% endif %}"
+                data-reaction="like" onclick="spReact({{ post.id }},'like')">
+          👍{% if post.reaction_counts.like %}<span class="sp-react-count">{{ post.reaction_counts.like }}</span>{% endif %}
+        </button>
+        <button type="button" class="sp-react-btn {% if post.my_reaction == 'love' %}active{% endif %}"
+                data-reaction="love" onclick="spReact({{ post.id }},'love')">
+          ❤️{% if post.reaction_counts.love %}<span class="sp-react-count">{{ post.reaction_counts.love }}</span>{% endif %}
+        </button>
+        <button type="button" class="sp-react-btn {% if post.my_reaction == 'haha' %}active{% endif %}"
+                data-reaction="haha" onclick="spReact({{ post.id }},'haha')">
+          😂{% if post.reaction_counts.haha %}<span class="sp-react-count">{{ post.reaction_counts.haha }}</span>{% endif %}
+        </button>
+        <button type="button" class="sp-react-btn {% if post.my_reaction == 'fire' %}active{% endif %}"
+                data-reaction="fire" onclick="spReact({{ post.id }},'fire')">
+          🔥{% if post.reaction_counts.fire %}<span class="sp-react-count">{{ post.reaction_counts.fire }}</span>{% endif %}
+        </button>
+        <button type="button" class="sp-react-btn {% if post.my_reaction == 'clap' %}active{% endif %}"
+                data-reaction="clap" onclick="spReact({{ post.id }},'clap')">
+          👏{% if post.reaction_counts.clap %}<span class="sp-react-count">{{ post.reaction_counts.clap }}</span>{% endif %}
+        </button>
+      </div>
+
+      <!-- Comments -->
+      <div class="sp-comments-section">
+        <div class="sp-comments-list {% if not post.comment_list %}sp-hidden{% endif %}" id="sp-comments-{{ post.id }}">
+          {% for c in post.comment_list %}
+          <div class="sp-comment">
+            <span class="sp-comment-author">{{ c.user.profile.display_name|default:c.user.email }}</span>
+            <span class="sp-comment-text">{{ c.text }}</span>
+            <span class="sp-comment-time">{{ c.created_at|date:"d/m H:i" }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="sp-comment-form">
+          <input type="text" class="sp-comment-input" id="sp-comment-input-{{ post.id }}"
+                 placeholder="Escreva um comentário..."
+                 maxlength="500"
+                 onkeydown="if(event.key==='Enter')spComment({{ post.id }})">
+          <button type="button" class="sp-comment-send" onclick="spComment({{ post.id }})">➤</button>
+        </div>
+      </div>
+
+      <div class="sp-post-footer">
+        <span>{{ post.created_at|date:"d/m/Y H:i" }}</span>
+        {% if is_me %}
+        <button type="button" class="sp-post-delete"
+                hx-post="{% url 'boards:social_post_delete' post.id %}"
+                hx-target="#social-panel" hx-swap="outerHTML"
+                hx-confirm="Excluir?">Excluir</button>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="sp-empty">
+      {% if is_me %}
+        Registre momentos do seu dia! Toque no <b>+</b> para começar 📸
+      {% else %}
+        {{ profile.display_name|default:"Este usuário" }} ainda não publicou nada.
+      {% endif %}
+    </div>
+  {% endif %}
+</div>

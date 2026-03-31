@@ -795,6 +795,114 @@ video.sp-post-media {
   line-height: 1.6;
 }
 
+/* ═══════════ REACTIONS ═══════════ */
+.sp-reactions {
+  display: flex;
+  gap: 4px;
+  padding: 4px 12px 0;
+  flex-wrap: wrap;
+}
+.sp-react-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border-radius: 20px;
+  border: 1.5px solid #e5e7eb;
+  background: #f9fafb;
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition: all 0.15s;
+  min-height: 36px;
+  -webkit-tap-highlight-color: transparent;
+}
+.sp-react-btn:active { transform: scale(0.9); }
+.sp-react-btn.active {
+  border-color: #3b82f6;
+  background: #dbeafe;
+}
+.sp-react-count {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #374151;
+  min-width: 14px;
+  text-align: center;
+}
+.sp-react-btn.active .sp-react-count { color: #1d4ed8; }
+
+/* ═══════════ COMMENTS ═══════════ */
+.sp-comments-section {
+  padding: 6px 12px 0;
+}
+.sp-comments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.sp-comment {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 6px;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  padding: 6px 10px;
+  background: #f3f4f6;
+  border-radius: 12px;
+}
+.sp-comment-author {
+  font-weight: 700;
+  color: #1f2937;
+  flex-shrink: 0;
+}
+.sp-comment-text {
+  color: #374151;
+  word-break: break-word;
+}
+.sp-comment-time {
+  font-size: 0.6875rem;
+  color: #9ca3af;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.sp-comment-form {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.sp-comment-input {
+  flex: 1;
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+  padding: 8px 14px;
+  font-size: 0.875rem;
+  background: #f9fafb;
+  min-height: 38px;
+  box-sizing: border-box;
+}
+.sp-comment-input:focus { outline: none; border-color: #60a5fa; background: #fff; }
+.sp-comment-send {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  flex-shrink: 0;
+  transition: background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.sp-comment-send:hover { background: #1d4ed8; }
+
 /* ═══════════ FAB ═══════════ */
 .sp-fab {
   position: fixed;

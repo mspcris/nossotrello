@@ -106,6 +106,8 @@ from boards.views.social import (
     social_posts_panel,
     social_post_create,
     social_post_delete,
+    social_post_react,
+    social_post_comment,
     mood_checkin,
     social_chatbot_message,
     social_ai_react,
@@ -131,9 +133,12 @@ urlpatterns = [
     # SOCIAL (scrapbook / mood / chatbot)
     # ============================================================
     path("social/", social_page, name="social_page"),
+    path("social/<int:user_id>/", social_page, name="social_page_user"),
     path("users/<int:user_id>/social/", social_posts_panel, name="social_posts_panel"),
     path("social/post/create/", social_post_create, name="social_post_create"),
     path("social/post/<int:post_id>/delete/", social_post_delete, name="social_post_delete"),
+    path("social/post/<int:post_id>/react/", social_post_react, name="social_post_react"),
+    path("social/post/<int:post_id>/comment/", social_post_comment, name="social_post_comment"),
     path("social/mood/", mood_checkin, name="mood_checkin"),
     path("social/chat/", social_chatbot_message, name="social_chatbot_message"),
     path("social/ai-react/", social_ai_react, name="social_ai_react"),

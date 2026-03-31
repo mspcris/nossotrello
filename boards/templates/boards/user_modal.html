@@ -87,15 +87,10 @@
           onclick="window.umOpenTab('avatar')"
         >Foto</button>
 
-        <button
-          type="button"
-          data-um-tab="social"
-          class="px-3 py-1 rounded border bg-white/70 hover:bg-white {% if active_tab == 'social' %} font-semibold {% endif %}"
-          hx-get="{% url 'boards:social_posts_panel' request.user.id %}"
-          hx-target="#um-panel-social"
-          hx-swap="innerHTML"
-          onclick="window.umOpenTab('social')"
-        >Espaço Social</button>
+        <a
+          href="{% url 'boards:social_page' %}"
+          class="px-3 py-1 rounded border bg-white/70 hover:bg-white inline-block"
+        >Espaço Social ↗</a>
       </div>
 
       <!-- Panels -->
