@@ -633,8 +633,6 @@ def social_ai_react(request):
     return JsonResponse({"response": response})
 
 
-@login_required
-@require_POST
 def _get_weather_context() -> str:
     """Busca clima atual do Rio de Janeiro via OpenMeteo (cache 30 min)."""
     from django.core.cache import cache
@@ -679,6 +677,8 @@ def _get_weather_context() -> str:
         return ""
 
 
+@login_required
+@require_POST
 def social_camila_chat(request):
     """Chat conversacional com a Camila.AI."""
     try:
