@@ -824,6 +824,7 @@ class SocialPost(models.Model):
     )
     text = models.TextField(blank=True, default="")
     photo = models.ImageField(upload_to="social/", blank=True, null=True)
+    video = models.FileField(upload_to="social/videos/", blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -831,6 +832,10 @@ class SocialPost(models.Model):
         indexes = [
             models.Index(fields=["user", "-created_at"]),
         ]
+
+    @property
+    def has_media(self):
+        return bool(self.photo) or bool(self.video)
 
     def __str__(self):
         return f"{self.user} — {self.created_at:%Y-%m-%d}"

@@ -157,6 +157,16 @@ def _build_social_context(request, target_user, extra=None):
 
 
 # ---------------------------------------------------------------
+# Página social standalone (GET) — /social/
+# ---------------------------------------------------------------
+@login_required
+def social_page(request):
+    """Página standalone do espaço social — pode dar F5 e continuar."""
+    ctx = _build_social_context(request, request.user)
+    return render(request, "boards/social_page.html", ctx)
+
+
+# ---------------------------------------------------------------
 # Painel social principal (GET)
 # ---------------------------------------------------------------
 @login_required
@@ -176,12 +186,36 @@ def social_posts_panel(request, user_id: int):
 def social_post_create(request):
     text = (request.POST.get("text") or "").strip()
     photo = request.FILES.get("photo")
+    video = request.FILES.get("video")
+    media = request.FILES.get("media")
+
+    # media field (gallery) — detecta tipo automaticamente
+    if media and not photo and not video:
+        ct = (media.content_type or "").lower()
+        if ct.startswith("video/"):
+            video = media
+        else:
+            photo = media
 
     extra = {}
-    if not text and not photo:
-        extra["post_error"] = "Adicione um texto ou foto antes de publicar."
+    if not text and not photo and not video:
+        extra["post_error"] = "Adicione um texto, foto ou vídeo antes de publicar."
     else:
-        SocialPost.objects.create(user=request.user, text=text, photo=photo or None)
+        SocialPost.objects.create(
+            user=request.user,
+            text=text,
+            photo=photo or None,
+            video=video or None,
+        )
+        # AI react trigger
+        parts = []
+        if text:
+            parts.append(f"Publicou: {text}")
+        if photo:
+            parts.append("Enviou uma foto")
+        if video:
+            parts.append("Enviou um vídeo")
+        extra["ai_react_text"] = "; ".join(parts)
 
     ctx = _build_social_context(request, request.user, extra)
     return render(request, "boards/social_panel.html", ctx)
@@ -241,7 +275,18 @@ def daily_checkin_save(request):
         prof.fixed_posto = False
         prof.save(update_fields=["fixed_posto"])
 
-    ctx = _build_social_context(request, request.user)
+    # AI react trigger
+    parts = []
+    if checkin.mood:
+        mood_labels = dict(DailyCheckIn.MOOD_CHOICES)
+        parts.append(f"Humor: {mood_labels.get(checkin.mood, checkin.mood)}")
+    if checkin.lunch_text:
+        parts.append(f"Almoço: {checkin.lunch_text}")
+    if checkin.daily_posto:
+        parts.append(f"Posto: {checkin.daily_posto}")
+    ai_react_text = "; ".join(parts) if parts else ""
+
+    ctx = _build_social_context(request, request.user, extra={"ai_react_text": ai_react_text})
     return render(request, "boards/social_panel.html", ctx)
 
 
@@ -313,4 +358,38 @@ def social_chatbot_message(request):
 
     messages = [*history[-10:], {"role": "user", "content": message}]
     response = _groq_chat(messages, system_prompt)
+    return JsonResponse({"response": response})
+
+
+# ---------------------------------------------------------------
+# Camila.AI — reação inteligente a ações do usuário (POST → JSON)
+# ---------------------------------------------------------------
+_CAMILA_SYSTEM = (
+    "Você é Camila, a IA simpática da rede social de trabalho da CAMIM. "
+    "O colega acabou de compartilhar algo na rede. Faça um comentário CURTO "
+    "(1-2 frases no máximo), divertido, engajador e caloroso. Use emojis. "
+    "Se ele falou o que vai almoçar, comente sobre a comida de forma "
+    "descontraída (ex: 'Que delícia!', 'Tá de dieta ou tá se dando bem?'). "
+    "Se falou o humor, acolha. Se postou algo, incentive. "
+    "Seja leve, profissional e NUNCA chata. Português brasileiro."
+)
+
+
+@login_required
+@require_POST
+def social_ai_react(request):
+    """Retorna uma reação rápida da Camila.AI sobre a ação do usuário."""
+    try:
+        data = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "JSON inválido."}, status=400)
+
+    context = (data.get("context") or "").strip()
+    if not context:
+        return JsonResponse({"response": ""})
+
+    response = _groq_chat(
+        [{"role": "user", "content": context}],
+        _CAMILA_SYSTEM,
+    )
     return JsonResponse({"response": response})

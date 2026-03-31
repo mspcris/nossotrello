@@ -102,11 +102,13 @@ from .views import cards_state as cards_state_views
 from boards.views.column_follow import toggle_column_follow
 
 from boards.views.social import (
+    social_page,
     social_posts_panel,
     social_post_create,
     social_post_delete,
     mood_checkin,
     social_chatbot_message,
+    social_ai_react,
     daily_checkin_save,
     social_cover_upload,
 )
@@ -128,11 +130,13 @@ urlpatterns = [
     # ============================================================
     # SOCIAL (scrapbook / mood / chatbot)
     # ============================================================
+    path("social/", social_page, name="social_page"),
     path("users/<int:user_id>/social/", social_posts_panel, name="social_posts_panel"),
     path("social/post/create/", social_post_create, name="social_post_create"),
     path("social/post/<int:post_id>/delete/", social_post_delete, name="social_post_delete"),
     path("social/mood/", mood_checkin, name="mood_checkin"),
     path("social/chat/", social_chatbot_message, name="social_chatbot_message"),
+    path("social/ai-react/", social_ai_react, name="social_ai_react"),
     path("social/checkin/", daily_checkin_save, name="daily_checkin_save"),
     path("social/cover/", social_cover_upload, name="social_cover_upload"),
 

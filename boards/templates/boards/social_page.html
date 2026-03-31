@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Espaço Social — NossoTrello{% endblock %}
+
+{% block body_class %}sp-standalone-page{% endblock %}
+
+{% block header_center %}
+<span class="text-white/90 font-semibold text-sm">Espaço Social</span>
+{% endblock %}
+
+{% block content %}
+<div class="sp-page-wrap">
+  {% include "boards/social_panel.html" %}
+</div>
+{% endblock %}
