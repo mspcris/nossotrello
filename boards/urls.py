@@ -115,6 +115,12 @@ from boards.views.social import (
     social_cover_upload,
     social_avatar_upload,
     social_camila_chat,
+    camila_admin,
+    camila_knowledge_save,
+    camila_knowledge_delete,
+    camila_knowledge_toggle,
+    camila_test_chat,
+    camila_config_save,
 )
 
 
@@ -148,6 +154,14 @@ urlpatterns = [
     path("social/cover/", social_cover_upload, name="social_cover_upload"),
     path("social/avatar/", social_avatar_upload, name="social_avatar_upload"),
     path("social/camila/", social_camila_chat, name="social_camila_chat"),
+
+    # Camila.AI Admin (staff only)
+    path("camila/", camila_admin, name="camila_admin"),
+    path("camila/save/", camila_knowledge_save, name="camila_knowledge_save"),
+    path("camila/<int:entry_id>/delete/", camila_knowledge_delete, name="camila_knowledge_delete"),
+    path("camila/<int:entry_id>/toggle/", camila_knowledge_toggle, name="camila_knowledge_toggle"),
+    path("camila/test/", camila_test_chat, name="camila_test_chat"),
+    path("camila/config/", camila_config_save, name="camila_config_save"),
 
     # ============================================================
     # IDCamim OAuth2

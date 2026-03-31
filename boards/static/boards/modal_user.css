@@ -1068,8 +1068,12 @@ video.sp-post-media {
   border-color: #a855f7;
 }
 .sp-camila-btn-avatar {
-  font-size: 2rem;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
   flex-shrink: 0;
+  border: 2px solid #e9d5ff;
 }
 .sp-camila-btn-text {
   display: flex;
@@ -1126,8 +1130,12 @@ video.sp-post-media {
 .sp-camila-close:active {
   background: #f3f4f6;
 }
-.sp-camila-header-icon {
-  font-size: 1.5rem;
+.sp-camila-header-img {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #e9d5ff;
 }
 .sp-camila-header-title {
   font-size: 1.125rem;

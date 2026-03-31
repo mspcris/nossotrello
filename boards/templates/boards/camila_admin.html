@@ -1,0 +1,386 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Camila.AI — Treinamento{% endblock %}
+{% block body_class %}camila-admin-page{% endblock %}
+
+{% block header_center %}
+<span class="text-white/90 font-semibold text-sm">🤖 Camila.AI — Base de Conhecimento</span>
+{% endblock %}
+
+{% block content %}
+<div class="ca-wrap">
+
+  <!-- ═══ STATS ═══ -->
+  <div class="ca-stats">
+    <div class="ca-stat">
+      <span class="ca-stat-num">{{ total_entries }}</span>
+      <span class="ca-stat-label">Total</span>
+    </div>
+    <div class="ca-stat">
+      <span class="ca-stat-num ca-stat-green">{{ active_entries }}</span>
+      <span class="ca-stat-label">Ativas</span>
+    </div>
+    <div class="ca-stat">
+      <span class="ca-stat-num">~{{ total_chars }}</span>
+      <span class="ca-stat-label">Caracteres</span>
+    </div>
+  </div>
+
+  <!-- ═══ CONFIG ═══ -->
+  <div class="ca-card">
+    <div class="ca-card-header" onclick="caToggle('ca-config')">
+      <span class="ca-card-title">⚙️ Configuracoes (Modelo, Prompts, Temperatura)</span>
+      <span class="ca-card-arrow">▸</span>
+    </div>
+    <div id="ca-config" class="ca-card-body ca-hidden">
+      <form onsubmit="return caConfigSave(this, event)">
+
+        <div class="ca-field ca-row" style="gap:12px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:180px;">
+            <label class="ca-label">Modelo</label>
+            <select name="model" class="ca-input">
+              {% for value, label in model_choices %}
+              <option value="{{ value }}" {% if value == config.model %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div style="flex:0 0 120px;">
+            <label class="ca-label">Temperatura</label>
+            <input type="number" name="temperature" class="ca-input" value="{{ config.temperature }}" min="0" max="2" step="0.1">
+          </div>
+          <div style="flex:0 0 120px;">
+            <label class="ca-label">Max Tokens</label>
+            <input type="number" name="max_tokens" class="ca-input" value="{{ config.max_tokens }}" min="50" max="4000" step="50">
+          </div>
+        </div>
+
+        <div class="ca-field">
+          <label class="ca-label">Prompt — Camila (reacao a acoes do usuario)</label>
+          <textarea name="prompt_react" class="ca-textarea" rows="5">{{ config.prompt_react }}</textarea>
+          <div class="ca-hint">Usado quando o usuario faz check-in, posta foto, etc. A Camila reage com um toast.</div>
+        </div>
+
+        <div class="ca-field">
+          <label class="ca-label">Prompt — Camila (chat conversacional)</label>
+          <textarea name="prompt_chat" class="ca-textarea" rows="6">{{ config.prompt_chat }}</textarea>
+          <div class="ca-hint">Usado no chat "Fale com a Camila.AI". A base de conhecimento e anexada automaticamente.</div>
+        </div>
+
+        <div class="ca-field">
+          <label class="ca-label">Prompt — Camilo (coach de bem-estar)</label>
+          <textarea name="prompt_coach" class="ca-textarea" rows="5">{{ config.prompt_coach }}</textarea>
+          <div class="ca-hint">Usado no chat do Camilo (coach motivacional).</div>
+        </div>
+
+        <button type="submit" class="ca-btn ca-btn-blue">Salvar Configuracoes</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ═══ ADD NEW ═══ -->
+  <div class="ca-card">
+    <div class="ca-card-header" onclick="caToggle('ca-form-new')">
+      <span class="ca-card-title">+ Adicionar Conhecimento</span>
+      <span class="ca-card-arrow">▸</span>
+    </div>
+    <div id="ca-form-new" class="ca-card-body ca-hidden">
+      <form onsubmit="return caSave(this, event)">
+        <input type="hidden" name="entry_id" value="">
+        <div class="ca-field">
+          <label class="ca-label">Categoria</label>
+          <select name="category" class="ca-input">
+            {% for value, label in categories %}
+            <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="ca-field">
+          <label class="ca-label">Titulo</label>
+          <input type="text" name="title" class="ca-input" placeholder="Ex: O que e a CAMIM" required maxlength="200">
+        </div>
+        <div class="ca-field">
+          <label class="ca-label">Conteudo (o que a Camila deve saber)</label>
+          <textarea name="content" class="ca-textarea" rows="6"
+                    placeholder="Escreva aqui tudo que a Camila precisa saber sobre este topico. Seja detalhado e claro." required></textarea>
+        </div>
+        <div class="ca-field ca-row">
+          <label class="ca-check">
+            <input type="checkbox" name="is_active" value="1" checked>
+            <span>Ativa</span>
+          </label>
+        </div>
+        <button type="submit" class="ca-btn ca-btn-blue">Salvar</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ═══ KNOWLEDGE ENTRIES ═══ -->
+  <div class="ca-section-title">Base de Conhecimento</div>
+
+  {% if entries %}
+  {% for entry in entries %}
+  <div class="ca-card" id="ca-entry-{{ entry.id }}">
+    <div class="ca-card-header" onclick="caToggle('ca-body-{{ entry.id }}')">
+      <div class="ca-entry-head">
+        <span class="ca-badge ca-badge-{{ entry.category }}">{{ entry.get_category_display }}</span>
+        <span class="ca-entry-title">{{ entry.title }}</span>
+        {% if not entry.is_active %}<span class="ca-badge-off">inativa</span>{% endif %}
+      </div>
+      <span class="ca-card-arrow">▸</span>
+    </div>
+    <div id="ca-body-{{ entry.id }}" class="ca-card-body ca-hidden">
+      <form onsubmit="return caSave(this, event)">
+        <input type="hidden" name="entry_id" value="{{ entry.id }}">
+        <div class="ca-field">
+          <label class="ca-label">Categoria</label>
+          <select name="category" class="ca-input">
+            {% for value, label in categories %}
+            <option value="{{ value }}" {% if value == entry.category %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="ca-field">
+          <label class="ca-label">Titulo</label>
+          <input type="text" name="title" class="ca-input" value="{{ entry.title }}" required maxlength="200">
+        </div>
+        <div class="ca-field">
+          <label class="ca-label">Conteudo</label>
+          <textarea name="content" class="ca-textarea" rows="6" required>{{ entry.content }}</textarea>
+        </div>
+        <div class="ca-field ca-row">
+          <label class="ca-check">
+            <input type="checkbox" name="is_active" value="1" {% if entry.is_active %}checked{% endif %}>
+            <span>Ativa</span>
+          </label>
+        </div>
+        <div class="ca-actions">
+          <button type="submit" class="ca-btn ca-btn-blue">Salvar</button>
+          <button type="button" class="ca-btn ca-btn-toggle" onclick="caToggleActive({{ entry.id }})">
+            {% if entry.is_active %}Desativar{% else %}Ativar{% endif %}
+          </button>
+          <button type="button" class="ca-btn ca-btn-red" onclick="caDelete({{ entry.id }})">Excluir</button>
+        </div>
+      </form>
+      <div class="ca-meta">
+        Criado em {{ entry.created_at|date:"d/m/Y H:i" }}
+        {% if entry.created_by %} por {{ entry.created_by.email }}{% endif %}
+        · Atualizado {{ entry.updated_at|date:"d/m/Y H:i" }}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+  {% else %}
+  <div class="ca-empty">
+    Nenhum conhecimento cadastrado ainda. Adicione acima para treinar a Camila.
+  </div>
+  {% endif %}
+
+  <!-- ═══ TEST CHAT ═══ -->
+  <div class="ca-card">
+    <div class="ca-card-header" onclick="caToggle('ca-test-chat')">
+      <span class="ca-card-title">🧪 Testar Camila</span>
+      <span class="ca-card-arrow">▸</span>
+    </div>
+    <div id="ca-test-chat" class="ca-card-body ca-hidden">
+      <p class="ca-hint">Teste como a Camila responde com a base de conhecimento atual.</p>
+      <div id="ca-test-messages" class="ca-test-messages"></div>
+      <div class="ca-test-input-row">
+        <input type="text" id="ca-test-input" class="ca-input" placeholder="Pergunte algo para a Camila..."
+               onkeydown="if(event.key==='Enter')caTestSend()">
+        <button type="button" class="ca-btn ca-btn-blue ca-btn-sm" onclick="caTestSend()">Enviar</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<style>
+.ca-wrap{max-width:680px;margin:0 auto;padding:16px;padding-bottom:80px;}
+.ca-hidden{display:none!important;}
+
+/* Stats */
+.ca-stats{display:flex;gap:8px;margin-bottom:16px;}
+.ca-stat{flex:1;background:#fff;border-radius:12px;padding:14px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.08);}
+.ca-stat-num{display:block;font-size:1.5rem;font-weight:800;color:#111827;}
+.ca-stat-green{color:#059669;}
+.ca-stat-label{font-size:0.75rem;color:#6b7280;font-weight:500;}
+
+/* Card */
+.ca-card{background:#fff;border-radius:14px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,0.08);overflow:hidden;}
+.ca-card-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;-webkit-tap-highlight-color:transparent;min-height:48px;}
+.ca-card-header:active{background:#f9fafb;}
+.ca-card-title{font-weight:700;font-size:0.9375rem;color:#111827;}
+.ca-card-arrow{color:#9ca3af;font-size:1rem;transition:transform 0.2s;}
+.ca-card-body{padding:0 16px 16px;}
+
+/* Entry head */
+.ca-entry-head{display:flex;align-items:center;gap:8px;flex:1;min-width:0;}
+.ca-entry-title{font-weight:600;font-size:0.875rem;color:#1f2937;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* Badges */
+.ca-badge{font-size:0.6875rem;font-weight:700;padding:3px 8px;border-radius:10px;white-space:nowrap;background:#e0e7ff;color:#3730a3;}
+.ca-badge-about{background:#dbeafe;color:#1e40af;}
+.ca-badge-services{background:#d1fae5;color:#065f46;}
+.ca-badge-rules{background:#fef3c7;color:#92400e;}
+.ca-badge-processes{background:#e0e7ff;color:#3730a3;}
+.ca-badge-faq{background:#f3e8ff;color:#6b21a8;}
+.ca-badge-contacts{background:#fce7f3;color:#9d174d;}
+.ca-badge-culture{background:#ccfbf1;color:#134e4a;}
+.ca-badge-other{background:#f3f4f6;color:#374151;}
+.ca-badge-off{font-size:0.625rem;padding:2px 6px;border-radius:8px;background:#fef2f2;color:#b91c1c;font-weight:600;}
+
+/* Form */
+.ca-field{margin-bottom:12px;}
+.ca-label{display:block;font-size:0.8125rem;font-weight:600;color:#374151;margin-bottom:4px;}
+.ca-input{width:100%;border:1px solid #e5e7eb;border-radius:10px;padding:10px 12px;font-size:0.9375rem;background:#f9fafb;box-sizing:border-box;min-height:44px;}
+.ca-input:focus{outline:none;border-color:#60a5fa;background:#fff;}
+.ca-textarea{width:100%;border:1px solid #e5e7eb;border-radius:10px;padding:10px 12px;font-size:0.875rem;background:#f9fafb;box-sizing:border-box;resize:vertical;font-family:inherit;line-height:1.5;}
+.ca-textarea:focus{outline:none;border-color:#60a5fa;background:#fff;}
+.ca-row{display:flex;align-items:center;gap:12px;}
+.ca-check{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.875rem;color:#374151;min-height:44px;}
+.ca-hint{font-size:0.8125rem;color:#6b7280;margin-bottom:12px;}
+
+/* Actions */
+.ca-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.ca-btn{border:none;border-radius:10px;padding:10px 16px;font-size:0.875rem;font-weight:600;cursor:pointer;min-height:44px;-webkit-tap-highlight-color:transparent;transition:all 0.15s;}
+.ca-btn:active{transform:scale(0.97);}
+.ca-btn-blue{background:#2563eb;color:#fff;}
+.ca-btn-blue:hover{background:#1d4ed8;}
+.ca-btn-red{background:#fee2e2;color:#dc2626;}
+.ca-btn-red:hover{background:#fecaca;}
+.ca-btn-toggle{background:#f3f4f6;color:#374151;}
+.ca-btn-toggle:hover{background:#e5e7eb;}
+.ca-btn-sm{padding:8px 14px;font-size:0.8125rem;}
+
+.ca-meta{margin-top:10px;font-size:0.6875rem;color:#9ca3af;border-top:1px solid #f3f4f6;padding-top:8px;}
+
+.ca-empty{text-align:center;padding:40px 16px;color:#9ca3af;font-size:0.9375rem;}
+
+.ca-section-title{font-size:1rem;font-weight:700;color:#111827;margin:20px 0 10px 4px;}
+
+/* Test chat */
+.ca-test-messages{min-height:80px;max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:12px;padding:8px 0;}
+.ca-test-msg{border-radius:14px;padding:10px 14px;font-size:0.875rem;line-height:1.5;max-width:90%;white-space:pre-wrap;}
+.ca-test-user{align-self:flex-end;background:#2563eb;color:#fff;border-bottom-right-radius:4px;}
+.ca-test-bot{align-self:flex-start;background:#f3f4f6;color:#1f2937;border-bottom-left-radius:4px;}
+.ca-test-input-row{display:flex;gap:8px;}
+.ca-test-input-row .ca-input{flex:1;}
+
+/* Toast */
+.ca-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#059669;color:#fff;padding:12px 24px;border-radius:12px;font-size:0.875rem;font-weight:600;z-index:9000;box-shadow:0 4px 16px rgba(0,0,0,0.2);animation:ca-toast-in 0.3s ease;}
+@keyframes ca-toast-in{from{opacity:0;transform:translateX(-50%) translateY(20px);}to{opacity:1;transform:translateX(-50%) translateY(0);}}
+</style>
+
+<script>
+(function(){
+  var csrf = document.querySelector('meta[name="csrf-token"]');
+  var csrfVal = csrf ? csrf.content : '';
+
+  window.caToggle = function(id){
+    var el = document.getElementById(id);
+    if(el) el.classList.toggle('ca-hidden');
+  };
+
+  function caToast(msg, color){
+    var t = document.createElement('div');
+    t.className = 'ca-toast';
+    if(color) t.style.background = color;
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(function(){ t.remove(); }, 3000);
+  }
+
+  window.caSave = async function(form, e){
+    e.preventDefault();
+    var fd = new FormData(form);
+    // checkbox fix
+    if(!form.querySelector('[name=is_active]').checked) fd.set('is_active', '0');
+    else fd.set('is_active', '1');
+
+    try{
+      var r = await fetch('{% url "boards:camila_knowledge_save" %}', {
+        method:'POST', headers:{'X-CSRFToken': csrfVal}, body: fd
+      });
+      var d = await r.json();
+      if(d.error){ caToast(d.error, '#dc2626'); return false; }
+      caToast('Salvo: ' + d.title);
+      setTimeout(function(){ location.reload(); }, 800);
+    }catch(err){ caToast('Erro de conexao', '#dc2626'); }
+    return false;
+  };
+
+  window.caDelete = async function(id){
+    if(!confirm('Excluir esta entrada?')) return;
+    try{
+      var r = await fetch('/camila/' + id + '/delete/', {
+        method:'POST', headers:{'X-CSRFToken': csrfVal}
+      });
+      var d = await r.json();
+      if(d.ok){
+        var el = document.getElementById('ca-entry-' + id);
+        if(el) el.remove();
+        caToast('Excluido');
+      }
+    }catch(err){ caToast('Erro', '#dc2626'); }
+  };
+
+  window.caToggleActive = async function(id){
+    try{
+      var r = await fetch('/camila/' + id + '/toggle/', {
+        method:'POST', headers:{'X-CSRFToken': csrfVal}
+      });
+      var d = await r.json();
+      caToast(d.is_active ? 'Ativada' : 'Desativada');
+      setTimeout(function(){ location.reload(); }, 600);
+    }catch(err){ caToast('Erro', '#dc2626'); }
+  };
+
+  window.caConfigSave = async function(form, e){
+    e.preventDefault();
+    var fd = new FormData(form);
+    try{
+      var r = await fetch('{% url "boards:camila_config_save" %}', {
+        method:'POST', headers:{'X-CSRFToken': csrfVal}, body: fd
+      });
+      var d = await r.json();
+      if(d.ok) caToast('Configuracoes salvas!');
+      else caToast(d.error || 'Erro', '#dc2626');
+    }catch(err){ caToast('Erro de conexao', '#dc2626'); }
+    return false;
+  };
+
+  window.caTestSend = async function(){
+    var input = document.getElementById('ca-test-input');
+    var msgs = document.getElementById('ca-test-messages');
+    if(!input || !msgs) return;
+    var text = (input.value||'').trim();
+    if(!text) return;
+    input.value = '';
+
+    var ub = document.createElement('div');
+    ub.className = 'ca-test-msg ca-test-user';
+    ub.textContent = text;
+    msgs.appendChild(ub);
+
+    var th = document.createElement('div');
+    th.className = 'ca-test-msg ca-test-bot';
+    th.textContent = 'Pensando...';
+    msgs.appendChild(th);
+    msgs.scrollTop = msgs.scrollHeight;
+
+    try{
+      var r = await fetch('{% url "boards:camila_test_chat" %}', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-CSRFToken': csrfVal},
+        body: JSON.stringify({message: text})
+      });
+      var d = await r.json();
+      th.textContent = d.response || d.error || 'Erro.';
+    }catch(e){ th.textContent = 'Erro de conexao.'; }
+    msgs.scrollTop = msgs.scrollHeight;
+  };
+
+})();
+</script>
+{% endblock %}

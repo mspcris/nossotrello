@@ -20,28 +20,38 @@ from ..models import (
     BoardMembership, SocialPost, SocialPostSeen,
     SocialPostReaction, SocialPostComment,
     DailyCheckIn, Card, CardFollow, UserProfile,
+    CamilaKnowledge, CamilaConfig,
 )
 
 User = get_user_model()
+
+from django.contrib.admin.views.decorators import staff_member_required
 
 _GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 _GROQ_MODEL_DEFAULT = "llama-3.3-70b-versatile"
 
 
-def _groq_chat(messages: list[dict], system_prompt: str = "") -> str:
+def _groq_chat(messages: list[dict], system_prompt: str = "", config=None) -> str:
     """Chama a Groq API e retorna o texto da resposta."""
     api_key = os.getenv("GROQ_API_KEY", "").strip()
     if not api_key:
         return ""
-    model = os.getenv("GROQ_MODEL", "").strip() or _GROQ_MODEL_DEFAULT
+    if config is None:
+        try:
+            config = CamilaConfig.get()
+        except Exception:
+            config = None
+    model = (config.model if config else None) or os.getenv("GROQ_MODEL", "").strip() or _GROQ_MODEL_DEFAULT
+    temperature = config.temperature if config else 0.8
+    max_tokens = config.max_tokens if config else 500
     payload = {
         "model": model,
         "messages": [
             {"role": "system", "content": system_prompt},
             *messages,
         ],
-        "max_tokens": 500,
-        "temperature": 0.8,
+        "max_tokens": max_tokens,
+        "temperature": temperature,
     }
     try:
         r = http_requests.post(
@@ -392,32 +402,27 @@ def social_chatbot_message(request):
     if not message:
         return JsonResponse({"error": "Mensagem vazia."}, status=400)
 
-    system_prompt = (
-        "Você é Tuca, um coach de bem-estar gentil e prático. "
-        "Seu foco é motivação, hábitos saudáveis e saúde mental. "
-        "Converse de forma leve, positiva e acolhedora. "
-        "Nunca diagnostique doenças. Se perceber sofrimento intenso, "
-        "sugira buscar apoio profissional. "
-        "Respostas curtas e diretas (máximo 3 parágrafos). Português brasileiro."
-    )
+    cfg = CamilaConfig.get()
+    system_prompt = cfg.prompt_coach
 
     messages = [*history[-10:], {"role": "user", "content": message}]
-    response = _groq_chat(messages, system_prompt)
+    response = _groq_chat(messages, system_prompt, config=cfg)
     return JsonResponse({"response": response})
 
 
 # ---------------------------------------------------------------
-# Camila.AI — reação inteligente a ações do usuário (POST → JSON)
+# Camila.AI — base de conhecimento helper
 # ---------------------------------------------------------------
-_CAMILA_SYSTEM = (
-    "Você é Camila, a IA simpática da rede social de trabalho da CAMIM. "
-    "O colega acabou de compartilhar algo na rede. Faça um comentário CURTO "
-    "(1-2 frases no máximo), divertido, engajador e caloroso. Use emojis. "
-    "Se ele falou o que vai almoçar, comente sobre a comida de forma "
-    "descontraída (ex: 'Que delícia!', 'Tá de dieta ou tá se dando bem?'). "
-    "Se falou o humor, acolha. Se postou algo, incentive. "
-    "Seja leve, profissional e NUNCA chata. Português brasileiro."
-)
+def _camila_knowledge_prompt():
+    """Monta bloco de conhecimento a partir do banco."""
+    entries = CamilaKnowledge.objects.filter(is_active=True)
+    if not entries.exists():
+        return ""
+    lines = ["\n\n--- BASE DE CONHECIMENTO DA CAMIM ---"]
+    for e in entries:
+        lines.append(f"\n[{e.get_category_display()}] {e.title}:\n{e.content}")
+    lines.append("\n--- FIM DA BASE DE CONHECIMENTO ---\n")
+    return "\n".join(lines)
 
 
 @login_required
@@ -433,26 +438,14 @@ def social_ai_react(request):
     if not context:
         return JsonResponse({"response": ""})
 
+    cfg = CamilaConfig.get()
+    prompt = cfg.prompt_react + _camila_knowledge_prompt()
     response = _groq_chat(
         [{"role": "user", "content": context}],
-        _CAMILA_SYSTEM,
+        prompt,
+        config=cfg,
     )
     return JsonResponse({"response": response})
-
-
-# ---------------------------------------------------------------
-# Camila.AI — chat conversacional (POST → JSON)
-# ---------------------------------------------------------------
-_CAMILA_CHAT_SYSTEM = (
-    "Você é Camila, a IA simpática e inteligente da rede social de trabalho da CAMIM. "
-    "Você é uma assistente conversacional. Os colaboradores podem falar com você "
-    "sobre qualquer assunto: trabalho, dúvidas, desabafos, ideias, piadas, "
-    "curiosidades, dicas de produtividade, etc. "
-    "Seja calorosa, divertida, use emojis com moderação e mantenha um tom "
-    "profissional mas descontraído. Respostas curtas e diretas (máx 3 parágrafos). "
-    "Se perceber sofrimento intenso, sugira buscar apoio profissional. "
-    "Português brasileiro. Nunca diagnostique doenças."
-)
 
 
 @login_required
@@ -470,8 +463,10 @@ def social_camila_chat(request):
     if not message:
         return JsonResponse({"error": "Mensagem vazia."}, status=400)
 
+    cfg = CamilaConfig.get()
+    prompt = cfg.prompt_chat + _camila_knowledge_prompt()
     messages = [*history[-10:], {"role": "user", "content": message}]
-    response = _groq_chat(messages, _CAMILA_CHAT_SYSTEM)
+    response = _groq_chat(messages, prompt, config=cfg)
     return JsonResponse({"response": response})
 
 
@@ -559,3 +554,133 @@ def social_avatar_upload(request):
     prof.avatar_choice = ""
     prof.save(update_fields=["avatar", "avatar_choice"])
     return JsonResponse({"url": prof.avatar.url})
+
+
+# ---------------------------------------------------------------
+# Camila.AI — Página de treinamento (staff only)
+# ---------------------------------------------------------------
+@login_required
+@staff_member_required
+def camila_admin(request):
+    """Página de treinamento da Camila.AI — CRUD da base de conhecimento."""
+    entries = CamilaKnowledge.objects.all()
+    categories = CamilaKnowledge.CATEGORY_CHOICES
+    config = CamilaConfig.get()
+
+    total_chars = sum(len(e.content) + len(e.title) for e in entries if e.is_active)
+
+    ctx = {
+        "entries": entries,
+        "categories": categories,
+        "config": config,
+        "model_choices": CamilaConfig.MODEL_CHOICES,
+        "total_entries": entries.count(),
+        "active_entries": entries.filter(is_active=True).count(),
+        "total_chars": total_chars,
+    }
+    return render(request, "boards/camila_admin.html", ctx)
+
+
+@login_required
+@staff_member_required
+@require_POST
+def camila_config_save(request):
+    """Salva configurações da Camila (prompts, modelo, temperatura)."""
+    cfg = CamilaConfig.get()
+    cfg.prompt_react = (request.POST.get("prompt_react") or "").strip() or cfg.prompt_react
+    cfg.prompt_chat = (request.POST.get("prompt_chat") or "").strip() or cfg.prompt_chat
+    cfg.prompt_coach = (request.POST.get("prompt_coach") or "").strip() or cfg.prompt_coach
+    cfg.model = (request.POST.get("model") or "").strip() or cfg.model
+    try:
+        cfg.temperature = float(request.POST.get("temperature", cfg.temperature))
+    except (ValueError, TypeError):
+        pass
+    try:
+        cfg.max_tokens = int(request.POST.get("max_tokens", cfg.max_tokens))
+    except (ValueError, TypeError):
+        pass
+    cfg.save()
+    return JsonResponse({"ok": True, "model": cfg.model, "temperature": cfg.temperature})
+
+
+@login_required
+@staff_member_required
+@require_POST
+def camila_knowledge_save(request):
+    """Cria ou atualiza uma entrada de conhecimento."""
+    entry_id = request.POST.get("entry_id")
+    title = (request.POST.get("title") or "").strip()
+    category = (request.POST.get("category") or "about").strip()
+    content = (request.POST.get("content") or "").strip()
+    is_active = request.POST.get("is_active") == "1"
+
+    if not title or not content:
+        return JsonResponse({"error": "Título e conteúdo são obrigatórios."}, status=400)
+
+    if entry_id:
+        entry = get_object_or_404(CamilaKnowledge, id=entry_id)
+        entry.title = title
+        entry.category = category
+        entry.content = content
+        entry.is_active = is_active
+        entry.save()
+    else:
+        entry = CamilaKnowledge.objects.create(
+            title=title,
+            category=category,
+            content=content,
+            is_active=is_active,
+            created_by=request.user,
+        )
+
+    return JsonResponse({
+        "id": entry.id,
+        "title": entry.title,
+        "category": entry.category,
+        "category_label": entry.get_category_display(),
+        "content": entry.content,
+        "is_active": entry.is_active,
+    })
+
+
+@login_required
+@staff_member_required
+@require_POST
+def camila_knowledge_delete(request, entry_id: int):
+    """Remove uma entrada de conhecimento."""
+    entry = get_object_or_404(CamilaKnowledge, id=entry_id)
+    entry.delete()
+    return JsonResponse({"ok": True})
+
+
+@login_required
+@staff_member_required
+@require_POST
+def camila_knowledge_toggle(request, entry_id: int):
+    """Ativa/desativa uma entrada."""
+    entry = get_object_or_404(CamilaKnowledge, id=entry_id)
+    entry.is_active = not entry.is_active
+    entry.save(update_fields=["is_active"])
+    return JsonResponse({"id": entry.id, "is_active": entry.is_active})
+
+
+@login_required
+@staff_member_required
+@require_POST
+def camila_test_chat(request):
+    """Testa a Camila com a base de conhecimento atual."""
+    try:
+        data = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "JSON inválido."}, status=400)
+
+    message = (data.get("message") or "").strip()
+    if not message:
+        return JsonResponse({"error": "Mensagem vazia."}, status=400)
+
+    prompt = _CAMILA_CHAT_BASE + _camila_knowledge_prompt()
+    response = _groq_chat(
+        [{"role": "user", "content": message}],
+        prompt,
+    )
+    return JsonResponse({"response": response, "prompt_preview": prompt[:500] + "..."})

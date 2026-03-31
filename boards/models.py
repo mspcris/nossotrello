@@ -968,4 +968,110 @@ class DailyCheckIn(models.Model):
     def __str__(self):
         return f"{self.user} — {self.date} — {self.mood_emoji} {self.mood_label}"
 
+# ============================================================
+# CAMILA.AI — Base de conhecimento
+# ============================================================
+class CamilaKnowledge(models.Model):
+    CATEGORY_CHOICES = [
+        ("about", "Sobre a CAMIM"),
+        ("services", "Serviços e Produtos"),
+        ("rules", "Regras e Políticas"),
+        ("processes", "Processos Internos"),
+        ("faq", "Perguntas Frequentes"),
+        ("contacts", "Contatos e Endereços"),
+        ("culture", "Cultura e Valores"),
+        ("other", "Outros"),
+    ]
+    title = models.CharField(max_length=200)
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default="about")
+    content = models.TextField(help_text="Conteúdo que a Camila deve saber")
+    is_active = models.BooleanField(default=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["category", "title"]
+        verbose_name = "Camila — Conhecimento"
+        verbose_name_plural = "Camila — Base de Conhecimento"
+
+    def __str__(self):
+        return f"[{self.get_category_display()}] {self.title}"
+
+
+class CamilaConfig(models.Model):
+    """Configuração singleton da Camila.AI — gerenciável pela interface."""
+    MODEL_CHOICES = [
+        ("llama-3.3-70b-versatile", "Llama 3.3 70B (padrão)"),
+        ("llama-3.1-8b-instant", "Llama 3.1 8B (rápido)"),
+        ("llama3-70b-8192", "Llama 3 70B"),
+        ("llama3-8b-8192", "Llama 3 8B"),
+        ("mixtral-8x7b-32768", "Mixtral 8x7B"),
+        ("gemma2-9b-it", "Gemma 2 9B"),
+    ]
+
+    # Prompts
+    prompt_react = models.TextField(
+        verbose_name="Prompt — Reação a ações",
+        default=(
+            "Você é Camila, a IA simpática da rede social de trabalho da CAMIM. "
+            "O colega acabou de compartilhar algo na rede. Faça um comentário CURTO "
+            "(1-2 frases no máximo), divertido, engajador e caloroso. Use emojis. "
+            "Se ele falou o que vai almoçar, comente sobre a comida de forma "
+            "descontraída. Se falou o humor, acolha. Se postou algo, incentive. "
+            "Seja leve, profissional e NUNCA chata. Português brasileiro."
+        ),
+    )
+    prompt_chat = models.TextField(
+        verbose_name="Prompt — Chat conversacional",
+        default=(
+            "Você é Camila, a IA simpática e inteligente da rede social de trabalho da CAMIM. "
+            "Você é uma assistente conversacional. Os colaboradores podem falar com você "
+            "sobre qualquer assunto: trabalho, dúvidas, desabafos, ideias, piadas, "
+            "curiosidades, dicas de produtividade, etc. "
+            "Seja calorosa, divertida, use emojis com moderação e mantenha um tom "
+            "profissional mas descontraído. Respostas curtas e diretas (máx 3 parágrafos). "
+            "Se perceber sofrimento intenso, sugira buscar apoio profissional. "
+            "Português brasileiro. Nunca diagnostique doenças. "
+            "Use a base de conhecimento abaixo para responder perguntas sobre a CAMIM "
+            "quando relevante. Se não souber, diga que não tem essa informação ainda."
+        ),
+    )
+    prompt_coach = models.TextField(
+        verbose_name="Prompt — Camilo (coach)",
+        default=(
+            "Você é Camilo, um coach de bem-estar gentil e prático. "
+            "Seu foco é motivação, hábitos saudáveis e saúde mental. "
+            "Converse de forma leve, positiva e acolhedora. "
+            "Nunca diagnostique doenças. Se perceber sofrimento intenso, "
+            "sugira buscar apoio profissional. "
+            "Respostas curtas e diretas (máximo 3 parágrafos). Português brasileiro."
+        ),
+    )
+
+    # Parâmetros do modelo
+    model = models.CharField(max_length=60, choices=MODEL_CHOICES, default="llama-3.3-70b-versatile")
+    temperature = models.FloatField(default=0.8)
+    max_tokens = models.IntegerField(default=500)
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Camila — Configuração"
+        verbose_name_plural = "Camila — Configuração"
+
+    def __str__(self):
+        return f"Camila Config (model={self.model}, temp={self.temperature})"
+
+    @classmethod
+    def get(cls):
+        """Retorna a config singleton (cria se não existir)."""
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+
 # END boards/models.py

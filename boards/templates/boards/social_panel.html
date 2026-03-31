@@ -254,11 +254,11 @@
   <!-- ═══ CHATBOT TUCA ═══ -->
   <div class="sp-card">
     <button type="button" class="sp-chat-toggle" onclick="spToggleChat()">
-      💬 Tuca — coach de bem-estar
+      💬 Camilo — coach de bem-estar
     </button>
     <div id="sp-chat-box" class="sp-chat-box sp-hidden">
       <div id="sp-chat-messages" class="sp-chat-messages">
-        <div class="sp-chat-msg sp-chat-bot">Oi! Sou o Tuca 😊 Como posso te ajudar?</div>
+        <div class="sp-chat-msg sp-chat-bot">Oi! Sou o Camilo 😊 Como posso te ajudar?</div>
       </div>
       <div class="sp-chat-input-row">
         <input type="text" id="sp-chat-input" class="sp-chat-input"
@@ -328,7 +328,7 @@
       <div class="sp-sheet-divider"></div>
 
       <button type="button" class="sp-camila-btn" onclick="spCloseSheet();spOpenCamila()">
-        <span class="sp-camila-btn-avatar">🤖</span>
+        <img src="{% static 'images/camila-avatar.png' %}" alt="Camila" class="sp-camila-btn-avatar">
         <span class="sp-camila-btn-text">
           <span class="sp-camila-btn-name">Fale com a Camila.AI</span>
           <span class="sp-camila-btn-hint">Sua assistente da rede social</span>
@@ -343,7 +343,7 @@
     <div class="sp-sheet sp-camila-sheet" onclick="event.stopPropagation()">
       <div class="sp-sheet-handle"></div>
       <div class="sp-camila-header">
-        <span class="sp-camila-header-icon">🤖</span>
+        <img src="{% static 'images/camila-avatar.png' %}" alt="Camila" class="sp-camila-header-img">
         <span class="sp-camila-header-title">Camila.AI</span>
         <button type="button" class="sp-camila-close" onclick="spCloseCamila()">✕</button>
       </div>
@@ -770,7 +770,7 @@
     var toast = document.createElement('div');
     toast.className = 'nt-toast';
     toast.style.borderLeftColor = '#8b5cf6';
-    toast.innerHTML = '<div class="nt-toast-title">🤖 Camila.AI</div><div class="nt-toast-line">' +
+    toast.innerHTML = '<div class="nt-toast-title"><img src="{% static \'images/camila-avatar.png\' %}" style="width:20px;height:20px;border-radius:50%;vertical-align:middle;margin-right:4px"> Camila.AI</div><div class="nt-toast-line">' +
       text.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>';
     container.appendChild(toast);
     setTimeout(function(){
