@@ -248,22 +248,26 @@
   {% if real_friends %}
   <div class="sp-friends-bar">
     <div class="sp-friends-label">💜 Meus Amigos</div>
-    <div class="sp-friends-row">
-      {% for friend in real_friends %}
-      {% with fp=friend.profile %}
-      <button type="button" class="sp-friend-btn" onclick="spOpenFriendSheet({{ friend.id }})"
-              title="{{ fp.display_name|default:friend.email }}">
-        {% if fp and fp.avatar %}
-          <img src="{{ fp.avatar.url }}" alt="" class="sp-friend-av-img">
-        {% elif fp and fp.avatar_choice %}
-          <img src="{% static 'images/avatar/' %}{{ fp.avatar_choice }}" alt="" class="sp-friend-av-img">
-        {% else %}
-          <span class="sp-friend-av-fb">{{ fp.display_name|default:friend.email|first|upper }}</span>
-        {% endif %}
-        <span class="sp-friend-name">{{ fp.display_name|default:friend.email|truncatechars:8 }}</span>
-      </button>
-      {% endwith %}
-      {% endfor %}
+    <div class="sp-friends-scroll-wrap">
+      <button type="button" class="sp-scroll-arrow sp-scroll-left sp-hidden" onclick="spScrollRow(this,1)">‹</button>
+      <div class="sp-friends-row">
+        {% for friend in real_friends %}
+        {% with fp=friend.profile %}
+        <button type="button" class="sp-friend-btn" onclick="spOpenFriendSheet({{ friend.id }})"
+                title="{{ fp.display_name|default:friend.email }}">
+          {% if fp and fp.avatar %}
+            <img src="{{ fp.avatar.url }}" alt="" class="sp-friend-av-img">
+          {% elif fp and fp.avatar_choice %}
+            <img src="{% static 'images/avatar/' %}{{ fp.avatar_choice }}" alt="" class="sp-friend-av-img">
+          {% else %}
+            <span class="sp-friend-av-fb">{{ fp.display_name|default:friend.email|first|upper }}</span>
+          {% endif %}
+          <span class="sp-friend-name">{{ fp.display_name|default:friend.email|truncatechars:8 }}</span>
+        </button>
+        {% endwith %}
+        {% endfor %}
+      </div>
+      <button type="button" class="sp-scroll-arrow sp-scroll-right" onclick="spScrollRow(this,-1)">›</button>
     </div>
   </div>
   {% endif %}
@@ -272,22 +276,26 @@
   {% if unit_suggestions %}
   <div class="sp-friends-bar">
     <div class="sp-friends-label">✨ Sugestões de amizade</div>
-    <div class="sp-friends-row">
-      {% for sug in unit_suggestions %}
-      {% with sp=sug.profile %}
-      <button type="button" class="sp-friend-btn" onclick="spOpenFriendSheet({{ sug.id }})"
-              title="{{ sp.display_name|default:sug.email }}">
-        {% if sp and sp.avatar %}
-          <img src="{{ sp.avatar.url }}" alt="" class="sp-friend-av-img">
-        {% elif sp and sp.avatar_choice %}
-          <img src="{% static 'images/avatar/' %}{{ sp.avatar_choice }}" alt="" class="sp-friend-av-img">
-        {% else %}
-          <span class="sp-friend-av-fb">{{ sp.display_name|default:sug.email|first|upper }}</span>
-        {% endif %}
-        <span class="sp-friend-name">{{ sp.display_name|default:sug.email|truncatechars:8 }}</span>
-      </button>
-      {% endwith %}
-      {% endfor %}
+    <div class="sp-friends-scroll-wrap">
+      <button type="button" class="sp-scroll-arrow sp-scroll-left sp-hidden" onclick="spScrollRow(this,1)">‹</button>
+      <div class="sp-friends-row">
+        {% for sug in unit_suggestions %}
+        {% with sp=sug.profile %}
+        <button type="button" class="sp-friend-btn" onclick="spOpenFriendSheet({{ sug.id }})"
+                title="{{ sp.display_name|default:sug.email }}">
+          {% if sp and sp.avatar %}
+            <img src="{{ sp.avatar.url }}" alt="" class="sp-friend-av-img">
+          {% elif sp and sp.avatar_choice %}
+            <img src="{% static 'images/avatar/' %}{{ sp.avatar_choice }}" alt="" class="sp-friend-av-img">
+          {% else %}
+            <span class="sp-friend-av-fb">{{ sp.display_name|default:sug.email|first|upper }}</span>
+          {% endif %}
+          <span class="sp-friend-name">{{ sp.display_name|default:sug.email|truncatechars:8 }}</span>
+        </button>
+        {% endwith %}
+        {% endfor %}
+      </div>
+      <button type="button" class="sp-scroll-arrow sp-scroll-right" onclick="spScrollRow(this,-1)">›</button>
     </div>
   </div>
   {% endif %}
@@ -1420,6 +1428,46 @@ var _CAMILA_AVATARS = {
 
   /* ═══ AMIGOS — SHEET ═══ */
   var _myBoards = {{ my_boards|default:"[]"|safe }};
+
+  /* ── Scroll horizontal com setas e drag ── */
+  window.spScrollRow = function(arrowBtn, direction) {
+    var wrap = arrowBtn.closest('.sp-friends-scroll-wrap');
+    var row = wrap.querySelector('.sp-friends-row');
+    if (!row) return;
+    var step = row.clientWidth * 0.7;
+    row.scrollBy({ left: -direction * step, behavior: 'smooth' });
+    setTimeout(function(){ _spUpdateArrows(wrap); }, 350);
+  };
+
+  function _spUpdateArrows(wrap) {
+    var row = wrap.querySelector('.sp-friends-row');
+    var left = wrap.querySelector('.sp-scroll-left');
+    var right = wrap.querySelector('.sp-scroll-right');
+    if (!row) return;
+    if (left) left.classList.toggle('sp-hidden', row.scrollLeft < 5);
+    if (right) right.classList.toggle('sp-hidden', row.scrollLeft + row.clientWidth >= row.scrollWidth - 5);
+  }
+
+  /* Init arrows + drag-to-scroll */
+  document.querySelectorAll('.sp-friends-scroll-wrap').forEach(function(wrap) {
+    _spUpdateArrows(wrap);
+    var row = wrap.querySelector('.sp-friends-row');
+    if (!row) return;
+    row.addEventListener('scroll', function(){ _spUpdateArrows(wrap); });
+    /* Mouse drag */
+    var dragging = false, startX = 0, scrollStart = 0;
+    row.addEventListener('mousedown', function(e) {
+      dragging = true; startX = e.pageX; scrollStart = row.scrollLeft;
+      row.style.cursor = 'grabbing'; row.style.userSelect = 'none';
+    });
+    document.addEventListener('mousemove', function(e) {
+      if (!dragging) return;
+      row.scrollLeft = scrollStart - (e.pageX - startX);
+    });
+    document.addEventListener('mouseup', function() {
+      if (dragging) { dragging = false; row.style.cursor = ''; row.style.userSelect = ''; }
+    });
+  });
 
   window.spOpenFriendSheet = function(uid){
     var overlay = document.getElementById('sp-friend-sheet-overlay');

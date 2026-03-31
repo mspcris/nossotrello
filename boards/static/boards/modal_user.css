@@ -1536,12 +1536,41 @@ video.sp-post-media {
   color: #6b7280;
   margin-bottom: 8px;
 }
+.sp-friends-scroll-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.sp-scroll-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255,255,255,0.92);
+  box-shadow: 0 1px 6px rgba(0,0,0,0.18);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #6b7280;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, opacity 0.2s;
+}
+.sp-scroll-arrow:hover { background: #f3f4f6; color: #111; }
+.sp-scroll-left  { left: -4px; }
+.sp-scroll-right { right: -4px; }
 .sp-friends-row {
   display: flex;
   gap: 10px;
   overflow-x: auto;
   padding-bottom: 6px;
   scrollbar-width: none;
+  cursor: grab;
 }
 .sp-friends-row::-webkit-scrollbar { display: none; }
 .sp-friend-btn {
