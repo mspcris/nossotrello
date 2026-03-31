@@ -620,19 +620,21 @@ def social_unread_counts(request):
 
     posts_qs = SocialPost.objects.filter(
         user_id__in=user_ids
-    ).values("user_id", "created_at").order_by("user_id", "-created_at")
+    ).values("user_id", "created_at", "text").order_by("user_id", "-created_at")
 
     from collections import defaultdict
     posts_by_user = defaultdict(list)
     for p in posts_qs:
-        posts_by_user[p["user_id"]].append(p["created_at"])
+        posts_by_user[p["user_id"]].append(p)
+
+    fresh_texts = {}  # uid -> text do post fresquinho
 
     for uid in user_ids:
         last_seen = seen_map.get(uid)
         user_posts = posts_by_user.get(uid, [])
 
         if last_seen:
-            unread = sum(1 for t in user_posts if t > last_seen)
+            unread = sum(1 for p in user_posts if p["created_at"] > last_seen)
         else:
             unread = len(user_posts)
 
@@ -640,13 +642,14 @@ def social_unread_counts(request):
             counts[str(uid)] = unread
 
         # Balão: tem post publicado nos últimos 40s que o viewer ainda não viu?
-        for t in user_posts:
-            if t > fresh_threshold:
-                if last_seen is None or t > last_seen:
+        for p in user_posts:
+            if p["created_at"] > fresh_threshold:
+                if last_seen is None or p["created_at"] > last_seen:
                     fresh.append(uid)
+                    fresh_texts[str(uid)] = (p["text"] or "").strip()[:80]
                     break
 
-    return JsonResponse({"counts": counts, "fresh": fresh})
+    return JsonResponse({"counts": counts, "fresh": fresh, "fresh_texts": fresh_texts})
 
 
 # ---------------------------------------------------------------

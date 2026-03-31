@@ -2403,38 +2403,41 @@ document.addEventListener("pointerup", (e) => {
   window._bmaUnread = {};
 
   window.bmaClick = function(uid, btn){
-    if(window._bmaUnread[uid]){
-      window.location.href = '/social/' + uid + '/';
-    } else {
-      // comportamento padrão: abre modal de perfil
-      openReadonlyUserProfile(uid);
-    }
+    window.location.href = '/social/' + uid + '/';
   };
 
-  function showBalloon(uid, name){
+  function showBalloon(uid, name, postText){
     if(shownBalloon[uid]) return;
     shownBalloon[uid] = true;
 
-    // Cria balão
-    var wrap = document.querySelector('.bma-wrap[data-uid="'+uid+'"]');
-    if(!wrap) return;
+    // Cria balão em TODAS as bma-wrap deste uid (desktop + mobile)
+    document.querySelectorAll('.bma-wrap[data-uid="'+uid+'"]').forEach(function(wrap){
+      var balloon = document.createElement('div');
+      balloon.className = 'bma-balloon';
+      var firstName = name.split(' ')[0];
+      var text = postText ? postText : 'publicou algo novo!';
+      // Limita e trunca se muito longo
+      if(text.length > 60) text = text.substring(0, 57) + '…';
+      balloon.innerHTML = '<span class="bma-balloon-name">' + firstName + '</span>' +
+        '<span class="bma-balloon-text">' + text.replace(/</g,'&lt;') + '</span>' +
+        '<span class="bma-balloon-cta">Vem ver 👀</span>';
+      wrap.appendChild(balloon);
 
-    var balloon = document.createElement('div');
-    balloon.className = 'bma-balloon';
-    balloon.innerHTML = '<strong>' + name.split(' ')[0] + '</strong> publicou algo! Vem ver 👀';
-    wrap.appendChild(balloon);
-
-    // Após 2.5s vira só o badge
-    setTimeout(function(){
-      balloon.style.animation = 'bma-balloon-out 0.3s ease forwards';
-      setTimeout(function(){ balloon.remove(); }, 320);
-    }, 2500);
+      // Após 4s some
+      setTimeout(function(){
+        balloon.style.animation = 'bma-balloon-out 0.3s ease forwards';
+        setTimeout(function(){ balloon.remove(); }, 320);
+      }, 4000);
+    });
   }
 
-  function updateBadges(counts, fresh){
+  function updateBadges(counts, fresh, freshTexts){
     window._bmaUnread = {};
+    freshTexts = freshTexts || {};
 
     // Atualiza badges em AMBAS as barras (desktop + mobile)
+    // Agrupa por uid para não processar 2x
+    var processed = {};
     document.querySelectorAll('.bma-wrap[data-uid]').forEach(function(wrap){
       var uid = wrap.dataset.uid;
       var name = wrap.dataset.name || '';
@@ -2449,15 +2452,16 @@ document.addEventListener("pointerup", (e) => {
           badge.style.display = 'flex';
         }
         if(btn) btn.classList.add('bma-has-unread');
-
-        // Balão se for post fresquinho
-        if(fresh && fresh.indexOf(parseInt(uid)) !== -1){
-          showBalloon(uid, name);
-        }
       } else {
         delete window._bmaUnread[uid];
         if(badge) badge.style.display = 'none';
         if(btn) btn.classList.remove('bma-has-unread');
+      }
+
+      // Balão só uma vez por uid
+      if(!processed[uid] && fresh && fresh.indexOf(parseInt(uid)) !== -1){
+        processed[uid] = true;
+        showBalloon(uid, name, freshTexts[uid] || '');
       }
     });
   }
@@ -2465,7 +2469,7 @@ document.addEventListener("pointerup", (e) => {
   function poll(){
     fetch('/social/unread/?ids=' + uids.join(','))
       .then(function(r){ return r.json(); })
-      .then(function(d){ updateBadges(d.counts || {}, d.fresh || []); })
+      .then(function(d){ updateBadges(d.counts || {}, d.fresh || [], d.fresh_texts || {}); })
       .catch(function(){});
   }
 
@@ -2520,32 +2524,57 @@ document.addEventListener("pointerup", (e) => {
 }
 .bma-balloon {
   position: absolute;
-  bottom: calc(100% + 10px);
+  bottom: calc(100% + 14px);
   left: 50%;
   transform: translateX(-50%);
-  background: #1f2937;
-  color: #fff;
-  font-size: 0.75rem;
-  line-height: 1.3;
-  padding: 8px 12px;
-  border-radius: 12px;
-  white-space: nowrap;
+  background: #fff;
+  color: #1f2937;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  padding: 10px 13px 8px;
+  border-radius: 16px;
+  border: 2.5px solid #1f2937;
   z-index: 9999;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  box-shadow: 3px 3px 0 #1f2937;
   animation: bma-balloon-in 0.3s ease;
   pointer-events: none;
-  max-width: 200px;
-  white-space: normal;
-  text-align: center;
+  width: 160px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
 }
 .bma-balloon::after {
   content: '';
   position: absolute;
   top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  border: 6px solid transparent;
+  left: 28px;
+  border: 7px solid transparent;
   border-top-color: #1f2937;
+}
+.bma-balloon::before {
+  content: '';
+  position: absolute;
+  top: calc(100% - 2px);
+  left: 30px;
+  border: 5px solid transparent;
+  border-top-color: #fff;
+  z-index: 1;
+}
+.bma-balloon-name {
+  font-weight: 700;
+  font-size: 0.75rem;
+  color: #7c3aed;
+}
+.bma-balloon-text {
+  color: #374151;
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+.bma-balloon-cta {
+  font-size: 0.65rem;
+  color: #6b7280;
+  margin-top: 2px;
 }
 @keyframes bma-balloon-in {
   from { opacity: 0; transform: translateX(-50%) translateY(6px); }

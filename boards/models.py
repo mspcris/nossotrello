@@ -1006,12 +1006,12 @@ class CamilaKnowledge(models.Model):
 class CamilaConfig(models.Model):
     """Configuração singleton da Camila.AI — gerenciável pela interface."""
     MODEL_CHOICES = [
-        ("llama-3.3-70b-versatile", "Llama 3.3 70B (padrão)"),
-        ("llama-3.1-8b-instant", "Llama 3.1 8B (rápido)"),
+        ("openai/gpt-oss-20b", "GPT-OSS 20B (rápido)"),
+        ("openai/gpt-oss-120b", "GPT-OSS 120B (potente)"),
+        ("llama-3.3-70b-versatile", "Llama 3.3 70B"),
+        ("llama-3.1-8b-instant", "Llama 3.1 8B"),
         ("llama3-70b-8192", "Llama 3 70B"),
-        ("llama3-8b-8192", "Llama 3 8B"),
         ("mixtral-8x7b-32768", "Mixtral 8x7B"),
-        ("gemma2-9b-it", "Gemma 2 9B"),
     ]
 
     # Prompts
@@ -1054,7 +1054,7 @@ class CamilaConfig(models.Model):
     )
 
     # Parâmetros do modelo
-    model = models.CharField(max_length=60, choices=MODEL_CHOICES, default="llama-3.3-70b-versatile")
+    model = models.CharField(max_length=60, choices=MODEL_CHOICES, default="openai/gpt-oss-20b")
     temperature = models.FloatField(default=0.8)
     max_tokens = models.IntegerField(default=500)
 
