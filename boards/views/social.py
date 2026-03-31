@@ -1348,6 +1348,8 @@ def social_friend_request(request, user_id: int):
         return JsonResponse({"action": "cancelled"})
     else:
         SocialFriendship.objects.create(requester=request.user, receiver=target)
+        from boards.services.notifications import notify_friendship_event
+        notify_friendship_event(recipient=target, actor=request.user, kind="invite")
         return JsonResponse({"action": "sent"})
 
 
@@ -1358,6 +1360,8 @@ def social_friend_accept(request, user_id: int):
     fs = get_object_or_404(SocialFriendship, requester_id=user_id, receiver=request.user)
     fs.status = SocialFriendship.STATUS_ACCEPTED
     fs.save(update_fields=["status"])
+    from boards.services.notifications import notify_friendship_event
+    notify_friendship_event(recipient=fs.requester, actor=request.user, kind="accepted")
     return JsonResponse({"action": "accepted"})
 
 
@@ -1365,10 +1369,17 @@ def social_friend_accept(request, user_id: int):
 @require_POST
 def social_friend_reject(request, user_id: int):
     """Rejeita (deleta) um convite recebido de user_id."""
-    deleted, _ = SocialFriendship.objects.filter(
+    # Busca antes de deletar para notificar
+    fs = SocialFriendship.objects.filter(
         requester_id=user_id, receiver=request.user, status="pending"
-    ).delete()
-    return JsonResponse({"action": "rejected", "deleted": deleted})
+    ).select_related("requester").first()
+    if fs:
+        requester = fs.requester
+        fs.delete()
+        from boards.services.notifications import notify_friendship_event
+        notify_friendship_event(recipient=requester, actor=request.user, kind="rejected")
+        return JsonResponse({"action": "rejected", "deleted": 1})
+    return JsonResponse({"action": "rejected", "deleted": 0})
 
 
 @login_required

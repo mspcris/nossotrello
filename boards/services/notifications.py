@@ -502,3 +502,81 @@ def notify_social_interaction(
                 send_email_notification(to_email=to_email, subject=subject, body=email_body)
             except Exception:
                 logger.exception("social notify: email failed user_id=%s", getattr(recipient, "id", None))
+
+
+def notify_friendship_event(
+    *,
+    recipient: "User",
+    actor: "User",
+    kind: str,   # "invite" | "accepted" | "rejected"
+) -> None:
+    """
+    Notifica por WhatsApp e email eventos de amizade.
+    Respeita janela de horário e flags do usuário.
+    """
+    if getattr(recipient, "id", None) == getattr(actor, "id", None):
+        return
+
+    prof = _get_or_create_profile(recipient)
+
+    if not is_in_notification_window(prof):
+        return
+
+    actor_prof = _get_or_create_profile(actor)
+    actor_name = actor_prof.display_name or actor.email.split("@")[0]
+
+    site_url = (getattr(settings, "SITE_URL", "") or "").rstrip("/")
+    social_link = f"{site_url}/social/"
+
+    if kind == "invite":
+        subject = f"🤝 {actor_name} quer ser seu amigo!"
+        wa_msg = (
+            f"🤝 *{_wa_safe(actor_name)}* quer ser seu amigo na rede social!\n\n"
+            f"Acesse para aceitar ou recusar 👇\n{social_link}"
+        )
+        email_body = (
+            f"Oi! 👋\n\n"
+            f"{actor_name} enviou um convite de amizade para você.\n\n"
+            f"Acesse para aceitar ou recusar:\n{social_link}\n\n"
+            f"— Equipe NossoTrello 😊"
+        )
+    elif kind == "accepted":
+        subject = f"✅ {actor_name} aceitou sua amizade!"
+        wa_msg = (
+            f"✅ *{_wa_safe(actor_name)}* aceitou seu convite de amizade! 🎉\n\n"
+            f"Acesse a rede social 👇\n{social_link}"
+        )
+        email_body = (
+            f"Oi! 👋\n\n"
+            f"{actor_name} aceitou seu convite de amizade! 🎉\n\n"
+            f"Acesse a rede social:\n{social_link}\n\n"
+            f"— Equipe NossoTrello 😊"
+        )
+    elif kind == "rejected":
+        # Notificação sutil — não explicita "rejeitou"
+        subject = f"📬 Atualização do seu convite de amizade"
+        wa_msg = (
+            f"📬 Seu convite de amizade para *{_wa_safe(actor_name)}* não foi aceito.\n\n"
+            f"Que tal conhecer outros colegas? 👇\n{social_link}"
+        )
+        email_body = (
+            f"Oi! 👋\n\n"
+            f"Seu convite de amizade para {actor_name} não foi aceito.\n\n"
+            f"Que tal conhecer outros colegas?\n{social_link}\n\n"
+            f"— Equipe NossoTrello 😊"
+        )
+    else:
+        return
+
+    if getattr(prof, "notify_whatsapp", False):
+        phone_digits = _safe_digits_phone(getattr(prof, "telefone", ""))
+        if phone_digits:
+            send_whatsapp(user=recipient, phone_digits=phone_digits, body=wa_msg)
+
+    if getattr(prof, "notify_email", False):
+        to_email = (getattr(recipient, "email", "") or "").strip()
+        if to_email:
+            try:
+                send_email_notification(to_email=to_email, subject=subject, body=email_body)
+            except Exception:
+                logger.exception("friendship notify: email failed user_id=%s", getattr(recipient, "id", None))
