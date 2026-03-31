@@ -389,7 +389,7 @@
           <span class="sp-task-title">{{ card.title|truncatechars:50 }}</span>
           <span class="sp-task-meta">{{ card.column.board.name|truncatechars:20 }} · {{ card.due_date|date:"d/m" }}</span>
         </a>
-        <button type="button" class="sp-task-check" title="Ocultar" onclick="this.closest('.sp-task-row').remove()">
+        <button type="button" class="sp-task-check" title="Ocultar" onclick="spDismissTask(this, {{ card.id }})">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 11l3 3L22 4"/></svg>
         </button>
       </div>
@@ -405,7 +405,7 @@
           <span class="sp-task-title">{{ card.title|truncatechars:50 }}</span>
           <span class="sp-task-meta">{{ card.column.board.name|truncatechars:20 }}{% if card.due_date %} · {{ card.due_date|date:"d/m" }}{% endif %}</span>
         </a>
-        <button type="button" class="sp-task-check" title="Ocultar" onclick="this.closest('.sp-task-row').remove()">
+        <button type="button" class="sp-task-check" title="Ocultar" onclick="spDismissTask(this, {{ card.id }})">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 11l3 3L22 4"/></svg>
         </button>
       </div>
@@ -1123,6 +1123,22 @@ var _camilaAvatarUrl = "{% static 'images/camila-avatar.png' %}";
         container.remove();
       }
     }, 300);
+  };
+
+  /* ── Dismiss task (persistente, reseta no dia seguinte) ── */
+  window.spDismissTask = function(btn, cardId) {
+    var row = btn.closest('.sp-task-row');
+    var csrf = document.querySelector('meta[name="csrf-token"]');
+    fetch('/social/task/' + cardId + '/dismiss/', {
+      method: 'POST',
+      headers: { 'X-CSRFToken': csrf ? csrf.content : '' }
+    }).catch(function(){});
+    // Remove da UI imediatamente
+    if (row) {
+      row.style.transition = 'opacity 0.2s';
+      row.style.opacity = '0';
+      setTimeout(function(){ row.remove(); }, 200);
+    }
   };
 
   /* ── Auto-trigger AI reaction if flag is set ── */

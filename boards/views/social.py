@@ -20,7 +20,7 @@ from ..models import (
     Board, BoardMembership, SocialPost, SocialPostSeen,
     SocialPostReaction, SocialPostComment,
     DailyCheckIn, Card, CardFollow, UserProfile,
-    CamilaKnowledge, CamilaConfig, SocialFriendship,
+    CamilaKnowledge, CamilaConfig, SocialFriendship, SocialCardDismiss,
 )
 
 User = get_user_model()
@@ -92,15 +92,21 @@ def _get_today_checkin(user):
 
 
 def _get_today_tasks(user):
-    """Retorna cards que o usuário segue com vencimento hoje ou pendentes."""
+    """Retorna cards que o usuário segue com vencimento hoje ou pendentes, excluindo dispensados hoje."""
     today = timezone.localdate()
 
     # Cards que o usuário segue, não deletados, não arquivados, não entregues
     followed_ids = CardFollow.objects.filter(user=user).values_list("card_id", flat=True)
 
+    # IDs dispensados hoje
+    dismissed_ids = SocialCardDismiss.objects.filter(
+        user=user, dismissed_on=today
+    ).values_list("card_id", flat=True)
+
     cards = (
         Card.objects
         .filter(id__in=followed_ids, is_deleted=False, is_archived=False, is_delivered=False)
+        .exclude(id__in=dismissed_ids)
         .select_related("column", "column__board")
         .order_by("due_date", "position")[:20]
     )
@@ -769,6 +775,19 @@ def social_set_unidade(request):
     prof.save(update_fields=["unidade"])
     ctx = _build_social_context(request, request.user)
     return render(request, "boards/social_panel.html", ctx)
+
+
+@login_required
+@require_POST
+def social_dismiss_task(request, card_id: int):
+    """Registra que o usuário dispensou um card das pendências hoje."""
+    today = timezone.localdate()
+    SocialCardDismiss.objects.get_or_create(
+        user=request.user,
+        card_id=card_id,
+        dismissed_on=today,
+    )
+    return JsonResponse({"ok": True})
 
 
 # ---------------------------------------------------------------

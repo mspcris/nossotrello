@@ -1083,6 +1083,19 @@ class CamilaConfig(models.Model):
         return obj
 
 
+class SocialCardDismiss(models.Model):
+    """Registra que o usuário ocultou um card das pendências sociais naquele dia."""
+    user         = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="social_dismissed_cards")
+    card_id      = models.IntegerField()
+    dismissed_on = models.DateField()
+
+    class Meta:
+        unique_together = [("user", "card_id", "dismissed_on")]
+
+    def __str__(self):
+        return f"{self.user} ocultou card {self.card_id} em {self.dismissed_on}"
+
+
 class SocialFriendship(models.Model):
     """Convite/amizade explícita entre dois usuários."""
     STATUS_PENDING  = "pending"
