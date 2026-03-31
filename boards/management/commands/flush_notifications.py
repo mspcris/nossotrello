@@ -34,6 +34,7 @@ from boards.services.notifications import (
     _safe_digits_phone,
     _wa_safe,
     _wa_bold,
+    is_in_notification_window,
 )
 
 logger = logging.getLogger(__name__)
@@ -120,7 +121,7 @@ class Command(BaseCommand):
 
         # Agrupar por (card_id, recipient_id)
         groups: dict[tuple[int, int], list] = defaultdict(list)
-        buffer_ids = []
+        buffer_ids_by_key: dict[tuple[int, int], list] = defaultdict(list)
 
         for buf in pending:
             key = (buf.card_id, buf.recipient_id)
@@ -129,14 +130,18 @@ class Command(BaseCommand):
                 "event_summary": buf.event_summary,
                 "created_at": buf.created_at,
             })
-            buffer_ids.append(buf.id)
+            buffer_ids_by_key[key].append(buf.id)
 
         sent_count = 0
+        sent_ids = []
+        deferred_count = 0
 
         for (card_id, recipient_id), events in groups.items():
             try:
                 card = Card.objects.select_related("column", "column__board").get(id=card_id)
             except Card.DoesNotExist:
+                # Card apagado → marca como enviado para limpar fila
+                sent_ids.extend(buffer_ids_by_key[(card_id, recipient_id)])
                 continue
 
             # Pegar recipient
@@ -145,14 +150,22 @@ class Command(BaseCommand):
             try:
                 recipient = User.objects.select_related("profile").get(id=recipient_id)
             except User.DoesNotExist:
+                sent_ids.extend(buffer_ids_by_key[(card_id, recipient_id)])
                 continue
 
             # Card entregue → não notifica
             if getattr(card, "is_delivered", False):
+                sent_ids.extend(buffer_ids_by_key[(card_id, recipient_id)])
                 continue
 
-            msg_wa, subject = _build_digest(card, events)
             prof = _get_or_create_profile(recipient)
+
+            # Verifica janela de notificação do usuário
+            if not is_in_notification_window(prof):
+                deferred_count += 1
+                continue  # deixa no buffer para a próxima janela
+
+            msg_wa, subject = _build_digest(card, events)
 
             # WhatsApp
             if getattr(prof, "notify_whatsapp", False):
@@ -166,11 +179,14 @@ class Command(BaseCommand):
                 if email:
                     send_email_notification(to_email=email, subject=subject, body=msg_wa)
 
+            sent_ids.extend(buffer_ids_by_key[(card_id, recipient_id)])
             sent_count += 1
 
-        # Marcar como enviados
-        NotificationBuffer.objects.filter(id__in=buffer_ids).update(sent=True)
+        # Marcar como enviados apenas os que foram de fato processados
+        if sent_ids:
+            NotificationBuffer.objects.filter(id__in=sent_ids).update(sent=True)
 
-        self.stdout.write(self.style.SUCCESS(
-            f"Enviadas {sent_count} notificações consolidadas ({len(buffer_ids)} eventos agrupados)."
-        ))
+        msg = f"Enviadas {sent_count} notificações consolidadas ({len(sent_ids)} eventos)."
+        if deferred_count:
+            msg += f" {deferred_count} adiadas (fora da janela do usuário)."
+        self.stdout.write(self.style.SUCCESS(msg))

@@ -10,9 +10,17 @@ User = get_user_model()
 class UserProfileInline(admin.StackedInline):
     model = UserProfile
     can_delete = False
-    fields = ("tracktime_limit_minutes",)
-    verbose_name = "Perfil Track-time"
-    verbose_name_plural = "Perfil Track-time"
+    fields = (
+        "tracktime_limit_minutes",
+        "notify_whatsapp", "notify_email",
+        "notify_start_time", "notify_end_time",
+        "notify_days_mon", "notify_days_tue", "notify_days_wed",
+        "notify_days_thu", "notify_days_fri", "notify_days_sat", "notify_days_sun",
+        "notify_offhours_accepted", "notify_offhours_accepted_at",
+    )
+    readonly_fields = ("notify_offhours_accepted_at",)
+    verbose_name = "Perfil & Notificações"
+    verbose_name_plural = "Perfil & Notificações"
 
 
 class UserAdmin(BaseUserAdmin):

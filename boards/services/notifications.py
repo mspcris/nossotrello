@@ -168,6 +168,65 @@ def format_card_message(*, title_prefix: str, snap: CardSnapshot, extra_lines: O
 
 
 
+def is_in_notification_window(profile: UserProfile, *, now=None) -> bool:
+    """
+    Retorna True se o horário atual está dentro da janela de notificação do usuário.
+    Verifica dia da semana + faixa de horário.
+    """
+    if now is None:
+        now = timezone.localtime()
+
+    weekday = now.weekday()  # 0=Mon ... 6=Sun
+    day_fields = [
+        "notify_days_mon", "notify_days_tue", "notify_days_wed",
+        "notify_days_thu", "notify_days_fri", "notify_days_sat", "notify_days_sun",
+    ]
+    if not getattr(profile, day_fields[weekday], False):
+        return False
+
+    current_time = now.time()
+    start = getattr(profile, "notify_start_time", None)
+    end = getattr(profile, "notify_end_time", None)
+
+    if not start or not end:
+        return True
+
+    return start <= current_time <= end
+
+
+def next_notification_window(profile: UserProfile, *, now=None):
+    """
+    Retorna o próximo datetime em que a janela de notificação abre.
+    Retorna None se nenhum dia está habilitado.
+    """
+    import datetime as _dt
+    if now is None:
+        now = timezone.localtime()
+
+    day_fields = [
+        "notify_days_mon", "notify_days_tue", "notify_days_wed",
+        "notify_days_thu", "notify_days_fri", "notify_days_sat", "notify_days_sun",
+    ]
+
+    start_time = getattr(profile, "notify_start_time", None) or _dt.time(8, 0)
+
+    # Verifica se ainda dá para hoje (se dia habilitado e antes do start)
+    today_wd = now.weekday()
+    if getattr(profile, day_fields[today_wd], False):
+        today_start = now.replace(hour=start_time.hour, minute=start_time.minute, second=0, microsecond=0)
+        if now < today_start:
+            return today_start
+
+    # Procura nos próximos 7 dias
+    for offset in range(1, 8):
+        candidate = now + _dt.timedelta(days=offset)
+        wd = candidate.weekday()
+        if getattr(profile, day_fields[wd], False):
+            return candidate.replace(hour=start_time.hour, minute=start_time.minute, second=0, microsecond=0)
+
+    return None
+
+
 def _get_or_create_profile(user) -> UserProfile:
     prof = getattr(user, "profile", None)
     if prof:

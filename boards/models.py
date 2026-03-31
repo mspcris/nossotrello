@@ -482,6 +482,26 @@ class UserProfile(models.Model):
                   "0 = padrão do sistema (60 min).",
     )
 
+    # ── Agenda de notificações ──
+    notify_start_time = models.TimeField(
+        default="08:00",
+        help_text="Hora de início para receber notificações.",
+    )
+    notify_end_time = models.TimeField(
+        default="17:00",
+        help_text="Hora de fim para receber notificações.",
+    )
+    notify_days_mon = models.BooleanField(default=True)
+    notify_days_tue = models.BooleanField(default=True)
+    notify_days_wed = models.BooleanField(default=True)
+    notify_days_thu = models.BooleanField(default=True)
+    notify_days_fri = models.BooleanField(default=True)
+    notify_days_sat = models.BooleanField(default=False)
+    notify_days_sun = models.BooleanField(default=False)
+    # Aceite de trabalho fora do horário padrão
+    notify_offhours_accepted = models.BooleanField(default=False)
+    notify_offhours_accepted_at = models.DateTimeField(null=True, blank=True)
+
     # Aceite dos Termos de Uso e Política de Privacidade
     terms_accepted = models.BooleanField(default=False)
     terms_accepted_at = models.DateTimeField(null=True, blank=True)

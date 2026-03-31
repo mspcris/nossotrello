@@ -1,9 +1,11 @@
 # boards/views/account.py
 import re
+import datetime
 
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views.decorators.http import require_GET, require_POST
+from django.utils import timezone
 from boards.models import UserProfile
 from pathlib import Path
 from django.conf import settings
@@ -12,6 +14,35 @@ from django.templatetags.static import static as static_url
 
 
 HANDLE_RE = re.compile(r"^[a-z0-9_\.]+$")
+
+ADMIN_EMAIL = "cristiano@camim.com.br"
+
+
+def _send_offhours_alert(user, prof):
+    """Envia email ao admin avisando que o usuário aceitou notificações fora do horário."""
+    from boards.services.notifications import send_email_notification
+    days = []
+    if prof.notify_days_sat:
+        days.append("Sábado")
+    if prof.notify_days_sun:
+        days.append("Domingo")
+
+    start = prof.notify_start_time.strftime("%H:%M") if prof.notify_start_time else "08:00"
+    end = prof.notify_end_time.strftime("%H:%M") if prof.notify_end_time else "17:00"
+
+    body = (
+        f"O usuário {user.email} ({getattr(prof, 'display_name', '')}) "
+        f"aceitou receber notificações fora do horário padrão.\n\n"
+        f"Horário configurado: {start} às {end}\n"
+        f"Dias extras: {', '.join(days) if days else 'Nenhum (apenas horário fora do padrão)'}\n"
+        f"Data do aceite: {timezone.now().strftime('%d/%m/%Y %H:%M')}\n\n"
+        f"O usuário declarou ciência dos termos (art. 482 CLT)."
+    )
+    send_email_notification(
+        to_email=ADMIN_EMAIL,
+        subject=f"[NossoTrello] Aceite fora do horário — {user.email}",
+        body=body,
+    )
 
 
 def _get_or_create_profile(user):
@@ -170,6 +201,47 @@ def account_profile_update(request):
         prof.notify_email = False
         update_fields.append("notify_email")
 
+    # ── Agenda de notificações ──
+    raw_start = (request.POST.get("notify_start_time") or "").strip()
+    raw_end = (request.POST.get("notify_end_time") or "").strip()
+    if raw_start:
+        try:
+            prof.notify_start_time = datetime.time.fromisoformat(raw_start)
+            update_fields.append("notify_start_time")
+        except ValueError:
+            pass
+    if raw_end:
+        try:
+            prof.notify_end_time = datetime.time.fromisoformat(raw_end)
+            update_fields.append("notify_end_time")
+        except ValueError:
+            pass
+
+    day_fields = [
+        "notify_days_mon", "notify_days_tue", "notify_days_wed",
+        "notify_days_thu", "notify_days_fri", "notify_days_sat", "notify_days_sun",
+    ]
+    for df in day_fields:
+        setattr(prof, df, df in request.POST)
+        update_fields.append(df)
+
+    # Se nenhum dia marcado → desativa notificações
+    any_day = any(getattr(prof, df) for df in day_fields)
+    if not any_day:
+        prof.notify_whatsapp = False
+        prof.notify_email = False
+
+    # Aceite fora do horário
+    offhours_val = request.POST.get("notify_offhours_accepted", "0")
+    was_accepted = prof.notify_offhours_accepted
+    prof.notify_offhours_accepted = (offhours_val == "1")
+    update_fields.append("notify_offhours_accepted")
+
+    if prof.notify_offhours_accepted and not was_accepted:
+        prof.notify_offhours_accepted_at = timezone.now()
+        update_fields.append("notify_offhours_accepted_at")
+        # Envia email ao administrador
+        _send_offhours_alert(request.user, prof)
 
     # ... depois de activity_sidebar / activity_counts
 

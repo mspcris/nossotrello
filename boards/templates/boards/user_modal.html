@@ -241,18 +241,100 @@
 
 
               <label class="flex items-center gap-2">
-                <input type="checkbox" name="notify_whatsapp" value="1" {% if profile.notify_whatsapp %}checked{% endif %}>
+                <input type="checkbox" name="notify_whatsapp" value="1" id="um-notify-wa" {% if profile.notify_whatsapp %}checked{% endif %}>
                 <span>Receber notificações por WhatsApp</span>
               </label>
 
               <label class="flex items-center gap-2">
-                <input type="checkbox" name="notify_email" value="1" {% if profile.notify_email %}checked{% endif %}>
+                <input type="checkbox" name="notify_email" value="1" id="um-notify-email" {% if profile.notify_email %}checked{% endif %}>
                 <span>Receber notificações por Email</span>
               </label>
 
+              <!-- ── Agenda de notificações ── -->
+              <div id="um-schedule-block" class="mt-3 border-t pt-3">
+                <div class="text-sm font-semibold mb-2">Horário para receber notificações</div>
 
+                <div class="grid grid-cols-2 gap-3 mb-3">
+                  <div>
+                    <label class="block text-xs font-medium mb-1">Início</label>
+                    <input type="time" name="notify_start_time" id="um-notify-start"
+                           value="{{ profile.notify_start_time|time:'H:i' }}"
+                           class="w-full border rounded px-3 py-2 text-sm">
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium mb-1">Fim</label>
+                    <input type="time" name="notify_end_time" id="um-notify-end"
+                           value="{{ profile.notify_end_time|time:'H:i' }}"
+                           class="w-full border rounded px-3 py-2 text-sm">
+                  </div>
+                </div>
 
-              
+                <div class="text-xs font-medium mb-1">Dias da semana</div>
+                <div class="flex flex-wrap gap-2 mb-2">
+                  <label class="inline-flex items-center gap-1 text-sm">
+                    <input type="checkbox" name="notify_days_mon" value="1" class="um-day-chk" {% if profile.notify_days_mon %}checked{% endif %}>
+                    Seg
+                  </label>
+                  <label class="inline-flex items-center gap-1 text-sm">
+                    <input type="checkbox" name="notify_days_tue" value="1" class="um-day-chk" {% if profile.notify_days_tue %}checked{% endif %}>
+                    Ter
+                  </label>
+                  <label class="inline-flex items-center gap-1 text-sm">
+                    <input type="checkbox" name="notify_days_wed" value="1" class="um-day-chk" {% if profile.notify_days_wed %}checked{% endif %}>
+                    Qua
+                  </label>
+                  <label class="inline-flex items-center gap-1 text-sm">
+                    <input type="checkbox" name="notify_days_thu" value="1" class="um-day-chk" {% if profile.notify_days_thu %}checked{% endif %}>
+                    Qui
+                  </label>
+                  <label class="inline-flex items-center gap-1 text-sm">
+                    <input type="checkbox" name="notify_days_fri" value="1" class="um-day-chk" {% if profile.notify_days_fri %}checked{% endif %}>
+                    Sex
+                  </label>
+                  <label class="inline-flex items-center gap-1 text-sm">
+                    <input type="checkbox" name="notify_days_sat" value="1" class="um-day-chk um-day-offhours" {% if profile.notify_days_sat %}checked{% endif %}>
+                    Sab
+                  </label>
+                  <label class="inline-flex items-center gap-1 text-sm">
+                    <input type="checkbox" name="notify_days_sun" value="1" class="um-day-chk um-day-offhours" {% if profile.notify_days_sun %}checked{% endif %}>
+                    Dom
+                  </label>
+                </div>
+
+                <p class="text-xs text-gray-500">
+                  Notificações fora do horário ficam na fila e são enviadas no próximo horário disponível.
+                </p>
+              </div>
+
+              <!-- Modal de aceite fora do horário -->
+              <div id="um-offhours-modal" style="display:none;"
+                   class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
+                <div class="bg-white rounded-xl shadow-xl max-w-lg w-full mx-4 p-6">
+                  <div class="text-lg font-bold text-red-700 mb-3">Atenção: Horário fora do expediente</div>
+                  <div class="text-sm text-gray-800 leading-relaxed mb-4">
+                    Ao habilitar notificações em <strong>sábado, domingo ou fora do horário padrão
+                    (08h-17h)</strong>, você declara estar ciente de que:
+                    <ul class="list-disc ml-5 mt-2 space-y-1">
+                      <li>Possui <strong>autorização formal</strong> de seu superior para trabalhar nestes horários.</li>
+                      <li>A empresa <strong>não se responsabiliza</strong> por horas extras ou atividades realizadas fora do horário contratual sem autorização.</li>
+                      <li>O uso indevido poderá configurar <strong>falta grave</strong> nos termos do art. 482 da CLT.</li>
+                      <li>Uma cópia deste aceite será enviada ao administrador do sistema.</li>
+                    </ul>
+                  </div>
+                  <div class="flex gap-3 justify-end">
+                    <button type="button" id="um-offhours-cancel"
+                            class="px-4 py-2 border rounded text-gray-700 hover:bg-gray-100">
+                      Cancelar
+                    </button>
+                    <button type="button" id="um-offhours-accept"
+                            class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
+                      Estou ciente e aceito
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <input type="hidden" name="notify_offhours_accepted" id="um-offhours-accepted" value="{{ profile.notify_offhours_accepted|yesno:'1,0' }}">
+
               <!-- ✅ LARGURA DO BOARD (DENTRO DO FORM, PARA IR NO POST) -->
               <div class="mt-4 border-t pt-4">
                 <label class="block text-sm font-semibold mb-1">
@@ -559,6 +641,104 @@
 </script>
 
 <script>
+(function () {
+  /* ── Agenda de notificações: lógica offhours ── */
+  const modal = document.getElementById("um-offhours-modal");
+  const acceptBtn = document.getElementById("um-offhours-accept");
+  const cancelBtn = document.getElementById("um-offhours-cancel");
+  const hiddenAccepted = document.getElementById("um-offhours-accepted");
+  const waChk = document.getElementById("um-notify-wa");
+  const emailChk = document.getElementById("um-notify-email");
+  const dayChks = document.querySelectorAll(".um-day-chk");
+  const offhoursChks = document.querySelectorAll(".um-day-offhours");
+  const startInput = document.getElementById("um-notify-start");
+  const endInput = document.getElementById("um-notify-end");
+
+  let pendingChk = null; // checkbox que disparou o modal
+
+  function isOffhours() {
+    // Sábado ou domingo marcado?
+    for (const c of offhoursChks) {
+      if (c.checked) return true;
+    }
+    // Horário fora de 08-17?
+    const s = startInput ? startInput.value : "08:00";
+    const e = endInput ? endInput.value : "17:00";
+    if (s < "08:00" || e > "17:00") return true;
+    return false;
+  }
+
+  function allDaysUnchecked() {
+    for (const c of dayChks) {
+      if (c.checked) return false;
+    }
+    return true;
+  }
+
+  function uncheckNotifications() {
+    if (waChk) waChk.checked = false;
+    if (emailChk) emailChk.checked = false;
+  }
+
+  // Se todos os dias desmarcados → desmarcar wa e email
+  dayChks.forEach(function(chk) {
+    chk.addEventListener("change", function() {
+      if (allDaysUnchecked()) {
+        uncheckNotifications();
+      }
+      // Se marcou offhours e ainda não aceitou
+      if (chk.classList.contains("um-day-offhours") && chk.checked && hiddenAccepted.value !== "1") {
+        pendingChk = chk;
+        modal.style.display = "flex";
+      }
+    });
+  });
+
+  // Horário fora do padrão
+  [startInput, endInput].forEach(function(inp) {
+    if (!inp) return;
+    inp.addEventListener("change", function() {
+      if (isOffhours() && hiddenAccepted.value !== "1") {
+        modal.style.display = "flex";
+      }
+    });
+  });
+
+  // Se marcou notificação mas nenhum dia está marcado → obriga preencher
+  [waChk, emailChk].forEach(function(chk) {
+    if (!chk) return;
+    chk.addEventListener("change", function() {
+      if (chk.checked && allDaysUnchecked()) {
+        // Marca seg-sex por padrão
+        dayChks.forEach(function(d) {
+          if (!d.classList.contains("um-day-offhours")) d.checked = true;
+        });
+      }
+    });
+  });
+
+  if (cancelBtn) {
+    cancelBtn.addEventListener("click", function() {
+      modal.style.display = "none";
+      if (pendingChk) {
+        pendingChk.checked = false;
+        pendingChk = null;
+      }
+      // Reverte horário para padrão
+      if (startInput && startInput.value < "08:00") startInput.value = "08:00";
+      if (endInput && endInput.value > "17:00") endInput.value = "17:00";
+    });
+  }
+
+  if (acceptBtn) {
+    acceptBtn.addEventListener("click", function() {
+      hiddenAccepted.value = "1";
+      modal.style.display = "none";
+      pendingChk = null;
+    });
+  }
+})();
+
 (function () {
   const input = document.getElementById("um-telefone");
   if (!input) return;

@@ -19,6 +19,7 @@ from boards.services.notifications import (
     send_email_notification,
     _get_or_create_profile,
     _safe_digits_phone,
+    is_in_notification_window,
 )
 
 logger = logging.getLogger(__name__)
@@ -100,6 +101,11 @@ class Command(BaseCommand):
                     continue
 
                 prof = _get_or_create_profile(u)
+
+                # Respeita janela de notificação do usuário
+                if not is_in_notification_window(prof):
+                    skipped += 1
+                    continue
 
                 # WhatsApp — enfileira por telefone
                 if getattr(prof, "notify_whatsapp", False):
