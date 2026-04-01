@@ -945,12 +945,7 @@ var _CAMILA_AVATARS = {
       el.innerHTML = '<div class="sp-reel-empty">Seus amigos ainda não publicaram nada.<br>Convide colegas! 🤝</div>';
       return;
     }
-    /* Priorizar: vídeo > imagem > texto */
-    _reelPosts.sort(function(a, b){
-      var pa = a.video ? 0 : (a.photo ? 1 : 2);
-      var pb = b.video ? 0 : (b.photo ? 1 : 2);
-      return pa - pb;
-    });
+    /* Mais novos à esquerda (backend já envia -created_at, manter) */
     var html = '';
     _reelPosts.forEach(function(p, i){
       var initials = (p.user_name || '?').charAt(0).toUpperCase();
@@ -1012,25 +1007,51 @@ var _CAMILA_AVATARS = {
       });
     });
 
-    /* Auto-scroll a cada 10s — pausa ao interagir */
-    var _autoScrollTimer = null;
+    /* Auto-scroll inteligente: 3s foto/texto, espera vídeo acabar */
+    var _autoTimer = null;
     var _userTouched = false;
-    function _startAutoScroll(){
-      if(_autoScrollTimer) clearInterval(_autoScrollTimer);
-      _autoScrollTimer = setInterval(function(){
-        if(_userTouched || document.hidden) return;
-        var w = el.offsetWidth;
-        if(!w) return;
-        var nextLeft = el.scrollLeft + w;
-        if(nextLeft >= el.scrollWidth - w/2) nextLeft = 0;
-        el.scrollTo({left: nextLeft, behavior: 'smooth'});
-      }, 10000);
+
+    function _getCurrentSlideIdx(){
+      var w = el.offsetWidth;
+      return w ? Math.round(el.scrollLeft / w) : 0;
     }
-    _startAutoScroll();
+
+    function _advanceSlide(){
+      if(_userTouched || document.hidden) return;
+      var w = el.offsetWidth;
+      if(!w) return;
+      var nextLeft = el.scrollLeft + w;
+      if(nextLeft >= el.scrollWidth - w/2) nextLeft = 0;
+      el.scrollTo({left: nextLeft, behavior: 'smooth'});
+      /* Agenda o próximo avanço após o scroll terminar */
+      setTimeout(function(){ _scheduleNext(); }, 600);
+    }
+
+    function _scheduleNext(){
+      if(_autoTimer) clearTimeout(_autoTimer);
+      var idx = _getCurrentSlideIdx();
+      var slide = el.querySelectorAll('.sp-reel-slide')[idx];
+      if(!slide) return;
+      var video = slide.querySelector('video');
+      if(video){
+        /* Se é vídeo, espera acabar, depois avança */
+        video.removeEventListener('ended', _advanceSlide);
+        video.addEventListener('ended', _advanceSlide, {once: true});
+        /* Safety: se vídeo não acabar em 60s, avança */
+        _autoTimer = setTimeout(_advanceSlide, 60000);
+      } else {
+        /* Foto ou texto: 3 segundos */
+        _autoTimer = setTimeout(_advanceSlide, 3000);
+      }
+    }
+
+    _scheduleNext();
+
     el.addEventListener('touchstart', function(){
       _userTouched = true;
-      /* Retoma auto-scroll 30s após última interação */
-      setTimeout(function(){ _userTouched = false; }, 30000);
+      if(_autoTimer) clearTimeout(_autoTimer);
+      /* Retoma auto-scroll 15s após última interação */
+      setTimeout(function(){ _userTouched = false; _scheduleNext(); }, 15000);
     });
 
     /* Dica de swipe — some ao primeiro scroll */
