@@ -2353,7 +2353,7 @@ var _CAMILA_AVATARS = {
           });
         }).catch(function(){});
     }
-    setInterval(_spPollPills, 15000);
+    setInterval(function(){ if(!document.hidden) _spPollPills(); }, 15000);
 
     /* Busca notícias a cada 3h */
     function _fetchNews() {
@@ -2472,8 +2472,12 @@ var _CAMILA_AVATARS = {
     });
     input.focus();
 
-    // Polling
-    _chatPollTimer = setInterval(function(){
+    // Polling inteligente — só roda com chat aberto + aba visível
+    // Backoff: 3s → 5s → 10s quando sem mensagens novas
+    var _pollInterval = 3000;
+    var _pollIdleCount = 0;
+    function _chatPoll(){
+      if(document.hidden || !_chatOverlay) return;
       fetch('/chat/' + uid + '/poll/?after=' + _chatLastId)
         .then(function(r){ return r.json(); })
         .then(function(d){
@@ -2481,9 +2485,22 @@ var _CAMILA_AVATARS = {
             var b = document.getElementById('sp-chat-body');
             d.messages.forEach(function(m){ _appendMsg(b, m); });
             _scrollChatBottom();
+            _pollIdleCount = 0;
+            _adjustPollRate();
+          } else {
+            _pollIdleCount++;
+            _adjustPollRate();
           }
         }).catch(function(){});
-    }, 3000);
+    }
+    function _adjustPollRate(){
+      if(_chatPollTimer) clearInterval(_chatPollTimer);
+      if(_pollIdleCount < 5) _pollInterval = 3000;
+      else if(_pollIdleCount < 20) _pollInterval = 5000;
+      else _pollInterval = 10000;
+      _chatPollTimer = setInterval(_chatPoll, _pollInterval);
+    }
+    _chatPollTimer = setInterval(_chatPoll, _pollInterval);
   }
 
   function _appendMsg(body, m) {
@@ -2781,7 +2798,7 @@ var _CAMILA_AVATARS = {
       }).catch(function(){});
   }
   _loadVisitorPills();
-  setInterval(_loadVisitorPills, 30000);
+  setInterval(function(){ if(!document.hidden) _loadVisitorPills(); }, 30000);
 })();
 
 /* ═══════════════════════════════════════════════
