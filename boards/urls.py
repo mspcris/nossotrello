@@ -113,6 +113,7 @@ from boards.views.social import (
     social_post_react,
     social_post_comment,
     social_post_reactors,
+    social_post_viewers,
     social_comments_mark_seen,
     mood_checkin,
     social_chatbot_message,
@@ -203,6 +204,7 @@ urlpatterns = [
     path("social/pills/", social_pills_poll, name="social_pills_poll"),
     path("social/camila/", social_camila_chat, name="social_camila_chat"),
     path("social/post/<int:post_id>/reactors/", social_post_reactors, name="social_post_reactors"),
+    path("social/post/<int:post_id>/viewers/", social_post_viewers, name="social_post_viewers"),
     path("social/onboarding-done/", social_onboarding_done, name="social_onboarding_done"),
 
     # Chat direto entre amigos

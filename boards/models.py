@@ -884,6 +884,24 @@ class SocialPostSeen(models.Model):
         return f"{self.viewer} viu posts de {self.target_user} até {self.last_seen_post_at}"
 
 
+class SocialPostView(models.Model):
+    """Registra quem visualizou cada post individual."""
+    post = models.ForeignKey(SocialPost, related_name="views", on_delete=models.CASCADE)
+    viewer = models.ForeignKey(
+        settings.AUTH_USER_MODEL, related_name="social_post_views", on_delete=models.CASCADE,
+    )
+    viewed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("post", "viewer")
+        indexes = [
+            models.Index(fields=["post", "viewer"]),
+        ]
+
+    def __str__(self):
+        return f"{self.viewer} viu post {self.post_id}"
+
+
 # ============================================================
 # REACTIONS & COMMENTS em posts
 # ============================================================

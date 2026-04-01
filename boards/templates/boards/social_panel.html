@@ -2,6 +2,7 @@
 {% load static %}
 
 <div id="social-panel" class="sp">
+  {% csrf_token %}
 
   <!-- ═══ PROFILE CARD ═══ -->
   <div class="sp-card sp-profile-card">
@@ -213,14 +214,178 @@
   <div class="sp-tabs" id="sp-tabs">
     <button type="button" class="sp-tab active" data-tab="mine" onclick="spSwitchTab('mine')">Meu Espaço</button>
     <button type="button" class="sp-tab" data-tab="friends" onclick="spSwitchTab('friends')">Amigos</button>
-    <button type="button" class="sp-tab" onclick="spOpenChatList()">💬 Chat</button>
+    <button type="button" class="sp-tab" onclick="spOpenChatList()">💬 Chat <span id="sp-chat-badge" class="sp-chat-badge sp-hidden"></span></button>
   </div>
 
   <!-- ═══ REEL DE AMIGOS (tab friends) ═══ -->
   <div id="sp-friends-reel-wrap" class="sp-friends-reel-wrap sp-hidden">
+
+    <!-- Toggle: Amigos / Todos -->
+    <div class="sp-feed-toggle-row">
+      <span class="sp-feed-toggle-label" id="sp-feed-lbl-friends">Amigos</span>
+      <label class="sp-feed-toggle-switch">
+        <input type="checkbox" id="sp-feed-toggle" onchange="spToggleFeedMode(this.checked)">
+        <span class="sp-feed-toggle-slider"></span>
+      </label>
+      <span class="sp-feed-toggle-label sp-feed-toggle-inactive" id="sp-feed-lbl-all">Todos</span>
+    </div>
+
     <div class="sp-reel" id="sp-reel">
       <div class="sp-reel-loading">Carregando...</div>
     </div>
+    <!-- Dica de swipe (some ao primeiro scroll) -->
+    <div class="sp-reel-swipe-hint" id="sp-reel-swipe-hint" style="display:block">
+      <span>👆 Deslize para ver mais publicações</span>
+    </div>
+
+    <!-- Amigos, Solicitações e Sugestões ficam DENTRO da aba Amigos -->
+    <!-- ═══ MEUS AMIGOS (amizades aceitas) ═══ -->
+    {% if real_friends %}
+    <div class="sp-friends-bar">
+      <div class="sp-section-title">💜 Meus Amigos</div>
+      <div class="sp-friends-scroll-wrap">
+        <button type="button" class="sp-scroll-arrow sp-scroll-left sp-hidden" onclick="spScrollRow(this,1)">‹</button>
+        <div class="sp-friends-row">
+          {% for friend in real_friends %}
+          {% with fp=friend.profile %}
+          <button type="button" class="sp-friend-btn" onclick="spOpenFriendSheet({{ friend.id }})"
+                  title="{{ fp.display_name|default:friend.email }}">
+            {% if fp and fp.avatar %}
+              <img src="{{ fp.avatar.url }}" alt="" class="sp-friend-av-img">
+            {% elif fp and fp.avatar_choice %}
+              <img src="{% static 'images/avatar/' %}{{ fp.avatar_choice }}" alt="" class="sp-friend-av-img">
+            {% else %}
+              <span class="sp-friend-av-fb">{{ fp.display_name|default:friend.email|first|upper }}</span>
+            {% endif %}
+            <span class="sp-friend-name">{{ fp.display_name|default:friend.email|truncatechars:8 }}</span>
+          </button>
+          {% endwith %}
+          {% endfor %}
+        </div>
+        <button type="button" class="sp-scroll-arrow sp-scroll-right" onclick="spScrollRow(this,-1)">›</button>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- ═══ SOLICITAÇÕES RECEBIDAS ═══ -->
+    {% if pending_friend_requests %}
+    <div class="sp-friends-bar" id="sp-friend-pills">
+      <div class="sp-section-title">📩 Pediram sua amizade</div>
+      <div class="sp-friends-scroll-wrap">
+        <button type="button" class="sp-scroll-arrow sp-scroll-left sp-hidden" onclick="spScrollRow(this,1)">‹</button>
+        <div class="sp-friends-row">
+          {% for fr in pending_friend_requests %}
+          {% with fp=fr.requester.profile %}
+          <button type="button" class="sp-friend-btn sp-req-item" data-friend-uid="{{ fr.requester_id }}"
+                  onclick="spToggleReqActions(this)">
+            <div class="sp-req-av-wrap">
+              {% if fp and fp.avatar %}
+                <img src="{{ fp.avatar.url }}" alt="" class="sp-friend-av-img sp-req-av-received">
+              {% elif fp and fp.avatar_choice %}
+                <img src="{% static 'images/avatar/' %}{{ fp.avatar_choice }}" alt="" class="sp-friend-av-img sp-req-av-received">
+              {% else %}
+                <span class="sp-friend-av-fb sp-req-av-received">{{ fp.display_name|default:fr.requester.email|first|upper }}</span>
+              {% endif %}
+              <div class="sp-req-overlay sp-hidden">
+                <span class="sp-req-ob sp-req-ob-yes" onclick="event.stopPropagation();spAnswerFriend({{ fr.requester_id }},'accept',this)">✓</span>
+                <span class="sp-req-ob sp-req-ob-no" onclick="event.stopPropagation();spAnswerFriend({{ fr.requester_id }},'reject',this)">✕</span>
+              </div>
+            </div>
+            <span class="sp-friend-name">{{ fp.display_name|default:fr.requester.email|truncatechars:8 }}</span>
+          </button>
+          {% endwith %}
+          {% endfor %}
+        </div>
+        <button type="button" class="sp-scroll-arrow sp-scroll-right" onclick="spScrollRow(this,-1)">›</button>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- ═══ SOLICITAÇÕES ENVIADAS ═══ -->
+    {% if sent_friend_requests %}
+    <div class="sp-friends-bar">
+      <div class="sp-section-title">📤 Aguardando resposta</div>
+      <div class="sp-friends-scroll-wrap">
+        <button type="button" class="sp-scroll-arrow sp-scroll-left sp-hidden" onclick="spScrollRow(this,1)">‹</button>
+        <div class="sp-friends-row">
+          {% for fr in sent_friend_requests %}
+          {% with fp=fr.receiver.profile %}
+          <button type="button" class="sp-friend-btn sp-sent-req-item"
+                  data-sent-uid="{{ fr.receiver_id }}"
+                  onclick="spOpenFriendSheet({{ fr.receiver_id }})"
+                  ontouchstart="spSentReqLongStart(event,{{ fr.receiver_id }},this)"
+                  ontouchend="spSentReqLongEnd(event)"
+                  ontouchmove="spSentReqLongEnd(event)"
+                  oncontextmenu="event.preventDefault();spShowSentCancel({{ fr.receiver_id }},this)">
+            <div class="sp-req-av-wrap">
+              {% if fp and fp.avatar %}
+                <img src="{{ fp.avatar.url }}" alt="" class="sp-friend-av-img sp-req-av-sent">
+              {% elif fp and fp.avatar_choice %}
+                <img src="{% static 'images/avatar/' %}{{ fp.avatar_choice }}" alt="" class="sp-friend-av-img sp-req-av-sent">
+              {% else %}
+                <span class="sp-friend-av-fb sp-req-av-sent">{{ fp.display_name|default:fr.receiver.email|first|upper }}</span>
+              {% endif %}
+            </div>
+            <span class="sp-friend-name">{{ fp.display_name|default:fr.receiver.email|truncatechars:8 }}</span>
+          </button>
+          {% endwith %}
+          {% endfor %}
+        </div>
+        <button type="button" class="sp-scroll-arrow sp-scroll-right" onclick="spScrollRow(this,-1)">›</button>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- ═══ SUGESTÕES DE AMIZADE ═══ -->
+    {% if unit_suggestions %}
+    <div class="sp-friends-bar">
+      <div class="sp-section-title">✨ Sugestões de Amizade</div>
+      <div class="sp-friends-scroll-wrap">
+        <button type="button" class="sp-scroll-arrow sp-scroll-left sp-hidden" onclick="spScrollRow(this,1)">‹</button>
+        <div class="sp-friends-row">
+          {% for sug in unit_suggestions %}
+          {% with sp=sug.profile %}
+          <button type="button" class="sp-friend-btn" onclick="spOpenFriendSheet({{ sug.id }})"
+                  title="{{ sp.display_name|default:sug.email }}">
+            {% if sp and sp.avatar %}
+              <img src="{{ sp.avatar.url }}" alt="" class="sp-friend-av-img">
+            {% elif sp and sp.avatar_choice %}
+              <img src="{% static 'images/avatar/' %}{{ sp.avatar_choice }}" alt="" class="sp-friend-av-img">
+            {% else %}
+              <span class="sp-friend-av-fb">{{ sp.display_name|default:sug.email|first|upper }}</span>
+            {% endif %}
+            <span class="sp-friend-name">{{ sp.display_name|default:sug.email|truncatechars:8 }}</span>
+          </button>
+          {% endwith %}
+          {% endfor %}
+        </div>
+        <button type="button" class="sp-scroll-arrow sp-scroll-right" onclick="spScrollRow(this,-1)">›</button>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if profile.unidade %}
+    <div class="sp-friends-bar" style="padding:6px 12px">
+      <div class="sp-friends-label" style="font-size:.8rem;color:#10b981">✅ Unidade: {{ profile.unidade }}
+        <button type="button" class="sp-change-unit-btn" style="font-size:.75rem;margin-left:8px"
+                onclick="document.getElementById('sp-change-unit-form').classList.toggle('sp-hidden')">✏️ Mudar</button>
+      </div>
+      <form id="sp-change-unit-form" class="sp-hidden"
+            hx-post="{% url 'boards:social_set_unidade' %}"
+            hx-target="#social-panel" hx-swap="outerHTML"
+            hx-encoding="multipart/form-data">
+        {% csrf_token %}
+        <div class="sp-onboard-input-row" style="margin-top:8px">
+          <input type="text" name="unidade" class="sp-onboard-input"
+                 placeholder="Nova unidade..." list="sp-unidades-list2" required>
+          <datalist id="sp-unidades-list2">
+            {% for u in available_units %}<option value="{{ u }}">{% endfor %}
+          </datalist>
+          <button type="submit" class="sp-onboard-btn">OK</button>
+        </div>
+      </form>
+    </div>
+    {% endif %}
   </div>
 
   <div id="sp-mine-content">
@@ -260,153 +425,6 @@
     </div>
   </div>
   {% endif %}
-
-  <!-- ═══ MEUS AMIGOS (amizades aceitas) ═══ -->
-  {% if real_friends %}
-  <div class="sp-friends-bar">
-    <div class="sp-section-title">💜 Meus Amigos</div>
-    <div class="sp-friends-scroll-wrap">
-      <button type="button" class="sp-scroll-arrow sp-scroll-left sp-hidden" onclick="spScrollRow(this,1)">‹</button>
-      <div class="sp-friends-row">
-        {% for friend in real_friends %}
-        {% with fp=friend.profile %}
-        <button type="button" class="sp-friend-btn" onclick="spOpenFriendSheet({{ friend.id }})"
-                title="{{ fp.display_name|default:friend.email }}">
-          {% if fp and fp.avatar %}
-            <img src="{{ fp.avatar.url }}" alt="" class="sp-friend-av-img">
-          {% elif fp and fp.avatar_choice %}
-            <img src="{% static 'images/avatar/' %}{{ fp.avatar_choice }}" alt="" class="sp-friend-av-img">
-          {% else %}
-            <span class="sp-friend-av-fb">{{ fp.display_name|default:friend.email|first|upper }}</span>
-          {% endif %}
-          <span class="sp-friend-name">{{ fp.display_name|default:friend.email|truncatechars:8 }}</span>
-        </button>
-        {% endwith %}
-        {% endfor %}
-      </div>
-      <button type="button" class="sp-scroll-arrow sp-scroll-right" onclick="spScrollRow(this,-1)">›</button>
-    </div>
-  </div>
-  {% endif %}
-
-  <!-- ═══ SOLICITAÇÕES RECEBIDAS (carrossel — borda vermelha, tap p/ ações) ═══ -->
-  {% if pending_friend_requests %}
-  <div class="sp-friends-bar" id="sp-friend-pills">
-    <div class="sp-section-title">📩 Pediram sua amizade</div>
-    <div class="sp-friends-scroll-wrap">
-      <button type="button" class="sp-scroll-arrow sp-scroll-left sp-hidden" onclick="spScrollRow(this,1)">‹</button>
-      <div class="sp-friends-row">
-        {% for fr in pending_friend_requests %}
-        {% with fp=fr.requester.profile %}
-        <button type="button" class="sp-friend-btn sp-req-item" data-friend-uid="{{ fr.requester_id }}"
-                onclick="spToggleReqActions(this)">
-          <div class="sp-req-av-wrap">
-            {% if fp and fp.avatar %}
-              <img src="{{ fp.avatar.url }}" alt="" class="sp-friend-av-img sp-req-av-received">
-            {% elif fp and fp.avatar_choice %}
-              <img src="{% static 'images/avatar/' %}{{ fp.avatar_choice }}" alt="" class="sp-friend-av-img sp-req-av-received">
-            {% else %}
-              <span class="sp-friend-av-fb sp-req-av-received">{{ fp.display_name|default:fr.requester.email|first|upper }}</span>
-            {% endif %}
-            <div class="sp-req-overlay sp-hidden">
-              <span class="sp-req-ob sp-req-ob-yes" onclick="event.stopPropagation();spAnswerFriend({{ fr.requester_id }},'accept',this)">✓</span>
-              <span class="sp-req-ob sp-req-ob-no" onclick="event.stopPropagation();spAnswerFriend({{ fr.requester_id }},'reject',this)">✕</span>
-            </div>
-          </div>
-          <span class="sp-friend-name">{{ fp.display_name|default:fr.requester.email|truncatechars:8 }}</span>
-        </button>
-        {% endwith %}
-        {% endfor %}
-      </div>
-      <button type="button" class="sp-scroll-arrow sp-scroll-right" onclick="spScrollRow(this,-1)">›</button>
-    </div>
-  </div>
-  {% endif %}
-
-  <!-- ═══ SOLICITAÇÕES ENVIADAS (carrossel — borda amarela, tap p/ cancelar) ═══ -->
-  {% if sent_friend_requests %}
-  <div class="sp-friends-bar">
-    <div class="sp-section-title">📤 Aguardando resposta</div>
-    <div class="sp-friends-scroll-wrap">
-      <button type="button" class="sp-scroll-arrow sp-scroll-left sp-hidden" onclick="spScrollRow(this,1)">‹</button>
-      <div class="sp-friends-row">
-        {% for fr in sent_friend_requests %}
-        {% with fp=fr.receiver.profile %}
-        <button type="button" class="sp-friend-btn sp-req-item"
-                onclick="spToggleReqActions(this)">
-          <div class="sp-req-av-wrap">
-            {% if fp and fp.avatar %}
-              <img src="{{ fp.avatar.url }}" alt="" class="sp-friend-av-img sp-req-av-sent">
-            {% elif fp and fp.avatar_choice %}
-              <img src="{% static 'images/avatar/' %}{{ fp.avatar_choice }}" alt="" class="sp-friend-av-img sp-req-av-sent">
-            {% else %}
-              <span class="sp-friend-av-fb sp-req-av-sent">{{ fp.display_name|default:fr.receiver.email|first|upper }}</span>
-            {% endif %}
-            <div class="sp-req-overlay sp-hidden">
-              <span class="sp-req-ob sp-req-ob-cancel" onclick="event.stopPropagation();spCancelFriendReq({{ fr.receiver_id }},this)">✕</span>
-            </div>
-          </div>
-          <span class="sp-friend-name">{{ fp.display_name|default:fr.receiver.email|truncatechars:8 }}</span>
-        </button>
-        {% endwith %}
-        {% endfor %}
-      </div>
-      <button type="button" class="sp-scroll-arrow sp-scroll-right" onclick="spScrollRow(this,-1)">›</button>
-    </div>
-  </div>
-  {% endif %}
-
-  <!-- ═══ SUGESTÕES DE AMIZADE (todos os ativos) ═══ -->
-  {% if unit_suggestions %}
-  <div class="sp-friends-bar">
-    <div class="sp-section-title">✨ Sugestões de Amizade</div>
-    <div class="sp-friends-scroll-wrap">
-      <button type="button" class="sp-scroll-arrow sp-scroll-left sp-hidden" onclick="spScrollRow(this,1)">‹</button>
-      <div class="sp-friends-row">
-        {% for sug in unit_suggestions %}
-        {% with sp=sug.profile %}
-        <button type="button" class="sp-friend-btn" onclick="spOpenFriendSheet({{ sug.id }})"
-                title="{{ sp.display_name|default:sug.email }}">
-          {% if sp and sp.avatar %}
-            <img src="{{ sp.avatar.url }}" alt="" class="sp-friend-av-img">
-          {% elif sp and sp.avatar_choice %}
-            <img src="{% static 'images/avatar/' %}{{ sp.avatar_choice }}" alt="" class="sp-friend-av-img">
-          {% else %}
-            <span class="sp-friend-av-fb">{{ sp.display_name|default:sug.email|first|upper }}</span>
-          {% endif %}
-          <span class="sp-friend-name">{{ sp.display_name|default:sug.email|truncatechars:8 }}</span>
-        </button>
-        {% endwith %}
-        {% endfor %}
-      </div>
-      <button type="button" class="sp-scroll-arrow sp-scroll-right" onclick="spScrollRow(this,-1)">›</button>
-    </div>
-  </div>
-  {% endif %}
-
-  {% if profile.unidade %}
-  <div class="sp-friends-bar" style="padding:6px 12px">
-    <div class="sp-friends-label" style="font-size:.8rem;color:#10b981">✅ Unidade: {{ profile.unidade }}
-      <button type="button" class="sp-change-unit-btn" style="font-size:.75rem;margin-left:8px"
-              onclick="document.getElementById('sp-change-unit-form').classList.toggle('sp-hidden')">✏️ Mudar</button>
-    </div>
-    <form id="sp-change-unit-form" class="sp-hidden"
-          hx-post="{% url 'boards:social_set_unidade' %}"
-          hx-target="#social-panel" hx-swap="outerHTML"
-          hx-encoding="multipart/form-data">
-      {% csrf_token %}
-      <div class="sp-onboard-input-row" style="margin-top:8px">
-        <input type="text" name="unidade" class="sp-onboard-input"
-               placeholder="Nova unidade..." list="sp-unidades-list2" required>
-        <datalist id="sp-unidades-list2">
-          {% for u in available_units %}<option value="{{ u }}">{% endfor %}
-        </datalist>
-        <button type="submit" class="sp-onboard-btn">OK</button>
-      </div>
-    </form>
-  </div>
-  {% endif %}
-
   <!-- Sheet de rede do amigo -->
   <div id="sp-friend-sheet-overlay" class="sp-sheet-overlay sp-hidden" onclick="spCloseFriendSheet()">
     <div class="sp-sheet" onclick="event.stopPropagation()">
@@ -862,6 +880,29 @@ var _CAMILA_AVATARS = {
 };
 
 /* ════════════════════════════════════════════
+   CHAT UNREAD BADGE
+   ════════════════════════════════════════════ */
+(function(){
+  function _checkChatBadge(){
+    if(document.hidden) return;
+    fetch('{% url "boards:chat_unread_total" %}')
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var badge = document.getElementById('sp-chat-badge');
+        if(!badge) return;
+        if(d.total > 0){
+          badge.textContent = d.total > 9 ? '9+' : d.total;
+          badge.classList.remove('sp-hidden');
+        } else {
+          badge.classList.add('sp-hidden');
+        }
+      }).catch(function(){});
+  }
+  _checkChatBadge();
+  setInterval(function(){ if(!document.hidden) _checkChatBadge(); }, 60000);
+})();
+
+/* ════════════════════════════════════════════
    TABS + REEL DE AMIGOS
    ════════════════════════════════════════════ */
 (function(){
@@ -885,12 +926,14 @@ var _CAMILA_AVATARS = {
     }
   };
 
+  var _friendsOnlyPosts = [];
   function _loadReelFeed(){
     _reelLoaded = true;
     fetch('{% url "boards:social_friends_feed" %}')
       .then(function(r){ return r.json(); })
       .then(function(d){
         _reelPosts = d.posts || [];
+        _friendsOnlyPosts = _reelPosts.slice();
         _renderReel();
       })
       .catch(function(){ document.getElementById('sp-reel').innerHTML = '<div class="sp-reel-empty">Erro ao carregar.</div>'; });
@@ -902,6 +945,12 @@ var _CAMILA_AVATARS = {
       el.innerHTML = '<div class="sp-reel-empty">Seus amigos ainda não publicaram nada.<br>Convide colegas! 🤝</div>';
       return;
     }
+    /* Priorizar: vídeo > imagem > texto */
+    _reelPosts.sort(function(a, b){
+      var pa = a.video ? 0 : (a.photo ? 1 : 2);
+      var pb = b.video ? 0 : (b.photo ? 1 : 2);
+      return pa - pb;
+    });
     var html = '';
     _reelPosts.forEach(function(p, i){
       var initials = (p.user_name || '?').charAt(0).toUpperCase();
@@ -962,6 +1011,43 @@ var _CAMILA_AVATARS = {
         _doReelLike(postId, likeBtn, slide);
       });
     });
+
+    /* Auto-scroll a cada 10s — pausa ao interagir */
+    var _autoScrollTimer = null;
+    var _userTouched = false;
+    function _startAutoScroll(){
+      if(_autoScrollTimer) clearInterval(_autoScrollTimer);
+      _autoScrollTimer = setInterval(function(){
+        if(_userTouched || document.hidden) return;
+        var w = el.offsetWidth;
+        if(!w) return;
+        var nextLeft = el.scrollLeft + w;
+        if(nextLeft >= el.scrollWidth - w/2) nextLeft = 0;
+        el.scrollTo({left: nextLeft, behavior: 'smooth'});
+      }, 10000);
+    }
+    _startAutoScroll();
+    el.addEventListener('touchstart', function(){
+      _userTouched = true;
+      /* Retoma auto-scroll 30s após última interação */
+      setTimeout(function(){ _userTouched = false; }, 30000);
+    });
+
+    /* Dica de swipe — some ao primeiro scroll */
+    var hint = document.getElementById('sp-reel-swipe-hint');
+    if(hint && _reelPosts.length > 1){
+      hint.style.display = '';
+      var _hintDone = false;
+      el.addEventListener('scroll', function(){
+        if(!_hintDone && hint){
+          _hintDone = true;
+          hint.style.opacity = '0';
+          setTimeout(function(){ hint.style.display = 'none'; }, 400);
+        }
+      }, {once: false});
+    } else if(hint){
+      hint.style.display = 'none';
+    }
   }
 
   function _renderDots(){
@@ -1041,7 +1127,68 @@ var _CAMILA_AVATARS = {
     d.textContent = s;
     return d.innerHTML.replace(/\n/g, '<br>');
   }
+
+  /* ═══ Feed toggle: Amigos / Todos ═══ */
+  var _allPostsLoaded = false;
+  var _allPosts = [];
+  window.spToggleFeedMode = function(showAll){
+    var lblF = document.getElementById('sp-feed-lbl-friends');
+    var lblA = document.getElementById('sp-feed-lbl-all');
+    if(lblF) lblF.classList.toggle('sp-feed-toggle-inactive', showAll);
+    if(lblA) lblA.classList.toggle('sp-feed-toggle-inactive', !showAll);
+    if(showAll){
+      if(!_allPostsLoaded){
+        _allPostsLoaded = true;
+        document.getElementById('sp-reel').innerHTML = '<div class="sp-reel-loading">Carregando...</div>';
+        fetch('{% url "boards:social_friends_feed" %}?all=1')
+          .then(function(r){ return r.json(); })
+          .then(function(d){ _allPosts = d.posts || []; _reelPosts = _allPosts; _renderReel(); })
+          .catch(function(){ document.getElementById('sp-reel').innerHTML = '<div class="sp-reel-empty">Erro.</div>'; });
+      } else {
+        _reelPosts = _allPosts;
+        _renderReel();
+      }
+    } else {
+      _reelPosts = _friendsOnlyPosts || [];
+      _renderReel();
+    }
+  };
 })();
+
+/* ═══ Solicitações enviadas — long press para cancelar ═══ */
+var _sentReqTimer = null;
+var _sentReqBlocked = false;
+window.spSentReqLongStart = function(e, uid, btn){
+  _sentReqBlocked = false;
+  _sentReqTimer = setTimeout(function(){
+    _sentReqBlocked = true;
+    spShowSentCancel(uid, btn);
+  }, 500);
+};
+window.spSentReqLongEnd = function(e){
+  clearTimeout(_sentReqTimer);
+};
+window.spShowSentCancel = function(uid, btn){
+  _sentReqBlocked = true;
+  if(confirm('Cancelar convite de amizade?')){
+    var csrf = document.querySelector('[name=csrfmiddlewaretoken]');
+    fetch('/social/'+uid+'/friend-request/', {method:'POST', headers:{'X-CSRFToken': csrf ? csrf.value : ''}})
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(d.action === 'cancelled' || d.action === 'sent'){
+          btn.closest('.sp-sent-req-item') && btn.closest('.sp-sent-req-item').remove();
+        }
+      });
+  }
+};
+/* Override click se long press foi ativado */
+document.addEventListener('click', function(e){
+  if(_sentReqBlocked){
+    e.stopPropagation();
+    e.preventDefault();
+    _sentReqBlocked = false;
+  }
+}, true);
 
 (function(){
   /* ── Mood picker: tap to select ── */
@@ -1645,7 +1792,10 @@ var _CAMILA_AVATARS = {
           '<strong>'+d.profile.name+'</strong>' +
           (d.profile.handle ? '<span class="sp-friend-sheet-handle">@'+d.profile.handle+'</span>' : '') +
         '</div>' +
-        '<a href="/social/'+uid+'/" class="sp-friend-sheet-view-btn">Ver perfil</a>';
+        '<div class="sp-friend-sheet-btns">' +
+          '<a href="/social/'+uid+'/" class="sp-friend-sheet-view-btn">Ver perfil</a>' +
+          (d.friendship_status === 'accepted' ? '<button type="button" class="sp-friend-sheet-chat-btn" onclick="spCloseFriendSheet();spOpenChat('+uid+')">💬 Chat</button>' : '') +
+        '</div>';
 
       // Botão de amizade
       var fsBtn = _friendshipBtn(uid, d.friendship_status, d.i_am_requester);
@@ -2353,7 +2503,7 @@ var _CAMILA_AVATARS = {
           });
         }).catch(function(){});
     }
-    setInterval(function(){ if(!document.hidden) _spPollPills(); }, 15000);
+    setInterval(function(){ if(!document.hidden) _spPollPills(); }, 60000);
 
     /* Busca notícias a cada 3h */
     function _fetchNews() {
@@ -2410,8 +2560,13 @@ var _CAMILA_AVATARS = {
   var _chatPollTimer = null;
   var _chatLastId = 0;
   var _chatOtherUid = 0;
-  var csrf = document.querySelector('[name=csrfmiddlewaretoken]');
-  var csrfVal = csrf ? csrf.value || csrf.content : '';
+  function _getCsrf(){
+    var el = document.querySelector('[name=csrfmiddlewaretoken]');
+    if(el) return el.value || el.content || '';
+    var m = document.cookie.match(/csrftoken=([^;]+)/);
+    return m ? m[1] : '';
+  }
+  var csrfVal = _getCsrf();
 
   window.spOpenChat = function(uid) {
     _chatOtherUid = uid;
@@ -2443,14 +2598,19 @@ var _CAMILA_AVATARS = {
       : '<span class="sp-reactor-av-fb">' + (data.other_name||'?').charAt(0).toUpperCase() + '</span>';
 
     var html = '<div class="sp-chat-modal">'
-      + '<div class="sp-chat-header">' + av
+      + '<div class="sp-chat-header">'
+      + '<button class="sp-chat-back" onclick="_closeChatModal();spOpenChatList()" title="Voltar">←</button>'
+      + '<a href="/social/' + uid + '/" style="display:flex;align-items:center;gap:10px;text-decoration:none;flex:1;min-width:0">'
+      + av
       + '<span class="sp-chat-header-name">' + (data.other_name||'') + '</span>'
+      + '</a>'
       + '<button class="sp-chat-close" onclick="_closeChatModal()">&times;</button>'
       + '</div>'
       + '<div class="sp-chat-body" id="sp-chat-body"></div>'
       + '<div style="position:relative">'
       + '<div id="sp-gif-picker" class="sp-gif-picker sp-hidden"></div>'
       + '</div>'
+      + (window.innerWidth >= 768 ? '<div class="sp-chat-enter-row"><label class="sp-chat-enter-label"><input type="checkbox" id="sp-chat-enter-toggle" checked> Enviar com Enter</label></div>' : '')
       + '<div class="sp-chat-footer">'
       + '<button type="button" class="sp-chat-gif-btn" onclick="spToggleGifPicker()" title="GIF">🎞️</button>'
       + '<input type="text" class="sp-chat-input" id="sp-chat-input" placeholder="Digite..." autocomplete="off">'
@@ -2468,7 +2628,12 @@ var _CAMILA_AVATARS = {
     // Enter para enviar
     var input = document.getElementById('sp-chat-input');
     input.addEventListener('keydown', function(e){
-      if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); spChatSend(); }
+      if(e.key === 'Enter' && !e.shiftKey){
+        var toggle = document.getElementById('sp-chat-enter-toggle');
+        if(!toggle || toggle.checked){
+          e.preventDefault(); spChatSend();
+        }
+      }
     });
     input.focus();
 
@@ -2495,9 +2660,9 @@ var _CAMILA_AVATARS = {
     }
     function _adjustPollRate(){
       if(_chatPollTimer) clearInterval(_chatPollTimer);
-      if(_pollIdleCount < 5) _pollInterval = 3000;
-      else if(_pollIdleCount < 20) _pollInterval = 5000;
-      else _pollInterval = 10000;
+      if(_pollIdleCount < 5) _pollInterval = 5000;
+      else if(_pollIdleCount < 15) _pollInterval = 10000;
+      else _pollInterval = 30000;
       _chatPollTimer = setInterval(_chatPoll, _pollInterval);
     }
     _chatPollTimer = setInterval(_chatPoll, _pollInterval);
@@ -2556,7 +2721,7 @@ var _CAMILA_AVATARS = {
     input.value = '';
     var fd = new FormData();
     fd.append('text', text);
-    fetch('/chat/' + _chatOtherUid + '/send/', {method:'POST', headers:{'X-CSRFToken': csrfVal}, body: fd})
+    fetch('/chat/' + _chatOtherUid + '/send/', {method:'POST', headers:{'X-CSRFToken': _getCsrf()}, body: fd})
       .then(function(r){ return r.json(); })
       .then(function(d){
         if(d.error){ alert(d.error); return; }
@@ -2569,7 +2734,7 @@ var _CAMILA_AVATARS = {
   window.spSendGif = function(url){
     var fd = new FormData();
     fd.append('gif_url', url);
-    fetch('/chat/' + _chatOtherUid + '/send/', {method:'POST', headers:{'X-CSRFToken': csrfVal}, body: fd})
+    fetch('/chat/' + _chatOtherUid + '/send/', {method:'POST', headers:{'X-CSRFToken': _getCsrf()}, body: fd})
       .then(function(r){ return r.json(); })
       .then(function(d){
         if(d.error){ alert(d.error); return; }
@@ -2770,6 +2935,56 @@ var _CAMILA_AVATARS = {
 })();
 
 /* ═══════════════════════════════════════════════
+   QUEM VIU (long-press no contador de views)
+   ═══════════════════════════════════════════════ */
+var _viewersTimer = null;
+var _viewersPopup = null;
+
+function _closeViewersPopup(){
+  if(_viewersPopup){ _viewersPopup.remove(); _viewersPopup = null; }
+}
+document.addEventListener('click', function(e){
+  if(_viewersPopup && !_viewersPopup.contains(e.target)) _closeViewersPopup();
+});
+
+function spViewersLongPress(e, postId){
+  var anchor = e.currentTarget;
+  _viewersTimer = setTimeout(function(){
+    _closeViewersPopup();
+    fetch('/social/post/' + postId + '/viewers/')
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(!d.viewers || !d.viewers.length) return;
+        var popup = document.createElement('div');
+        popup.className = 'sp-viewers-popup';
+        popup.innerHTML = '<div class="sp-viewers-title">👁 Quem viu</div>'
+          + d.viewers.map(function(v){
+            var av = v.avatar
+              ? '<img src="' + v.avatar + '" class="sp-viewer-av">'
+              : '<span class="sp-viewer-av-fb">' + (v.name||'?').charAt(0).toUpperCase() + '</span>';
+            return '<div class="sp-viewer-item">' + av
+              + '<span class="sp-viewer-name">' + v.name + '</span></div>';
+          }).join('');
+
+        var rect = anchor.getBoundingClientRect();
+        popup.style.top = Math.max(10, rect.top - 10) + 'px';
+        popup.style.left = Math.max(10, Math.min(rect.left, window.innerWidth - 290)) + 'px';
+        document.body.appendChild(popup);
+        _viewersPopup = popup;
+
+        var pr = popup.getBoundingClientRect();
+        if(pr.bottom > window.innerHeight){
+          popup.style.top = (window.innerHeight - pr.height - 10) + 'px';
+        }
+      });
+  }, 500);
+}
+
+function spViewersCancelPress(){
+  clearTimeout(_viewersTimer);
+}
+
+/* ═══════════════════════════════════════════════
    PILLS NO PERFIL ALHEIO — mostra notificações no topo
    ═══════════════════════════════════════════════ */
 (function(){
@@ -2798,7 +3013,7 @@ var _CAMILA_AVATARS = {
       }).catch(function(){});
   }
   _loadVisitorPills();
-  setInterval(function(){ if(!document.hidden) _loadVisitorPills(); }, 30000);
+  setInterval(function(){ if(!document.hidden) _loadVisitorPills(); }, 60000);
 })();
 
 /* ═══════════════════════════════════════════════
@@ -2826,6 +3041,17 @@ var _CAMILA_AVATARS = {
     setTimeout(_scrollToPost, 500);
   }
   window.addEventListener('hashchange', _scrollToPost);
+})();
+
+/* ═══════════════════════════════════════════════
+   DEEP LINK — abrir chat via ?chat=UID
+   ═══════════════════════════════════════════════ */
+(function(){
+  var params = new URLSearchParams(window.location.search);
+  var chatUid = params.get('chat');
+  if(chatUid && window.spOpenChat){
+    setTimeout(function(){ window.spOpenChat(parseInt(chatUid)); }, 600);
+  }
 })();
 
 /* ═══════════════════════════════════════════════

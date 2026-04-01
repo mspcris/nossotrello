@@ -581,3 +581,55 @@ def notify_friendship_event(
                 send_email_notification(to_email=to_email, subject=subject, body=email_body)
             except Exception:
                 logger.exception("friendship notify: email failed user_id=%s", getattr(recipient, "id", None))
+
+
+def notify_chat_message(
+    *,
+    recipient: "User",
+    sender: "User",
+    message_preview: str = "",
+) -> None:
+    """
+    Notifica por WhatsApp e email que alguém mandou mensagem no chat.
+    Envia link direto para a conversa.
+    """
+    if getattr(recipient, "id", None) == getattr(sender, "id", None):
+        return
+
+    prof = _get_or_create_profile(recipient)
+    if not is_in_notification_window(prof):
+        return
+
+    sender_prof = _get_or_create_profile(sender)
+    sender_name = sender_prof.display_name or sender.email.split("@")[0]
+
+    site_url = (getattr(settings, "SITE_URL", "") or "").rstrip("/")
+    chat_link = f"{site_url}/social/?chat={getattr(sender, 'id', '')}"
+
+    preview = (message_preview or "").strip()[:60]
+    preview_str = f': "{preview}"' if preview else ""
+
+    wa_msg = (
+        f"💬 *{_wa_safe(sender_name)}* te mandou uma mensagem no chat{preview_str}\n\n"
+        f"Responda aqui 👇\n{chat_link}"
+    )
+    subject = f"💬 {sender_name} te enviou uma mensagem!"
+    email_body = (
+        f"Oi! 👋\n\n"
+        f"{sender_name} te enviou uma mensagem no chat{preview_str}.\n\n"
+        f"Acesse para responder:\n{chat_link}\n\n"
+        f"— Equipe NossoTrello 😊"
+    )
+
+    if getattr(prof, "notify_whatsapp", False):
+        phone_digits = _safe_digits_phone(getattr(prof, "telefone", ""))
+        if phone_digits:
+            send_whatsapp(user=recipient, phone_digits=phone_digits, body=wa_msg)
+
+    if getattr(prof, "notify_email", False):
+        to_email = (getattr(recipient, "email", "") or "").strip()
+        if to_email:
+            try:
+                send_email_notification(to_email=to_email, subject=subject, body=email_body)
+            except Exception:
+                logger.exception("chat notify: email failed user_id=%s", getattr(recipient, "id", None))

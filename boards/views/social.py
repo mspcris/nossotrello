@@ -23,7 +23,7 @@ from ..models import (
     SocialPostReaction, SocialPostComment,
     DailyCheckIn, Card, CardFollow, UserProfile,
     CamilaKnowledge, CamilaConfig, SocialFriendship, SocialCardDismiss, CamilaPOP,
-    ChatConversation, ChatMessage,
+    ChatConversation, ChatMessage, SocialPostView,
 )
 
 User = get_user_model()
@@ -164,6 +164,14 @@ def _build_social_context(request, target_user, extra=None):
         ):
             comments_by_post[c.post_id].append(c)
 
+        # Prefetch view counts
+        view_counts = dict(
+            SocialPostView.objects
+            .filter(post_id__in=post_ids)
+            .values_list("post_id")
+            .annotate(cnt=models.Count("id"))
+        )
+
         # Annotate each post
         for post in posts:
             post_reactions = reactions_by_post.get(post.id, [])
@@ -174,6 +182,7 @@ def _build_social_context(request, target_user, extra=None):
             )
             post.comment_list = comments_by_post.get(post.id, [])
             post.comment_count = len(post.comment_list)
+            post.view_count = view_counts.get(post.id, 0)
 
     # Marca visto
     if not is_me and posts:
@@ -182,6 +191,9 @@ def _build_social_context(request, target_user, extra=None):
             target_user=target_user,
             defaults={"last_seen_post_at": timezone.now()},
         )
+        # Registra visualização individual de cada post
+        for p in posts:
+            SocialPostView.objects.get_or_create(post=p, viewer=request.user)
 
     # Tarefas do dia (só para o próprio)
     today_tasks = []
@@ -200,7 +212,7 @@ def _build_social_context(request, target_user, extra=None):
     unit_suggestions = []
     available_units = []
     if is_me:
-        show_unit_tutorial = not prof.unidade
+        show_unit_tutorial = not prof.unidade and not prof.onboarding_done
         show_onboarding_tour = not prof.onboarding_done
         available_units = list(
             UserProfile.objects
@@ -377,29 +389,43 @@ def social_posts_panel(request, user_id: int):
 # ---------------------------------------------------------------
 @login_required
 def social_friends_feed(request):
-    """Retorna posts de amigos (accepted friendships) como JSON."""
+    """Retorna posts de amigos (accepted friendships) como JSON.
+    Se ?all=1, retorna posts de todos os usuários.
+    """
     me = request.user
+    show_all = request.GET.get("all") == "1"
 
-    # Somente amizades aceitas
-    accepted_out = SocialFriendship.objects.filter(
-        requester=me, status="accepted"
-    ).values_list("receiver_id", flat=True)
-    accepted_in = SocialFriendship.objects.filter(
-        receiver=me, status="accepted"
-    ).values_list("requester_id", flat=True)
-    friend_ids = set(accepted_out)
-    friend_ids.update(accepted_in)
-    friend_ids.discard(me.id)
+    if show_all:
+        # Todos os posts (exceto os do próprio)
+        posts = list(
+            SocialPost.objects
+            .filter(is_active=True)
+            .exclude(user=me)
+            .exclude(visibility="friends")
+            .select_related("user", "user__profile")
+            .order_by("-created_at")[:60]
+        )
+    else:
+        # Somente amizades aceitas
+        accepted_out = SocialFriendship.objects.filter(
+            requester=me, status="accepted"
+        ).values_list("receiver_id", flat=True)
+        accepted_in = SocialFriendship.objects.filter(
+            receiver=me, status="accepted"
+        ).values_list("requester_id", flat=True)
+        friend_ids = set(accepted_out)
+        friend_ids.update(accepted_in)
+        friend_ids.discard(me.id)
 
-    if not friend_ids:
-        return JsonResponse({"posts": []})
+        if not friend_ids:
+            return JsonResponse({"posts": []})
 
-    posts = list(
-        SocialPost.objects
-        .filter(user_id__in=friend_ids, is_active=True)
-        .select_related("user", "user__profile")
-        .order_by("-created_at")[:60]
-    )
+        posts = list(
+            SocialPost.objects
+            .filter(user_id__in=friend_ids, is_active=True)
+            .select_related("user", "user__profile")
+            .order_by("-created_at")[:60]
+        )
 
     if not posts:
         return JsonResponse({"posts": []})
@@ -431,7 +457,7 @@ def social_friends_feed(request):
             "text": p.text,
             "photo": p.photo.url if p.photo else "",
             "video": p.video.url if p.video else "",
-            "created_at": p.created_at.strftime("%d/%m %H:%M"),
+            "created_at": timezone.localtime(p.created_at).strftime("%d/%m %H:%M"),
             "reaction_counts": dict(Counter(r.reaction for r in p_reactions)),
             "total_reactions": len(p_reactions),
             "my_reaction": my_reaction,
@@ -1235,8 +1261,13 @@ def social_pills_poll(request):
 def social_set_unidade(request):
     unidade = (request.POST.get("unidade") or "").strip()[:80]
     prof = _get_or_create_profile(request.user)
+    fields_to_update = ["unidade"]
     prof.unidade = unidade
-    prof.save(update_fields=["unidade"])
+    # Se pulou (unidade vazia), marca onboarding como feito para não repetir
+    if not unidade:
+        prof.onboarding_done = True
+        fields_to_update.append("onboarding_done")
+    prof.save(update_fields=fields_to_update)
     ctx = _build_social_context(request, request.user)
     return render(request, "boards/social_panel.html", ctx)
 
@@ -2008,7 +2039,7 @@ def chat_list(request):
             "other_handle": prof.handle if prof else "",
             "last_message": last_msg.text[:60] if last_msg else "",
             "last_message_gif": bool(last_msg and last_msg.gif_url) if last_msg else False,
-            "last_time": last_msg.created_at.strftime("%d/%m %H:%M") if last_msg else "",
+            "last_time": timezone.localtime(last_msg.created_at).strftime("%d/%m %H:%M") if last_msg else "",
             "unread": unread,
         })
     return JsonResponse({"conversations": result})
@@ -2050,7 +2081,7 @@ def chat_messages(request, user_id: int):
             "sender_avatar": prof.avatar.url if prof and prof.avatar else "",
             "text": m.text,
             "gif_url": m.gif_url,
-            "created_at": m.created_at.strftime("%d/%m %H:%M"),
+            "created_at": timezone.localtime(m.created_at).strftime("%d/%m %H:%M"),
             "is_mine": m.sender_id == me.id,
             "seen": m.seen,
         })
@@ -2081,6 +2112,12 @@ def chat_send(request, user_id: int):
         return JsonResponse({"error": "Mensagem vazia."}, status=400)
 
     conv = _get_or_create_conversation(me, other)
+
+    # Verifica se é a primeira mensagem não lida (para notificar)
+    has_recent_unread = ChatMessage.objects.filter(
+        conversation=conv, sender=me, seen=False,
+    ).exists()
+
     msg = ChatMessage.objects.create(
         conversation=conv,
         sender=me,
@@ -2089,6 +2126,16 @@ def chat_send(request, user_id: int):
     )
     conv.save()  # atualiza updated_at
 
+    # Notifica destinatário se não havia mensagens não lidas antes (evita spam)
+    if not has_recent_unread:
+        from boards.services.notifications import notify_chat_message
+        import threading
+        threading.Thread(
+            target=notify_chat_message,
+            kwargs={"recipient": other, "sender": me, "message_preview": text or "GIF 🎞️"},
+            daemon=True,
+        ).start()
+
     prof = getattr(me, "profile", None)
     return JsonResponse({
         "id": msg.id,
@@ -2096,7 +2143,7 @@ def chat_send(request, user_id: int):
         "sender_name": prof.display_name if prof else me.email,
         "text": msg.text,
         "gif_url": msg.gif_url,
-        "created_at": msg.created_at.strftime("%d/%m %H:%M"),
+        "created_at": timezone.localtime(msg.created_at).strftime("%d/%m %H:%M"),
         "is_mine": True,
     })
 
@@ -2153,7 +2200,7 @@ def chat_poll(request, user_id: int):
             "sender_avatar": prof.avatar.url if prof and prof.avatar else "",
             "text": m.text,
             "gif_url": m.gif_url,
-            "created_at": m.created_at.strftime("%d/%m %H:%M"),
+            "created_at": timezone.localtime(m.created_at).strftime("%d/%m %H:%M"),
             "is_mine": m.sender_id == me.id,
         })
     return JsonResponse({"messages": result})
@@ -2196,6 +2243,30 @@ def social_post_reactors(request, post_id: int):
             "emoji": dict(SocialPostReaction.REACTION_CHOICES).get(r.reaction, ""),
         })
     return JsonResponse({"reactors": result})
+
+
+# ---------------------------------------------------------------
+# Quem viu o post (GET → JSON)
+# ---------------------------------------------------------------
+@login_required
+def social_post_viewers(request, post_id: int):
+    """Retorna lista de quem visualizou um post com seus avatares."""
+    views = (
+        SocialPostView.objects
+        .filter(post_id=post_id)
+        .select_related("viewer", "viewer__profile")
+        .order_by("-viewed_at")
+    )
+    result = []
+    for v in views:
+        prof = getattr(v.viewer, "profile", None)
+        result.append({
+            "user_id": v.viewer_id,
+            "name": prof.display_name if prof else v.viewer.email,
+            "avatar": prof.avatar.url if prof and prof.avatar else "",
+            "avatar_choice": prof.avatar_choice if prof else "",
+        })
+    return JsonResponse({"viewers": result})
 
 
 # ---------------------------------------------------------------
