@@ -2795,16 +2795,32 @@ document.addEventListener('click', function(e){
     var input = document.getElementById('sp-chat-input');
     var text = (input.value || '').trim();
     if(!text) return;
+    var savedText = text;
     input.value = '';
     var fd = new FormData();
     fd.append('text', text);
-    fetch('/chat/' + _chatOtherUid + '/send/', {method:'POST', headers:{'X-CSRFToken': _getCsrf()}, body: fd})
-      .then(function(r){ return r.json(); })
+    var csrf = _getCsrf();
+    if(!csrf){
+      alert('Erro de autenticação. Recarregue a página.');
+      input.value = savedText;
+      return;
+    }
+    fetch('/chat/' + _chatOtherUid + '/send/', {method:'POST', headers:{'X-CSRFToken': csrf}, body: fd})
+      .then(function(r){
+        if(!r.ok){
+          return r.text().then(function(t){ throw new Error('HTTP ' + r.status + ': ' + t.substring(0, 200)); });
+        }
+        return r.json();
+      })
       .then(function(d){
-        if(d.error){ alert(d.error); return; }
+        if(d.error){ alert(d.error); input.value = savedText; return; }
         var body = document.getElementById('sp-chat-body');
         _appendMsg(body, d);
         _scrollChatBottom();
+      })
+      .catch(function(err){
+        alert('Erro ao enviar: ' + err.message);
+        input.value = savedText;
       });
   };
 
