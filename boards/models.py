@@ -527,6 +527,9 @@ class UserProfile(models.Model):
     terms_accepted_at = models.DateTimeField(null=True, blank=True)
     terms_version = models.CharField(max_length=10, default="1.0", blank=True)
 
+    # Onboarding tour concluído
+    onboarding_done = models.BooleanField(default=False)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -841,6 +844,7 @@ class SocialPost(models.Model):
     video = models.FileField(upload_to="social/videos/", blank=True, null=True)
     visibility = models.CharField(max_length=10, choices=VISIBILITY_CHOICES, default="all")
     created_at = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
 
     class Meta:
         ordering = ["-created_at"]
@@ -927,6 +931,7 @@ class SocialPostComment(models.Model):
     )
     # True quando o autor do comentário-pai viu esta resposta
     reply_seen = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True)
 
     class Meta:
         ordering = ["created_at"]
@@ -1132,6 +1137,58 @@ class SocialFriendship(models.Model):
 
     def __str__(self):
         return f"{self.requester} → {self.receiver} ({self.status})"
+
+
+# ============================================================
+# CHAT DIRETO ENTRE AMIGOS
+# ============================================================
+class ChatConversation(models.Model):
+    """Conversa 1:1 entre dois amigos."""
+    user_a = models.ForeignKey(
+        settings.AUTH_USER_MODEL, related_name="chats_as_a", on_delete=models.CASCADE,
+    )
+    user_b = models.ForeignKey(
+        settings.AUTH_USER_MODEL, related_name="chats_as_b", on_delete=models.CASCADE,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = [("user_a", "user_b")]
+        ordering = ["-updated_at"]
+
+    def other_user(self, me):
+        return self.user_b if self.user_a_id == me.id else self.user_a
+
+    def __str__(self):
+        return f"Chat: {self.user_a} ↔ {self.user_b}"
+
+
+class ChatMessage(models.Model):
+    """Mensagem individual em uma conversa."""
+    conversation = models.ForeignKey(
+        ChatConversation, related_name="messages", on_delete=models.CASCADE,
+    )
+    sender = models.ForeignKey(
+        settings.AUTH_USER_MODEL, related_name="chat_messages_sent", on_delete=models.CASCADE,
+    )
+    text = models.TextField(blank=True, default="")
+    gif_url = models.URLField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
+    # Soft delete individual: quem apagou só para si
+    hidden_by_a = models.BooleanField(default=False)
+    hidden_by_b = models.BooleanField(default=False)
+    seen = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["created_at"]
+        indexes = [
+            models.Index(fields=["conversation", "created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.sender} → msg em {self.conversation_id}"
 
 
 class CamilaPOP(models.Model):

@@ -4,7 +4,7 @@
   <div class="sp-section-title">📸 Feed</div>
   {% if posts %}
     {% for post in posts %}
-    <div class="sp-post" id="sp-post-{{ post.id }}">
+    <div class="sp-post" id="sp-post-{{ post.id }}" data-post-id="{{ post.id }}">
       {% if post.video %}
         <video src="{{ post.video.url }}" class="sp-post-media" controls preload="metadata" playsinline></video>
       {% elif post.photo %}
@@ -15,7 +15,7 @@
       {% endif %}
 
       <!-- Reactions -->
-      <div class="sp-reactions" id="sp-reactions-{{ post.id }}">
+      <div class="sp-reactions" id="sp-reactions-{{ post.id }}" data-post-reactions data-post-id="{{ post.id }}">
         <button type="button" class="sp-react-btn {% if post.my_reaction == 'like' %}active{% endif %}"
                 data-reaction="like" onclick="spReact({{ post.id }},'like')">
           👍{% if post.reaction_counts.like %}<span class="sp-react-count">{{ post.reaction_counts.like }}</span>{% endif %}

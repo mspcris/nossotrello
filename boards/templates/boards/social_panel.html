@@ -108,6 +108,20 @@
   </div>
 
   {% if not is_me %}
+  <!-- ═══ BARRA DE NAVEGAÇÃO DO VISITANTE ═══ -->
+  <div class="sp-visitor-bar">
+    <a href="{% url 'boards:social_page' %}" class="sp-visitor-bar-btn sp-vbar-home">
+      <span>🏠</span> Meu Perfil
+    </a>
+    <button type="button" class="sp-visitor-bar-btn sp-vbar-chat" id="sp-open-chat-btn"
+            onclick="spOpenChat({{ target_user.id }})">
+      <span>💬</span> Conversar com {{ profile.display_name|default:target_user.email|truncatechars:15 }}
+    </button>
+  </div>
+
+  <!-- ═══ MINHAS PILLS (notificações) no topo do perfil alheio ═══ -->
+  <div id="sp-visitor-pills" class="sp-visitor-pills"></div>
+
   <!-- ═══ VISITOR VIEW: botão de amizade + feed ═══ -->
   <div class="sp-visitor-actions" id="sp-visitor-actions">
     <button type="button" class="sp-visitor-friend-btn" id="sp-visitor-friend-btn"
@@ -180,6 +194,7 @@
     }
     function _removeReq(btn, rmBtn){
       if(!confirm('Remover esta amizade?')) return;
+      if(!confirm('Tem certeza mesmo? Vou enviar notificação para ele informando o encerramento da amizade.')) return;
       fetch('/social/'+uid+'/friend-remove/', {method:'POST', headers:{'X-CSRFToken':csrf}})
         .then(function(r){ return r.json(); })
         .then(function(d){
@@ -194,10 +209,11 @@
 
   {% else %}
 
-  <!-- ═══ TABS: Meu Espaço / Amigos ═══ -->
+  <!-- ═══ TABS: Meu Espaço / Amigos / Chat ═══ -->
   <div class="sp-tabs" id="sp-tabs">
     <button type="button" class="sp-tab active" data-tab="mine" onclick="spSwitchTab('mine')">Meu Espaço</button>
     <button type="button" class="sp-tab" data-tab="friends" onclick="spSwitchTab('friends')">Amigos</button>
+    <button type="button" class="sp-tab" onclick="spOpenChatList()">💬 Chat</button>
   </div>
 
   <!-- ═══ REEL DE AMIGOS (tab friends) ═══ -->
@@ -226,7 +242,7 @@
         <div class="sp-onboard-input-row">
           <input type="text" name="unidade" id="sp-unidade-input"
                  class="sp-onboard-input"
-                 placeholder="Higienização, Enfermagem, Recepção..."
+                 placeholder="Campinho, Realengo, Nova Iguaçu..."
                  list="sp-unidades-list"
                  required autocomplete="off">
           <datalist id="sp-unidades-list">
@@ -429,6 +445,62 @@
   </div>
   {% endif %}
 
+  <!-- ═══ TOUR DE ONBOARDING (Camila — como publicar) ═══ -->
+  {% if show_onboarding_tour and not show_unit_tutorial %}
+  <div class="sp-onboard-card" id="sp-tour-card" style="border-left:4px solid #a855f7">
+    <img src="{% static 'images/camila-avatar.png' %}" class="sp-onboard-av" alt="Camila">
+    <div class="sp-onboard-bubble">
+      <p class="sp-onboard-hi"><strong>Camila</strong> 💜 Dica rápida!</p>
+      <div id="sp-tour-steps">
+        <div class="sp-tour-step active" data-step="1">
+          <p class="sp-onboard-txt">📸 <strong>Publique fotos e textos!</strong> Role até o final da página, escreva algo e clique em "Publicar". Você pode adicionar fotos e vídeos do seu dia a dia no trabalho!</p>
+        </div>
+        <div class="sp-tour-step sp-hidden" data-step="2">
+          <p class="sp-onboard-txt">👥 <strong>Adicione amigos!</strong> Na aba "Amigos" você vê sugestões de colegas. Toque para convidar! Amigos veem suas publicações especiais.</p>
+        </div>
+        <div class="sp-tour-step sp-hidden" data-step="3">
+          <p class="sp-onboard-txt">💬 <strong>Converse!</strong> Use o chat para trocar mensagens com seus amigos. Envie GIFs divertidos! Acesse pela aba "Chat".</p>
+        </div>
+        <div class="sp-tour-step sp-hidden" data-step="4">
+          <p class="sp-onboard-txt">🎭 <strong>Check-in diário!</strong> Logo abaixo, escolha como está se sentindo hoje. Seus colegas podem ver seu humor e torcer por você!</p>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button type="button" class="sp-onboard-btn" id="sp-tour-next" onclick="spTourNext()">Próximo →</button>
+        <button type="button" class="sp-onboard-skip" onclick="spTourDone()">Entendi, fechar</button>
+      </div>
+      <div class="sp-tour-dots" style="display:flex;gap:4px;justify-content:center;margin-top:6px">
+        <span class="sp-tour-dot active" data-dot="1">●</span>
+        <span class="sp-tour-dot" data-dot="2">○</span>
+        <span class="sp-tour-dot" data-dot="3">○</span>
+        <span class="sp-tour-dot" data-dot="4">○</span>
+      </div>
+    </div>
+  </div>
+  <script>
+  (function(){
+    var step = 1, total = 4;
+    var csrf = document.querySelector('[name=csrfmiddlewaretoken]');
+    window.spTourNext = function(){
+      step++;
+      if(step > total){ spTourDone(); return; }
+      document.querySelectorAll('.sp-tour-step').forEach(function(el){ el.classList.add('sp-hidden'); });
+      var next = document.querySelector('.sp-tour-step[data-step="'+step+'"]');
+      if(next) next.classList.remove('sp-hidden');
+      document.querySelectorAll('.sp-tour-dot').forEach(function(d,i){
+        d.textContent = (i+1) === step ? '●' : '○';
+      });
+      if(step === total) document.getElementById('sp-tour-next').textContent = 'Concluir ✅';
+    };
+    window.spTourDone = function(){
+      var card = document.getElementById('sp-tour-card');
+      if(card) card.style.display = 'none';
+      fetch('/social/onboarding-done/', {method:'POST', headers:{'X-CSRFToken': csrf ? csrf.value || csrf.content : ''}});
+    };
+  })();
+  </script>
+  {% endif %}
+
   <!-- ═══ DAILY CHECK-IN ═══ -->
   <div class="sp-card">
     <form id="sp-checkin-form" class="sp-checkin"
@@ -544,13 +616,36 @@
   <!-- ═══ TASKS / PENDÊNCIAS ═══ -->
   {% if overdue_tasks or today_tasks %}
   <div class="sp-card">
-    <div class="sp-section-title">📋 Suas pendências</div>
+    <div class="sp-tasks-header">
+      <div class="sp-section-title" style="margin:0">📋 Suas pendências</div>
+      <button type="button" class="sp-tasks-filter-btn" onclick="spToggleTaskFilter()" title="Filtrar">⚙️</button>
+    </div>
+
+    <!-- Painel de filtro -->
+    <div id="sp-tasks-filter-panel" class="sp-tasks-filter-panel sp-hidden">
+      <div class="sp-tasks-filter-label">Quadro</div>
+      <select id="sp-filter-board" class="sp-tasks-filter-select">
+        <option value="">Todos os quadros</option>
+        {% for b in my_boards %}
+        <option value="{{ b.id }}">{{ b.name }}</option>
+        {% endfor %}
+      </select>
+      <div class="sp-tasks-filter-label">Coluna</div>
+      <select id="sp-filter-col" class="sp-tasks-filter-select">
+        <option value="">Todas as colunas</option>
+      </select>
+      <button type="button" class="sp-visitor-bar-btn sp-vbar-chat" style="font-size:0.78rem;padding:6px 14px;width:100%" onclick="spAddTaskFilter()">Adicionar filtro</button>
+      <div id="sp-filter-tags" class="sp-tasks-filter-tags" style="margin-top:8px"></div>
+    </div>
+
     {% if overdue_tasks %}
     <div class="sp-tasks-group">
       <div class="sp-tasks-label sp-overdue-label">⚠️ Atrasadas</div>
       {% for card in overdue_tasks %}
       <div class="sp-task-row">
-        <a href="/board/{{ card.column.board_id }}/?card={{ card.id }}" class="sp-task-item sp-task-overdue" target="_blank">
+        <a href="/board/{{ card.column.board_id }}/?card={{ card.id }}" class="sp-task-item sp-task-overdue"
+           data-board-id="{{ card.column.board_id }}" data-col-id="{{ card.column_id }}" data-col-name="{{ card.column.name }}"
+           target="_blank">
           <span class="sp-task-title">{{ card.title|truncatechars:50 }}</span>
           <span class="sp-task-meta">{{ card.column.board.name|truncatechars:20 }} · {{ card.due_date|date:"d/m" }}</span>
         </a>
@@ -563,10 +658,12 @@
     {% endif %}
     {% if today_tasks %}
     <div class="sp-tasks-group">
-      <div class="sp-tasks-label">Em andamento</div>
+      <div class="sp-tasks-label">EM ANDAMENTO</div>
       {% for card in today_tasks %}
       <div class="sp-task-row">
-        <a href="/board/{{ card.column.board_id }}/?card={{ card.id }}" class="sp-task-item" target="_blank">
+        <a href="/board/{{ card.column.board_id }}/?card={{ card.id }}" class="sp-task-item"
+           data-board-id="{{ card.column.board_id }}" data-col-id="{{ card.column_id }}" data-col-name="{{ card.column.name }}"
+           target="_blank">
           <span class="sp-task-title">{{ card.title|truncatechars:50 }}</span>
           <span class="sp-task-meta">{{ card.column.board.name|truncatechars:20 }}{% if card.due_date %} · {{ card.due_date|date:"d/m" }}{% endif %}</span>
         </a>
@@ -2303,5 +2400,497 @@ var _CAMILA_AVATARS = {
     }
   }
 
+})();
+
+/* ═══════════════════════════════════════════════
+   CHAT DIRETO ENTRE AMIGOS
+   ═══════════════════════════════════════════════ */
+(function(){
+  var _chatOverlay = null;
+  var _chatPollTimer = null;
+  var _chatLastId = 0;
+  var _chatOtherUid = 0;
+  var csrf = document.querySelector('[name=csrfmiddlewaretoken]');
+  var csrfVal = csrf ? csrf.value || csrf.content : '';
+
+  window.spOpenChat = function(uid) {
+    _chatOtherUid = uid;
+    _chatLastId = 0;
+    // Buscar mensagens
+    fetch('/chat/' + uid + '/messages/')
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(d.error){ alert(d.error); return; }
+        _renderChatModal(d, uid);
+      }).catch(function(){ alert('Erro ao abrir chat.'); });
+  };
+
+  window.spOpenChatList = function() {
+    fetch('/chat/')
+      .then(function(r){ return r.json(); })
+      .then(function(d){ _renderChatListModal(d.conversations); })
+      .catch(function(){});
+  };
+
+  function _renderChatModal(data, uid) {
+    _closeChatModal();
+    var ov = document.createElement('div');
+    ov.className = 'sp-chat-overlay';
+    ov.onclick = function(e){ if(e.target === ov) _closeChatModal(); };
+
+    var av = data.other_avatar
+      ? '<img src="' + data.other_avatar + '" class="sp-chat-header-av">'
+      : '<span class="sp-reactor-av-fb">' + (data.other_name||'?').charAt(0).toUpperCase() + '</span>';
+
+    var html = '<div class="sp-chat-modal">'
+      + '<div class="sp-chat-header">' + av
+      + '<span class="sp-chat-header-name">' + (data.other_name||'') + '</span>'
+      + '<button class="sp-chat-close" onclick="_closeChatModal()">&times;</button>'
+      + '</div>'
+      + '<div class="sp-chat-body" id="sp-chat-body"></div>'
+      + '<div style="position:relative">'
+      + '<div id="sp-gif-picker" class="sp-gif-picker sp-hidden"></div>'
+      + '</div>'
+      + '<div class="sp-chat-footer">'
+      + '<button type="button" class="sp-chat-gif-btn" onclick="spToggleGifPicker()" title="GIF">🎞️</button>'
+      + '<input type="text" class="sp-chat-input" id="sp-chat-input" placeholder="Digite..." autocomplete="off">'
+      + '<button type="button" class="sp-chat-send-btn" onclick="spChatSend()">➤</button>'
+      + '</div></div>';
+
+    ov.innerHTML = html;
+    document.body.appendChild(ov);
+    _chatOverlay = ov;
+
+    var body = document.getElementById('sp-chat-body');
+    data.messages.forEach(function(m){ _appendMsg(body, m); });
+    _scrollChatBottom();
+
+    // Enter para enviar
+    var input = document.getElementById('sp-chat-input');
+    input.addEventListener('keydown', function(e){
+      if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); spChatSend(); }
+    });
+    input.focus();
+
+    // Polling
+    _chatPollTimer = setInterval(function(){
+      fetch('/chat/' + uid + '/poll/?after=' + _chatLastId)
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if(d.messages && d.messages.length){
+            var b = document.getElementById('sp-chat-body');
+            d.messages.forEach(function(m){ _appendMsg(b, m); });
+            _scrollChatBottom();
+          }
+        }).catch(function(){});
+    }, 3000);
+  }
+
+  function _appendMsg(body, m) {
+    if(m.id > _chatLastId) _chatLastId = m.id;
+    var div = document.createElement('div');
+    var cls = m.is_mine ? 'sp-chat-msg sp-chat-msg-mine' : 'sp-chat-msg sp-chat-msg-other';
+    div.className = cls;
+    div.dataset.msgId = m.id;
+    var content = '';
+    if(m.gif_url){
+      content = '<div class="sp-chat-msg-gif"><img src="' + m.gif_url + '" alt="GIF"></div>';
+    } else {
+      content = '<div>' + _escHtml(m.text) + '</div>';
+    }
+    content += '<div class="sp-chat-msg-time">' + m.created_at + '</div>';
+    div.innerHTML = content;
+
+    // Long press para apagar (só para si)
+    if(m.is_mine){
+      var _lpt = null;
+      div.addEventListener('touchstart', function(){ _lpt = setTimeout(function(){ _chatDeleteMsg(m.id, div); }, 600); });
+      div.addEventListener('touchend', function(){ clearTimeout(_lpt); });
+      div.addEventListener('contextmenu', function(e){ e.preventDefault(); _chatDeleteMsg(m.id, div); });
+    }
+    body.appendChild(div);
+  }
+
+  function _chatDeleteMsg(msgId, el) {
+    if(!confirm('Apagar esta mensagem para você?')) return;
+    fetch('/chat/message/' + msgId + '/delete/', {method:'POST', headers:{'X-CSRFToken': csrfVal}})
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(d.ok) el.innerHTML = '<div class="sp-chat-msg-deleted">🗑️ Mensagem apagada</div>';
+      });
+  }
+
+  function _scrollChatBottom(){
+    setTimeout(function(){
+      var b = document.getElementById('sp-chat-body');
+      if(b) b.scrollTop = b.scrollHeight;
+    }, 50);
+  }
+
+  window._closeChatModal = function(){
+    if(_chatPollTimer) clearInterval(_chatPollTimer);
+    if(_chatOverlay){ _chatOverlay.remove(); _chatOverlay = null; }
+  };
+
+  window.spChatSend = function(){
+    var input = document.getElementById('sp-chat-input');
+    var text = (input.value || '').trim();
+    if(!text) return;
+    input.value = '';
+    var fd = new FormData();
+    fd.append('text', text);
+    fetch('/chat/' + _chatOtherUid + '/send/', {method:'POST', headers:{'X-CSRFToken': csrfVal}, body: fd})
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(d.error){ alert(d.error); return; }
+        var body = document.getElementById('sp-chat-body');
+        _appendMsg(body, d);
+        _scrollChatBottom();
+      });
+  };
+
+  window.spSendGif = function(url){
+    var fd = new FormData();
+    fd.append('gif_url', url);
+    fetch('/chat/' + _chatOtherUid + '/send/', {method:'POST', headers:{'X-CSRFToken': csrfVal}, body: fd})
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(d.error){ alert(d.error); return; }
+        var body = document.getElementById('sp-chat-body');
+        _appendMsg(body, d);
+        _scrollChatBottom();
+        // Fechar gif picker
+        var gp = document.getElementById('sp-gif-picker');
+        if(gp) gp.classList.add('sp-hidden');
+      });
+  };
+
+  /* GIF Picker com Tenor */
+  var _gifDebounce = null;
+  window.spToggleGifPicker = function(){
+    var gp = document.getElementById('sp-gif-picker');
+    if(!gp) return;
+    if(gp.classList.contains('sp-hidden')){
+      gp.classList.remove('sp-hidden');
+      gp.innerHTML = '<input type="text" class="sp-gif-picker-search" placeholder="Buscar GIFs..." oninput="spSearchGifs(this.value)">'
+        + '<div class="sp-gif-grid" id="sp-gif-grid"></div>';
+      _loadTrendingGifs();
+    } else {
+      gp.classList.add('sp-hidden');
+    }
+  };
+
+  function _loadTrendingGifs(){
+    /* GIFs animados pré-selecionados (emojis animados populares) */
+    var defaultGifs = [
+      'https://media.tenor.com/images/ca23710c0343fea613c15360e4df0388/tenor.gif',
+      'https://media.tenor.com/images/6a60aeab33a372153db635e0a14b9b50/tenor.gif',
+      'https://media.tenor.com/images/5f5e6bcca7d4ca1a029c4e31646f38e0/tenor.gif',
+      'https://media.tenor.com/images/bb6d0fc12270ee11a4ce2ba222253d45/tenor.gif',
+      'https://media.tenor.com/images/2c663fcba6c67e35b7aafc30e5575a32/tenor.gif',
+      'https://media.tenor.com/images/04c7e11bdc6a8c05fd10a4e1c5b2b3ae/tenor.gif',
+    ];
+    var grid = document.getElementById('sp-gif-grid');
+    if(!grid) return;
+    grid.innerHTML = defaultGifs.map(function(u){
+      return '<img src="' + u + '" onclick="spSendGif(\'' + u + '\')" loading="lazy">';
+    }).join('');
+  }
+
+  window.spSearchGifs = function(q){
+    clearTimeout(_gifDebounce);
+    if(!q || q.length < 2) { _loadTrendingGifs(); return; }
+    _gifDebounce = setTimeout(function(){
+      /* Tenor API public (anon key) */
+      fetch('https://tenor.googleapis.com/v2/search?q=' + encodeURIComponent(q) + '&key=AIzaSyAyimkuYQYF_FXVALexPuGQctUWRURdCYQ&limit=18&media_filter=gif')
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          var grid = document.getElementById('sp-gif-grid');
+          if(!grid || !d.results) return;
+          grid.innerHTML = d.results.map(function(r){
+            var url = r.media_formats && r.media_formats.gif ? r.media_formats.gif.url : '';
+            var thumb = r.media_formats && r.media_formats.tinygif ? r.media_formats.tinygif.url : url;
+            if(!url) return '';
+            return '<img src="' + thumb + '" onclick="spSendGif(\'' + url + '\')" loading="lazy">';
+          }).join('');
+        });
+    }, 400);
+  };
+
+  function _escHtml(s){
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  /* Chat list modal */
+  function _renderChatListModal(convs){
+    _closeChatModal();
+    var ov = document.createElement('div');
+    ov.className = 'sp-chat-overlay';
+    ov.onclick = function(e){ if(e.target === ov) _closeChatModal(); };
+
+    var items = '';
+    if(!convs || !convs.length){
+      items = '<div style="padding:20px;text-align:center;color:#9ca3af">Nenhuma conversa ainda.<br>Visite o perfil de um amigo para iniciar.</div>';
+    } else {
+      convs.forEach(function(c){
+        var av = c.other_avatar
+          ? '<img src="' + c.other_avatar + '" class="sp-chat-list-av">'
+          : '<span class="sp-reactor-av-fb" style="width:40px;height:40px;font-size:1rem">' + (c.other_name||'?').charAt(0).toUpperCase() + '</span>';
+        var badge = c.unread > 0 ? '<span class="sp-chat-list-badge">' + c.unread + '</span>' : '';
+        var lastTxt = c.last_message_gif ? '🎞️ GIF' : _escHtml(c.last_message);
+        items += '<div class="sp-chat-list-item" onclick="spOpenChat(' + c.other_user_id + ')">'
+          + av
+          + '<div class="sp-chat-list-info"><div class="sp-chat-list-name">' + _escHtml(c.other_name) + '</div>'
+          + '<div class="sp-chat-list-last">' + lastTxt + '</div></div>'
+          + '<div style="text-align:right">' + badge
+          + '<div class="sp-chat-list-time">' + c.last_time + '</div></div></div>';
+      });
+    }
+
+    var html = '<div class="sp-chat-modal" style="height:70vh">'
+      + '<div class="sp-chat-header">'
+      + '<span class="sp-chat-header-name">💬 Conversas</span>'
+      + '<button class="sp-chat-close" onclick="_closeChatModal()">&times;</button>'
+      + '</div>'
+      + '<div class="sp-chat-body" style="padding:0">' + items + '</div>'
+      + '<div class="sp-chat-footer" style="justify-content:center">'
+      + '<button type="button" class="sp-visitor-bar-btn sp-vbar-chat" onclick="_showNewChatPicker()" style="font-size:0.82rem;padding:8px 16px">＋ Nova conversa</button>'
+      + '</div></div>';
+
+    ov.innerHTML = html;
+    document.body.appendChild(ov);
+    _chatOverlay = ov;
+  }
+
+  window._showNewChatPicker = function(){
+    fetch('/chat/friends/')
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(!d.friends || !d.friends.length){ alert('Você ainda não tem amigos para conversar.'); return; }
+        var body = _chatOverlay.querySelector('.sp-chat-body');
+        var items = '';
+        d.friends.forEach(function(f){
+          var av = f.avatar
+            ? '<img src="' + f.avatar + '" class="sp-chat-list-av">'
+            : '<span class="sp-reactor-av-fb" style="width:40px;height:40px;font-size:1rem">' + (f.name||'?').charAt(0).toUpperCase() + '</span>';
+          items += '<div class="sp-chat-list-item" onclick="spOpenChat(' + f.user_id + ')">'
+            + av + '<div class="sp-chat-list-info"><div class="sp-chat-list-name">' + _escHtml(f.name) + '</div></div></div>';
+        });
+        body.innerHTML = items;
+      });
+  };
+})();
+
+/* ═══════════════════════════════════════════════
+   QUEM CURTIU — long press no contador de reações
+   ═══════════════════════════════════════════════ */
+(function(){
+  var _popup = null;
+  var _longPressTimer = null;
+
+  function _closeReactorPopup(){
+    if(_popup){ _popup.remove(); _popup = null; }
+  }
+
+  document.addEventListener('click', function(e){
+    if(_popup && !_popup.contains(e.target)) _closeReactorPopup();
+  });
+
+  /* Delegação de evento para todos os contadores de reação */
+  document.addEventListener('touchstart', function(e){
+    var target = e.target.closest('.sp-reaction-count, .sp-reaction-total, [data-post-reactions]');
+    if(!target) return;
+    var postId = target.dataset.postId || target.closest('[data-post-id]')?.dataset?.postId;
+    if(!postId) return;
+    _longPressTimer = setTimeout(function(){ _showReactors(postId, target); }, 500);
+  });
+  document.addEventListener('touchend', function(){ clearTimeout(_longPressTimer); });
+
+  /* Desktop: right-click no contador */
+  document.addEventListener('contextmenu', function(e){
+    var target = e.target.closest('.sp-reaction-count, .sp-reaction-total, [data-post-reactions]');
+    if(!target) return;
+    var postId = target.dataset.postId || target.closest('[data-post-id]')?.dataset?.postId;
+    if(!postId) return;
+    e.preventDefault();
+    _showReactors(postId, target);
+  });
+
+  function _showReactors(postId, anchor){
+    _closeReactorPopup();
+    fetch('/social/post/' + postId + '/reactors/')
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(!d.reactors || !d.reactors.length) return;
+        var popup = document.createElement('div');
+        popup.className = 'sp-reactors-popup';
+        popup.innerHTML = '<div class="sp-reactors-title">Quem curtiu</div>'
+          + d.reactors.map(function(r){
+            var av = r.avatar
+              ? '<img src="' + r.avatar + '" class="sp-reactor-av">'
+              : '<span class="sp-reactor-av-fb">' + (r.name||'?').charAt(0).toUpperCase() + '</span>';
+            return '<div class="sp-reactor-item">' + av
+              + '<span class="sp-reactor-name">' + r.name + '</span>'
+              + '<span class="sp-reactor-emoji">' + r.emoji + '</span></div>';
+          }).join('');
+
+        // Posicionar
+        var rect = anchor.getBoundingClientRect();
+        popup.style.top = Math.max(10, rect.top - 10) + 'px';
+        popup.style.left = Math.max(10, Math.min(rect.left, window.innerWidth - 290)) + 'px';
+        document.body.appendChild(popup);
+        _popup = popup;
+
+        // Reposicionar se sair da tela
+        var pr = popup.getBoundingClientRect();
+        if(pr.bottom > window.innerHeight){
+          popup.style.top = (window.innerHeight - pr.height - 10) + 'px';
+        }
+      });
+  }
+})();
+
+/* ═══════════════════════════════════════════════
+   PILLS NO PERFIL ALHEIO — mostra notificações no topo
+   ═══════════════════════════════════════════════ */
+(function(){
+  var pillsContainer = document.getElementById('sp-visitor-pills');
+  if(!pillsContainer) return;
+
+  function _loadVisitorPills(){
+    fetch('{% url "boards:social_pills_poll" %}')
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var html = '';
+        if(d.comment_pills){
+          d.comment_pills.forEach(function(p){
+            html += '<a href="/social/#post-' + p.post_id + '" class="sp-visitor-pill">💬 ' + p.count + ' em "' + (p.text||'').slice(0,20) + '..."</a>';
+          });
+        }
+        if(d.reply_pills){
+          d.reply_pills.forEach(function(p){
+            html += '<a href="/social/" class="sp-visitor-pill">↩ ' + (p.replier||'').slice(0,15) + ' respondeu</a>';
+          });
+        }
+        if(d.friend_pills && d.friend_pills.length){
+          html += '<a href="/social/" class="sp-visitor-pill">👋 ' + d.friend_pills.length + ' convite(s)</a>';
+        }
+        pillsContainer.innerHTML = html;
+      }).catch(function(){});
+  }
+  _loadVisitorPills();
+  setInterval(_loadVisitorPills, 30000);
+})();
+
+/* ═══════════════════════════════════════════════
+   DEEP LINK — scroll para post específico via hash
+   ═══════════════════════════════════════════════ */
+(function(){
+  function _scrollToPost(){
+    var hash = window.location.hash;
+    if(!hash || !hash.startsWith('#post-')) return;
+    var postId = hash.replace('#post-', '');
+    var el = document.querySelector('[data-post-id="' + postId + '"]');
+    if(!el) return;
+    el.scrollIntoView({behavior: 'smooth', block: 'center'});
+    el.style.transition = 'box-shadow 0.3s, transform 0.3s';
+    el.style.boxShadow = '0 0 0 3px #a855f7, 0 4px 20px rgba(168,85,247,0.3)';
+    el.style.transform = 'scale(1.01)';
+    setTimeout(function(){
+      el.style.boxShadow = '';
+      el.style.transform = '';
+    }, 3000);
+  }
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', _scrollToPost);
+  } else {
+    setTimeout(_scrollToPost, 500);
+  }
+  window.addEventListener('hashchange', _scrollToPost);
+})();
+
+/* ═══════════════════════════════════════════════
+   FILTRO DE PENDÊNCIAS POR QUADRO/COLUNA
+   ═══════════════════════════════════════════════ */
+(function(){
+  var filterPanel = document.getElementById('sp-tasks-filter-panel');
+  var taskItems = document.querySelectorAll('.sp-task-item');
+  if(!filterPanel || !taskItems.length) return;
+
+  var boardSelect = document.getElementById('sp-filter-board');
+  var colSelect = document.getElementById('sp-filter-col');
+  var tagsWrap = document.getElementById('sp-filter-tags');
+  var _activeFilters = []; /* {board, col, label} */
+
+  if(boardSelect){
+    boardSelect.addEventListener('change', function(){
+      _updateColOptions();
+    });
+  }
+
+  window.spToggleTaskFilter = function(){
+    filterPanel.classList.toggle('sp-hidden');
+  };
+
+  window.spAddTaskFilter = function(){
+    var board = boardSelect ? boardSelect.value : '';
+    var col = colSelect ? colSelect.value : '';
+    if(!board && !col) return;
+    var label = (boardSelect.options[boardSelect.selectedIndex]?.text || '') +
+      (col ? ' → ' + (colSelect.options[colSelect.selectedIndex]?.text || '') : '');
+    _activeFilters.push({board: board, col: col, label: label});
+    _renderFilterTags();
+    _applyFilters();
+  };
+
+  window.spRemoveTaskFilter = function(idx){
+    _activeFilters.splice(idx, 1);
+    _renderFilterTags();
+    _applyFilters();
+  };
+
+  function _renderFilterTags(){
+    if(!tagsWrap) return;
+    tagsWrap.innerHTML = _activeFilters.map(function(f, i){
+      return '<span class="sp-tasks-filter-tag">' + f.label
+        + ' <span class="sp-tasks-filter-tag-x" onclick="spRemoveTaskFilter(' + i + ')">✕</span></span>';
+    }).join('');
+  }
+
+  function _updateColOptions(){
+    if(!colSelect || !boardSelect) return;
+    var boardId = boardSelect.value;
+    colSelect.innerHTML = '<option value="">Todas as colunas</option>';
+    if(!boardId) return;
+    taskItems.forEach(function(el){
+      if(el.dataset.boardId === boardId){
+        var colName = el.dataset.colName || '';
+        var colId = el.dataset.colId || '';
+        if(colId && !colSelect.querySelector('option[value="' + colId + '"]')){
+          var opt = document.createElement('option');
+          opt.value = colId;
+          opt.textContent = colName;
+          colSelect.appendChild(opt);
+        }
+      }
+    });
+  }
+
+  function _applyFilters(){
+    if(!_activeFilters.length){
+      taskItems.forEach(function(el){ el.style.display = ''; });
+      return;
+    }
+    taskItems.forEach(function(el){
+      var show = _activeFilters.some(function(f){
+        var matchBoard = !f.board || el.dataset.boardId === f.board;
+        var matchCol = !f.col || el.dataset.colId === f.col;
+        return matchBoard && matchCol;
+      });
+      el.style.display = show ? '' : 'none';
+    });
+  }
 })();
 </script>

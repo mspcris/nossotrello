@@ -112,6 +112,7 @@ from boards.views.social import (
     social_post_delete,
     social_post_react,
     social_post_comment,
+    social_post_reactors,
     social_comments_mark_seen,
     mood_checkin,
     social_chatbot_message,
@@ -143,6 +144,14 @@ from boards.views.social import (
     social_friend_reject,
     social_friend_remove,
     social_post_toggle_visibility,
+    social_onboarding_done,
+    chat_list,
+    chat_messages,
+    chat_send,
+    chat_delete_message,
+    chat_poll,
+    chat_unread_total,
+    chat_friends_list,
 )
 
 
@@ -193,6 +202,17 @@ urlpatterns = [
     path("social/unread/", social_unread_counts, name="social_unread_counts"),
     path("social/pills/", social_pills_poll, name="social_pills_poll"),
     path("social/camila/", social_camila_chat, name="social_camila_chat"),
+    path("social/post/<int:post_id>/reactors/", social_post_reactors, name="social_post_reactors"),
+    path("social/onboarding-done/", social_onboarding_done, name="social_onboarding_done"),
+
+    # Chat direto entre amigos
+    path("chat/", chat_list, name="chat_list"),
+    path("chat/<int:user_id>/messages/", chat_messages, name="chat_messages"),
+    path("chat/<int:user_id>/send/", chat_send, name="chat_send"),
+    path("chat/<int:user_id>/poll/", chat_poll, name="chat_poll"),
+    path("chat/message/<int:message_id>/delete/", chat_delete_message, name="chat_delete_message"),
+    path("chat/unread/", chat_unread_total, name="chat_unread_total"),
+    path("chat/friends/", chat_friends_list, name="chat_friends_list"),
 
     # Camila.AI Admin (staff only)
     path("camila/", camila_admin, name="camila_admin"),

@@ -461,7 +461,8 @@ def notify_social_interaction(
 
     site_url = (getattr(settings, "SITE_URL", "") or "").rstrip("/")
     owner_id = getattr(recipient, "id", "")
-    social_link = f"{site_url}/social/{owner_id}/"
+    post_hash = f"#post-{post_id}" if post_id else ""
+    social_link = f"{site_url}/social/{owner_id}/{post_hash}"
 
     if kind == "comment":
         preview = (post_text or "").strip()[:60]

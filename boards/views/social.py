@@ -23,6 +23,7 @@ from ..models import (
     SocialPostReaction, SocialPostComment,
     DailyCheckIn, Card, CardFollow, UserProfile,
     CamilaKnowledge, CamilaConfig, SocialFriendship, SocialCardDismiss, CamilaPOP,
+    ChatConversation, ChatMessage,
 )
 
 User = get_user_model()
@@ -134,7 +135,7 @@ def _build_social_context(request, target_user, extra=None):
     )
 
     # Posts + prefetch reactions/comments
-    posts_qs = SocialPost.objects.filter(user=target_user).order_by("-created_at")
+    posts_qs = SocialPost.objects.filter(user=target_user, is_active=True).order_by("-created_at")
     if not is_me:
         # Visitor: hide "friends only" posts unless they are an accepted friend
         is_friend = SocialFriendship.objects.filter(
@@ -195,10 +196,12 @@ def _build_social_context(request, target_user, extra=None):
 
     # Sugestões de amigos por unidade + tutorial de onboarding
     show_unit_tutorial = False
+    show_onboarding_tour = False
     unit_suggestions = []
     available_units = []
     if is_me:
         show_unit_tutorial = not prof.unidade
+        show_onboarding_tour = not prof.onboarding_done
         available_units = list(
             UserProfile.objects
             .exclude(unidade="")
@@ -334,6 +337,7 @@ def _build_social_context(request, target_user, extra=None):
         "available_units": available_units,
         "pending_friend_requests": pending_friend_requests,
         "sent_friend_requests": sent_friend_requests,
+        "show_onboarding_tour": show_onboarding_tour,
     }
     if extra:
         ctx.update(extra)
@@ -392,7 +396,7 @@ def social_friends_feed(request):
 
     posts = list(
         SocialPost.objects
-        .filter(user_id__in=friend_ids)
+        .filter(user_id__in=friend_ids, is_active=True)
         .select_related("user", "user__profile")
         .order_by("-created_at")[:60]
     )
@@ -492,7 +496,8 @@ def social_post_create(request):
 @require_POST
 def social_post_delete(request, post_id: int):
     post = get_object_or_404(SocialPost, id=post_id, user=request.user)
-    post.delete()
+    post.is_active = False
+    post.save(update_fields=["is_active"])
     ctx = _build_social_context(request, request.user)
     return render(request, "boards/social_panel.html", ctx)
 
@@ -1108,7 +1113,7 @@ def social_unread_counts(request):
     fresh = []  # user_ids com post fresquinho (balão)
 
     posts_qs = SocialPost.objects.filter(
-        user_id__in=user_ids
+        user_id__in=user_ids, is_active=True
     ).values("user_id", "created_at", "text").order_by("user_id", "-created_at")
 
     from collections import defaultdict
@@ -1933,3 +1938,289 @@ def camila_pop_toggle(request, pop_id: int):
     pop.is_active = not pop.is_active
     pop.save(update_fields=["is_active"])
     return JsonResponse({"ok": True, "is_active": pop.is_active})
+
+
+# ===============================================================
+# CHAT DIRETO ENTRE AMIGOS
+# ===============================================================
+
+@login_required
+@require_POST
+def social_onboarding_done(request):
+    """Marca o onboarding tour como concluído."""
+    prof = _get_or_create_profile(request.user)
+    prof.onboarding_done = True
+    prof.save(update_fields=["onboarding_done"])
+    return JsonResponse({"ok": True})
+
+
+def _are_friends(user_a, user_b):
+    """Verifica se dois usuários são amigos aceitos."""
+    return SocialFriendship.objects.filter(
+        models.Q(requester=user_a, receiver=user_b, status="accepted")
+        | models.Q(requester=user_b, receiver=user_a, status="accepted")
+    ).exists()
+
+
+def _get_or_create_conversation(user_a, user_b):
+    """Retorna a conversa entre dois usuários, criando se necessário.
+    user_a sempre tem o menor ID para manter a unicidade."""
+    if user_a.id > user_b.id:
+        user_a, user_b = user_b, user_a
+    conv, _ = ChatConversation.objects.get_or_create(
+        user_a=user_a, user_b=user_b,
+    )
+    return conv
+
+
+@login_required
+def chat_list(request):
+    """Lista de conversas do usuário (JSON)."""
+    me = request.user
+    convs = ChatConversation.objects.filter(
+        models.Q(user_a=me) | models.Q(user_b=me)
+    ).select_related(
+        "user_a", "user_a__profile", "user_b", "user_b__profile"
+    ).order_by("-updated_at")
+
+    result = []
+    for c in convs:
+        other = c.other_user(me)
+        prof = getattr(other, "profile", None)
+        # Última mensagem visível
+        is_a = c.user_a_id == me.id
+        hide_field = "hidden_by_a" if is_a else "hidden_by_b"
+        last_msg = (
+            c.messages
+            .filter(is_active=True, **{hide_field: False})
+            .order_by("-created_at")
+            .first()
+        )
+        unread = c.messages.filter(
+            is_active=True, seen=False, **{hide_field: False}
+        ).exclude(sender=me).count()
+
+        result.append({
+            "conversation_id": c.id,
+            "other_user_id": other.id,
+            "other_name": prof.display_name if prof else other.email,
+            "other_avatar": prof.avatar.url if prof and prof.avatar else "",
+            "other_handle": prof.handle if prof else "",
+            "last_message": last_msg.text[:60] if last_msg else "",
+            "last_message_gif": bool(last_msg and last_msg.gif_url) if last_msg else False,
+            "last_time": last_msg.created_at.strftime("%d/%m %H:%M") if last_msg else "",
+            "unread": unread,
+        })
+    return JsonResponse({"conversations": result})
+
+
+@login_required
+def chat_messages(request, user_id: int):
+    """Retorna mensagens de uma conversa com outro usuário (JSON)."""
+    me = request.user
+    other = get_object_or_404(User, id=user_id)
+
+    if not _are_friends(me, other):
+        return JsonResponse({"error": "Vocês não são amigos."}, status=403)
+
+    conv = _get_or_create_conversation(me, other)
+    is_a = conv.user_a_id == me.id
+    hide_field = "hidden_by_a" if is_a else "hidden_by_b"
+
+    msgs = list(
+        conv.messages
+        .filter(is_active=True, **{hide_field: False})
+        .select_related("sender", "sender__profile")
+        .order_by("-created_at")[:80]
+    )
+    msgs.reverse()
+
+    # Marcar como lido
+    conv.messages.filter(
+        is_active=True, seen=False
+    ).exclude(sender=me).update(seen=True)
+
+    result = []
+    for m in msgs:
+        prof = getattr(m.sender, "profile", None)
+        result.append({
+            "id": m.id,
+            "sender_id": m.sender_id,
+            "sender_name": prof.display_name if prof else m.sender.email,
+            "sender_avatar": prof.avatar.url if prof and prof.avatar else "",
+            "text": m.text,
+            "gif_url": m.gif_url,
+            "created_at": m.created_at.strftime("%d/%m %H:%M"),
+            "is_mine": m.sender_id == me.id,
+            "seen": m.seen,
+        })
+
+    other_prof = getattr(other, "profile", None)
+    return JsonResponse({
+        "messages": result,
+        "conversation_id": conv.id,
+        "other_name": other_prof.display_name if other_prof else other.email,
+        "other_avatar": other_prof.avatar.url if other_prof and other_prof.avatar else "",
+    })
+
+
+@login_required
+@require_POST
+def chat_send(request, user_id: int):
+    """Envia uma mensagem para outro usuário (amigo)."""
+    me = request.user
+    other = get_object_or_404(User, id=user_id)
+
+    if not _are_friends(me, other):
+        return JsonResponse({"error": "Vocês não são amigos."}, status=403)
+
+    text = (request.POST.get("text") or "").strip()
+    gif_url = (request.POST.get("gif_url") or "").strip()
+
+    if not text and not gif_url:
+        return JsonResponse({"error": "Mensagem vazia."}, status=400)
+
+    conv = _get_or_create_conversation(me, other)
+    msg = ChatMessage.objects.create(
+        conversation=conv,
+        sender=me,
+        text=text,
+        gif_url=gif_url,
+    )
+    conv.save()  # atualiza updated_at
+
+    prof = getattr(me, "profile", None)
+    return JsonResponse({
+        "id": msg.id,
+        "sender_id": me.id,
+        "sender_name": prof.display_name if prof else me.email,
+        "text": msg.text,
+        "gif_url": msg.gif_url,
+        "created_at": msg.created_at.strftime("%d/%m %H:%M"),
+        "is_mine": True,
+    })
+
+
+@login_required
+@require_POST
+def chat_delete_message(request, message_id: int):
+    """Apaga mensagem só para o usuário (soft delete individual)."""
+    me = request.user
+    msg = get_object_or_404(ChatMessage, id=message_id)
+    conv = msg.conversation
+
+    if conv.user_a_id == me.id:
+        msg.hidden_by_a = True
+    elif conv.user_b_id == me.id:
+        msg.hidden_by_b = True
+    else:
+        return JsonResponse({"error": "Sem permissão."}, status=403)
+
+    msg.save(update_fields=["hidden_by_a", "hidden_by_b"])
+    return JsonResponse({"ok": True})
+
+
+@login_required
+def chat_poll(request, user_id: int):
+    """Poll para novas mensagens (GET → JSON)."""
+    me = request.user
+    other = get_object_or_404(User, id=user_id)
+    after_id = int(request.GET.get("after", 0))
+
+    conv = _get_or_create_conversation(me, other)
+    is_a = conv.user_a_id == me.id
+    hide_field = "hidden_by_a" if is_a else "hidden_by_b"
+
+    new_msgs = list(
+        conv.messages
+        .filter(is_active=True, id__gt=after_id, **{hide_field: False})
+        .select_related("sender", "sender__profile")
+        .order_by("created_at")[:50]
+    )
+
+    # Marcar como lido
+    conv.messages.filter(
+        is_active=True, seen=False, id__gt=after_id
+    ).exclude(sender=me).update(seen=True)
+
+    result = []
+    for m in new_msgs:
+        prof = getattr(m.sender, "profile", None)
+        result.append({
+            "id": m.id,
+            "sender_id": m.sender_id,
+            "sender_name": prof.display_name if prof else m.sender.email,
+            "sender_avatar": prof.avatar.url if prof and prof.avatar else "",
+            "text": m.text,
+            "gif_url": m.gif_url,
+            "created_at": m.created_at.strftime("%d/%m %H:%M"),
+            "is_mine": m.sender_id == me.id,
+        })
+    return JsonResponse({"messages": result})
+
+
+@login_required
+def chat_unread_total(request):
+    """Total de mensagens não lidas em todas as conversas (para badge)."""
+    me = request.user
+    total = ChatMessage.objects.filter(
+        is_active=True, seen=False,
+    ).filter(
+        models.Q(conversation__user_a=me, hidden_by_a=False)
+        | models.Q(conversation__user_b=me, hidden_by_b=False)
+    ).exclude(sender=me).count()
+    return JsonResponse({"unread": total})
+
+
+# ---------------------------------------------------------------
+# Quem curtiu um post (GET → JSON)
+# ---------------------------------------------------------------
+@login_required
+def social_post_reactors(request, post_id: int):
+    """Retorna lista de quem reagiu a um post com seus avatares."""
+    reactions = (
+        SocialPostReaction.objects
+        .filter(post_id=post_id)
+        .select_related("user", "user__profile")
+        .order_by("-created_at")
+    )
+    result = []
+    for r in reactions:
+        prof = getattr(r.user, "profile", None)
+        result.append({
+            "user_id": r.user_id,
+            "name": prof.display_name if prof else r.user.email,
+            "avatar": prof.avatar.url if prof and prof.avatar else "",
+            "avatar_choice": prof.avatar_choice if prof else "",
+            "reaction": r.reaction,
+            "emoji": dict(SocialPostReaction.REACTION_CHOICES).get(r.reaction, ""),
+        })
+    return JsonResponse({"reactors": result})
+
+
+# ---------------------------------------------------------------
+# Lista de amigos para iniciar chat (GET → JSON)
+# ---------------------------------------------------------------
+@login_required
+def chat_friends_list(request):
+    """Retorna amigos aceitos para selecionar destinatário de chat."""
+    me = request.user
+    accepted_out = set(SocialFriendship.objects.filter(
+        requester=me, status="accepted"
+    ).values_list("receiver_id", flat=True))
+    accepted_in = set(SocialFriendship.objects.filter(
+        receiver=me, status="accepted"
+    ).values_list("requester_id", flat=True))
+    friend_ids = accepted_out | accepted_in
+
+    friends = []
+    if friend_ids:
+        for u in User.objects.filter(id__in=friend_ids).select_related("profile"):
+            prof = getattr(u, "profile", None)
+            friends.append({
+                "user_id": u.id,
+                "name": prof.display_name if prof else u.email,
+                "avatar": prof.avatar.url if prof and prof.avatar else "",
+                "handle": prof.handle if prof else "",
+            })
+    return JsonResponse({"friends": friends})
