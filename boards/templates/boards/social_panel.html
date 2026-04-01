@@ -230,6 +230,8 @@
       <span class="sp-feed-toggle-label sp-feed-toggle-inactive" id="sp-feed-lbl-all">Todos</span>
     </div>
 
+    <button type="button" class="sp-reel-arrow sp-reel-arrow-left" id="sp-reel-arrow-left" onclick="spReelNav(-1)">‹</button>
+    <button type="button" class="sp-reel-arrow sp-reel-arrow-right" id="sp-reel-arrow-right" onclick="spReelNav(1)">›</button>
     <div class="sp-reel" id="sp-reel">
       <div class="sp-reel-loading">Carregando...</div>
     </div>
@@ -972,11 +974,15 @@ var _CAMILA_AVATARS = {
       /* Actions overlay */
       var likeClass = p.my_reaction === 'like' ? ' liked' : '';
       var likeCount = p.reaction_counts.like || 0;
+      var commentBadge = p.comment_count > 0 ? ' <span class="count">' + p.comment_count + '</span>' : '';
       html += '<div class="sp-reel-actions">';
       html += '<button class="sp-reel-action sp-reel-like'+likeClass+'" onclick="spReelLike('+p.id+',this)" title="Curtir">❤️ <span class="count">'+(likeCount||'')+'</span></button>';
+      html += '<button class="sp-reel-action" onclick="spReelToggleComments('+p.id+',this)" title="Comentários">💬'+commentBadge+'</button>';
       html += '<input class="sp-reel-comment-input" placeholder="Comentar..." maxlength="500" onkeydown="if(event.key===\'Enter\')spReelComment('+p.id+',this)">';
       html += '<button class="sp-reel-comment-send" onclick="spReelComment('+p.id+',this.previousElementSibling)">➤</button>';
       html += '</div>';
+      /* Comments section (hidden by default) */
+      html += '<div class="sp-reel-comments sp-hidden" id="sp-reel-comments-'+p.id+'"></div>';
 
       html += '</div>';
     });
@@ -1159,10 +1165,63 @@ var _CAMILA_AVATARS = {
       body:'text='+encodeURIComponent(text)
     }).then(function(r){ return r.json(); })
       .then(function(d){
-        if(d.ok || d.comment) input.placeholder = 'Comentário enviado ✓';
+        if(d.ok || d.comment){
+          input.placeholder = 'Comentário enviado ✓';
+          /* Atualiza lista de comentários se aberta */
+          var panel = document.getElementById('sp-reel-comments-'+postId);
+          if(panel && !panel.classList.contains('sp-hidden')){
+            _loadReelComments(postId, panel);
+          }
+        }
         setTimeout(function(){ input.placeholder = 'Comentar...'; }, 2000);
       });
   };
+
+  /* ═══ Setas de navegação no reel (desktop) ═══ */
+  window.spReelNav = function(dir){
+    var el = document.getElementById('sp-reel');
+    if(!el) return;
+    var w = el.offsetWidth;
+    if(!w) return;
+    var nextLeft = el.scrollLeft + (dir * w);
+    if(nextLeft < 0) nextLeft = el.scrollWidth - w;
+    if(nextLeft >= el.scrollWidth) nextLeft = 0;
+    el.scrollTo({left: nextLeft, behavior: 'smooth'});
+  };
+
+  /* ═══ Comentários no reel ═══ */
+  window.spReelToggleComments = function(postId, btn){
+    var panel = document.getElementById('sp-reel-comments-'+postId);
+    if(!panel) return;
+    if(panel.classList.contains('sp-hidden')){
+      panel.classList.remove('sp-hidden');
+      _loadReelComments(postId, panel);
+    } else {
+      panel.classList.add('sp-hidden');
+    }
+  };
+
+  function _loadReelComments(postId, panel){
+    panel.innerHTML = '<div style="padding:8px;color:#9ca3af;font-size:.8rem">Carregando...</div>';
+    fetch('/social/posts/' + postId + '/')
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(!d.comments || !d.comments.length){
+          panel.innerHTML = '<div style="padding:8px;color:#9ca3af;font-size:.8rem">Nenhum comentário ainda.</div>';
+          return;
+        }
+        var html = '';
+        d.comments.forEach(function(c){
+          html += '<div class="sp-reel-comment-item">'
+            + '<strong>' + _escHtml(c.author) + '</strong> '
+            + '<span>' + _escHtml(c.text) + '</span>'
+            + '<span class="sp-reel-comment-time">' + c.time + '</span>'
+            + '</div>';
+        });
+        panel.innerHTML = html;
+      })
+      .catch(function(){ panel.innerHTML = '<div style="padding:8px;color:#ef4444;font-size:.8rem">Erro.</div>'; });
+  }
 
   function _escHtml(s){
     var d = document.createElement('div');

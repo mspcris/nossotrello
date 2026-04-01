@@ -985,6 +985,31 @@
   position:relative; overflow:hidden; border-radius:16px;
   background:#000; min-height:420px;
 }
+
+/* Desktop arrows for reel navigation */
+.sp-reel-arrow {
+  display: none;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 5;
+  background: rgba(255,255,255,0.2);
+  border: none;
+  color: #fff;
+  font-size: 2rem;
+  width: 44px;
+  height: 70px;
+  cursor: pointer;
+  border-radius: 8px;
+  backdrop-filter: blur(4px);
+  transition: background 0.2s;
+}
+.sp-reel-arrow:hover { background: rgba(255,255,255,0.4); }
+.sp-reel-arrow-left { left: 8px; }
+.sp-reel-arrow-right { right: 8px; }
+@media (min-width: 768px) {
+  .sp-reel-arrow { display: flex; align-items: center; justify-content: center; }
+}
 .sp-reel{
   display:flex; overflow-x:auto; scroll-snap-type:x mandatory;
   -webkit-overflow-scrolling:touch; scrollbar-width:none;
@@ -1051,6 +1076,36 @@
 .sp-reel-comment-input::placeholder{ color:rgba(255,255,255,.5); }
 .sp-reel-comment-send{
   background:none; border:none; color:#fff; font-size:1.1rem; cursor:pointer; padding:6px;
+}
+
+/* Comments panel in reel */
+.sp-reel-comments {
+  position: absolute;
+  bottom: 52px;
+  left: 0;
+  right: 0;
+  max-height: 180px;
+  overflow-y: auto;
+  background: rgba(0,0,0,0.85);
+  backdrop-filter: blur(6px);
+  padding: 8px 14px;
+  z-index: 3;
+  border-top: 1px solid rgba(255,255,255,0.15);
+}
+.sp-reel-comment-item {
+  font-size: 0.8rem;
+  color: #e5e7eb;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.sp-reel-comment-item strong {
+  color: #fff;
+  margin-right: 4px;
+}
+.sp-reel-comment-time {
+  color: #9ca3af;
+  font-size: 0.7rem;
+  margin-left: 6px;
 }
 
 /* Double-tap heart animation */

@@ -6,6 +6,7 @@ almoço, pendências do dia, feed de fotos do trabalho.
 import json
 import os
 import xml.etree.ElementTree as ET
+from datetime import timedelta
 
 import requests as http_requests
 from django.contrib.auth.decorators import login_required
@@ -385,6 +386,31 @@ def social_posts_panel(request, user_id: int):
 
 
 # ---------------------------------------------------------------
+# Detalhes de um post (JSON) — comentários
+# ---------------------------------------------------------------
+@login_required
+def social_post_detail(request, post_id: int):
+    """Retorna comentários de um post como JSON."""
+    post = get_object_or_404(SocialPost, id=post_id, is_active=True)
+    comments = (
+        SocialPostComment.objects
+        .filter(post=post, is_active=True)
+        .select_related("user", "user__profile")
+        .order_by("created_at")
+    )
+    result = []
+    for c in comments:
+        prof = getattr(c.user, "profile", None)
+        result.append({
+            "id": c.id,
+            "author": prof.display_name if prof else c.user.email,
+            "text": c.text,
+            "time": timezone.localtime(c.created_at).strftime("%d/%m %H:%M"),
+        })
+    return JsonResponse({"comments": result})
+
+
+# ---------------------------------------------------------------
 # Feed de amigos (JSON) — para o reel horizontal
 # ---------------------------------------------------------------
 @login_required
@@ -395,15 +421,18 @@ def social_friends_feed(request):
     me = request.user
     show_all = request.GET.get("all") == "1"
 
+    # Últimos 3 dias apenas
+    three_days_ago = timezone.now() - timedelta(days=3)
+
     if show_all:
         # Todos os posts (exceto os do próprio)
         posts = list(
             SocialPost.objects
-            .filter(is_active=True)
+            .filter(is_active=True, created_at__gte=three_days_ago)
             .exclude(user=me)
             .exclude(visibility="friends")
             .select_related("user", "user__profile")
-            .order_by("-created_at")[:60]
+            .order_by("-created_at")
         )
     else:
         # Somente amizades aceitas
@@ -422,10 +451,25 @@ def social_friends_feed(request):
 
         posts = list(
             SocialPost.objects
-            .filter(user_id__in=friend_ids, is_active=True)
+            .filter(user_id__in=friend_ids, is_active=True, created_at__gte=three_days_ago)
             .select_related("user", "user__profile")
-            .order_by("-created_at")[:60]
+            .order_by("-created_at")
         )
+
+    # Ordenar: por dia (desc), depois vídeos > imagens > texto, cronológico dentro do tipo
+    def _media_rank(p):
+        if p.video:
+            return 0  # vídeos primeiro
+        if p.photo:
+            return 1  # imagens depois
+        return 2      # texto por último
+
+    def _sort_key(p):
+        local_dt = timezone.localtime(p.created_at)
+        day = local_dt.date()
+        return (-day.toordinal(), _media_rank(p), -local_dt.timestamp())
+
+    posts.sort(key=_sort_key)
 
     if not posts:
         return JsonResponse({"posts": []})
@@ -2051,9 +2095,6 @@ def chat_messages(request, user_id: int):
     me = request.user
     other = get_object_or_404(User, id=user_id)
 
-    if not _are_friends(me, other):
-        return JsonResponse({"error": "Vocês não são amigos."}, status=403)
-
     conv = _get_or_create_conversation(me, other)
     is_a = conv.user_a_id == me.id
     hide_field = "hidden_by_a" if is_a else "hidden_by_b"
@@ -2098,12 +2139,9 @@ def chat_messages(request, user_id: int):
 @login_required
 @require_POST
 def chat_send(request, user_id: int):
-    """Envia uma mensagem para outro usuário (amigo)."""
+    """Envia uma mensagem para outro usuário."""
     me = request.user
     other = get_object_or_404(User, id=user_id)
-
-    if not _are_friends(me, other):
-        return JsonResponse({"error": "Vocês não são amigos."}, status=403)
 
     text = (request.POST.get("text") or "").strip()
     gif_url = (request.POST.get("gif_url") or "").strip()
