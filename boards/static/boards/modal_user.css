@@ -2256,18 +2256,39 @@ video.sp-post-media {
   z-index: 9000;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%) scale(2.5);
-  transform-origin: center center;
+  transform: translate(-50%, -50%);
   background: #fff;
-  border-radius: 16px;
-  padding: 10px;
+  border-radius: 18px;
+  padding: 20px 16px 16px;
   box-shadow: 0 8px 40px rgba(0,0,0,0.4);
   animation: sp-zoom-in 0.2s ease;
-  width: 90px;
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.sp-req-item.sp-req-zoomed .sp-req-av {
+  width: 110px;
+  height: 110px;
+  border-radius: 14px;
+}
+.sp-req-item.sp-req-zoomed .sp-req-name {
+  font-size: 1rem;
+  margin-top: 8px;
+  color: #1f2937;
+}
+.sp-req-item.sp-req-zoomed .sp-req-action-bar {
+  margin-top: 12px;
+  gap: 8px;
+}
+.sp-req-item.sp-req-zoomed .sp-req-act-btn {
+  padding: 10px 8px;
+  font-size: 0.82rem;
+  border-radius: 10px;
 }
 @keyframes sp-zoom-in {
-  from { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
-  to   { transform: translate(-50%, -50%) scale(2.5); opacity: 1; }
+  from { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+  to   { transform: translate(-50%, -50%) scale(1); opacity: 1; }
 }
 .sp-req-zoom-backdrop {
   position: fixed;

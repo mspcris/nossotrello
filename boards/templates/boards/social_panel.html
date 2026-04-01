@@ -2136,12 +2136,17 @@ document.addEventListener('click', function(e){
     fetch(url, {
       method: 'POST',
       headers: {'X-CSRFToken': csrf ? csrf.content : ''}
-    }).then(function(r){ return r.json(); }).then(function(d){
+    }).then(function(r){
+      if (!r.ok) { alert('Erro ' + r.status + ' ao ' + action); return; }
+      return r.json();
+    }).then(function(d){
+      if (!d) return;
+      // Fechar zoom se estiver aberto
+      _spUnzoomReqItem && _spUnzoomReqItem();
       _spFadeOutCard(btn);
-      if (action === 'accept') {
-        setTimeout(function(){ location.reload(); }, 350);
-      }
-    }).catch(function(){});
+      // Recarregar reel e lista de pedidos
+      setTimeout(function(){ location.reload(); }, 400);
+    }).catch(function(e){ alert('Erro: ' + e.message); });
   };
 
   window.spCancelFriendReq = function(uid, btn) {
