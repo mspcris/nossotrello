@@ -276,8 +276,8 @@
         <div class="sp-friends-row">
           {% for fr in pending_friend_requests %}
           {% with fp=fr.requester.profile %}
-          <button type="button" class="sp-friend-btn sp-req-item" data-friend-uid="{{ fr.requester_id }}"
-                  onclick="spToggleReqActions(this)">
+          <div class="sp-friend-btn sp-req-item" data-friend-uid="{{ fr.requester_id }}"
+               onclick="spZoomReqReceived(this, {{ fr.requester_id }})">
             <div class="sp-req-av-wrap">
               {% if fp and fp.avatar %}
                 <img src="{{ fp.avatar.url }}" alt="" class="sp-friend-av-img sp-req-av-received">
@@ -286,13 +286,14 @@
               {% else %}
                 <span class="sp-friend-av-fb sp-req-av-received">{{ fp.display_name|default:fr.requester.email|first|upper }}</span>
               {% endif %}
-              <div class="sp-req-overlay sp-hidden">
-                <span class="sp-req-ob sp-req-ob-yes" onclick="event.stopPropagation();spAnswerFriend({{ fr.requester_id }},'accept',this)">✓</span>
-                <span class="sp-req-ob sp-req-ob-no" onclick="event.stopPropagation();spAnswerFriend({{ fr.requester_id }},'reject',this)">✕</span>
-              </div>
             </div>
             <span class="sp-friend-name">{{ fp.display_name|default:fr.requester.email|truncatechars:8 }}</span>
-          </button>
+            <div class="sp-req-action-bar sp-hidden">
+              <button type="button" class="sp-req-act-btn sp-req-act-accept" onclick="event.stopPropagation();spAnswerFriend({{ fr.requester_id }},'accept',this)">✅ Aceitar</button>
+              <a href="/social/{{ fr.requester_id }}/" class="sp-req-act-btn sp-req-act-profile" onclick="event.stopPropagation()">👤 Ver Perfil</a>
+              <button type="button" class="sp-req-act-btn sp-req-act-reject" onclick="event.stopPropagation();spAnswerFriend({{ fr.requester_id }},'reject',this)">❌ Recusar</button>
+            </div>
+          </div>
           {% endwith %}
           {% endfor %}
         </div>
@@ -960,7 +961,7 @@ var _CAMILA_AVATARS = {
       html += '</div>';
 
       if(p.video){
-        html += '<video src="'+p.video+'" class="sp-reel-media" controls preload="metadata" playsinline></video>';
+        html += '<video src="'+p.video+'" class="sp-reel-media" controls preload="auto" playsinline muted></video>';
       } else if(p.photo){
         html += '<img src="'+p.photo+'" alt="" loading="lazy">';
       }
@@ -984,6 +985,9 @@ var _CAMILA_AVATARS = {
     /* Dots */
     _renderDots();
     el.addEventListener('scroll', _onReelScroll);
+
+    /* Autoplay primeiro vídeo visível */
+    setTimeout(function(){ _playCurrentVideo(el, 0); }, 300);
 
     /* Double-tap to like */
     el.querySelectorAll('.sp-reel-slide').forEach(function(slide){
@@ -1094,12 +1098,29 @@ var _CAMILA_AVATARS = {
     var dots = document.querySelectorAll('.sp-reel-dot');
     dots.forEach(function(d, i){ d.classList.toggle('active', i === idx % dots.length); });
 
+    /* Autoplay vídeo do slide atual, pausa os outros */
+    _playCurrentVideo(el, idx);
+
     /* Infinite loop: se chegar ao penúltimo, volta pro começo */
     if(idx >= _reelPosts.length - 1 && _reelPosts.length > 1){
       setTimeout(function(){
         el.scrollTo({left: 0, behavior: 'auto'});
       }, 400);
     }
+  }
+
+  function _playCurrentVideo(el, idx){
+    var slides = el.querySelectorAll('.sp-reel-slide');
+    slides.forEach(function(slide, i){
+      var vid = slide.querySelector('video');
+      if(!vid) return;
+      if(i === idx){
+        vid.currentTime = 0;
+        vid.play().catch(function(){});
+      } else {
+        vid.pause();
+      }
+    });
   }
 
   function _doReelLike(postId, btn, slide){
@@ -2005,25 +2026,11 @@ document.addEventListener('click', function(e){
 
   /* ── Aceitar / Recusar convite de amizade ── */
   /* ── Tap no avatar para mostrar/esconder botões ── */
-  window.spToggleReqActions = function(el) {
-    var overlay = el.querySelector('.sp-req-overlay');
-    if (!overlay) return;
-    // Fecha todos os outros
-    document.querySelectorAll('.sp-req-overlay').forEach(function(o){
-      if (o !== overlay) o.classList.add('sp-hidden');
-    });
-    var wasHidden = overlay.classList.contains('sp-hidden');
-    overlay.classList.toggle('sp-hidden');
-
-    // Zoom 3x ao mostrar overlay
-    if(wasHidden){
-      _spZoomReqItem(el);
-    } else {
+  window.spZoomReqReceived = function(el, uid) {
+    if(el.classList.contains('sp-req-zoomed')){
       _spUnzoomReqItem();
+      return;
     }
-  };
-
-  function _spZoomReqItem(el){
     _spUnzoomReqItem();
     var backdrop = document.createElement('div');
     backdrop.className = 'sp-req-zoom-backdrop';
@@ -2031,22 +2038,23 @@ document.addEventListener('click', function(e){
     backdrop.onclick = function(){ _spUnzoomReqItem(); };
     document.body.appendChild(backdrop);
     el.classList.add('sp-req-zoomed');
-    el._wasZoomed = true;
-  }
+    var bar = el.querySelector('.sp-req-action-bar');
+    if(bar) bar.classList.remove('sp-hidden');
+  };
+
   function _spUnzoomReqItem(){
     var bd = document.getElementById('sp-req-zoom-backdrop');
     if(bd) bd.remove();
     document.querySelectorAll('.sp-req-zoomed').forEach(function(z){
       z.classList.remove('sp-req-zoomed');
-      var ov = z.querySelector('.sp-req-overlay');
-      if(ov) ov.classList.add('sp-hidden');
+      var bar = z.querySelector('.sp-req-action-bar');
+      if(bar) bar.classList.add('sp-hidden');
     });
   }
 
-  // Fecha overlay ao tocar fora
+  // Fecha ao tocar fora
   document.addEventListener('click', function(e) {
     if (!e.target.closest('.sp-req-item') && !e.target.closest('.sp-req-zoom-backdrop')) {
-      document.querySelectorAll('.sp-req-overlay').forEach(function(o){ o.classList.add('sp-hidden'); });
       _spUnzoomReqItem();
     }
   });

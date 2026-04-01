@@ -2167,26 +2167,52 @@ video.sp-post-media {
 .sp-req-ob-no     { background: #ef4444; color: #fff; }
 .sp-req-ob-cancel { background: #6b7280; color: #fff; }
 
-/* Zoom 3x ao tocar no avatar de solicitação */
+/* Action bar below avatar (shown on zoom) */
+.sp-req-action-bar {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  width: 100%;
+}
+.sp-req-act-btn {
+  flex: 1;
+  padding: 6px 4px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+.sp-req-act-accept  { background: #10b981; color: #fff; }
+.sp-req-act-profile { background: #6366f1; color: #fff; }
+.sp-req-act-reject  { background: #ef4444; color: #fff; }
+.sp-req-act-btn:active { transform: scale(0.93); }
+
+/* Zoom ao tocar no avatar de solicitação */
 .sp-req-item.sp-req-zoomed {
   position: fixed;
   z-index: 9000;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%) scale(3);
+  transform: translate(-50%, -50%) scale(2.5);
   transform-origin: center center;
   background: #fff;
   border-radius: 16px;
-  padding: 8px;
+  padding: 10px;
   box-shadow: 0 8px 40px rgba(0,0,0,0.4);
   animation: sp-zoom-in 0.2s ease;
-}
-.sp-req-zoomed .sp-req-overlay {
-  border-radius: 12px;
+  width: 90px;
 }
 @keyframes sp-zoom-in {
   from { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
-  to   { transform: translate(-50%, -50%) scale(3); opacity: 1; }
+  to   { transform: translate(-50%, -50%) scale(2.5); opacity: 1; }
 }
 .sp-req-zoom-backdrop {
   position: fixed;
