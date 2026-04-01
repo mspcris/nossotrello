@@ -220,7 +220,7 @@
   <!-- ═══ REEL DE AMIGOS (tab friends) ═══ -->
   <div id="sp-friends-reel-wrap" class="sp-friends-reel-wrap sp-hidden">
 
-    <!-- Toggle: Amigos / Todos -->
+    <!-- Toggle row: Amigos/Todos + Rolagem auto -->
     <div class="sp-feed-toggle-row">
       <span class="sp-feed-toggle-label" id="sp-feed-lbl-friends">Amigos</span>
       <label class="sp-feed-toggle-switch">
@@ -228,6 +228,14 @@
         <span class="sp-feed-toggle-slider"></span>
       </label>
       <span class="sp-feed-toggle-label sp-feed-toggle-inactive" id="sp-feed-lbl-all">Todos</span>
+
+      <span style="margin-left:auto;display:flex;align-items:center;gap:4px;">
+        <span class="sp-feed-toggle-label" style="font-size:.7rem;opacity:.8">Rolagem auto</span>
+        <label class="sp-feed-toggle-switch sp-feed-toggle-switch-sm">
+          <input type="checkbox" id="sp-autoscroll-toggle" checked onchange="spToggleAutoScroll(this.checked)">
+          <span class="sp-feed-toggle-slider"></span>
+        </label>
+      </span>
     </div>
 
     <button type="button" class="sp-reel-arrow sp-reel-arrow-left" id="sp-reel-arrow-left" onclick="spReelNav(-1)">‹</button>
@@ -1017,9 +1025,9 @@ var _CAMILA_AVATARS = {
       });
     });
 
-    /* Auto-scroll inteligente: 3s foto/texto, espera vídeo acabar */
+    /* Auto-scroll inteligente: 5s foto/texto, espera vídeo acabar */
     var _autoTimer = null;
-    var _userTouched = false;
+    var _autoScrollOn = true;
 
     function _getCurrentSlideIdx(){
       var w = el.offsetWidth;
@@ -1027,42 +1035,55 @@ var _CAMILA_AVATARS = {
     }
 
     function _advanceSlide(){
-      if(_userTouched || document.hidden) return;
+      if(!_autoScrollOn || document.hidden) return;
       var w = el.offsetWidth;
       if(!w) return;
       var nextLeft = el.scrollLeft + w;
       if(nextLeft >= el.scrollWidth - w/2) nextLeft = 0;
       el.scrollTo({left: nextLeft, behavior: 'smooth'});
-      /* Agenda o próximo avanço após o scroll terminar */
       setTimeout(function(){ _scheduleNext(); }, 600);
     }
 
     function _scheduleNext(){
       if(_autoTimer) clearTimeout(_autoTimer);
+      if(!_autoScrollOn) return;
       var idx = _getCurrentSlideIdx();
       var slide = el.querySelectorAll('.sp-reel-slide')[idx];
       if(!slide) return;
       var video = slide.querySelector('video');
       if(video){
-        /* Se é vídeo, espera acabar, depois avança */
         video.removeEventListener('ended', _advanceSlide);
         video.addEventListener('ended', _advanceSlide, {once: true});
-        /* Safety: se vídeo não acabar em 60s, avança */
         _autoTimer = setTimeout(_advanceSlide, 60000);
       } else {
-        /* Foto ou texto: 3 segundos */
-        _autoTimer = setTimeout(_advanceSlide, 3000);
+        _autoTimer = setTimeout(_advanceSlide, 5000);
       }
     }
 
     _scheduleNext();
 
-    el.addEventListener('touchstart', function(){
-      _userTouched = true;
+    /* Toque ou clique no slide → para auto-scroll e desmarca switch */
+    function _stopAutoScroll(){
+      _autoScrollOn = false;
       if(_autoTimer) clearTimeout(_autoTimer);
-      /* Retoma auto-scroll 15s após última interação */
-      setTimeout(function(){ _userTouched = false; _scheduleNext(); }, 15000);
+      var toggle = document.getElementById('sp-autoscroll-toggle');
+      if(toggle) toggle.checked = false;
+    }
+    el.addEventListener('touchstart', _stopAutoScroll, {passive:true});
+    el.addEventListener('mousedown', function(e){
+      if(e.target.closest('.sp-reel-arrow')) return;
+      _stopAutoScroll();
     });
+
+    /* Toggle global de auto-scroll */
+    window.spToggleAutoScroll = function(on){
+      _autoScrollOn = on;
+      if(on){
+        _scheduleNext();
+      } else {
+        if(_autoTimer) clearTimeout(_autoTimer);
+      }
+    };
 
     /* Dica de swipe — some ao primeiro scroll */
     var hint = document.getElementById('sp-reel-swipe-hint');

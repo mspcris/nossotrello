@@ -977,6 +977,20 @@
 .sp-feed-toggle-switch input:checked + .sp-feed-toggle-slider::before {
   transform: translateX(20px);
 }
+/* Versão menor do switch para rolagem auto */
+.sp-feed-toggle-switch-sm {
+  width: 34px;
+  height: 18px;
+}
+.sp-feed-toggle-switch-sm .sp-feed-toggle-slider::before {
+  width: 14px;
+  height: 14px;
+  left: 2px;
+  bottom: 2px;
+}
+.sp-feed-toggle-switch-sm input:checked + .sp-feed-toggle-slider::before {
+  transform: translateX(16px);
+}
 
 /* ============================================================
    REEL DE AMIGOS — swipe horizontal fullscreen-style
