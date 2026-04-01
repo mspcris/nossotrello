@@ -1177,7 +1177,26 @@ var _CAMILA_AVATARS = {
       });
   };
 
-  /* ═══ Setas de navegação no reel (desktop) ═══ */
+  /* ═══ Setas de navegação no reel ═══ */
+  var _reelArrowTimer = null;
+  function _showReelArrows() {
+    var l = document.getElementById('sp-reel-arrow-left');
+    var r = document.getElementById('sp-reel-arrow-right');
+    if (l) l.classList.add('sp-arrow-visible');
+    if (r) r.classList.add('sp-arrow-visible');
+    clearTimeout(_reelArrowTimer);
+    _reelArrowTimer = setTimeout(function(){
+      if (l) l.classList.remove('sp-arrow-visible');
+      if (r) r.classList.remove('sp-arrow-visible');
+    }, 3000);
+  }
+  (function(){
+    var wrap = document.getElementById('sp-friends-reel-wrap');
+    if (!wrap) return;
+    wrap.addEventListener('mousemove', _showReelArrows);
+    wrap.addEventListener('touchstart', _showReelArrows, {passive:true});
+  })();
+
   window.spReelNav = function(dir){
     var el = document.getElementById('sp-reel');
     if(!el) return;
@@ -1187,6 +1206,7 @@ var _CAMILA_AVATARS = {
     if(nextLeft < 0) nextLeft = el.scrollWidth - w;
     if(nextLeft >= el.scrollWidth) nextLeft = 0;
     el.scrollTo({left: nextLeft, behavior: 'smooth'});
+    _showReelArrows();
   };
 
   /* ═══ Comentários no reel ═══ */

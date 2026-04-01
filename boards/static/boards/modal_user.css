@@ -986,33 +986,40 @@
   background:#000; min-height:420px;
 }
 
-/* Desktop arrows for reel navigation */
+/* Arrows for reel navigation — hidden by default, shown on interaction */
 .sp-reel-arrow {
-  display: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
   z-index: 5;
-  background: rgba(255,255,255,0.2);
+  background: rgba(0,0,0,0.45);
   border: none;
   color: #fff;
-  font-size: 2rem;
-  width: 44px;
-  height: 70px;
+  font-size: 1.6rem;
+  width: 36px;
+  height: 60px;
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: 10px;
   backdrop-filter: blur(4px);
-  transition: background 0.2s;
+  transition: background 0.2s, opacity 0.3s;
+  opacity: 0;
+  pointer-events: none;
 }
-.sp-reel-arrow:hover { background: rgba(255,255,255,0.4); }
-.sp-reel-arrow-left { left: 8px; }
-.sp-reel-arrow-right { right: 8px; }
-@media (min-width: 768px) {
-  .sp-reel-arrow { display: flex; align-items: center; justify-content: center; }
+.sp-reel-arrow.sp-arrow-visible {
+  opacity: 1;
+  pointer-events: auto;
 }
+.sp-reel-arrow:hover { background: rgba(0,0,0,0.65); }
+.sp-reel-arrow:active { transform: translateY(-50%) scale(0.92); }
+.sp-reel-arrow-left { left: 6px; }
+.sp-reel-arrow-right { right: 6px; }
 .sp-reel{
   display:flex; overflow-x:auto; scroll-snap-type:x mandatory;
   -webkit-overflow-scrolling:touch; scrollbar-width:none;
+  scroll-behavior:smooth;
   height:100%; min-height:420px;
 }
 .sp-reel::-webkit-scrollbar{ display:none; }
@@ -1739,6 +1746,7 @@ video.sp-post-media {
   padding-bottom: 6px;
   scrollbar-width: none;
   cursor: grab;
+  scroll-behavior: smooth;
 }
 .sp-friends-row::-webkit-scrollbar { display: none; }
 .sp-friend-btn {
