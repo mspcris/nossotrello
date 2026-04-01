@@ -2136,10 +2136,10 @@ video.sp-post-media {
   border-radius: 50%;
   background: rgba(0,0,0,0.55);
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 6px;
   animation: sp-ov-in 0.2s ease;
 }
 @keyframes sp-ov-in {
@@ -2159,9 +2159,38 @@ video.sp-post-media {
   box-shadow: 0 2px 6px rgba(0,0,0,0.3);
 }
 .sp-req-ob:active { transform: scale(0.85); }
-.sp-req-ob-yes    { background: #10b981; color: #fff; }
+.sp-req-ob-yes    { background: #10b981; color: #fff; width: 42px; height: 42px; font-size: 1.3rem; }
 .sp-req-ob-no     { background: #ef4444; color: #fff; }
 .sp-req-ob-cancel { background: #6b7280; color: #fff; }
+
+/* Zoom 3x ao tocar no avatar de solicitação */
+.sp-req-item.sp-req-zoomed {
+  position: fixed;
+  z-index: 9000;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(3);
+  transform-origin: center center;
+  background: #fff;
+  border-radius: 16px;
+  padding: 8px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+  animation: sp-zoom-in 0.2s ease;
+}
+.sp-req-zoomed .sp-req-overlay {
+  border-radius: 12px;
+}
+@keyframes sp-zoom-in {
+  from { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
+  to   { transform: translate(-50%, -50%) scale(3); opacity: 1; }
+}
+.sp-req-zoom-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 8999;
+  background: rgba(0,0,0,0.5);
+  animation: sp-fade-in 0.15s ease;
+}
 
 /* Mini botões aceitar/rejeitar nos pills do polling */
 .sp-req-mini-actions {

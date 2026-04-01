@@ -1132,6 +1132,7 @@ var _CAMILA_AVATARS = {
   var _allPostsLoaded = false;
   var _allPosts = [];
   window.spToggleFeedMode = function(showAll){
+    localStorage.setItem('sp_feed_all', showAll ? '1' : '0');
     var lblF = document.getElementById('sp-feed-lbl-friends');
     var lblA = document.getElementById('sp-feed-lbl-all');
     if(lblF) lblF.classList.toggle('sp-feed-toggle-inactive', showAll);
@@ -1151,6 +1152,23 @@ var _CAMILA_AVATARS = {
     } else {
       _reelPosts = _friendsOnlyPosts || [];
       _renderReel();
+    }
+  };
+
+  /* Restaurar estado do toggle ao carregar */
+  var _savedFeedAll = localStorage.getItem('sp_feed_all') === '1';
+  if(_savedFeedAll){
+    var toggle = document.getElementById('sp-feed-toggle');
+    if(toggle){ toggle.checked = true; }
+    /* O feed será carregado quando a aba Amigos abrir, com estado correto */
+  }
+
+  /* Override _loadReelFeed para respeitar estado salvo */
+  var _origLoadReel = _loadReelFeed;
+  _loadReelFeed = function(){
+    _origLoadReel();
+    if(localStorage.getItem('sp_feed_all') === '1'){
+      setTimeout(function(){ spToggleFeedMode(true); }, 800);
     }
   };
 })();
@@ -1973,12 +1991,42 @@ document.addEventListener('click', function(e){
     document.querySelectorAll('.sp-req-overlay').forEach(function(o){
       if (o !== overlay) o.classList.add('sp-hidden');
     });
+    var wasHidden = overlay.classList.contains('sp-hidden');
     overlay.classList.toggle('sp-hidden');
+
+    // Zoom 3x ao mostrar overlay
+    if(wasHidden){
+      _spZoomReqItem(el);
+    } else {
+      _spUnzoomReqItem();
+    }
   };
+
+  function _spZoomReqItem(el){
+    _spUnzoomReqItem();
+    var backdrop = document.createElement('div');
+    backdrop.className = 'sp-req-zoom-backdrop';
+    backdrop.id = 'sp-req-zoom-backdrop';
+    backdrop.onclick = function(){ _spUnzoomReqItem(); };
+    document.body.appendChild(backdrop);
+    el.classList.add('sp-req-zoomed');
+    el._wasZoomed = true;
+  }
+  function _spUnzoomReqItem(){
+    var bd = document.getElementById('sp-req-zoom-backdrop');
+    if(bd) bd.remove();
+    document.querySelectorAll('.sp-req-zoomed').forEach(function(z){
+      z.classList.remove('sp-req-zoomed');
+      var ov = z.querySelector('.sp-req-overlay');
+      if(ov) ov.classList.add('sp-hidden');
+    });
+  }
+
   // Fecha overlay ao tocar fora
   document.addEventListener('click', function(e) {
-    if (!e.target.closest('.sp-req-item')) {
+    if (!e.target.closest('.sp-req-item') && !e.target.closest('.sp-req-zoom-backdrop')) {
       document.querySelectorAll('.sp-req-overlay').forEach(function(o){ o.classList.add('sp-hidden'); });
+      _spUnzoomReqItem();
     }
   });
 
