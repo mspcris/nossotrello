@@ -4,7 +4,9 @@ Espaço social: rede social de trabalho — check-in diário, humor,
 almoço, pendências do dia, feed de fotos do trabalho.
 """
 import json
+import logging
 import os
+import re
 import xml.etree.ElementTree as ET
 from datetime import timedelta
 
@@ -28,6 +30,39 @@ from ..models import (
 )
 
 User = get_user_model()
+
+_mention_logger = logging.getLogger(__name__)
+
+_MENTION_RE = re.compile(r"@([a-z0-9_.]+)", re.IGNORECASE)
+
+
+def _notify_mentions(text: str, actor, post_id: int, context: str = "post"):
+    """Extrai @handles do texto e envia notificação para cada usuário mencionado."""
+    if not text:
+        return
+    handles = set(_MENTION_RE.findall(text))
+    if not handles:
+        return
+    mentioned_users = User.objects.filter(
+        profile__handle__in=handles
+    ).exclude(id=actor.id).select_related("profile")
+    if not mentioned_users:
+        return
+    try:
+        from boards.services.notifications import notify_social_mention
+        for u in mentioned_users:
+            try:
+                notify_social_mention(
+                    recipient=u,
+                    actor=actor,
+                    post_id=post_id,
+                    context=context,
+                )
+            except Exception:
+                _mention_logger.exception("mention notify failed user_id=%s", u.id)
+    except Exception:
+        _mention_logger.exception("mention notify: import failed")
+
 
 from django.contrib.admin.views.decorators import staff_member_required
 
@@ -538,13 +573,16 @@ def social_post_create(request):
     if not text and not photo and not video:
         extra["post_error"] = "Adicione um texto, foto ou vídeo antes de publicar."
     else:
-        SocialPost.objects.create(
+        post = SocialPost.objects.create(
             user=request.user,
             text=text,
             photo=photo or None,
             video=video or None,
             visibility=visibility,
         )
+        # Notificar @menções
+        if text:
+            _notify_mentions(text, request.user, post.id, context="post")
         # AI react trigger
         parts = []
         if text:
@@ -1044,8 +1082,10 @@ def social_post_comment(request, post_id: int):
                     post_id=post.id,
                 )
     except Exception:
-        import logging
-        logging.getLogger(__name__).exception("social notify: unexpected error")
+        _mention_logger.exception("social notify: unexpected error")
+
+    # Notificar @menções no comentário
+    _notify_mentions(text, request.user, post.id, context="comment")
 
     prof = _get_or_create_profile(request.user)
     reply_to_user = None
@@ -2333,3 +2373,42 @@ def chat_friends_list(request):
                 "handle": prof.handle if prof else "",
             })
     return JsonResponse({"friends": friends})
+
+
+# ---------------------------------------------------------------
+# Buscar usuários para @menção social (GET ?q=...)
+# ---------------------------------------------------------------
+@login_required
+def social_mention_search(request):
+    """Busca usuários por handle ou display_name para @menção em posts/comentários."""
+    q = (request.GET.get("q") or "").strip()
+    if len(q) < 1:
+        return JsonResponse([], safe=False)
+
+    q_lower = q.lower()
+    users = (
+        User.objects
+        .exclude(id=request.user.id)
+        .select_related("profile")
+        .filter(
+            models.Q(profile__handle__icontains=q_lower)
+            | models.Q(profile__display_name__icontains=q_lower)
+        )
+        .order_by("profile__handle")[:15]
+    )
+
+    results = []
+    for u in users:
+        p = getattr(u, "profile", None)
+        handle = (getattr(p, "handle", "") or "").strip()
+        if not handle:
+            continue
+        display_name = (getattr(p, "display_name", "") or "").strip()
+        results.append({
+            "id": u.id,
+            "handle": handle,
+            "display_name": display_name,
+            "avatar_url": p.avatar.url if (p and getattr(p, "avatar", None)) else "",
+        })
+
+    return JsonResponse(results, safe=False)

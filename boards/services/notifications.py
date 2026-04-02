@@ -505,6 +505,67 @@ def notify_social_interaction(
                 logger.exception("social notify: email failed user_id=%s", getattr(recipient, "id", None))
 
 
+def notify_social_mention(
+    *,
+    recipient: User,
+    actor: User,
+    post_id: int = None,
+    context: str = "post",   # "post" | "comment"
+) -> None:
+    """
+    Notifica um usuário que foi @mencionado em um post ou comentário.
+    """
+    if getattr(recipient, "id", None) == getattr(actor, "id", None):
+        return
+
+    prof = _get_or_create_profile(recipient)
+    actor_prof = _get_or_create_profile(actor)
+    actor_name = actor_prof.display_name or actor.email.split("@")[0]
+
+    site_url = (getattr(settings, "SITE_URL", "") or "").rstrip("/")
+    owner_id = getattr(recipient, "id", "")
+    post_hash = f"#post-{post_id}" if post_id else ""
+    social_link = f"{site_url}/social/{owner_id}/{post_hash}"
+
+    if context == "comment":
+        subject = f"💬 {actor_name} marcou você em um comentário!"
+        email_body = (
+            f"Oi! 👋\n\n"
+            f"{actor_name} mencionou você em um comentário.\n\n"
+            f"Acesse para ver:\n{social_link}\n\n"
+            f"— Equipe NossoTrello 😊"
+        )
+        wa_msg = (
+            f"💬 *{_wa_safe(actor_name)}* marcou você em um comentário!\n\n"
+            f"Veja aqui 👇\n{social_link}"
+        )
+    else:
+        subject = f"📢 {actor_name} marcou você em uma publicação!"
+        email_body = (
+            f"Oi! 👋\n\n"
+            f"{actor_name} mencionou você em uma publicação.\n\n"
+            f"Acesse para ver:\n{social_link}\n\n"
+            f"— Equipe NossoTrello 😊"
+        )
+        wa_msg = (
+            f"📢 *{_wa_safe(actor_name)}* marcou você em uma publicação!\n\n"
+            f"Veja aqui 👇\n{social_link}"
+        )
+
+    if getattr(prof, "notify_whatsapp", False):
+        phone_digits = _safe_digits_phone(getattr(prof, "telefone", ""))
+        if phone_digits:
+            send_whatsapp(user=recipient, phone_digits=phone_digits, body=wa_msg)
+
+    if getattr(prof, "notify_email", False):
+        to_email = (getattr(recipient, "email", "") or "").strip()
+        if to_email:
+            try:
+                send_email_notification(to_email=to_email, subject=subject, body=email_body)
+            except Exception:
+                logger.exception("mention notify: email failed user_id=%s", getattr(recipient, "id", None))
+
+
 def notify_friendship_event(
     *,
     recipient: "User",

@@ -771,8 +771,11 @@
             hx-encoding="multipart/form-data" enctype="multipart/form-data">
         {% csrf_token %}
 
-        <textarea name="text" class="sp-sheet-textarea"
-                  placeholder="O que está rolando? ✨" rows="2" maxlength="1000"></textarea>
+        <div class="sp-mention-wrap">
+          <div id="sp-mention-dropdown" class="sp-mention-dropdown"></div>
+          <textarea name="text" id="sp-post-textarea" class="sp-sheet-textarea"
+                    placeholder="O que está rolando? ✨" rows="2" maxlength="1000"></textarea>
+        </div>
 
         <div id="sp-sheet-preview" class="sp-sheet-preview sp-hidden"></div>
 
@@ -976,7 +979,7 @@ var _CAMILA_AVATARS = {
         html += '<img src="'+p.photo+'" alt="" loading="lazy">';
       }
       if(p.text){
-        html += '<div class="sp-reel-text">'+_escHtml(p.text)+'</div>';
+        html += '<div class="sp-reel-text">'+_spMentionify(_escHtml(p.text))+'</div>';
       }
 
       /* Actions overlay */
@@ -986,8 +989,11 @@ var _CAMILA_AVATARS = {
       html += '<div class="sp-reel-actions">';
       html += '<button class="sp-reel-action sp-reel-like'+likeClass+'" onclick="spReelLike('+p.id+',this)" title="Curtir">❤️ <span class="count">'+(likeCount||'')+'</span></button>';
       html += '<button class="sp-reel-action" onclick="spReelToggleComments('+p.id+',this)" title="Comentários">💬'+commentBadge+'</button>';
-      html += '<input class="sp-reel-comment-input" placeholder="Comentar..." maxlength="500" onkeydown="if(event.key===\'Enter\')spReelComment('+p.id+',this)">';
-      html += '<button class="sp-reel-comment-send" onclick="spReelComment('+p.id+',this.previousElementSibling)">➤</button>';
+      html += '<div class="sp-mention-wrap" style="flex:1;position:relative">';
+      html += '<div class="sp-mention-dropdown sp-reel-mention-dd" id="sp-reel-mention-dd-'+p.id+'"></div>';
+      html += '<input class="sp-reel-comment-input" id="sp-reel-cinput-'+p.id+'" placeholder="Comentar..." maxlength="500" onkeydown="if(event.key===\'Enter\'&&!document.getElementById(\'sp-reel-mention-dd-'+p.id+'\').classList.contains(\'active\'))spReelComment('+p.id+',this)">';
+      html += '</div>';
+      html += '<button class="sp-reel-comment-send" onclick="spReelComment('+p.id+',this.previousElementSibling.querySelector(\'input\'))">➤</button>';
       html += '</div>';
       /* Comments section (hidden by default) */
       html += '<div class="sp-reel-comments sp-hidden" id="sp-reel-comments-'+p.id+'"></div>';
@@ -995,6 +1001,15 @@ var _CAMILA_AVATARS = {
       html += '</div>';
     });
     el.innerHTML = html;
+
+    /* Attach @mention autocomplete nos inputs de comentário do reel */
+    if(window._spAttachMention){
+      _reelPosts.forEach(function(p){
+        var inp = document.getElementById('sp-reel-cinput-' + p.id);
+        var dd = document.getElementById('sp-reel-mention-dd-' + p.id);
+        if(inp && dd) window._spAttachMention(inp, dd);
+      });
+    }
 
     /* Dots */
     _renderDots();
@@ -1255,7 +1270,7 @@ var _CAMILA_AVATARS = {
         d.comments.forEach(function(c){
           html += '<div class="sp-reel-comment-item">'
             + '<strong>' + _escHtml(c.author) + '</strong> '
-            + '<span>' + _escHtml(c.text) + '</span>'
+            + '<span>' + _spMentionify(_escHtml(c.text)) + '</span>'
             + '<span class="sp-reel-comment-time">' + c.time + '</span>'
             + '</div>';
         });
@@ -1693,7 +1708,7 @@ document.addEventListener('click', function(e){
       var el = document.createElement('div');
       el.className = 'sp-comment';
       el.innerHTML = '<span class="sp-comment-author">' + d.user.replace(/</g,'&lt;') + '</span> ' +
-        '<span class="sp-comment-text">' + d.text.replace(/</g,'&lt;') + '</span>' +
+        '<span class="sp-comment-text">' + _spMentionify(d.text.replace(/</g,'&lt;')) + '</span>' +
         '<span class="sp-comment-time">' + d.created_at + '</span>';
       list.appendChild(el);
       list.classList.remove('sp-hidden');
@@ -2233,7 +2248,7 @@ document.addEventListener('click', function(e){
       el.className = 'sp-comment sp-reply-comment';
       el.innerHTML = '<span class="sp-reply-indicator">↩</span>' +
         '<span class="sp-comment-author">' + d.user.replace(/</g,'&lt;') + '</span> ' +
-        '<span class="sp-comment-text">' + d.text.replace(/</g,'&lt;') + '</span>' +
+        '<span class="sp-comment-text">' + _spMentionify(d.text.replace(/</g,'&lt;')) + '</span>' +
         '<span class="sp-comment-time">' + d.created_at + '</span>';
       list.appendChild(el);
       list.classList.remove('sp-hidden');
@@ -3333,5 +3348,163 @@ function spViewersCancelPress(){
       el.style.display = show ? '' : 'none';
     });
   }
+})();
+
+/* ═══════════════════════════════════════════════════════════════
+   @MENTION — autocomplete + rendering
+   ═══════════════════════════════════════════════════════════════ */
+(function(){
+  var _mentionCache = {};
+  var _mentionTimer = null;
+  var _selectedIdx = -1;
+  var _mentionResults = [];
+  var _activeInput = null;
+  var _activeDropdown = null;
+
+  /* ── Converte @handle em links clicáveis (após escape HTML) ── */
+  window._spMentionify = function(escapedHtml){
+    return escapedHtml.replace(/@([a-z0-9_.]+)/gi, function(match, handle){
+      return '<a class="sp-mention-link" href="/social/@' + handle + '/">@' + handle + '</a>';
+    });
+  };
+
+  /* ── Busca usuários ── */
+  function _fetchMentions(query, cb){
+    if(_mentionCache[query]){
+      cb(_mentionCache[query]);
+      return;
+    }
+    fetch('{% url "boards:social_mention_search" %}?q=' + encodeURIComponent(query))
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        _mentionCache[query] = data;
+        cb(data);
+      })
+      .catch(function(){ cb([]); });
+  }
+
+  /* ── Detecta se cursor está numa @menção ── */
+  function _getMentionQuery(input){
+    var val = input.value;
+    var pos = input.selectionStart;
+    var before = val.substring(0, pos);
+    var match = before.match(/@([a-z0-9_.]{0,30})$/i);
+    if(!match) return null;
+    /* Garante que antes do @ é espaço, newline ou início */
+    var idx = before.lastIndexOf('@');
+    if(idx > 0 && !/[\s\n]/.test(before.charAt(idx - 1))) return null;
+    return { query: match[1], start: idx, end: pos };
+  }
+
+  /* ── Renderiza dropdown ── */
+  function _renderDropdown(dropdown, results){
+    _mentionResults = results;
+    _selectedIdx = -1;
+    if(!results.length){
+      dropdown.classList.remove('active');
+      dropdown.innerHTML = '';
+      return;
+    }
+    var html = '';
+    results.forEach(function(u, i){
+      var avHtml = u.avatar_url
+        ? '<img class="sp-mention-item-av" src="' + u.avatar_url + '" alt="">'
+        : '<span class="sp-mention-item-av-placeholder">' + (u.handle||'?').charAt(0).toUpperCase() + '</span>';
+      html += '<div class="sp-mention-item" data-idx="' + i + '">'
+        + avHtml
+        + '<div class="sp-mention-item-info">'
+        + '<div class="sp-mention-item-name">' + (u.display_name || u.handle) + '</div>'
+        + '<div class="sp-mention-item-handle">@' + u.handle + '</div>'
+        + '</div></div>';
+    });
+    dropdown.innerHTML = html;
+    dropdown.classList.add('active');
+  }
+
+  /* ── Seleciona um item ── */
+  function _selectMention(input, dropdown, idx){
+    var u = _mentionResults[idx];
+    if(!u) return;
+    var mq = _getMentionQuery(input);
+    if(!mq) return;
+    var val = input.value;
+    var newVal = val.substring(0, mq.start) + '@' + u.handle + ' ' + val.substring(mq.end);
+    input.value = newVal;
+    var newPos = mq.start + u.handle.length + 2;
+    input.setSelectionRange(newPos, newPos);
+    dropdown.classList.remove('active');
+    dropdown.innerHTML = '';
+    _mentionResults = [];
+    _selectedIdx = -1;
+    input.focus();
+  }
+
+  /* ── Attach em qualquer input/textarea ── */
+  window._spAttachMention = function(input, dropdown){
+    input.addEventListener('input', function(){
+      clearTimeout(_mentionTimer);
+      var mq = _getMentionQuery(input);
+      if(!mq || mq.query.length < 1){
+        dropdown.classList.remove('active');
+        dropdown.innerHTML = '';
+        return;
+      }
+      _activeInput = input;
+      _activeDropdown = dropdown;
+      _mentionTimer = setTimeout(function(){
+        _fetchMentions(mq.query, function(data){
+          _renderDropdown(dropdown, data);
+        });
+      }, 250);
+    });
+
+    input.addEventListener('keydown', function(e){
+      if(!dropdown.classList.contains('active')) return;
+      if(e.key === 'ArrowDown'){
+        e.preventDefault();
+        _selectedIdx = Math.min(_selectedIdx + 1, _mentionResults.length - 1);
+        _highlightItem(dropdown);
+      } else if(e.key === 'ArrowUp'){
+        e.preventDefault();
+        _selectedIdx = Math.max(_selectedIdx - 1, 0);
+        _highlightItem(dropdown);
+      } else if(e.key === 'Enter' || e.key === 'Tab'){
+        if(_selectedIdx >= 0){
+          e.preventDefault();
+          _selectMention(input, dropdown, _selectedIdx);
+        }
+      } else if(e.key === 'Escape'){
+        dropdown.classList.remove('active');
+      }
+    });
+
+    dropdown.addEventListener('click', function(e){
+      var item = e.target.closest('.sp-mention-item');
+      if(!item) return;
+      _selectMention(input, dropdown, parseInt(item.dataset.idx));
+    });
+  };
+
+  function _highlightItem(dropdown){
+    dropdown.querySelectorAll('.sp-mention-item').forEach(function(el, i){
+      el.classList.toggle('selected', i === _selectedIdx);
+    });
+  }
+
+  /* ── Inicializa no textarea de criar post ── */
+  var postTA = document.getElementById('sp-post-textarea');
+  var postDD = document.getElementById('sp-mention-dropdown');
+  if(postTA && postDD){
+    _spAttachMention(postTA, postDD);
+  }
+
+  /* ── Fechar dropdown ao clicar fora ── */
+  document.addEventListener('click', function(e){
+    if(!e.target.closest('.sp-mention-wrap')){
+      document.querySelectorAll('.sp-mention-dropdown.active').forEach(function(dd){
+        dd.classList.remove('active');
+      });
+    }
+  });
 })();
 </script>
