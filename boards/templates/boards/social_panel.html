@@ -2528,8 +2528,8 @@ document.addEventListener('click', function(e){
         card.style.transform = 'scale(0.7)';
         setTimeout(function(){ card.remove(); }, 300);
       }
-      _spPillKnownFriends && _spPillKnownFriends.add(uid);
-      if(action === 'accept') _spToast && _spToast('Amizade aceita! 🤝');
+      if(window._spPillKnownFriends) window._spPillKnownFriends.add(uid);
+      if(action === 'accept' && typeof _spToast==='function') _spToast('Amizade aceita! 🤝');
     }).catch(function(e){ alert('Erro: ' + e.message); });
   };
 
@@ -2970,6 +2970,7 @@ document.addEventListener('click', function(e){
     var _spPillKnownComments = new Set();
     var _spPillKnownReplies  = new Set();
     var _spPillKnownFriends  = new Set();
+    window._spPillKnownFriends = _spPillKnownFriends;
 
     // Inicializa com pílulas já no DOM
     document.querySelectorAll('[data-post-id]').forEach(function(el){
