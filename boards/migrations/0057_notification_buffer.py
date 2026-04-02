@@ -8,7 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('boards', '0055_add_created_by_to_cardattachment'),
+        ('boards', '0056_cardattachment_created_by'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
