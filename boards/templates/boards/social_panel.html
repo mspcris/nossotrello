@@ -2450,38 +2450,49 @@ document.addEventListener('click', function(e){
   /* ── Aceitar / Recusar convite de amizade ── */
   /* ── Tap no avatar para mostrar/esconder botões ── */
   window.spZoomReqReceived = function(el, uid) {
-    if(el.classList.contains('sp-req-zoomed')){
-      _spUnzoomReqItem();
-      return;
-    }
     _spUnzoomReqItem();
-    var backdrop = document.createElement('div');
-    backdrop.className = 'sp-req-zoom-backdrop';
-    backdrop.id = 'sp-req-zoom-backdrop';
-    /* Backdrop NÃO tem onclick — evita roubar toque dos botões no mobile */
-    document.body.appendChild(backdrop);
-    el.classList.add('sp-req-zoomed');
-    var bar = el.querySelector('.sp-req-action-bar');
-    if(bar) bar.classList.remove('sp-hidden');
+    /* Pegar dados do card original */
+    var imgEl = el.querySelector('.sp-friend-av-img');
+    var fbEl = el.querySelector('.sp-friend-av-fb');
+    var nameEl = el.querySelector('.sp-friend-name');
+    var avHtml = imgEl ? '<img src="'+imgEl.src+'" style="width:100px;height:100px;border-radius:16px;object-fit:cover;border:3px solid #e5e7eb">'
+      : '<span style="width:100px;height:100px;border-radius:16px;display:flex;align-items:center;justify-content:center;background:#6d28d9;color:#fff;font-size:2rem;font-weight:700">'+(fbEl?fbEl.textContent:'?')+'</span>';
+    var name = nameEl ? nameEl.textContent : '';
 
-    /* Fechar ao tocar no backdrop (usar touchend + click com delay) */
-    setTimeout(function(){
-      backdrop.addEventListener('click', function(){ _spUnzoomReqItem(); });
-      backdrop.addEventListener('touchend', function(e){
-        /* Só fecha se o toque foi NO backdrop, não nos botões */
-        if(e.target === backdrop) _spUnzoomReqItem();
-      }, {passive:true});
-    }, 200);
+    /* Criar modal novo (não mover o card original) */
+    var ov = document.createElement('div');
+    ov.id = 'sp-req-zoom-overlay';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;animation:sp-fade-in .2s ease';
+    ov.innerHTML = '<div style="background:#fff;border-radius:18px;padding:24px 20px 18px;width:280px;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,0.4);animation:sp-zoom-in .2s ease">'
+      + '<div style="display:flex;justify-content:center;margin-bottom:12px">'+avHtml+'</div>'
+      + '<div style="font-size:1rem;font-weight:600;color:#1f2937;margin-bottom:16px">'+name+'</div>'
+      + '<div style="display:flex;gap:8px">'
+      + '<button type="button" id="sp-req-z-accept" style="flex:1;padding:12px 8px;border:none;border-radius:10px;font-size:.85rem;font-weight:600;cursor:pointer;background:#10b981;color:#fff">Aceitar</button>'
+      + '<a href="/social/'+uid+'/" style="flex:1;padding:12px 8px;border:none;border-radius:10px;font-size:.85rem;font-weight:600;cursor:pointer;background:#6366f1;color:#fff;text-decoration:none;text-align:center">Ver Perfil</a>'
+      + '<button type="button" id="sp-req-z-reject" style="flex:1;padding:12px 8px;border:none;border-radius:10px;font-size:.85rem;font-weight:600;cursor:pointer;background:#ef4444;color:#fff">Recusar</button>'
+      + '</div></div>';
+
+    document.body.appendChild(ov);
+
+    /* Fechar ao tocar fora do card */
+    ov.addEventListener('click', function(e){ if(e.target === ov) _spUnzoomReqItem(); });
+
+    /* Botões — listeners diretos */
+    document.getElementById('sp-req-z-accept').addEventListener('click', function(e){
+      e.stopPropagation();
+      _spUnzoomReqItem();
+      spAnswerFriend(uid, 'accept', el);
+    });
+    document.getElementById('sp-req-z-reject').addEventListener('click', function(e){
+      e.stopPropagation();
+      _spUnzoomReqItem();
+      spAnswerFriend(uid, 'reject', el);
+    });
   };
 
   function _spUnzoomReqItem(){
-    var bd = document.getElementById('sp-req-zoom-backdrop');
-    if(bd) bd.remove();
-    document.querySelectorAll('.sp-req-zoomed').forEach(function(z){
-      z.classList.remove('sp-req-zoomed');
-      var bar = z.querySelector('.sp-req-action-bar');
-      if(bar) bar.classList.add('sp-hidden');
-    });
+    var ov = document.getElementById('sp-req-zoom-overlay');
+    if(ov) ov.remove();
   }
 
   function _spFadeOutCard(btn) {
@@ -2494,15 +2505,15 @@ document.addEventListener('click', function(e){
     }
   }
 
-  window.spAnswerFriend = function(uid, action, btn) {
+  window.spAnswerFriend = function(uid, action, cardOrBtn) {
     var csrf = document.querySelector('meta[name="csrf-token"]');
     var url = action === 'accept'
       ? '/social/' + uid + '/friend-accept/'
       : '/social/' + uid + '/friend-reject/';
-    // Capturar o card ANTES de qualquer manipulação do DOM
-    var card = btn.closest('.sp-req-item') || btn.closest('.sp-friend-pill');
-    // Fechar zoom imediatamente
-    _spUnzoomReqItem && _spUnzoomReqItem();
+    var card = cardOrBtn;
+    if(card && !card.classList.contains('sp-req-item') && !card.classList.contains('sp-friend-pill')){
+      card = card.closest('.sp-req-item') || card.closest('.sp-friend-pill');
+    }
     fetch(url, {
       method: 'POST',
       headers: {'X-CSRFToken': csrf ? csrf.content : ''}
@@ -2511,15 +2522,14 @@ document.addEventListener('click', function(e){
       return r.json();
     }).then(function(d){
       if (!d) return;
-      // Remover card da UI com animação
       if (card) {
         card.style.transition = 'opacity 0.3s, transform 0.3s';
         card.style.opacity = '0';
         card.style.transform = 'scale(0.7)';
         setTimeout(function(){ card.remove(); }, 300);
       }
-      // Marcar uid como conhecido para que o polling não re-adicione
       _spPillKnownFriends && _spPillKnownFriends.add(uid);
+      if(action === 'accept') _spToast && _spToast('Amizade aceita! 🤝');
     }).catch(function(e){ alert('Erro: ' + e.message); });
   };
 
@@ -3218,6 +3228,23 @@ document.addEventListener('click', function(e){
       input.focus();
     }
 
+    /* ── Ajustar altura do chat quando teclado virtual abre/fecha ── */
+    var chatModal = ov.querySelector('.sp-chat-modal');
+    if(window.visualViewport && chatModal){
+      var _vvHandler = function(){
+        var vvh = window.visualViewport.height;
+        chatModal.style.maxHeight = (vvh - 10) + 'px';
+        _scrollChatBottom();
+      };
+      window.visualViewport.addEventListener('resize', _vvHandler);
+      window.visualViewport.addEventListener('scroll', _vvHandler);
+      /* Limpar ao fechar */
+      chatModal._vvCleanup = function(){
+        window.visualViewport.removeEventListener('resize', _vvHandler);
+        window.visualViewport.removeEventListener('scroll', _vvHandler);
+      };
+    }
+
     // Polling inteligente — só roda com chat aberto + aba visível
     // Backoff: 3s → 5s → 10s quando sem mensagens novas
     var _pollInterval = 3000;
@@ -3497,7 +3524,11 @@ document.addEventListener('click', function(e){
 
   window._closeChatModal = function(){
     if(_chatPollTimer) clearInterval(_chatPollTimer);
-    if(_chatOverlay){ _chatOverlay.remove(); _chatOverlay = null; }
+    if(_chatOverlay){
+      var modal = _chatOverlay.querySelector('.sp-chat-modal');
+      if(modal && modal._vvCleanup) modal._vvCleanup();
+      _chatOverlay.remove(); _chatOverlay = null;
+    }
   };
 
   window.spChatSend = function(){

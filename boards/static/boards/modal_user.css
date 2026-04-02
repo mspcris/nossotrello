@@ -2622,6 +2622,8 @@ video.sp-post-media {
   width: 100%;
   max-width: 520px;
   height: 85vh;
+  height: 85dvh;
+  max-height: calc(var(--sp-vvh, 85vh));
   background: #fff;
   border-radius: 20px 20px 0 0;
   display: flex;
