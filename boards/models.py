@@ -1210,6 +1210,7 @@ class ChatMessage(models.Model):
     hidden_by_a = models.BooleanField(default=False)
     hidden_by_b = models.BooleanField(default=False)
     seen = models.BooleanField(default=False)
+    notified = models.BooleanField(default=False)
 
     class Meta:
         ordering = ["created_at"]

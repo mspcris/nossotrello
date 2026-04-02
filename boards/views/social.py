@@ -2258,53 +2258,7 @@ def chat_send(request, user_id: int):
         sticker_url=sticker_url,
     )
     conv.save()  # atualiza updated_at
-
-    # Notifica destinatário após 60s se a msg ainda não foi lida (evita spam)
-    if not has_recent_unread:
-        import threading
-
-        def _delayed_notify(msg_id, recipient_id, sender_id, preview):
-            """Espera 60s, verifica se leu, se não → notifica via WhatsApp/email.
-            Se fora da janela de notificação, reagenda para a próxima janela."""
-            from boards.services.notifications import (
-                notify_chat_message, is_in_notification_window,
-                next_notification_window,
-            )
-            from django.contrib.auth import get_user_model
-            _User = get_user_model()
-            try:
-                m = ChatMessage.objects.get(id=msg_id)
-                if m.seen:
-                    return  # Já leu, não notifica
-                _recipient = _User.objects.get(id=recipient_id)
-                prof = getattr(_recipient, "profile", None)
-                if prof and not is_in_notification_window(prof):
-                    # Fora da janela — reagenda para a próxima abertura
-                    nxt = next_notification_window(prof)
-                    if nxt:
-                        delay = (nxt - timezone.now()).total_seconds()
-                        if delay > 0:
-                            t2 = threading.Timer(
-                                delay, _delayed_notify,
-                                args=[msg_id, recipient_id, sender_id, preview],
-                            )
-                            t2.daemon = True
-                            t2.start()
-                    return
-                _sender = _User.objects.get(id=sender_id)
-                notify_chat_message(
-                    recipient=_recipient, sender=_sender,
-                    message_preview=preview,
-                )
-            except Exception:
-                pass
-
-        t = threading.Timer(
-            60.0, _delayed_notify,
-            args=[msg.id, other.id, me.id, text or "GIF 🎞️"],
-        )
-        t.daemon = True
-        t.start()
+    # Notificação é feita pelo cron chat_notify_unseen (a cada minuto)
 
     prof = getattr(me, "profile", None)
     return JsonResponse({
