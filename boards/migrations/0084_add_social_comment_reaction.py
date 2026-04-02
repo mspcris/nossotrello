@@ -8,7 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('boards', '0057_notification_buffer'),
+        ('boards', '0083_chatmessage_notified'),
     ]
 
     operations = [
