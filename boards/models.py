@@ -1170,6 +1170,11 @@ class ChatConversation(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    # Soft-delete / arquivamento por usuario (nada e apagado de verdade)
+    archived_by_a = models.BooleanField(default=False)
+    archived_by_b = models.BooleanField(default=False)
+    deleted_by_a = models.BooleanField(default=False)
+    deleted_by_b = models.BooleanField(default=False)
 
     class Meta:
         unique_together = [("user_a", "user_b")]

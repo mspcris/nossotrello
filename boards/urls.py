@@ -154,6 +154,7 @@ from boards.views.social import (
     chat_poll,
     chat_unread_total,
     chat_friends_list,
+    chat_conversation_action,
     social_mention_search,
 )
 
@@ -218,6 +219,7 @@ urlpatterns = [
     path("chat/message/<int:message_id>/delete/", chat_delete_message, name="chat_delete_message"),
     path("chat/unread/", chat_unread_total, name="chat_unread_total"),
     path("chat/friends/", chat_friends_list, name="chat_friends_list"),
+    path("chat/<int:conv_id>/action/", chat_conversation_action, name="chat_conversation_action"),
     path("social/mentions/", social_mention_search, name="social_mention_search"),
 
     # Camila.AI Admin (staff only)

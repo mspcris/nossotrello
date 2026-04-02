@@ -2116,10 +2116,14 @@ def chat_list(request):
 
     result = []
     for c in convs:
+        is_a = c.user_a_id == me.id
+        # Filtrar conversas deletadas para este usuario
+        if (is_a and c.deleted_by_a) or (not is_a and c.deleted_by_b):
+            continue
+        archived = (is_a and c.archived_by_a) or (not is_a and c.archived_by_b)
         other = c.other_user(me)
         prof = getattr(other, "profile", None)
         # Última mensagem visível
-        is_a = c.user_a_id == me.id
         hide_field = "hidden_by_a" if is_a else "hidden_by_b"
         last_msg = (
             c.messages
@@ -2141,6 +2145,7 @@ def chat_list(request):
             "last_message_gif": bool(last_msg and last_msg.gif_url) if last_msg else False,
             "last_time": timezone.localtime(last_msg.created_at).strftime("%d/%m %H:%M") if last_msg else "",
             "unread": unread,
+            "archived": archived,
         })
     return JsonResponse({"conversations": result})
 
@@ -2245,11 +2250,24 @@ def chat_send(request, user_id: int):
 @login_required
 @require_POST
 def chat_delete_message(request, message_id: int):
-    """Apaga mensagem só para o usuário (soft delete individual)."""
+    """
+    Apaga mensagem.
+    mode=me  → esconde só para o usuário (soft delete individual)
+    mode=all → desativa a mensagem para todos (is_active=False), só o remetente pode
+    Nada é realmente apagado — apenas desativado/escondido.
+    """
     me = request.user
     msg = get_object_or_404(ChatMessage, id=message_id)
     conv = msg.conversation
+    mode = request.POST.get("mode", "me")
 
+    if mode == "all" and msg.sender_id == me.id:
+        # Desativa para todos (mas não apaga do banco)
+        msg.is_active = False
+        msg.save(update_fields=["is_active"])
+        return JsonResponse({"ok": True})
+
+    # Esconde só para mim
     if conv.user_a_id == me.id:
         msg.hidden_by_a = True
     elif conv.user_b_id == me.id:
@@ -2389,6 +2407,51 @@ def chat_friends_list(request):
                 "handle": prof.handle if prof else "",
             })
     return JsonResponse({"friends": friends})
+
+
+# ---------------------------------------------------------------
+# Ação em conversa: arquivar / apagar (soft)
+# ---------------------------------------------------------------
+@login_required
+@require_POST
+def chat_conversation_action(request, conv_id: int):
+    """
+    action=archive → arquiva conversa para o usuário
+    action=delete  → marca como deletada para o usuário
+    action=unarchive → desarquiva
+    Nada é apagado de verdade.
+    """
+    conv = get_object_or_404(ChatConversation, id=conv_id)
+    me = request.user
+    action = request.POST.get("action", "")
+
+    is_a = conv.user_a_id == me.id
+    is_b = conv.user_b_id == me.id
+    if not is_a and not is_b:
+        return JsonResponse({"error": "Sem permissão."}, status=403)
+
+    if action == "archive":
+        if is_a:
+            conv.archived_by_a = True
+        else:
+            conv.archived_by_b = True
+        conv.save(update_fields=["archived_by_a", "archived_by_b"])
+    elif action == "unarchive":
+        if is_a:
+            conv.archived_by_a = False
+        else:
+            conv.archived_by_b = False
+        conv.save(update_fields=["archived_by_a", "archived_by_b"])
+    elif action == "delete":
+        if is_a:
+            conv.deleted_by_a = True
+        else:
+            conv.deleted_by_b = True
+        conv.save(update_fields=["deleted_by_a", "deleted_by_b"])
+    else:
+        return JsonResponse({"error": "Ação inválida."}, status=400)
+
+    return JsonResponse({"ok": True})
 
 
 # ---------------------------------------------------------------

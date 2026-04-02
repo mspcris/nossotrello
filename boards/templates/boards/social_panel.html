@@ -708,7 +708,7 @@
         <div class="sp-chat-msg sp-chat-bot">Oi! 👋 Pode falar sobre saúde, alimentação, bem-estar ou qualquer dúvida sobre cuidar de você. 💚</div>
       </div>
       <div class="sp-chat-input-row">
-        <input type="text" id="sp-chat-input" class="sp-chat-input"
+        <input type="text" id="sp-camilo-input" class="sp-chat-input"
                placeholder="Digite..." maxlength="500"
                onkeydown="if(event.key==='Enter')spSendChat()">
         <button type="button" class="sp-chat-send" onclick="spSendChat()">➤</button>
@@ -1541,7 +1541,7 @@ document.addEventListener('click', function(e){
 
   window._spChatHistory = window._spChatHistory || [];
   window.spSendChat = async function(){
-    var input = document.getElementById('sp-chat-input');
+    var input = document.getElementById('sp-camilo-input');
     var msgs = document.getElementById('sp-chat-messages');
     if(!input || !msgs) return;
     var text = (input.value||'').trim();
@@ -2818,50 +2818,41 @@ document.addEventListener('click', function(e){
 
     var html = '<div class="sp-chat-modal">'
       + '<div class="sp-chat-header">'
-      + '<button class="sp-chat-back" onclick="_closeChatModal();spOpenChatList()" title="Voltar">←</button>'
+      + '<button class="sp-chat-back" onclick="_closeChatModal();spOpenChatList()" title="Voltar">\u2190</button>'
       + '<a href="/social/' + uid + '/" style="display:flex;align-items:center;gap:10px;text-decoration:none;flex:1;min-width:0">'
       + av
       + '<span class="sp-chat-header-name">' + (data.other_name||'') + '</span>'
       + '</a>'
       + '<button class="sp-chat-close" onclick="_closeChatModal()">&times;</button>'
       + '</div>'
-      + '<div class="sp-chat-body" id="sp-chat-body"></div>'
+      + '<div class="sp-chat-body" id="sp-dm-body"></div>'
       + '<div style="position:relative">'
       + '<div id="sp-gif-picker" class="sp-gif-picker sp-hidden"></div>'
       + '</div>'
-      + (window.innerWidth >= 768 ? '<div class="sp-chat-enter-row"><label class="sp-chat-enter-label"><input type="checkbox" id="sp-chat-enter-toggle" checked> Enviar com Enter</label></div>' : '')
       + '<div class="sp-chat-footer">'
-      + '<button type="button" class="sp-chat-gif-btn" onclick="spToggleGifPicker()" title="GIF">🎞️</button>'
-      + '<input type="text" class="sp-chat-input" id="sp-chat-input" placeholder="Digite..." autocomplete="off">'
-      + '<button type="button" class="sp-chat-send-btn" id="sp-chat-send-btn">➤</button>'
+      + '<button type="button" class="sp-chat-gif-btn" onclick="spToggleGifPicker()" title="GIF">\ud83c\udfde\ufe0f</button>'
+      + '<input type="text" class="sp-chat-input" id="sp-dm-input" placeholder="Digite..." autocomplete="off">'
+      + '<button type="button" class="sp-chat-send-btn" onclick="spChatSend()">\u27a4</button>'
       + '</div></div>';
 
     ov.innerHTML = html;
     document.body.appendChild(ov);
     _chatOverlay = ov;
 
-    var body = document.getElementById('sp-chat-body');
+    var body = document.getElementById('sp-dm-body');
     data.messages.forEach(function(m){ _appendMsg(body, m); });
     _scrollChatBottom();
 
-    // Botão enviar — listener direto (mais confiável que onclick inline no mobile)
-    var sendBtn = document.getElementById('sp-chat-send-btn');
-    if(sendBtn){
-      sendBtn.addEventListener('click', function(e){ e.preventDefault(); spChatSend(); });
-      sendBtn.addEventListener('touchend', function(e){ e.preventDefault(); spChatSend(); });
-    }
-
     // Enter para enviar
-    var input = document.getElementById('sp-chat-input');
-    input.addEventListener('keydown', function(e){
-      if(e.key === 'Enter' && !e.shiftKey){
-        var toggle = document.getElementById('sp-chat-enter-toggle');
-        if(!toggle || toggle.checked){
+    var input = document.getElementById('sp-dm-input');
+    if(input){
+      input.addEventListener('keydown', function(e){
+        if(e.key === 'Enter' && !e.shiftKey){
           e.preventDefault(); spChatSend();
         }
-      }
-    });
-    input.focus();
+      });
+      input.focus();
+    }
 
     // Polling inteligente — só roda com chat aberto + aba visível
     // Backoff: 3s → 5s → 10s quando sem mensagens novas
@@ -2873,7 +2864,7 @@ document.addEventListener('click', function(e){
         .then(function(r){ return r.json(); })
         .then(function(d){
           if(d.messages && d.messages.length){
-            var b = document.getElementById('sp-chat-body');
+            var b = document.getElementById('sp-dm-body');
             d.messages.forEach(function(m){ _appendMsg(b, m); });
             _scrollChatBottom();
             _pollIdleCount = 0;
@@ -2909,28 +2900,65 @@ document.addEventListener('click', function(e){
     content += '<div class="sp-chat-msg-time">' + m.created_at + '</div>';
     div.innerHTML = content;
 
-    // Long press para apagar (só para si)
-    if(m.is_mine){
+    /* Long press em qualquer mensagem → menu de opcoes */
+    (function(el, msg){
       var _lpt = null;
-      div.addEventListener('touchstart', function(){ _lpt = setTimeout(function(){ _chatDeleteMsg(m.id, div); }, 600); });
-      div.addEventListener('touchend', function(){ clearTimeout(_lpt); });
-      div.addEventListener('contextmenu', function(e){ e.preventDefault(); _chatDeleteMsg(m.id, div); });
-    }
+      el.addEventListener('touchstart', function(){ _lpt = setTimeout(function(){ _showMsgMenu(msg, el); }, 500); }, {passive:true});
+      el.addEventListener('touchend', function(){ clearTimeout(_lpt); });
+      el.addEventListener('touchmove', function(){ clearTimeout(_lpt); });
+      el.addEventListener('contextmenu', function(e){ e.preventDefault(); _showMsgMenu(msg, el); });
+    })(div, m);
+
     body.appendChild(div);
   }
 
-  function _chatDeleteMsg(msgId, el) {
-    if(!confirm('Apagar esta mensagem para você?')) return;
-    fetch('/chat/message/' + msgId + '/delete/', {method:'POST', headers:{'X-CSRFToken': csrfVal}})
+  function _showMsgMenu(msg, el){
+    /* Remove menu anterior se existir */
+    var old = document.getElementById('sp-dm-msg-menu');
+    if(old) old.remove();
+
+    var menu = document.createElement('div');
+    menu.id = 'sp-dm-msg-menu';
+    menu.style.cssText = 'position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,0.4);display:flex;align-items:flex-end;justify-content:center';
+    menu.onclick = function(e){ if(e.target===menu) menu.remove(); };
+
+    var sheet = '<div style="background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:400px;padding:16px 20px calc(env(safe-area-inset-bottom,12px)+12px)">';
+    sheet += '<div style="width:36px;height:4px;background:#d1d5db;border-radius:4px;margin:0 auto 12px"></div>';
+    if(msg.is_mine){
+      sheet += '<button style="width:100%;padding:12px;border:none;background:#fef2f2;color:#dc2626;border-radius:10px;font-size:0.9rem;cursor:pointer;margin-bottom:8px" onclick="spDeleteMsg('+msg.id+',\'me\',this)">Apagar para mim</button>';
+      sheet += '<button style="width:100%;padding:12px;border:none;background:#fef2f2;color:#b91c1c;border-radius:10px;font-size:0.9rem;cursor:pointer;margin-bottom:8px" onclick="spDeleteMsg('+msg.id+',\'all\',this)">Apagar para todos</button>';
+    } else {
+      sheet += '<button style="width:100%;padding:12px;border:none;background:#fef2f2;color:#dc2626;border-radius:10px;font-size:0.9rem;cursor:pointer;margin-bottom:8px" onclick="spDeleteMsg('+msg.id+',\'me\',this)">Apagar para mim</button>';
+    }
+    sheet += '<button style="width:100%;padding:12px;border:none;background:#f3f4f6;color:#374151;border-radius:10px;font-size:0.9rem;cursor:pointer" onclick="this.closest(\'#sp-dm-msg-menu\').remove()">Cancelar</button>';
+    sheet += '</div>';
+    menu.innerHTML = sheet;
+    document.body.appendChild(menu);
+  }
+
+  window.spDeleteMsg = function(msgId, mode, btn){
+    var menu = document.getElementById('sp-dm-msg-menu');
+    if(menu) menu.remove();
+    fetch('/chat/message/' + msgId + '/delete/', {
+      method:'POST',
+      headers:{'X-CSRFToken': _getCsrf(), 'Content-Type':'application/x-www-form-urlencoded'},
+      body: 'mode=' + mode
+    })
       .then(function(r){ return r.json(); })
       .then(function(d){
-        if(d.ok) el.innerHTML = '<div class="sp-chat-msg-deleted">🗑️ Mensagem apagada</div>';
+        if(d.ok){
+          var el = document.querySelector('[data-msg-id="'+msgId+'"]');
+          if(el){
+            if(mode==='all') el.innerHTML = '<div style="color:#9ca3af;font-size:0.8rem;font-style:italic;padding:4px 0">Mensagem apagada</div>';
+            else el.remove();
+          }
+        }
       });
-  }
+  };
 
   function _scrollChatBottom(){
     setTimeout(function(){
-      var b = document.getElementById('sp-chat-body');
+      var b = document.getElementById('sp-dm-body');
       if(b) b.scrollTop = b.scrollHeight;
     }, 50);
   }
@@ -2941,66 +2969,50 @@ document.addEventListener('click', function(e){
   };
 
   window.spChatSend = function(){
-    console.log('[CHAT] spChatSend called, uid=', _chatOtherUid);
-    var input = document.getElementById('sp-chat-input');
-    if(!input){ console.log('[CHAT] input not found'); return; }
+    var input = document.getElementById('sp-dm-input');
+    if(!input) return;
     var text = (input.value || '').trim();
-    console.log('[CHAT] text=', text);
     if(!text) return;
     var savedText = text;
     input.value = '';
 
-    /* Feedback visual imediato — mostra mensagem como "enviando" */
-    var body = document.getElementById('sp-chat-body');
-    var tempId = 'sp-chat-sending-' + Date.now();
+    /* Feedback visual imediato */
+    var body = document.getElementById('sp-dm-body');
+    var tempId = 'sp-dm-tmp-' + Date.now();
     if(body){
       var tmpDiv = document.createElement('div');
       tmpDiv.id = tempId;
-      tmpDiv.className = 'sp-chat-msg sp-chat-mine';
-      tmpDiv.innerHTML = '<div class="sp-chat-bubble sp-chat-mine-bubble" style="opacity:0.6">' + _escHtml(text) + '</div>';
+      tmpDiv.className = 'sp-chat-msg sp-chat-msg-mine';
+      tmpDiv.innerHTML = '<div style="opacity:0.5">' + _escHtml(text) + '</div><div class="sp-chat-msg-time">enviando...</div>';
       body.appendChild(tmpDiv);
       _scrollChatBottom();
     }
 
     var fd = new FormData();
     fd.append('text', text);
-
-    /* CSRF: tenta hidden input, depois cookie, depois meta tag */
     var csrf = _getCsrf();
-    if(!csrf){
-      var meta = document.querySelector('meta[name="csrf-token"]');
-      if(meta) csrf = meta.content;
-    }
 
-    console.log('[CHAT] sending to /chat/' + _chatOtherUid + '/send/', 'csrf=', csrf ? csrf.substring(0,8)+'...' : 'EMPTY');
     fetch('/chat/' + _chatOtherUid + '/send/', {
       method: 'POST',
-      headers: {'X-CSRFToken': csrf || ''},
+      headers: {'X-CSRFToken': csrf},
       body: fd,
       credentials: 'same-origin'
     })
       .then(function(r){
-        console.log('[CHAT] response status=', r.status);
-        if(!r.ok){
-          return r.text().then(function(t){ throw new Error('HTTP ' + r.status); });
-        }
+        if(!r.ok) return r.text().then(function(t){ throw new Error('HTTP ' + r.status); });
         return r.json();
       })
       .then(function(d){
-        /* Remove mensagem temporária */
         var tmp = document.getElementById(tempId);
         if(tmp) tmp.remove();
-
-        if(d.error){ alert(d.error); input.value = savedText; return; }
+        if(d.error){ input.value = savedText; return; }
         _appendMsg(body, d);
         _scrollChatBottom();
       })
       .catch(function(err){
-        /* Remove temporária e restaura texto */
         var tmp = document.getElementById(tempId);
         if(tmp) tmp.remove();
         input.value = savedText;
-        alert('Erro ao enviar: ' + err.message + '. Tente recarregar a página.');
       });
   };
 
@@ -3011,7 +3023,7 @@ document.addEventListener('click', function(e){
       .then(function(r){ return r.json(); })
       .then(function(d){
         if(d.error){ alert(d.error); return; }
-        var body = document.getElementById('sp-chat-body');
+        var body = document.getElementById('sp-dm-body');
         _appendMsg(body, d);
         _scrollChatBottom();
         // Fechar gif picker
@@ -3085,39 +3097,109 @@ document.addEventListener('click', function(e){
     ov.className = 'sp-chat-overlay';
     ov.onclick = function(e){ if(e.target === ov) _closeChatModal(); };
 
+    /* Separar ativas e arquivadas */
+    var active = [], archived = [];
+    if(convs && convs.length){
+      convs.forEach(function(c){ (c.archived ? archived : active).push(c); });
+    }
+
+    function _convItem(c){
+      var av = c.other_avatar
+        ? '<img src="' + c.other_avatar + '" class="sp-chat-list-av">'
+        : '<span class="sp-reactor-av-fb" style="width:40px;height:40px;font-size:1rem">' + (c.other_name||'?').charAt(0).toUpperCase() + '</span>';
+      var badge = c.unread > 0 ? '<span class="sp-chat-list-badge">' + c.unread + '</span>' : '';
+      var lastTxt = c.last_message_gif ? 'GIF' : _escHtml(c.last_message);
+      return '<div class="sp-chat-list-item" data-conv-id="'+c.conversation_id+'" data-other-uid="'+c.other_user_id+'" data-archived="'+(c.archived?1:0)+'">'
+        + av
+        + '<div class="sp-chat-list-info"><div class="sp-chat-list-name">' + _escHtml(c.other_name) + '</div>'
+        + '<div class="sp-chat-list-last">' + lastTxt + '</div></div>'
+        + '<div style="text-align:right">' + badge
+        + '<div class="sp-chat-list-time">' + c.last_time + '</div></div></div>';
+    }
+
     var items = '';
-    if(!convs || !convs.length){
-      items = '<div style="padding:20px;text-align:center;color:#9ca3af">Nenhuma conversa ainda.<br>Visite o perfil de um amigo para iniciar.</div>';
+    if(!active.length && !archived.length){
+      items = '<div style="padding:20px;text-align:center;color:#9ca3af">Nenhuma conversa ainda.<br>Toque em "Conversar" no perfil de alguem.</div>';
     } else {
-      convs.forEach(function(c){
-        var av = c.other_avatar
-          ? '<img src="' + c.other_avatar + '" class="sp-chat-list-av">'
-          : '<span class="sp-reactor-av-fb" style="width:40px;height:40px;font-size:1rem">' + (c.other_name||'?').charAt(0).toUpperCase() + '</span>';
-        var badge = c.unread > 0 ? '<span class="sp-chat-list-badge">' + c.unread + '</span>' : '';
-        var lastTxt = c.last_message_gif ? '🎞️ GIF' : _escHtml(c.last_message);
-        items += '<div class="sp-chat-list-item" onclick="spOpenChat(' + c.other_user_id + ')">'
-          + av
-          + '<div class="sp-chat-list-info"><div class="sp-chat-list-name">' + _escHtml(c.other_name) + '</div>'
-          + '<div class="sp-chat-list-last">' + lastTxt + '</div></div>'
-          + '<div style="text-align:right">' + badge
-          + '<div class="sp-chat-list-time">' + c.last_time + '</div></div></div>';
-      });
+      active.forEach(function(c){ items += _convItem(c); });
+      if(archived.length){
+        items += '<div style="padding:10px 16px 4px;font-size:0.75rem;color:#9ca3af;font-weight:600">ARQUIVADAS</div>';
+        archived.forEach(function(c){ items += _convItem(c); });
+      }
     }
 
     var html = '<div class="sp-chat-modal" style="height:70vh">'
       + '<div class="sp-chat-header">'
-      + '<span class="sp-chat-header-name">💬 Conversas</span>'
+      + '<span class="sp-chat-header-name">Conversas</span>'
       + '<button class="sp-chat-close" onclick="_closeChatModal()">&times;</button>'
       + '</div>'
-      + '<div class="sp-chat-body" style="padding:0">' + items + '</div>'
+      + '<div class="sp-chat-body" id="sp-dm-conv-list" style="padding:0">' + items + '</div>'
       + '<div class="sp-chat-footer" style="justify-content:center">'
-      + '<button type="button" class="sp-visitor-bar-btn sp-vbar-chat" onclick="_showNewChatPicker()" style="font-size:0.82rem;padding:8px 16px">＋ Nova conversa</button>'
+      + '<button type="button" class="sp-visitor-bar-btn sp-vbar-chat" onclick="_showNewChatPicker()" style="font-size:0.82rem;padding:8px 16px">+ Nova conversa</button>'
       + '</div></div>';
 
     ov.innerHTML = html;
     document.body.appendChild(ov);
     _chatOverlay = ov;
+
+    /* Tap e long press nas conversas */
+    var listEl = document.getElementById('sp-dm-conv-list');
+    if(listEl){
+      listEl.querySelectorAll('.sp-chat-list-item').forEach(function(el){
+        var _lpt = null, _moved = false;
+        el.addEventListener('click', function(){ if(!_moved) spOpenChat(parseInt(el.dataset.otherUid)); });
+        el.addEventListener('touchstart', function(){
+          _moved = false;
+          _lpt = setTimeout(function(){ _moved = true; _showConvMenu(el); }, 500);
+        }, {passive:true});
+        el.addEventListener('touchend', function(){ clearTimeout(_lpt); });
+        el.addEventListener('touchmove', function(){ clearTimeout(_lpt); _moved = true; });
+        el.addEventListener('contextmenu', function(e){ e.preventDefault(); _showConvMenu(el); });
+      });
+    }
   }
+
+  function _showConvMenu(el){
+    var convId = el.dataset.convId;
+    var isArchived = el.dataset.archived === '1';
+    var old = document.getElementById('sp-dm-conv-menu');
+    if(old) old.remove();
+
+    var menu = document.createElement('div');
+    menu.id = 'sp-dm-conv-menu';
+    menu.style.cssText = 'position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,0.4);display:flex;align-items:flex-end;justify-content:center';
+    menu.onclick = function(e){ if(e.target===menu) menu.remove(); };
+
+    var sheet = '<div style="background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:400px;padding:16px 20px calc(env(safe-area-inset-bottom,12px)+12px)">';
+    sheet += '<div style="width:36px;height:4px;background:#d1d5db;border-radius:4px;margin:0 auto 12px"></div>';
+    if(isArchived){
+      sheet += '<button style="width:100%;padding:12px;border:none;background:#f0fdf4;color:#166534;border-radius:10px;font-size:0.9rem;cursor:pointer;margin-bottom:8px" onclick="spConvAction('+convId+',\'unarchive\')">Desarquivar</button>';
+    } else {
+      sheet += '<button style="width:100%;padding:12px;border:none;background:#eff6ff;color:#1d4ed8;border-radius:10px;font-size:0.9rem;cursor:pointer;margin-bottom:8px" onclick="spConvAction('+convId+',\'archive\')">Arquivar conversa</button>';
+    }
+    sheet += '<button style="width:100%;padding:12px;border:none;background:#fef2f2;color:#dc2626;border-radius:10px;font-size:0.9rem;cursor:pointer;margin-bottom:8px" onclick="spConvAction('+convId+',\'delete\')">Apagar conversa</button>';
+    sheet += '<button style="width:100%;padding:12px;border:none;background:#f3f4f6;color:#374151;border-radius:10px;font-size:0.9rem;cursor:pointer" onclick="this.closest(\'#sp-dm-conv-menu\').remove()">Cancelar</button>';
+    sheet += '</div>';
+    menu.innerHTML = sheet;
+    document.body.appendChild(menu);
+  }
+
+  window.spConvAction = function(convId, action){
+    var menu = document.getElementById('sp-dm-conv-menu');
+    if(menu) menu.remove();
+    fetch('/chat/' + convId + '/action/', {
+      method: 'POST',
+      headers: {'X-CSRFToken': _getCsrf(), 'Content-Type':'application/x-www-form-urlencoded'},
+      body: 'action=' + action
+    })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(d.ok){
+          /* Recarregar lista */
+          spOpenChatList();
+        }
+      });
+  };
 
   window._showNewChatPicker = function(){
     fetch('/chat/friends/')
