@@ -843,6 +843,10 @@ class SocialPost(models.Model):
     photo = models.ImageField(upload_to="social/", blank=True, null=True)
     video = models.FileField(upload_to="social/videos/", blank=True, null=True)
     visibility = models.CharField(max_length=10, choices=VISIBILITY_CHOICES, default="all")
+    shared_from = models.ForeignKey(
+        "self", null=True, blank=True, related_name="reposts",
+        on_delete=models.SET_NULL,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
 

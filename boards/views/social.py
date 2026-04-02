@@ -523,24 +523,46 @@ def social_friends_feed(request):
     ):
         comments_by_post[pid] = cnt
 
+    # Prefetch shared_from (reposts)
+    shared_ids = [p.shared_from_id for p in posts if p.shared_from_id]
+    shared_posts = {}
+    if shared_ids:
+        for sp in SocialPost.objects.filter(id__in=shared_ids).select_related("user", "user__profile"):
+            shared_posts[sp.id] = sp
+
     result = []
     for p in posts:
         prof = getattr(p.user, "profile", None)
         p_reactions = reactions_by_post.get(p.id, [])
         my_reaction = next((r.reaction for r in p_reactions if r.user_id == me.id), None)
+
+        # Se for repost, usa mídia/texto do original
+        display_post = p
+        shared_info = None
+        if p.shared_from_id and p.shared_from_id in shared_posts:
+            orig = shared_posts[p.shared_from_id]
+            display_post = orig
+            orig_prof = getattr(orig.user, "profile", None)
+            shared_info = {
+                "original_user_name": orig_prof.display_name if orig_prof else orig.user.get_full_name(),
+                "original_user_id": orig.user_id,
+                "original_user_avatar": orig_prof.avatar.url if orig_prof and orig_prof.avatar else "",
+            }
+
         result.append({
             "id": p.id,
             "user_name": prof.display_name if prof else p.user.get_full_name(),
             "user_avatar": prof.avatar.url if prof and prof.avatar else "",
             "user_id": p.user_id,
-            "text": p.text,
-            "photo": p.photo.url if p.photo else "",
-            "video": p.video.url if p.video else "",
+            "text": display_post.text,
+            "photo": display_post.photo.url if display_post.photo else "",
+            "video": display_post.video.url if display_post.video else "",
             "created_at": timezone.localtime(p.created_at).strftime("%d/%m %H:%M"),
             "reaction_counts": dict(Counter(r.reaction for r in p_reactions)),
             "total_reactions": len(p_reactions),
             "my_reaction": my_reaction,
             "comment_count": comments_by_post.get(p.id, 0),
+            "shared_from": shared_info,
         })
 
     return JsonResponse({"posts": result})
@@ -2234,8 +2256,12 @@ def chat_send(request, user_id: int):
         import threading
 
         def _delayed_notify(msg_id, recipient_id, sender_id, preview):
-            """Espera 60s, verifica se leu, se não → notifica via WhatsApp/email."""
-            from boards.services.notifications import notify_chat_message
+            """Espera 60s, verifica se leu, se não → notifica via WhatsApp/email.
+            Se fora da janela de notificação, reagenda para a próxima janela."""
+            from boards.services.notifications import (
+                notify_chat_message, is_in_notification_window,
+                next_notification_window,
+            )
             from django.contrib.auth import get_user_model
             _User = get_user_model()
             try:
@@ -2243,6 +2269,20 @@ def chat_send(request, user_id: int):
                 if m.seen:
                     return  # Já leu, não notifica
                 _recipient = _User.objects.get(id=recipient_id)
+                prof = getattr(_recipient, "profile", None)
+                if prof and not is_in_notification_window(prof):
+                    # Fora da janela — reagenda para a próxima abertura
+                    nxt = next_notification_window(prof)
+                    if nxt:
+                        delay = (nxt - timezone.now()).total_seconds()
+                        if delay > 0:
+                            t2 = threading.Timer(
+                                delay, _delayed_notify,
+                                args=[msg_id, recipient_id, sender_id, preview],
+                            )
+                            t2.daemon = True
+                            t2.start()
+                    return
                 _sender = _User.objects.get(id=sender_id)
                 notify_chat_message(
                     recipient=_recipient, sender=_sender,
@@ -2405,6 +2445,34 @@ def chat_sticker_delete(request, sticker_id: int):
     sticker.is_active = False
     sticker.save(update_fields=["is_active"])
     return JsonResponse({"ok": True})
+
+
+# ---------------------------------------------------------------
+# Compartilhar post — repost na própria página
+# ---------------------------------------------------------------
+@login_required
+@require_POST
+def social_post_repost(request, post_id: int):
+    """Cria um repost na página do usuário."""
+    original = get_object_or_404(SocialPost, id=post_id, is_active=True)
+    # Não reposta o próprio post
+    if original.user_id == request.user.id:
+        return JsonResponse({"error": "Não é possível compartilhar o próprio post."}, status=400)
+    # Se o original é um repost, aponta para o original raiz
+    root = original.shared_from if original.shared_from_id else original
+    # Verifica se já repostou
+    already = SocialPost.objects.filter(
+        user=request.user, shared_from=root, is_active=True,
+    ).exists()
+    if already:
+        return JsonResponse({"error": "Você já compartilhou este post."}, status=400)
+    repost = SocialPost.objects.create(
+        user=request.user,
+        shared_from=root,
+        text="",
+        visibility=SocialPost.VISIBILITY_ALL,
+    )
+    return JsonResponse({"ok": True, "repost_id": repost.id})
 
 
 # ---------------------------------------------------------------

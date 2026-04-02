@@ -975,8 +975,20 @@ var _CAMILA_AVATARS = {
 
       html += '<div class="sp-reel-slide" data-idx="'+i+'" data-post-id="'+p.id+'">';
       html += '<div class="sp-reel-header">';
-      html += '<a href="/social/'+p.user_id+'/" style="display:flex;align-items:center;gap:8px;text-decoration:none">'+avHtml;
-      html += '<div><span class="sp-reel-name">'+p.user_name+'</span><br><span class="sp-reel-time">'+p.created_at+'</span></div></a>';
+      if(p.shared_from){
+        /* Repost: mostra quem compartilhou + autor original */
+        html += '<div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0">';
+        html += '<a href="/social/'+p.user_id+'/" style="display:flex;align-items:center;gap:6px;text-decoration:none;font-size:0.75rem;color:#a78bfa">'+avHtml+' <span>🔄 '+p.user_name+' compartilhou</span></a>';
+        var origAv = p.shared_from.original_user_avatar
+          ? '<img class="sp-reel-av" src="'+p.shared_from.original_user_avatar+'" alt="" style="width:28px;height:28px">'
+          : '<span class="sp-reel-av-placeholder" style="width:28px;height:28px;font-size:0.7rem">'+((p.shared_from.original_user_name||'?').charAt(0).toUpperCase())+'</span>';
+        html += '<a href="/social/'+p.shared_from.original_user_id+'/" style="display:flex;align-items:center;gap:6px;text-decoration:none">'+origAv;
+        html += '<div><span class="sp-reel-name">'+p.shared_from.original_user_name+'</span><br><span class="sp-reel-time">'+p.created_at+'</span></div></a>';
+        html += '</div>';
+      } else {
+        html += '<a href="/social/'+p.user_id+'/" style="display:flex;align-items:center;gap:8px;text-decoration:none">'+avHtml;
+        html += '<div><span class="sp-reel-name">'+p.user_name+'</span><br><span class="sp-reel-time">'+p.created_at+'</span></div></a>';
+      }
       html += '</div>';
 
       if(p.video){
@@ -1000,6 +1012,7 @@ var _CAMILA_AVATARS = {
       html += '<input class="sp-reel-comment-input" id="sp-reel-cinput-'+p.id+'" placeholder="Comentar..." maxlength="500" onkeydown="if(event.key===\'Enter\'&&!document.getElementById(\'sp-reel-mention-dd-'+p.id+'\').classList.contains(\'active\'))spReelComment('+p.id+',this)">';
       html += '</div>';
       html += '<button class="sp-reel-comment-send" onclick="spReelComment('+p.id+',this.previousElementSibling.querySelector(\'input\'))">➤</button>';
+      html += '<button class="sp-reel-action sp-reel-share" onclick="spSharePost('+p.id+')" title="Compartilhar">🔗</button>';
       html += '</div>';
       /* Comments section (hidden by default) */
       html += '<div class="sp-reel-comments sp-hidden" id="sp-reel-comments-'+p.id+'"></div>';
@@ -1235,6 +1248,66 @@ var _CAMILA_AVATARS = {
         setTimeout(function(){ input.placeholder = 'Comentar...'; }, 2000);
       });
   };
+
+  /* ═══ Compartilhar post ═══ */
+  window.spSharePost = function(postId){
+    /* Remove menu anterior */
+    var old = document.getElementById('sp-share-menu');
+    if(old) old.remove();
+
+    var ov = document.createElement('div');
+    ov.id = 'sp-share-menu';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,0.4);display:flex;align-items:flex-end;justify-content:center';
+    ov.onclick = function(e){ if(e.target===ov) ov.remove(); };
+
+    var sheet = '<div style="background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:400px;padding:16px 20px calc(env(safe-area-inset-bottom,12px)+12px)">';
+    sheet += '<div style="width:36px;height:4px;background:#d1d5db;border-radius:4px;margin:0 auto 12px"></div>';
+    sheet += '<div style="font-weight:600;font-size:0.95rem;margin-bottom:12px;text-align:center">Compartilhar</div>';
+    sheet += '<button style="width:100%;padding:12px;border:none;background:#f3e8ff;color:#7c3aed;border-radius:10px;font-size:0.9rem;cursor:pointer;margin-bottom:8px;font-weight:600" '
+      + 'onclick="spRepost('+postId+')">📄 Na minha página</button>';
+    sheet += '<button style="width:100%;padding:12px;border:none;background:#dcfce7;color:#16a34a;border-radius:10px;font-size:0.9rem;cursor:pointer;margin-bottom:8px;font-weight:600" '
+      + 'onclick="spShareZap('+postId+')">💬 Compartilhar por Zap</button>';
+    sheet += '<button style="width:100%;padding:12px;border:none;background:#f3f4f6;color:#374151;border-radius:10px;font-size:0.9rem;cursor:pointer" onclick="this.closest(\'#sp-share-menu\').remove()">Cancelar</button>';
+    sheet += '</div>';
+    ov.innerHTML = sheet;
+    document.body.appendChild(ov);
+  };
+
+  window.spRepost = function(postId){
+    var menu = document.getElementById('sp-share-menu');
+    if(menu) menu.remove();
+    fetch('/social/post/' + postId + '/repost/', {
+      method:'POST',
+      headers:{'X-CSRFToken': (document.querySelector('[name=csrfmiddlewaretoken]')||{}).value || ''}
+    })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(d.error){ alert(d.error); return; }
+        _spToast('Publicação compartilhada na sua página! ✓');
+      })
+      .catch(function(){ alert('Erro ao compartilhar.'); });
+  };
+
+  window.spShareZap = function(postId){
+    var menu = document.getElementById('sp-share-menu');
+    if(menu) menu.remove();
+    var url = location.origin + '/social/?post=' + postId;
+    if(navigator.share){
+      navigator.share({title: 'Veja esta publicação no Espaço Social', url: url}).catch(function(){});
+    } else {
+      /* Fallback: abre WhatsApp Web */
+      var waUrl = 'https://wa.me/?text=' + encodeURIComponent('Veja esta publicação no Espaço Social: ' + url);
+      window.open(waUrl, '_blank');
+    }
+  };
+
+  function _spToast(msg){
+    var t = document.createElement('div');
+    t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1f2937;color:#fff;padding:10px 20px;border-radius:12px;font-size:0.85rem;z-index:9999;animation:fadeIn .3s';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(function(){ t.style.opacity='0'; t.style.transition='opacity .3s'; setTimeout(function(){ t.remove(); }, 350); }, 3000);
+  }
 
   /* ═══ Setas de navegação no reel ═══ */
   var _reelArrowTimer = null;
@@ -2945,6 +3018,11 @@ document.addEventListener('click', function(e){
 
     var sheet = '<div style="background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:400px;padding:16px 20px calc(env(safe-area-inset-bottom,12px)+12px)">';
     sheet += '<div style="width:36px;height:4px;background:#d1d5db;border-radius:4px;margin:0 auto 12px"></div>';
+    /* Salvar como figurinha — disponível se msg tem gif ou sticker */
+    var mediaUrl = msg.sticker_url || msg.gif_url || '';
+    if(mediaUrl){
+      sheet += '<button style="width:100%;padding:12px;border:none;background:#f3e8ff;color:#7c3aed;border-radius:10px;font-size:0.9rem;cursor:pointer;margin-bottom:8px;font-weight:600" onclick="spSaveAsSticker(\''+mediaUrl.replace(/'/g,"\\'")+'\')">🩷 Salvar como figurinha</button>';
+    }
     if(msg.is_mine){
       sheet += '<button style="width:100%;padding:12px;border:none;background:#fef2f2;color:#dc2626;border-radius:10px;font-size:0.9rem;cursor:pointer;margin-bottom:8px" onclick="spDeleteMsg('+msg.id+',\'me\',this)">Apagar para mim</button>';
       sheet += '<button style="width:100%;padding:12px;border:none;background:#fef2f2;color:#b91c1c;border-radius:10px;font-size:0.9rem;cursor:pointer;margin-bottom:8px" onclick="spDeleteMsg('+msg.id+',\'all\',this)">Apagar para todos</button>';
@@ -2975,6 +3053,29 @@ document.addEventListener('click', function(e){
           }
         }
       });
+  };
+
+  /* Salvar GIF/sticker recebido como minha figurinha */
+  window.spSaveAsSticker = function(url){
+    var menu = document.getElementById('sp-dm-msg-menu');
+    if(menu) menu.remove();
+    /* Baixa o arquivo e re-envia como upload */
+    fetch(url)
+      .then(function(r){ return r.blob(); })
+      .then(function(blob){
+        var ext = url.match(/\.(gif|webp|mp4|png|jpe?g)/i);
+        var fname = 'sticker' + (ext ? '.' + ext[1] : '.gif');
+        var fd = new FormData();
+        fd.append('image', blob, fname);
+        return fetch('/chat/stickers/create/', {method:'POST', headers:{'X-CSRFToken': _getCsrf()}, body: fd});
+      })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(d.error){ alert(d.error); return; }
+        if(window._spToast) _spToast('Figurinha salva! 🩷');
+        else alert('Figurinha salva!');
+      })
+      .catch(function(){ alert('Erro ao salvar figurinha. Tente com uma imagem local.'); });
   };
 
   function _scrollChatBottom(){
@@ -3502,13 +3603,24 @@ function spViewersCancelPress(){
 })();
 
 /* ═══════════════════════════════════════════════
-   DEEP LINK — abrir chat via ?chat=UID
+   DEEP LINK — abrir chat via ?chat=UID ou post via ?post=ID
    ═══════════════════════════════════════════════ */
 (function(){
   var params = new URLSearchParams(window.location.search);
   var chatUid = params.get('chat');
   if(chatUid && window.spOpenChat){
     setTimeout(function(){ window.spOpenChat(parseInt(chatUid)); }, 600);
+  }
+  var postId = params.get('post');
+  if(postId){
+    /* Navega para o reel e tenta encontrar o slide com esse post */
+    setTimeout(function(){
+      if(window.spSwitchTab) window.spSwitchTab('friends');
+      setTimeout(function(){
+        var slide = document.querySelector('[data-post-id="'+postId+'"]');
+        if(slide) slide.scrollIntoView({behavior:'smooth', block:'center'});
+      }, 800);
+    }, 600);
   }
 })();
 
