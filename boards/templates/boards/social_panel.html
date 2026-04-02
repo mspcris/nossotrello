@@ -3215,7 +3215,11 @@ document.addEventListener('click', function(e){
     _chatOverlay = ov;
 
     var body = document.getElementById('sp-dm-body');
-    data.messages.forEach(function(m){ _appendMsg(body, m); });
+    if(!data.messages || !data.messages.length){
+      body.innerHTML = '<div style="flex:1;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:.9rem;text-align:center;padding:24px">Nenhuma mensagem ainda.<br>Diga oi! 👋</div>';
+    } else {
+      data.messages.forEach(function(m){ _appendMsg(body, m); });
+    }
     _scrollChatBottom();
 
     // Enter para enviar

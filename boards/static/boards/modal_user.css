@@ -1027,10 +1027,7 @@
    ============================================================ */
 #sp-feed-wrap{
   position:relative; overflow:hidden; border-radius:16px;
-  background:#000; min-height:420px;
-}
-@media (max-width:900px){
-  #sp-feed-wrap{ border-radius:0; min-height:calc(100vh - 140px); }
+  background:#000; min-height:480px;
 }
 .sp-friends-reel-wrap{
   position:relative; overflow:hidden; border-radius:16px;
