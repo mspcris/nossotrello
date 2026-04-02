@@ -51,7 +51,10 @@
       <input type="file" id="sp-avatar-input" accept="image/*" style="display:none"
              onchange="spOpenCropper(this)">
       {% else %}
-      <div class="sp-avatar-tap">
+      <div class="sp-avatar-tap" style="cursor:pointer"
+           {% if profile.avatar %}onclick="spShowProfilePhoto('{{ profile.avatar.url }}')"
+           {% elif profile.avatar_choice %}onclick="spShowProfilePhoto('{% static 'images/avatar/' %}{{ profile.avatar_choice }}')"
+           {% endif %}>
         {% if profile.avatar %}
           <img src="{{ profile.avatar.url }}" alt="" class="sp-avatar">
         {% elif profile.avatar_choice %}
@@ -3607,4 +3610,25 @@ function spViewersCancelPress(){
     }
   });
 })();
+
+/* ═══════════════════════════════════════════════
+   FOTO DE PERFIL EM TELA CHEIA
+   ═══════════════════════════════════════════════ */
+window.spShowProfilePhoto = function(url){
+  if(!url) return;
+  var ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;cursor:pointer;animation:sp-fade-in 0.2s ease';
+  ov.onclick = function(){ ov.remove(); };
+  var img = document.createElement('img');
+  img.src = url;
+  img.style.cssText = 'max-width:92vw;max-height:85vh;border-radius:12px;object-fit:contain;box-shadow:0 8px 32px rgba(0,0,0,0.5)';
+  img.onclick = function(e){ e.stopPropagation(); };
+  var close = document.createElement('button');
+  close.textContent = '\u2715';
+  close.style.cssText = 'position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:1.5rem;width:40px;height:40px;border-radius:50%;cursor:pointer';
+  close.onclick = function(){ ov.remove(); };
+  ov.appendChild(img);
+  ov.appendChild(close);
+  document.body.appendChild(ov);
+};
 </script>
