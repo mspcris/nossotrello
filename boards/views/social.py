@@ -222,12 +222,11 @@ def _build_social_context(request, target_user, extra=None):
 
             # Friendship post annotation
             post.is_friendship = False
+            post.friendship_data = None
             if post.text.startswith("__friendship__:"):
                 post.is_friendship = True
                 try:
                     friend_uid = int(post.text.split(":")[1])
-                    from django.contrib.auth import get_user_model
-                    User = get_user_model()
                     friend_user = User.objects.select_related("profile").get(id=friend_uid)
                     friend_prof = getattr(friend_user, "profile", None)
                     post_prof = getattr(post.user, "profile", None)
@@ -241,7 +240,7 @@ def _build_social_context(request, target_user, extra=None):
                         "user_avatar_choice": post_prof.avatar_choice if post_prof else "",
                     }
                 except Exception:
-                    post.friendship_data = None
+                    pass
 
     # Marca visto
     if not is_me and posts:
@@ -593,8 +592,6 @@ def social_friends_feed(request):
         if display_post.text.startswith("__friendship__:"):
             try:
                 friend_uid = int(display_post.text.split(":")[1])
-                from django.contrib.auth import get_user_model
-                User = get_user_model()
                 friend_user = User.objects.select_related("profile").get(id=friend_uid)
                 friend_prof = getattr(friend_user, "profile", None)
                 friendship_data = {
