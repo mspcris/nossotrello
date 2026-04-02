@@ -1702,7 +1702,7 @@ video.sp-post-media {
 }
 #um-right-el .sp-cover { height: 90px; }
 #um-right-el .sp-fab { display: none; }
-#um-right-el .sp-sheet-overlay { display: none; }
+#um-right-el .sp-sheet-overlay.sp-hidden { display: none; }
 
 /* ═══════════ PÍLULAS DE COMENTÁRIOS NÃO VISTOS ═══════════ */
 .sp-comment-pills {
