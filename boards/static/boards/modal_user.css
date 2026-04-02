@@ -1097,6 +1097,17 @@
   padding:10px 14px; background:linear-gradient(to bottom,rgba(0,0,0,.6),transparent);
   z-index:2;
 }
+.sp-reel-edit-btn{
+  background:rgba(255,255,255,.2); border:none; color:#fff; font-size:.9rem;
+  padding:6px 10px; border-radius:8px; cursor:pointer; backdrop-filter:blur(4px);
+  margin-left:auto; flex-shrink:0;
+}
+.sp-reel-edit-btn:active{ transform:scale(0.9); }
+.sp-post-edit-btn{
+  background:none; border:none; color:#7c3aed; font-size:.75rem; cursor:pointer;
+  padding:2px 6px; border-radius:6px;
+}
+.sp-post-edit-btn:hover{ background:#f3e8ff; }
 .sp-reel-av{
   width:36px; height:36px; border-radius:50%; border:2px solid #fff; object-fit:cover;
 }

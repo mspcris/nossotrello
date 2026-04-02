@@ -22,7 +22,7 @@ from django.db import models
 from collections import Counter, defaultdict
 
 from ..models import (
-    Board, BoardMembership, SocialPost, SocialPostSeen,
+    Board, BoardMembership, SocialPost, SocialPostSeen, SocialPostVersion,
     SocialPostReaction, SocialPostComment, SocialCommentReaction,
     DailyCheckIn, Card, CardFollow, UserProfile,
     CamilaKnowledge, CamilaConfig, SocialFriendship, SocialCardDismiss, CamilaPOP,
@@ -694,6 +694,48 @@ def social_post_delete(request, post_id: int):
     post.save(update_fields=["is_active"])
     ctx = _build_social_context(request, request.user)
     return render(request, "boards/social_panel.html", ctx)
+
+
+# ---------------------------------------------------------------
+# Editar post (POST → JSON)
+# ---------------------------------------------------------------
+@login_required
+@require_POST
+def social_post_edit(request, post_id: int):
+    """Edita texto e/ou visibilidade de um post. Salva versão anterior."""
+    post = get_object_or_404(SocialPost, id=post_id, user=request.user)
+
+    # Salvar versão anterior (audit trail — nunca apagar)
+    SocialPostVersion.objects.create(
+        post=post,
+        text=post.text,
+        photo=post.photo if post.photo else None,
+        video=post.video if post.video else None,
+        gif_url=post.gif_url,
+        sticker_url=post.sticker_url,
+        visibility=post.visibility,
+    )
+
+    new_text = request.POST.get("text")
+    new_visibility = request.POST.get("visibility")
+
+    updated = []
+    if new_text is not None:
+        post.text = new_text.strip()
+        updated.append("text")
+    if new_visibility in ("all", "friends"):
+        post.visibility = new_visibility
+        updated.append("visibility")
+
+    if updated:
+        post.save(update_fields=updated)
+
+    return JsonResponse({
+        "ok": True,
+        "id": post.id,
+        "text": post.text,
+        "visibility": post.visibility,
+    })
 
 
 # ---------------------------------------------------------------

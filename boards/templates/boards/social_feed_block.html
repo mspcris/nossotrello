@@ -122,6 +122,10 @@
                 title="{% if post.visibility == 'friends' %}Apenas amigos{% else %}Todos{% endif %}">
           {% if post.visibility == "friends" %}🔒{% else %}🌍{% endif %}
         </button>
+        {% if not post.is_friendship %}
+        <button type="button" class="sp-post-edit-btn"
+                onclick="spEditPostFeed({{ post.id }},this)">✏️ Editar</button>
+        {% endif %}
         <button type="button" class="sp-post-delete"
                 hx-post="{% url 'boards:social_post_delete' post.id %}"
                 hx-target="#social-panel" hx-swap="outerHTML"

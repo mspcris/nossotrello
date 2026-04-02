@@ -866,6 +866,26 @@ class SocialPost(models.Model):
         return f"{self.user} — {self.created_at:%Y-%m-%d}"
 
 
+class SocialPostVersion(models.Model):
+    """Histórico de edições — nunca apagar. Invisível para o usuário."""
+    post = models.ForeignKey(
+        SocialPost, related_name="versions", on_delete=models.CASCADE,
+    )
+    text = models.TextField(blank=True, default="")
+    photo = models.ImageField(upload_to="social/versions/", blank=True, null=True)
+    video = models.FileField(upload_to="social/versions/videos/", blank=True, null=True)
+    gif_url = models.URLField(blank=True, default="")
+    sticker_url = models.URLField(blank=True, default="")
+    visibility = models.CharField(max_length=10, default="all")
+    edited_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-edited_at"]
+
+    def __str__(self):
+        return f"v{self.pk} of post {self.post_id} @ {self.edited_at:%Y-%m-%d %H:%M}"
+
+
 class SocialPostSeen(models.Model):
     """Rastreia quando viewer viu os posts de target_user pela última vez (para o efeito de aura)."""
     viewer = models.ForeignKey(

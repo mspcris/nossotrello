@@ -946,6 +946,7 @@ var _CAMILA_AVATARS = {
   var _reelLoaded = false;
   var _reelPosts = [];
   var _reelIdx = 0;
+  var _myUserId = {{ request.user.id }};
   var _csrf = function(){ return document.querySelector("[name=csrfmiddlewaretoken]")?.value || ""; };
 
   window.spSwitchTab = function(tab){
@@ -1007,8 +1008,11 @@ var _CAMILA_AVATARS = {
         html += '<div><span class="sp-reel-name">'+p.shared_from.original_user_name+'</span><br><span class="sp-reel-time">'+p.created_at+'</span></div></a>';
         html += '</div>';
       } else {
-        html += '<a href="/social/'+p.user_id+'/" style="display:flex;align-items:center;gap:8px;text-decoration:none">'+avHtml;
+        html += '<a href="/social/'+p.user_id+'/" style="display:flex;align-items:center;gap:8px;text-decoration:none;flex:1;min-width:0">'+avHtml;
         html += '<div><span class="sp-reel-name">'+p.user_name+'</span><br><span class="sp-reel-time">'+p.created_at+'</span></div></a>';
+      }
+      if(p.user_id === _myUserId){
+        html += '<button type="button" class="sp-reel-edit-btn" onclick="spEditPost('+p.id+',this)" title="Editar">✏️</button>';
       }
       html += '</div>';
 
@@ -1335,6 +1339,139 @@ var _CAMILA_AVATARS = {
         }
         setTimeout(function(){ input.placeholder = 'Comentar...'; }, 2000);
       });
+  };
+
+  /* ═══ Editar post ═══ */
+  window.spEditPost = function(postId, btn){
+    var slide = btn ? btn.closest('.sp-reel-slide') : null;
+    var post = _reelPosts.find(function(p){ return p.id === postId; });
+    var currentText = post ? post.text : '';
+
+    var old = document.getElementById('sp-edit-post-modal');
+    if(old) old.remove();
+
+    var ov = document.createElement('div');
+    ov.id = 'sp-edit-post-modal';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;padding:16px';
+    ov.onclick = function(e){ if(e.target === ov) ov.remove(); };
+
+    var html = '<div style="background:#fff;border-radius:16px;width:100%;max-width:400px;padding:20px;box-shadow:0 8px 40px rgba(0,0,0,0.3)">';
+    html += '<div style="font-weight:700;font-size:1rem;margin-bottom:12px;color:#1f2937">Editar publicação</div>';
+    html += '<textarea id="sp-edit-textarea" style="width:100%;min-height:100px;border:1px solid #d1d5db;border-radius:12px;padding:12px;font-size:.9rem;resize:vertical;box-sizing:border-box;font-family:inherit" maxlength="2000">'+_escHtml(currentText)+'</textarea>';
+    html += '<div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">';
+    html += '<button type="button" onclick="this.closest(\'#sp-edit-post-modal\').remove()" style="padding:10px 20px;border:1px solid #d1d5db;border-radius:10px;background:#fff;color:#374151;font-size:.85rem;cursor:pointer">Cancelar</button>';
+    html += '<button type="button" id="sp-edit-save-btn" style="padding:10px 20px;border:none;border-radius:10px;background:#7c3aed;color:#fff;font-size:.85rem;font-weight:600;cursor:pointer">Salvar</button>';
+    html += '</div></div>';
+    ov.innerHTML = html;
+    document.body.appendChild(ov);
+
+    var textarea = document.getElementById('sp-edit-textarea');
+    textarea.focus();
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+
+    document.getElementById('sp-edit-save-btn').addEventListener('click', function(){
+      var newText = textarea.value.trim();
+      var saveBtn = this;
+      saveBtn.textContent = 'Salvando...';
+      saveBtn.disabled = true;
+      fetch('/social/post/' + postId + '/edit/', {
+        method: 'POST',
+        headers: {'X-CSRFToken': _csrf(), 'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'text=' + encodeURIComponent(newText)
+      }).then(function(r){ return r.json(); })
+        .then(function(d){
+          if(d.ok){
+            /* Atualizar texto no array local */
+            if(post) post.text = newText;
+            /* Atualizar no slide visível */
+            if(slide){
+              var textDiv = slide.querySelector('.sp-reel-text');
+              if(newText){
+                if(textDiv){
+                  textDiv.innerHTML = _spMentionify(_escHtml(newText));
+                } else {
+                  var nd = document.createElement('div');
+                  nd.className = 'sp-reel-text';
+                  nd.innerHTML = _spMentionify(_escHtml(newText));
+                  var actions = slide.querySelector('.sp-reel-actions');
+                  if(actions) slide.insertBefore(nd, actions);
+                }
+              } else if(textDiv){
+                textDiv.remove();
+              }
+            }
+            ov.remove();
+          } else {
+            alert(d.error || 'Erro ao editar.');
+            saveBtn.textContent = 'Salvar';
+            saveBtn.disabled = false;
+          }
+        }).catch(function(){
+          alert('Erro de conexão.');
+          saveBtn.textContent = 'Salvar';
+          saveBtn.disabled = false;
+        });
+    });
+  };
+
+  /* ═══ Editar post do feed server-side ═══ */
+  window.spEditPostFeed = function(postId, btn){
+    var postEl = document.getElementById('sp-post-' + postId);
+    var textEl = postEl ? postEl.querySelector('.sp-post-text') : null;
+    var currentText = textEl ? textEl.textContent.trim() : '';
+
+    var old = document.getElementById('sp-edit-post-modal');
+    if(old) old.remove();
+
+    var ov = document.createElement('div');
+    ov.id = 'sp-edit-post-modal';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;padding:16px';
+    ov.onclick = function(e){ if(e.target === ov) ov.remove(); };
+
+    var html = '<div style="background:#fff;border-radius:16px;width:100%;max-width:400px;padding:20px;box-shadow:0 8px 40px rgba(0,0,0,0.3)">';
+    html += '<div style="font-weight:700;font-size:1rem;margin-bottom:12px;color:#1f2937">Editar publicação</div>';
+    html += '<textarea id="sp-edit-textarea" style="width:100%;min-height:100px;border:1px solid #d1d5db;border-radius:12px;padding:12px;font-size:.9rem;resize:vertical;box-sizing:border-box;font-family:inherit" maxlength="2000">'+currentText+'</textarea>';
+    html += '<div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">';
+    html += '<button type="button" onclick="this.closest(\'#sp-edit-post-modal\').remove()" style="padding:10px 20px;border:1px solid #d1d5db;border-radius:10px;background:#fff;color:#374151;font-size:.85rem;cursor:pointer">Cancelar</button>';
+    html += '<button type="button" id="sp-edit-save-btn" style="padding:10px 20px;border:none;border-radius:10px;background:#7c3aed;color:#fff;font-size:.85rem;font-weight:600;cursor:pointer">Salvar</button>';
+    html += '</div></div>';
+    ov.innerHTML = html;
+    document.body.appendChild(ov);
+
+    var textarea = document.getElementById('sp-edit-textarea');
+    textarea.focus();
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+
+    document.getElementById('sp-edit-save-btn').addEventListener('click', function(){
+      var newText = textarea.value.trim();
+      var saveBtn = this;
+      saveBtn.textContent = 'Salvando...';
+      saveBtn.disabled = true;
+      var csrfVal = document.querySelector('[name=csrfmiddlewaretoken]');
+      fetch('/social/post/' + postId + '/edit/', {
+        method: 'POST',
+        headers: {'X-CSRFToken': csrfVal ? csrfVal.value : '', 'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'text=' + encodeURIComponent(newText)
+      }).then(function(r){ return r.json(); })
+        .then(function(d){
+          if(d.ok){
+            if(textEl){
+              textEl.innerHTML = newText ? newText : '';
+              if(!newText) textEl.style.display = 'none';
+              else textEl.style.display = '';
+            }
+            ov.remove();
+          } else {
+            alert(d.error || 'Erro ao editar.');
+            saveBtn.textContent = 'Salvar';
+            saveBtn.disabled = false;
+          }
+        }).catch(function(){
+          alert('Erro de conexão.');
+          saveBtn.textContent = 'Salvar';
+          saveBtn.disabled = false;
+        });
+    });
   };
 
   /* ═══ Compartilhar post ═══ */
