@@ -26,7 +26,7 @@ from ..models import (
     SocialPostReaction, SocialPostComment,
     DailyCheckIn, Card, CardFollow, UserProfile,
     CamilaKnowledge, CamilaConfig, SocialFriendship, SocialCardDismiss, CamilaPOP,
-    ChatConversation, ChatMessage, SocialPostView,
+    ChatConversation, ChatMessage, ChatSticker, SocialPostView,
 )
 
 User = get_user_model()
@@ -2143,6 +2143,7 @@ def chat_list(request):
             "other_handle": prof.handle if prof else "",
             "last_message": last_msg.text[:60] if last_msg else "",
             "last_message_gif": bool(last_msg and last_msg.gif_url) if last_msg else False,
+            "last_message_sticker": bool(last_msg and last_msg.sticker_url) if last_msg else False,
             "last_time": timezone.localtime(last_msg.created_at).strftime("%d/%m %H:%M") if last_msg else "",
             "unread": unread,
             "archived": archived,
@@ -2183,6 +2184,7 @@ def chat_messages(request, user_id: int):
             "sender_avatar": prof.avatar.url if prof and prof.avatar else "",
             "text": m.text,
             "gif_url": m.gif_url,
+            "sticker_url": m.sticker_url,
             "created_at": timezone.localtime(m.created_at).strftime("%d/%m %H:%M"),
             "is_mine": m.sender_id == me.id,
             "seen": m.seen,
@@ -2206,8 +2208,9 @@ def chat_send(request, user_id: int):
 
     text = (request.POST.get("text") or "").strip()
     gif_url = (request.POST.get("gif_url") or "").strip()
+    sticker_url = (request.POST.get("sticker_url") or "").strip()
 
-    if not text and not gif_url:
+    if not text and not gif_url and not sticker_url:
         return JsonResponse({"error": "Mensagem vazia."}, status=400)
 
     conv = _get_or_create_conversation(me, other)
@@ -2222,18 +2225,38 @@ def chat_send(request, user_id: int):
         sender=me,
         text=text,
         gif_url=gif_url,
+        sticker_url=sticker_url,
     )
     conv.save()  # atualiza updated_at
 
-    # Notifica destinatário se não havia mensagens não lidas antes (evita spam)
+    # Notifica destinatário após 60s se a msg ainda não foi lida (evita spam)
     if not has_recent_unread:
-        from boards.services.notifications import notify_chat_message
         import threading
-        threading.Thread(
-            target=notify_chat_message,
-            kwargs={"recipient": other, "sender": me, "message_preview": text or "GIF 🎞️"},
-            daemon=True,
-        ).start()
+
+        def _delayed_notify(msg_id, recipient_id, sender_id, preview):
+            """Espera 60s, verifica se leu, se não → notifica via WhatsApp/email."""
+            from boards.services.notifications import notify_chat_message
+            from django.contrib.auth import get_user_model
+            _User = get_user_model()
+            try:
+                m = ChatMessage.objects.get(id=msg_id)
+                if m.seen:
+                    return  # Já leu, não notifica
+                _recipient = _User.objects.get(id=recipient_id)
+                _sender = _User.objects.get(id=sender_id)
+                notify_chat_message(
+                    recipient=_recipient, sender=_sender,
+                    message_preview=preview,
+                )
+            except Exception:
+                pass
+
+        t = threading.Timer(
+            60.0, _delayed_notify,
+            args=[msg.id, other.id, me.id, text or "GIF 🎞️"],
+        )
+        t.daemon = True
+        t.start()
 
     prof = getattr(me, "profile", None)
     return JsonResponse({
@@ -2242,8 +2265,10 @@ def chat_send(request, user_id: int):
         "sender_name": prof.display_name if prof else me.email,
         "text": msg.text,
         "gif_url": msg.gif_url,
+        "sticker_url": msg.sticker_url,
         "created_at": timezone.localtime(msg.created_at).strftime("%d/%m %H:%M"),
         "is_mine": True,
+        "seen": False,
     })
 
 
@@ -2302,6 +2327,13 @@ def chat_poll(request, user_id: int):
         is_active=True, seen=False, id__gt=after_id
     ).exclude(sender=me).update(seen=True)
 
+    # Último ID de mensagem minha que o outro já leu (para atualizar ✓ → ✓✓)
+    last_seen = (
+        conv.messages.filter(
+            sender=me, seen=True, is_active=True,
+        ).order_by("-id").values_list("id", flat=True).first()
+    ) or 0
+
     result = []
     for m in new_msgs:
         prof = getattr(m.sender, "profile", None)
@@ -2312,10 +2344,12 @@ def chat_poll(request, user_id: int):
             "sender_avatar": prof.avatar.url if prof and prof.avatar else "",
             "text": m.text,
             "gif_url": m.gif_url,
+            "sticker_url": m.sticker_url,
             "created_at": timezone.localtime(m.created_at).strftime("%d/%m %H:%M"),
             "is_mine": m.sender_id == me.id,
+            "seen": m.seen,
         })
-    return JsonResponse({"messages": result})
+    return JsonResponse({"messages": result, "last_seen_id": last_seen})
 
 
 @login_required
@@ -2329,6 +2363,48 @@ def chat_unread_total(request):
         | models.Q(conversation__user_b=me, hidden_by_b=False)
     ).exclude(sender=me).count()
     return JsonResponse({"unread": total})
+
+
+# ---------------------------------------------------------------
+# Stickers — criar e listar figurinhas do usuário
+# ---------------------------------------------------------------
+@login_required
+@require_POST
+def chat_sticker_create(request):
+    """Upload de imagem/gif/webp/mp4 para criar figurinha pessoal."""
+    image = request.FILES.get("image")
+    if not image:
+        return JsonResponse({"error": "Nenhum arquivo enviado."}, status=400)
+    if image.size > 5 * 1024 * 1024:
+        return JsonResponse({"error": "Arquivo muito grande (máx 5 MB)."}, status=400)
+    allowed = {"image/png", "image/jpeg", "image/gif", "image/webp", "video/mp4"}
+    ct = (image.content_type or "").lower()
+    if ct not in allowed:
+        return JsonResponse({"error": "Formato não suportado. Use PNG, JPG, GIF, WebP ou MP4."}, status=400)
+    sticker = ChatSticker.objects.create(owner=request.user, image=image)
+    return JsonResponse({
+        "id": sticker.id,
+        "url": sticker.image.url,
+    })
+
+
+@login_required
+def chat_sticker_list(request):
+    """Lista as figurinhas do usuário."""
+    stickers = ChatSticker.objects.filter(owner=request.user, is_active=True)[:50]
+    return JsonResponse({
+        "stickers": [{"id": s.id, "url": s.image.url} for s in stickers],
+    })
+
+
+@login_required
+@require_POST
+def chat_sticker_delete(request, sticker_id: int):
+    """Soft-delete de figurinha."""
+    sticker = get_object_or_404(ChatSticker, id=sticker_id, owner=request.user)
+    sticker.is_active = False
+    sticker.save(update_fields=["is_active"])
+    return JsonResponse({"ok": True})
 
 
 # ---------------------------------------------------------------

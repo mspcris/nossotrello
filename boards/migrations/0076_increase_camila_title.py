@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('boards', '0075_merge_0073_socialpostview_0074_merge_20260401_1229'),
+        ('boards', '0073_socialpostview'),
     ]
 
     operations = [

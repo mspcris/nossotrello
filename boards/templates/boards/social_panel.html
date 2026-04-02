@@ -909,8 +909,9 @@ var _CAMILA_AVATARS = {
       .then(function(d){
         var badge = document.getElementById('sp-chat-badge');
         if(!badge) return;
-        if(d.total > 0){
-          badge.textContent = d.total > 9 ? '9+' : d.total;
+        var n = d.unread || 0;
+        if(n > 0){
+          badge.textContent = n > 9 ? '9+' : n;
           badge.classList.remove('sp-hidden');
         } else {
           badge.classList.add('sp-hidden');
@@ -2827,12 +2828,13 @@ document.addEventListener('click', function(e){
       + '</div>'
       + '<div class="sp-chat-body" id="sp-dm-body"></div>'
       + '<div style="position:relative">'
-      + '<div id="sp-gif-picker" class="sp-gif-picker sp-hidden"></div>'
+      + '<div id="sp-media-picker" class="sp-gif-picker sp-hidden"></div>'
       + '</div>'
       + '<div class="sp-chat-footer">'
-      + '<button type="button" class="sp-chat-gif-btn" onclick="spToggleGifPicker()" title="GIF">\ud83c\udfde\ufe0f</button>'
+      + '<button type="button" class="sp-chat-gif-btn" onclick="spToggleMediaPicker(\'gif\')" title="GIF">GIF</button>'
+      + '<button type="button" class="sp-chat-gif-btn" onclick="spToggleMediaPicker(\'sticker\')" title="Figurinhas">🩷</button>'
       + '<input type="text" class="sp-chat-input" id="sp-dm-input" placeholder="Digite..." autocomplete="off">'
-      + '<button type="button" class="sp-chat-send-btn" onclick="spChatSend()">\u27a4</button>'
+      + '<button type="button" class="sp-chat-send-btn" onclick="spChatSend()">➤</button>'
       + '</div></div>';
 
     ov.innerHTML = html;
@@ -2863,6 +2865,17 @@ document.addEventListener('click', function(e){
       fetch('/chat/' + uid + '/poll/?after=' + _chatLastId)
         .then(function(r){ return r.json(); })
         .then(function(d){
+          /* Atualizar ✓ → ✓✓ nas minhas mensagens lidas pelo outro */
+          if(d.last_seen_id){
+            var body = document.getElementById('sp-dm-body');
+            if(body){ body.querySelectorAll('.sp-chat-msg-mine').forEach(function(el){
+              var mid = parseInt(el.dataset.msgId);
+              if(mid <= d.last_seen_id){
+                var s = el.querySelector('.sp-msg-sent');
+                if(s){ s.className='sp-msg-seen'; s.title='Lida'; s.textContent='✓✓'; }
+              }
+            }); }
+          }
           if(d.messages && d.messages.length){
             var b = document.getElementById('sp-dm-body');
             d.messages.forEach(function(m){ _appendMsg(b, m); });
@@ -2892,12 +2905,20 @@ document.addEventListener('click', function(e){
     div.className = cls;
     div.dataset.msgId = m.id;
     var content = '';
-    if(m.gif_url){
+    if(m.sticker_url){
+      if(m.sticker_url.match(/\.mp4$/i)){
+        content = '<div class="sp-chat-msg-sticker"><video src="' + m.sticker_url + '" autoplay loop muted playsinline style="width:100%;border-radius:8px"></video></div>';
+      } else {
+        content = '<div class="sp-chat-msg-sticker"><img src="' + m.sticker_url + '" alt="Figurinha"></div>';
+      }
+    } else if(m.gif_url){
       content = '<div class="sp-chat-msg-gif"><img src="' + m.gif_url + '" alt="GIF"></div>';
     } else {
       content = '<div>' + _escHtml(m.text) + '</div>';
     }
-    content += '<div class="sp-chat-msg-time">' + m.created_at + '</div>';
+    var checks = '';
+    if(m.is_mine){ checks = m.seen ? ' <span class="sp-msg-seen" title="Lida">✓✓</span>' : ' <span class="sp-msg-sent" title="Enviada">✓</span>'; }
+    content += '<div class="sp-chat-msg-time">' + m.created_at + checks + '</div>';
     div.innerHTML = content;
 
     /* Long press em qualquer mensagem → menu de opcoes */
@@ -3016,6 +3037,7 @@ document.addEventListener('click', function(e){
       });
   };
 
+  /* ── Enviar GIF ── */
   window.spSendGif = function(url){
     var fd = new FormData();
     fd.append('gif_url', url);
@@ -3026,49 +3048,130 @@ document.addEventListener('click', function(e){
         var body = document.getElementById('sp-dm-body');
         _appendMsg(body, d);
         _scrollChatBottom();
-        // Fechar gif picker
-        var gp = document.getElementById('sp-gif-picker');
-        if(gp) gp.classList.add('sp-hidden');
+        _closeMediaPicker();
       });
   };
 
-  /* GIF Picker com Tenor */
+  /* ── Enviar Sticker ── */
+  window.spSendSticker = function(url){
+    var fd = new FormData();
+    fd.append('sticker_url', url);
+    fetch('/chat/' + _chatOtherUid + '/send/', {method:'POST', headers:{'X-CSRFToken': _getCsrf()}, body: fd})
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(d.error){ alert(d.error); return; }
+        var body = document.getElementById('sp-dm-body');
+        _appendMsg(body, d);
+        _scrollChatBottom();
+        _closeMediaPicker();
+      });
+  };
+
+  /* ── Media Picker (GIF + Stickers) ── */
   var _gifDebounce = null;
-  window.spToggleGifPicker = function(){
-    var gp = document.getElementById('sp-gif-picker');
-    if(!gp) return;
-    if(gp.classList.contains('sp-hidden')){
-      gp.classList.remove('sp-hidden');
-      gp.innerHTML = '<input type="text" class="sp-gif-picker-search" placeholder="Buscar GIFs..." oninput="spSearchGifs(this.value)">'
+  var _mediaPickerMode = '';
+
+  function _closeMediaPicker(){
+    var mp = document.getElementById('sp-media-picker');
+    if(mp) mp.classList.add('sp-hidden');
+    _mediaPickerMode = '';
+  }
+
+  window.spToggleMediaPicker = function(mode){
+    var mp = document.getElementById('sp-media-picker');
+    if(!mp) return;
+    if(!mp.classList.contains('sp-hidden') && _mediaPickerMode === mode){
+      _closeMediaPicker(); return;
+    }
+    _mediaPickerMode = mode;
+    mp.classList.remove('sp-hidden');
+    if(mode === 'gif'){
+      mp.innerHTML = '<input type="text" class="sp-gif-picker-search" placeholder="Buscar GIFs..." oninput="spSearchGifs(this.value)">'
         + '<div class="sp-gif-grid" id="sp-gif-grid"></div>';
       _loadTrendingGifs();
     } else {
-      gp.classList.add('sp-hidden');
+      _loadStickerPicker(mp);
     }
   };
 
+  function _loadStickerPicker(mp){
+    mp.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;padding:0 4px 8px">'
+      + '<span style="font-weight:600;font-size:0.85rem">Minhas Figurinhas</span>'
+      + '<label style="cursor:pointer;background:#7c3aed;color:#fff;padding:6px 12px;border-radius:10px;font-size:0.8rem">+ Nova'
+      + '<input type="file" accept="image/*,image/gif,image/webp,video/mp4" style="display:none" onchange="spUploadSticker(this)"></label></div>'
+      + '<div class="sp-gif-grid" id="sp-sticker-grid"><div style="text-align:center;padding:20px;color:#999">Carregando...</div></div>';
+    fetch('/chat/stickers/')
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var grid = document.getElementById('sp-sticker-grid');
+        if(!grid) return;
+        if(!d.stickers || !d.stickers.length){
+          grid.innerHTML = '<div style="text-align:center;padding:20px;color:#999;grid-column:1/-1">Nenhuma figurinha ainda.<br>Toque em "+ Nova" para criar!</div>';
+          return;
+        }
+        grid.innerHTML = d.stickers.map(function(s){
+          var isVideo = s.url.match(/\.mp4$/i);
+          var media = isVideo
+            ? '<video src="' + s.url + '" autoplay loop muted playsinline onclick="spSendSticker(\'' + s.url + '\')" style="border-radius:8px;cursor:pointer;width:100%"></video>'
+            : '<img src="' + s.url + '" onclick="spSendSticker(\'' + s.url + '\')" loading="lazy" style="border-radius:8px;cursor:pointer;width:100%">';
+          return '<div style="position:relative">'
+            + media
+            + '<button onclick="spDeleteSticker(' + s.id + ',this)" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.5);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:0.65rem;cursor:pointer;line-height:1">✕</button>'
+            + '</div>';
+        }).join('');
+      })
+      .catch(function(){
+        var grid = document.getElementById('sp-sticker-grid');
+        if(grid) grid.innerHTML = '<div style="text-align:center;padding:20px;color:#999">Erro ao carregar</div>';
+      });
+  }
+
+  window.spUploadSticker = function(input){
+    if(!input.files || !input.files[0]) return;
+    var fd = new FormData();
+    fd.append('image', input.files[0]);
+    fetch('/chat/stickers/create/', {method:'POST', headers:{'X-CSRFToken': _getCsrf()}, body: fd})
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(d.error){ alert(d.error); return; }
+        var mp = document.getElementById('sp-media-picker');
+        if(mp) _loadStickerPicker(mp);
+      })
+      .catch(function(){ alert('Erro ao enviar figurinha.'); });
+  };
+
+  window.spDeleteSticker = function(id, btn){
+    if(!confirm('Remover figurinha?')) return;
+    fetch('/chat/stickers/' + id + '/delete/', {method:'POST', headers:{'X-CSRFToken': _getCsrf()}})
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(d.ok){ var mp = document.getElementById('sp-media-picker'); if(mp) _loadStickerPicker(mp); }
+      });
+  };
+
+  /* ── GIF Picker Tenor ── */
   function _loadTrendingGifs(){
-    /* GIFs animados pré-selecionados (emojis animados populares) */
-    var defaultGifs = [
-      'https://media.tenor.com/images/ca23710c0343fea613c15360e4df0388/tenor.gif',
-      'https://media.tenor.com/images/6a60aeab33a372153db635e0a14b9b50/tenor.gif',
-      'https://media.tenor.com/images/5f5e6bcca7d4ca1a029c4e31646f38e0/tenor.gif',
-      'https://media.tenor.com/images/bb6d0fc12270ee11a4ce2ba222253d45/tenor.gif',
-      'https://media.tenor.com/images/2c663fcba6c67e35b7aafc30e5575a32/tenor.gif',
-      'https://media.tenor.com/images/04c7e11bdc6a8c05fd10a4e1c5b2b3ae/tenor.gif',
-    ];
     var grid = document.getElementById('sp-gif-grid');
     if(!grid) return;
-    grid.innerHTML = defaultGifs.map(function(u){
-      return '<img src="' + u + '" onclick="spSendGif(\'' + u + '\')" loading="lazy">';
-    }).join('');
+    grid.innerHTML = '<div style="text-align:center;padding:20px;color:#999">Carregando...</div>';
+    fetch('https://tenor.googleapis.com/v2/featured?key=AIzaSyAyimkuYQYF_FXVALexPuGQctUWRURdCYQ&limit=18&media_filter=gif&locale=pt_BR')
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(!d.results || !d.results.length){ grid.innerHTML = '<div style="text-align:center;padding:20px;color:#999">Nenhum GIF</div>'; return; }
+        grid.innerHTML = d.results.map(function(r){
+          var url = r.media_formats && r.media_formats.gif ? r.media_formats.gif.url : '';
+          var thumb = r.media_formats && r.media_formats.tinygif ? r.media_formats.tinygif.url : url;
+          if(!url) return '';
+          return '<img src="' + thumb + '" onclick="spSendGif(\'' + url + '\')" loading="lazy">';
+        }).join('');
+      })
+      .catch(function(){ grid.innerHTML = '<div style="text-align:center;padding:20px;color:#999">Erro ao carregar GIFs</div>'; });
   }
 
   window.spSearchGifs = function(q){
     clearTimeout(_gifDebounce);
     if(!q || q.length < 2) { _loadTrendingGifs(); return; }
     _gifDebounce = setTimeout(function(){
-      /* Tenor API public (anon key) */
       fetch('https://tenor.googleapis.com/v2/search?q=' + encodeURIComponent(q) + '&key=AIzaSyAyimkuYQYF_FXVALexPuGQctUWRURdCYQ&limit=18&media_filter=gif')
         .then(function(r){ return r.json(); })
         .then(function(d){
@@ -3108,7 +3211,7 @@ document.addEventListener('click', function(e){
         ? '<img src="' + c.other_avatar + '" class="sp-chat-list-av">'
         : '<span class="sp-reactor-av-fb" style="width:40px;height:40px;font-size:1rem">' + (c.other_name||'?').charAt(0).toUpperCase() + '</span>';
       var badge = c.unread > 0 ? '<span class="sp-chat-list-badge">' + c.unread + '</span>' : '';
-      var lastTxt = c.last_message_gif ? 'GIF' : _escHtml(c.last_message);
+      var lastTxt = c.last_message_sticker ? '🩷 Figurinha' : c.last_message_gif ? 'GIF 🎞️' : _escHtml(c.last_message);
       return '<div class="sp-chat-list-item" data-conv-id="'+c.conversation_id+'" data-other-uid="'+c.other_user_id+'" data-archived="'+(c.archived?1:0)+'">'
         + av
         + '<div class="sp-chat-list-info"><div class="sp-chat-list-name">' + _escHtml(c.other_name) + '</div>'

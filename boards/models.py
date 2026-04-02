@@ -1197,6 +1197,7 @@ class ChatMessage(models.Model):
     )
     text = models.TextField(blank=True, default="")
     gif_url = models.URLField(blank=True, default="")
+    sticker_url = models.URLField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
     # Soft delete individual: quem apagou só para si
@@ -1212,6 +1213,22 @@ class ChatMessage(models.Model):
 
     def __str__(self):
         return f"{self.sender} → msg em {self.conversation_id}"
+
+
+class ChatSticker(models.Model):
+    """Figurinha personalizada criada pelo usuário."""
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL, related_name="chat_stickers", on_delete=models.CASCADE,
+    )
+    image = models.FileField(upload_to="chat/stickers/%Y/%m/")
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Sticker {self.id} by {self.owner_id}"
 
 
 class CamilaPOP(models.Model):
