@@ -2456,6 +2456,7 @@ video.sp-post-media {
 .sp-req-act-profile { background: #6366f1; color: #fff; }
 .sp-req-act-reject  { background: #ef4444; color: #fff; }
 .sp-req-act-btn:active { transform: scale(0.93); }
+.sp-req-act-btn { touch-action: manipulation; -webkit-tap-highlight-color: transparent; position: relative; z-index: 9002; }
 
 /* Zoom ao tocar no avatar de solicitação */
 .sp-req-item.sp-req-zoomed {

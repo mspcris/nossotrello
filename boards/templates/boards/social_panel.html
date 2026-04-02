@@ -306,9 +306,9 @@
             </div>
             <span class="sp-friend-name">{{ fp.display_name|default:fr.requester.email|truncatechars:8 }}</span>
             <div class="sp-req-action-bar sp-hidden">
-              <button type="button" class="sp-req-act-btn sp-req-act-accept" onclick="event.stopPropagation();spAnswerFriend({{ fr.requester_id }},'accept',this)">✅ Aceitar</button>
-              <a href="/social/{{ fr.requester_id }}/" class="sp-req-act-btn sp-req-act-profile" onclick="event.stopPropagation()">👤 Ver Perfil</a>
-              <button type="button" class="sp-req-act-btn sp-req-act-reject" onclick="event.stopPropagation();spAnswerFriend({{ fr.requester_id }},'reject',this)">❌ Recusar</button>
+              <button type="button" class="sp-req-act-btn sp-req-act-accept" onclick="event.stopPropagation();spAnswerFriend({{ fr.requester_id }},'accept',this)">Aceitar</button>
+              <a href="/social/{{ fr.requester_id }}/" class="sp-req-act-btn sp-req-act-profile" onclick="event.stopPropagation()">Ver Perfil</a>
+              <button type="button" class="sp-req-act-btn sp-req-act-reject" onclick="event.stopPropagation();spAnswerFriend({{ fr.requester_id }},'reject',this)">Recusar</button>
             </div>
           </div>
           {% endwith %}
@@ -2458,11 +2458,20 @@ document.addEventListener('click', function(e){
     var backdrop = document.createElement('div');
     backdrop.className = 'sp-req-zoom-backdrop';
     backdrop.id = 'sp-req-zoom-backdrop';
-    backdrop.onclick = function(){ _spUnzoomReqItem(); };
+    /* Backdrop NÃO tem onclick — evita roubar toque dos botões no mobile */
     document.body.appendChild(backdrop);
     el.classList.add('sp-req-zoomed');
     var bar = el.querySelector('.sp-req-action-bar');
     if(bar) bar.classList.remove('sp-hidden');
+
+    /* Fechar ao tocar no backdrop (usar touchend + click com delay) */
+    setTimeout(function(){
+      backdrop.addEventListener('click', function(){ _spUnzoomReqItem(); });
+      backdrop.addEventListener('touchend', function(e){
+        /* Só fecha se o toque foi NO backdrop, não nos botões */
+        if(e.target === backdrop) _spUnzoomReqItem();
+      }, {passive:true});
+    }, 200);
   };
 
   function _spUnzoomReqItem(){
@@ -2474,13 +2483,6 @@ document.addEventListener('click', function(e){
       if(bar) bar.classList.add('sp-hidden');
     });
   }
-
-  // Fecha ao tocar fora
-  document.addEventListener('click', function(e) {
-    if (!e.target.closest('.sp-req-item') && !e.target.closest('.sp-req-zoom-backdrop')) {
-      _spUnzoomReqItem();
-    }
-  });
 
   function _spFadeOutCard(btn) {
     var card = btn.closest('.sp-req-item') || btn.closest('.sp-friend-pill');
