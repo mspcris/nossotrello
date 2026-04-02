@@ -1191,6 +1191,7 @@ def social_unread_counts(request):
     que o viewer viu o perfil dele pela última vez.
     Também detecta posts publicados nos últimos 30s (balão).
     """
+    from django.core.cache import cache
     from django.utils import timezone as tz
     from datetime import timedelta
 

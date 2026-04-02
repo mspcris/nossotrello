@@ -36,7 +36,7 @@ let __lastUnreadFetchMs = 0;
 // - Limita chamadas do syncUnreadBadge (mesmo sendo chamado em vários gatilhos)
 // - Faz GET /board/<id>/history/unread-count/
 // ============================================================
-const UNREAD_FETCH_EVERY_MS = 60000;// 60s é mais que suficiente para     atualiazar o indicador de atividade
+const UNREAD_FETCH_EVERY_MS = 120000;// 120s — reduzido para evitar sobrecarga com muitos usuários
 
 
 (function () {
@@ -221,7 +221,7 @@ const UNREAD_FETCH_EVERY_MS = 60000;// 60s é mais que suficiente para     atual
 
 // ACCESS REQUESTS passam a rodar dentro do polling central
 let __lastAccessFetchMs = 0;
-const ACCESS_FETCH_EVERY_MS = 60000;
+const ACCESS_FETCH_EVERY_MS = 120000;
 
 
 
@@ -287,7 +287,7 @@ document.addEventListener("visibilitychange", () => {
   // Track-time badges (MVP) — throttle 5s
   // ============================================================
   let __ttLastFetchMs = 0;
-  const TT_FETCH_EVERY_MS = 60000;
+  const TT_FETCH_EVERY_MS = 120000;
 
   function formatMMSS(seconds) {
     const s = Math.max(0, Number(seconds || 0));

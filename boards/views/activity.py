@@ -4,6 +4,7 @@ import json
 import os
 import uuid
 
+from django.core.cache import cache
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, get_object_or_404
 from django.views.decorators.http import require_POST, require_http_methods
@@ -624,6 +625,12 @@ def cards_unread_activity(request, board_id):
     if not board.memberships.filter(user=request.user).exists():
         return JsonResponse({"cards": {}})
 
+    # Cache por usuário+board — 30s evita queries pesadas a cada poll
+    cache_key = f"unread_cards:{request.user.id}:{board_id}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return JsonResponse({"cards": cached})
+
     seen_map = {
         cs.card_id: cs.last_seen_at
         for cs in CardSeen.objects.filter(
@@ -634,19 +641,24 @@ def cards_unread_activity(request, board_id):
 
     logs = (
         CardLog.objects
-        .filter(card__column__board=board)
+        .filter(
+            card__column__board=board,
+            card__is_deleted=False,
+        )
         .exclude(actor=request.user)
+        .only("card_id", "created_at")
     )
 
     counts = {}
 
-    for log in logs.select_related("card"):
+    for log in logs.iterator():
         last_seen = seen_map.get(log.card_id)
         if last_seen and log.created_at <= last_seen:
             continue
 
         counts[log.card_id] = counts.get(log.card_id, 0) + 1
 
+    cache.set(cache_key, counts, 30)
     return JsonResponse({"cards": counts})
 
 

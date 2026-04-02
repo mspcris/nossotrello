@@ -36,6 +36,20 @@ class LoginRequiredMiddleware:
             query = urlencode({"next": path})
             return redirect(f"{self.login_url}?{query}")
 
+        # Prefetch profile para evitar N+1 em todas as views e no TermsMiddleware
+        if not hasattr(request.user, "_profile_prefetched"):
+            try:
+                from django.contrib.auth import get_user_model
+                User = get_user_model()
+                request.user = (
+                    User.objects
+                    .select_related("profile")
+                    .get(pk=request.user.pk)
+                )
+                request.user._profile_prefetched = True
+            except Exception:
+                pass
+
         return self.get_response(request)
 
 

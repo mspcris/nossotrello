@@ -1678,6 +1678,12 @@ def board_history_modal(request, board_id):
 @login_required
 @require_http_methods(["GET"])
 def board_history_unread_count(request, board_id):
+    # Cache por usuário+board — 30s
+    cache_key = f"hist_unread:{request.user.id}:{board_id}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return JsonResponse({"unread": cached})
+
     board = get_object_or_404(Board, id=board_id, is_deleted=False)
 
     memberships_qs = board.memberships.all()
@@ -1699,7 +1705,9 @@ def board_history_unread_count(request, board_id):
     # Ignora logs do próprio usuário — conta só ações de outras pessoas
     qs = qs.exclude(actor=request.user)
 
-    return JsonResponse({"unread": qs.count()})
+    count = qs.count()
+    cache.set(cache_key, count, 30)
+    return JsonResponse({"unread": count})
 
 
 

@@ -55,21 +55,37 @@ CSRF_TRUSTED_ORIGINS = _env_csv(
 )
 
 # ============================================================
-# BANCO (SQLite) — permite variar o nome via ENV
+# BANCO — PostgreSQL (produção) / SQLite (dev fallback)
 # ============================================================
 
-SQLITE_NAME = (os.getenv("SQLITE_NAME") or "db.sqlite3").strip() or "db.sqlite3"
+_DB_ENGINE = (os.getenv("DB_ENGINE") or "").strip().lower()
 
-
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db" / SQLITE_NAME,
-        "OPTIONS": {
-            "timeout": 30,  # aumenta tolerância ao lock
-        },
+if _DB_ENGINE == "postgresql" or os.getenv("DATABASE_URL", "").startswith("postgres"):
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": (os.getenv("DB_NAME") or "nossotrello").strip(),
+            "USER": (os.getenv("DB_USER") or "nossotrello").strip(),
+            "PASSWORD": (os.getenv("DB_PASSWORD") or "nossotrello_secret").strip(),
+            "HOST": (os.getenv("DB_HOST") or "db").strip(),
+            "PORT": (os.getenv("DB_PORT") or "5432").strip(),
+            "CONN_MAX_AGE": 600,  # reutiliza conexões (10 min)
+            "OPTIONS": {
+                "connect_timeout": 10,
+            },
+        }
     }
-}
+else:
+    SQLITE_NAME = (os.getenv("SQLITE_NAME") or "db.sqlite3").strip() or "db.sqlite3"
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db" / SQLITE_NAME,
+            "OPTIONS": {
+                "timeout": 30,
+            },
+        }
+    }
 
 
 # ============================================================

@@ -26,4 +26,11 @@ RUN mkdir -p /app/staticfiles
 RUN python manage.py collectstatic --noinput
 
 # Comando final: gunicorn em modo produção
-CMD ["gunicorn", "nossotrello.wsgi:application", "-b", "0.0.0.0:8000", "--workers", "3"]
+CMD ["gunicorn", "nossotrello.wsgi:application", \
+     "-b", "0.0.0.0:8000", \
+     "--workers", "4", \
+     "--worker-class", "gthread", \
+     "--threads", "8", \
+     "--worker-tmp-dir", "/dev/shm", \
+     "--timeout", "120", \
+     "--graceful-timeout", "30"]
