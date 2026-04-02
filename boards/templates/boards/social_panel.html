@@ -3189,25 +3189,76 @@ document.addEventListener('click', function(e){
       });
   };
 
+  /* ── Compressor de imagem para sticker (max 5MB) ── */
+  var MAX_STICKER_BYTES = 5 * 1024 * 1024;
+
+  function _compressForSticker(blob){
+    return new Promise(function(resolve){
+      /* Vídeos (mp4) não comprimem — passa direto */
+      if(blob.type && blob.type.startsWith('video/')){ resolve(blob); return; }
+      /* Se já cabe, usa direto */
+      if(blob.size <= MAX_STICKER_BYTES){ resolve(blob); return; }
+      /* Carrega como imagem e redimensiona via canvas */
+      var img = new Image();
+      img.onload = function(){
+        var maxDim = 512;
+        var w = img.width, h = img.height;
+        if(w > maxDim || h > maxDim){
+          if(w > h){ h = Math.round(h * maxDim / w); w = maxDim; }
+          else { w = Math.round(w * maxDim / h); h = maxDim; }
+        }
+        var c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        /* Tenta WebP com qualidade decrescente */
+        (function tryQuality(q){
+          c.toBlob(function(b){
+            if(!b){ resolve(blob); return; } /* fallback original */
+            if(b.size <= MAX_STICKER_BYTES || q <= 0.3){ resolve(b); }
+            else { tryQuality(q - 0.1); }
+          }, 'image/webp', q);
+        })(0.85);
+      };
+      img.onerror = function(){ resolve(blob); };
+      img.src = URL.createObjectURL(blob);
+    });
+  }
+
+  function _uploadSticker(blob, fname, onSuccess, onError){
+    _compressForSticker(blob).then(function(compressed){
+      if(compressed.size > MAX_STICKER_BYTES){
+        alert('Não foi possível comprimir abaixo de 5 MB. Tente uma imagem menor.');
+        return;
+      }
+      /* Ajusta extensão se converteu para webp */
+      if(compressed.type === 'image/webp' && !fname.match(/\.webp$/i)){
+        fname = fname.replace(/\.\w+$/, '.webp');
+      }
+      var fd = new FormData();
+      fd.append('image', compressed, fname);
+      fetch('/chat/stickers/create/', {method:'POST', headers:{'X-CSRFToken': _getCsrf()}, body: fd})
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if(d.error){ alert(d.error); return; }
+          if(onSuccess) onSuccess(d);
+        })
+        .catch(function(){ if(onError) onError(); else alert('Erro ao enviar figurinha.'); });
+    });
+  }
+
   /* Salvar GIF/sticker recebido como minha figurinha */
   window.spSaveAsSticker = function(url){
     var menu = document.getElementById('sp-dm-msg-menu');
     if(menu) menu.remove();
-    /* Baixa o arquivo e re-envia como upload */
     fetch(url)
       .then(function(r){ return r.blob(); })
       .then(function(blob){
         var ext = url.match(/\.(gif|webp|mp4|png|jpe?g)/i);
         var fname = 'sticker' + (ext ? '.' + ext[1] : '.gif');
-        var fd = new FormData();
-        fd.append('image', blob, fname);
-        return fetch('/chat/stickers/create/', {method:'POST', headers:{'X-CSRFToken': _getCsrf()}, body: fd});
-      })
-      .then(function(r){ return r.json(); })
-      .then(function(d){
-        if(d.error){ alert(d.error); return; }
-        if(window._spToast) _spToast('Figurinha salva! 🩷');
-        else alert('Figurinha salva!');
+        _uploadSticker(blob, fname,
+          function(){ if(window._spToast) _spToast('Figurinha salva! 🩷'); else alert('Figurinha salva!'); },
+          function(){ alert('Erro ao salvar figurinha. Tente com uma imagem local.'); }
+        );
       })
       .catch(function(){ alert('Erro ao salvar figurinha. Tente com uma imagem local.'); });
   };
@@ -3372,16 +3423,11 @@ document.addEventListener('click', function(e){
 
   window.spUploadSticker = function(input){
     if(!input.files || !input.files[0]) return;
-    var fd = new FormData();
-    fd.append('image', input.files[0]);
-    fetch('/chat/stickers/create/', {method:'POST', headers:{'X-CSRFToken': _getCsrf()}, body: fd})
-      .then(function(r){ return r.json(); })
-      .then(function(d){
-        if(d.error){ alert(d.error); return; }
-        var mp = document.getElementById('sp-media-picker');
-        if(mp) _loadStickerPicker(mp);
-      })
-      .catch(function(){ alert('Erro ao enviar figurinha.'); });
+    var file = input.files[0];
+    _uploadSticker(file, file.name || 'sticker.png',
+      function(){ var mp = document.getElementById('sp-media-picker'); if(mp) _loadStickerPicker(mp); },
+      function(){ alert('Erro ao enviar figurinha.'); }
+    );
   };
 
   window.spDeleteSticker = function(id, btn){
