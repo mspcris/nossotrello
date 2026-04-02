@@ -436,18 +436,7 @@
     </div>
   </div>
   {% endif %}
-  <!-- Sheet de rede do amigo -->
-  <div id="sp-friend-sheet-overlay" class="sp-sheet-overlay sp-hidden" onclick="spCloseFriendSheet()">
-    <div class="sp-sheet" onclick="event.stopPropagation()">
-      <div class="sp-friend-sheet-header">
-        <button class="sp-sheet-close" onclick="spCloseFriendSheet()">✕</button>
-        <div id="sp-friend-sheet-profile" class="sp-friend-sheet-prof"></div>
-      </div>
-      <div id="sp-friend-sheet-body" class="sp-friend-sheet-body">
-        <div class="sp-friend-sheet-loading">Carregando...</div>
-      </div>
-    </div>
-  </div>
+  <!-- Sheet de rede do amigo — movido para fora de sp-mine-content (ver final do template) -->
 
   <!-- ═══ PÍLULAS DE COMENTÁRIOS / RESPOSTAS NÃO VISTOS ═══ -->
   {% if unread_comment_posts or unread_reply_items %}
@@ -872,6 +861,19 @@
     </div>
   </div>
   {% endif %}
+
+  <!-- Sheet de rede do amigo (fora de sp-mine-content para ficar visível na aba Amigos) -->
+  <div id="sp-friend-sheet-overlay" class="sp-sheet-overlay sp-hidden" onclick="spCloseFriendSheet()">
+    <div class="sp-sheet" onclick="event.stopPropagation()">
+      <div class="sp-friend-sheet-header">
+        <button class="sp-sheet-close" onclick="spCloseFriendSheet()">✕</button>
+        <div id="sp-friend-sheet-profile" class="sp-friend-sheet-prof"></div>
+      </div>
+      <div id="sp-friend-sheet-body" class="sp-friend-sheet-body">
+        <div class="sp-friend-sheet-loading">Carregando...</div>
+      </div>
+    </div>
+  </div>
 
 </div>
 
