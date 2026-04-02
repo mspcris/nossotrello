@@ -1237,4 +1237,26 @@ class CamilaPOP(models.Model):
         return f"{cat}{prefix}{self.title}"
 
 
+class TermsAcceptanceLog(models.Model):
+    """Registro imutável de cada aceite de termos — auditoria/compliance."""
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="terms_acceptance_logs",
+    )
+    version = models.CharField(max_length=10)
+    accepted_at = models.DateTimeField(auto_now_add=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True, default="")
+    cookies_accepted = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["-accepted_at"]
+        verbose_name = "Aceite de Termos (log)"
+        verbose_name_plural = "Aceites de Termos (log)"
+
+    def __str__(self):
+        return f"{self.user} v{self.version} @ {self.accepted_at}"
+
+
 # END boards/models.py

@@ -2830,7 +2830,7 @@ document.addEventListener('click', function(e){
       + '<div class="sp-chat-footer">'
       + '<button type="button" class="sp-chat-gif-btn" onclick="spToggleGifPicker()" title="GIF">🎞️</button>'
       + '<input type="text" class="sp-chat-input" id="sp-chat-input" placeholder="Digite..." autocomplete="off">'
-      + '<button type="button" class="sp-chat-send-btn" onclick="spChatSend()">➤</button>'
+      + '<button type="button" class="sp-chat-send-btn" id="sp-chat-send-btn">➤</button>'
       + '</div></div>';
 
     ov.innerHTML = html;
@@ -2840,6 +2840,13 @@ document.addEventListener('click', function(e){
     var body = document.getElementById('sp-chat-body');
     data.messages.forEach(function(m){ _appendMsg(body, m); });
     _scrollChatBottom();
+
+    // Botão enviar — listener direto (mais confiável que onclick inline no mobile)
+    var sendBtn = document.getElementById('sp-chat-send-btn');
+    if(sendBtn){
+      sendBtn.addEventListener('click', function(e){ e.preventDefault(); spChatSend(); });
+      sendBtn.addEventListener('touchend', function(e){ e.preventDefault(); spChatSend(); });
+    }
 
     // Enter para enviar
     var input = document.getElementById('sp-chat-input');
@@ -2931,9 +2938,11 @@ document.addEventListener('click', function(e){
   };
 
   window.spChatSend = function(){
+    console.log('[CHAT] spChatSend called, uid=', _chatOtherUid);
     var input = document.getElementById('sp-chat-input');
-    if(!input) return;
+    if(!input){ console.log('[CHAT] input not found'); return; }
     var text = (input.value || '').trim();
+    console.log('[CHAT] text=', text);
     if(!text) return;
     var savedText = text;
     input.value = '';
@@ -2960,6 +2969,7 @@ document.addEventListener('click', function(e){
       if(meta) csrf = meta.content;
     }
 
+    console.log('[CHAT] sending to /chat/' + _chatOtherUid + '/send/', 'csrf=', csrf ? csrf.substring(0,8)+'...' : 'EMPTY');
     fetch('/chat/' + _chatOtherUid + '/send/', {
       method: 'POST',
       headers: {'X-CSRFToken': csrf || ''},
@@ -2967,6 +2977,7 @@ document.addEventListener('click', function(e){
       credentials: 'same-origin'
     })
       .then(function(r){
+        console.log('[CHAT] response status=', r.status);
         if(!r.ok){
           return r.text().then(function(t){ throw new Error('HTTP ' + r.status); });
         }

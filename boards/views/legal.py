@@ -6,7 +6,12 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 # Versão corrente dos termos — incrementar aqui força re-aceite de todos
-CURRENT_TERMS_VERSION = "1.0"
+CURRENT_TERMS_VERSION = "2.0"
+
+
+def _get_client_ip(request):
+    xff = request.META.get("HTTP_X_FORWARDED_FOR")
+    return xff.split(",")[0].strip() if xff else request.META.get("REMOTE_ADDR")
 
 
 @login_required
@@ -34,6 +39,16 @@ def terms_view(request):
             profile.terms_accepted_at = timezone.now()
             profile.terms_version = CURRENT_TERMS_VERSION
             profile.save(update_fields=["terms_accepted", "terms_accepted_at", "terms_version"])
+
+        # Log de auditoria imutável
+        from boards.models import TermsAcceptanceLog
+        TermsAcceptanceLog.objects.create(
+            user=request.user,
+            version=CURRENT_TERMS_VERSION,
+            ip_address=_get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", "")[:500],
+            cookies_accepted=cookies,
+        )
 
         response = redirect(next_url)
 

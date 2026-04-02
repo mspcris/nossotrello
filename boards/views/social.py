@@ -1419,14 +1419,29 @@ def _user_card(user):
 
 
 @login_required
+def _accepted_friend_ids(user):
+    """IDs dos amigos aceitos (SocialFriendship com status='accepted')."""
+    from_req = set(
+        SocialFriendship.objects.filter(
+            requester=user, status=SocialFriendship.STATUS_ACCEPTED,
+        ).values_list("receiver_id", flat=True)
+    )
+    from_rec = set(
+        SocialFriendship.objects.filter(
+            receiver=user, status=SocialFriendship.STATUS_ACCEPTED,
+        ).values_list("requester_id", flat=True)
+    )
+    return from_req | from_rec
+
+
 def social_user_network(request, user_id: int):
     """
-    Retorna a rede de um usuário: seus co-membros de quadros,
+    Retorna a rede de um usuário: seus amigos aceitos,
     separados em 'em comum comigo' e 'outros'.
     """
     target = get_object_or_404(User, id=user_id)
-    target_friend_ids = _board_member_ids(target)
-    my_friend_ids     = _board_member_ids(request.user)
+    target_friend_ids = _accepted_friend_ids(target)
+    my_friend_ids     = _accepted_friend_ids(request.user)
 
     common = []
     others = []
@@ -1434,7 +1449,7 @@ def social_user_network(request, user_id: int):
 
     for u in users:
         if u.id == request.user.id:
-            continue  # não mostrar a si mesmo
+            continue
         card = _user_card(u)
         if u.id in my_friend_ids:
             common.append(card)
