@@ -708,6 +708,27 @@ def daily_checkin_save(request):
         prof.fixed_posto = False
         prof.save(update_fields=["fixed_posto"])
 
+    # Auto-post mood to feed (somente se mudou o humor AGORA)
+    if mood:
+        mood_emojis = {
+            "excited": "🤩", "happy": "😊", "calm": "😌",
+            "normal": "😐", "tired": "😪", "stressed": "😤", "sick": "🤒",
+        }
+        mood_labels = dict(DailyCheckIn.MOOD_CHOICES)
+        emoji = mood_emojis.get(mood, "😊")
+        label = mood_labels.get(mood, mood)
+        post_text = f"{emoji} {label}"
+        if mood_note:
+            post_text += f" — {mood_note}"
+        # Evitar duplicata: não criar se já postou mood hoje
+        already_posted = SocialPost.objects.filter(
+            user=request.user,
+            created_at__date=today,
+            text__startswith=emoji,
+        ).exists()
+        if not already_posted:
+            SocialPost.objects.create(user=request.user, text=post_text)
+
     # Auto-post lunch to feed
     if lunch_text or lunch_photo:
         post_text = f"🍽️ {lunch_text}" if lunch_text else "🍽️ Almoço do dia"
