@@ -1203,9 +1203,26 @@ var _CAMILA_AVATARS = {
       .then(function(d){
         if(d.ok || d.comment){
           input.placeholder = 'Comentário enviado ✓';
-          /* Atualiza lista de comentários se aberta */
+
+          /* ── Atualiza contador de comentários no botão 💬 ── */
+          var actionsDiv = input.closest('.sp-reel-actions');
+          if(actionsDiv){
+            var cmtBtn = actionsDiv.querySelectorAll('.sp-reel-action')[1];
+            if(cmtBtn){
+              var countEl = cmtBtn.querySelector('.count');
+              if(countEl){
+                var cur = parseInt(countEl.textContent) || 0;
+                countEl.textContent = cur + 1;
+              } else {
+                cmtBtn.innerHTML = '💬 <span class="count">1</span>';
+              }
+            }
+          }
+
+          /* ── Abre e carrega comentários automaticamente ── */
           var panel = document.getElementById('sp-reel-comments-'+postId);
-          if(panel && !panel.classList.contains('sp-hidden')){
+          if(panel){
+            panel.classList.remove('sp-hidden');
             _loadReelComments(postId, panel);
           }
         }
@@ -3269,8 +3286,10 @@ function spViewersCancelPress(){
 
 /* ═══════════════════════════════════════════════
    FILTRO DE PENDÊNCIAS POR QUADRO/COLUNA
+   (persistido em localStorage, múltiplas colunas)
    ═══════════════════════════════════════════════ */
 (function(){
+  var STORAGE_KEY = 'sp_task_filters';
   var filterPanel = document.getElementById('sp-tasks-filter-panel');
   var taskItems = document.querySelectorAll('.sp-task-item');
   if(!filterPanel || !taskItems.length) return;
@@ -3278,12 +3297,17 @@ function spViewersCancelPress(){
   var boardSelect = document.getElementById('sp-filter-board');
   var colSelect = document.getElementById('sp-filter-col');
   var tagsWrap = document.getElementById('sp-filter-tags');
-  var _activeFilters = []; /* {board, col, label} */
+  var _activeFilters = _loadFilters();
+
+  function _saveFilters(){
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(_activeFilters)); } catch(e){}
+  }
+  function _loadFilters(){
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch(e){ return []; }
+  }
 
   if(boardSelect){
-    boardSelect.addEventListener('change', function(){
-      _updateColOptions();
-    });
+    boardSelect.addEventListener('change', function(){ _updateColOptions(); });
   }
 
   window.spToggleTaskFilter = function(){
@@ -3294,37 +3318,57 @@ function spViewersCancelPress(){
     var board = boardSelect ? boardSelect.value : '';
     var col = colSelect ? colSelect.value : '';
     if(!board && !col) return;
+    /* evitar duplicatas */
+    var dup = _activeFilters.some(function(f){ return f.board === board && f.col === col; });
+    if(dup) return;
     var label = (boardSelect.options[boardSelect.selectedIndex]?.text || '') +
       (col ? ' → ' + (colSelect.options[colSelect.selectedIndex]?.text || '') : '');
     _activeFilters.push({board: board, col: col, label: label});
+    _saveFilters();
     _renderFilterTags();
     _applyFilters();
   };
 
   window.spRemoveTaskFilter = function(idx){
     _activeFilters.splice(idx, 1);
+    _saveFilters();
+    _renderFilterTags();
+    _applyFilters();
+  };
+
+  window.spClearTaskFilters = function(){
+    _activeFilters = [];
+    _saveFilters();
     _renderFilterTags();
     _applyFilters();
   };
 
   function _renderFilterTags(){
     if(!tagsWrap) return;
-    tagsWrap.innerHTML = _activeFilters.map(function(f, i){
-      return '<span class="sp-tasks-filter-tag">' + f.label
+    var html = _activeFilters.map(function(f, i){
+      return '<span class="sp-tasks-filter-tag">' + _escTag(f.label)
         + ' <span class="sp-tasks-filter-tag-x" onclick="spRemoveTaskFilter(' + i + ')">✕</span></span>';
     }).join('');
+    if(_activeFilters.length > 1){
+      html += '<span class="sp-tasks-filter-tag sp-tasks-filter-tag-clear" onclick="spClearTaskFilters()">Limpar todos ✕</span>';
+    }
+    tagsWrap.innerHTML = html;
   }
+
+  function _escTag(s){ return s.replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
   function _updateColOptions(){
     if(!colSelect || !boardSelect) return;
     var boardId = boardSelect.value;
     colSelect.innerHTML = '<option value="">Todas as colunas</option>';
     if(!boardId) return;
+    var seen = {};
     taskItems.forEach(function(el){
       if(el.dataset.boardId === boardId){
-        var colName = el.dataset.colName || '';
         var colId = el.dataset.colId || '';
-        if(colId && !colSelect.querySelector('option[value="' + colId + '"]')){
+        var colName = el.dataset.colName || '';
+        if(colId && !seen[colId]){
+          seen[colId] = true;
           var opt = document.createElement('option');
           opt.value = colId;
           opt.textContent = colName;
@@ -3336,7 +3380,8 @@ function spViewersCancelPress(){
 
   function _applyFilters(){
     if(!_activeFilters.length){
-      taskItems.forEach(function(el){ el.style.display = ''; });
+      taskItems.forEach(function(el){ el.closest('.sp-task-row').style.display = ''; });
+      _updateGroupVisibility();
       return;
     }
     taskItems.forEach(function(el){
@@ -3345,8 +3390,23 @@ function spViewersCancelPress(){
         var matchCol = !f.col || el.dataset.colId === f.col;
         return matchBoard && matchCol;
       });
-      el.style.display = show ? '' : 'none';
+      el.closest('.sp-task-row').style.display = show ? '' : 'none';
     });
+    _updateGroupVisibility();
+  }
+
+  function _updateGroupVisibility(){
+    document.querySelectorAll('.sp-tasks-group').forEach(function(g){
+      var hasVisible = g.querySelector('.sp-task-row:not([style*="display: none"])');
+      g.style.display = hasVisible ? '' : 'none';
+    });
+  }
+
+  /* restaurar filtros ao carregar */
+  if(_activeFilters.length){
+    filterPanel.classList.remove('sp-hidden');
+    _renderFilterTags();
+    _applyFilters();
   }
 })();
 
