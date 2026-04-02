@@ -23,7 +23,7 @@ from collections import Counter, defaultdict
 
 from ..models import (
     Board, BoardMembership, SocialPost, SocialPostSeen,
-    SocialPostReaction, SocialPostComment,
+    SocialPostReaction, SocialPostComment, SocialCommentReaction,
     DailyCheckIn, Card, CardFollow, UserProfile,
     CamilaKnowledge, CamilaConfig, SocialFriendship, SocialCardDismiss, CamilaPOP,
     ChatConversation, ChatMessage, ChatSticker, SocialPostView,
@@ -427,20 +427,33 @@ def social_posts_panel(request, user_id: int):
 def social_post_detail(request, post_id: int):
     """Retorna comentários de um post como JSON."""
     post = get_object_or_404(SocialPost, id=post_id, is_active=True)
-    comments = (
+    comments = list(
         SocialPostComment.objects
         .filter(post=post, is_active=True)
         .select_related("user", "user__profile")
         .order_by("created_at")
     )
+    # Prefetch reações de comentários
+    comment_ids = [c.id for c in comments]
+    all_creacts = SocialCommentReaction.objects.filter(comment_id__in=comment_ids)
+    creact_map = {}  # comment_id -> {reaction: count}
+    my_creact_map = {}  # comment_id -> reaction
+    for cr in all_creacts:
+        creact_map.setdefault(cr.comment_id, Counter())[cr.reaction] += 1
+        if cr.user_id == request.user.id:
+            my_creact_map[cr.comment_id] = cr.reaction
+
     result = []
     for c in comments:
         prof = getattr(c.user, "profile", None)
+        counts = dict(creact_map.get(c.id, {}))
         result.append({
             "id": c.id,
             "author": prof.display_name if prof else c.user.email,
             "text": c.text,
             "time": timezone.localtime(c.created_at).strftime("%d/%m %H:%M"),
+            "reaction_counts": counts,
+            "my_reaction": my_creact_map.get(c.id),
         })
     return JsonResponse({"comments": result})
 
@@ -481,12 +494,13 @@ def social_friends_feed(request):
         friend_ids.update(accepted_in)
         friend_ids.discard(me.id)
 
-        if not friend_ids:
-            return JsonResponse({"posts": []})
+        # Incluir o próprio usuário para que veja seus posts no reel
+        feed_ids = set(friend_ids)
+        feed_ids.add(me.id)
 
         posts = list(
             SocialPost.objects
-            .filter(user_id__in=friend_ids, is_active=True, created_at__gte=three_days_ago)
+            .filter(user_id__in=feed_ids, is_active=True, created_at__gte=three_days_ago)
             .select_related("user", "user__profile")
             .order_by("-created_at")
         )
@@ -1024,6 +1038,48 @@ def social_post_react(request, post_id: int):
 
     counts = dict(Counter(
         SocialPostReaction.objects.filter(post=post).values_list("reaction", flat=True)
+    ))
+
+    return JsonResponse({
+        "my_reaction": my_reaction,
+        "counts": counts,
+        "total": sum(counts.values()),
+    })
+
+
+# ---------------------------------------------------------------
+# Reação a comentário
+# ---------------------------------------------------------------
+@login_required
+@require_POST
+def social_comment_react(request, comment_id: int):
+    comment = get_object_or_404(SocialPostComment, id=comment_id)
+    reaction_type = (request.POST.get("reaction") or "").strip()
+
+    valid = dict(SocialCommentReaction.REACTION_CHOICES)
+    if reaction_type not in valid:
+        return JsonResponse({"error": "Reação inválida."}, status=400)
+
+    existing = SocialCommentReaction.objects.filter(
+        user=request.user, comment=comment
+    ).first()
+    my_reaction = None
+
+    if existing:
+        if existing.reaction == reaction_type:
+            existing.delete()
+        else:
+            existing.reaction = reaction_type
+            existing.save()
+            my_reaction = reaction_type
+    else:
+        SocialCommentReaction.objects.create(
+            user=request.user, comment=comment, reaction=reaction_type,
+        )
+        my_reaction = reaction_type
+
+    counts = dict(Counter(
+        SocialCommentReaction.objects.filter(comment=comment).values_list("reaction", flat=True)
     ))
 
     return JsonResponse({
@@ -2303,6 +2359,33 @@ def chat_delete_message(request, message_id: int):
         return JsonResponse({"error": "Sem permissão."}, status=403)
 
     msg.save(update_fields=["hidden_by_a", "hidden_by_b"])
+    return JsonResponse({"ok": True})
+
+
+@login_required
+@require_POST
+def chat_forward_message(request, message_id: int):
+    """Encaminha uma mensagem para outro usuário."""
+    me = request.user
+    original = get_object_or_404(ChatMessage, id=message_id)
+    to_user_id = request.POST.get("to_user_id")
+    if not to_user_id:
+        return JsonResponse({"error": "Destinatário não informado."}, status=400)
+    other = get_object_or_404(User, id=int(to_user_id))
+
+    conv = _get_or_create_conversation(me, other)
+    # Cria cópia da mensagem na conversa de destino
+    fwd_text = original.text
+    if fwd_text:
+        fwd_text = "↪ " + fwd_text
+    ChatMessage.objects.create(
+        conversation=conv,
+        sender=me,
+        text=fwd_text,
+        gif_url=original.gif_url,
+        sticker_url=original.sticker_url,
+    )
+    conv.save()
     return JsonResponse({"ok": True})
 
 

@@ -139,7 +139,37 @@
 
 #um-root .um-actions{
   display: flex;
-  justify-content: flex-start;
+  justify-content: stretch;
+}
+#um-root .um-actions button[type="submit"]{
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  width: 100%;
+  border-radius: 0;
+  padding: 14px;
+  font-size: 1rem;
+  font-weight: 600;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+}
+@media(min-width:768px){
+  #um-root .um-actions button[type="submit"]{
+    position: sticky;
+    bottom: 0;
+    width: auto;
+    border-radius: 8px;
+    padding: 10px 24px;
+    font-size: 0.9rem;
+  }
+}
+.um-field-highlight {
+  background: #fef9c3 !important;
+  border-color: #f59e0b !important;
 }
 
 /* Mobile: empilha e esconde divisor */
@@ -1078,7 +1108,7 @@
 .sp-reel-actions{
   position:absolute; bottom:0; left:0; right:0;
   padding:8px 14px 12px; background:linear-gradient(to top,rgba(0,0,0,.65),transparent);
-  display:flex; align-items:center; gap:6px; z-index:2;
+  display:flex; align-items:center; gap:6px; z-index:6;
 }
 .sp-reel-action{
   background:none; border:none; color:#fff; font-size:1.3rem;
@@ -1750,6 +1780,12 @@ video.sp-post-media {
 }
 
 /* ═══════════ STRIP DE AMIGOS ═══════════ */
+.sp-friends-section {
+  margin-top: 12px;
+  background: #f8f9fa;
+  border-radius: 16px;
+  padding: 4px 0;
+}
 .sp-friends-bar {
   padding: 12px 16px 4px;
   background: #fff;
@@ -2223,6 +2259,73 @@ video.sp-post-media {
 .sp-comment:active .sp-reply-btn {
   opacity: 1;
 }
+/* ── Reações a comentários ── */
+.sp-comment-react-btn {
+  background: none;
+  border: none;
+  font-size: 0.7rem;
+  cursor: pointer;
+  padding: 1px 4px;
+  margin-left: 2px;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  vertical-align: middle;
+}
+.sp-comment:hover .sp-comment-react-btn,
+.sp-comment:active .sp-comment-react-btn,
+.sp-reel-comment-item:hover .sp-comment-react-btn,
+.sp-reel-comment-item:active .sp-comment-react-btn {
+  opacity: 1;
+}
+.sp-creact-picker {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+  padding: 4px 6px;
+  display: flex;
+  gap: 2px;
+  z-index: 100;
+  animation: sp-fade-in 0.12s ease;
+}
+.sp-creact-emoji {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 50%;
+  transition: transform 0.1s, background 0.1s;
+}
+.sp-creact-emoji:hover {
+  transform: scale(1.25);
+  background: #f3f4f6;
+}
+.sp-comment-reactions {
+  display: inline-flex;
+  gap: 3px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+.sp-creact-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.7rem;
+  padding: 1px 5px;
+  border-radius: 10px;
+  background: #f3f4f6;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.sp-creact-badge:hover { background: #e5e7eb; }
+.sp-creact-badge.sp-creact-active {
+  background: #ede9fe;
+  outline: 1.5px solid #8b5cf6;
+}
 .sp-reply-form {
   display: flex;
   gap: 4px;
@@ -2576,9 +2679,11 @@ video.sp-post-media {
   opacity: 0.6;
   margin-top: 2px;
 }
+.sp-chat-msg-gif { max-width: 200px; }
 .sp-chat-msg-gif img {
-  max-width: 200px;
+  width: 100%;
   border-radius: 12px;
+  object-fit: contain;
 }
 .sp-chat-msg-deleted {
   font-style: italic;
@@ -2619,11 +2724,19 @@ video.sp-post-media {
 }
 .sp-chat-send-btn:active { transform: scale(0.9); }
 .sp-chat-gif-btn {
-  background: none;
-  border: none;
-  font-size: 1.3rem;
+  background: #f3f4f6;
+  border: 2px solid transparent;
+  font-size: 1rem;
+  font-weight: 700;
   cursor: pointer;
-  padding: 4px;
+  padding: 4px 10px;
+  border-radius: 16px;
+  transition: all 0.15s;
+}
+.sp-chat-gif-btn.sp-picker-active {
+  background: #7c3aed;
+  color: #fff;
+  border-color: #7c3aed;
 }
 
 /* Chat list (seleção de amigo) */
@@ -2709,6 +2822,17 @@ video.sp-post-media {
 }
 .sp-gif-grid img:hover { transform: scale(1.05); }
 
+/* Read receipts — checks */
+.sp-msg-sent { color: rgba(255,255,255,0.6); font-size: 0.7rem; margin-left: 4px; }
+.sp-msg-seen { color: #60a5fa; font-size: 0.7rem; margin-left: 4px; font-weight: 700; }
+.sp-chat-msg-other .sp-msg-sent,
+.sp-chat-msg-other .sp-msg-seen { display: none; }
+
+/* Sticker message */
+.sp-chat-msg-sticker { max-width: 160px; }
+.sp-chat-msg-sticker img,
+.sp-chat-msg-sticker video { width: 100%; border-radius: 8px; object-fit: contain; }
+
 /* ═══════════════════════════════════════════════
    QUEM CURTIU (popup no long-press)
    ═══════════════════════════════════════════════ */
@@ -2717,20 +2841,43 @@ video.sp-post-media {
   z-index: 9500;
   background: #fff;
   border-radius: 16px;
-  box-shadow: 0 8px 30px rgba(0,0,0,0.2);
-  padding: 12px;
-  min-width: 200px;
-  max-width: 280px;
-  max-height: 300px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+  padding: 14px 16px;
+  min-width: 220px;
+  max-width: 300px;
+  max-height: 50vh;
   overflow-y: auto;
+  left: 50% !important;
+  top: 50% !important;
+  transform: translate(-50%, -50%);
   animation: sp-fade-in 0.15s ease;
+}
+.sp-reactors-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
 }
 .sp-reactors-title {
   font-weight: 700;
-  font-size: 0.85rem;
-  margin-bottom: 8px;
+  font-size: 0.9rem;
   color: #374151;
 }
+.sp-reactors-close {
+  background: #f3f4f6;
+  border: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 1.2rem;
+  color: #6b7280;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.sp-reactors-close:hover { background: #e5e7eb; color: #374151; }
 .sp-reactor-item {
   display: flex;
   align-items: center;
@@ -2771,17 +2918,20 @@ video.sp-post-media {
   z-index: 9500;
   background: #fff;
   border-radius: 16px;
-  box-shadow: 0 8px 30px rgba(0,0,0,0.2);
-  padding: 12px;
-  min-width: 200px;
-  max-width: 280px;
-  max-height: 300px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+  padding: 14px 16px;
+  min-width: 220px;
+  max-width: 300px;
+  max-height: 50vh;
   overflow-y: auto;
+  left: 50% !important;
+  top: 50% !important;
+  transform: translate(-50%, -50%);
   animation: sp-fade-in 0.15s ease;
 }
 .sp-viewers-title {
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   margin-bottom: 8px;
   color: #374151;
 }

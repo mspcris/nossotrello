@@ -251,7 +251,8 @@
       <span>👆 Deslize para ver mais publicações</span>
     </div>
 
-    <!-- Amigos, Solicitações e Sugestões ficam DENTRO da aba Amigos -->
+    <!-- Amigos, Solicitações e Sugestões — seção separada do reel -->
+    <div class="sp-friends-section">
     <!-- ═══ MEUS AMIGOS (amizades aceitas) ═══ -->
     {% if real_friends %}
     <div class="sp-friends-bar">
@@ -400,6 +401,7 @@
       </form>
     </div>
     {% endif %}
+    </div><!-- /sp-friends-section -->
   </div>
 
   <div id="sp-mine-content">
@@ -1032,7 +1034,7 @@ var _CAMILA_AVATARS = {
       html += '<input class="sp-reel-comment-input" id="sp-reel-cinput-'+p.id+'" placeholder="Comentar..." maxlength="500" onkeydown="if(event.key===\'Enter\'&&!document.getElementById(\'sp-reel-mention-dd-'+p.id+'\').classList.contains(\'active\'))spReelComment('+p.id+',this)">';
       html += '</div>';
       html += '<button class="sp-reel-comment-send" onclick="spReelComment('+p.id+',this.previousElementSibling.querySelector(\'input\'))">➤</button>';
-      html += '<button class="sp-reel-action sp-reel-share" onclick="spSharePost('+p.id+')" title="Compartilhar">🔗</button>';
+      html += '<button class="sp-reel-action sp-reel-share" onclick="spSharePost('+p.id+')" title="Compartilhar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>';
       html += '</div>';
       /* Comments section (hidden by default) */
       html += '<div class="sp-reel-comments sp-hidden" id="sp-reel-comments-'+p.id+'"></div>';
@@ -1384,13 +1386,21 @@ var _CAMILA_AVATARS = {
         }
         var html = '';
         d.comments.forEach(function(c){
-          html += '<div class="sp-reel-comment-item">'
+          html += '<div class="sp-reel-comment-item" style="position:relative">'
             + '<strong>' + _escHtml(c.author) + '</strong> '
             + '<span>' + _spMentionify(_escHtml(c.text)) + '</span>'
             + '<span class="sp-reel-comment-time">' + c.time + '</span>'
+            + '<span class="sp-comment-reactions" id="sp-creact-' + c.id + '"></span>'
+            + '<button type="button" class="sp-comment-react-btn" onclick="spToggleCommentReactions(' + c.id + ', this)" title="Reagir">😊</button>'
             + '</div>';
         });
         panel.innerHTML = html;
+        /* Renderizar reações existentes */
+        d.comments.forEach(function(c){
+          if(c.reaction_counts && Object.keys(c.reaction_counts).length){
+            _renderCommentReactions(c.id, c.reaction_counts, c.my_reaction);
+          }
+        });
       })
       .catch(function(){ panel.innerHTML = '<div style="padding:8px;color:#ef4444;font-size:.8rem">Erro.</div>'; });
   }
@@ -1939,7 +1949,9 @@ document.addEventListener('click', function(e){
       el.className = 'sp-comment';
       el.innerHTML = '<span class="sp-comment-author">' + d.user.replace(/</g,'&lt;') + '</span> ' +
         '<span class="sp-comment-text">' + _spMentionify(d.text.replace(/</g,'&lt;')) + '</span>' +
-        '<span class="sp-comment-time">' + d.created_at + '</span>';
+        '<span class="sp-comment-time">' + d.created_at + '</span>' +
+        '<span class="sp-comment-reactions" id="sp-creact-' + d.id + '"></span>' +
+        '<button type="button" class="sp-comment-react-btn" onclick="spToggleCommentReactions(' + d.id + ', this)" title="Reagir">😊</button>';
       list.appendChild(el);
       list.classList.remove('sp-hidden');
     }catch(e){}
@@ -2419,6 +2431,10 @@ document.addEventListener('click', function(e){
     var url = action === 'accept'
       ? '/social/' + uid + '/friend-accept/'
       : '/social/' + uid + '/friend-reject/';
+    // Capturar o card ANTES de qualquer manipulação do DOM
+    var card = btn.closest('.sp-req-item') || btn.closest('.sp-friend-pill');
+    // Fechar zoom imediatamente
+    _spUnzoomReqItem && _spUnzoomReqItem();
     fetch(url, {
       method: 'POST',
       headers: {'X-CSRFToken': csrf ? csrf.content : ''}
@@ -2427,11 +2443,15 @@ document.addEventListener('click', function(e){
       return r.json();
     }).then(function(d){
       if (!d) return;
-      // Fechar zoom se estiver aberto
-      _spUnzoomReqItem && _spUnzoomReqItem();
-      _spFadeOutCard(btn);
-      // Recarregar reel e lista de pedidos
-      setTimeout(function(){ location.reload(); }, 400);
+      // Remover card da UI com animação
+      if (card) {
+        card.style.transition = 'opacity 0.3s, transform 0.3s';
+        card.style.opacity = '0';
+        card.style.transform = 'scale(0.7)';
+        setTimeout(function(){ card.remove(); }, 300);
+      }
+      // Marcar uid como conhecido para que o polling não re-adicione
+      _spPillKnownFriends && _spPillKnownFriends.add(uid);
     }).catch(function(e){ alert('Erro: ' + e.message); });
   };
 
@@ -2446,6 +2466,71 @@ document.addEventListener('click', function(e){
   };
 
   /* ── Resposta a comentário ── */
+  /* ── Reações a comentários ── */
+  var _commentReactionEmojis = [
+    {key:'like', emoji:'👍'}, {key:'love', emoji:'❤️'},
+    {key:'haha', emoji:'😂'}, {key:'fire', emoji:'🔥'}, {key:'clap', emoji:'👏'}
+  ];
+
+  window.spToggleCommentReactions = function(commentId, btn) {
+    /* Fecha picker anterior */
+    var old = document.getElementById('sp-creact-picker');
+    if(old){ old.remove(); return; }
+
+    var picker = document.createElement('div');
+    picker.id = 'sp-creact-picker';
+    picker.className = 'sp-creact-picker';
+    _commentReactionEmojis.forEach(function(r){
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'sp-creact-emoji';
+      b.textContent = r.emoji;
+      b.onclick = function(){ spCommentReact(commentId, r.key); picker.remove(); };
+      picker.appendChild(b);
+    });
+
+    btn.parentElement.style.position = 'relative';
+    btn.parentElement.appendChild(picker);
+
+    /* Fechar ao clicar fora */
+    setTimeout(function(){
+      document.addEventListener('click', function _close(e){
+        if(!picker.contains(e.target) && e.target !== btn){
+          picker.remove();
+          document.removeEventListener('click', _close);
+        }
+      });
+    }, 0);
+  };
+
+  window.spCommentReact = function(commentId, reaction) {
+    var csrf = document.querySelector('meta[name="csrf-token"]');
+    fetch('/social/comment/' + commentId + '/react/', {
+      method: 'POST',
+      headers: {'X-CSRFToken': csrf ? csrf.content : '', 'Content-Type':'application/x-www-form-urlencoded'},
+      body: 'reaction=' + reaction
+    }).then(function(r){ return r.json(); })
+      .then(function(d){
+        if(d.error) return;
+        _renderCommentReactions(commentId, d.counts, d.my_reaction);
+      });
+  };
+
+  function _renderCommentReactions(commentId, counts, myReaction) {
+    var el = document.getElementById('sp-creact-' + commentId);
+    if(!el) return;
+    var emojiMap = {like:'👍', love:'❤️', haha:'😂', fire:'🔥', clap:'👏'};
+    var html = '';
+    for(var k in counts){
+      if(counts[k] > 0){
+        var isActive = (k === myReaction) ? ' sp-creact-active' : '';
+        html += '<span class="sp-creact-badge'+isActive+'" onclick="spCommentReact('+commentId+',\''+k+'\')">'
+          + emojiMap[k] + (counts[k] > 1 ? ' ' + counts[k] : '') + '</span>';
+      }
+    }
+    el.innerHTML = html;
+  }
+
   window.spShowReply = function(commentId, authorName, postId) {
     document.querySelectorAll('.sp-reply-form').forEach(function(f){ f.classList.add('sp-hidden'); });
     var form = document.getElementById('sp-reply-form-' + commentId);
@@ -2479,7 +2564,9 @@ document.addEventListener('click', function(e){
       el.innerHTML = '<span class="sp-reply-indicator">↩</span>' +
         '<span class="sp-comment-author">' + d.user.replace(/</g,'&lt;') + '</span> ' +
         '<span class="sp-comment-text">' + _spMentionify(d.text.replace(/</g,'&lt;')) + '</span>' +
-        '<span class="sp-comment-time">' + d.created_at + '</span>';
+        '<span class="sp-comment-time">' + d.created_at + '</span>' +
+        '<span class="sp-comment-reactions" id="sp-creact-' + d.id + '"></span>' +
+        '<button type="button" class="sp-comment-react-btn" onclick="spToggleCommentReactions(' + d.id + ', this)" title="Reagir">😊</button>';
       list.appendChild(el);
       list.classList.remove('sp-hidden');
     } catch(e) {}
@@ -3150,8 +3237,28 @@ document.addEventListener('click', function(e){
     menu.style.cssText = 'position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,0.4);display:flex;align-items:flex-end;justify-content:center';
     menu.onclick = function(e){ if(e.target===menu) menu.remove(); };
 
+    /* Texto da mensagem para copiar/compartilhar */
+    var _msgText = msg.text || '';
+    var _msgTextSafe = _msgText.replace(/'/g, "\\'").replace(/\n/g, "\\n");
+
     var sheet = '<div style="background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:400px;padding:16px 20px calc(env(safe-area-inset-bottom,12px)+12px)">';
     sheet += '<div style="width:36px;height:4px;background:#d1d5db;border-radius:4px;margin:0 auto 12px"></div>';
+
+    /* Copiar mensagem — só se tem texto */
+    if(_msgText){
+      sheet += '<button style="width:100%;padding:12px;border:none;background:#f0fdf4;color:#166534;border-radius:10px;font-size:0.9rem;cursor:pointer;margin-bottom:8px;font-weight:600" onclick="navigator.clipboard.writeText(\''+_msgTextSafe+'\');this.textContent=\'Copiado!\';var m=this.closest(\'#sp-dm-msg-menu\');setTimeout(function(){if(m)m.remove()},600)">📋 Copiar mensagem</button>';
+    }
+
+    /* Enviar pelo WhatsApp */
+    if(_msgText){
+      sheet += '<button style="width:100%;padding:12px;border:none;background:#dcfce7;color:#15803d;border-radius:10px;font-size:0.9rem;cursor:pointer;margin-bottom:8px;font-weight:600" onclick="window.open(\'https://wa.me/?text=\'+encodeURIComponent(\''+_msgTextSafe+'\'),\'_blank\');this.closest(\'#sp-dm-msg-menu\').remove()"><svg style="vertical-align:middle;margin-right:4px" width="16" height="16" viewBox="0 0 24 24" fill="#15803d"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg> Enviar pelo WhatsApp</button>';
+    }
+
+    /* Encaminhar mensagem (para outro contato do chat) */
+    if(_msgText){
+      sheet += '<button style="width:100%;padding:12px;border:none;background:#eff6ff;color:#1d4ed8;border-radius:10px;font-size:0.9rem;cursor:pointer;margin-bottom:8px;font-weight:600" onclick="spForwardMsg('+msg.id+',\''+_msgTextSafe+'\')">↪ Encaminhar mensagem</button>';
+    }
+
     /* Salvar como figurinha — disponível se msg tem gif ou sticker */
     var mediaUrl = msg.sticker_url || msg.gif_url || '';
     if(mediaUrl){
@@ -3187,6 +3294,56 @@ document.addEventListener('click', function(e){
           }
         }
       });
+  };
+
+  /* ── Encaminhar mensagem para outro contato ── */
+  window.spForwardMsg = function(msgId, msgText){
+    var menu = document.getElementById('sp-dm-msg-menu');
+    if(menu) menu.remove();
+    /* Busca lista de amigos e mostra picker */
+    fetch('/chat/friends/')
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(!d.friends || !d.friends.length){ alert('Você ainda não tem amigos para encaminhar.'); return; }
+        var ov = document.createElement('div');
+        ov.id = 'sp-forward-picker';
+        ov.style.cssText = 'position:fixed;inset:0;z-index:9700;background:rgba(0,0,0,0.5);display:flex;align-items:flex-end;justify-content:center';
+        ov.onclick = function(e){ if(e.target===ov) ov.remove(); };
+        var sheet = '<div style="background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:400px;padding:16px 20px calc(env(safe-area-inset-bottom,12px)+12px);max-height:60vh;overflow-y:auto">';
+        sheet += '<div style="width:36px;height:4px;background:#d1d5db;border-radius:4px;margin:0 auto 8px"></div>';
+        sheet += '<div style="font-weight:700;font-size:0.9rem;color:#374151;margin-bottom:12px;text-align:center">Encaminhar para:</div>';
+        d.friends.forEach(function(f){
+          var av = f.avatar
+            ? '<img src="'+f.avatar+'" style="width:36px;height:36px;border-radius:50%;object-fit:cover">'
+            : '<span style="width:36px;height:36px;border-radius:50%;background:#e5e7eb;display:inline-flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:600">'+(f.name||'?').charAt(0).toUpperCase()+'</span>';
+          sheet += '<button style="width:100%;padding:10px;border:none;background:#f9fafb;border-radius:10px;font-size:0.9rem;cursor:pointer;margin-bottom:6px;display:flex;align-items:center;gap:10px;text-align:left" onclick="spDoForward('+f.user_id+','+msgId+');this.closest(\'#sp-forward-picker\').remove()">'
+            + av + '<span style="font-weight:500;color:#1f2937">'+_escHtml(f.name)+'</span></button>';
+        });
+        sheet += '<button style="width:100%;padding:12px;border:none;background:#f3f4f6;color:#374151;border-radius:10px;font-size:0.9rem;cursor:pointer;margin-top:4px" onclick="this.closest(\'#sp-forward-picker\').remove()">Cancelar</button>';
+        sheet += '</div>';
+        ov.innerHTML = sheet;
+        document.body.appendChild(ov);
+      });
+  };
+
+  window.spDoForward = function(toUserId, msgId){
+    fetch('/chat/message/' + msgId + '/forward/', {
+      method:'POST',
+      headers:{'X-CSRFToken': _getCsrf(), 'Content-Type':'application/x-www-form-urlencoded'},
+      body: 'to_user_id=' + toUserId
+    }).then(function(r){ return r.json(); })
+      .then(function(d){
+        if(d.ok){
+          /* Feedback visual rápido */
+          var toast = document.createElement('div');
+          toast.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#1f2937;color:#fff;padding:10px 20px;border-radius:20px;font-size:0.85rem;z-index:9800;animation:sp-fade-in 0.2s ease';
+          toast.textContent = 'Mensagem encaminhada!';
+          document.body.appendChild(toast);
+          setTimeout(function(){ toast.remove(); }, 2000);
+        } else {
+          alert(d.error || 'Erro ao encaminhar.');
+        }
+      }).catch(function(){ alert('Erro ao encaminhar mensagem.'); });
   };
 
   /* ── Compressor de imagem para sticker (max 5MB) ── */
@@ -3623,6 +3780,7 @@ document.addEventListener('click', function(e){
   function _closeReactorPopup(){
     if(_popup){ _popup.remove(); _popup = null; }
   }
+  window._closeReactorPopup = _closeReactorPopup;
 
   document.addEventListener('click', function(e){
     if(_popup && !_popup.contains(e.target)) _closeReactorPopup();
@@ -3656,7 +3814,10 @@ document.addEventListener('click', function(e){
         if(!d.reactors || !d.reactors.length) return;
         var popup = document.createElement('div');
         popup.className = 'sp-reactors-popup';
-        popup.innerHTML = '<div class="sp-reactors-title">Quem curtiu</div>'
+        popup.innerHTML = '<div class="sp-reactors-header">'
+          + '<div class="sp-reactors-title">Quem curtiu</div>'
+          + '<button class="sp-reactors-close" onclick="_closeReactorPopup()">&times;</button>'
+          + '</div>'
           + d.reactors.map(function(r){
             var av = r.avatar
               ? '<img src="' + r.avatar + '" class="sp-reactor-av">'
@@ -3666,18 +3827,9 @@ document.addEventListener('click', function(e){
               + '<span class="sp-reactor-emoji">' + r.emoji + '</span></div>';
           }).join('');
 
-        // Posicionar
-        var rect = anchor.getBoundingClientRect();
-        popup.style.top = Math.max(10, rect.top - 10) + 'px';
-        popup.style.left = Math.max(10, Math.min(rect.left, window.innerWidth - 290)) + 'px';
+        /* Exibir centralizado como bottom-sheet no mobile */
         document.body.appendChild(popup);
         _popup = popup;
-
-        // Reposicionar se sair da tela
-        var pr = popup.getBoundingClientRect();
-        if(pr.bottom > window.innerHeight){
-          popup.style.top = (window.innerHeight - pr.height - 10) + 'px';
-        }
       });
   }
 })();
@@ -3705,7 +3857,10 @@ function spViewersLongPress(e, postId){
         if(!d.viewers || !d.viewers.length) return;
         var popup = document.createElement('div');
         popup.className = 'sp-viewers-popup';
-        popup.innerHTML = '<div class="sp-viewers-title">👁 Quem viu</div>'
+        popup.innerHTML = '<div class="sp-reactors-header">'
+          + '<div class="sp-viewers-title">👁 Quem viu</div>'
+          + '<button class="sp-reactors-close" onclick="_closeViewersPopup()">&times;</button>'
+          + '</div>'
           + d.viewers.map(function(v){
             var av = v.avatar
               ? '<img src="' + v.avatar + '" class="sp-viewer-av">'
@@ -3714,16 +3869,8 @@ function spViewersLongPress(e, postId){
               + '<span class="sp-viewer-name">' + v.name + '</span></div>';
           }).join('');
 
-        var rect = anchor.getBoundingClientRect();
-        popup.style.top = Math.max(10, rect.top - 10) + 'px';
-        popup.style.left = Math.max(10, Math.min(rect.left, window.innerWidth - 290)) + 'px';
         document.body.appendChild(popup);
         _viewersPopup = popup;
-
-        var pr = popup.getBoundingClientRect();
-        if(pr.bottom > window.innerHeight){
-          popup.style.top = (window.innerHeight - pr.height - 10) + 'px';
-        }
       });
   }, 500);
 }
@@ -3797,8 +3944,15 @@ function spViewersCancelPress(){
 (function(){
   var params = new URLSearchParams(window.location.search);
   var chatUid = params.get('chat');
-  if(chatUid && window.spOpenChat){
-    setTimeout(function(){ window.spOpenChat(parseInt(chatUid)); }, 600);
+  if(chatUid){
+    /* Aguarda o DOM e as funções do chat estarem disponíveis */
+    (function _tryOpenChat(tries){
+      if(window.spOpenChat){
+        window.spOpenChat(parseInt(chatUid));
+      } else if(tries < 20){
+        setTimeout(function(){ _tryOpenChat(tries+1); }, 300);
+      }
+    })(0);
   }
   var postId = params.get('post');
   if(postId){

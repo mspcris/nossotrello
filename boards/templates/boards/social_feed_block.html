@@ -55,6 +55,8 @@
             <span class="sp-comment-author">{{ c.user.profile.display_name|default:c.user.email }}</span>
             <span class="sp-comment-text">{{ c.text }}</span>
             <span class="sp-comment-time">{{ c.created_at|date:"d/m H:i" }}</span>
+            <span class="sp-comment-reactions" id="sp-creact-{{ c.id }}"></span>
+            <button type="button" class="sp-comment-react-btn" onclick="spToggleCommentReactions({{ c.id }}, this)" title="Reagir">😊</button>
             <button type="button" class="sp-reply-btn"
                     onclick="spShowReply({{ c.id }}, '{{ c.user.profile.display_name|default:c.user.email|escapejs }}', {{ post.id }})">↩</button>
           </div>

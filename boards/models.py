@@ -964,6 +964,34 @@ class SocialPostComment(models.Model):
         return f"{self.user} comentou em post {self.post_id}"
 
 
+class SocialCommentReaction(models.Model):
+    REACTION_CHOICES = [
+        ("like", "👍"),
+        ("love", "❤️"),
+        ("haha", "😂"),
+        ("fire", "🔥"),
+        ("clap", "👏"),
+    ]
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="comment_reactions",
+        on_delete=models.CASCADE,
+    )
+    comment = models.ForeignKey(
+        SocialPostComment,
+        related_name="reactions",
+        on_delete=models.CASCADE,
+    )
+    reaction = models.CharField(max_length=10, choices=REACTION_CHOICES)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "comment")
+
+    def __str__(self):
+        return f"{self.user} → {self.get_reaction_display()} em comment {self.comment_id}"
+
+
 # ============================================================
 # DAILY CHECK-IN (humor, almoço, posto do dia)
 # ============================================================
