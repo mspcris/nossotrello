@@ -1418,7 +1418,6 @@ def _user_card(user):
     }
 
 
-@login_required
 def _accepted_friend_ids(user):
     """IDs dos amigos aceitos (SocialFriendship com status='accepted')."""
     from_req = set(
@@ -1434,6 +1433,7 @@ def _accepted_friend_ids(user):
     return from_req | from_rec
 
 
+@login_required
 def social_user_network(request, user_id: int):
     """
     Retorna a rede de um usuário: seus amigos aceitos,
