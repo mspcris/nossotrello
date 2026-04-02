@@ -2621,11 +2621,19 @@ video.sp-post-media {
 }
 .sp-chat-send-btn:active { transform: scale(0.9); }
 .sp-chat-gif-btn {
-  background: none;
-  border: none;
-  font-size: 1.3rem;
+  background: #f3f4f6;
+  border: 2px solid transparent;
+  font-size: 1rem;
+  font-weight: 700;
   cursor: pointer;
-  padding: 4px;
+  padding: 4px 10px;
+  border-radius: 16px;
+  transition: all 0.15s;
+}
+.sp-chat-gif-btn.sp-picker-active {
+  background: #7c3aed;
+  color: #fff;
+  border-color: #7c3aed;
 }
 
 /* Chat list (seleção de amigo) */

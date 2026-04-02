@@ -3038,8 +3038,8 @@ document.addEventListener('click', function(e){
       + '<div id="sp-media-picker" class="sp-gif-picker sp-hidden"></div>'
       + '</div>'
       + '<div class="sp-chat-footer">'
-      + '<button type="button" class="sp-chat-gif-btn" onclick="spToggleMediaPicker(\'gif\')" title="GIF">GIF</button>'
-      + '<button type="button" class="sp-chat-gif-btn" onclick="spToggleMediaPicker(\'sticker\')" title="Figurinhas">🩷</button>'
+      + '<button type="button" class="sp-chat-gif-btn" id="sp-btn-gif" onclick="spToggleMediaPicker(\'gif\')" title="GIF">GIF</button>'
+      + '<button type="button" class="sp-chat-gif-btn" id="sp-btn-sticker" onclick="spToggleMediaPicker(\'sticker\')" title="Figurinhas">🩷</button>'
       + '<input type="text" class="sp-chat-input" id="sp-dm-input" placeholder="Digite..." autocomplete="off">'
       + '<button type="button" class="sp-chat-send-btn" onclick="spChatSend()">➤</button>'
       + '</div></div>';
@@ -3306,10 +3306,18 @@ document.addEventListener('click', function(e){
   var _gifDebounce = null;
   var _mediaPickerMode = '';
 
+  function _updatePickerBtns(){
+    var gb = document.getElementById('sp-btn-gif');
+    var sb = document.getElementById('sp-btn-sticker');
+    if(gb) gb.classList.toggle('sp-picker-active', _mediaPickerMode === 'gif');
+    if(sb) sb.classList.toggle('sp-picker-active', _mediaPickerMode === 'sticker');
+  }
+
   function _closeMediaPicker(){
     var mp = document.getElementById('sp-media-picker');
     if(mp) mp.classList.add('sp-hidden');
     _mediaPickerMode = '';
+    _updatePickerBtns();
   }
 
   window.spToggleMediaPicker = function(mode){
@@ -3319,6 +3327,7 @@ document.addEventListener('click', function(e){
       _closeMediaPicker(); return;
     }
     _mediaPickerMode = mode;
+    _updatePickerBtns();
     mp.classList.remove('sp-hidden');
     if(mode === 'gif'){
       mp.innerHTML = '<input type="text" class="sp-gif-picker-search" placeholder="Buscar GIFs..." oninput="spSearchGifs(this.value)">'
