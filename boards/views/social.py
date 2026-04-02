@@ -220,6 +220,29 @@ def _build_social_context(request, target_user, extra=None):
             post.comment_count = len(post.comment_list)
             post.view_count = view_counts.get(post.id, 0)
 
+            # Friendship post annotation
+            post.is_friendship = False
+            if post.text.startswith("__friendship__:"):
+                post.is_friendship = True
+                try:
+                    friend_uid = int(post.text.split(":")[1])
+                    from django.contrib.auth import get_user_model
+                    User = get_user_model()
+                    friend_user = User.objects.select_related("profile").get(id=friend_uid)
+                    friend_prof = getattr(friend_user, "profile", None)
+                    post_prof = getattr(post.user, "profile", None)
+                    post.friendship_data = {
+                        "friend_name": friend_prof.display_name if friend_prof else friend_user.get_full_name(),
+                        "friend_avatar": friend_prof.avatar.url if friend_prof and friend_prof.avatar else "",
+                        "friend_avatar_choice": friend_prof.avatar_choice if friend_prof else "",
+                        "friend_id": friend_uid,
+                        "user_name": post_prof.display_name if post_prof else post.user.get_full_name(),
+                        "user_avatar": post_prof.avatar.url if post_prof and post_prof.avatar else "",
+                        "user_avatar_choice": post_prof.avatar_choice if post_prof else "",
+                    }
+                except Exception:
+                    post.friendship_data = None
+
     # Marca visto
     if not is_me and posts:
         SocialPostSeen.objects.update_or_create(
@@ -565,12 +588,33 @@ def social_friends_feed(request):
                 "original_user_avatar": orig_prof.avatar.url if orig_prof and orig_prof.avatar else "",
             }
 
+        # Detectar post de amizade
+        friendship_data = None
+        if display_post.text.startswith("__friendship__:"):
+            try:
+                friend_uid = int(display_post.text.split(":")[1])
+                from django.contrib.auth import get_user_model
+                User = get_user_model()
+                friend_user = User.objects.select_related("profile").get(id=friend_uid)
+                friend_prof = getattr(friend_user, "profile", None)
+                friendship_data = {
+                    "friend_name": friend_prof.display_name if friend_prof else friend_user.get_full_name(),
+                    "friend_avatar": friend_prof.avatar.url if friend_prof and friend_prof.avatar else "",
+                    "friend_avatar_choice": friend_prof.avatar_choice if friend_prof else "",
+                    "friend_id": friend_uid,
+                    "user_name": prof.display_name if prof else p.user.get_full_name(),
+                    "user_avatar": prof.avatar.url if prof and prof.avatar else "",
+                    "user_avatar_choice": prof.avatar_choice if prof else "",
+                }
+            except Exception:
+                pass
+
         result.append({
             "id": p.id,
             "user_name": prof.display_name if prof else p.user.get_full_name(),
             "user_avatar": prof.avatar.url if prof and prof.avatar else "",
             "user_id": p.user_id,
-            "text": display_post.text,
+            "text": display_post.text if not friendship_data else "",
             "photo": display_post.photo.url if display_post.photo else "",
             "video": display_post.video.url if display_post.video else "",
             "gif_url": display_post.gif_url,
@@ -581,6 +625,7 @@ def social_friends_feed(request):
             "my_reaction": my_reaction,
             "comment_count": comments_by_post.get(p.id, 0),
             "shared_from": shared_info,
+            "friendship": friendship_data,
         })
 
     return JsonResponse({"posts": result})
@@ -1605,6 +1650,18 @@ def social_friend_accept(request, user_id: int):
     fs.save(update_fields=["status"])
     from boards.services.notifications import notify_friendship_event
     notify_friendship_event(recipient=fs.requester, actor=request.user, kind="accepted")
+
+    # ── Auto-post de amizade no feed ──
+    my_prof = _get_or_create_profile(request.user)
+    friend_prof = _get_or_create_profile(fs.requester)
+    my_name = my_prof.display_name or request.user.get_full_name() or request.user.email
+    friend_name = friend_prof.display_name or fs.requester.get_full_name() or fs.requester.email
+    SocialPost.objects.create(
+        user=request.user,
+        text=f"__friendship__:{fs.requester_id}",
+        visibility="all",
+    )
+
     return JsonResponse({"action": "accepted"})
 
 

@@ -5,7 +5,35 @@
   {% if posts %}
     {% for post in posts %}
     <div class="sp-post" id="sp-post-{{ post.id }}" data-post-id="{{ post.id }}">
-      {% if post.video %}
+      {% if post.is_friendship and post.friendship_data %}
+        {% load static %}
+        <div class="sp-friendship-card" style="background:linear-gradient(135deg,#7c3aed,#a78bfa 40%,#c4b5fd 70%,#e9d5ff)">
+          <div class="sp-friendship-bg">🤝</div>
+          <div class="sp-friendship-avatars">
+            <a href="/social/{{ post.user_id }}/">
+              {% if post.friendship_data.user_avatar %}
+                <img src="{{ post.friendship_data.user_avatar }}" class="sp-friendship-av">
+              {% elif post.friendship_data.user_avatar_choice %}
+                <img src="{% static 'images/avatar/' %}{{ post.friendship_data.user_avatar_choice }}" class="sp-friendship-av">
+              {% else %}
+                <span class="sp-friendship-av sp-friendship-av-fb">{{ post.friendship_data.user_name|first|upper }}</span>
+              {% endif %}
+            </a>
+            <span class="sp-friendship-heart">❤️</span>
+            <a href="/social/{{ post.friendship_data.friend_id }}/">
+              {% if post.friendship_data.friend_avatar %}
+                <img src="{{ post.friendship_data.friend_avatar }}" class="sp-friendship-av">
+              {% elif post.friendship_data.friend_avatar_choice %}
+                <img src="{% static 'images/avatar/' %}{{ post.friendship_data.friend_avatar_choice }}" class="sp-friendship-av">
+              {% else %}
+                <span class="sp-friendship-av sp-friendship-av-fb">{{ post.friendship_data.friend_name|first|upper }}</span>
+              {% endif %}
+            </a>
+          </div>
+          <div class="sp-friendship-names">{{ post.friendship_data.user_name }} e {{ post.friendship_data.friend_name }}</div>
+          <div class="sp-friendship-label">agora são amigos!</div>
+        </div>
+      {% elif post.video %}
         <video src="{{ post.video.url }}" class="sp-post-media" controls preload="metadata" playsinline></video>
       {% elif post.photo %}
         <img src="{{ post.photo.url }}" alt="" class="sp-post-media" loading="lazy">
@@ -18,7 +46,7 @@
       {% elif post.gif_url %}
         <img src="{{ post.gif_url }}" alt="GIF" class="sp-post-media" loading="lazy">
       {% endif %}
-      {% if post.text %}
+      {% if post.text and not post.is_friendship %}
         <p class="sp-post-text">{{ post.text|urlize|linebreaksbr }}</p>
       {% endif %}
 

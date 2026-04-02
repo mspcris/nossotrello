@@ -217,11 +217,12 @@
   <div class="sp-tabs" id="sp-tabs">
     <button type="button" class="sp-tab active" data-tab="mine" onclick="spSwitchTab('mine')">Meu Espaço</button>
     <button type="button" class="sp-tab" data-tab="friends" onclick="spSwitchTab('friends')">Amigos</button>
+    <button type="button" class="sp-tab" data-tab="feed" onclick="spSwitchTab('feed')">Novidades</button>
     <button type="button" class="sp-tab" onclick="spOpenChatList()">💬 Chat <span id="sp-chat-badge" class="sp-chat-badge sp-hidden"></span></button>
   </div>
 
-  <!-- ═══ REEL DE AMIGOS (tab friends) ═══ -->
-  <div id="sp-friends-reel-wrap" class="sp-friends-reel-wrap sp-hidden">
+  <!-- ═══ REEL / NOVIDADES (tab feed) ═══ -->
+  <div id="sp-feed-wrap" class="sp-hidden">
 
     <!-- Toggle row: Amigos/Todos + Rolagem auto -->
     <div class="sp-feed-toggle-row">
@@ -250,8 +251,10 @@
     <div class="sp-reel-swipe-hint" id="sp-reel-swipe-hint" style="display:block">
       <span>👆 Deslize para ver mais publicações</span>
     </div>
+  </div>
 
-    <!-- Amigos, Solicitações e Sugestões — seção separada do reel -->
+  <!-- ═══ AMIGOS (tab friends) ═══ -->
+  <div id="sp-friends-reel-wrap" class="sp-friends-reel-wrap sp-hidden">
     <div class="sp-friends-section">
     <!-- ═══ MEUS AMIGOS (amizades aceitas) ═══ -->
     {% if real_friends %}
@@ -948,15 +951,19 @@ var _CAMILA_AVATARS = {
   window.spSwitchTab = function(tab){
     document.querySelectorAll('.sp-tab').forEach(function(b){ b.classList.toggle('active', b.dataset.tab === tab); });
     var mine = document.getElementById('sp-mine-content');
-    var reel = document.getElementById('sp-friends-reel-wrap');
-    if(!mine || !reel) return;
-    if(tab === 'friends'){
-      mine.classList.add('sp-hidden');
-      reel.classList.remove('sp-hidden');
-      if(!_reelLoaded) _loadReelFeed();
-    } else {
+    var friends = document.getElementById('sp-friends-reel-wrap');
+    var feed = document.getElementById('sp-feed-wrap');
+    if(!mine || !friends || !feed) return;
+    mine.classList.add('sp-hidden');
+    friends.classList.add('sp-hidden');
+    feed.classList.add('sp-hidden');
+    if(tab === 'mine'){
       mine.classList.remove('sp-hidden');
-      reel.classList.add('sp-hidden');
+    } else if(tab === 'friends'){
+      friends.classList.remove('sp-hidden');
+    } else if(tab === 'feed'){
+      feed.classList.remove('sp-hidden');
+      if(!_reelLoaded) _loadReelFeed();
     }
   };
 
@@ -1005,7 +1012,30 @@ var _CAMILA_AVATARS = {
       }
       html += '</div>';
 
-      if(p.video){
+      /* ── Conteúdo: amizade especial ou mídia normal ── */
+      if(p.friendship){
+        var f = p.friendship;
+        var av1 = f.user_avatar
+          ? '<img src="'+f.user_avatar+'" class="sp-friendship-av">'
+          : (f.user_avatar_choice
+            ? '<img src="{% static "images/avatar/" %}'+f.user_avatar_choice+'" class="sp-friendship-av">'
+            : '<span class="sp-friendship-av sp-friendship-av-fb">'+(f.user_name||'?').charAt(0).toUpperCase()+'</span>');
+        var av2 = f.friend_avatar
+          ? '<img src="'+f.friend_avatar+'" class="sp-friendship-av">'
+          : (f.friend_avatar_choice
+            ? '<img src="{% static "images/avatar/" %}'+f.friend_avatar_choice+'" class="sp-friendship-av">'
+            : '<span class="sp-friendship-av sp-friendship-av-fb">'+(f.friend_name||'?').charAt(0).toUpperCase()+'</span>');
+        html += '<div class="sp-friendship-card">';
+        html += '<div class="sp-friendship-bg">🤝</div>';
+        html += '<div class="sp-friendship-avatars">';
+        html += '<a href="/social/'+p.user_id+'/">'+av1+'</a>';
+        html += '<span class="sp-friendship-heart">❤️</span>';
+        html += '<a href="/social/'+f.friend_id+'/">'+av2+'</a>';
+        html += '</div>';
+        html += '<div class="sp-friendship-names">'+_escHtml(f.user_name)+' e '+_escHtml(f.friend_name)+'</div>';
+        html += '<div class="sp-friendship-label">agora são amigos!</div>';
+        html += '</div>';
+      } else if(p.video){
         html += '<video src="'+p.video+'" class="sp-reel-media" controls preload="auto" playsinline muted></video>';
       } else if(p.photo){
         html += '<img src="'+p.photo+'" alt="" loading="lazy">';
@@ -1118,18 +1148,50 @@ var _CAMILA_AVATARS = {
 
     _scheduleNext();
 
-    /* Toque ou clique no slide → para auto-scroll e desmarca switch */
-    function _stopAutoScroll(){
+    /* Toque segurado pausa auto-scroll, soltar retoma.
+       Só mantém pausado se foco estiver no campo de comentário. */
+    var _commentFocused = false;
+
+    function _pauseAutoScroll(){
       _autoScrollOn = false;
       if(_autoTimer) clearTimeout(_autoTimer);
-      var toggle = document.getElementById('sp-autoscroll-toggle');
-      if(toggle) toggle.checked = false;
     }
-    el.addEventListener('touchstart', _stopAutoScroll, {passive:true});
+    function _resumeAutoScroll(){
+      if(_commentFocused) return; /* não retoma enquanto estiver digitando */
+      _autoScrollOn = true;
+      var toggle = document.getElementById('sp-autoscroll-toggle');
+      if(toggle && toggle.checked) _scheduleNext();
+      else if(toggle && !toggle.checked){ _autoScrollOn = false; }
+      else _scheduleNext();
+    }
+
+    el.addEventListener('touchstart', function(){ _pauseAutoScroll(); }, {passive:true});
+    el.addEventListener('touchend', function(){ _resumeAutoScroll(); }, {passive:true});
     el.addEventListener('mousedown', function(e){
       if(e.target.closest('.sp-reel-arrow')) return;
-      _stopAutoScroll();
+      _pauseAutoScroll();
     });
+    el.addEventListener('mouseup', function(){ _resumeAutoScroll(); });
+
+    /* Foco no campo de comentário mantém pausado */
+    el.addEventListener('focusin', function(e){
+      if(e.target.classList.contains('sp-reel-comment-input')){
+        _commentFocused = true;
+        _pauseAutoScroll();
+      }
+    });
+    el.addEventListener('focusout', function(e){
+      if(e.target.classList.contains('sp-reel-comment-input')){
+        _commentFocused = false;
+        _resumeAutoScroll();
+      }
+    });
+
+    /* Expor para chamar após enviar comentário */
+    window._spResumeAutoScroll = function(){
+      _commentFocused = false;
+      _resumeAutoScroll();
+    };
 
     /* Toggle global de auto-scroll */
     window.spToggleAutoScroll = function(on){
@@ -1162,7 +1224,7 @@ var _CAMILA_AVATARS = {
     var existing = document.querySelector('.sp-reel-dots');
     if(existing) existing.remove();
     if(_reelPosts.length < 2) return;
-    var wrap = document.getElementById('sp-friends-reel-wrap');
+    var wrap = document.getElementById('sp-feed-wrap');
     var dots = document.createElement('div');
     dots.className = 'sp-reel-dots';
     var max = Math.min(_reelPosts.length, 15);
@@ -1237,12 +1299,13 @@ var _CAMILA_AVATARS = {
     var text = (input.value||'').trim();
     if(!text) return;
     input.value = '';
+    input.blur(); /* tira foco para retomar auto-scroll */
     fetch('{% url "boards:social_post_comment" 0 %}'.replace('/0/','/'+postId+'/'), {
       method:'POST', headers:{'X-CSRFToken':_csrf(), 'Content-Type':'application/x-www-form-urlencoded'},
       body:'text='+encodeURIComponent(text)
     }).then(function(r){ return r.json(); })
       .then(function(d){
-        if(d.ok || d.comment){
+        if(d.id){
           input.placeholder = 'Comentário enviado ✓';
 
           /* ── Atualiza contador de comentários no botão 💬 ── */
@@ -1266,6 +1329,9 @@ var _CAMILA_AVATARS = {
             panel.classList.remove('sp-hidden');
             _loadReelComments(postId, panel);
           }
+
+          /* Retoma auto-scroll após enviar */
+          if(window._spResumeAutoScroll) window._spResumeAutoScroll();
         }
         setTimeout(function(){ input.placeholder = 'Comentar...'; }, 2000);
       });
@@ -1345,7 +1411,7 @@ var _CAMILA_AVATARS = {
     }, 3000);
   }
   (function(){
-    var wrap = document.getElementById('sp-friends-reel-wrap');
+    var wrap = document.getElementById('sp-feed-wrap');
     if (!wrap) return;
     wrap.addEventListener('mousemove', _showReelArrows);
     wrap.addEventListener('touchstart', _showReelArrows, {passive:true});
