@@ -1031,7 +1031,7 @@ class CamilaKnowledge(models.Model):
         ("culture", "Cultura e Valores"),
         ("other", "Outros"),
     ]
-    title = models.CharField(max_length=200)
+    title = models.CharField(max_length=500)
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default="about")
     content = models.TextField(help_text="Conteúdo que a Camila deve saber")
     is_active = models.BooleanField(default=True)
