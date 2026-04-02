@@ -1762,13 +1762,13 @@ document.addEventListener('click', function(e){
   /* ═══ GIF/STICKER PICKER PARA POSTS ═══ */
   var _postPickerMode = '';
 
-  function _closePostPicker(){
+  window._closePostPicker = function(){
     var mp = document.getElementById('sp-post-media-picker');
     if(mp){ mp.classList.add('sp-hidden'); mp.innerHTML = ''; }
     _postPickerMode = '';
-  }
+  };
 
-  function _setPostMedia(type, url){
+  window._setPostMedia = function(type, url){
     /* Limpa file input se havia arquivo */
     var fi = document.getElementById('sp-media-input');
     if(fi) fi.value = '';
@@ -1787,7 +1787,7 @@ document.addEventListener('click', function(e){
       }
     }
     _closePostPicker();
-  }
+  };
 
   window._clearPostMedia = function(){
     document.getElementById('sp-post-gif-url').value = '';
@@ -1838,7 +1838,7 @@ document.addEventListener('click', function(e){
   };
 
   var _postGifDebounce = null;
-  function _loadPostTrendingGifs(){
+  window._loadPostTrendingGifs = function(){
     var grid = document.getElementById('sp-post-gif-grid');
     if(!grid) return;
     grid.innerHTML = '<div style="text-align:center;padding:20px;color:#999">Carregando...</div>';
@@ -1853,7 +1853,7 @@ document.addEventListener('click', function(e){
           return '<img src="'+thumb+'" onclick="_setPostMedia(\'gif\',\''+url+'\')" loading="lazy">';
         }).join('');
       });
-  }
+  };
   window._postSearchGifs = function(q){
     clearTimeout(_postGifDebounce);
     if(!q || q.length < 2) { _loadPostTrendingGifs(); return; }
