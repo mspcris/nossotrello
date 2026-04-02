@@ -9,6 +9,14 @@
         <video src="{{ post.video.url }}" class="sp-post-media" controls preload="metadata" playsinline></video>
       {% elif post.photo %}
         <img src="{{ post.photo.url }}" alt="" class="sp-post-media" loading="lazy">
+      {% elif post.sticker_url %}
+        {% if ".mp4" in post.sticker_url %}
+          <video src="{{ post.sticker_url }}" class="sp-post-media" autoplay loop muted playsinline></video>
+        {% else %}
+          <img src="{{ post.sticker_url }}" alt="Figurinha" class="sp-post-media" loading="lazy" style="object-fit:contain;background:#f9fafb">
+        {% endif %}
+      {% elif post.gif_url %}
+        <img src="{{ post.gif_url }}" alt="GIF" class="sp-post-media" loading="lazy">
       {% endif %}
       {% if post.text %}
         <p class="sp-post-text">{{ post.text|urlize|linebreaksbr }}</p>

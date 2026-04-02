@@ -2576,9 +2576,11 @@ video.sp-post-media {
   opacity: 0.6;
   margin-top: 2px;
 }
+.sp-chat-msg-gif { max-width: 200px; }
 .sp-chat-msg-gif img {
-  max-width: 200px;
+  width: 100%;
   border-radius: 12px;
+  object-fit: contain;
 }
 .sp-chat-msg-deleted {
   font-style: italic;
@@ -2716,8 +2718,9 @@ video.sp-post-media {
 .sp-chat-msg-other .sp-msg-seen { display: none; }
 
 /* Sticker message */
-.sp-chat-msg-sticker { max-width: 140px; }
-.sp-chat-msg-sticker img { width: 100%; border-radius: 8px; }
+.sp-chat-msg-sticker { max-width: 160px; }
+.sp-chat-msg-sticker img,
+.sp-chat-msg-sticker video { width: 100%; border-radius: 8px; object-fit: contain; }
 
 /* ═══════════════════════════════════════════════
    QUEM CURTIU (popup no long-press)
