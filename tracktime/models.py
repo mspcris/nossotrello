@@ -138,7 +138,7 @@ class TimeEntry(models.Model):
     board_id = models.PositiveIntegerField(null=True, blank=True)
     card_id = models.PositiveIntegerField(null=True, blank=True)
 
-    card_title_cache = models.CharField(max_length=255, blank=True)
+    card_title_cache = models.CharField(max_length=500, blank=True)
     card_url_cache = models.URLField(blank=True)
 
     is_card_deleted_cache = models.BooleanField(default=False)

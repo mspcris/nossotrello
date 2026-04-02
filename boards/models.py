@@ -342,7 +342,7 @@ class CardSeen(models.Model):
 class CardAttachment(models.Model):
     card = models.ForeignKey(Card, related_name="attachments", on_delete=models.CASCADE)
     file = models.FileField(upload_to="attachments/")
-    description = models.CharField(max_length=255, blank=True, default="")
+    description = models.TextField(blank=True, default="")
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True, blank=True,
@@ -1211,7 +1211,7 @@ class ChatMessage(models.Model):
 
 class CamilaPOP(models.Model):
     """POP — Procedimento Operacional Padrão armazenado como PDF."""
-    title = models.CharField(max_length=200)
+    title = models.CharField(max_length=500)
     code = models.CharField(max_length=50, blank=True, default="")
     category = models.CharField(max_length=100, blank=True, default="", verbose_name="Setor/Categoria")
     pdf_file = models.FileField(upload_to="camila/pops/")
