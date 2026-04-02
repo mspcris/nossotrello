@@ -2932,34 +2932,61 @@ document.addEventListener('click', function(e){
 
   window.spChatSend = function(){
     var input = document.getElementById('sp-chat-input');
+    if(!input) return;
     var text = (input.value || '').trim();
     if(!text) return;
     var savedText = text;
     input.value = '';
+
+    /* Feedback visual imediato — mostra mensagem como "enviando" */
+    var body = document.getElementById('sp-chat-body');
+    var tempId = 'sp-chat-sending-' + Date.now();
+    if(body){
+      var tmpDiv = document.createElement('div');
+      tmpDiv.id = tempId;
+      tmpDiv.className = 'sp-chat-msg sp-chat-mine';
+      tmpDiv.innerHTML = '<div class="sp-chat-bubble sp-chat-mine-bubble" style="opacity:0.6">' + _escHtml(text) + '</div>';
+      body.appendChild(tmpDiv);
+      _scrollChatBottom();
+    }
+
     var fd = new FormData();
     fd.append('text', text);
+
+    /* CSRF: tenta hidden input, depois cookie, depois meta tag */
     var csrf = _getCsrf();
     if(!csrf){
-      alert('Erro de autenticação. Recarregue a página.');
-      input.value = savedText;
-      return;
+      var meta = document.querySelector('meta[name="csrf-token"]');
+      if(meta) csrf = meta.content;
     }
-    fetch('/chat/' + _chatOtherUid + '/send/', {method:'POST', headers:{'X-CSRFToken': csrf}, body: fd})
+
+    fetch('/chat/' + _chatOtherUid + '/send/', {
+      method: 'POST',
+      headers: {'X-CSRFToken': csrf || ''},
+      body: fd,
+      credentials: 'same-origin'
+    })
       .then(function(r){
         if(!r.ok){
-          return r.text().then(function(t){ throw new Error('HTTP ' + r.status + ': ' + t.substring(0, 200)); });
+          return r.text().then(function(t){ throw new Error('HTTP ' + r.status); });
         }
         return r.json();
       })
       .then(function(d){
+        /* Remove mensagem temporária */
+        var tmp = document.getElementById(tempId);
+        if(tmp) tmp.remove();
+
         if(d.error){ alert(d.error); input.value = savedText; return; }
-        var body = document.getElementById('sp-chat-body');
         _appendMsg(body, d);
         _scrollChatBottom();
       })
       .catch(function(err){
-        alert('Erro ao enviar: ' + err.message);
+        /* Remove temporária e restaura texto */
+        var tmp = document.getElementById(tempId);
+        if(tmp) tmp.remove();
         input.value = savedText;
+        alert('Erro ao enviar: ' + err.message + '. Tente recarregar a página.');
       });
   };
 
