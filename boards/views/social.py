@@ -497,6 +497,8 @@ def social_friends_feed(request):
             return 0  # vídeos primeiro
         if p.photo:
             return 1  # imagens depois
+        if p.gif_url or p.sticker_url:
+            return 1  # GIF/sticker = mesmo nível de imagem
         return 2      # texto por último
 
     def _sort_key(p):
@@ -557,6 +559,8 @@ def social_friends_feed(request):
             "text": display_post.text,
             "photo": display_post.photo.url if display_post.photo else "",
             "video": display_post.video.url if display_post.video else "",
+            "gif_url": display_post.gif_url,
+            "sticker_url": display_post.sticker_url,
             "created_at": timezone.localtime(p.created_at).strftime("%d/%m %H:%M"),
             "reaction_counts": dict(Counter(r.reaction for r in p_reactions)),
             "total_reactions": len(p_reactions),
@@ -587,12 +591,14 @@ def social_post_create(request):
         else:
             photo = media
 
+    gif_url = (request.POST.get("gif_url") or "").strip()
+    sticker_url = (request.POST.get("sticker_url") or "").strip()
     visibility = (request.POST.get("visibility") or "all").strip()
     if visibility not in ("all", "friends"):
         visibility = "all"
 
     extra = {}
-    if not text and not photo and not video:
+    if not text and not photo and not video and not gif_url and not sticker_url:
         extra["post_error"] = "Adicione um texto, foto ou vídeo antes de publicar."
     else:
         post = SocialPost.objects.create(
@@ -600,6 +606,8 @@ def social_post_create(request):
             text=text,
             photo=photo or None,
             video=video or None,
+            gif_url=gif_url,
+            sticker_url=sticker_url,
             visibility=visibility,
         )
         # Notificar @menções

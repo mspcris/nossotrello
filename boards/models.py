@@ -842,6 +842,8 @@ class SocialPost(models.Model):
     text = models.TextField(blank=True, default="")
     photo = models.ImageField(upload_to="social/", blank=True, null=True)
     video = models.FileField(upload_to="social/videos/", blank=True, null=True)
+    gif_url = models.URLField(blank=True, default="")
+    sticker_url = models.URLField(blank=True, default="")
     visibility = models.CharField(max_length=10, choices=VISIBILITY_CHOICES, default="all")
     shared_from = models.ForeignKey(
         "self", null=True, blank=True, related_name="reposts",

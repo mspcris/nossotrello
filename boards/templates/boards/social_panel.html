@@ -786,8 +786,20 @@
             <span class="sp-sheet-opt-icon">🖼️</span>
             <span>Galeria</span>
           </button>
+          <button type="button" class="sp-sheet-opt" onclick="spPostGifPicker()">
+            <span class="sp-sheet-opt-icon">GIF</span>
+            <span>GIF</span>
+          </button>
+          <button type="button" class="sp-sheet-opt" onclick="spPostStickerPicker()">
+            <span class="sp-sheet-opt-icon">🩷</span>
+            <span>Figurinha</span>
+          </button>
         </div>
 
+        <div id="sp-post-media-picker" class="sp-gif-picker sp-hidden" style="position:relative;bottom:auto;left:auto;right:auto;margin:8px 0"></div>
+
+        <input type="hidden" name="gif_url" id="sp-post-gif-url" value="">
+        <input type="hidden" name="sticker_url" id="sp-post-sticker-url" value="">
         <input type="hidden" name="visibility" id="sp-vis-input" value="all">
         <div class="sp-vis-row">
           <button type="button" class="sp-vis-toggle" id="sp-vis-btn" onclick="spToggleVis()">
@@ -995,6 +1007,14 @@ var _CAMILA_AVATARS = {
         html += '<video src="'+p.video+'" class="sp-reel-media" controls preload="auto" playsinline muted></video>';
       } else if(p.photo){
         html += '<img src="'+p.photo+'" alt="" loading="lazy">';
+      } else if(p.sticker_url){
+        if(p.sticker_url.match(/\.mp4$/i)){
+          html += '<video src="'+p.sticker_url+'" class="sp-reel-media" autoplay loop muted playsinline></video>';
+        } else {
+          html += '<img src="'+p.sticker_url+'" alt="Figurinha" loading="lazy" style="max-height:300px;object-fit:contain">';
+        }
+      } else if(p.gif_url){
+        html += '<img src="'+p.gif_url+'" alt="GIF" loading="lazy" style="width:100%;border-radius:12px">';
       }
       if(p.text){
         html += '<div class="sp-reel-text">'+_spMentionify(_escHtml(p.text))+'</div>';
@@ -1738,6 +1758,120 @@ document.addEventListener('click', function(e){
       preview.appendChild(img);
     }
   });
+
+  /* ═══ GIF/STICKER PICKER PARA POSTS ═══ */
+  var _postPickerMode = '';
+
+  function _closePostPicker(){
+    var mp = document.getElementById('sp-post-media-picker');
+    if(mp){ mp.classList.add('sp-hidden'); mp.innerHTML = ''; }
+    _postPickerMode = '';
+  }
+
+  function _setPostMedia(type, url){
+    /* Limpa file input se havia arquivo */
+    var fi = document.getElementById('sp-media-input');
+    if(fi) fi.value = '';
+    document.getElementById('sp-post-gif-url').value = type === 'gif' ? url : '';
+    document.getElementById('sp-post-sticker-url').value = type === 'sticker' ? url : '';
+    /* Preview */
+    var preview = document.getElementById('sp-sheet-preview');
+    if(preview){
+      preview.classList.remove('sp-hidden');
+      if(url.match(/\.mp4$/i)){
+        preview.innerHTML = '<video src="'+url+'" autoplay loop muted playsinline style="width:100%;max-height:200px;border-radius:12px"></video>'
+          + '<button type="button" onclick="_clearPostMedia()" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.5);color:#fff;border:none;border-radius:50%;width:28px;height:28px;cursor:pointer">✕</button>';
+      } else {
+        preview.innerHTML = '<div style="position:relative"><img src="'+url+'" style="width:100%;max-height:200px;object-fit:cover;border-radius:12px">'
+          + '<button type="button" onclick="_clearPostMedia()" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.5);color:#fff;border:none;border-radius:50%;width:28px;height:28px;cursor:pointer">✕</button></div>';
+      }
+    }
+    _closePostPicker();
+  }
+
+  window._clearPostMedia = function(){
+    document.getElementById('sp-post-gif-url').value = '';
+    document.getElementById('sp-post-sticker-url').value = '';
+    var fi = document.getElementById('sp-media-input');
+    if(fi) fi.value = '';
+    var preview = document.getElementById('sp-sheet-preview');
+    if(preview){ preview.innerHTML = ''; preview.classList.add('sp-hidden'); }
+  };
+
+  window.spPostGifPicker = function(){
+    var mp = document.getElementById('sp-post-media-picker');
+    if(!mp) return;
+    if(!mp.classList.contains('sp-hidden') && _postPickerMode === 'gif'){ _closePostPicker(); return; }
+    _postPickerMode = 'gif';
+    mp.classList.remove('sp-hidden');
+    mp.innerHTML = '<input type="text" class="sp-gif-picker-search" placeholder="Buscar GIFs..." oninput="_postSearchGifs(this.value)">'
+      + '<div class="sp-gif-grid" id="sp-post-gif-grid"></div>';
+    _loadPostTrendingGifs();
+  };
+
+  window.spPostStickerPicker = function(){
+    var mp = document.getElementById('sp-post-media-picker');
+    if(!mp) return;
+    if(!mp.classList.contains('sp-hidden') && _postPickerMode === 'sticker'){ _closePostPicker(); return; }
+    _postPickerMode = 'sticker';
+    mp.classList.remove('sp-hidden');
+    mp.innerHTML = '<div style="text-align:center;padding:12px;color:#999">Carregando...</div>';
+    fetch('/chat/stickers/')
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(!d.stickers || !d.stickers.length){
+          mp.innerHTML = '<div style="text-align:center;padding:20px;color:#999">Nenhuma figurinha. Crie pelo chat!</div>';
+          return;
+        }
+        var html = '<div class="sp-gif-grid">';
+        d.stickers.forEach(function(s){
+          var isVideo = s.url.match(/\.mp4$/i);
+          if(isVideo){
+            html += '<video src="'+s.url+'" autoplay loop muted playsinline onclick="_setPostMedia(\'sticker\',\''+s.url+'\')" style="width:100%;border-radius:8px;cursor:pointer"></video>';
+          } else {
+            html += '<img src="'+s.url+'" onclick="_setPostMedia(\'sticker\',\''+s.url+'\')" loading="lazy" style="border-radius:8px;cursor:pointer;width:100%">';
+          }
+        });
+        html += '</div>';
+        mp.innerHTML = html;
+      });
+  };
+
+  var _postGifDebounce = null;
+  function _loadPostTrendingGifs(){
+    var grid = document.getElementById('sp-post-gif-grid');
+    if(!grid) return;
+    grid.innerHTML = '<div style="text-align:center;padding:20px;color:#999">Carregando...</div>';
+    fetch('https://tenor.googleapis.com/v2/featured?key=AIzaSyAyimkuYQYF_FXVALexPuGQctUWRURdCYQ&limit=18&media_filter=gif&locale=pt_BR')
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(!d.results || !d.results.length){ grid.innerHTML = '<div style="text-align:center;padding:12px;color:#999">Nenhum GIF</div>'; return; }
+        grid.innerHTML = d.results.map(function(r){
+          var url = r.media_formats && r.media_formats.gif ? r.media_formats.gif.url : '';
+          var thumb = r.media_formats && r.media_formats.tinygif ? r.media_formats.tinygif.url : url;
+          if(!url) return '';
+          return '<img src="'+thumb+'" onclick="_setPostMedia(\'gif\',\''+url+'\')" loading="lazy">';
+        }).join('');
+      });
+  }
+  window._postSearchGifs = function(q){
+    clearTimeout(_postGifDebounce);
+    if(!q || q.length < 2) { _loadPostTrendingGifs(); return; }
+    _postGifDebounce = setTimeout(function(){
+      fetch('https://tenor.googleapis.com/v2/search?q='+encodeURIComponent(q)+'&key=AIzaSyAyimkuYQYF_FXVALexPuGQctUWRURdCYQ&limit=18&media_filter=gif')
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          var grid = document.getElementById('sp-post-gif-grid');
+          if(!grid || !d.results) return;
+          grid.innerHTML = d.results.map(function(r){
+            var url = r.media_formats && r.media_formats.gif ? r.media_formats.gif.url : '';
+            var thumb = r.media_formats && r.media_formats.tinygif ? r.media_formats.tinygif.url : url;
+            if(!url) return '';
+            return '<img src="'+thumb+'" onclick="_setPostMedia(\'gif\',\''+url+'\')" loading="lazy">';
+          }).join('');
+        });
+    }, 400);
+  };
 
   /* ═══ REACTIONS ═══ */
   window.spReact = async function(postId, reaction){
