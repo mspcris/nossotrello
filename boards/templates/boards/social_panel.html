@@ -1942,6 +1942,18 @@ document.addEventListener('click', function(e){
   };
 
   /* ── FAB + Bottom Sheet ── */
+  /* Block pull-to-refresh on overlay but allow scroll inside .sp-sheet */
+  (function(){
+    document.querySelectorAll('.sp-sheet-overlay').forEach(function(ov){
+      ov.addEventListener('touchmove', function(e){
+        // Allow scroll inside .sp-sheet children
+        var t = e.target, allow = false;
+        while(t && t !== ov){ if(t.classList.contains('sp-sheet')){allow=true;break;} t=t.parentElement; }
+        if(!allow) e.preventDefault();
+      }, {passive:false});
+    });
+  })();
+
   window.spOpenSheet = function(){
     var o = document.getElementById('sp-sheet-overlay');
     if(o) o.classList.remove('sp-hidden');

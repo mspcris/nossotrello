@@ -1025,9 +1025,13 @@
 /* ============================================================
    REEL DE AMIGOS — swipe horizontal fullscreen-style
    ============================================================ */
+#sp-feed-wrap{
+  position:relative; overflow:hidden; border-radius:16px;
+  background:#000; min-height:480px;
+}
 .sp-friends-reel-wrap{
   position:relative; overflow:hidden; border-radius:16px;
-  background:#000; min-height:420px;
+  background:#fff; min-height:auto;
 }
 
 /* Arrows for reel navigation — hidden by default, shown on interaction */
@@ -1036,15 +1040,15 @@
   align-items: center;
   justify-content: center;
   position: absolute;
-  top: 50%;
+  top: 40%;
   transform: translateY(-50%);
   z-index: 5;
   background: rgba(0,0,0,0.45);
   border: none;
   color: #fff;
   font-size: 1.6rem;
-  width: 36px;
-  height: 60px;
+  width: 32px;
+  height: 48px;
   cursor: pointer;
   border-radius: 10px;
   backdrop-filter: blur(4px);
@@ -1058,8 +1062,8 @@
 }
 .sp-reel-arrow:hover { background: rgba(0,0,0,0.65); }
 .sp-reel-arrow:active { transform: translateY(-50%) scale(0.92); }
-.sp-reel-arrow-left { left: 6px; }
-.sp-reel-arrow-right { right: 6px; }
+.sp-reel-arrow-left { left: 4px; }
+.sp-reel-arrow-right { right: 4px; }
 .sp-reel{
   display:flex; overflow-x:auto; scroll-snap-type:x mandatory;
   -webkit-overflow-scrolling:touch; scrollbar-width:none;
@@ -1093,6 +1097,22 @@
   padding:10px 14px; background:linear-gradient(to bottom,rgba(0,0,0,.6),transparent);
   z-index:2;
 }
+.sp-reel-edit-btn{
+  background:rgba(255,255,255,.2); border:none; color:#fff; font-size:.9rem;
+  padding:6px 10px; border-radius:8px; cursor:pointer; backdrop-filter:blur(4px);
+  margin-left:auto; flex-shrink:0;
+}
+.sp-reel-edit-btn:active{ transform:scale(0.9); }
+.sp-post-edit-btn{
+  background:none; border:none; color:#7c3aed; font-size:.75rem; cursor:pointer;
+  padding:2px 6px; border-radius:6px;
+}
+.sp-post-edit-btn:hover{ background:#f3e8ff; }
+.sp-post-share-btn{
+  background:none; border:none; color:#7c3aed; font-size:.75rem; cursor:pointer;
+  padding:2px 6px; border-radius:6px; font-weight:600;
+}
+.sp-post-share-btn:hover{ background:#f3e8ff; }
 .sp-reel-av{
   width:36px; height:36px; border-radius:50%; border:2px solid #fff; object-fit:cover;
 }
@@ -1127,6 +1147,44 @@
 .sp-reel-comment-input::placeholder{ color:rgba(255,255,255,.5); }
 .sp-reel-comment-send{
   background:none; border:none; color:#fff; font-size:1.1rem; cursor:pointer; padding:6px;
+}
+
+/* ── Friendship card in reel ── */
+.sp-friendship-card{
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding:32px 20px; text-align:center; position:relative; min-height:260px;
+  background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 40%, #c4b5fd 70%, #e9d5ff 100%);
+  border-radius:16px; margin:8px 12px;
+}
+.sp-friendship-bg{
+  font-size:4rem; opacity:.15; position:absolute; top:50%; left:50%;
+  transform:translate(-50%,-50%); pointer-events:none;
+}
+.sp-friendship-avatars{
+  display:flex; align-items:center; gap:16px; margin-bottom:16px; z-index:1;
+}
+.sp-friendship-av{
+  width:80px; height:80px; border-radius:50%; object-fit:cover;
+  border:3px solid #fff; box-shadow:0 4px 12px rgba(0,0,0,.25);
+}
+.sp-friendship-av.sp-friendship-av-fb{
+  display:flex; align-items:center; justify-content:center;
+  background:#6d28d9; color:#fff; font-size:1.8rem; font-weight:700;
+}
+.sp-friendship-heart{
+  font-size:1.6rem; animation:sp-heart-pulse 1.2s ease-in-out infinite;
+}
+@keyframes sp-heart-pulse{
+  0%,100%{ transform:scale(1); }
+  50%{ transform:scale(1.25); }
+}
+.sp-friendship-names{
+  font-size:1.05rem; font-weight:700; color:#fff; z-index:1;
+  text-shadow:0 1px 4px rgba(0,0,0,.3);
+}
+.sp-friendship-label{
+  font-size:.9rem; color:rgba(255,255,255,.9); margin-top:4px; z-index:1;
+  text-shadow:0 1px 3px rgba(0,0,0,.2);
 }
 
 /* Comments panel in reel */
@@ -1257,11 +1315,6 @@ video.sp-post-media {
   align-items: center;
 }
 .sp-post-delete:hover { color: #b91c1c; }
-.sp-post-share-btn{
-  background:none; border:none; color:#7c3aed; font-size:.75rem; cursor:pointer;
-  padding:2px 6px; border-radius:6px; font-weight:600;
-}
-.sp-post-share-btn:hover{ background:#f3e8ff; }
 
 /* View counter */
 .sp-view-count {
@@ -1639,6 +1692,7 @@ video.sp-post-media {
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: contain;
   overflow: hidden;
+  touch-action: none;
 }
 .sp-sheet {
   background: #fff;
@@ -1651,7 +1705,7 @@ video.sp-post-media {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
-  touch-action: pan-y;
+  touch-action: auto;
 }
 @keyframes sp-sheet-up {
   from { transform: translateY(100%); }
@@ -1893,16 +1947,16 @@ video.sp-post-media {
   flex-shrink: 0;
 }
 .sp-friend-av-img {
-  width: 52px;
-  height: 52px;
-  border-radius: 12px;
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
   object-fit: cover;
   border: 2px solid #e5e7eb;
 }
 .sp-friend-av-fb {
-  width: 52px;
-  height: 52px;
-  border-radius: 12px;
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
   background: linear-gradient(135deg,#7c3aed,#a78bfa);
   color: #fff;
   font-size: 1.3rem;
@@ -1913,9 +1967,9 @@ video.sp-post-media {
   border: 2px solid #e5e7eb;
 }
 .sp-friend-name {
-  font-size: 0.65rem;
+  font-size: 0.72rem;
   color: #374151;
-  max-width: 56px;
+  max-width: 68px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2457,6 +2511,7 @@ video.sp-post-media {
 .sp-req-act-profile { background: #6366f1; color: #fff; }
 .sp-req-act-reject  { background: #ef4444; color: #fff; }
 .sp-req-act-btn:active { transform: scale(0.93); }
+.sp-req-act-btn { touch-action: manipulation; -webkit-tap-highlight-color: transparent; position: relative; z-index: 9002; }
 
 /* Zoom ao tocar no avatar de solicitação */
 .sp-req-item.sp-req-zoomed {
@@ -2622,6 +2677,8 @@ video.sp-post-media {
   width: 100%;
   max-width: 520px;
   height: 85vh;
+  height: 85dvh;
+  max-height: calc(var(--sp-vvh, 85vh));
   background: #fff;
   border-radius: 20px 20px 0 0;
   display: flex;
