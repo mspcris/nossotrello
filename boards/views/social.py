@@ -501,7 +501,7 @@ def social_post_full(request, post_id: int):
     # Friendship post
     is_friendship = False
     friendship_data = None
-    if text.startswith("__friendship__:"):
+    if post.text.startswith("__friendship__:"):
         is_friendship = True
         try:
             friend_uid = int(text.split(":")[1])
