@@ -49,7 +49,7 @@
       {% if post.text and not post.is_friendship %}
         {% if post.text_style %}
           <div class="sp-styled-text" data-effect="{{ post.text_style.effect }}"
-               style="background:{{ post.text_style.bg }};color:{{ post.text_style.color }}">
+               style="min-height:180px;display:flex;align-items:center;justify-content:center;border-radius:12px;padding:24px 20px;font-size:1.4rem;font-weight:700;text-align:center;word-break:break-word;line-height:1.4;margin-bottom:8px;background:{{ post.text_style.bg }};color:{{ post.text_style.color }}">
             <span class="sp-styled-text-inner">{{ post.text|linebreaksbr }}</span>
           </div>
         {% else %}
