@@ -143,7 +143,14 @@
   width: 100%;
   max-width: 100%;
   min-width: 0;
+  overflow: visible;
+}
+#card-modal-root .ql-editor{
   overflow-x: hidden;
+}
+#card-modal-root .ql-editor img{
+  max-width: 100%;
+  height: auto;
 }
 
 /* Toolbar: dropdown acima do resto */
