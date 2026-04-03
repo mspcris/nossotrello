@@ -2076,6 +2076,7 @@ document.addEventListener('click', function(e){
   };
 
   window.spPostGifPicker = function(){
+    spCloseTextStyle();
     var mp = document.getElementById('sp-post-media-picker');
     if(!mp) return;
     if(!mp.classList.contains('sp-hidden') && _postPickerMode === 'gif'){ _closePostPicker(); return; }
@@ -2087,6 +2088,7 @@ document.addEventListener('click', function(e){
   };
 
   window.spPostStickerPicker = function(){
+    spCloseTextStyle();
     var mp = document.getElementById('sp-post-media-picker');
     if(!mp) return;
     if(!mp.classList.contains('sp-hidden') && _postPickerMode === 'sticker'){ _closePostPicker(); return; }
@@ -2123,10 +2125,13 @@ document.addEventListener('click', function(e){
   window.spOpenTextStyle = function(){
     var ed = document.getElementById('sp-textstyle-editor');
     if(!ed) return;
+    /* Fecha GIF/Sticker picker se aberto */
+    _closePostPicker();
+    /* Toggle: se já aberto, fecha */
+    if(_tsActive){ spCloseTextStyle(); return; }
     ed.classList.remove('sp-hidden');
     _tsActive = true;
     _syncTsPreview();
-    /* textarea max length para texto animado */
     var ta = document.getElementById('sp-post-textarea');
     if(ta){ ta.setAttribute('maxlength','200'); ta.placeholder = 'Digite seu texto animado...'; }
   };
