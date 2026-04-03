@@ -54,6 +54,7 @@ services:
       - "${NGINX_HTTPS_PORT:-8443}:443"
     volumes:
       - ./nginx/nossotrello.conf:/etc/nginx/conf.d/default.conf
+      - ./nginx/502.html:/etc/nginx/502.html
       - ./static:/static
       - ./media:/media
       - /etc/letsencrypt:/etc/letsencrypt
