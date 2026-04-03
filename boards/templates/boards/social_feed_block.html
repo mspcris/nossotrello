@@ -5,6 +5,11 @@
   {% if posts %}
     {% for post in posts %}
     <div class="sp-post" id="sp-post-{{ post.id }}" data-post-id="{{ post.id }}">
+      {% if post.is_repost and post.original_author %}
+        <div style="font-size:.8rem;color:#6b7280;margin-bottom:6px;padding:0 4px">
+          🔄 Compartilhou de <a href="/social/{{ post.original_user_id }}/" style="color:#2563eb;font-weight:600;text-decoration:none">{{ post.original_author }}</a>
+        </div>
+      {% endif %}
       {% if post.is_friendship and post.friendship_data %}
         {% load static %}
         <div class="sp-friendship-card" style="background:linear-gradient(135deg,#7c3aed,#a78bfa 40%,#c4b5fd 70%,#e9d5ff)">

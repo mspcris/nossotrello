@@ -225,6 +225,32 @@ def _build_social_context(request, target_user, extra=None):
             post.comment_count = len(post.comment_list)
             post.view_count = view_counts.get(post.id, 0)
 
+            # Repost: herda conteúdo do post original
+            post.is_repost = False
+            post.original_author = None
+            if post.shared_from_id:
+                post.is_repost = True
+                try:
+                    orig = SocialPost.objects.select_related("user__profile").get(id=post.shared_from_id, is_active=True)
+                    orig_prof = getattr(orig.user, "profile", None)
+                    post.original_author = orig_prof.display_name if orig_prof else orig.user.get_full_name()
+                    post.original_user_id = orig.user_id
+                    # Herda mídia/texto do original se o repost está vazio
+                    if not post.text and orig.text:
+                        post.text = orig.text
+                    if not post.photo and orig.photo:
+                        post.photo = orig.photo
+                    if not post.video and orig.video:
+                        post.video = orig.video
+                    if not post.gif_url and orig.gif_url:
+                        post.gif_url = orig.gif_url
+                    if not post.sticker_url and orig.sticker_url:
+                        post.sticker_url = orig.sticker_url
+                    if not post.text_style and orig.text_style:
+                        post.text_style = orig.text_style
+                except SocialPost.DoesNotExist:
+                    pass
+
             # Friendship post annotation
             post.is_friendship = False
             post.friendship_data = None
