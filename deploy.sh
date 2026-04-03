@@ -28,13 +28,13 @@ echo "[6/9] status..."
 docker compose ps
 
 echo "[7/9] coletando estaticos..."
-docker exec -it nossotrello-web-1 sh -lc "python manage.py collectstatic --noinput --clear"
+docker exec nossotrello-web-1 python manage.py collectstatic --noinput --clear
 docker compose -p nossotrello restart nginx
 
 echo "[8/9] migracoes..."
-docker exec -it nossotrello-web-1 python manage.py makemigrations boards
-docker exec -it nossotrello-web-1 python manage.py migrate
-docker exec -it nossotrello-web-1 python manage.py showmigrations boards
+docker exec nossotrello-web-1 python manage.py makemigrations boards
+docker exec nossotrello-web-1 python manage.py migrate
+docker exec nossotrello-web-1 python manage.py showmigrations boards
 
 echo "[9/9] logs web..."
 docker compose logs --tail=50 web

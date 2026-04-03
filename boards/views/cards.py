@@ -1171,7 +1171,37 @@ def _summarize_html(html: str, limit: int = 220) -> str:
 
 @login_required
 def card_modal(request, card_id):
-    card = get_object_or_404(Card, id=card_id, is_deleted=False)
+    # Tenta buscar o card (inclusive deletados)
+    card = Card.all_objects.select_related("column__board").filter(id=card_id).first()
+
+    if card is None:
+        return HttpResponse(
+            render_to_string("boards/partials/card_deleted.html", {
+                "card_title": None,
+                "deleted_by": None,
+                "deleted_at": None,
+                "board": None,
+            }, request=request),
+        )
+
+    if card.is_deleted:
+        # Busca quem deletou no log
+        delete_log = (
+            CardLog.objects
+            .filter(card=card, body__contains="excluiu")
+            .select_related("actor")
+            .order_by("-created_at")
+            .first()
+        )
+        deleted_by = delete_log.actor if delete_log else None
+        return HttpResponse(
+            render_to_string("boards/partials/card_deleted.html", {
+                "card_title": card.title,
+                "deleted_by": deleted_by,
+                "deleted_at": card.deleted_at,
+                "board": card.column.board if card.column_id else None,
+            }, request=request),
+        )
 
     # HARDENING: card pode ter coluna removida ou inconsistente
     if not card.column_id:

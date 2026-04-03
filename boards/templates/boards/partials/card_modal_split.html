@@ -251,71 +251,29 @@
               <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div class="min-w-0">
                   <div class="cm-label">Data de início</div>
-                  <div class="relative">
-                    <input type="text"
-                           id="cm-start-date-display"
-                           class="cm-input pr-10"
-                           placeholder="DD/MM/AAAA"
-                           value="{% if card.start_date %}{{ card.start_date|date:'d/m/Y' }}{% endif %}">
-                    <span class="cm-date-icon-wrap">
-                      📅
-                      <input type="date"
-                             id="cm-start-date-picker"
-                             class="cm-date-picker-overlay"
-                             value="{% if card.start_date %}{{ card.start_date|date:'Y-m-d' }}{% endif %}">
-                    </span>
-
-                    <input type="hidden"
-                           name="start_date"
-                           id="cm-start-date"
-                           value="{% if card.start_date %}{{ card.start_date|date:'Y-m-d' }}{% endif %}">
-                  </div>
+                  <input type="date"
+                         name="start_date"
+                         id="cm-start-date"
+                         class="cm-input cm-date-native"
+                         value="{% if card.start_date %}{{ card.start_date|date:'Y-m-d' }}{% endif %}">
                 </div>
 
                 <div class="min-w-0">
                   <div class="cm-label">Vencimento</div>
-                  <div class="relative">
-                    <input type="text"
-                           id="cm-due-date-display"
-                           class="cm-input pr-10"
-                           placeholder="DD/MM/AAAA"
-                           value="{% if card.due_date %}{{ card.due_date|date:'d/m/Y' }}{% endif %}">
-                    <span class="cm-date-icon-wrap">
-                      📅
-                      <input type="date"
-                             id="cm-due-date-picker"
-                             class="cm-date-picker-overlay"
-                             value="{% if card.due_date %}{{ card.due_date|date:'Y-m-d' }}{% endif %}">
-                    </span>
-
-                    <input type="hidden"
-                           name="due_date"
-                           id="cm-due-date"
-                           value="{% if card.due_date %}{{ card.due_date|date:'Y-m-d' }}{% endif %}">
-                  </div>
+                  <input type="date"
+                         name="due_date"
+                         id="cm-due-date"
+                         class="cm-input cm-date-native"
+                         value="{% if card.due_date %}{{ card.due_date|date:'Y-m-d' }}{% endif %}">
                 </div>
 
                 <div class="min-w-0">
                   <div class="cm-label">Avisar em</div>
-                  <div class="relative">
-                    <input type="text"
-                           id="cm-due-warn-date-display"
-                           class="cm-input pr-10"
-                           placeholder="DD/MM/AAAA"
-                           value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'d/m/Y' }}{% endif %}">
-                    <span class="cm-date-icon-wrap">
-                      📅
-                      <input type="date"
-                             id="cm-due-warn-date-picker"
-                             class="cm-date-picker-overlay"
-                             value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'Y-m-d' }}{% endif %}">
-                    </span>
-
-                    <input type="hidden"
-                           name="due_warn_date"
-                           id="cm-due-warn-date"
-                           value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'Y-m-d' }}{% endif %}">
-                  </div>
+                  <input type="date"
+                         name="due_warn_date"
+                         id="cm-due-warn-date"
+                         class="cm-input cm-date-native"
+                         value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'Y-m-d' }}{% endif %}">
                 </div>
               </div>
 
@@ -910,7 +868,7 @@
       if (el.tagName === "TEXTAREA") return;
 
       const shouldBlock = el.matches(
-        'input[name="title"], input[name="tags"], #cm-due-date-display, #cm-due-warn-date-display, #cm-start-date-display'
+        'input[name="title"], input[name="tags"], #cm-start-date, #cm-due-date, #cm-due-warn-date'
       );
 
       if (shouldBlock) {
@@ -1024,102 +982,6 @@
     syncFloatbar();
   })();
 
-  (function initDueDatePickers() {
-    const form = document.getElementById("cm-main-form");
-    if (!form) return;
-
-    function parseBRtoISO(s) {
-      const v = String(s || "").trim();
-      const m = v.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-      if (!m) return "";
-      const dd = parseInt(m[1], 10);
-      const mm = parseInt(m[2], 10);
-      const yy = parseInt(m[3], 10);
-      if (!yy || mm < 1 || mm > 12 || dd < 1 || dd > 31) return "";
-      const dt = new Date(yy, mm - 1, dd);
-      if (dt.getFullYear() !== yy || (dt.getMonth() + 1) !== mm || dt.getDate() !== dd) return "";
-      return `${String(yy).padStart(4, "0")}-${String(mm).padStart(2, "0")}-${String(dd).padStart(2, "0")}`;
-    }
-
-    function formatISOtoBR(iso) {
-      const v = String(iso || "").trim();
-      const m = v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-      if (!m) return "";
-      return `${m[3]}/${m[2]}/${m[1]}`;
-    }
-
-    function digitsOnly(s) { return String(s || "").replace(/\D+/g, ""); }
-
-    function maskDDMMYYYY(raw) {
-      const d = digitsOnly(raw).slice(0, 8);
-      const p1 = d.slice(0, 2);
-      const p2 = d.slice(2, 4);
-      const p3 = d.slice(4, 8);
-      let out = p1;
-      if (p2) out += "/" + p2;
-      if (p3) out += "/" + p3;
-      return out;
-    }
-
-    function openPicker(picker) {
-      if (!picker) return;
-      if (typeof picker.showPicker === "function") {
-        try { picker.showPicker(); return; } catch (_e) {}
-      }
-      try { picker.click(); } catch (_e) {}
-    }
-
-    function wire(prefix) {
-      const display = document.getElementById(`cm-${prefix}-display`);
-      const picker = document.getElementById(`cm-${prefix}-picker`);
-      const hidden = document.getElementById(`cm-${prefix}`);
-      if (!display || !picker || !hidden) return;
-
-      if (display.dataset.cmDateBound === "1") return;
-      display.dataset.cmDateBound = "1";
-
-      display.addEventListener("input", function () {
-        const masked = maskDDMMYYYY(display.value);
-        if (display.value !== masked) display.value = masked;
-      });
-
-      display.addEventListener("blur", function () {
-        const iso = parseBRtoISO(display.value);
-        hidden.value = iso;
-        if (iso) {
-          picker.value = iso;
-          display.value = formatISOtoBR(iso);
-        }
-      });
-
-      const icon = display.parentElement && display.parentElement.querySelector
-        ? display.parentElement.querySelector("span")
-        : null;
-
-      if (icon) { icon.addEventListener("click", function () { openPicker(picker); }); }
-
-      picker.addEventListener("input", function () {
-        const iso = String(picker.value || "").trim();
-        hidden.value = iso;
-        display.value = iso ? formatISOtoBR(iso) : "";
-      });
-
-      picker.addEventListener("change", function () {
-        const iso = String(picker.value || "").trim();
-        hidden.value = iso;
-        display.value = iso ? formatISOtoBR(iso) : "";
-      });
-
-      const iso0 = String(hidden.value || "").trim() || String(picker.value || "").trim();
-      hidden.value = iso0;
-      picker.value = iso0;
-      display.value = iso0 ? formatISOtoBR(iso0) : "";
-    }
-
-    wire("start-date");
-    wire("due-date");
-    wire("due-warn-date");
-  })();
 
   (function initDueColorDots() {
     root.querySelectorAll("label.cm-due-color").forEach((label) => {
