@@ -255,15 +255,15 @@
                     <input type="text"
                            id="cm-start-date-display"
                            class="cm-input pr-10"
-                           inputmode="numeric"
                            placeholder="DD/MM/AAAA"
                            value="{% if card.start_date %}{{ card.start_date|date:'d/m/Y' }}{% endif %}">
-                    <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">📅</span>
-
-                    <input type="date"
-                           id="cm-start-date-picker"
-                           class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 opacity-0 cursor-pointer z-10"
-                           value="{% if card.start_date %}{{ card.start_date|date:'Y-m-d' }}{% endif %}">
+                    <span class="cm-date-icon-wrap">
+                      📅
+                      <input type="date"
+                             id="cm-start-date-picker"
+                             class="cm-date-picker-overlay"
+                             value="{% if card.start_date %}{{ card.start_date|date:'Y-m-d' }}{% endif %}">
+                    </span>
 
                     <input type="hidden"
                            name="start_date"
@@ -278,15 +278,15 @@
                     <input type="text"
                            id="cm-due-date-display"
                            class="cm-input pr-10"
-                           inputmode="numeric"
                            placeholder="DD/MM/AAAA"
                            value="{% if card.due_date %}{{ card.due_date|date:'d/m/Y' }}{% endif %}">
-                    <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">📅</span>
-
-                    <input type="date"
-                           id="cm-due-date-picker"
-                           class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 opacity-0 cursor-pointer z-10"
-                           value="{% if card.due_date %}{{ card.due_date|date:'Y-m-d' }}{% endif %}">
+                    <span class="cm-date-icon-wrap">
+                      📅
+                      <input type="date"
+                             id="cm-due-date-picker"
+                             class="cm-date-picker-overlay"
+                             value="{% if card.due_date %}{{ card.due_date|date:'Y-m-d' }}{% endif %}">
+                    </span>
 
                     <input type="hidden"
                            name="due_date"
@@ -301,15 +301,15 @@
                     <input type="text"
                            id="cm-due-warn-date-display"
                            class="cm-input pr-10"
-                           inputmode="numeric"
                            placeholder="DD/MM/AAAA"
                            value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'d/m/Y' }}{% endif %}">
-                    <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">📅</span>
-
-                    <input type="date"
-                           id="cm-due-warn-date-picker"
-                           class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 opacity-0 cursor-pointer z-10"
-                           value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'Y-m-d' }}{% endif %}">
+                    <span class="cm-date-icon-wrap">
+                      📅
+                      <input type="date"
+                             id="cm-due-warn-date-picker"
+                             class="cm-date-picker-overlay"
+                             value="{% if card.due_warn_date %}{{ card.due_warn_date|date:'Y-m-d' }}{% endif %}">
+                    </span>
 
                     <input type="hidden"
                            name="due_warn_date"

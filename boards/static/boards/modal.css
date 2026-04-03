@@ -950,6 +950,29 @@ html.dark #cm-root{
   border-color: rgba(37,99,235,0.55);
 }
 
+/* Date field icon + hidden picker overlay */
+.cm-date-icon-wrap {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+}
+.cm-date-picker-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
 /* Links */
 #card-modal-root #cm-root a{
   color: var(--cm-link);
