@@ -2794,6 +2794,61 @@ video.sp-post-media {
   color: #fff;
   border-color: #7c3aed;
 }
+/* Botão emoji unificado */
+.sp-chat-emoji-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 2px 6px;
+  line-height: 1;
+  transition: transform 0.15s;
+}
+.sp-chat-emoji-btn:active { transform: scale(1.2); }
+.sp-chat-emoji-btn.sp-picker-active { transform: scale(1.15); }
+/* Tabs do picker */
+.sp-picker-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid #e5e7eb;
+  margin-bottom: 8px;
+}
+.sp-picker-tab {
+  flex: 1;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  padding: 8px 4px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #9ca3af;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.sp-picker-tab-active {
+  color: #7c3aed;
+  border-bottom-color: #7c3aed;
+}
+/* Emoji grid */
+.sp-emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 2px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 4px;
+}
+.sp-emoji-item {
+  font-size: 1.4rem;
+  text-align: center;
+  padding: 4px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.1s;
+  line-height: 1.3;
+}
+.sp-emoji-item:active { background: #f3e8ff; }
 
 /* Chat list (seleção de amigo) */
 .sp-chat-list-item {
@@ -2892,9 +2947,18 @@ video.sp-post-media {
 /* ═══════════════════════════════════════════════
    QUEM CURTIU (popup no long-press)
    ═══════════════════════════════════════════════ */
-.sp-reactors-popup {
+.sp-reactors-overlay {
   position: fixed;
+  inset: 0;
   z-index: 9500;
+  background: rgba(0,0,0,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sp-reactors-popup {
+  position: relative;
+  z-index: 1;
   background: #fff;
   border-radius: 16px;
   box-shadow: 0 8px 30px rgba(0,0,0,0.25);
@@ -2903,9 +2967,6 @@ video.sp-post-media {
   max-width: 300px;
   max-height: 50vh;
   overflow-y: auto;
-  left: 50% !important;
-  top: 50% !important;
-  transform: translate(-50%, -50%);
   animation: sp-fade-in 0.15s ease;
 }
 .sp-reactors-header {
@@ -2970,8 +3031,8 @@ video.sp-post-media {
    QUEM VIU (popup no long-press em views)
    ═══════════════════════════════════════════════ */
 .sp-viewers-popup {
-  position: fixed;
-  z-index: 9500;
+  position: relative;
+  z-index: 1;
   background: #fff;
   border-radius: 16px;
   box-shadow: 0 8px 30px rgba(0,0,0,0.25);
@@ -2980,9 +3041,6 @@ video.sp-post-media {
   max-width: 300px;
   max-height: 50vh;
   overflow-y: auto;
-  left: 50% !important;
-  top: 50% !important;
-  transform: translate(-50%, -50%);
   animation: sp-fade-in 0.15s ease;
 }
 .sp-viewers-title {

@@ -2561,8 +2561,8 @@ def chat_unread_total(request):
     total = ChatMessage.objects.filter(
         is_active=True, seen=False,
     ).filter(
-        models.Q(conversation__user_a=me, hidden_by_a=False)
-        | models.Q(conversation__user_b=me, hidden_by_b=False)
+        models.Q(conversation__user_a=me, hidden_by_a=False, conversation__deleted_by_a=False)
+        | models.Q(conversation__user_b=me, hidden_by_b=False, conversation__deleted_by_b=False)
     ).exclude(sender=me).count()
     return JsonResponse({"unread": total})
 

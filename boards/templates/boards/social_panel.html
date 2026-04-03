@@ -1068,7 +1068,7 @@ var _CAMILA_AVATARS = {
       html += '<input class="sp-reel-comment-input" id="sp-reel-cinput-'+p.id+'" placeholder="Comentar..." maxlength="500" onkeydown="if(event.key===\'Enter\'&&!document.getElementById(\'sp-reel-mention-dd-'+p.id+'\').classList.contains(\'active\'))spReelComment('+p.id+',this)">';
       html += '</div>';
       html += '<button class="sp-reel-comment-send" onclick="spReelComment('+p.id+',this.previousElementSibling.querySelector(\'input\'))">➤</button>';
-      html += '<button class="sp-reel-action sp-reel-share" onclick="spSharePost('+p.id+')" title="Compartilhar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>';
+      html += '<button class="sp-reel-action sp-reel-share" onclick="spSharePost('+p.id+','+(p.user_id===_myUserId?'true':'false')+')" title="Compartilhar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>';
       html += '</div>';
       /* Comments section (hidden by default) */
       html += '<div class="sp-reel-comments sp-hidden" id="sp-reel-comments-'+p.id+'"></div>';
@@ -1475,7 +1475,7 @@ var _CAMILA_AVATARS = {
   };
 
   /* ═══ Compartilhar post ═══ */
-  window.spSharePost = function(postId){
+  window.spSharePost = function(postId, isMine){
     /* Remove menu anterior */
     var old = document.getElementById('sp-share-menu');
     if(old) old.remove();
@@ -1488,8 +1488,10 @@ var _CAMILA_AVATARS = {
     var sheet = '<div style="background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:400px;padding:16px 20px calc(env(safe-area-inset-bottom,12px)+12px)">';
     sheet += '<div style="width:36px;height:4px;background:#d1d5db;border-radius:4px;margin:0 auto 12px"></div>';
     sheet += '<div style="font-weight:600;font-size:0.95rem;margin-bottom:12px;text-align:center">Compartilhar</div>';
-    sheet += '<button style="width:100%;padding:12px;border:none;background:#f3e8ff;color:#7c3aed;border-radius:10px;font-size:0.9rem;cursor:pointer;margin-bottom:8px;font-weight:600" '
-      + 'onclick="spRepost('+postId+')">📄 Na minha página</button>';
+    if(!isMine){
+      sheet += '<button style="width:100%;padding:12px;border:none;background:#f3e8ff;color:#7c3aed;border-radius:10px;font-size:0.9rem;cursor:pointer;margin-bottom:8px;font-weight:600" '
+        + 'onclick="spRepost('+postId+')">📄 Na minha página</button>';
+    }
     sheet += '<button style="width:100%;padding:12px;border:none;background:#dcfce7;color:#16a34a;border-radius:10px;font-size:0.9rem;cursor:pointer;margin-bottom:8px;font-weight:600" '
       + 'onclick="spShareZap('+postId+')">💬 Compartilhar por Zap</button>';
     sheet += '<button style="width:100%;padding:12px;border:none;background:#f3f4f6;color:#374151;border-radius:10px;font-size:0.9rem;cursor:pointer" onclick="this.closest(\'#sp-share-menu\').remove()">Cancelar</button>';
@@ -3341,8 +3343,7 @@ document.addEventListener('click', function(e){
       + '<div id="sp-media-picker" class="sp-gif-picker sp-hidden"></div>'
       + '</div>'
       + '<div class="sp-chat-footer">'
-      + '<button type="button" class="sp-chat-gif-btn" id="sp-btn-gif" onclick="spToggleMediaPicker(\'gif\')" title="GIF">GIF</button>'
-      + '<button type="button" class="sp-chat-gif-btn" id="sp-btn-sticker" onclick="spToggleMediaPicker(\'sticker\')" title="Figurinhas">🩷</button>'
+      + '<button type="button" class="sp-chat-emoji-btn" id="sp-btn-emoji" onclick="spToggleMediaPicker(\'emoji\')" title="Emoji, Figurinhas e GIFs">😊</button>'
       + '<input type="text" class="sp-chat-input" id="sp-dm-input" placeholder="Digite..." autocomplete="off">'
       + '<button type="button" class="sp-chat-send-btn" onclick="spChatSend()">➤</button>'
       + '</div></div>';
@@ -3756,10 +3757,8 @@ document.addEventListener('click', function(e){
   var _mediaPickerMode = '';
 
   function _updatePickerBtns(){
-    var gb = document.getElementById('sp-btn-gif');
-    var sb = document.getElementById('sp-btn-sticker');
-    if(gb) gb.classList.toggle('sp-picker-active', _mediaPickerMode === 'gif');
-    if(sb) sb.classList.toggle('sp-picker-active', _mediaPickerMode === 'sticker');
+    var eb = document.getElementById('sp-btn-emoji');
+    if(eb) eb.classList.toggle('sp-picker-active', _mediaPickerMode !== '');
   }
 
   function _closeMediaPicker(){
@@ -3769,22 +3768,100 @@ document.addEventListener('click', function(e){
     _updatePickerBtns();
   }
 
-  window.spToggleMediaPicker = function(mode){
+  function _renderPickerTabs(activeTab){
+    var tabs = [
+      {key:'emoji', label:'😊 Emoji'},
+      {key:'sticker', label:'🩷 Figurinhas'},
+      {key:'gif', label:'GIF'}
+    ];
+    return '<div class="sp-picker-tabs">' + tabs.map(function(t){
+      return '<button class="sp-picker-tab' + (t.key===activeTab?' sp-picker-tab-active':'') + '" data-tab="' + t.key + '">' + t.label + '</button>';
+    }).join('') + '</div><div class="sp-picker-content" id="sp-picker-content"></div>';
+  }
+
+  function _switchTab(tab){
+    _mediaPickerMode = tab;
+    _updatePickerBtns();
     var mp = document.getElementById('sp-media-picker');
     if(!mp) return;
-    if(!mp.classList.contains('sp-hidden') && _mediaPickerMode === mode){
-      _closeMediaPicker(); return;
-    }
-    _mediaPickerMode = mode;
-    _updatePickerBtns();
-    mp.classList.remove('sp-hidden');
-    if(mode === 'gif'){
-      mp.innerHTML = '<input type="text" class="sp-gif-picker-search" placeholder="Buscar GIFs..." oninput="spSearchGifs(this.value)">'
+    /* Atualizar tabs ativas */
+    mp.querySelectorAll('.sp-picker-tab').forEach(function(b){
+      b.classList.toggle('sp-picker-tab-active', b.dataset.tab === tab);
+    });
+    var content = document.getElementById('sp-picker-content');
+    if(!content) return;
+    if(tab === 'emoji'){
+      _loadEmojiPicker(content);
+    } else if(tab === 'gif'){
+      content.innerHTML = '<input type="text" class="sp-gif-picker-search" placeholder="Buscar GIFs..." oninput="spSearchGifs(this.value)">'
         + '<div class="sp-gif-grid" id="sp-gif-grid"></div>';
       _loadTrendingGifs();
     } else {
-      _loadStickerPicker(mp);
+      _loadStickerPicker(content);
     }
+  }
+
+  var _emojiList = [
+    '😀','😁','😂','🤣','😃','😄','😅','😆','😉','😊',
+    '😋','😎','😍','🥰','😘','😗','😙','😚','🙂','🤗',
+    '🤩','🤔','🤨','😐','😑','😶','🙄','😏','😣','😥',
+    '😮','🤐','😯','😪','😫','🥱','😴','😌','😛','😜',
+    '😝','🤤','😒','😓','😔','😕','🙃','🤑','😲','🙁',
+    '😖','😞','😟','😤','😢','😭','😦','😧','😨','😩',
+    '🤯','😬','😰','😱','🥵','🥶','😳','🤪','😵','🥴',
+    '😠','😡','🤬','😷','🤒','🤕','🤢','🤮','🥺','🥹',
+    '🤧','😇','🤠','🤡','🥳','🥸','🤥','🫢','🫣','🫡',
+    '🫠','🤫','🤭','🧐','🤓','😈','👿','👹','👻','💀',
+    '☠️','👽','🤖','💩','😺','😸','😹','😻','😼','😽',
+    '🙀','😿','😾','👋','🤚','🖐️','✋','🖖','🫱','🫲',
+    '👌','🤌','🤏','✌️','🤞','🫰','🤟','🤘','🤙','👈',
+    '👉','👆','🖕','👇','☝️','🫵','👍','👎','✊','👊',
+    '🤛','🤜','👏','🙌','🫶','👐','🤲','🤝','🙏','💪',
+    '❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔',
+    '❣️','💕','💞','💓','💗','💖','💘','💝','💟','🔥',
+    '⭐','🌟','✨','💫','🎉','🎊','🎈','🎁','🏆','🥇',
+    '👑','💎','💐','🌹','🌻','🍕','🍔','🍟','☕','🍺',
+    '🥂','🎵','🎶','📱','💻','📷','🚗','✈️','🏠','⏰'
+  ];
+
+  function _loadEmojiPicker(container){
+    var html = '<div class="sp-emoji-grid">';
+    _emojiList.forEach(function(e){
+      html += '<span class="sp-emoji-item" data-emoji="' + e + '">' + e + '</span>';
+    });
+    html += '</div>';
+    container.innerHTML = html;
+    container.querySelector('.sp-emoji-grid').addEventListener('click', function(ev){
+      var item = ev.target.closest('.sp-emoji-item');
+      if(!item) return;
+      var emoji = item.dataset.emoji;
+      var input = document.getElementById('sp-dm-input');
+      if(input){
+        var start = input.selectionStart || input.value.length;
+        input.value = input.value.substring(0, start) + emoji + input.value.substring(input.selectionEnd || start);
+        input.focus();
+        var pos = start + emoji.length;
+        input.setSelectionRange(pos, pos);
+      }
+    });
+  }
+
+  window.spToggleMediaPicker = function(mode){
+    var mp = document.getElementById('sp-media-picker');
+    if(!mp) return;
+    if(!mp.classList.contains('sp-hidden')){
+      _closeMediaPicker(); return;
+    }
+    _mediaPickerMode = mode === 'emoji' ? 'emoji' : mode;
+    _updatePickerBtns();
+    mp.classList.remove('sp-hidden');
+    mp.innerHTML = _renderPickerTabs(_mediaPickerMode);
+    /* Delegação de clique nas tabs */
+    mp.querySelector('.sp-picker-tabs').addEventListener('click', function(ev){
+      var tab = ev.target.closest('.sp-picker-tab');
+      if(tab) _switchTab(tab.dataset.tab);
+    });
+    _switchTab(_mediaPickerMode);
   };
 
   function _loadStickerPicker(mp){
@@ -3823,7 +3900,7 @@ document.addEventListener('click', function(e){
     if(!input.files || !input.files[0]) return;
     var file = input.files[0];
     _uploadSticker(file, file.name || 'sticker.png',
-      function(){ var mp = document.getElementById('sp-media-picker'); if(mp) _loadStickerPicker(mp); },
+      function(){ var c = document.getElementById('sp-picker-content') || document.getElementById('sp-media-picker'); if(c) _loadStickerPicker(c); },
       function(){ alert('Erro ao enviar figurinha.'); }
     );
   };
@@ -3833,7 +3910,7 @@ document.addEventListener('click', function(e){
     fetch('/chat/stickers/' + id + '/delete/', {method:'POST', headers:{'X-CSRFToken': _getCsrf()}})
       .then(function(r){ return r.json(); })
       .then(function(d){
-        if(d.ok){ var mp = document.getElementById('sp-media-picker'); if(mp) _loadStickerPicker(mp); }
+        if(d.ok){ var c = document.getElementById('sp-picker-content') || document.getElementById('sp-media-picker'); if(c) _loadStickerPicker(c); }
       });
   };
 
@@ -4053,11 +4130,16 @@ document.addEventListener('click', function(e){
       .then(function(r){ return r.json(); })
       .then(function(d){
         if(!d.reactors || !d.reactors.length) return;
+        /* Overlay escuro para fechar ao tocar fora */
+        var ov = document.createElement('div');
+        ov.className = 'sp-reactors-overlay';
+        ov.addEventListener('click', function(){ _closeReactorPopup(); });
+
         var popup = document.createElement('div');
         popup.className = 'sp-reactors-popup';
         popup.innerHTML = '<div class="sp-reactors-header">'
           + '<div class="sp-reactors-title">Quem curtiu</div>'
-          + '<button class="sp-reactors-close" onclick="_closeReactorPopup()">&times;</button>'
+          + '<button class="sp-reactors-close">&times;</button>'
           + '</div>'
           + d.reactors.map(function(r){
             var av = r.avatar
@@ -4068,9 +4150,12 @@ document.addEventListener('click', function(e){
               + '<span class="sp-reactor-emoji">' + r.emoji + '</span></div>';
           }).join('');
 
-        /* Exibir centralizado como bottom-sheet no mobile */
-        document.body.appendChild(popup);
-        _popup = popup;
+        popup.addEventListener('click', function(e){ e.stopPropagation(); });
+        popup.querySelector('.sp-reactors-close').addEventListener('click', function(){ _closeReactorPopup(); });
+
+        ov.appendChild(popup);
+        document.body.appendChild(ov);
+        _popup = ov;
       });
   }
 })();
@@ -4096,11 +4181,15 @@ function spViewersLongPress(e, postId){
       .then(function(r){ return r.json(); })
       .then(function(d){
         if(!d.viewers || !d.viewers.length) return;
+        var ov = document.createElement('div');
+        ov.className = 'sp-reactors-overlay';
+        ov.addEventListener('click', function(){ _closeViewersPopup(); });
+
         var popup = document.createElement('div');
         popup.className = 'sp-viewers-popup';
         popup.innerHTML = '<div class="sp-reactors-header">'
           + '<div class="sp-viewers-title">👁 Quem viu</div>'
-          + '<button class="sp-reactors-close" onclick="_closeViewersPopup()">&times;</button>'
+          + '<button class="sp-reactors-close">&times;</button>'
           + '</div>'
           + d.viewers.map(function(v){
             var av = v.avatar
@@ -4110,8 +4199,12 @@ function spViewersLongPress(e, postId){
               + '<span class="sp-viewer-name">' + v.name + '</span></div>';
           }).join('');
 
-        document.body.appendChild(popup);
-        _viewersPopup = popup;
+        popup.addEventListener('click', function(e){ e.stopPropagation(); });
+        popup.querySelector('.sp-reactors-close').addEventListener('click', function(){ _closeViewersPopup(); });
+
+        ov.appendChild(popup);
+        document.body.appendChild(ov);
+        _viewersPopup = ov;
       });
   }, 500);
 }
