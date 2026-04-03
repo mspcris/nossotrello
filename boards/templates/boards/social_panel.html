@@ -4649,9 +4649,8 @@ function spViewersCancelPress(){
     });
   }
 
-  /* restaurar filtros ao carregar */
+  /* restaurar filtros ao carregar (painel fica oculto, mas filtros aplicados) */
   if(_activeFilters.length){
-    filterPanel.classList.remove('sp-hidden');
     _renderFilterTags();
     _applyFilters();
   }

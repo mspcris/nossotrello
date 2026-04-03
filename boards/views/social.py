@@ -361,11 +361,13 @@ def _build_social_context(request, target_user, extra=None):
             Board.objects.filter(
                 memberships__user=target_user,
                 memberships__role__in=["owner", "editor"],
+                is_deleted=False,
+                is_archived=False,
             ).values("id", "name").distinct().order_by("name")
         )
         # Mapa board_id → colunas (para filtro JS)
         board_ids = [b["id"] for b in my_boards]
-        _cols = Column.objects.filter(board_id__in=board_ids).order_by("position").values("id", "name", "board_id")
+        _cols = Column.objects.filter(board_id__in=board_ids, is_deleted=False).order_by("position").values("id", "name", "board_id")
         board_columns_map = {}
         for c in _cols:
             board_columns_map.setdefault(str(c["board_id"]), []).append({"id": c["id"], "name": c["name"]})
