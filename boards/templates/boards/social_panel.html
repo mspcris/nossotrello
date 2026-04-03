@@ -4931,42 +4931,63 @@ function spViewersCancelPress(){
     html += '<button onclick="this.closest(\'#sp-post-modal-overlay\').remove();history.replaceState(null,\'\',\'/social/\')" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:#9ca3af;padding:4px 8px">✕</button>';
     html += '</div>';
 
-    /* Repost badge */
-    if(d.is_repost && d.original_author){
-      html += '<div style="font-size:.8rem;color:#6b7280;padding:8px 16px 0">🔄 Compartilhou de <a href="/social/'+d.original_author.id+'/" style="color:#2563eb;font-weight:600;text-decoration:none">'+_esc(d.original_author.name)+'</a></div>';
-    }
-
-    /* Mídia */
-    if(d.video){
-      html += '<video src="'+d.video+'" controls playsinline preload="metadata" style="width:100%;max-height:400px;object-fit:contain;background:#000"></video>';
-    } else if(d.photo){
-      html += '<img src="'+d.photo+'" style="width:100%;max-height:400px;object-fit:contain;background:#f9fafb" loading="lazy">';
-    } else if(d.sticker_url){
-      if(d.sticker_url.indexOf('.mp4')!==-1){
-        html += '<video src="'+d.sticker_url+'" autoplay loop muted playsinline style="width:100%;max-height:400px;object-fit:contain"></video>';
-      } else {
-        html += '<img src="'+d.sticker_url+'" style="width:100%;max-height:400px;object-fit:contain;background:#f9fafb" loading="lazy">';
+    /* Friendship card */
+    if(d.is_friendship && d.friendship_data){
+      var fd = d.friendship_data;
+      var uAv = fd.user.avatar
+        ? '<img src="'+fd.user.avatar+'" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,0.5)">'
+        : '<span style="width:72px;height:72px;border-radius:50%;background:rgba(255,255,255,0.3);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.6rem;border:3px solid rgba(255,255,255,0.5)">'+_esc(fd.user.name).charAt(0).toUpperCase()+'</span>';
+      var fAv = fd.friend.avatar
+        ? '<img src="'+fd.friend.avatar+'" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,0.5)">'
+        : '<span style="width:72px;height:72px;border-radius:50%;background:rgba(255,255,255,0.3);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.6rem;border:3px solid rgba(255,255,255,0.5)">'+_esc(fd.friend.name).charAt(0).toUpperCase()+'</span>';
+      html += '<div style="background:linear-gradient(135deg,#7c3aed,#a78bfa 40%,#c4b5fd 70%,#e9d5ff);padding:32px 20px;text-align:center;position:relative;overflow:hidden">';
+      html += '<div style="font-size:3rem;position:absolute;top:8px;left:50%;transform:translateX(-50%);opacity:0.15">🤝</div>';
+      html += '<div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:12px">';
+      html += '<a href="/social/'+fd.user.id+'/">'+uAv+'</a>';
+      html += '<span style="font-size:1.5rem">❤️</span>';
+      html += '<a href="/social/'+fd.friend.id+'/">'+fAv+'</a>';
+      html += '</div>';
+      html += '<div style="color:#fff;font-weight:700;font-size:1rem">'+_esc(fd.user.name)+' e '+_esc(fd.friend.name)+'</div>';
+      html += '<div style="color:rgba(255,255,255,0.85);font-size:0.9rem;margin-top:4px">agora são amigos!</div>';
+      html += '</div>';
+    } else {
+      /* Repost badge */
+      if(d.is_repost && d.original_author){
+        html += '<div style="font-size:.8rem;color:#6b7280;padding:8px 16px 0">🔄 Compartilhou de <a href="/social/'+d.original_author.id+'/" style="color:#2563eb;font-weight:600;text-decoration:none">'+_esc(d.original_author.name)+'</a></div>';
       }
-    } else if(d.gif_url){
-      html += '<img src="'+d.gif_url+'" style="width:100%;max-height:400px;object-fit:contain;background:#f9fafb" loading="lazy">';
-    }
 
-    /* Texto */
-    if(d.text){
-      if(d.text_style && d.text_style.bg){
-        html += '<div style="min-height:160px;display:flex;align-items:center;justify-content:center;border-radius:0;padding:24px 20px;font-size:1.3rem;font-weight:700;text-align:center;word-break:break-word;line-height:1.4;background:'+d.text_style.bg+';color:'+(d.text_style.color||'#fff')+'">'+_esc(d.text).replace(/\n/g,'<br>')+'</div>';
-      } else {
-        html += '<div style="padding:12px 16px;font-size:0.95rem;line-height:1.5;color:#1f2937;word-break:break-word">'+_esc(d.text).replace(/\n/g,'<br>')+'</div>';
+      /* Mídia */
+      if(d.video){
+        html += '<video src="'+d.video+'" controls playsinline preload="metadata" style="width:100%;max-height:400px;object-fit:contain;background:#000"></video>';
+      } else if(d.photo){
+        html += '<img src="'+d.photo+'" style="width:100%;max-height:400px;object-fit:contain;background:#f9fafb" loading="lazy">';
+      } else if(d.sticker_url){
+        if(d.sticker_url.indexOf('.mp4')!==-1){
+          html += '<video src="'+d.sticker_url+'" autoplay loop muted playsinline style="width:100%;max-height:400px;object-fit:contain"></video>';
+        } else {
+          html += '<img src="'+d.sticker_url+'" style="width:100%;max-height:400px;object-fit:contain;background:#f9fafb" loading="lazy">';
+        }
+      } else if(d.gif_url){
+        html += '<img src="'+d.gif_url+'" style="width:100%;max-height:400px;object-fit:contain;background:#f9fafb" loading="lazy">';
+      }
+
+      /* Texto */
+      if(d.text){
+        if(d.text_style && d.text_style.bg){
+          html += '<div style="min-height:160px;display:flex;align-items:center;justify-content:center;border-radius:0;padding:24px 20px;font-size:1.3rem;font-weight:700;text-align:center;word-break:break-word;line-height:1.4;background:'+d.text_style.bg+';color:'+(d.text_style.color||'#fff')+'">'+_esc(d.text).replace(/\n/g,'<br>')+'</div>';
+        } else {
+          html += '<div style="padding:12px 16px;font-size:0.95rem;line-height:1.5;color:#1f2937;word-break:break-word">'+_esc(d.text).replace(/\n/g,'<br>')+'</div>';
+        }
       }
     }
 
     /* Reações */
     var EMOJIS = {like:'👍',love:'❤️',haha:'😂',fire:'🔥',clap:'👏'};
-    html += '<div style="display:flex;flex-wrap:wrap;gap:6px;padding:8px 16px">';
+    html += '<div style="display:flex;flex-wrap:wrap;gap:6px;padding:8px 16px;align-items:center">';
     for(var k in d.reaction_counts){
       var emoji = EMOJIS[k] || k;
       var isActive = d.my_reaction === k;
-      html += '<button onclick="spReact('+d.id+',\''+k+'\');spOpenPostModal('+d.id+')" style="padding:4px 10px;border-radius:20px;border:'+(isActive?'2px solid #7c3aed':'1px solid #e5e7eb')+';background:'+(isActive?'#f3e8ff':'#f9fafb')+';font-size:0.85rem;cursor:pointer">'+emoji+' '+d.reaction_counts[k]+'</button>';
+      html += '<button onclick="spReact('+d.id+',\''+k+'\');setTimeout(function(){spOpenPostModal('+d.id+')},500)" style="padding:4px 10px;border-radius:20px;border:'+(isActive?'2px solid #7c3aed':'1px solid #e5e7eb')+';background:'+(isActive?'#f3e8ff':'#f9fafb')+';font-size:0.85rem;cursor:pointer">'+emoji+' '+d.reaction_counts[k]+'</button>';
     }
     /* Botões de reação padrão sem contagem */
     var presets = ['like','love','haha','fire','clap'];
@@ -4975,6 +4996,8 @@ function spViewersCancelPress(){
         html += '<button onclick="spReact('+d.id+',\''+presets[i]+'\');setTimeout(function(){spOpenPostModal('+d.id+')},500)" style="padding:4px 10px;border-radius:20px;border:1px solid #e5e7eb;background:#f9fafb;font-size:0.85rem;cursor:pointer;opacity:0.5">'+EMOJIS[presets[i]]+'</button>';
       }
     }
+    /* Botão + para emoji customizado */
+    html += '<button onclick="spReactMore('+d.id+',this)" style="padding:4px 10px;border-radius:20px;border:1px solid #e5e7eb;background:#f9fafb;font-size:0.85rem;cursor:pointer;opacity:0.6">+</button>';
     html += '</div>';
 
     /* Comentários */

@@ -498,6 +498,22 @@ def social_post_full(request, post_id: int):
     photo_url = post.photo.url if post.photo else None
     video_url = post.video.url if post.video else None
 
+    # Friendship post
+    is_friendship = False
+    friendship_data = None
+    if text.startswith("__friendship__:"):
+        is_friendship = True
+        try:
+            friend_uid = int(text.split(":")[1])
+            friend_user = User.objects.select_related("profile").get(id=friend_uid)
+            is_friendship = True
+            friendship_data = {
+                "user": _user_card(post.user),
+                "friend": _user_card(friend_user),
+            }
+        except Exception:
+            pass
+
     # Se é repost, herda do original
     is_repost = False
     original_author = None
@@ -568,6 +584,8 @@ def social_post_full(request, post_id: int):
         "sticker_url": post.sticker_url or None,
         "is_repost": is_repost,
         "original_author": original_author,
+        "is_friendship": is_friendship,
+        "friendship_data": friendship_data,
         "reaction_counts": reaction_counts,
         "my_reaction": my_reaction,
         "total_reactions": len(list(reactions)),
