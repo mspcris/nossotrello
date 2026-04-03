@@ -472,6 +472,19 @@ def social_page(request, user_id: int = None, handle: str = None):
 
 
 # ---------------------------------------------------------------
+# Página de post individual (GET) — /social/post/<id>/view/
+# ---------------------------------------------------------------
+@login_required
+def social_post_page(request, post_id: int):
+    """Abre o perfil do autor focando na publicação específica."""
+    post = get_object_or_404(SocialPost, id=post_id, is_active=True)
+    target_user = post.user
+    ctx = _build_social_context(request, target_user)
+    ctx["focus_post_id"] = post.id
+    return render(request, "boards/social_page.html", ctx)
+
+
+# ---------------------------------------------------------------
 # Painel social principal (GET)
 # ---------------------------------------------------------------
 @login_required
@@ -727,6 +740,7 @@ def social_post_create(request):
         if video:
             parts.append("Enviou um vídeo")
         extra["ai_react_text"] = "; ".join(parts)
+        extra["focus_post_id"] = post.id
 
     ctx = _build_social_context(request, request.user, extra)
     return render(request, "boards/social_panel.html", ctx)

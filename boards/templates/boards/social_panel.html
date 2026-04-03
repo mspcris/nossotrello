@@ -1580,7 +1580,7 @@ var _CAMILA_AVATARS = {
   window.spShareZap = function(postId){
     var menu = document.getElementById('sp-share-menu');
     if(menu) menu.remove();
-    var url = location.origin + '/social/?post=' + postId;
+    var url = location.origin + '/social/post/' + postId + '/view/';
     if(navigator.share){
       navigator.share({title: 'Veja esta publicação no Espaço Social', url: url}).catch(function(){});
     } else {
@@ -4871,6 +4871,27 @@ function spViewersCancelPress(){
 /* ═══════════════════════════════════════════════
    FOTO DE PERFIL EM TELA CHEIA
    ═══════════════════════════════════════════════ */
+/* ═══ FOCO EM PUBLICAÇÃO ESPECÍFICA (link compartilhável / pós-criação) ═══ */
+(function(){
+  var focusId = {% if focus_post_id %}{{ focus_post_id }}{% else %}0{% endif %};
+  if(!focusId) return;
+  setTimeout(function(){
+    /* Ativa a aba "Meu Espaço" para mostrar o feed */
+    if(window.spSwitchTab) window.spSwitchTab('space');
+    setTimeout(function(){
+      var el = document.getElementById('sp-post-' + focusId);
+      if(el){
+        el.scrollIntoView({behavior:'smooth', block:'center'});
+        el.style.transition = 'box-shadow 0.3s';
+        el.style.boxShadow = '0 0 0 3px #7c3aed';
+        setTimeout(function(){
+          el.style.boxShadow = '';
+        }, 3000);
+      }
+    }, 400);
+  }, 300);
+})();
+
 window.spShowProfilePhoto = function(url){
   if(!url) return;
   var ov = document.createElement('div');

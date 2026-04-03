@@ -163,6 +163,7 @@ from boards.views.social import (
     chat_sticker_delete,
     social_mention_search,
     social_post_repost,
+    social_post_page,
 )
 
 
@@ -235,6 +236,7 @@ urlpatterns = [
     path("chat/stickers/<int:sticker_id>/delete/", chat_sticker_delete, name="chat_sticker_delete"),
     path("social/mentions/", social_mention_search, name="social_mention_search"),
     path("social/post/<int:post_id>/repost/", social_post_repost, name="social_post_repost"),
+    path("social/post/<int:post_id>/view/", social_post_page, name="social_post_page"),
 
     # Camila.AI Admin (staff only)
     path("camila/", camila_admin, name="camila_admin"),
