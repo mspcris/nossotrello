@@ -2180,35 +2180,39 @@ document.addEventListener('click', function(e){
     if(e.target.id === 'sp-post-textarea' && _tsActive) _syncTsPreview();
   });
 
-  /* Seletores de fundo */
-  document.addEventListener('click', function(e){
-    var btn = e.target.closest('.sp-bg-opt');
-    if(!btn) return;
-    _tsBg = btn.dataset.bg;
-    document.querySelectorAll('.sp-bg-opt').forEach(function(b){ b.style.borderColor = 'transparent'; });
-    btn.style.borderColor = '#2563eb';
-    _syncTsPreview();
-  });
-  /* Seletores de cor do texto */
-  document.addEventListener('click', function(e){
-    var btn = e.target.closest('.sp-tc-opt');
-    if(!btn) return;
-    _tsTc = btn.dataset.tc;
-    document.querySelectorAll('.sp-tc-opt').forEach(function(b){ b.style.borderColor = 'transparent'; });
-    btn.style.borderColor = '#2563eb';
-    _syncTsPreview();
-  });
-  /* Seletores de efeito */
-  document.addEventListener('click', function(e){
-    var btn = e.target.closest('.sp-fx-opt');
-    if(!btn) return;
-    _tsFx = btn.dataset.fx;
-    document.querySelectorAll('.sp-fx-opt').forEach(function(b){
-      b.style.background = '#fff'; b.style.color = '#374151'; b.style.borderColor = '#d1d5db';
+  /* Seletores de fundo, cor, efeito — listener no editor (não no document,
+     porque .sp-sheet usa stopPropagation e eventos nunca chegam ao document) */
+  var _tsEditor = document.getElementById('sp-textstyle-editor');
+  if(_tsEditor){
+    _tsEditor.addEventListener('click', function(e){
+      var bgBtn = e.target.closest('.sp-bg-opt');
+      if(bgBtn){
+        _tsBg = bgBtn.dataset.bg;
+        _tsEditor.querySelectorAll('.sp-bg-opt').forEach(function(b){ b.style.borderColor = 'transparent'; });
+        bgBtn.style.borderColor = '#2563eb';
+        _syncTsPreview();
+        return;
+      }
+      var tcBtn = e.target.closest('.sp-tc-opt');
+      if(tcBtn){
+        _tsTc = tcBtn.dataset.tc;
+        _tsEditor.querySelectorAll('.sp-tc-opt').forEach(function(b){ b.style.borderColor = 'transparent'; });
+        tcBtn.style.borderColor = '#2563eb';
+        _syncTsPreview();
+        return;
+      }
+      var fxBtn = e.target.closest('.sp-fx-opt');
+      if(fxBtn){
+        _tsFx = fxBtn.dataset.fx;
+        _tsEditor.querySelectorAll('.sp-fx-opt').forEach(function(b){
+          b.style.background = '#fff'; b.style.color = '#374151'; b.style.borderColor = '#d1d5db';
+        });
+        fxBtn.style.background = '#2563eb'; fxBtn.style.color = '#fff'; fxBtn.style.borderColor = '#2563eb';
+        _syncTsPreview();
+        return;
+      }
     });
-    btn.style.background = '#2563eb'; btn.style.color = '#fff'; btn.style.borderColor = '#2563eb';
-    _syncTsPreview();
-  });
+  }
 
   var _postGifDebounce = null;
   window._loadPostTrendingGifs = function(){
