@@ -799,13 +799,75 @@
             <span class="sp-sheet-opt-icon">🩷</span>
             <span>Figurinha</span>
           </button>
+          <button type="button" class="sp-sheet-opt" onclick="spOpenTextStyle()" id="sp-textstyle-btn">
+            <span class="sp-sheet-opt-icon">🎨</span>
+            <span>Texto</span>
+          </button>
         </div>
 
         <div id="sp-post-media-picker" class="sp-gif-picker sp-hidden" style="position:relative;bottom:auto;left:auto;right:auto;margin:8px 0"></div>
 
         <input type="hidden" name="gif_url" id="sp-post-gif-url" value="">
         <input type="hidden" name="sticker_url" id="sp-post-sticker-url" value="">
+        <input type="hidden" name="text_style" id="sp-text-style-input" value="">
         <input type="hidden" name="visibility" id="sp-vis-input" value="all">
+
+        <!-- Editor de Texto Animado -->
+        <div id="sp-textstyle-editor" class="sp-hidden" style="margin:8px 0;padding:12px;border-radius:12px;background:#f9fafb;border:1px solid #e5e7eb">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <span style="font-weight:700;font-size:.85rem;color:#374151">Texto Animado</span>
+            <button type="button" onclick="spCloseTextStyle()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:#6b7280">&times;</button>
+          </div>
+
+          <div id="sp-textstyle-preview" style="
+            min-height:120px;display:flex;align-items:center;justify-content:center;
+            border-radius:12px;padding:16px;margin-bottom:10px;
+            font-size:1.3rem;font-weight:700;text-align:center;word-break:break-word;
+            background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;
+            transition:all .3s ease;
+          ">
+            <span id="sp-textstyle-preview-text" style="max-width:100%">Prévia do texto</span>
+          </div>
+
+          <div style="margin-bottom:8px">
+            <label style="font-size:.75rem;color:#6b7280;display:block;margin-bottom:4px">Fundo</label>
+            <div id="sp-bg-options" style="display:flex;gap:6px;flex-wrap:wrap">
+              <button type="button" class="sp-bg-opt sp-bg-active" data-bg="linear-gradient(135deg,#667eea,#764ba2)" style="background:linear-gradient(135deg,#667eea,#764ba2)"></button>
+              <button type="button" class="sp-bg-opt" data-bg="linear-gradient(135deg,#f093fb,#f5576c)" style="background:linear-gradient(135deg,#f093fb,#f5576c)"></button>
+              <button type="button" class="sp-bg-opt" data-bg="linear-gradient(135deg,#4facfe,#00f2fe)" style="background:linear-gradient(135deg,#4facfe,#00f2fe)"></button>
+              <button type="button" class="sp-bg-opt" data-bg="linear-gradient(135deg,#43e97b,#38f9d7)" style="background:linear-gradient(135deg,#43e97b,#38f9d7)"></button>
+              <button type="button" class="sp-bg-opt" data-bg="linear-gradient(135deg,#fa709a,#fee140)" style="background:linear-gradient(135deg,#fa709a,#fee140)"></button>
+              <button type="button" class="sp-bg-opt" data-bg="linear-gradient(135deg,#a18cd1,#fbc2eb)" style="background:linear-gradient(135deg,#a18cd1,#fbc2eb)"></button>
+              <button type="button" class="sp-bg-opt" data-bg="linear-gradient(135deg,#ff9a9e,#fecfef)" style="background:linear-gradient(135deg,#ff9a9e,#fecfef)"></button>
+              <button type="button" class="sp-bg-opt" data-bg="#1a1a2e" style="background:#1a1a2e"></button>
+              <button type="button" class="sp-bg-opt" data-bg="#0f3460" style="background:#0f3460"></button>
+              <button type="button" class="sp-bg-opt" data-bg="linear-gradient(135deg,#f7971e,#ffd200)" style="background:linear-gradient(135deg,#f7971e,#ffd200)"></button>
+            </div>
+          </div>
+
+          <div style="margin-bottom:8px">
+            <label style="font-size:.75rem;color:#6b7280;display:block;margin-bottom:4px">Cor do texto</label>
+            <div id="sp-tc-options" style="display:flex;gap:6px;flex-wrap:wrap">
+              <button type="button" class="sp-tc-opt sp-tc-active" data-tc="#ffffff" style="background:#ffffff;border:1px solid #ccc"></button>
+              <button type="button" class="sp-tc-opt" data-tc="#000000" style="background:#000000"></button>
+              <button type="button" class="sp-tc-opt" data-tc="#fee140" style="background:#fee140"></button>
+              <button type="button" class="sp-tc-opt" data-tc="#00f2fe" style="background:#00f2fe"></button>
+              <button type="button" class="sp-tc-opt" data-tc="#ff6b6b" style="background:#ff6b6b"></button>
+            </div>
+          </div>
+
+          <div>
+            <label style="font-size:.75rem;color:#6b7280;display:block;margin-bottom:4px">Efeito</label>
+            <div id="sp-fx-options" style="display:flex;gap:6px;flex-wrap:wrap">
+              <button type="button" class="sp-fx-opt sp-fx-active" data-fx="fadeIn">Fade</button>
+              <button type="button" class="sp-fx-opt" data-fx="slideUp">Subir</button>
+              <button type="button" class="sp-fx-opt" data-fx="zoomIn">Zoom</button>
+              <button type="button" class="sp-fx-opt" data-fx="typewriter">Digitar</button>
+              <button type="button" class="sp-fx-opt" data-fx="bounce">Pular</button>
+              <button type="button" class="sp-fx-opt" data-fx="glow">Brilho</button>
+            </div>
+          </div>
+        </div>
         <div class="sp-vis-row">
           <button type="button" class="sp-vis-toggle" id="sp-vis-btn" onclick="spToggleVis()">
             <span id="sp-vis-icon">🌍</span>
@@ -2051,6 +2113,79 @@ document.addEventListener('click', function(e){
         mp.innerHTML = html;
       });
   };
+
+  /* ═══ TEXTO ANIMADO (editor) ═══ */
+  var _tsActive = false;
+  var _tsBg = 'linear-gradient(135deg,#667eea,#764ba2)';
+  var _tsTc = '#ffffff';
+  var _tsFx = 'fadeIn';
+
+  window.spOpenTextStyle = function(){
+    var ed = document.getElementById('sp-textstyle-editor');
+    if(!ed) return;
+    ed.classList.remove('sp-hidden');
+    _tsActive = true;
+    _syncTsPreview();
+    /* textarea max length para texto animado */
+    var ta = document.getElementById('sp-post-textarea');
+    if(ta){ ta.setAttribute('maxlength','200'); ta.placeholder = 'Digite seu texto animado...'; }
+  };
+  window.spCloseTextStyle = function(){
+    var ed = document.getElementById('sp-textstyle-editor');
+    if(ed) ed.classList.add('sp-hidden');
+    _tsActive = false;
+    document.getElementById('sp-text-style-input').value = '';
+    var ta = document.getElementById('sp-post-textarea');
+    if(ta){ ta.setAttribute('maxlength','1000'); ta.placeholder = 'O que está rolando? ✨'; }
+  };
+
+  function _syncTsPreview(){
+    var preview = document.getElementById('sp-textstyle-preview');
+    var previewText = document.getElementById('sp-textstyle-preview-text');
+    var ta = document.getElementById('sp-post-textarea');
+    if(!preview) return;
+    preview.style.background = _tsBg;
+    preview.style.color = _tsTc;
+    var txt = (ta && ta.value) ? ta.value : 'Prévia do texto';
+    previewText.textContent = txt;
+    /* Salvar no hidden */
+    if(_tsActive){
+      document.getElementById('sp-text-style-input').value = JSON.stringify({bg:_tsBg,color:_tsTc,effect:_tsFx});
+    }
+  }
+
+  /* Atualizar prévia ao digitar */
+  document.addEventListener('input', function(e){
+    if(e.target.id === 'sp-post-textarea' && _tsActive) _syncTsPreview();
+  });
+
+  /* Seletores de fundo */
+  document.addEventListener('click', function(e){
+    var btn = e.target.closest('.sp-bg-opt');
+    if(!btn) return;
+    _tsBg = btn.dataset.bg;
+    document.querySelectorAll('.sp-bg-opt').forEach(function(b){ b.classList.remove('sp-bg-active'); });
+    btn.classList.add('sp-bg-active');
+    _syncTsPreview();
+  });
+  /* Seletores de cor do texto */
+  document.addEventListener('click', function(e){
+    var btn = e.target.closest('.sp-tc-opt');
+    if(!btn) return;
+    _tsTc = btn.dataset.tc;
+    document.querySelectorAll('.sp-tc-opt').forEach(function(b){ b.classList.remove('sp-tc-active'); });
+    btn.classList.add('sp-tc-active');
+    _syncTsPreview();
+  });
+  /* Seletores de efeito */
+  document.addEventListener('click', function(e){
+    var btn = e.target.closest('.sp-fx-opt');
+    if(!btn) return;
+    _tsFx = btn.dataset.fx;
+    document.querySelectorAll('.sp-fx-opt').forEach(function(b){ b.classList.remove('sp-fx-active'); });
+    btn.classList.add('sp-fx-active');
+    _syncTsPreview();
+  });
 
   var _postGifDebounce = null;
   window._loadPostTrendingGifs = function(){
@@ -4152,7 +4287,13 @@ document.addEventListener('click', function(e){
   var _longPressTimer = null;
 
   function _closeReactorPopup(){
-    if(_popup){ _popup.remove(); _popup = null; }
+    if(!_popup) return;
+    var ov = _popup;
+    _popup = null;
+    ov.style.pointerEvents = 'none';
+    ov.style.opacity = '0';
+    ov.style.transition = 'opacity .15s';
+    setTimeout(function(){ ov.remove(); }, 350);
   }
   window._closeReactorPopup = _closeReactorPopup;
 
@@ -4189,7 +4330,8 @@ document.addEventListener('click', function(e){
         /* Overlay escuro para fechar ao tocar fora */
         var ov = document.createElement('div');
         ov.className = 'sp-reactors-overlay';
-        ov.addEventListener('click', function(){ _closeReactorPopup(); });
+        ov.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); _closeReactorPopup(); });
+        ov.addEventListener('touchend', function(ev){ ev.preventDefault(); ev.stopPropagation(); _closeReactorPopup(); });
 
         var popup = document.createElement('div');
         popup.className = 'sp-reactors-popup';
@@ -4207,7 +4349,10 @@ document.addEventListener('click', function(e){
           }).join('');
 
         popup.addEventListener('click', function(e){ e.stopPropagation(); });
-        popup.querySelector('.sp-reactors-close').addEventListener('click', function(){ _closeReactorPopup(); });
+        popup.addEventListener('touchend', function(e){ e.stopPropagation(); });
+        var closeBtn = popup.querySelector('.sp-reactors-close');
+        closeBtn.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); _closeReactorPopup(); });
+        closeBtn.addEventListener('touchend', function(ev){ ev.preventDefault(); ev.stopPropagation(); _closeReactorPopup(); });
 
         ov.appendChild(popup);
         document.body.appendChild(ov);
@@ -4223,7 +4368,13 @@ var _viewersTimer = null;
 var _viewersPopup = null;
 
 function _closeViewersPopup(){
-  if(_viewersPopup){ _viewersPopup.remove(); _viewersPopup = null; }
+  if(!_viewersPopup) return;
+  var ov = _viewersPopup;
+  _viewersPopup = null;
+  ov.style.pointerEvents = 'none';
+  ov.style.opacity = '0';
+  ov.style.transition = 'opacity .15s';
+  setTimeout(function(){ ov.remove(); }, 350);
 }
 document.addEventListener('click', function(e){
   if(_viewersPopup && !_viewersPopup.contains(e.target)) _closeViewersPopup();
@@ -4239,7 +4390,8 @@ function spViewersLongPress(e, postId){
         if(!d.viewers || !d.viewers.length) return;
         var ov = document.createElement('div');
         ov.className = 'sp-reactors-overlay';
-        ov.addEventListener('click', function(){ _closeViewersPopup(); });
+        ov.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); _closeViewersPopup(); });
+        ov.addEventListener('touchend', function(ev){ ev.preventDefault(); ev.stopPropagation(); _closeViewersPopup(); });
 
         var popup = document.createElement('div');
         popup.className = 'sp-viewers-popup';
@@ -4256,7 +4408,10 @@ function spViewersLongPress(e, postId){
           }).join('');
 
         popup.addEventListener('click', function(e){ e.stopPropagation(); });
-        popup.querySelector('.sp-reactors-close').addEventListener('click', function(){ _closeViewersPopup(); });
+        popup.addEventListener('touchend', function(e){ e.stopPropagation(); });
+        var vCloseBtn = popup.querySelector('.sp-reactors-close');
+        vCloseBtn.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); _closeViewersPopup(); });
+        vCloseBtn.addEventListener('touchend', function(ev){ ev.preventDefault(); ev.stopPropagation(); _closeViewersPopup(); });
 
         ov.appendChild(popup);
         document.body.appendChild(ov);

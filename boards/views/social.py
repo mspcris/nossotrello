@@ -662,6 +662,13 @@ def social_post_create(request):
 
     gif_url = (request.POST.get("gif_url") or "").strip()
     sticker_url = (request.POST.get("sticker_url") or "").strip()
+    text_style_raw = (request.POST.get("text_style") or "").strip()
+    text_style = None
+    if text_style_raw:
+        try:
+            text_style = json.loads(text_style_raw)
+        except (json.JSONDecodeError, TypeError):
+            pass
     visibility = (request.POST.get("visibility") or "all").strip()
     if visibility not in ("all", "friends"):
         visibility = "all"
@@ -677,6 +684,7 @@ def social_post_create(request):
             video=video or None,
             gif_url=gif_url,
             sticker_url=sticker_url,
+            text_style=text_style,
             visibility=visibility,
         )
         # Notificar @menções

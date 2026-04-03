@@ -47,7 +47,14 @@
         <img src="{{ post.gif_url }}" alt="GIF" class="sp-post-media" loading="lazy">
       {% endif %}
       {% if post.text and not post.is_friendship %}
-        <p class="sp-post-text">{{ post.text|urlize|linebreaksbr }}</p>
+        {% if post.text_style %}
+          <div class="sp-styled-text" data-effect="{{ post.text_style.effect }}"
+               style="background:{{ post.text_style.bg }};color:{{ post.text_style.color }}">
+            <span class="sp-styled-text-inner">{{ post.text|linebreaksbr }}</span>
+          </div>
+        {% else %}
+          <p class="sp-post-text">{{ post.text|urlize|linebreaksbr }}</p>
+        {% endif %}
       {% endif %}
 
       <!-- Reactions -->

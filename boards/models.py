@@ -844,6 +844,7 @@ class SocialPost(models.Model):
     video = models.FileField(upload_to="social/videos/", blank=True, null=True)
     gif_url = models.URLField(blank=True, default="")
     sticker_url = models.URLField(blank=True, default="")
+    text_style = models.JSONField(blank=True, null=True, default=None)
     visibility = models.CharField(max_length=10, choices=VISIBILITY_CHOICES, default="all")
     shared_from = models.ForeignKey(
         "self", null=True, blank=True, related_name="reposts",
