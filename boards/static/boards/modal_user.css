@@ -1690,6 +1690,8 @@ video.sp-post-media {
   align-items: flex-end;
   justify-content: center;
   -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: contain;
+  overflow: hidden;
 }
 .sp-sheet {
   background: #fff;
@@ -1701,6 +1703,8 @@ video.sp-post-media {
   max-height: 85vh;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
 }
 @keyframes sp-sheet-up {
   from { transform: translateY(100%); }

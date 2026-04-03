@@ -1946,11 +1946,15 @@ document.addEventListener('click', function(e){
     var o = document.getElementById('sp-sheet-overlay');
     if(o) o.classList.remove('sp-hidden');
     document.body.style.overflow = 'hidden';
+    document.body.style.overscrollBehavior = 'none';
   };
   window.spCloseSheet = function(){
     var o = document.getElementById('sp-sheet-overlay');
     if(o) o.classList.add('sp-hidden');
     document.body.style.overflow = '';
+    document.body.style.overscrollBehavior = '';
+    spCloseTextStyle();
+    _closePostPicker();
   };
 
   /* ── Visibility toggle (creation form) ── */
