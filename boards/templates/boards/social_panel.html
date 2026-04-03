@@ -2160,7 +2160,16 @@ document.addEventListener('click', function(e){
     if(ta){ ta.setAttribute('maxlength','1000'); ta.placeholder = 'O que está rolando? ✨'; }
   };
 
-  function _syncTsPreview(){
+  var _fxMap = {
+    fadeIn:     'sp-fadeIn 1.5s ease',
+    slideUp:    'sp-slideUp 1s ease',
+    zoomIn:     'sp-zoomIn 0.8s ease',
+    bounce:     'sp-bounce 1.5s ease',
+    glow:       'sp-glow 2s ease-in-out infinite',
+    typewriter: 'sp-typewriter 2s steps(40) forwards'
+  };
+
+  function _syncTsPreview(playEffect){
     var preview = document.getElementById('sp-textstyle-preview');
     var previewText = document.getElementById('sp-textstyle-preview-text');
     var ta = document.getElementById('sp-post-textarea');
@@ -2169,6 +2178,22 @@ document.addEventListener('click', function(e){
     preview.style.color = _tsTc;
     var txt = (ta && ta.value) ? ta.value : 'Prévia do texto';
     previewText.textContent = txt;
+    /* Animar preview ao trocar efeito */
+    if(playEffect && _fxMap[_tsFx]){
+      previewText.style.animation = 'none';
+      previewText.offsetHeight; /* force reflow */
+      previewText.style.animation = _fxMap[_tsFx];
+      if(_tsFx === 'typewriter'){
+        previewText.style.overflow = 'hidden';
+        previewText.style.whiteSpace = 'nowrap';
+        previewText.style.borderRight = '2px solid';
+        previewText.style.maxWidth = '100%';
+      } else {
+        previewText.style.overflow = '';
+        previewText.style.whiteSpace = '';
+        previewText.style.borderRight = '';
+      }
+    }
     /* Salvar no hidden */
     if(_tsActive){
       document.getElementById('sp-text-style-input').value = JSON.stringify({bg:_tsBg,color:_tsTc,effect:_tsFx});
@@ -2208,7 +2233,7 @@ document.addEventListener('click', function(e){
           b.style.background = '#fff'; b.style.color = '#374151'; b.style.borderColor = '#d1d5db';
         });
         fxBtn.style.background = '#2563eb'; fxBtn.style.color = '#fff'; fxBtn.style.borderColor = '#2563eb';
-        _syncTsPreview();
+        _syncTsPreview(true);
         return;
       }
     });
@@ -2533,19 +2558,44 @@ document.addEventListener('click', function(e){
   };
 
   /* ── Camila.AI toast reaction ── */
-  function spShowAiToast(text){
+  function spShowAiToast(text, userContext){
+    if(!text) return;
+
+    /* 1) Toast visual (mantém como sempre) */
     var container = document.getElementById('nt-toast-container');
-    if(!container || !text) return;
-    var toast = document.createElement('div');
-    toast.className = 'nt-toast';
-    toast.style.borderLeftColor = '#8b5cf6';
-    toast.innerHTML = '<div class="nt-toast-title"><img src="' + _camilaAvatarUrl + '" style="width:20px;height:20px;border-radius:50%;vertical-align:middle;margin-right:4px"> Camila.AI</div><div class="nt-toast-line">' +
-      text.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>';
-    container.appendChild(toast);
-    setTimeout(function(){
-      toast.style.animation = 'nt-out .35s ease forwards';
-      setTimeout(function(){ toast.remove(); }, 370);
-    }, 8000);
+    if(container){
+      var toast = document.createElement('div');
+      toast.className = 'nt-toast';
+      toast.style.borderLeftColor = '#8b5cf6';
+      toast.innerHTML = '<div class="nt-toast-title"><img src="' + _camilaAvatarUrl + '" style="width:20px;height:20px;border-radius:50%;vertical-align:middle;margin-right:4px"> Camila.AI</div><div class="nt-toast-line">' +
+        text.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>';
+      container.appendChild(toast);
+      setTimeout(function(){
+        toast.style.animation = 'nt-out .35s ease forwards';
+        setTimeout(function(){ toast.remove(); }, 370);
+      }, 8000);
+    }
+
+    /* 2) Adiciona ao chat da Camila como conversa */
+    window._spCamilaHistory = window._spCamilaHistory || [];
+    var msgs = document.getElementById('sp-camila-messages');
+    if(userContext){
+      window._spCamilaHistory.push({role:'user', content: userContext});
+      if(msgs){
+        var ub = document.createElement('div');
+        ub.className = 'sp-chat-msg sp-chat-user';
+        ub.textContent = userContext;
+        msgs.appendChild(ub);
+      }
+    }
+    window._spCamilaHistory.push({role:'assistant', content: text});
+    if(msgs){
+      var cb = document.createElement('div');
+      cb.className = 'sp-chat-msg sp-chat-bot';
+      cb.innerHTML = _spLinkify(text);
+      msgs.appendChild(cb);
+      msgs.scrollTop = msgs.scrollHeight;
+    }
   }
 
   /* ═══ COPIAR LINK DO PERFIL ═══ */
@@ -3494,7 +3544,7 @@ document.addEventListener('click', function(e){
           body:JSON.stringify({context: reactText})
         })
         .then(function(r){ return r.json(); })
-        .then(function(d){ if(d.response) spShowAiToast(d.response); })
+        .then(function(d){ if(d.response) spShowAiToast(d.response, reactText); })
         .catch(function(){});
       }, 800);
     }
