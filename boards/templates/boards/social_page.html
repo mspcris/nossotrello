@@ -3,6 +3,14 @@
 
 {% block title %}Espaço Social — NossoTrello{% endblock %}
 
+{% block og_meta %}
+<meta property="og:title" content="Espaço Social — Camim">
+<meta property="og:description" content="Conecte-se com sua equipe no Espaço Social">
+<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'images/og-social.png' %}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="NossoTrello">
+{% endblock og_meta %}
+
 {% block body_class %}sp-standalone-page{% endblock %}
 
 {% block extra_css %}

@@ -2089,6 +2089,8 @@ document.addEventListener('click', function(e){
   };
 
   /* ═══ REACTIONS ═══ */
+  var _presetReactions = ['like','love','haha','fire','clap'];
+
   window.spReact = async function(postId, reaction){
     var csrf = document.querySelector('meta[name="csrf-token"]');
     try{
@@ -2101,32 +2103,86 @@ document.addEventListener('click', function(e){
       });
       var d = await r.json();
       if(d.error) return;
+      _updateReactionUI(postId, d);
+    }catch(e){}
+  };
 
-      // update UI
-      var wrap = document.getElementById('sp-reactions-' + postId);
-      if(!wrap) return;
-      var btns = wrap.querySelectorAll('.sp-react-btn');
-      btns.forEach(function(btn){
-        var r = btn.dataset.reaction;
-        var count = (d.counts && d.counts[r]) || 0;
-        var badge = btn.querySelector('.sp-react-count');
-        if(count > 0){
-          if(!badge){
-            badge = document.createElement('span');
-            badge.className = 'sp-react-count';
-            btn.appendChild(badge);
-          }
-          badge.textContent = count;
-        } else if(badge){
-          badge.remove();
-        }
-        if(d.my_reaction === r){
-          btn.classList.add('active');
-        } else {
-          btn.classList.remove('active');
+  function _updateReactionUI(postId, d){
+    var wrap = document.getElementById('sp-reactions-' + postId);
+    if(!wrap) return;
+
+    /* Atualizar preset buttons */
+    wrap.querySelectorAll('.sp-react-btn[data-reaction]').forEach(function(btn){
+      var r = btn.dataset.reaction;
+      var count = (d.counts && d.counts[r]) || 0;
+      var badge = btn.querySelector('.sp-react-count');
+      if(count > 0){
+        if(!badge){ badge = document.createElement('span'); badge.className='sp-react-count'; btn.appendChild(badge); }
+        badge.textContent = count;
+        btn.style.display = '';
+      } else if(badge){
+        badge.remove();
+        /* Esconder custom buttons sem contagem */
+        if(_presetReactions.indexOf(r) === -1) btn.remove();
+      }
+      btn.classList.toggle('active', d.my_reaction === r);
+    });
+
+    /* Adicionar novos custom emoji buttons se necessário */
+    if(d.counts){
+      var moreBtn = wrap.querySelector('.sp-react-more');
+      Object.keys(d.counts).forEach(function(key){
+        if(_presetReactions.indexOf(key) !== -1) return;
+        if(wrap.querySelector('[data-reaction="'+key+'"]')) return;
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'sp-react-btn' + (d.my_reaction===key?' active':'');
+        btn.dataset.reaction = key;
+        btn.onclick = function(){ spReact(postId, key); };
+        btn.innerHTML = key + '<span class="sp-react-count">' + d.counts[key] + '</span>';
+        if(moreBtn) wrap.insertBefore(btn, moreBtn);
+        else wrap.appendChild(btn);
+      });
+    }
+
+    /* Fechar picker se aberto */
+    var picker = document.getElementById('sp-react-picker-' + postId);
+    if(picker) picker.remove();
+  }
+
+  /* ═══ PICKER DE EMOJI PARA REAÇÕES ═══ */
+  var _moreEmojis = [
+    '😀','😍','🥰','😘','🤩','😎','🥳','🤗','😭','🥺',
+    '😱','🤯','😤','🤬','💀','👻','🤡','💩','🫶','🙌',
+    '💪','👑','💎','✨','🌟','⭐','🎉','🎊','🎁','🏆',
+    '🥇','💐','🌹','🍕','🍔','☕','🍺','🥂','🎵','🎶',
+    '💯','✅','❌','⚡','💥','🌈','🦋','🐱','🐶','🦁',
+    '🎯','🚀','💡','🔔','💌','🫡','🤝','🙏','💖','💗'
+  ];
+
+  window.spReactMore = function(postId, btn){
+    var existing = document.getElementById('sp-react-picker-' + postId);
+    if(existing){ existing.remove(); return; }
+    var picker = document.createElement('div');
+    picker.id = 'sp-react-picker-' + postId;
+    picker.className = 'sp-react-picker';
+    picker.innerHTML = _moreEmojis.map(function(e){
+      return '<span class="sp-react-picker-item" data-emoji="' + e + '">' + e + '</span>';
+    }).join('');
+    picker.addEventListener('click', function(ev){
+      var item = ev.target.closest('.sp-react-picker-item');
+      if(item) spReact(postId, item.dataset.emoji);
+    });
+    /* Fechar ao clicar fora */
+    setTimeout(function(){
+      document.addEventListener('click', function _close(ev){
+        if(!picker.contains(ev.target) && ev.target !== btn){
+          picker.remove();
+          document.removeEventListener('click', _close);
         }
       });
-    }catch(e){}
+    }, 0);
+    btn.parentNode.appendChild(picker);
   };
 
   /* ═══ COMMENTS ═══ */
@@ -4374,24 +4430,20 @@ function spViewersCancelPress(){
 
   function _escTag(s){ return s.replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
+  var _boardColsMap = {};
+  try { _boardColsMap = JSON.parse('{{ board_columns_map|escapejs }}'); } catch(e){}
+
   function _updateColOptions(){
     if(!colSelect || !boardSelect) return;
     var boardId = boardSelect.value;
     colSelect.innerHTML = '<option value="">Todas as colunas</option>';
     if(!boardId) return;
-    var seen = {};
-    taskItems.forEach(function(el){
-      if(el.dataset.boardId === boardId){
-        var colId = el.dataset.colId || '';
-        var colName = el.dataset.colName || '';
-        if(colId && !seen[colId]){
-          seen[colId] = true;
-          var opt = document.createElement('option');
-          opt.value = colId;
-          opt.textContent = colName;
-          colSelect.appendChild(opt);
-        }
-      }
+    var cols = _boardColsMap[boardId] || [];
+    cols.forEach(function(c){
+      var opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = c.name;
+      colSelect.appendChild(opt);
     });
   }
 

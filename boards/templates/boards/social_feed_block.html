@@ -72,6 +72,13 @@
                 data-reaction="clap" onclick="spReact({{ post.id }},'clap')">
           👏{% if post.reaction_counts.clap %}<span class="sp-react-count">{{ post.reaction_counts.clap }}</span>{% endif %}
         </button>
+        {% for emoji, count in post.custom_reactions.items %}
+        <button type="button" class="sp-react-btn {% if post.my_reaction == emoji %}active{% endif %}"
+                data-reaction="{{ emoji }}" onclick="spReact({{ post.id }},'{{ emoji }}')">
+          {{ emoji }}<span class="sp-react-count">{{ count }}</span>
+        </button>
+        {% endfor %}
+        <button type="button" class="sp-react-btn sp-react-more" onclick="spReactMore({{ post.id }},this)">+</button>
       </div>
 
       <!-- Comments -->
@@ -132,6 +139,10 @@
                 hx-confirm="Excluir?">Excluir</button>
         {% else %}
           {% if post.visibility == "friends" %}<span class="sp-vis-badge" title="Apenas amigos">🔒</span>{% endif %}
+          {% if not post.is_friendship %}
+          <button type="button" class="sp-post-share-btn"
+                  onclick="spSharePost({{ post.id }})">↗ Compartilhar</button>
+          {% endif %}
         {% endif %}
       </div>
     </div>

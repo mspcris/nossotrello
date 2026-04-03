@@ -22,7 +22,7 @@ from django.db import models
 from collections import Counter, defaultdict
 
 from ..models import (
-    Board, BoardMembership, SocialPost, SocialPostSeen, SocialPostVersion,
+    Board, BoardMembership, Column, SocialPost, SocialPostSeen, SocialPostVersion,
     SocialPostReaction, SocialPostComment, SocialCommentReaction,
     DailyCheckIn, Card, CardFollow, UserProfile,
     CamilaKnowledge, CamilaConfig, SocialFriendship, SocialCardDismiss, CamilaPOP,
@@ -216,6 +216,11 @@ def _build_social_context(request, target_user, extra=None):
             post.my_reaction = next(
                 (r.reaction for r in post_reactions if r.user_id == request.user.id), None
             )
+            # Custom reactions (not in the 5 presets)
+            preset_keys = set(dict(SocialPostReaction.REACTION_CHOICES).keys())
+            post.custom_reactions = {
+                k: v for k, v in post.reaction_counts.items() if k not in preset_keys
+            }
             post.comment_list = comments_by_post.get(post.id, [])
             post.comment_count = len(post.comment_list)
             post.view_count = view_counts.get(post.id, 0)
@@ -310,6 +315,7 @@ def _build_social_context(request, target_user, extra=None):
     real_friends = []
     board_friends = []  # mantém para compat
     my_boards = []
+    board_columns_map = {}
     if is_me:
         accepted_out = set(SocialFriendship.objects.filter(
             requester=target_user, status="accepted"
@@ -329,8 +335,14 @@ def _build_social_context(request, target_user, extra=None):
             Board.objects.filter(
                 memberships__user=target_user,
                 memberships__role__in=["owner", "editor"],
-            ).values("id", "name").distinct()
+            ).values("id", "name").distinct().order_by("name")
         )
+        # Mapa board_id → colunas (para filtro JS)
+        board_ids = [b["id"] for b in my_boards]
+        _cols = Column.objects.filter(board_id__in=board_ids).order_by("position").values("id", "name", "board_id")
+        board_columns_map = {}
+        for c in _cols:
+            board_columns_map.setdefault(str(c["board_id"]), []).append({"id": c["id"], "name": c["name"]})
 
     # Pílulas de comentários não vistos (só para o dono)
     unread_comment_posts = []
@@ -402,6 +414,7 @@ def _build_social_context(request, target_user, extra=None):
         "board_friends": board_friends,
         "real_friends": real_friends,
         "my_boards": my_boards,
+        "board_columns_map": json.dumps(board_columns_map) if is_me else "{}",
         "show_unit_tutorial": show_unit_tutorial,
         "unit_suggestions": unit_suggestions,
         "available_units": available_units,
@@ -1121,8 +1134,11 @@ def social_post_react(request, post_id: int):
     post = get_object_or_404(SocialPost, id=post_id)
     reaction_type = (request.POST.get("reaction") or "").strip()
 
-    valid = dict(SocialPostReaction.REACTION_CHOICES)
-    if reaction_type not in valid:
+    # Aceita presets (like, love, etc.) ou qualquer emoji direto
+    valid_presets = dict(SocialPostReaction.REACTION_CHOICES)
+    if reaction_type not in valid_presets and len(reaction_type) > 16:
+        return JsonResponse({"error": "Reação inválida."}, status=400)
+    if not reaction_type:
         return JsonResponse({"error": "Reação inválida."}, status=400)
 
     existing = SocialPostReaction.objects.filter(user=request.user, post=post).first()
@@ -2661,7 +2677,7 @@ def social_post_reactors(request, post_id: int):
             "avatar": prof.avatar.url if prof and prof.avatar else "",
             "avatar_choice": prof.avatar_choice if prof else "",
             "reaction": r.reaction,
-            "emoji": dict(SocialPostReaction.REACTION_CHOICES).get(r.reaction, ""),
+            "emoji": r.emoji,
         })
     return JsonResponse({"reactors": result})
 

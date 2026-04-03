@@ -18,6 +18,15 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="{% static 'images/logo-camim.png' %}">
 
+  <!-- Open Graph -->
+  {% block og_meta %}
+  <meta property="og:title" content="{% block og_title %}NossoTrello — Tarefas Camim{% endblock %}">
+  <meta property="og:description" content="{% block og_description %}Gerencie tarefas e colabore com sua equipe{% endblock %}">
+  <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% block og_image %}{% static 'images/og-board.png' %}{% endblock %}">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="NossoTrello">
+  {% endblock og_meta %}
+
   <!-- HTMX -->
   <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 

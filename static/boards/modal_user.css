@@ -1257,6 +1257,11 @@ video.sp-post-media {
   align-items: center;
 }
 .sp-post-delete:hover { color: #b91c1c; }
+.sp-post-share-btn{
+  background:none; border:none; color:#7c3aed; font-size:.75rem; cursor:pointer;
+  padding:2px 6px; border-radius:6px; font-weight:600;
+}
+.sp-post-share-btn:hover{ background:#f3e8ff; }
 
 /* View counter */
 .sp-view-count {
@@ -1326,6 +1331,7 @@ video.sp-post-media {
   gap: 4px;
   padding: 4px 12px 0;
   flex-wrap: wrap;
+  position: relative;
 }
 .sp-react-btn {
   display: inline-flex;
@@ -1354,6 +1360,42 @@ video.sp-post-media {
   text-align: center;
 }
 .sp-react-btn.active .sp-react-count { color: #1d4ed8; }
+.sp-react-more {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #9ca3af;
+  border-style: dashed;
+  min-width: 36px;
+  justify-content: center;
+}
+.sp-react-more:active { background: #f3e8ff; }
+.sp-react-picker {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  padding: 10px;
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 2px;
+  max-height: 200px;
+  overflow-y: auto;
+  animation: sp-fade-in 0.12s ease;
+}
+.sp-react-picker-item {
+  font-size: 1.3rem;
+  text-align: center;
+  padding: 5px;
+  cursor: pointer;
+  border-radius: 8px;
+  line-height: 1.2;
+}
+.sp-react-picker-item:active { background: #f3e8ff; }
 
 /* ═══════════ COMMENTS ═══════════ */
 .sp-comments-section {

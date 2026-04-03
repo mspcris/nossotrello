@@ -939,20 +939,25 @@ class SocialPostReaction(models.Model):
         ("fire", "🔥"),
         ("clap", "👏"),
     ]
+    PRESET_EMOJIS = dict(REACTION_CHOICES)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name="social_reactions",
         on_delete=models.CASCADE,
     )
     post = models.ForeignKey(SocialPost, related_name="reactions", on_delete=models.CASCADE)
-    reaction = models.CharField(max_length=10, choices=REACTION_CHOICES)
+    reaction = models.CharField(max_length=16)  # preset key OR emoji character
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         unique_together = ("user", "post")
 
+    @property
+    def emoji(self):
+        return self.PRESET_EMOJIS.get(self.reaction, self.reaction)
+
     def __str__(self):
-        return f"{self.user} → {self.get_reaction_display()} em post {self.post_id}"
+        return f"{self.user} → {self.emoji} em post {self.post_id}"
 
 
 class SocialPostComment(models.Model):
