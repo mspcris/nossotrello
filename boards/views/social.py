@@ -476,12 +476,108 @@ def social_page(request, user_id: int = None, handle: str = None):
 # ---------------------------------------------------------------
 @login_required
 def social_post_page(request, post_id: int):
-    """Abre o perfil do autor focando na publicação específica."""
+    """Abre MEU perfil e exibe a publicação em modal."""
     post = get_object_or_404(SocialPost, id=post_id, is_active=True)
-    target_user = post.user
-    ctx = _build_social_context(request, target_user)
-    ctx["focus_post_id"] = post.id
+    ctx = _build_social_context(request, request.user)
+    ctx["modal_post_id"] = post.id
     return render(request, "boards/social_page.html", ctx)
+
+
+# ---------------------------------------------------------------
+# Dados completos de um post (GET → JSON) — para modal
+# ---------------------------------------------------------------
+@login_required
+def social_post_full(request, post_id: int):
+    """Retorna JSON completo de um post: autor, mídia, reações, comentários."""
+    post = get_object_or_404(SocialPost, id=post_id, is_active=True)
+
+    # Autor
+    author = _user_card(post.user)
+
+    # Mídia
+    photo_url = post.photo.url if post.photo else None
+    video_url = post.video.url if post.video else None
+
+    # Se é repost, herda do original
+    is_repost = False
+    original_author = None
+    text = post.text
+    text_style = post.text_style
+    if post.shared_from_id:
+        is_repost = True
+        try:
+            orig = SocialPost.objects.select_related("user__profile").get(
+                id=post.shared_from_id, is_active=True
+            )
+            original_author = _user_card(orig.user)
+            if not text and orig.text:
+                text = orig.text
+            if not text_style and orig.text_style:
+                text_style = orig.text_style
+            if not photo_url and orig.photo:
+                photo_url = orig.photo.url
+            if not video_url and orig.video:
+                video_url = orig.video.url
+        except SocialPost.DoesNotExist:
+            pass
+
+    # Reações
+    reactions = SocialPostReaction.objects.filter(post=post).select_related("user", "user__profile")
+    reaction_counts = dict(Counter(r.reaction for r in reactions))
+    my_reaction = next((r.reaction for r in reactions if r.user_id == request.user.id), None)
+
+    # Comentários
+    comments_qs = (
+        SocialPostComment.objects
+        .filter(post=post, is_active=True)
+        .select_related("user", "user__profile")
+        .order_by("created_at")
+    )
+    comments = []
+    for c in comments_qs:
+        c_prof = getattr(c.user, "profile", None)
+        c_avatar = None
+        if c_prof and c_prof.avatar:
+            c_avatar = c_prof.avatar.url
+        elif c_prof and c_prof.avatar_choice:
+            from django.templatetags.static import static
+            c_avatar = static(f"images/avatar/{c_prof.avatar_choice}")
+        comments.append({
+            "id": c.id,
+            "author": c_prof.display_name if c_prof else c.user.email,
+            "avatar": c_avatar,
+            "text": c.text,
+            "time": timezone.localtime(c.created_at).strftime("%d/%m %H:%M"),
+            "reply_to_id": c.reply_to_id,
+        })
+
+    # Views
+    view_count = SocialPostView.objects.filter(post=post).count()
+
+    # Registra visualização
+    SocialPostView.objects.get_or_create(post=post, viewer=request.user)
+
+    return JsonResponse({
+        "id": post.id,
+        "author": author,
+        "text": text,
+        "text_style": text_style,
+        "photo": photo_url,
+        "video": video_url,
+        "gif_url": post.gif_url or None,
+        "sticker_url": post.sticker_url or None,
+        "is_repost": is_repost,
+        "original_author": original_author,
+        "reaction_counts": reaction_counts,
+        "my_reaction": my_reaction,
+        "total_reactions": len(list(reactions)),
+        "comments": comments,
+        "comment_count": len(comments),
+        "view_count": view_count + 1,
+        "visibility": post.visibility,
+        "created_at": timezone.localtime(post.created_at).strftime("%d/%m/%Y %H:%M"),
+        "is_mine": post.user_id == request.user.id,
+    })
 
 
 # ---------------------------------------------------------------
