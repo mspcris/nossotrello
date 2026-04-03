@@ -1448,7 +1448,7 @@ li[data-card-id][data-term-status="ok"] .term-badge{ color: #16a34a; }
 .card-like-btn{
   opacity: 0;
   pointer-events: none;
-  transition: opacity .15s ease, transform .15s ease;
+  transition: opacity .15s ease, transform .15s ease, filter .15s ease;
   background: none;
   border: none;
   cursor: pointer;
@@ -1457,6 +1457,7 @@ li[data-card-id][data-term-status="ok"] .term-badge{ color: #16a34a; }
   border-radius: 6px;
   line-height: 1;
   flex-shrink: 0;
+  filter: grayscale(1) brightness(1.5);
 }
 .card-item:hover .card-like-btn{
   opacity: 1;
@@ -1469,6 +1470,7 @@ li[data-card-id][data-term-status="ok"] .term-badge{ color: #16a34a; }
 .card-like-btn.liked{
   opacity: 1;
   pointer-events: auto;
+  filter: none;
   animation: card-like-pop .35s ease;
 }
 @keyframes card-like-pop{
@@ -1480,6 +1482,10 @@ li[data-card-id][data-term-status="ok"] .term-badge{ color: #16a34a; }
 /* Dispositivos sem hover (mobile/tablet): não some */
 @media (hover: none){
   .card-item .card-follow-btn{
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .card-like-btn{
     opacity: 1;
     pointer-events: auto;
   }

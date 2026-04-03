@@ -1204,13 +1204,16 @@ def card_like_social(request, card_id: int):
     card = get_object_or_404(Card, id=card_id)
     board = card.column.board
     user_name = request.user.get_full_name() or request.user.username
-    board_url = request.build_absolute_uri(f"/board/{board.id}/")
+    card_url = request.build_absolute_uri(f"/board/{board.id}/?card={card.id}")
     text = (
         f"👍 {user_name} curtiu o card: {card.title}\n"
         f"📋 Quadro: {board.name}\n"
-        f"🔗 {board_url}"
+        f"🔗 {card_url}"
     )
-    SocialPost.objects.create(user=request.user, text=text)
+    post_kwargs = {"user": request.user, "text": text}
+    if card.cover_image:
+        post_kwargs["photo"] = card.cover_image
+    SocialPost.objects.create(**post_kwargs)
     return JsonResponse({"ok": True})
 
 
