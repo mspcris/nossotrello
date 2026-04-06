@@ -100,6 +100,11 @@ INSTALLED_APPS = [
     # apps do projeto boards nossotrello
     'boards.apps.BoardsConfig',
 
+    # API mobile (REST)
+    'rest_framework',
+    'rest_framework.authtoken',
+    'api_mobile.apps.ApiMobileConfig',
+
     # apps nativos
     'django.contrib.admin',
     'django.contrib.auth',
@@ -344,6 +349,22 @@ else:
             "LOCATION": "nossotrello-locmem",
         }
     }
+
+
+# ============================================================
+# DJANGO REST FRAMEWORK (API mobile)
+# ============================================================
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.TokenAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+    "DEFAULT_RENDERER_CLASSES": [
+        "rest_framework.renderers.JSONRenderer",
+    ],
+}
 
 
 LOGGING = {

@@ -55,6 +55,9 @@ urlpatterns = [
 
     # Tracktime
     path("track-time/", include(("tracktime.urls", "tracktime"), namespace="tracktime")),
+
+    # API mobile (REST — rotas 100% novas, sem tocar nas existentes)
+    path("api/mobile/", include(("api_mobile.urls", "api_mobile"), namespace="api_mobile")),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

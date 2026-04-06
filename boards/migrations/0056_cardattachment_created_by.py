@@ -8,7 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('boards', '0055_rename_boards_soci_user_id_idx_boards_soci_user_id_a11109_idx_and_more'),
+        ('boards', '0055_add_created_by_to_cardattachment'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
