@@ -1021,6 +1021,7 @@ var _CAMILA_AVATARS = {
   var _reelIdx = 0;
   var _myUserId = {{ request.user.id }};
   var _csrf = function(){ return document.querySelector("[name=csrfmiddlewaretoken]")?.value || ""; };
+  window._csrf = _csrf;
 
   window.spSwitchTab = function(tab){
     document.querySelectorAll('.sp-tab').forEach(function(b){ b.classList.toggle('active', b.dataset.tab === tab); });
@@ -5408,7 +5409,7 @@ window.spShowProfilePhoto = function(url){
 
     fetch('{% url "boards:social_health_chat" %}', {
       method: 'POST',
-      headers: {'Content-Type':'application/json', 'X-CSRFToken': _csrf()},
+      headers: {'Content-Type':'application/json', 'X-CSRFToken': window._csrf()},
       body: JSON.stringify({message: text, history: _healthHistory.slice(-10)})
     })
     .then(function(r){ return r.json(); })
