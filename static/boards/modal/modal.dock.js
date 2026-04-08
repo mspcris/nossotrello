@@ -190,7 +190,7 @@
       ensureHidden(panel);
     }
 
-    ["#cm-dock-duplicate", "#cm-dock-move", "#cm-dock-copylink", "#cm-dock-move-expand"].forEach((id) => {
+    ["#cm-dock-duplicate", "#cm-dock-move", "#cm-dock-copylink"].forEach((id) => {
       const b = qs(dock, id);
       if (b) {
         ensureButtonType(b);
@@ -554,13 +554,14 @@
       e.stopPropagation();
       toggleMenu(dock);
 
-      // Carrega sugestões na primeira abertura
+      // Carrega sugestões na primeira abertura e mostra automaticamente
       if (!suggestionsLoaded) {
         suggestionsLoaded = true;
         const sugContainer = qs(dock, "#cm-dock-suggestions");
         const sugUrl = sugContainer?.getAttribute?.("data-url-suggestions");
         if (sugUrl) {
           suggestionsData = await fetchSuggestions(sugUrl);
+          injectSuggestions(dock, suggestionsData);
         }
       }
     });
@@ -585,19 +586,6 @@
       if (!cardId) {
         debug("Sem cardId no #cm-root");
         closeMenu(dock);
-        return;
-      }
-
-      // Seta de expandir sugestões
-      if (btn.id === "cm-dock-move-expand") {
-        const container = qs(dock, "#cm-dock-suggestions");
-        if (container && container.style.display === "block") {
-          container.style.display = "none";
-          btn.querySelector("span").textContent = "▶";
-        } else {
-          injectSuggestions(dock, suggestionsData);
-          btn.querySelector("span").textContent = "▼";
-        }
         return;
       }
 
