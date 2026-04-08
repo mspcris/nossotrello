@@ -1041,13 +1041,17 @@ var _CAMILA_AVATARS = {
     } else if(tab === 'feed'){
       feed.classList.remove('sp-hidden');
       if(!_reelLoaded) _loadReelFeed();
-      /* Entrar em fullscreen */
-      requestAnimationFrame(function(){
+      /* Entrar em fullscreen (aguardar layout estabilizar) */
+      setTimeout(function(){
         feed.classList.add('sp-feed-fullscreen');
         document.body.style.overflow = 'hidden';
-        /* Reajustar transform para novo tamanho */
-        if(window._spGoToSlide) window._spGoToSlide(_reelIdx, false);
-      });
+        /* Reajustar transform para novo tamanho após layout */
+        requestAnimationFrame(function(){
+          requestAnimationFrame(function(){
+            if(window._spGoToSlide) window._spGoToSlide(_reelIdx, false);
+          });
+        });
+      }, 30);
     }
   };
 
