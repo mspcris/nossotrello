@@ -10,9 +10,7 @@ __pycache__/
 db.sqlite3
 db.sqlite3-journal
 
-# Migrações — não sobem para o git
-*/migrations/*.py
-!*/migrations/__init__.py
+# Migrações — DEVEM subir para o git (remover exclusão causava dessincronia)
 */migrations/*.pyc
 */migrations/**/__pycache__/
 

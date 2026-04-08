@@ -13,9 +13,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='cardattachment',
-            name='created_by',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='attachments_created', to=settings.AUTH_USER_MODEL),
-        ),
+        # No-op: campo created_by já adicionado em 0055_add_created_by_to_cardattachment.
+        # Mantido vazio para preservar a cadeia de dependências.
     ]

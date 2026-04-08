@@ -190,7 +190,7 @@
       ensureHidden(panel);
     }
 
-    ["#cm-dock-duplicate", "#cm-dock-move", "#cm-dock-copylink"].forEach((id) => {
+    ["#cm-dock-duplicate", "#cm-dock-move", "#cm-dock-copylink", "#cm-dock-move-expand"].forEach((id) => {
       const b = qs(dock, id);
       if (b) {
         ensureButtonType(b);
@@ -408,6 +408,73 @@
   }
 
   // =========================
+  // SUGGESTIONS (Mover rápido)
+  // =========================
+  function renderSuggestionsSubmenu(suggestions) {
+    if (!suggestions || !suggestions.length) return "";
+
+    const items = suggestions.map((s) => {
+      const label = s.is_global
+        ? `${escapeHtml(s.from_column_name)} → ${escapeHtml(s.to_column_name)}`
+        : `→ ${escapeHtml(s.to_column_name)}`;
+
+      const boardLabel = escapeHtml(s.to_board_name || "");
+      const countBadge = s.count > 1 ? `<span style="font-size:10px;color:rgba(15,23,42,.45);margin-left:auto;">${s.count}x</span>` : "";
+
+      return `<button type="button" class="dock-action dock-suggestion-item" role="menuitem"
+                data-suggestion-to-col="${s.to_column_id}"
+                data-suggestion-to-board="${s.to_board_id}"
+                style="display:flex;align-items:center;gap:6px;padding:7px 10px;font-size:12px;width:100%;text-align:left;border:0;background:transparent;cursor:pointer;border-radius:8px;">
+                <span style="font-size:13px;">⚡</span>
+                <span style="flex:1;display:flex;flex-direction:column;gap:1px;">
+                  <span style="font-weight:600;color:rgba(15,23,42,.88);">${label}</span>
+                  <span style="font-size:10px;color:rgba(15,23,42,.5);">${boardLabel}</span>
+                </span>
+                ${countBadge}
+              </button>`;
+    }).join("");
+
+    return `<div id="cm-dock-suggestions-list" style="display:flex;flex-direction:column;gap:2px;padding-bottom:4px;margin-bottom:4px;border-bottom:1px solid rgba(15,23,42,.08);">
+      <div style="font-size:10px;font-weight:700;color:rgba(15,23,42,.45);padding:4px 10px 2px;text-transform:uppercase;letter-spacing:.5px;">Mover rápido</div>
+      ${items}
+    </div>`;
+  }
+
+  async function fetchSuggestions(url) {
+    try {
+      const res = await fetch(url, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+        },
+        credentials: "same-origin",
+      });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.suggestions || [];
+    } catch (_e) {
+      return [];
+    }
+  }
+
+  function injectSuggestions(dock, suggestions) {
+    const container = qs(dock, "#cm-dock-suggestions");
+    if (!container) return;
+
+    if (!suggestions || !suggestions.length) {
+      container.innerHTML = `<div style="padding:8px 10px;font-size:11px;color:rgba(15,23,42,.45);border-bottom:1px solid rgba(15,23,42,.08);margin-bottom:4px;">
+        Mova cards entre colunas para gerar sugestões personalizadas aqui.
+      </div>`;
+      container.style.display = "block";
+      return;
+    }
+
+    container.innerHTML = renderSuggestionsSubmenu(suggestions);
+    container.style.display = "block";
+  }
+
+  // =========================
   // NETWORK
   // =========================
   async function fetchMoveOptions(url) {
@@ -478,10 +545,24 @@
     closeMenu(dock);
     closePanel(dock);
 
-    toggleBtn.addEventListener("click", function (e) {
+    // Estado: sugestões já carregadas?
+    let suggestionsLoaded = false;
+    let suggestionsData = [];
+
+    toggleBtn.addEventListener("click", async function (e) {
       e.preventDefault();
       e.stopPropagation();
       toggleMenu(dock);
+
+      // Carrega sugestões na primeira abertura
+      if (!suggestionsLoaded) {
+        suggestionsLoaded = true;
+        const sugContainer = qs(dock, "#cm-dock-suggestions");
+        const sugUrl = sugContainer?.getAttribute?.("data-url-suggestions");
+        if (sugUrl) {
+          suggestionsData = await fetchSuggestions(sugUrl);
+        }
+      }
     });
 
     document.addEventListener("click", function (e) {
@@ -504,6 +585,86 @@
       if (!cardId) {
         debug("Sem cardId no #cm-root");
         closeMenu(dock);
+        return;
+      }
+
+      // Seta de expandir sugestões
+      if (btn.id === "cm-dock-move-expand") {
+        const container = qs(dock, "#cm-dock-suggestions");
+        if (container && container.style.display === "block") {
+          container.style.display = "none";
+          btn.querySelector("span").textContent = "▶";
+        } else {
+          injectSuggestions(dock, suggestionsData);
+          btn.querySelector("span").textContent = "▼";
+        }
+        return;
+      }
+
+      // Clique em item de sugestão -> mover rápido
+      if (btn.classList.contains("dock-suggestion-item")) {
+        const toColId = btn.getAttribute("data-suggestion-to-col");
+        const toBoardId = btn.getAttribute("data-suggestion-to-board");
+        if (!toColId || !cardId) return;
+
+        closeMenu(dock);
+
+        // Feedback visual
+        btn.style.opacity = "0.5";
+        btn.style.pointerEvents = "none";
+
+        debug("Quick move", { card_id: cardId, to_col: toColId, to_board: toBoardId });
+
+        try {
+          const res = await postMoveApplyJson("/move-card/", {
+            card_id: parseInt(cardId, 10),
+            new_column_id: parseInt(toColId, 10),
+            new_position: 0,  // posição 1 (topo) da coluna destino
+          });
+
+          if (!res.ok) {
+            debug("Quick move failed", res.status, res.text);
+            return;
+          }
+
+          // Move no DOM (mesmo código do apply normal)
+          try {
+            const moveData = JSON.parse(res.text || "{}");
+            const newColId = moveData.column_id;
+            const snippet = moveData.snippet || "";
+            const cardLi = document.querySelector(`li[data-card-id="${cardId}"]`);
+            const destList = newColId ? document.getElementById(`cards-col-${newColId}`) : null;
+
+            if (cardLi && destList && snippet) {
+              const tmp = document.createElement("div");
+              tmp.innerHTML = snippet.trim();
+              const newLi = tmp.firstElementChild;
+              if (newLi) {
+                cardLi.replaceWith(newLi);
+                destList.prepend(newLi);
+                newLi.classList.add("card-new-pulse");
+                setTimeout(() => newLi.classList.remove("card-new-pulse"), 700);
+                requestAnimationFrame(() =>
+                  newLi.scrollIntoView({ behavior: "smooth", block: "nearest" })
+                );
+                const destColEl = destList.closest("[data-column-id]");
+                if (destColEl) {
+                  destColEl.classList.remove("col-belly");
+                  void destColEl.offsetWidth;
+                  destColEl.classList.add("col-belly");
+                  setTimeout(() => destColEl.classList.remove("col-belly"), 400);
+                }
+                try { if (window.initSortable) window.initSortable(); } catch (_) {}
+                try { if (window.updateAggregatorCounts) window.updateAggregatorCounts(); } catch (_) {}
+              }
+            }
+          } catch (_e) {}
+
+          window.__skipBoardPollUntil = Date.now() + 500;
+          setTimeout(() => closeCardModal(), 100);
+        } catch (err) {
+          debug("Quick move error", err);
+        }
         return;
       }
 
@@ -709,20 +870,60 @@
 
                 // Reinit sortable no destino
                 try { if (window.initSortable) window.initSortable(); } catch (_) {}
+
+                // Atualiza contadores de cards nas colunas
+                try { if (window.updateAggregatorCounts) window.updateAggregatorCounts(); } catch (_) {}
               }
-            } else if (typeof window.refreshCardSnippet === "function") {
-              window.refreshCardSnippet(cardId2);
+            } else {
+              // Fallback: se não conseguiu mover via DOM, refaz o snippet do card
+              try {
+                const r = await fetch(`/card/${cardId2}/snippet/`, {
+                  headers: { "X-Requested-With": "XMLHttpRequest" },
+                });
+                if (r.ok) {
+                  const html = (await r.text()).trim();
+                  if (html) {
+                    const el = document.querySelector(`[data-card-id="${cardId2}"]`);
+                    if (el) {
+                      const tmp = document.createElement("div");
+                      tmp.innerHTML = html;
+                      const node = tmp.firstElementChild;
+                      if (node) el.replaceWith(node);
+                    }
+                  }
+                }
+              } catch (_) {}
             }
           } catch (_e) {
-            if (typeof window.refreshCardSnippet === "function") {
-              try { window.refreshCardSnippet(cardId2); } catch (_) {}
-            }
+            // Fallback: se tudo falhar, refaz o snippet do card
+            try {
+              const r = await fetch(`/card/${cardId2}/snippet/`, {
+                headers: { "X-Requested-With": "XMLHttpRequest" },
+              });
+              if (r.ok) {
+                const html = (await r.text()).trim();
+                if (html) {
+                  const el = document.querySelector(`[data-card-id="${cardId2}"]`);
+                  if (el) {
+                    const tmp = document.createElement("div");
+                    tmp.innerHTML = html;
+                    const node = tmp.firstElementChild;
+                    if (node) el.replaceWith(node);
+                  }
+                }
+              }
+            } catch (_) {}
           }
 
           closeMenu(dock);
           closePanel(dock);
 
-          setTimeout(() => closeCardModal(), 0);
+          // Pausa o polling por um tempo para evitar race condition
+          // onde board.poll.js refaz o DOM antes da mudança ser visível
+          window.__skipBoardPollUntil = Date.now() + 500;
+
+          // Aguarda um pouco para permitir que a mudança visual seja processada
+          setTimeout(() => closeCardModal(), 100);
           return;
         } catch (err) {
           setPanelHtml(dock, renderMoveUI({ boards: [], columns_by_board: {}, current: {} }));
