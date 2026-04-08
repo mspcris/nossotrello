@@ -116,6 +116,8 @@ from boards.views.social import (
     social_post_comment,
     social_post_reactors,
     social_post_viewers,
+    social_post_feed_view,
+    social_post_reach,
     social_post_detail,
     social_comments_mark_seen,
     mood_checkin,
@@ -219,6 +221,8 @@ urlpatterns = [
     path("social/camila/", social_camila_chat, name="social_camila_chat"),
     path("social/post/<int:post_id>/reactors/", social_post_reactors, name="social_post_reactors"),
     path("social/post/<int:post_id>/viewers/", social_post_viewers, name="social_post_viewers"),
+    path("social/post/<int:post_id>/feed-view/", social_post_feed_view, name="social_post_feed_view"),
+    path("social/post/<int:post_id>/reach/", social_post_reach, name="social_post_reach"),
     path("social/posts/<int:post_id>/", social_post_detail, name="social_post_detail"),
     path("social/onboarding-done/", social_onboarding_done, name="social_onboarding_done"),
 

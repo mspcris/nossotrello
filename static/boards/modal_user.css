@@ -1406,6 +1406,20 @@ video.sp-post-media {
   transition: background 0.15s;
 }
 .sp-view-count:active { background: rgba(0,0,0,0.05); }
+.sp-reach-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.75rem;
+  color: #7c3aed;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  padding: 4px 6px;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+.sp-reach-count:active { background: rgba(124,58,237,0.08); }
 
 /* Visibility toggle on post footer */
 .sp-vis-post-btn {

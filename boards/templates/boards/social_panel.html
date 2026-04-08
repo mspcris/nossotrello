@@ -1196,17 +1196,34 @@ var _CAMILA_AVATARS = {
       if(idx >= _totalSlides) idx = 0;
       _reelIdx = idx;
       var w = el.offsetWidth || 1;
+      var dest = 'translate3d(' + (-_reelIdx * w) + 'px, 0, 0)';
       if(animate !== false){
+        /* Remover classe, forçar reflow, re-adicionar — garante transição */
+        _track.classList.remove('sp-animating');
+        _track.offsetWidth; /* force reflow */
         _track.classList.add('sp-animating');
       } else {
         _track.classList.remove('sp-animating');
       }
-      _track.style.transform = 'translate3d(' + (-_reelIdx * w) + 'px, 0, 0)';
+      _track.style.transform = dest;
       _updateDots();
       _playCurrentVideo(el, _reelIdx);
       _preloadAround(_reelIdx);
+      _registerFeedView(_reelIdx);
       _scheduleNext();
     }
+
+    /* Registrar visualização no feed (fire-and-forget) */
+    var _viewedPosts = {};
+    function _registerFeedView(idx){
+      var p = _reelPosts[idx];
+      if(!p || _viewedPosts[p.id]) return;
+      _viewedPosts[p.id] = true;
+      fetch('/social/post/' + p.id + '/feed-view/', {
+        method:'POST', headers:{'X-CSRFToken':_csrf()},
+      }).catch(function(){});
+    }
+    _registerFeedView(0); /* primeiro slide */
     window._spGoToSlide = _goToSlide;
 
     /* Reajustar posição ao redimensionar tela / rotação */
@@ -4609,7 +4626,6 @@ document.addEventListener('click', function(e){
 /* ═══════════════════════════════════════════════
    QUEM VIU (long-press no contador de views)
    ═══════════════════════════════════════════════ */
-var _viewersTimer = null;
 var _viewersPopup = null;
 
 function _closeViewersPopup(){
@@ -4625,49 +4641,50 @@ document.addEventListener('click', function(e){
   if(_viewersPopup && !_viewersPopup.contains(e.target)) _closeViewersPopup();
 });
 
-function spViewersLongPress(e, postId){
-  var anchor = e.currentTarget;
-  _viewersTimer = setTimeout(function(){
-    _closeViewersPopup();
-    fetch('/social/post/' + postId + '/viewers/')
-      .then(function(r){ return r.json(); })
-      .then(function(d){
-        if(!d.viewers || !d.viewers.length) return;
-        var ov = document.createElement('div');
-        ov.className = 'sp-reactors-overlay';
-        ov.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); _closeViewersPopup(); });
-        ov.addEventListener('touchend', function(ev){ ev.preventDefault(); ev.stopPropagation(); _closeViewersPopup(); });
+function _showViewersList(title, viewers){
+  _closeViewersPopup();
+  if(!viewers || !viewers.length) return;
+  var ov = document.createElement('div');
+  ov.className = 'sp-reactors-overlay';
+  ov.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); _closeViewersPopup(); });
+  ov.addEventListener('touchend', function(ev){ ev.preventDefault(); ev.stopPropagation(); _closeViewersPopup(); });
 
-        var popup = document.createElement('div');
-        popup.className = 'sp-viewers-popup';
-        popup.innerHTML = '<div class="sp-reactors-header">'
-          + '<div class="sp-viewers-title">👁 Quem viu</div>'
-          + '<button class="sp-reactors-close">&times;</button>'
-          + '</div>'
-          + d.viewers.map(function(v){
-            var av = v.avatar
-              ? '<img src="' + v.avatar + '" class="sp-viewer-av">'
-              : '<span class="sp-viewer-av-fb">' + (v.name||'?').charAt(0).toUpperCase() + '</span>';
-            return '<div class="sp-viewer-item">' + av
-              + '<span class="sp-viewer-name">' + v.name + '</span></div>';
-          }).join('');
+  var popup = document.createElement('div');
+  popup.className = 'sp-viewers-popup';
+  popup.innerHTML = '<div class="sp-reactors-header">'
+    + '<div class="sp-viewers-title">' + title + '</div>'
+    + '<button class="sp-reactors-close">&times;</button>'
+    + '</div>'
+    + viewers.map(function(v){
+      var av = v.avatar
+        ? '<img src="' + v.avatar + '" class="sp-viewer-av">'
+        : '<span class="sp-viewer-av-fb">' + (v.name||'?').charAt(0).toUpperCase() + '</span>';
+      return '<div class="sp-viewer-item">' + av
+        + '<span class="sp-viewer-name">' + v.name + '</span></div>';
+    }).join('');
 
-        popup.addEventListener('click', function(e){ e.stopPropagation(); });
-        popup.addEventListener('touchend', function(e){ e.stopPropagation(); });
-        var vCloseBtn = popup.querySelector('.sp-reactors-close');
-        vCloseBtn.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); _closeViewersPopup(); });
-        vCloseBtn.addEventListener('touchend', function(ev){ ev.preventDefault(); ev.stopPropagation(); _closeViewersPopup(); });
+  popup.addEventListener('click', function(e){ e.stopPropagation(); });
+  popup.addEventListener('touchend', function(e){ e.stopPropagation(); });
+  var vCloseBtn = popup.querySelector('.sp-reactors-close');
+  vCloseBtn.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); _closeViewersPopup(); });
+  vCloseBtn.addEventListener('touchend', function(ev){ ev.preventDefault(); ev.stopPropagation(); _closeViewersPopup(); });
 
-        ov.appendChild(popup);
-        document.body.appendChild(ov);
-        _viewersPopup = ov;
-      });
-  }, 500);
+  ov.appendChild(popup);
+  document.body.appendChild(ov);
+  _viewersPopup = ov;
 }
 
-function spViewersCancelPress(){
-  clearTimeout(_viewersTimer);
-}
+window.spShowViewers = function(postId){
+  fetch('/social/post/' + postId + '/viewers/')
+    .then(function(r){ return r.json(); })
+    .then(function(d){ _showViewersList('👁 Quem viu', d.viewers); });
+};
+
+window.spShowReach = function(postId){
+  fetch('/social/post/' + postId + '/reach/')
+    .then(function(r){ return r.json(); })
+    .then(function(d){ _showViewersList('📡 Alcance no Feed', d.viewers); });
+};
 
 /* ═══════════════════════════════════════════════
    PILLS NO PERFIL ALHEIO — mostra notificações no topo

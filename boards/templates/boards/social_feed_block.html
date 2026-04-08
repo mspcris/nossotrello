@@ -127,12 +127,15 @@
       <div class="sp-post-footer">
         <span>{{ post.created_at|date:"d/m/Y H:i" }}</span>
         {% if post.view_count %}
-        <span class="sp-view-count" data-post-id="{{ post.id }}"
-              ontouchstart="spViewersLongPress(event,{{ post.id }})"
-              onmousedown="spViewersLongPress(event,{{ post.id }})"
-              ontouchend="spViewersCancelPress()" onmouseup="spViewersCancelPress()"
-              ontouchmove="spViewersCancelPress()" onmouseleave="spViewersCancelPress()">
+        <span class="sp-view-count sp-stat-btn" data-post-id="{{ post.id }}"
+              onclick="spShowViewers({{ post.id }})">
           👁 {{ post.view_count }}
+        </span>
+        {% endif %}
+        {% if post.reach_count %}
+        <span class="sp-reach-count sp-stat-btn" data-post-id="{{ post.id }}"
+              onclick="spShowReach({{ post.id }})">
+          📡 {{ post.reach_count }}
         </span>
         {% endif %}
         {% if is_me %}

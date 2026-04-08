@@ -200,10 +200,17 @@ def _build_social_context(request, target_user, extra=None):
         ):
             comments_by_post[c.post_id].append(c)
 
-        # Prefetch view counts
+        # Prefetch view counts (perfil)
         view_counts = dict(
             SocialPostView.objects
-            .filter(post_id__in=post_ids)
+            .filter(post_id__in=post_ids, source="profile")
+            .values_list("post_id")
+            .annotate(cnt=models.Count("id"))
+        )
+        # Prefetch reach counts (feed)
+        reach_counts = dict(
+            SocialPostView.objects
+            .filter(post_id__in=post_ids, source="feed")
             .values_list("post_id")
             .annotate(cnt=models.Count("id"))
         )
@@ -224,6 +231,7 @@ def _build_social_context(request, target_user, extra=None):
             post.comment_list = comments_by_post.get(post.id, [])
             post.comment_count = len(post.comment_list)
             post.view_count = view_counts.get(post.id, 0)
+            post.reach_count = reach_counts.get(post.id, 0)
 
             # Repost: herda conteúdo do post original
             post.is_repost = False
@@ -2878,6 +2886,53 @@ def social_post_viewers(request, post_id: int):
             "avatar_choice": prof.avatar_choice if prof else "",
         })
     return JsonResponse({"viewers": result})
+
+
+# ---------------------------------------------------------------
+# Registrar visualização no feed (POST → JSON)
+# ---------------------------------------------------------------
+@login_required
+@require_POST
+def social_post_feed_view(request, post_id: int):
+    """Registra que o usuário viu este post no feed de Novidades."""
+    post = get_object_or_404(SocialPost, id=post_id, is_active=True)
+    if post.user_id != request.user.id:
+        SocialPostView.objects.get_or_create(
+            post=post, viewer=request.user, source="feed",
+        )
+    return JsonResponse({"ok": True})
+
+
+# ---------------------------------------------------------------
+# Alcance: quem viu no feed (GET → JSON)
+# ---------------------------------------------------------------
+@login_required
+def social_post_reach(request, post_id: int):
+    """Retorna lista de quem visualizou um post no feed (alcance)."""
+    views = (
+        SocialPostView.objects
+        .filter(post_id=post_id, source="feed")
+        .select_related("viewer", "viewer__profile")
+        .order_by("-viewed_at")
+    )
+    result = []
+    for v in views:
+        prof = getattr(v.viewer, "profile", None)
+        av = ""
+        if prof and getattr(prof, "avatar", None):
+            try:
+                av = prof.avatar.url
+            except Exception:
+                pass
+        if not av and prof and getattr(prof, "avatar_choice", ""):
+            from django.templatetags.static import static
+            av = static(f"images/avatar/{prof.avatar_choice}")
+        result.append({
+            "user_id": v.viewer_id,
+            "name": prof.display_name if prof else v.viewer.email,
+            "avatar": av,
+        })
+    return JsonResponse({"viewers": result, "count": len(result)})
 
 
 # ---------------------------------------------------------------
