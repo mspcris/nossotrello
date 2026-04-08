@@ -49,9 +49,8 @@ class Command(BaseCommand):
 
         # 2) Migrations no disco
         app_config = apps.get_app_config(app_label)
-        migrations_dir = os.path.join(
-            os.path.dirname(app_config.module.__file__), "migrations"
-        )
+        mod = import_module(f"{app_config.name}.migrations")
+        migrations_dir = os.path.dirname(mod.__file__)
         disk_names = set()
         for fname in os.listdir(migrations_dir):
             if fname.endswith(".py") and fname != "__init__.py":
