@@ -76,13 +76,35 @@ class Command(BaseCommand):
                 self.stdout.write(f"    - {name}")
             self.stdout.write("")
 
-        if missing:
-            self.stdout.write(self.style.NOTICE("  FALTANTES (serão fake-aplicadas):"))
-            for name in sorted(missing):
+        # Separar faltantes: merges (safe to fake) vs com operações (precisa migrate real)
+        merge_missing = set()
+        real_missing = set()
+        for name in missing:
+            try:
+                mod = import_module(f"{app_config.name}.migrations.{name}")
+                ops = getattr(mod.Migration, "operations", [])
+                if not ops:
+                    merge_missing.add(name)
+                else:
+                    real_missing.add(name)
+            except Exception:
+                real_missing.add(name)
+
+        if merge_missing:
+            self.stdout.write(self.style.NOTICE("  FALTANTES - merges/no-ops (serão fake-aplicadas):"))
+            for name in sorted(merge_missing):
                 self.stdout.write(f"    + {name}")
             self.stdout.write("")
 
-        if not ghosts and not missing:
+        if real_missing:
+            self.stdout.write(self.style.WARNING(
+                "  FALTANTES - com operações (NÃO serão fake-aplicadas, rode migrate):"
+            ))
+            for name in sorted(real_missing):
+                self.stdout.write(f"    ! {name}")
+            self.stdout.write("")
+
+        if not ghosts and not merge_missing and not real_missing:
             self.stdout.write(self.style.SUCCESS("  Tudo ok! Nenhuma correção necessária."))
             return
 
@@ -103,13 +125,20 @@ class Command(BaseCommand):
                 )
                 self.stdout.write(self.style.SUCCESS(f"  REMOVIDO: {name}"))
 
-            for name in sorted(missing):
+            for name in sorted(merge_missing):
                 cursor.execute(
                     "INSERT INTO django_migrations (app, name, applied) "
                     "VALUES (%s, %s, NOW())",
                     [app_label, name],
                 )
                 self.stdout.write(self.style.SUCCESS(f"  FAKE-APLICADO: {name}"))
+
+        if real_missing:
+            self.stdout.write("")
+            self.stdout.write(self.style.WARNING(
+                "  ATENÇÃO: Existem migrations com operações reais pendentes."
+            ))
+            self.stdout.write("  Rode: python manage.py migrate")
 
         self.stdout.write("")
         self.stdout.write(self.style.SUCCESS("  Correções aplicadas com sucesso!"))
