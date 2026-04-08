@@ -1149,7 +1149,11 @@ var _CAMILA_AVATARS = {
       }
       if(p.text){
         if(p.text_style && p.text_style.bg && _isTextOnly){
-          html += '<div class="sp-reel-text sp-reel-text-styled" style="background:'+p.text_style.bg+';color:'+(p.text_style.color||'#fff')+'">'+_spMentionify(_escHtml(p.text))+'</div>';
+          var effect = p.text_style.effect || '';
+          html += '<div class="sp-reel-text sp-reel-text-styled sp-styled-text"'
+            + (effect ? ' data-effect="'+effect+'"' : '')
+            + ' style="background:'+p.text_style.bg+';color:'+(p.text_style.color||'#fff')+'">'
+            + '<span class="sp-styled-text-inner">'+_spMentionify(_escHtml(p.text))+'</span></div>';
         } else {
           html += '<div class="sp-reel-text">'+_spMentionify(_escHtml(p.text))+'</div>';
         }
@@ -1175,8 +1179,9 @@ var _CAMILA_AVATARS = {
       html += '</div>';
     });
     /* ═══ CARROSSEL TRANSFORM-BASED (suave, sem scroll-snap) ═══ */
-    /* Abortar listeners da renderização anterior (evita duplicação) */
+    /* Abortar listeners e timers da renderização anterior */
     if(window._reelAbort) window._reelAbort.abort();
+    if(window._reelAutoTimer) clearTimeout(window._reelAutoTimer);
     window._reelAbort = new AbortController();
     var _sig = {signal: window._reelAbort.signal};
 
@@ -1411,7 +1416,6 @@ var _CAMILA_AVATARS = {
     }, _sig);
 
     /* ── Auto-scroll inteligente ── */
-    var _autoTimer = null;
     var _autoScrollOn = true;
 
     function _advanceSlide(){
@@ -1420,7 +1424,7 @@ var _CAMILA_AVATARS = {
     }
 
     function _scheduleNext(){
-      if(_autoTimer) clearTimeout(_autoTimer);
+      if(window._reelAutoTimer) clearTimeout(window._reelAutoTimer);
       if(!_autoScrollOn) return;
       var slide = el.querySelectorAll('.sp-reel-slide')[_reelIdx];
       if(!slide) return;
@@ -1428,9 +1432,9 @@ var _CAMILA_AVATARS = {
       if(video){
         video.removeEventListener('ended', _advanceSlide);
         video.addEventListener('ended', _advanceSlide, {once: true});
-        _autoTimer = setTimeout(_advanceSlide, 60000);
+        window._reelAutoTimer = setTimeout(_advanceSlide, 60000);
       } else {
-        _autoTimer = setTimeout(_advanceSlide, 5000);
+        window._reelAutoTimer = setTimeout(_advanceSlide, 5000);
       }
     }
 
@@ -1440,7 +1444,7 @@ var _CAMILA_AVATARS = {
 
     function _pauseAutoScroll(){
       _autoScrollOn = false;
-      if(_autoTimer) clearTimeout(_autoTimer);
+      if(window._reelAutoTimer) clearTimeout(window._reelAutoTimer);
     }
     function _resumeAutoScroll(){
       if(_commentFocused) return;
@@ -1472,7 +1476,7 @@ var _CAMILA_AVATARS = {
     window.spToggleAutoScroll = function(on){
       _autoScrollOn = on;
       if(on){ _scheduleNext(); }
-      else { if(_autoTimer) clearTimeout(_autoTimer); }
+      else { if(window._reelAutoTimer) clearTimeout(window._reelAutoTimer); }
     };
 
     /* ── Dica de swipe ── */
