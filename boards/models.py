@@ -913,20 +913,26 @@ class SocialPostSeen(models.Model):
 
 class SocialPostView(models.Model):
     """Registra quem visualizou cada post individual."""
+    SOURCE_CHOICES = [
+        ("profile", "Perfil"),
+        ("feed", "Feed/Novidades"),
+    ]
     post = models.ForeignKey(SocialPost, related_name="views", on_delete=models.CASCADE)
     viewer = models.ForeignKey(
         settings.AUTH_USER_MODEL, related_name="social_post_views", on_delete=models.CASCADE,
     )
+    source = models.CharField(max_length=10, choices=SOURCE_CHOICES, default="profile")
     viewed_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ("post", "viewer")
+        unique_together = ("post", "viewer", "source")
         indexes = [
             models.Index(fields=["post", "viewer"]),
+            models.Index(fields=["post", "source"]),
         ]
 
     def __str__(self):
-        return f"{self.viewer} viu post {self.post_id}"
+        return f"{self.viewer} viu post {self.post_id} ({self.source})"
 
 
 # ============================================================
