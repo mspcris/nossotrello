@@ -36,7 +36,7 @@ from ..permissions import can_edit_board  # noqa: F401
 
 from ..forms import CardForm
 from ..models import Board, BoardMembership, Card, CardAttachment, Column, CardSeen
-from boards.models import CardFollow, CardLog, ColumnFollow
+from boards.models import CardFollow, CardLog, CardMoveHistory, ColumnFollow
 
 
 from boards.services.notifications import mark_card_delivered, notify_delivery
@@ -996,6 +996,18 @@ def move_card(request):
     new_board.version += 1
     new_board.save(update_fields=["version"])
 
+    # Registra histórico de movimentação para sugestões personalizadas
+    try:
+        CardMoveHistory.objects.create(
+            user=request.user,
+            from_column=old_column,
+            to_column=new_column,
+            from_board=old_board,
+            to_board=new_board,
+        )
+    except Exception:
+        pass
+
     _log_card(
         card,
         request,
@@ -1086,6 +1098,101 @@ def card_move_options(request, card_id):
     return JsonResponse(payload)
 
 
+@login_required
+@require_http_methods(["GET"])
+def card_move_suggestions(request, card_id):
+    """
+    Retorna as top 5 movimentações mais frequentes do usuário
+    a partir da coluna atual do card.
+    """
+    from django.db.models import Count
+
+    card = get_object_or_404(Card, id=card_id, is_deleted=False)
+    current_column = card.column
+
+    top_moves = (
+        CardMoveHistory.objects
+        .filter(user=request.user, from_column=current_column)
+        .values("to_column_id", "to_board_id")
+        .annotate(move_count=Count("id"))
+        .order_by("-move_count")[:5]
+    )
+
+    if not top_moves:
+        # Fallback: buscar movimentações globais do usuário (qualquer coluna de origem)
+        top_moves = (
+            CardMoveHistory.objects
+            .filter(user=request.user)
+            .values("from_column_id", "to_column_id", "to_board_id")
+            .annotate(move_count=Count("id"))
+            .order_by("-move_count")[:5]
+        )
+
+        col_ids = set()
+        board_ids = set()
+        for m in top_moves:
+            col_ids.add(m["from_column_id"])
+            col_ids.add(m["to_column_id"])
+            board_ids.add(m["to_board_id"])
+
+        cols_map = {
+            c.id: c for c in
+            Column.objects.filter(id__in=col_ids, is_deleted=False)
+        }
+        boards_map = {
+            b.id: b for b in
+            Board.objects.filter(id__in=board_ids, is_deleted=False)
+        }
+
+        suggestions = []
+        for m in top_moves:
+            from_col = cols_map.get(m["from_column_id"])
+            to_col = cols_map.get(m["to_column_id"])
+            to_board = boards_map.get(m["to_board_id"])
+            if not from_col or not to_col or not to_board:
+                continue
+            suggestions.append({
+                "from_column_id": from_col.id,
+                "from_column_name": from_col.name,
+                "to_column_id": to_col.id,
+                "to_column_name": to_col.name,
+                "to_board_id": to_board.id,
+                "to_board_name": to_board.name,
+                "count": m["move_count"],
+                "is_global": True,
+            })
+
+        return JsonResponse({"suggestions": suggestions})
+
+    # Buscar nomes das colunas/boards destino
+    col_ids = {m["to_column_id"] for m in top_moves}
+    board_ids = {m["to_board_id"] for m in top_moves}
+
+    cols_map = {
+        c.id: c for c in
+        Column.objects.filter(id__in=col_ids, is_deleted=False)
+    }
+    boards_map = {
+        b.id: b for b in
+        Board.objects.filter(id__in=board_ids, is_deleted=False)
+    }
+
+    suggestions = []
+    for m in top_moves:
+        to_col = cols_map.get(m["to_column_id"])
+        to_board = boards_map.get(m["to_board_id"])
+        if not to_col or not to_board:
+            continue
+        suggestions.append({
+            "to_column_id": to_col.id,
+            "to_column_name": to_col.name,
+            "to_board_id": to_board.id,
+            "to_board_name": to_board.name,
+            "count": m["move_count"],
+            "is_global": False,
+        })
+
+    return JsonResponse({"suggestions": suggestions})
 
 
 

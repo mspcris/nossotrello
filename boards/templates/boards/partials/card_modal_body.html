@@ -430,6 +430,12 @@
 
       <!-- MENU -->
       <div id="cm-dock-menu" class="hidden" role="menu" aria-label="Menu de ações">
+
+        <!-- Sugestões de mover rápido (preenchidas via JS) -->
+        <div id="cm-dock-suggestions"
+             data-url-suggestions="{% url 'boards:card_move_suggestions' card.id %}"
+             style="display:none"></div>
+
         <button type="button"
                 class="dock-action"
                 id="cm-dock-duplicate"
@@ -438,13 +444,25 @@
           <span>📄</span> <span class="label">Duplicar</span>
         </button>
 
-        <button type="button"
-                class="dock-action"
-                id="cm-dock-move"
-                role="menuitem"
-                data-url-move="{% url 'boards:card_move_options' card.id %}">
-          <span>↔️</span> <span class="label">Mover</span>
-        </button>
+        <div class="dock-action-row" style="display:flex;align-items:stretch;gap:0;">
+          <button type="button"
+                  class="dock-action"
+                  id="cm-dock-move"
+                  role="menuitem"
+                  style="flex:1;"
+                  data-url-move="{% url 'boards:card_move_options' card.id %}">
+            <span>↔️</span> <span class="label">Mover</span>
+          </button>
+          <button type="button"
+                  class="dock-action dock-move-arrow"
+                  id="cm-dock-move-expand"
+                  role="menuitem"
+                  aria-label="Sugestões de mover"
+                  title="Mover rápido"
+                  style="flex:0 0 auto;padding:8px 6px;border-left:1px solid rgba(15,23,42,.08);display:flex;align-items:center;">
+            <span style="font-size:11px;">▶</span>
+          </button>
+        </div>
 
         <button type="button"
                 class="dock-action"

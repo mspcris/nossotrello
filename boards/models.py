@@ -1342,4 +1342,56 @@ class TermsAcceptanceLog(models.Model):
         return f"{self.user} v{self.version} @ {self.accepted_at}"
 
 
+# ============================================================
+# CARD MOVE HISTORY (sugestões de "Mover rápido")
+# ============================================================
+class CardMoveHistory(models.Model):
+    """
+    Registra cada movimentação entre colunas para aprender os
+    padrões de cada usuário e sugerir atalhos de movimentação.
+    """
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="card_moves",
+    )
+    from_column = models.ForeignKey(
+        Column,
+        on_delete=models.CASCADE,
+        related_name="+",
+    )
+    to_column = models.ForeignKey(
+        Column,
+        on_delete=models.CASCADE,
+        related_name="+",
+    )
+    from_board = models.ForeignKey(
+        Board,
+        on_delete=models.CASCADE,
+        related_name="+",
+    )
+    to_board = models.ForeignKey(
+        Board,
+        on_delete=models.CASCADE,
+        related_name="+",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(
+                fields=["user", "from_column"],
+                name="cmh_user_from_col_idx",
+            ),
+        ]
+        verbose_name = "Histórico de movimentação"
+        verbose_name_plural = "Históricos de movimentação"
+
+    def __str__(self):
+        return (
+            f"{self.user} moveu de {self.from_column} "
+            f"para {self.to_column}"
+        )
+
+
 # END boards/models.py

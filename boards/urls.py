@@ -520,6 +520,7 @@ urlpatterns = [
     # Mover card
     path("move-card/", cards_views.move_card, name="move_card"),
     path("card/<int:card_id>/move/options/", cards_views.card_move_options, name="card_move_options"),
+    path("card/<int:card_id>/move/suggestions/", cards_views.card_move_suggestions, name="card_move_suggestions"),
 
     # Atividade (painel / add / quill upload) — ajuste conforme seu projeto real
     path("card/<int:card_id>/activity/panel/", activity_panel, name="activity_panel"),
