@@ -1170,6 +1170,11 @@ var _CAMILA_AVATARS = {
       html += '</div>';
     });
     /* ═══ CARROSSEL TRANSFORM-BASED (suave, sem scroll-snap) ═══ */
+    /* Abortar listeners da renderização anterior (evita duplicação) */
+    if(window._reelAbort) window._reelAbort.abort();
+    window._reelAbort = new AbortController();
+    var _sig = {signal: window._reelAbort.signal};
+
     el.innerHTML = '<div class="sp-reel-track">' + html + '</div>';
     var _track = el.querySelector('.sp-reel-track');
 
@@ -1209,7 +1214,7 @@ var _CAMILA_AVATARS = {
     window.addEventListener('resize', function(){
       if(_resizeRaf) cancelAnimationFrame(_resizeRaf);
       _resizeRaf = requestAnimationFrame(function(){ _goToSlide(_reelIdx, false); });
-    });
+    }, _sig);
 
     /* Preload: carregar imagens dos próximos slides antecipadamente */
     function _preloadAround(idx){
@@ -1256,7 +1261,7 @@ var _CAMILA_AVATARS = {
       _isHorizontalSwipe = null;
       _track.classList.remove('sp-animating');
       _pauseAutoScroll();
-    }, {passive: true});
+    }, {passive: true, signal: _sig.signal});
 
     el.addEventListener('touchmove', function(e){
       if(!_dragging) return;
@@ -1285,7 +1290,7 @@ var _CAMILA_AVATARS = {
         resistance = 0.25;
       }
       _track.style.transform = 'translate3d(' + (baseOffset + dx * resistance) + 'px, 0, 0)';
-    }, {passive: false});
+    }, {passive: false, signal: _sig.signal});
 
     el.addEventListener('touchend', function(e){
       if(!_dragging) return;
@@ -1319,7 +1324,7 @@ var _CAMILA_AVATARS = {
       /* Esconder dica de swipe no primeiro gesto */
       _hideSwipeHint();
       _resumeAutoScroll();
-    }, {passive: true});
+    }, {passive: true, signal: _sig.signal});
 
     /* ── Double-tap to like ── */
     var _lastTapTime = 0;
@@ -1336,7 +1341,7 @@ var _CAMILA_AVATARS = {
         }
       }
       _lastTapTime = now;
-    }, {passive: true});
+    }, {passive: true, signal: _sig.signal});
 
     el.querySelectorAll('.sp-reel-slide').forEach(function(slide){
       slide.addEventListener('dblclick', function(e){
@@ -1357,7 +1362,7 @@ var _CAMILA_AVATARS = {
       _track.classList.remove('sp-animating');
       _pauseAutoScroll();
       e.preventDefault();
-    });
+    }, _sig);
     document.addEventListener('mousemove', function(e){
       if(!_mDragging) return;
       _mDelta = e.clientX - _mx0;
@@ -1368,7 +1373,7 @@ var _CAMILA_AVATARS = {
         resistance = 0.25;
       }
       _track.style.transform = 'translate3d(' + (baseOffset + _mDelta * resistance) + 'px, 0, 0)';
-    });
+    }, _sig);
     document.addEventListener('mouseup', function(){
       if(!_mDragging) return;
       _mDragging = false;
@@ -1381,7 +1386,7 @@ var _CAMILA_AVATARS = {
       }
       _hideSwipeHint();
       _resumeAutoScroll();
-    });
+    }, _sig);
 
     /* ── Auto-scroll inteligente ── */
     var _autoTimer = null;
@@ -1429,13 +1434,13 @@ var _CAMILA_AVATARS = {
         _commentFocused = true;
         _pauseAutoScroll();
       }
-    });
+    }, _sig);
     el.addEventListener('focusout', function(e){
       if(e.target.classList.contains('sp-reel-comment-input')){
         _commentFocused = false;
         _resumeAutoScroll();
       }
-    });
+    }, _sig);
 
     window._spResumeAutoScroll = function(){
       _commentFocused = false;
