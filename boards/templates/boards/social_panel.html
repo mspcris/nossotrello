@@ -4104,11 +4104,8 @@ document.addEventListener('click', function(e){
       if(modal && modal._vvCleanup) modal._vvCleanup();
       _chatOverlay.remove(); _chatOverlay = null;
     }
-    /* Ao fechar chat, voltar para Meu Espaço (sair do fullscreen novidades) */
-    var feed = document.getElementById('sp-feed-wrap');
-    if(feed && feed.classList.contains('sp-feed-fullscreen')){
-      if(window.spSwitchTab) spSwitchTab('mine');
-    }
+    /* Ao fechar chat, sempre voltar para Meu Espaço */
+    if(window.spSwitchTab) spSwitchTab('mine');
   };
 
   window.spChatSend = function(){
