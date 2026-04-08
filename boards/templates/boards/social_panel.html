@@ -219,7 +219,7 @@
     <button type="button" class="sp-tab" data-tab="friends" onclick="spSwitchTab('friends')">Amigos</button>
     <button type="button" class="sp-tab" data-tab="feed" onclick="spSwitchTab('feed')">Novidades</button>
     <button type="button" class="sp-tab" onclick="spOpenChatList()">💬 Chat <span id="sp-chat-badge" class="sp-chat-badge sp-hidden"></span></button>
-    <button type="button" class="sp-tab" onclick="spOpenHealth()">🩺</button>
+    <button type="button" class="sp-tab sp-tab-icon" onclick="spOpenHealth()">🩺</button>
   </div>
 
   <!-- ═══ REEL / NOVIDADES (tab feed) ═══ -->
@@ -5292,6 +5292,8 @@ window.spShowProfilePhoto = function(url){
   var _healthOverlay = null;
   var _healthHistory = [];
 
+  var _nutriRobotUrl = "{% static 'images/nutri-robot.svg' %}";
+
   window.spOpenHealth = function(){
     if(_healthOverlay){ _healthOverlay.remove(); _healthOverlay = null; }
 
@@ -5302,25 +5304,26 @@ window.spShowProfilePhoto = function(url){
 
     var html = '<div class="sp-chat-modal sp-health-modal">'
       + '<div class="sp-chat-header" style="background:linear-gradient(135deg,#059669,#10b981)">'
-      + '<button class="sp-chat-back" onclick="_closeHealth()" title="Voltar">←</button>'
-      + '<div style="flex:1;text-align:center">'
-      + '<div style="font-weight:700;font-size:1rem">🩺 Saúde e Bem Estar</div>'
-      + '<div style="font-size:.7rem;opacity:.85">Nutri.AI — sua nutricionista virtual</div>'
+      + '<button class="sp-chat-back" onclick="_closeHealth()" title="Voltar">\u2190</button>'
+      + '<img src="'+_nutriRobotUrl+'" style="width:32px;height:32px;border-radius:50%;object-fit:cover;margin:0 6px">'
+      + '<div style="flex:1">'
+      + '<div style="font-weight:700;font-size:.95rem">Saúde e Bem Estar</div>'
+      + '<div style="font-size:.65rem;opacity:.85">Nutri.AI \u2014 sua nutricionista virtual</div>'
       + '</div>'
-      + '<button class="sp-chat-close" onclick="_closeHealth()">×</button>'
+      + '<button class="sp-chat-close" onclick="_closeHealth()">\u00d7</button>'
       + '</div>'
       + '<div class="sp-health-body" id="sp-health-body">'
       + '<div class="sp-health-loading" id="sp-health-loading">'
-      + '<div class="sp-health-robot">🤖</div>'
+      + '<img src="'+_nutriRobotUrl+'" class="sp-health-robot" alt="Nutri.AI">'
       + '<div class="sp-health-loading-text">Analisando sua alimentação...</div>'
       + '<div class="sp-health-dots"><span>.</span><span>.</span><span>.</span></div>'
       + '</div>'
       + '</div>'
       + '<div class="sp-health-input-row">'
-      + '<input type="text" id="sp-health-input" class="sp-dm-input" '
+      + '<input type="text" id="sp-health-input" '
       + 'placeholder="Conte o que vai comer hoje..." '
       + 'onkeydown="if(event.key===\'Enter\')spHealthSend()">'
-      + '<button type="button" class="sp-dm-send-btn" onclick="spHealthSend()">➤</button>'
+      + '<button type="button" class="sp-health-send-btn" onclick="spHealthSend()">\u27A4</button>'
       + '</div>'
       + '</div>';
 
@@ -5332,20 +5335,35 @@ window.spShowProfilePhoto = function(url){
   };
 
   function _loadHealthAnalysis(){
-    fetch('{% url "boards:social_health_analyze" %}')
+    var controller = new AbortController();
+    var timer = setTimeout(function(){
+      controller.abort();
+      _showHealthFallback();
+    }, 15000);
+
+    fetch('{% url "boards:social_health_analyze" %}', {signal: controller.signal})
       .then(function(r){ return r.json(); })
       .then(function(d){
+        clearTimeout(timer);
         var loading = document.getElementById('sp-health-loading');
         if(loading) loading.remove();
         if(d.response){
           _healthHistory.push({role:'assistant', content: d.response});
           _appendHealthMsg('ai', d.response);
+        } else {
+          _showHealthFallback();
         }
       })
       .catch(function(){
-        var loading = document.getElementById('sp-health-loading');
-        if(loading) loading.innerHTML = '<div class="sp-health-robot">🤖</div><div>Olá! Me conta o que você vai comer hoje? 🍽️</div>';
+        clearTimeout(timer);
+        _showHealthFallback();
       });
+  }
+
+  function _showHealthFallback(){
+    var loading = document.getElementById('sp-health-loading');
+    if(loading) loading.remove();
+    _appendHealthMsg('ai', 'Olá! Sou a Nutri.AI, sua nutricionista virtual. Me conta: o que você vai comer hoje?');
   }
 
   function _appendHealthMsg(who, text){
@@ -5354,11 +5372,11 @@ window.spShowProfilePhoto = function(url){
     var div = document.createElement('div');
     div.className = 'sp-health-msg sp-health-msg-' + who;
     if(who === 'ai'){
-      div.innerHTML = '<span class="sp-health-ai-icon">🤖</span><div class="sp-health-bubble sp-health-bubble-ai">' + _escHealthHtml(text).replace(/\n/g,'<br>') + '</div>';
+      div.innerHTML = '<img src="'+_nutriRobotUrl+'" class="sp-health-ai-icon" alt="">'
+        + '<div class="sp-health-bubble sp-health-bubble-ai">' + _escHealthHtml(text).replace(/\n/g,'<br>') + '</div>';
     } else {
       div.innerHTML = '<div class="sp-health-bubble sp-health-bubble-user">' + _escHealthHtml(text).replace(/\n/g,'<br>') + '</div>';
     }
-    /* Inserir no topo — AI responses at top */
     body.appendChild(div);
     body.scrollTop = body.scrollHeight;
   }
@@ -5384,7 +5402,8 @@ window.spShowProfilePhoto = function(url){
     var typing = document.createElement('div');
     typing.className = 'sp-health-msg sp-health-msg-ai';
     typing.id = 'sp-health-typing';
-    typing.innerHTML = '<span class="sp-health-ai-icon">🤖</span><div class="sp-health-bubble sp-health-bubble-ai"><span class="sp-health-dots-inline"><span>.</span><span>.</span><span>.</span></span></div>';
+    typing.innerHTML = '<img src="'+_nutriRobotUrl+'" class="sp-health-ai-icon" alt="">'
+      + '<div class="sp-health-bubble sp-health-bubble-ai"><span class="sp-health-dots-inline"><span>.</span><span>.</span><span>.</span></span></div>';
     if(body) { body.appendChild(typing); body.scrollTop = body.scrollHeight; }
 
     fetch('{% url "boards:social_health_chat" %}', {

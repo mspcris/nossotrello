@@ -3121,9 +3121,20 @@ def social_health_analyze(request):
         f"DADOS ALIMENTARES DO USUÁRIO:\n{food_context}"
     )
 
-    messages = [{"role": "user", "content": f"Olá! Analise minha alimentação recente e me dê dicas."}]
+    messages = [{"role": "user", "content": "Olá! Analise minha alimentação recente e me dê dicas."}]
     cfg = CamilaConfig.get()
-    response = _groq_chat(messages, system_prompt, config=cfg)
+    try:
+        response = _groq_chat(messages, system_prompt, config=cfg)
+    except Exception as exc:
+        logging.getLogger(__name__).error("Health analyze error: %s", exc)
+        response = ""
+
+    if not response or response.startswith("Erro"):
+        response = (
+            f"Olá, {user_name}! Sou a Nutri.AI, sua nutricionista virtual aqui na CAMIM. "
+            "Me conta: o que você vai comer hoje no almoço? "
+            "Posso te dar dicas para uma alimentação mais saudável!"
+        )
 
     return JsonResponse({"response": response, "user_name": user_name})
 
