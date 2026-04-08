@@ -284,7 +284,7 @@
             {% else %}
               <span class="sp-friend-av-fb">{{ fp.display_name|default:friend.email|first|upper }}</span>
             {% endif %}
-            <span class="sp-friend-name">{{ fp.display_name|default:friend.email|truncatechars:8 }}</span>
+            <span class="sp-friend-name">{{ fp.display_name|default:friend.email|truncatechars:12 }}</span>
           </button>
           {% endwith %}
           {% endfor %}
@@ -314,7 +314,7 @@
                 <span class="sp-friend-av-fb sp-req-av-received">{{ fp.display_name|default:fr.requester.email|first|upper }}</span>
               {% endif %}
             </div>
-            <span class="sp-friend-name">{{ fp.display_name|default:fr.requester.email|truncatechars:8 }}</span>
+            <span class="sp-friend-name">{{ fp.display_name|default:fr.requester.email|truncatechars:12 }}</span>
             <div class="sp-req-action-bar sp-hidden">
               <button type="button" class="sp-req-act-btn sp-req-act-accept" onclick="event.stopPropagation();spAnswerFriend({{ fr.requester_id }},'accept',this)">Aceitar</button>
               <a href="/social/{{ fr.requester_id }}/" class="sp-req-act-btn sp-req-act-profile" onclick="event.stopPropagation()">Ver Perfil</a>
@@ -354,7 +354,7 @@
                 <span class="sp-friend-av-fb sp-req-av-sent">{{ fp.display_name|default:fr.receiver.email|first|upper }}</span>
               {% endif %}
             </div>
-            <span class="sp-friend-name">{{ fp.display_name|default:fr.receiver.email|truncatechars:8 }}</span>
+            <span class="sp-friend-name">{{ fp.display_name|default:fr.receiver.email|truncatechars:12 }}</span>
           </button>
           {% endwith %}
           {% endfor %}
@@ -382,7 +382,7 @@
             {% else %}
               <span class="sp-friend-av-fb">{{ sp.display_name|default:sug.email|first|upper }}</span>
             {% endif %}
-            <span class="sp-friend-name">{{ sp.display_name|default:sug.email|truncatechars:8 }}</span>
+            <span class="sp-friend-name">{{ sp.display_name|default:sug.email|truncatechars:12 }}</span>
           </button>
           {% endwith %}
           {% endfor %}
