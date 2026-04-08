@@ -1241,8 +1241,10 @@ var _CAMILA_AVATARS = {
     /* ── Touch / Swipe ── */
     var _tx0 = 0, _ty0 = 0, _txDelta = 0, _dragging = false, _dragStartTime = 0;
     var _isHorizontalSwipe = null; /* null = undecided, true/false */
+    var _touchActive = false; /* bloqueia mouse sintético no mobile */
 
     el.addEventListener('touchstart', function(e){
+      _touchActive = true;
       /* Ignorar se estiver interagindo com actions/header/input */
       if(e.target.closest('.sp-reel-actions') || e.target.closest('.sp-reel-comment-input')) return;
       var t = e.touches[0];
@@ -1288,6 +1290,8 @@ var _CAMILA_AVATARS = {
     el.addEventListener('touchend', function(e){
       if(!_dragging) return;
       _dragging = false;
+      /* Bloquear mouse events sintéticos por 500ms */
+      setTimeout(function(){ _touchActive = false; }, 500);
 
       if(!_isHorizontalSwipe || Math.abs(_txDelta) < 5){
         /* Não foi swipe horizontal — snap back */
@@ -1343,9 +1347,10 @@ var _CAMILA_AVATARS = {
       });
     });
 
-    /* ── Mouse drag (desktop) ── */
+    /* ── Mouse drag (desktop only — bloqueado quando touch ativo) ── */
     var _mx0 = 0, _mDelta = 0, _mDragging = false;
     el.addEventListener('mousedown', function(e){
+      if(_touchActive) return; /* ignorar mouse sintético no mobile */
       if(e.target.closest('.sp-reel-actions') || e.target.closest('.sp-reel-header') ||
          e.target.closest('.sp-reel-arrow') || e.target.closest('input')) return;
       _mx0 = e.clientX; _mDelta = 0; _mDragging = true;
@@ -4093,6 +4098,11 @@ document.addEventListener('click', function(e){
       var modal = _chatOverlay.querySelector('.sp-chat-modal');
       if(modal && modal._vvCleanup) modal._vvCleanup();
       _chatOverlay.remove(); _chatOverlay = null;
+    }
+    /* Ao fechar chat, voltar para Meu Espaço (sair do fullscreen novidades) */
+    var feed = document.getElementById('sp-feed-wrap');
+    if(feed && feed.classList.contains('sp-feed-fullscreen')){
+      if(window.spSwitchTab) spSwitchTab('mine');
     }
   };
 
