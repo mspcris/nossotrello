@@ -1083,14 +1083,10 @@ var _CAMILA_AVATARS = {
         var f = p.friendship;
         var av1 = f.user_avatar
           ? '<img src="'+f.user_avatar+'" class="sp-friendship-av">'
-          : (f.user_avatar_choice
-            ? '<img src="{% static "images/avatar/" %}'+f.user_avatar_choice+'" class="sp-friendship-av">'
-            : '<span class="sp-friendship-av sp-friendship-av-fb">'+(f.user_name||'?').charAt(0).toUpperCase()+'</span>');
+          : '<span class="sp-friendship-av sp-friendship-av-fb">'+(f.user_name||'?').charAt(0).toUpperCase()+'</span>';
         var av2 = f.friend_avatar
           ? '<img src="'+f.friend_avatar+'" class="sp-friendship-av">'
-          : (f.friend_avatar_choice
-            ? '<img src="{% static "images/avatar/" %}'+f.friend_avatar_choice+'" class="sp-friendship-av">'
-            : '<span class="sp-friendship-av sp-friendship-av-fb">'+(f.friend_name||'?').charAt(0).toUpperCase()+'</span>');
+          : '<span class="sp-friendship-av sp-friendship-av-fb">'+(f.friend_name||'?').charAt(0).toUpperCase()+'</span>';
         html += '<div class="sp-friendship-card">';
         html += '<div class="sp-friendship-bg">🤝</div>';
         html += '<div class="sp-friendship-avatars">';
@@ -1158,17 +1154,25 @@ var _CAMILA_AVATARS = {
       if(idx < 0) idx = _totalSlides - 1;
       if(idx >= _totalSlides) idx = 0;
       _reelIdx = idx;
+      var w = el.offsetWidth || 1;
       if(animate !== false){
         _track.classList.add('sp-animating');
       } else {
         _track.classList.remove('sp-animating');
       }
-      _track.style.transform = 'translate3d(-' + (_reelIdx * 100) + '%, 0, 0)';
+      _track.style.transform = 'translate3d(' + (-_reelIdx * w) + 'px, 0, 0)';
       _updateDots();
       _playCurrentVideo(el, _reelIdx);
       _scheduleNext();
     }
     window._spGoToSlide = _goToSlide;
+
+    /* Reajustar posição ao redimensionar tela / rotação */
+    var _resizeRaf = null;
+    window.addEventListener('resize', function(){
+      if(_resizeRaf) cancelAnimationFrame(_resizeRaf);
+      _resizeRaf = requestAnimationFrame(function(){ _goToSlide(_reelIdx, false); });
+    });
 
     /* Dots */
     _renderDots();

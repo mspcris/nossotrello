@@ -736,6 +736,18 @@ def social_friends_feed(request):
         for sp in SocialPost.objects.filter(id__in=shared_ids).select_related("user", "user__profile"):
             shared_posts[sp.id] = sp
 
+    def _avatar_url(prof):
+        """Retorna URL do avatar: upload > avatar_choice > vazio."""
+        if prof and getattr(prof, "avatar", None):
+            try:
+                return prof.avatar.url
+            except Exception:
+                pass
+        if prof and getattr(prof, "avatar_choice", ""):
+            from django.templatetags.static import static
+            return static(f"images/avatar/{prof.avatar_choice}")
+        return ""
+
     result = []
     for p in posts:
         prof = getattr(p.user, "profile", None)
@@ -752,7 +764,7 @@ def social_friends_feed(request):
             shared_info = {
                 "original_user_name": orig_prof.display_name if orig_prof else orig.user.get_full_name(),
                 "original_user_id": orig.user_id,
-                "original_user_avatar": orig_prof.avatar.url if orig_prof and orig_prof.avatar else "",
+                "original_user_avatar": _avatar_url(orig_prof),
             }
 
         # Detectar post de amizade
@@ -764,12 +776,10 @@ def social_friends_feed(request):
                 friend_prof = getattr(friend_user, "profile", None)
                 friendship_data = {
                     "friend_name": friend_prof.display_name if friend_prof else friend_user.get_full_name(),
-                    "friend_avatar": friend_prof.avatar.url if friend_prof and friend_prof.avatar else "",
-                    "friend_avatar_choice": friend_prof.avatar_choice if friend_prof else "",
+                    "friend_avatar": _avatar_url(friend_prof),
                     "friend_id": friend_uid,
                     "user_name": prof.display_name if prof else p.user.get_full_name(),
-                    "user_avatar": prof.avatar.url if prof and prof.avatar else "",
-                    "user_avatar_choice": prof.avatar_choice if prof else "",
+                    "user_avatar": _avatar_url(prof),
                 }
             except Exception:
                 pass
@@ -777,7 +787,7 @@ def social_friends_feed(request):
         result.append({
             "id": p.id,
             "user_name": prof.display_name if prof else p.user.get_full_name(),
-            "user_avatar": prof.avatar.url if prof and prof.avatar else "",
+            "user_avatar": _avatar_url(prof),
             "user_id": p.user_id,
             "text": display_post.text if not friendship_data else "",
             "photo": display_post.photo.url if display_post.photo else "",
