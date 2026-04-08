@@ -582,7 +582,12 @@
       e.preventDefault();
       e.stopPropagation();
 
-      const cardId = getCardId(root);
+      // cardId com fallback: root original pode ter sido invalidado pelo portal
+      let cardId = getCardId(root);
+      if (!cardId) {
+        const globalRoot = document.getElementById("cm-root");
+        cardId = getCardId(globalRoot);
+      }
       if (!cardId) {
         debug("Sem cardId no #cm-root");
         closeMenu(dock);
@@ -593,25 +598,28 @@
       if (btn.classList.contains("dock-suggestion-item")) {
         const toColId = btn.getAttribute("data-suggestion-to-col");
         const toBoardId = btn.getAttribute("data-suggestion-to-board");
-        if (!toColId || !cardId) return;
+        const quickCardId = cardId;
+
+        console.log("[cm.dock] Quick move click", { quickCardId, toColId, toBoardId });
+
+        if (!toColId || !quickCardId) {
+          console.warn("[cm.dock] Quick move aborted: missing toColId or cardId");
+          return;
+        }
 
         closeMenu(dock);
 
-        // Feedback visual
-        btn.style.opacity = "0.5";
-        btn.style.pointerEvents = "none";
-
-        debug("Quick move", { card_id: cardId, to_col: toColId, to_board: toBoardId });
-
         try {
           const res = await postMoveApplyJson("/move-card/", {
-            card_id: parseInt(cardId, 10),
+            card_id: parseInt(quickCardId, 10),
             new_column_id: parseInt(toColId, 10),
-            new_position: 0,  // posição 1 (topo) da coluna destino
+            new_position: 0,
           });
 
+          console.log("[cm.dock] Quick move response", { ok: res.ok, status: res.status });
+
           if (!res.ok) {
-            debug("Quick move failed", res.status, res.text);
+            console.error("[cm.dock] Quick move failed", res.status, res.text);
             return;
           }
 
@@ -620,7 +628,7 @@
             const moveData = JSON.parse(res.text || "{}");
             const newColId = moveData.column_id;
             const snippet = moveData.snippet || "";
-            const cardLi = document.querySelector(`li[data-card-id="${cardId}"]`);
+            const cardLi = document.querySelector(`li[data-card-id="${quickCardId}"]`);
             const destList = newColId ? document.getElementById(`cards-col-${newColId}`) : null;
 
             if (cardLi && destList && snippet) {
