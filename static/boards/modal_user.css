@@ -1230,8 +1230,12 @@ body:has(#sp-feed-wrap.sp-feed-fullscreen) .sp-reel-swipe-hint{
 }
 .sp-reel-comment-input::placeholder{ color:rgba(255,255,255,.5); }
 .sp-reel-comment-send{
-  background:none; border:none; color:#fff; font-size:1.1rem; cursor:pointer; padding:6px;
+  background:rgba(255,255,255,.2); border:none; color:#fff; font-size:1.3rem;
+  cursor:pointer; padding:0; width:42px; height:42px; min-width:42px;
+  border-radius:50%; display:flex; align-items:center; justify-content:center;
+  -webkit-tap-highlight-color:transparent; flex-shrink:0;
 }
+.sp-reel-comment-send:active{ background:rgba(255,255,255,.35); }
 
 /* ── Friendship card in reel ── */
 .sp-friendship-card{
@@ -1272,27 +1276,57 @@ body:has(#sp-feed-wrap.sp-feed-fullscreen) .sp-reel-swipe-hint{
 }
 
 /* Comments panel in reel */
-.sp-reel-comments {
-  position: absolute;
-  bottom: 52px;
-  left: 0;
-  right: 0;
-  max-height: 180px;
-  overflow-y: auto;
-  background: rgba(0,0,0,0.85);
-  backdrop-filter: blur(6px);
-  padding: 8px 14px;
-  z-index: 3;
-  border-top: 1px solid rgba(255,255,255,0.15);
+/* Comments modal overlay */
+.sp-reel-comments-overlay {
+  position: fixed; inset: 0; z-index: 9200;
+  background: rgba(0,0,0,.5);
+  display: flex; align-items: flex-end; justify-content: center;
+  animation: sp-fade-in .2s ease;
+}
+.sp-reel-comments-modal {
+  background: #fff; border-radius: 16px 16px 0 0;
+  width: 100%; max-width: 500px; max-height: 60vh;
+  display: flex; flex-direction: column;
+  animation: sp-slide-up .25s ease;
+}
+@keyframes sp-slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.sp-reel-comments-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px 10px; border-bottom: 1px solid #e5e7eb;
+}
+.sp-reel-comments-header h3 { font-size: .95rem; font-weight: 700; margin: 0; color: #1f2937; }
+.sp-reel-comments-close {
+  background: none; border: none; font-size: 1.4rem; color: #6b7280;
+  cursor: pointer; padding: 4px 8px; line-height: 1;
+}
+.sp-reel-comments-body {
+  flex: 1; overflow-y: auto; padding: 10px 16px;
+}
+.sp-reel-comments-input-row {
+  display: flex; gap: 8px; padding: 10px 14px 16px;
+  border-top: 1px solid #e5e7eb; align-items: center;
+}
+.sp-reel-comments-input-row input {
+  flex: 1; border: 1.5px solid #e5e7eb; border-radius: 24px;
+  padding: 10px 16px; font-size: .9rem; outline: none;
+}
+.sp-reel-comments-input-row input:focus { border-color: #7c3aed; }
+.sp-reel-comments-input-row button {
+  width: 42px; height: 42px; min-width: 42px; border-radius: 50%;
+  background: #7c3aed; color: #fff; border: none; font-size: 1.2rem;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
 }
 .sp-reel-comment-item {
-  font-size: 0.8rem;
-  color: #e5e7eb;
-  padding: 4px 0;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  font-size: 0.85rem;
+  color: #374151;
+  padding: 8px 0;
+  border-bottom: 1px solid #f3f4f6;
 }
 .sp-reel-comment-item strong {
-  color: #fff;
+  color: #1f2937;
   margin-right: 4px;
 }
 .sp-reel-comment-time {

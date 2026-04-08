@@ -1440,23 +1440,34 @@ var _CAMILA_AVATARS = {
       _scheduleNext();
     }
 
-    /* Foco no campo de comentário mantém pausado */
+    /* Foco no campo de comentário pausa por 20s */
     el.addEventListener('focusin', function(e){
       if(e.target.classList.contains('sp-reel-comment-input')){
         _commentFocused = true;
-        _pauseAutoScroll();
+        _pauseAutoFor(20);
       }
     }, _sig);
     el.addEventListener('focusout', function(e){
       if(e.target.classList.contains('sp-reel-comment-input')){
         _commentFocused = false;
-        _resumeAutoScroll();
+        /* já vai retomar pelo timer de 20s */
       }
     }, _sig);
 
     window._spResumeAutoScroll = function(){
       _commentFocused = false;
       _resumeAutoScroll();
+    };
+
+    /* Pausa temporária do auto-scroll (ex: ao interagir com comentários) */
+    var _pauseAutoTimer = null;
+    window._pauseAutoFor = function(seconds){
+      _pauseAutoScroll();
+      if(_pauseAutoTimer) clearTimeout(_pauseAutoTimer);
+      _pauseAutoTimer = setTimeout(function(){
+        _pauseAutoTimer = null;
+        _resumeAutoScroll();
+      }, (seconds || 20) * 1000);
     };
 
     window.spToggleAutoScroll = function(on){
@@ -1806,25 +1817,47 @@ var _CAMILA_AVATARS = {
     _showReelArrows();
   };
 
-  /* ═══ Comentários no reel ═══ */
+  /* ═══ Comentários no reel — MODAL ═══ */
+  var _commentsOverlay = null;
+
   window.spReelToggleComments = function(postId, btn){
-    var panel = document.getElementById('sp-reel-comments-'+postId);
-    if(!panel) return;
-    if(panel.classList.contains('sp-hidden')){
-      panel.classList.remove('sp-hidden');
-      _loadReelComments(postId, panel);
-    } else {
-      panel.classList.add('sp-hidden');
-    }
+    _pauseAutoFor(20);
+    _openCommentsModal(postId);
   };
 
-  function _loadReelComments(postId, panel){
-    panel.innerHTML = '<div style="padding:8px;color:#9ca3af;font-size:.8rem">Carregando...</div>';
+  function _openCommentsModal(postId){
+    if(_commentsOverlay){ _commentsOverlay.remove(); _commentsOverlay = null; }
+    var ov = document.createElement('div');
+    ov.className = 'sp-reel-comments-overlay';
+    ov.onclick = function(e){ if(e.target === ov) _closeCommentsModal(); };
+    _commentsOverlay = ov;
+
+    var html = '<div class="sp-reel-comments-modal">'
+      + '<div class="sp-reel-comments-header"><h3>Comentários</h3>'
+      + '<button class="sp-reel-comments-close" onclick="_closeCommentsModal()">\u00d7</button></div>'
+      + '<div class="sp-reel-comments-body" id="sp-reel-cm-body">'
+      + '<div style="padding:16px;color:#9ca3af;font-size:.85rem;text-align:center">Carregando...</div>'
+      + '</div>'
+      + '<div class="sp-reel-comments-input-row">'
+      + '<input type="text" id="sp-reel-cm-input" placeholder="Escreva um comentário..." maxlength="500" '
+      + 'onfocus="_pauseAutoFor(20)" '
+      + 'onkeydown="if(event.key===\'Enter\')_sendCommentModal('+postId+')">'
+      + '<button onclick="_sendCommentModal('+postId+')">➤</button>'
+      + '</div></div>';
+
+    ov.innerHTML = html;
+    document.body.appendChild(ov);
+    _loadCommentsModal(postId);
+  }
+
+  function _loadCommentsModal(postId){
+    var body = document.getElementById('sp-reel-cm-body');
+    if(!body) return;
     fetch('/social/posts/' + postId + '/')
       .then(function(r){ return r.json(); })
       .then(function(d){
         if(!d.comments || !d.comments.length){
-          panel.innerHTML = '<div style="padding:8px;color:#9ca3af;font-size:.8rem">Nenhum comentário ainda.</div>';
+          body.innerHTML = '<div style="padding:20px;color:#9ca3af;font-size:.85rem;text-align:center">Nenhum comentário ainda. Seja o primeiro!</div>';
           return;
         }
         var html = '';
@@ -1837,16 +1870,47 @@ var _CAMILA_AVATARS = {
             + '<button type="button" class="sp-comment-react-btn" onclick="spToggleCommentReactions(' + c.id + ', this)" title="Reagir">😊</button>'
             + '</div>';
         });
-        panel.innerHTML = html;
-        /* Renderizar reações existentes */
+        body.innerHTML = html;
+        body.scrollTop = body.scrollHeight;
         d.comments.forEach(function(c){
           if(c.reaction_counts && Object.keys(c.reaction_counts).length){
             _renderCommentReactions(c.id, c.reaction_counts, c.my_reaction);
           }
         });
       })
-      .catch(function(){ panel.innerHTML = '<div style="padding:8px;color:#ef4444;font-size:.8rem">Erro.</div>'; });
+      .catch(function(){ body.innerHTML = '<div style="padding:16px;color:#ef4444;text-align:center">Erro ao carregar.</div>'; });
   }
+
+  window._sendCommentModal = function(postId){
+    var input = document.getElementById('sp-reel-cm-input');
+    if(!input) return;
+    var text = (input.value||'').trim();
+    if(!text) return;
+    input.value = '';
+    _pauseAutoFor(20);
+
+    fetch('/social/post/' + postId + '/comment/', {
+      method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRFToken': window._csrf()},
+      body:'text=' + encodeURIComponent(text)
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(){
+      _loadCommentsModal(postId);
+      /* Atualiza badge no slide */
+      var btn = document.querySelector('.sp-reel-slide[data-post-id="'+postId+'"] .sp-reel-action:nth-child(2)');
+      if(btn){
+        var cnt = btn.querySelector('.count');
+        if(cnt){ cnt.textContent = parseInt(cnt.textContent||'0') + 1; }
+        else { btn.innerHTML = '💬 <span class="count">1</span>'; }
+      }
+    })
+    .catch(function(){});
+  };
+
+  window._closeCommentsModal = function(){
+    if(_commentsOverlay){ _commentsOverlay.remove(); _commentsOverlay = null; }
+  };
 
   function _escHtml(s){
     var d = document.createElement('div');
