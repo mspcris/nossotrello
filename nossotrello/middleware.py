@@ -12,6 +12,7 @@ _ALWAYS_FREE = [
     "/cookies/",      # aceitar/rejeitar cookies via POST
     "/auth/camim/",   # OAuth2 IDCamim (login + callback)
     "/api/",          # API mobile (auth via Token, não via session)
+    "/media/serve/",  # arquivos públicos servidos do banco (StoredFile)
 ]
 
 

@@ -217,6 +217,18 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+# Storage: banco de dados (PostgreSQL bytea) ou filesystem
+# Controlado por env var — permite migração gradual
+if _env_bool("USE_DB_STORAGE", default=False):
+    STORAGES = {
+        "default": {
+            "BACKEND": "boards.storage.DatabaseStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+
 
 # ============================================================
 # Limites de upload no Django (não resolve 413 do Nginx, mas evita gargalos no app)

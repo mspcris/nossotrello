@@ -280,10 +280,10 @@ def _save_base64_images_to_media(html: str, folder: str = "quill"):
         filename = f"{uuid.uuid4().hex}.{ext}"
         rel = f"{folder}/{filename}"
 
-        default_storage.save(rel, ContentFile(data))
-        saved.append(rel)
+        stored_name = default_storage.save(rel, ContentFile(data))
+        saved.append(stored_name)
 
-        url = default_storage.url(rel)
+        url = default_storage.url(stored_name)
         return f"{prefix}{quote}{escape(url)}{quote}"
 
     new_html = pattern.sub(repl, html)

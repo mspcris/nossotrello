@@ -31,6 +31,7 @@ from boards.views.legal import (
     cookie_accept_view,
     cookie_reject_view,
 )
+from boards.views.media_serve import serve_stored_file
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -60,5 +61,11 @@ urlpatterns = [
     path("api/mobile/", include(("api_mobile.urls", "api_mobile"), namespace="api_mobile")),
 ]
 
+# Serving de arquivos do banco (StoredFile)
+urlpatterns += [
+    path("media/serve/<uuid:file_id>/", serve_stored_file, name="serve_stored_file"),
+]
+
+# Fallback: serve arquivos do filesystem (migração gradual / dev)
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 # END nossotrello/urls.py

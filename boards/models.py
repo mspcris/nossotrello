@@ -1,5 +1,7 @@
 # boards/models.py
 
+import uuid
+
 from django.conf import settings
 from django.db import models
 from django.core.validators import RegexValidator
@@ -1450,6 +1452,33 @@ class CamilaNews(models.Model):
 
     def __str__(self):
         return f"{self.title[:60]} ({self.fetched_at:%d/%m %H:%M})"
+
+
+# ============================================================
+# STORED FILE (arquivos no banco de dados — bytea)
+# ============================================================
+class StoredFile(models.Model):
+    """
+    Armazena o conteúdo binário dos arquivos (imagens, vídeos, PDFs, etc.)
+    diretamente no PostgreSQL (campo bytea), eliminando dependência do filesystem.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    original_name = models.CharField(max_length=500, blank=True, default="")
+    content_type = models.CharField(max_length=200, blank=True, default="application/octet-stream")
+    data = models.BinaryField()
+    size = models.BigIntegerField(default=0)
+    checksum = models.CharField(max_length=64, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Arquivo armazenado"
+        verbose_name_plural = "Arquivos armazenados"
+        indexes = [
+            models.Index(fields=["checksum"], name="storedfile_checksum_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.original_name} ({self.size} bytes)"
 
 
 # END boards/models.py
