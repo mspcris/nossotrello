@@ -1137,7 +1137,9 @@ var _CAMILA_AVATARS = {
 
       html += '</div>';
     });
-    el.innerHTML = html;
+    /* ═══ CARROSSEL TRANSFORM-BASED (suave, sem scroll-snap) ═══ */
+    el.innerHTML = '<div class="sp-reel-track">' + html + '</div>';
+    var _track = el.querySelector('.sp-reel-track');
 
     /* Attach @mention autocomplete nos inputs de comentário do reel */
     if(window._spAttachMention){
@@ -1148,27 +1150,129 @@ var _CAMILA_AVATARS = {
       });
     }
 
+    /* ── Core: go to slide ── */
+    _reelIdx = 0;
+    var _totalSlides = _reelPosts.length;
+
+    function _goToSlide(idx, animate){
+      if(idx < 0) idx = _totalSlides - 1;
+      if(idx >= _totalSlides) idx = 0;
+      _reelIdx = idx;
+      if(animate !== false){
+        _track.classList.add('sp-animating');
+      } else {
+        _track.classList.remove('sp-animating');
+      }
+      _track.style.transform = 'translate3d(-' + (_reelIdx * 100) + '%, 0, 0)';
+      _updateDots();
+      _playCurrentVideo(el, _reelIdx);
+      _scheduleNext();
+    }
+    window._spGoToSlide = _goToSlide;
+
     /* Dots */
     _renderDots();
-    el.addEventListener('scroll', _onReelScroll);
 
-    /* Autoplay primeiro vídeo visível */
+    /* Autoplay primeiro vídeo */
     setTimeout(function(){ _playCurrentVideo(el, 0); }, 300);
 
-    /* Double-tap to like */
-    el.querySelectorAll('.sp-reel-slide').forEach(function(slide){
-      var lastTap = 0;
-      slide.addEventListener('touchend', function(e){
-        if(e.target.closest('.sp-reel-actions') || e.target.closest('.sp-reel-header')) return;
-        var now = Date.now();
-        if(now - lastTap < 350){
-          e.preventDefault();
+    /* ── Touch / Swipe ── */
+    var _tx0 = 0, _ty0 = 0, _txDelta = 0, _dragging = false, _dragStartTime = 0;
+    var _isHorizontalSwipe = null; /* null = undecided, true/false */
+
+    el.addEventListener('touchstart', function(e){
+      /* Ignorar se estiver interagindo com actions/header/input */
+      if(e.target.closest('.sp-reel-actions') || e.target.closest('.sp-reel-comment-input')) return;
+      var t = e.touches[0];
+      _tx0 = t.clientX;
+      _ty0 = t.clientY;
+      _txDelta = 0;
+      _dragging = true;
+      _dragStartTime = Date.now();
+      _isHorizontalSwipe = null;
+      _track.classList.remove('sp-animating');
+      _pauseAutoScroll();
+    }, {passive: true});
+
+    el.addEventListener('touchmove', function(e){
+      if(!_dragging) return;
+      var t = e.touches[0];
+      var dx = t.clientX - _tx0;
+      var dy = t.clientY - _ty0;
+
+      /* Decidir direção no primeiro movimento significativo */
+      if(_isHorizontalSwipe === null){
+        if(Math.abs(dx) > 8 || Math.abs(dy) > 8){
+          _isHorizontalSwipe = Math.abs(dx) > Math.abs(dy);
+        }
+        if(!_isHorizontalSwipe) return;
+      }
+      if(!_isHorizontalSwipe) return;
+
+      /* Prevenir scroll vertical enquanto arrasta horizontalmente */
+      e.preventDefault();
+      _txDelta = dx;
+
+      /* Resistência nas bordas */
+      var w = el.offsetWidth || 1;
+      var baseOffset = -_reelIdx * w;
+      var resistance = 1;
+      if((_reelIdx === 0 && dx > 0) || (_reelIdx === _totalSlides - 1 && dx < 0)){
+        resistance = 0.25;
+      }
+      _track.style.transform = 'translate3d(' + (baseOffset + dx * resistance) + 'px, 0, 0)';
+    }, {passive: false});
+
+    el.addEventListener('touchend', function(e){
+      if(!_dragging) return;
+      _dragging = false;
+
+      if(!_isHorizontalSwipe || Math.abs(_txDelta) < 5){
+        /* Não foi swipe horizontal — snap back */
+        _goToSlide(_reelIdx, true);
+        _resumeAutoScroll();
+        return;
+      }
+
+      var w = el.offsetWidth || 1;
+      var elapsed = Date.now() - _dragStartTime;
+      var velocity = Math.abs(_txDelta) / (elapsed || 1); /* px/ms */
+      var threshold = Math.min(w * 0.2, 80); /* 20% da largura ou 80px */
+
+      /* Flick rápido (>0.4 px/ms) ou arrasto > threshold */
+      if(velocity > 0.4 || Math.abs(_txDelta) > threshold){
+        if(_txDelta < 0){
+          _goToSlide(_reelIdx + 1, true);
+        } else {
+          _goToSlide(_reelIdx - 1, true);
+        }
+      } else {
+        _goToSlide(_reelIdx, true); /* snap back */
+      }
+
+      /* Esconder dica de swipe no primeiro gesto */
+      _hideSwipeHint();
+      _resumeAutoScroll();
+    }, {passive: true});
+
+    /* ── Double-tap to like ── */
+    var _lastTapTime = 0;
+    el.addEventListener('touchend', function(e){
+      if(e.target.closest('.sp-reel-actions') || e.target.closest('.sp-reel-header')) return;
+      if(Math.abs(_txDelta) > 15) return; /* foi swipe, não tap */
+      var now = Date.now();
+      if(now - _lastTapTime < 350){
+        var slide = e.target.closest('.sp-reel-slide');
+        if(slide){
           var postId = parseInt(slide.dataset.postId);
           var likeBtn = slide.querySelector('.sp-reel-like');
           _doReelLike(postId, likeBtn, slide);
         }
-        lastTap = now;
-      });
+      }
+      _lastTapTime = now;
+    }, {passive: true});
+
+    el.querySelectorAll('.sp-reel-slide').forEach(function(slide){
       slide.addEventListener('dblclick', function(e){
         if(e.target.closest('.sp-reel-actions') || e.target.closest('.sp-reel-header')) return;
         var postId = parseInt(slide.dataset.postId);
@@ -1177,30 +1281,54 @@ var _CAMILA_AVATARS = {
       });
     });
 
-    /* Auto-scroll inteligente: 5s foto/texto, espera vídeo acabar */
+    /* ── Mouse drag (desktop) ── */
+    var _mx0 = 0, _mDelta = 0, _mDragging = false;
+    el.addEventListener('mousedown', function(e){
+      if(e.target.closest('.sp-reel-actions') || e.target.closest('.sp-reel-header') ||
+         e.target.closest('.sp-reel-arrow') || e.target.closest('input')) return;
+      _mx0 = e.clientX; _mDelta = 0; _mDragging = true;
+      _track.classList.remove('sp-animating');
+      _pauseAutoScroll();
+      e.preventDefault();
+    });
+    document.addEventListener('mousemove', function(e){
+      if(!_mDragging) return;
+      _mDelta = e.clientX - _mx0;
+      var w = el.offsetWidth || 1;
+      var baseOffset = -_reelIdx * w;
+      var resistance = 1;
+      if((_reelIdx === 0 && _mDelta > 0) || (_reelIdx === _totalSlides - 1 && _mDelta < 0)){
+        resistance = 0.25;
+      }
+      _track.style.transform = 'translate3d(' + (baseOffset + _mDelta * resistance) + 'px, 0, 0)';
+    });
+    document.addEventListener('mouseup', function(){
+      if(!_mDragging) return;
+      _mDragging = false;
+      var w = el.offsetWidth || 1;
+      var threshold = Math.min(w * 0.2, 80);
+      if(Math.abs(_mDelta) > threshold){
+        _goToSlide(_reelIdx + (_mDelta < 0 ? 1 : -1), true);
+      } else {
+        _goToSlide(_reelIdx, true);
+      }
+      _hideSwipeHint();
+      _resumeAutoScroll();
+    });
+
+    /* ── Auto-scroll inteligente ── */
     var _autoTimer = null;
     var _autoScrollOn = true;
 
-    function _getCurrentSlideIdx(){
-      var w = el.offsetWidth;
-      return w ? Math.round(el.scrollLeft / w) : 0;
-    }
-
     function _advanceSlide(){
       if(!_autoScrollOn || document.hidden) return;
-      var w = el.offsetWidth;
-      if(!w) return;
-      var nextLeft = el.scrollLeft + w;
-      if(nextLeft >= el.scrollWidth - w/2) nextLeft = 0;
-      el.scrollTo({left: nextLeft, behavior: 'smooth'});
-      setTimeout(function(){ _scheduleNext(); }, 600);
+      _goToSlide(_reelIdx + 1, true);
     }
 
     function _scheduleNext(){
       if(_autoTimer) clearTimeout(_autoTimer);
       if(!_autoScrollOn) return;
-      var idx = _getCurrentSlideIdx();
-      var slide = el.querySelectorAll('.sp-reel-slide')[idx];
+      var slide = el.querySelectorAll('.sp-reel-slide')[_reelIdx];
       if(!slide) return;
       var video = slide.querySelector('video');
       if(video){
@@ -1214,8 +1342,6 @@ var _CAMILA_AVATARS = {
 
     _scheduleNext();
 
-    /* Toque segurado pausa auto-scroll, soltar retoma.
-       Só mantém pausado se foco estiver no campo de comentário. */
     var _commentFocused = false;
 
     function _pauseAutoScroll(){
@@ -1223,21 +1349,12 @@ var _CAMILA_AVATARS = {
       if(_autoTimer) clearTimeout(_autoTimer);
     }
     function _resumeAutoScroll(){
-      if(_commentFocused) return; /* não retoma enquanto estiver digitando */
+      if(_commentFocused) return;
       _autoScrollOn = true;
       var toggle = document.getElementById('sp-autoscroll-toggle');
-      if(toggle && toggle.checked) _scheduleNext();
-      else if(toggle && !toggle.checked){ _autoScrollOn = false; }
-      else _scheduleNext();
+      if(toggle && !toggle.checked){ _autoScrollOn = false; return; }
+      _scheduleNext();
     }
-
-    el.addEventListener('touchstart', function(){ _pauseAutoScroll(); }, {passive:true});
-    el.addEventListener('touchend', function(){ _resumeAutoScroll(); }, {passive:true});
-    el.addEventListener('mousedown', function(e){
-      if(e.target.closest('.sp-reel-arrow')) return;
-      _pauseAutoScroll();
-    });
-    el.addEventListener('mouseup', function(){ _resumeAutoScroll(); });
 
     /* Foco no campo de comentário mantém pausado */
     el.addEventListener('focusin', function(e){
@@ -1253,34 +1370,29 @@ var _CAMILA_AVATARS = {
       }
     });
 
-    /* Expor para chamar após enviar comentário */
     window._spResumeAutoScroll = function(){
       _commentFocused = false;
       _resumeAutoScroll();
     };
 
-    /* Toggle global de auto-scroll */
     window.spToggleAutoScroll = function(on){
       _autoScrollOn = on;
-      if(on){
-        _scheduleNext();
-      } else {
-        if(_autoTimer) clearTimeout(_autoTimer);
-      }
+      if(on){ _scheduleNext(); }
+      else { if(_autoTimer) clearTimeout(_autoTimer); }
     };
 
-    /* Dica de swipe — some ao primeiro scroll */
+    /* ── Dica de swipe ── */
+    var _hintDone = false;
     var hint = document.getElementById('sp-reel-swipe-hint');
+    function _hideSwipeHint(){
+      if(!_hintDone && hint){
+        _hintDone = true;
+        hint.style.opacity = '0';
+        setTimeout(function(){ hint.style.display = 'none'; }, 400);
+      }
+    }
     if(hint && _reelPosts.length > 1){
       hint.style.display = '';
-      var _hintDone = false;
-      el.addEventListener('scroll', function(){
-        if(!_hintDone && hint){
-          _hintDone = true;
-          hint.style.opacity = '0';
-          setTimeout(function(){ hint.style.display = 'none'; }, 400);
-        }
-      }, {once: false});
     } else if(hint){
       hint.style.display = 'none';
     }
@@ -1300,24 +1412,9 @@ var _CAMILA_AVATARS = {
     wrap.appendChild(dots);
   }
 
-  function _onReelScroll(){
-    var el = document.getElementById('sp-reel');
-    var w = el.offsetWidth;
-    if(!w) return;
-    var idx = Math.round(el.scrollLeft / w);
-    _reelIdx = idx;
+  function _updateDots(){
     var dots = document.querySelectorAll('.sp-reel-dot');
-    dots.forEach(function(d, i){ d.classList.toggle('active', i === idx % dots.length); });
-
-    /* Autoplay vídeo do slide atual, pausa os outros */
-    _playCurrentVideo(el, idx);
-
-    /* Infinite loop: se chegar ao penúltimo, volta pro começo */
-    if(idx >= _reelPosts.length - 1 && _reelPosts.length > 1){
-      setTimeout(function(){
-        el.scrollTo({left: 0, behavior: 'auto'});
-      }, 400);
-    }
+    dots.forEach(function(d, i){ d.classList.toggle('active', i === _reelIdx % dots.length); });
   }
 
   function _playCurrentVideo(el, idx){
@@ -1619,14 +1716,9 @@ var _CAMILA_AVATARS = {
   })();
 
   window.spReelNav = function(dir){
-    var el = document.getElementById('sp-reel');
-    if(!el) return;
-    var w = el.offsetWidth;
-    if(!w) return;
-    var nextLeft = el.scrollLeft + (dir * w);
-    if(nextLeft < 0) nextLeft = el.scrollWidth - w;
-    if(nextLeft >= el.scrollWidth) nextLeft = 0;
-    el.scrollTo({left: nextLeft, behavior: 'smooth'});
+    if(window._spGoToSlide){
+      window._spGoToSlide(_reelIdx + dir, true);
+    }
     _showReelArrows();
   };
 

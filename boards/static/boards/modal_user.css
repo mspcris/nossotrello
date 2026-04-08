@@ -1065,15 +1065,21 @@
 .sp-reel-arrow-left { left: 4px; }
 .sp-reel-arrow-right { right: 4px; }
 .sp-reel{
-  display:flex; overflow-x:auto; scroll-snap-type:x mandatory;
-  -webkit-overflow-scrolling:touch; scrollbar-width:none;
-  scroll-behavior:smooth;
+  overflow:hidden; position:relative;
   height:100%; min-height:420px;
+  touch-action:pan-y pinch-zoom;
 }
-.sp-reel::-webkit-scrollbar{ display:none; }
+
+.sp-reel-track{
+  display:flex; height:100%; min-height:420px;
+  will-change:transform;
+}
+.sp-reel-track.sp-animating{
+  transition:transform 0.45s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
 
 .sp-reel-slide{
-  flex:0 0 100%; scroll-snap-align:start; position:relative;
+  flex:0 0 100%; position:relative;
   display:flex; flex-direction:column; align-items:center; justify-content:center;
   min-height:420px; padding-bottom:56px; background:#000; color:#fff; user-select:none;
 }
