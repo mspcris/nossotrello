@@ -658,6 +658,12 @@
       </button>
 
       <div id="cm-dock-menu" class="hidden" role="menu" aria-label="Menu de ações">
+
+        <!-- Sugestões de mover rápido (preenchidas via JS ao abrir o menu) -->
+        <div id="cm-dock-suggestions"
+             data-url-suggestions="{% url 'boards:card_move_suggestions' card.id %}"
+             style="display:none"></div>
+
         <button type="button"
                 class="dock-action"
                 id="cm-dock-duplicate"
