@@ -463,20 +463,15 @@
     if (!container) return;
 
     if (!suggestions || !suggestions.length) {
-      container.style.display = "none";
-      container.innerHTML = "";
-      // Esconde a seta se não há sugestões
-      const arrow = qs(dock, "#cm-dock-move-expand");
-      if (arrow) arrow.style.display = "none";
+      container.innerHTML = `<div style="padding:8px 10px;font-size:11px;color:rgba(15,23,42,.45);border-bottom:1px solid rgba(15,23,42,.08);margin-bottom:4px;">
+        Mova cards entre colunas para gerar sugestões personalizadas aqui.
+      </div>`;
+      container.style.display = "block";
       return;
     }
 
     container.innerHTML = renderSuggestionsSubmenu(suggestions);
     container.style.display = "block";
-
-    // Garante que a seta está visível
-    const arrow = qs(dock, "#cm-dock-move-expand");
-    if (arrow) arrow.style.display = "flex";
   }
 
   // =========================
@@ -566,12 +561,6 @@
         const sugUrl = sugContainer?.getAttribute?.("data-url-suggestions");
         if (sugUrl) {
           suggestionsData = await fetchSuggestions(sugUrl);
-          // Sugestões iniciam escondidas — só aparecem ao clicar na seta
-          // Mas se não há sugestões, esconde a seta
-          if (!suggestionsData.length) {
-            const arrow = qs(dock, "#cm-dock-move-expand");
-            if (arrow) arrow.style.display = "none";
-          }
         }
       }
     });
@@ -605,7 +594,7 @@
         if (container && container.style.display === "block") {
           container.style.display = "none";
           btn.querySelector("span").textContent = "▶";
-        } else if (suggestionsData.length) {
+        } else {
           injectSuggestions(dock, suggestionsData);
           btn.querySelector("span").textContent = "▼";
         }
