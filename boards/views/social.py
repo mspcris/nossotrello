@@ -991,12 +991,8 @@ def daily_checkin_save(request):
 
     # Auto-post mood to feed (somente se mudou o humor AGORA)
     if mood:
-        mood_emojis = {
-            "excited": "🤩", "happy": "😊", "calm": "😌",
-            "normal": "😐", "tired": "😪", "stressed": "😤", "sick": "🤒",
-        }
         mood_labels = dict(DailyCheckIn.MOOD_CHOICES)
-        emoji = mood_emojis.get(mood, "😊")
+        emoji = DailyCheckIn.MOOD_EMOJIS.get(mood, "😐")
         label = mood_labels.get(mood, mood)
         post_text = f"{emoji} {label}"
         if mood_note:
