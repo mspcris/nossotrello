@@ -62,6 +62,7 @@ from .serializers import (
     ChatMessageSerializer,
     DailyCheckInSerializer,
     NotificationSerializer,
+    _avatar_url,
 )
 
 User = get_user_model()
@@ -474,12 +475,10 @@ def api_social_feed(request):
                 post_prof = getattr(post_obj.user, "profile", None) if post_obj else None
                 item["friendship"] = {
                     "friend_name": friend_prof.display_name if friend_prof and friend_prof.display_name else friend_user.get_full_name(),
-                    "friend_avatar": request.build_absolute_uri(friend_prof.avatar.url) if friend_prof and friend_prof.avatar else "",
-                    "friend_avatar_choice": friend_prof.avatar_choice if friend_prof else "",
+                    "friend_avatar": _avatar_url(friend_prof, request) or "",
                     "friend_id": friend_uid,
                     "user_name": post_prof.display_name if post_prof and post_prof.display_name else (post_obj.user.get_full_name() if post_obj else ""),
-                    "user_avatar": request.build_absolute_uri(post_prof.avatar.url) if post_prof and post_prof.avatar else "",
-                    "user_avatar_choice": post_prof.avatar_choice if post_prof else "",
+                    "user_avatar": _avatar_url(post_prof, request) or "",
                 }
                 item["text"] = ""  # Hide internal text
             except Exception:
