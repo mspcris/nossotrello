@@ -1093,7 +1093,8 @@ var _CAMILA_AVATARS = {
         ? '<img class="sp-reel-av" src="'+p.user_avatar+'" alt="">'
         : '<span class="sp-reel-av-placeholder">'+initials+'</span>';
 
-      html += '<div class="sp-reel-slide" data-idx="'+i+'" data-post-id="'+p.id+'">';
+      var _isTextOnly = !p.photo && !p.video && !p.gif_url && !p.sticker_url && !p.friendship && p.text;
+      html += '<div class="sp-reel-slide'+(_isTextOnly?' sp-reel-slide-textonly':'')+'" data-idx="'+i+'" data-post-id="'+p.id+'">';
       html += '<div class="sp-reel-header">';
       if(p.shared_from){
         /* Repost: mostra quem compartilhou + autor original */

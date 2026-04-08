@@ -1057,8 +1057,8 @@
   background:linear-gradient(to top, rgba(0,0,0,0.85) 60%, transparent);
   z-index:4;
 }
-/* Texto sozinho (sem mídia): centraliza e preenche */
-#sp-feed-wrap.sp-feed-fullscreen .sp-reel-text:only-child{
+/* Slide só-texto: texto centralizado grande */
+#sp-feed-wrap.sp-feed-fullscreen .sp-reel-slide-textonly .sp-reel-text{
   position:static; max-height:none;
   display:flex; align-items:center; justify-content:center;
   flex:1; font-size:1.4rem; padding:40px 24px;
