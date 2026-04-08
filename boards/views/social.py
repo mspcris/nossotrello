@@ -291,7 +291,8 @@ def _build_social_context(request, target_user, extra=None):
         )
         # Registra visualização individual de cada post
         for p in posts:
-            SocialPostView.objects.get_or_create(post=p, viewer=request.user)
+            if not SocialPostView.objects.filter(post=p, viewer=request.user).exists():
+                SocialPostView.objects.create(post=p, viewer=request.user)
 
     # Tarefas do dia (só para o próprio)
     today_tasks = []
@@ -580,7 +581,8 @@ def social_post_full(request, post_id: int):
     view_count = SocialPostView.objects.filter(post=post).count()
 
     # Registra visualização
-    SocialPostView.objects.get_or_create(post=post, viewer=request.user)
+    if not SocialPostView.objects.filter(post=post, viewer=request.user).exists():
+        SocialPostView.objects.create(post=post, viewer=request.user)
 
     return JsonResponse({
         "id": post.id,
@@ -2913,9 +2915,8 @@ def social_post_feed_view(request, post_id: int):
     """Registra que o usuário viu este post no feed de Novidades."""
     post = get_object_or_404(SocialPost, id=post_id, is_active=True)
     if post.user_id != request.user.id:
-        SocialPostView.objects.get_or_create(
-            post=post, viewer=request.user, source="feed",
-        )
+        if not SocialPostView.objects.filter(post=post, viewer=request.user).exists():
+            SocialPostView.objects.create(post=post, viewer=request.user, source="feed")
     return JsonResponse({"ok": True})
 
 
