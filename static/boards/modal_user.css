@@ -575,7 +575,7 @@
 /* ── Mood Grid (3 cols mobile, 4 cols wider) ── */
 .sp-mood-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 8px;
 }
 .sp-mood-card {
@@ -608,6 +608,10 @@
   box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
 }
 .sp-mood-card.active .sp-mood-label { color: #1d4ed8; }
+.sp-mood-more-btn { border-style: dashed; background: #fff; }
+.sp-mood-more-btn .sp-mood-emoji { font-size: 1.5rem; color: #9ca3af; font-weight: 700; }
+.sp-mood-more-btn .sp-mood-label { color: #9ca3af; }
+.sp-mood-extra { margin-top: -2px; }
 
 /* ── Inputs ── */
 .sp-input {
@@ -1953,7 +1957,7 @@ video.sp-post-media {
   .sp-avatar { width: 80px; height: 80px; }
   .sp-avatar-over-cover { margin-top: -44px; }
   .sp-name { font-size: 1.25rem; }
-  .sp-mood-grid { grid-template-columns: repeat(4, 1fr); }
+  .sp-mood-grid { grid-template-columns: repeat(5, 1fr); }
 }
 
 /* ═══════════ INSIDE ASIDE (right panel) ═══════════ */

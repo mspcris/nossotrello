@@ -569,6 +569,12 @@
           <span class="sp-mood-emoji">😐</span>
           <span class="sp-mood-label">Normal</span>
         </label>
+        <button type="button" class="sp-mood-card sp-mood-more-btn" id="sp-mood-more-btn" onclick="spToggleMoodMore()">
+          <span class="sp-mood-emoji">+</span>
+          <span class="sp-mood-label">Mais</span>
+        </button>
+      </div>
+      <div class="sp-mood-grid sp-mood-extra sp-hidden" id="sp-mood-extra">
         <label class="sp-mood-card {% if checkin.mood == 'tired' %}active{% endif %}">
           <input type="radio" name="mood" value="tired" {% if checkin.mood == "tired" %}checked{% endif %}>
           <span class="sp-mood-emoji">😔</span>
@@ -2002,12 +2008,36 @@ document.addEventListener('click', function(e){
   /* ── Mood picker: tap to select ── */
   document.querySelectorAll('.sp-mood-card').forEach(function(card){
     card.addEventListener('click', function(){
+      if(card.classList.contains('sp-mood-more-btn')) return;
       document.querySelectorAll('.sp-mood-card').forEach(function(c){ c.classList.remove('active'); });
       card.classList.add('active');
       var inp = card.querySelector('input');
       if(inp) inp.checked = true;
     });
   });
+
+  /* ── Mood "Mais" toggle ── */
+  window.spToggleMoodMore = function(){
+    var extra = document.getElementById('sp-mood-extra');
+    var btn = document.getElementById('sp-mood-more-btn');
+    if(!extra) return;
+    if(extra.classList.contains('sp-hidden')){
+      extra.classList.remove('sp-hidden');
+      if(btn){ btn.querySelector('.sp-mood-emoji').textContent = '−'; btn.querySelector('.sp-mood-label').textContent = 'Menos'; }
+    } else {
+      extra.classList.add('sp-hidden');
+      if(btn){ btn.querySelector('.sp-mood-emoji').textContent = '+'; btn.querySelector('.sp-mood-label').textContent = 'Mais'; }
+    }
+  };
+  /* Auto-expandir se humor atual é um dos ocultos */
+  (function(){
+    var extra = document.getElementById('sp-mood-extra');
+    if(extra && extra.querySelector('.sp-mood-card.active')){
+      extra.classList.remove('sp-hidden');
+      var btn = document.getElementById('sp-mood-more-btn');
+      if(btn){ btn.querySelector('.sp-mood-emoji').textContent = '−'; btn.querySelector('.sp-mood-label').textContent = 'Menos'; }
+    }
+  })();
 
   /* ── Random lunch placeholder ── */
   var lunchPh = [
