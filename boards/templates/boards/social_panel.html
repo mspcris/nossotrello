@@ -2073,15 +2073,7 @@ document.addEventListener('click', function(e){
       if(btn){ btn.querySelector('.sp-mood-emoji').textContent = '+'; btn.querySelector('.sp-mood-label').textContent = 'Mais'; }
     }
   };
-  /* Auto-expandir se humor atual é um dos ocultos */
-  (function(){
-    var extra = document.getElementById('sp-mood-extra');
-    if(extra && extra.querySelector('.sp-mood-card.active')){
-      extra.classList.remove('sp-hidden');
-      var btn = document.getElementById('sp-mood-more-btn');
-      if(btn){ btn.querySelector('.sp-mood-emoji').textContent = '−'; btn.querySelector('.sp-mood-label').textContent = 'Menos'; }
-    }
-  })();
+  /* Mood extra: sempre começa colapsado (4 + botão "+") */
 
   /* ── Random lunch placeholder ── */
   var lunchPh = [

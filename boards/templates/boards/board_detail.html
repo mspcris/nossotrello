@@ -2468,7 +2468,7 @@ document.addEventListener("pointerup", (e) => {
   var MY_TS_KEY = 'bma_my_ts_' + boardId;
   var MY_DIM_KEY = 'bma_my_dim_' + boardId;
 
-  function updateMyAvatar(count){
+  function updateMyAvatar(count, latestPostId){
     if(!myWrap) return;
     if(count > 0){
       // Badge
@@ -2480,6 +2480,9 @@ document.addEventListener("pointerup", (e) => {
       var img = myWrap.querySelector('img');
       if(img) img.style.outline = '2.5px solid #f97316';
 
+      // Link direto para o post com comentário/reação
+      var notifHref = latestPostId ? '/social/?post=' + latestPostId : '/social/';
+
       // Balão a cada 5 min, até clicar
       var ts = sessionStorage.getItem(MY_TS_KEY) || 'my';
       var dismissed = sessionStorage.getItem(MY_DIM_KEY) === ts;
@@ -2489,7 +2492,7 @@ document.addEventListener("pointerup", (e) => {
           myWrap,
           'Você',
           count + ' novo(s) comentário(s) no seu espaço!',
-          '/social/',
+          notifHref,
           function(){
             sessionStorage.setItem(MY_DIM_KEY, ts);
             if(myBadge) myBadge.style.display = 'none';
@@ -2508,7 +2511,7 @@ document.addEventListener("pointerup", (e) => {
   }
 
   /* ── Atualiza badges da barra de membros ── */
-  function updateBadges(counts, fresh, freshTexts, freshTs, myCommentCount){
+  function updateBadges(counts, fresh, freshTexts, freshTs, myCommentCount, myLatestPostId){
     window._bmaUnread = {};
     freshTexts = freshTexts || {};
     freshTs = freshTs || {};
@@ -2537,7 +2540,7 @@ document.addEventListener("pointerup", (e) => {
       }
     });
 
-    updateMyAvatar(myCommentCount || 0);
+    updateMyAvatar(myCommentCount || 0, myLatestPostId);
   }
 
   function poll(){
@@ -2545,7 +2548,7 @@ document.addEventListener("pointerup", (e) => {
     fetch('/social/unread/' + q)
       .then(function(r){ return r.json(); })
       .then(function(d){
-        updateBadges(d.counts || {}, d.fresh || [], d.fresh_texts || {}, d.fresh_ts || {}, d.my_comment_count || 0);
+        updateBadges(d.counts || {}, d.fresh || [], d.fresh_texts || {}, d.fresh_ts || {}, d.my_comment_count || 0, d.my_latest_post_id || null);
       })
       .catch(function(){});
   }

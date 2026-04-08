@@ -1667,16 +1667,28 @@ def social_unread_counts(request):
                     break
 
     # Comentários não vistos nas MINHAS publicações
-    my_comment_count = SocialPostComment.objects.filter(
+    my_unseen_comments = SocialPostComment.objects.filter(
         post__user=request.user,
         seen_by_owner=False,
-    ).exclude(user=request.user).count()
+    ).exclude(user=request.user)
+    my_comment_count = my_unseen_comments.count()
 
     # Respostas não vistas aos meus comentários
-    my_reply_count = SocialPostComment.objects.filter(
+    my_unseen_replies = SocialPostComment.objects.filter(
         reply_to__user=request.user,
         reply_seen=False,
-    ).exclude(user=request.user).count()
+    ).exclude(user=request.user)
+    my_reply_count = my_unseen_replies.count()
+
+    # Post mais recente com notificação (para link direto)
+    my_latest_post_id = None
+    latest = my_unseen_comments.order_by("-created_at").values_list("post_id", flat=True).first()
+    if latest:
+        my_latest_post_id = latest
+    if not my_latest_post_id:
+        latest_reply = my_unseen_replies.order_by("-created_at").values_list("post__id", flat=True).first()
+        if latest_reply:
+            my_latest_post_id = latest_reply
 
     return JsonResponse({
         "counts": counts,
@@ -1684,6 +1696,7 @@ def social_unread_counts(request):
         "fresh_texts": fresh_texts,
         "fresh_ts": fresh_ts,
         "my_comment_count": my_comment_count + my_reply_count,
+        "my_latest_post_id": my_latest_post_id,
     })
 
 
@@ -2887,10 +2900,10 @@ def social_post_reactors(request, post_id: int):
 # ---------------------------------------------------------------
 @login_required
 def social_post_viewers(request, post_id: int):
-    """Retorna lista de quem visualizou um post com seus avatares."""
+    """Retorna lista de quem entrou no perfil e viu o post (source=profile)."""
     views = (
         SocialPostView.objects
-        .filter(post_id=post_id)
+        .filter(post_id=post_id, source="profile")
         .select_related("viewer", "viewer__profile")
         .order_by("-viewed_at")
     )
