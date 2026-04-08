@@ -1163,6 +1163,7 @@ var _CAMILA_AVATARS = {
       _track.style.transform = 'translate3d(' + (-_reelIdx * w) + 'px, 0, 0)';
       _updateDots();
       _playCurrentVideo(el, _reelIdx);
+      _preloadAround(_reelIdx);
       _scheduleNext();
     }
     window._spGoToSlide = _goToSlide;
@@ -1173,6 +1174,27 @@ var _CAMILA_AVATARS = {
       if(_resizeRaf) cancelAnimationFrame(_resizeRaf);
       _resizeRaf = requestAnimationFrame(function(){ _goToSlide(_reelIdx, false); });
     });
+
+    /* Preload: carregar imagens dos próximos slides antecipadamente */
+    function _preloadAround(idx){
+      for(var d = 1; d <= 3; d++){
+        var ni = idx + d;
+        if(ni >= _totalSlides) ni -= _totalSlides;
+        var p = _reelPosts[ni];
+        if(!p) continue;
+        var url = p.photo || p.gif_url || p.sticker_url || '';
+        if(url && !url.match(/\.mp4$/i)){
+          var img = new Image();
+          img.src = url;
+        }
+        /* Avatar também */
+        if(p.user_avatar){
+          var av = new Image();
+          av.src = p.user_avatar;
+        }
+      }
+    }
+    _preloadAround(0);
 
     /* Dots */
     _renderDots();
@@ -4974,7 +4996,7 @@ function spViewersCancelPress(){
   var focusId = {% if focus_post_id %}{{ focus_post_id }}{% else %}0{% endif %};
   if(!focusId) return;
   setTimeout(function(){
-    if(window.spSwitchTab) window.spSwitchTab('space');
+    if(window.spSwitchTab) window.spSwitchTab('mine');
     setTimeout(function(){
       var el = document.getElementById('sp-post-' + focusId);
       if(el){
