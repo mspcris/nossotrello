@@ -219,6 +219,7 @@
     <button type="button" class="sp-tab" data-tab="friends" onclick="spSwitchTab('friends')">Amigos</button>
     <button type="button" class="sp-tab" data-tab="feed" onclick="spSwitchTab('feed')">Novidades</button>
     <button type="button" class="sp-tab" onclick="spOpenChatList()">💬 Chat <span id="sp-chat-badge" class="sp-chat-badge sp-hidden"></span></button>
+    <button type="button" class="sp-tab" onclick="spOpenHealth()">🩺</button>
   </div>
 
   <!-- ═══ REEL / NOVIDADES (tab feed) ═══ -->
@@ -230,6 +231,7 @@
       <button type="button" class="sp-feed-mini-tab" onclick="spExitFeedFull('friends')">Amigos</button>
       <button type="button" class="sp-feed-mini-tab active">Novidades</button>
       <button type="button" class="sp-feed-mini-tab" onclick="spExitFeedFull('chat')">💬</button>
+      <button type="button" class="sp-feed-mini-tab" onclick="spExitFeedFull('health')">🩺</button>
       <button type="button" class="sp-feed-mini-close" onclick="spExitFeedFull('mine')" title="Fechar">✕</button>
     </div>
 
@@ -1061,6 +1063,8 @@ var _CAMILA_AVATARS = {
     document.body.style.overflow = '';
     if(goTab === 'chat'){
       if(window.spOpenChatList) spOpenChatList();
+    } else if(goTab === 'health'){
+      if(window.spOpenHealth) spOpenHealth();
     } else {
       spSwitchTab(goTab || 'mine');
     }
@@ -5280,4 +5284,134 @@ window.spShowProfilePhoto = function(url){
   ov.appendChild(close);
   document.body.appendChild(ov);
 };
+
+/* ═══════════════════════════════════════════════════════════════
+   SAÚDE E BEM ESTAR — Nutri.AI
+   ═══════════════════════════════════════════════════════════════ */
+(function(){
+  var _healthOverlay = null;
+  var _healthHistory = [];
+
+  window.spOpenHealth = function(){
+    if(_healthOverlay){ _healthOverlay.remove(); _healthOverlay = null; }
+
+    var ov = document.createElement('div');
+    ov.className = 'sp-chat-overlay';
+    ov.onclick = function(e){ if(e.target === ov) _closeHealth(); };
+    _healthOverlay = ov;
+
+    var html = '<div class="sp-chat-modal sp-health-modal">'
+      + '<div class="sp-chat-header" style="background:linear-gradient(135deg,#059669,#10b981)">'
+      + '<button class="sp-chat-back" onclick="_closeHealth()" title="Voltar">←</button>'
+      + '<div style="flex:1;text-align:center">'
+      + '<div style="font-weight:700;font-size:1rem">🩺 Saúde e Bem Estar</div>'
+      + '<div style="font-size:.7rem;opacity:.85">Nutri.AI — sua nutricionista virtual</div>'
+      + '</div>'
+      + '<button class="sp-chat-close" onclick="_closeHealth()">×</button>'
+      + '</div>'
+      + '<div class="sp-health-body" id="sp-health-body">'
+      + '<div class="sp-health-loading" id="sp-health-loading">'
+      + '<div class="sp-health-robot">🤖</div>'
+      + '<div class="sp-health-loading-text">Analisando sua alimentação...</div>'
+      + '<div class="sp-health-dots"><span>.</span><span>.</span><span>.</span></div>'
+      + '</div>'
+      + '</div>'
+      + '<div class="sp-health-input-row">'
+      + '<input type="text" id="sp-health-input" class="sp-dm-input" '
+      + 'placeholder="Conte o que vai comer hoje..." '
+      + 'onkeydown="if(event.key===\'Enter\')spHealthSend()">'
+      + '<button type="button" class="sp-dm-send-btn" onclick="spHealthSend()">➤</button>'
+      + '</div>'
+      + '</div>';
+
+    ov.innerHTML = html;
+    document.body.appendChild(ov);
+
+    _healthHistory = [];
+    _loadHealthAnalysis();
+  };
+
+  function _loadHealthAnalysis(){
+    fetch('{% url "boards:social_health_analyze" %}')
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var loading = document.getElementById('sp-health-loading');
+        if(loading) loading.remove();
+        if(d.response){
+          _healthHistory.push({role:'assistant', content: d.response});
+          _appendHealthMsg('ai', d.response);
+        }
+      })
+      .catch(function(){
+        var loading = document.getElementById('sp-health-loading');
+        if(loading) loading.innerHTML = '<div class="sp-health-robot">🤖</div><div>Olá! Me conta o que você vai comer hoje? 🍽️</div>';
+      });
+  }
+
+  function _appendHealthMsg(who, text){
+    var body = document.getElementById('sp-health-body');
+    if(!body) return;
+    var div = document.createElement('div');
+    div.className = 'sp-health-msg sp-health-msg-' + who;
+    if(who === 'ai'){
+      div.innerHTML = '<span class="sp-health-ai-icon">🤖</span><div class="sp-health-bubble sp-health-bubble-ai">' + _escHealthHtml(text).replace(/\n/g,'<br>') + '</div>';
+    } else {
+      div.innerHTML = '<div class="sp-health-bubble sp-health-bubble-user">' + _escHealthHtml(text).replace(/\n/g,'<br>') + '</div>';
+    }
+    /* Inserir no topo — AI responses at top */
+    body.appendChild(div);
+    body.scrollTop = body.scrollHeight;
+  }
+
+  function _escHealthHtml(s){
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  window.spHealthSend = function(){
+    var input = document.getElementById('sp-health-input');
+    if(!input) return;
+    var text = (input.value || '').trim();
+    if(!text) return;
+    input.value = '';
+
+    _appendHealthMsg('user', text);
+    _healthHistory.push({role:'user', content: text});
+
+    /* Typing indicator */
+    var body = document.getElementById('sp-health-body');
+    var typing = document.createElement('div');
+    typing.className = 'sp-health-msg sp-health-msg-ai';
+    typing.id = 'sp-health-typing';
+    typing.innerHTML = '<span class="sp-health-ai-icon">🤖</span><div class="sp-health-bubble sp-health-bubble-ai"><span class="sp-health-dots-inline"><span>.</span><span>.</span><span>.</span></span></div>';
+    if(body) { body.appendChild(typing); body.scrollTop = body.scrollHeight; }
+
+    fetch('{% url "boards:social_health_chat" %}', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json', 'X-CSRFToken': _csrf()},
+      body: JSON.stringify({message: text, history: _healthHistory.slice(-10)})
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      var t = document.getElementById('sp-health-typing');
+      if(t) t.remove();
+      if(d.response){
+        _healthHistory.push({role:'assistant', content: d.response});
+        _appendHealthMsg('ai', d.response);
+      }
+    })
+    .catch(function(){
+      var t = document.getElementById('sp-health-typing');
+      if(t) t.remove();
+      _appendHealthMsg('ai', 'Ops, tive um probleminha. Tenta de novo! 😅');
+    });
+  };
+
+  window._closeHealth = function(){
+    if(_healthOverlay){ _healthOverlay.remove(); _healthOverlay = null; }
+    _healthHistory = [];
+    if(window.spSwitchTab) spSwitchTab('mine');
+  };
+})();
 </script>

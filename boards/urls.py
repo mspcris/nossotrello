@@ -167,6 +167,8 @@ from boards.views.social import (
     social_post_repost,
     social_post_page,
     social_post_full,
+    social_health_analyze,
+    social_health_chat,
 )
 
 
@@ -243,6 +245,10 @@ urlpatterns = [
     path("social/post/<int:post_id>/repost/", social_post_repost, name="social_post_repost"),
     path("social/post/<int:post_id>/view/", social_post_page, name="social_post_page"),
     path("social/post/<int:post_id>/full/", social_post_full, name="social_post_full"),
+
+    # Saúde e Bem Estar
+    path("social/health/analyze/", social_health_analyze, name="social_health_analyze"),
+    path("social/health/chat/", social_health_chat, name="social_health_chat"),
 
     # Camila.AI Admin (staff only)
     path("camila/", camila_admin, name="camila_admin"),
