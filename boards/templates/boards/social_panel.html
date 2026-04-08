@@ -4995,6 +4995,10 @@ function spViewersCancelPress(){
 (function(){
   var focusId = {% if focus_post_id %}{{ focus_post_id }}{% else %}0{% endif %};
   if(!focusId) return;
+  /* O sheet de publicação trava o body com overflow:hidden.
+     Após o HTMX swap, spCloseSheet nunca roda — destravar aqui. */
+  document.body.style.overflow = '';
+  document.body.style.overscrollBehavior = '';
   setTimeout(function(){
     if(window.spSwitchTab) window.spSwitchTab('mine');
     setTimeout(function(){
