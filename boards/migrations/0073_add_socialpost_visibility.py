@@ -1,17 +1,13 @@
-from django.db import migrations, models
+# visibility já adicionado em 0069_add_socialpost_visibility.
+# Mantida como no-op para preservar o grafo de dependências.
+
+from django.db import migrations
+
 
 class Migration(migrations.Migration):
+
     dependencies = [
-        ("boards", "0072_camila_pop_raw_text"),
+        ('boards', '0072_camila_pop_raw_text'),
     ]
-    operations = [
-        migrations.AddField(
-            model_name="socialpost",
-            name="visibility",
-            field=models.CharField(
-                choices=[("all", "Todos"), ("friends", "Apenas amigos")],
-                default="all",
-                max_length=10,
-            ),
-        ),
-    ]
+
+    operations = []
