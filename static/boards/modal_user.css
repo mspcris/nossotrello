@@ -1029,6 +1029,41 @@
   position:relative; overflow:hidden; border-radius:16px;
   background:#000; min-height:480px;
 }
+/* Fullscreen mode: feed ocupa a tela toda abaixo do header */
+#sp-feed-wrap.sp-feed-fullscreen{
+  position:fixed; top:0; left:0; right:0; bottom:0;
+  z-index:900; border-radius:0; min-height:0;
+  display:flex; flex-direction:column;
+}
+#sp-feed-wrap.sp-feed-fullscreen .sp-reel{
+  flex:1; min-height:0;
+}
+#sp-feed-wrap.sp-feed-fullscreen .sp-reel-track{
+  min-height:0; height:100%;
+}
+#sp-feed-wrap.sp-feed-fullscreen .sp-reel-slide{
+  min-height:0; height:100%;
+}
+/* Mini tab-bar fixa no topo do fullscreen */
+.sp-feed-mini-tabs{
+  display:none; background:rgba(0,0,0,0.85); backdrop-filter:blur(8px);
+  padding:6px 12px; gap:8px; align-items:center; z-index:5;
+}
+#sp-feed-wrap.sp-feed-fullscreen .sp-feed-mini-tabs{
+  display:flex;
+}
+.sp-feed-mini-tab{
+  border:none; background:none; color:rgba(255,255,255,0.5);
+  font-size:.8rem; font-weight:600; padding:6px 12px; border-radius:16px;
+  cursor:pointer; transition:all .2s;
+}
+.sp-feed-mini-tab.active{
+  color:#fff; background:rgba(255,255,255,0.15);
+}
+.sp-feed-mini-close{
+  margin-left:auto; border:none; background:none; color:rgba(255,255,255,0.6);
+  font-size:1.2rem; cursor:pointer; padding:4px 8px;
+}
 .sp-friends-reel-wrap{
   position:relative; overflow:hidden; border-radius:16px;
   background:#fff; min-height:auto;

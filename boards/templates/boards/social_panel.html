@@ -224,6 +224,15 @@
   <!-- ═══ REEL / NOVIDADES (tab feed) ═══ -->
   <div id="sp-feed-wrap" class="sp-hidden">
 
+    <!-- Mini tabs (visível só em fullscreen) -->
+    <div class="sp-feed-mini-tabs">
+      <button type="button" class="sp-feed-mini-tab" onclick="spExitFeedFull('mine')">Meu Espaço</button>
+      <button type="button" class="sp-feed-mini-tab" onclick="spExitFeedFull('friends')">Amigos</button>
+      <button type="button" class="sp-feed-mini-tab active">Novidades</button>
+      <button type="button" class="sp-feed-mini-tab" onclick="spExitFeedFull('chat')">💬</button>
+      <button type="button" class="sp-feed-mini-close" onclick="spExitFeedFull('mine')" title="Fechar">✕</button>
+    </div>
+
     <!-- Toggle row: Amigos/Todos + Rolagem auto -->
     <div class="sp-feed-toggle-row">
       <span class="sp-feed-toggle-label" id="sp-feed-lbl-friends">Amigos</span>
@@ -1020,6 +1029,11 @@ var _CAMILA_AVATARS = {
     mine.classList.add('sp-hidden');
     friends.classList.add('sp-hidden');
     feed.classList.add('sp-hidden');
+
+    /* Sair do fullscreen ao trocar de aba */
+    feed.classList.remove('sp-feed-fullscreen');
+    document.body.style.overflow = '';
+
     if(tab === 'mine'){
       mine.classList.remove('sp-hidden');
     } else if(tab === 'friends'){
@@ -1027,6 +1041,24 @@ var _CAMILA_AVATARS = {
     } else if(tab === 'feed'){
       feed.classList.remove('sp-hidden');
       if(!_reelLoaded) _loadReelFeed();
+      /* Entrar em fullscreen */
+      requestAnimationFrame(function(){
+        feed.classList.add('sp-feed-fullscreen');
+        document.body.style.overflow = 'hidden';
+        /* Reajustar transform para novo tamanho */
+        if(window._spGoToSlide) window._spGoToSlide(_reelIdx, false);
+      });
+    }
+  };
+
+  window.spExitFeedFull = function(goTab){
+    var feed = document.getElementById('sp-feed-wrap');
+    if(feed) feed.classList.remove('sp-feed-fullscreen');
+    document.body.style.overflow = '';
+    if(goTab === 'chat'){
+      if(window.spOpenChatList) spOpenChatList();
+    } else {
+      spSwitchTab(goTab || 'mine');
     }
   };
 
