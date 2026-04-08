@@ -22,8 +22,10 @@ COPY . /app/
 # Criar diretórios persistentes
 RUN mkdir -p /app/staticfiles
 
-# Rodar collectstatic sem perguntas
-RUN python manage.py collectstatic --noinput
+# Entrypoint: migrate + collectstatic antes de iniciar
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+ENTRYPOINT ["/app/entrypoint.sh"]
 
 # Comando final: gunicorn em modo produção
 CMD ["gunicorn", "nossotrello.wsgi:application", \

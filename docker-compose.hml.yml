@@ -2,7 +2,8 @@ services:
   web:
     build: .
     restart: always
-    command: sh -lc "mkdir -p /app/staticfiles && python manage.py collectstatic --noinput && gunicorn nossotrello.wsgi:application -b 0.0.0.0:8000 --workers 3"
+    # entrypoint.sh cuida de: fix_migrations → migrate → collectstatic
+    # command padrão vem do Dockerfile (gunicorn)
     volumes:
       - .:/app
       - ./data/nossotrello_hml:/app/db

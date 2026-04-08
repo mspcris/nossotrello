@@ -2,15 +2,16 @@
 Management command que corrige o histórico de migrations no banco.
 
 Problema raiz:
-  O .gitignore excluía */migrations/*.py, fazendo com que `makemigrations`
-  rodado no Docker criasse arquivos que nunca iam para o git. Na próxima
-  rebuild, esses arquivos sumiam mas os registros em django_migrations
-  permaneciam, quebrando o grafo.
+  Migrations foram aplicadas fora do Docker (pelo web app) mas o
+  django_migrations não reflete isso. Quando o container reinicia,
+  `migrate` tenta criar tabelas/colunas que já existem → erro.
 
 O que este comando faz:
   1. Remove registros fantasma (DB tem, mas arquivo não existe)
-  2. Fake-aplica migrations que existem no disco mas não no DB
-     (quando todas as anteriores já estão aplicadas)
+  2. Para migrations faltantes (disco mas não DB):
+     a) Introspecciona o banco e verifica se as operações já estão aplicadas
+     b) Se TODAS as operações já existem no schema → fake-aplica
+     c) Se há operações pendentes reais → deixa para `migrate`
   3. Reporta o resultado
 
 Uso:
@@ -22,7 +23,140 @@ from importlib import import_module
 
 from django.apps import apps
 from django.core.management.base import BaseCommand
-from django.db import connection
+from django.db import connection, migrations as mig_module
+
+
+def _get_existing_tables():
+    """Retorna set de tabelas existentes no banco."""
+    with connection.cursor() as cursor:
+        return set(connection.introspection.table_names(cursor))
+
+
+def _get_existing_columns(table_name):
+    """Retorna set de colunas existentes em uma tabela."""
+    try:
+        with connection.cursor() as cursor:
+            return {
+                col.name
+                for col in connection.introspection.get_table_description(cursor, table_name)
+            }
+    except Exception:
+        return set()
+
+
+def _get_existing_indexes(table_name):
+    """Retorna set de nomes de colunas que têm índice."""
+    try:
+        with connection.cursor() as cursor:
+            constraints = connection.introspection.get_constraints(cursor, table_name)
+            indexed_columns = set()
+            for _name, info in constraints.items():
+                if info.get("index") or info.get("unique"):
+                    for col in info.get("columns", []):
+                        indexed_columns.add(col)
+            return indexed_columns
+    except Exception:
+        return set()
+
+
+def _migration_already_applied(app_label, migration_module):
+    """
+    Verifica se TODAS as operações de uma migration já estão refletidas
+    no schema do banco. Se sim, é seguro fake-aplicar.
+    """
+    ops = getattr(migration_module.Migration, "operations", [])
+    if not ops:
+        return True  # merge ou no-op
+
+    existing_tables = _get_existing_tables()
+
+    for op in ops:
+        # CreateModel → tabela já existe?
+        if isinstance(op, mig_module.CreateModel):
+            table = f"{app_label}_{op.name.lower()}"
+            if table not in existing_tables:
+                return False
+
+        # AddField → coluna já existe?
+        elif isinstance(op, mig_module.AddField):
+            table = f"{app_label}_{op.model_name.lower()}"
+            if table not in existing_tables:
+                return False
+            cols = _get_existing_columns(table)
+            # Django pode criar coluna com _id suffix para ForeignKeys
+            col_name = op.name
+            if col_name not in cols and f"{col_name}_id" not in cols:
+                return False
+
+        # RemoveField → coluna já não existe? (remoção já foi feita)
+        elif isinstance(op, mig_module.RemoveField):
+            table = f"{app_label}_{op.model_name.lower()}"
+            if table in existing_tables:
+                cols = _get_existing_columns(table)
+                if op.name in cols or f"{op.name}_id" in cols:
+                    return False  # coluna ainda existe, migration não foi aplicada
+
+        # RenameField → nova coluna existe?
+        elif isinstance(op, mig_module.RenameField):
+            table = f"{app_label}_{op.model_name.lower()}"
+            if table not in existing_tables:
+                return False
+            cols = _get_existing_columns(table)
+            if op.new_name not in cols and f"{op.new_name}_id" not in cols:
+                return False
+
+        # AlterField → coluna existe (não verificamos tipo, só existência)
+        elif isinstance(op, mig_module.AlterField):
+            table = f"{app_label}_{op.model_name.lower()}"
+            if table not in existing_tables:
+                return False
+            cols = _get_existing_columns(table)
+            if op.name not in cols and f"{op.name}_id" not in cols:
+                return False
+
+        # AddIndex → aceitar como já aplicado se a tabela existe
+        elif isinstance(op, mig_module.AddIndex):
+            table = f"{app_label}_{op.model_name.lower()}"
+            if table not in existing_tables:
+                return False
+
+        # RemoveIndex → aceitar como já aplicado
+        elif isinstance(op, mig_module.RemoveIndex):
+            pass
+
+        # AlterModelOptions, AlterModelTable, etc → schema-safe
+        elif isinstance(op, (mig_module.AlterModelOptions,
+                            mig_module.AlterModelTable,
+                            mig_module.AlterUniqueTogether,
+                            mig_module.AlterIndexTogether)):
+            pass
+
+        # RenameModel → tabela nova existe?
+        elif isinstance(op, mig_module.RenameModel):
+            new_table = f"{app_label}_{op.new_name.lower()}"
+            if new_table not in existing_tables:
+                return False
+
+        # DeleteModel → tabela já não existe?
+        elif isinstance(op, mig_module.DeleteModel):
+            table = f"{app_label}_{op.name.lower()}"
+            if table in existing_tables:
+                return False  # tabela ainda existe
+
+        # RunPython, RunSQL → não conseguimos verificar, assumir aplicado
+        # se restante já bate
+        elif isinstance(op, (mig_module.RunPython, mig_module.RunSQL)):
+            pass
+
+        # SeparateDatabaseAndState → verificar state_operations
+        elif isinstance(op, mig_module.SeparateDatabaseAndState):
+            pass
+
+        # Tipo desconhecido → conservador, não fake
+        else:
+            return False
+
+    return True
 
 
 class Command(BaseCommand):
@@ -49,8 +183,8 @@ class Command(BaseCommand):
 
         # 2) Migrations no disco
         app_config = apps.get_app_config(app_label)
-        mod = import_module(f"{app_config.name}.migrations")
-        migrations_dir = os.path.dirname(mod.__file__)
+        mig_mod = import_module(f"{app_config.name}.migrations")
+        migrations_dir = os.path.dirname(mig_mod.__file__)
         disk_names = set()
         for fname in os.listdir(migrations_dir):
             if fname.endswith(".py") and fname != "__init__.py":
@@ -76,70 +210,74 @@ class Command(BaseCommand):
                 self.stdout.write(f"    - {name}")
             self.stdout.write("")
 
-        # Separar faltantes: merges (safe to fake) vs com operações (precisa migrate real)
-        merge_missing = set()
+        # Separar faltantes: já aplicadas no schema vs pendentes reais
+        safe_to_fake = set()
         real_missing = set()
         for name in missing:
             try:
                 mod = import_module(f"{app_config.name}.migrations.{name}")
-                ops = getattr(mod.Migration, "operations", [])
-                if not ops:
-                    merge_missing.add(name)
+                if _migration_already_applied(app_label, mod):
+                    safe_to_fake.add(name)
                 else:
                     real_missing.add(name)
-            except Exception:
+            except Exception as e:
+                self.stdout.write(self.style.ERROR(f"    Erro ao analisar {name}: {e}"))
                 real_missing.add(name)
 
-        if merge_missing:
-            self.stdout.write(self.style.NOTICE("  FALTANTES - merges/no-ops (serão fake-aplicadas):"))
-            for name in sorted(merge_missing):
-                self.stdout.write(f"    + {name}")
+        if safe_to_fake:
+            self.stdout.write(self.style.NOTICE(
+                "  JÁ APLICADAS no schema (serão registradas no histórico):"
+            ))
+            for name in sorted(safe_to_fake):
+                self.stdout.write(f"    ✓ {name}")
             self.stdout.write("")
 
         if real_missing:
             self.stdout.write(self.style.WARNING(
-                "  FALTANTES - com operações (NÃO serão fake-aplicadas, rode migrate):"
+                "  PENDENTES REAIS (precisam de migrate normal):"
             ))
             for name in sorted(real_missing):
                 self.stdout.write(f"    ! {name}")
             self.stdout.write("")
 
-        if not ghosts and not merge_missing and not real_missing:
-            self.stdout.write(self.style.SUCCESS("  Tudo ok! Nenhuma correção necessária."))
+        if not ghosts and not safe_to_fake and not real_missing:
+            self.stdout.write(self.style.SUCCESS("  ✓ Tudo ok! Nenhuma correção necessária."))
             return
 
         if not apply:
             self.stdout.write(
                 self.style.WARNING(
-                    "  Dry-run. Rode com --apply para aplicar as correções."
+                    "  Dry-run. Rode com --apply para aplicar."
                 )
             )
             return
 
         # Aplicar
+        from django.utils import timezone
+
         with connection.cursor() as cursor:
             for name in sorted(ghosts):
                 cursor.execute(
                     "DELETE FROM django_migrations WHERE app = %s AND name = %s",
                     [app_label, name],
                 )
-                self.stdout.write(self.style.SUCCESS(f"  REMOVIDO: {name}"))
+                self.stdout.write(self.style.SUCCESS(f"  REMOVIDO fantasma: {name}"))
 
-            for name in sorted(merge_missing):
+            now = timezone.now().isoformat()
+            for name in sorted(safe_to_fake):
                 cursor.execute(
                     "INSERT INTO django_migrations (app, name, applied) "
-                    "VALUES (%s, %s, NOW())",
-                    [app_label, name],
+                    "VALUES (%s, %s, %s)",
+                    [app_label, name, now],
                 )
-                self.stdout.write(self.style.SUCCESS(f"  FAKE-APLICADO: {name}"))
-
-        if real_missing:
-            self.stdout.write("")
-            self.stdout.write(self.style.WARNING(
-                "  ATENÇÃO: Existem migrations com operações reais pendentes."
-            ))
-            self.stdout.write("  Rode: python manage.py migrate")
+                self.stdout.write(self.style.SUCCESS(f"  REGISTRADO: {name}"))
 
         self.stdout.write("")
-        self.stdout.write(self.style.SUCCESS("  Correções aplicadas com sucesso!"))
-        self.stdout.write("  Agora rode: python manage.py migrate")
+        if real_missing:
+            self.stdout.write(self.style.WARNING(
+                "  Agora rode: python manage.py migrate"
+            ))
+        else:
+            self.stdout.write(self.style.SUCCESS(
+                "  ✓ Histórico sincronizado! migrate deve funcionar sem erros."
+            ))
