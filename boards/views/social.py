@@ -3107,14 +3107,15 @@ def social_health_analyze(request):
     user_name = profile.display_name or user.email.split("@")[0]
 
     system_prompt = (
-        "Você é a Nutri.AI, assistente de saúde e bem-estar da rede social interna da CAMIM.\n"
-        "Seu tom é AMIGÁVEL, MOTIVADOR e DESCONTRAÍDO — como uma nutricionista amiga do trabalho.\n"
+        "Você é um assistente de saúde e bem-estar da rede social interna da CAMIM.\n"
+        "Seu tom é AMIGÁVEL, MOTIVADOR e DESCONTRAÍDO — como um amigo que entende de saúde.\n"
         "Use emojis com moderação (1-2 por mensagem).\n"
-        "Respostas CURTAS e DIRETAS (máximo 4-5 frases).\n\n"
+        "Respostas CURTAS e DIRETAS (máximo 4-5 frases).\n"
+        "NUNCA se apresente como nutricionista, médico ou profissional de saúde.\n\n"
         "REGRAS:\n"
-        "1. Analise os dados alimentares do usuário e dê uma avaliação geral.\n"
-        "2. Seja POSITIVA primeiro (elogie o que está bom), depois sugira melhorias.\n"
-        "3. NUNCA diga que é uma IA ou que não pode dar diagnósticos médicos.\n"
+        "1. Analise os dados alimentares do usuário e dê dicas gerais de bem-estar.\n"
+        "2. Seja POSITIVO primeiro (elogie o que está bom), depois sugira melhorias.\n"
+        "3. Fale sobre alimentação, exercícios, hidratação, sono e bem-estar geral.\n"
         "4. Pergunte o que o usuário vai comer hoje para continuar a conversa.\n"
         "5. Se não houver dados, pergunte sobre a alimentação de hoje de forma simpática.\n"
         f"6. O nome do usuário é {user_name}.\n\n"
@@ -3131,9 +3132,9 @@ def social_health_analyze(request):
 
     if not response or response.startswith("Erro"):
         response = (
-            f"Olá, {user_name}! Sou a Nutri.AI, sua nutricionista virtual aqui na CAMIM. "
+            f"Olá, {user_name}! Vamos falar sobre sua saúde e bem-estar? "
             "Me conta: o que você vai comer hoje no almoço? "
-            "Posso te dar dicas para uma alimentação mais saudável!"
+            "Posso te dar dicas sobre alimentação, exercícios e muito mais!"
         )
 
     return JsonResponse({"response": response, "user_name": user_name})
@@ -3176,13 +3177,14 @@ def social_health_chat(request):
             food_ctx += f"- {dt.strftime('%d/%m')}: {txt}\n"
 
     system_prompt = (
-        "Você é a Nutri.AI, assistente de saúde e bem-estar da rede social interna da CAMIM.\n"
+        "Você é um assistente de saúde e bem-estar da rede social interna da CAMIM.\n"
         "Seu tom é AMIGÁVEL, MOTIVADOR e DESCONTRAÍDO.\n"
-        "Use emojis com moderação. Respostas CURTAS (máximo 4-5 frases).\n\n"
+        "Use emojis com moderação. Respostas CURTAS (máximo 4-5 frases).\n"
+        "NUNCA se apresente como nutricionista, médico ou profissional de saúde.\n\n"
         "REGRAS:\n"
-        "1. Responda sobre alimentação, saúde, hidratação, exercícios, bem-estar.\n"
+        "1. Responda sobre alimentação, saúde, hidratação, exercícios, sono e bem-estar.\n"
         "2. Se o usuário diz o que vai comer, avalie e dê dicas práticas.\n"
-        "3. Seja POSITIVA e MOTIVADORA. Nunca julgue negativamente.\n"
+        "3. Seja POSITIVO e MOTIVADOR. Nunca julgue negativamente.\n"
         "4. Se a pergunta não for sobre saúde, redirecione gentilmente.\n"
         f"5. O nome do usuário é {user_name}.\n"
         f"{food_ctx}"
