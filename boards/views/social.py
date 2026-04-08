@@ -807,6 +807,7 @@ def social_friends_feed(request):
             "total_reactions": len(p_reactions),
             "my_reaction": my_reaction,
             "comment_count": comments_by_post.get(p.id, 0),
+            "text_style": display_post.text_style,
             "shared_from": shared_info,
             "friendship": friendship_data,
         })

@@ -1064,6 +1064,14 @@
   flex:1; font-size:1.4rem; padding:40px 24px;
   background:none; text-align:center;
 }
+/* Texto com estilo (bg/cor): aplicar e manter centralizado */
+#sp-feed-wrap.sp-feed-fullscreen .sp-reel-slide-textonly .sp-reel-text-styled{
+  border-radius:0; font-weight:700; line-height:1.4;
+}
+/* Modo normal (não fullscreen): texto estilizado no reel */
+.sp-reel-text-styled{
+  font-weight:700; line-height:1.4;
+}
 /* Animação fullscreen */
 @keyframes sp-feed-enter{
   from{ opacity:0; }

@@ -1148,7 +1148,11 @@ var _CAMILA_AVATARS = {
         html += '<img src="'+p.gif_url+'" alt="GIF" loading="lazy" style="width:100%;border-radius:12px">';
       }
       if(p.text){
-        html += '<div class="sp-reel-text">'+_spMentionify(_escHtml(p.text))+'</div>';
+        if(p.text_style && p.text_style.bg && _isTextOnly){
+          html += '<div class="sp-reel-text sp-reel-text-styled" style="background:'+p.text_style.bg+';color:'+(p.text_style.color||'#fff')+'">'+_spMentionify(_escHtml(p.text))+'</div>';
+        } else {
+          html += '<div class="sp-reel-text">'+_spMentionify(_escHtml(p.text))+'</div>';
+        }
       }
 
       /* Actions overlay */
