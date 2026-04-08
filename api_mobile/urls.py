@@ -53,4 +53,11 @@ urlpatterns = [
 
     # ── Search ───────────────────────────────────────────────────
     path("search/", views.api_search, name="search"),
+
+    # ── Saúde e Bem Estar ────────────────────────────────────────
+    path("health/analyze/", views.api_health_analyze, name="health_analyze"),
+    path("health/chat/", views.api_health_chat, name="health_chat"),
+
+    # ── Camila News ──────────────────────────────────────────────
+    path("camila/news/", views.api_camila_news, name="camila_news"),
 ]

@@ -27,7 +27,7 @@ from ..models import (
     DailyCheckIn, Card, CardFollow, UserProfile,
     CamilaKnowledge, CamilaConfig, SocialFriendship, SocialCardDismiss, CamilaPOP,
     ChatConversation, ChatMessage, ChatSticker, SocialPostView,
-    HealthChatMessage,
+    HealthChatMessage, CamilaNews,
 )
 
 User = get_user_model()
@@ -1538,9 +1538,27 @@ def social_news_nudge(request):
                     headlines.append({"title": title[:120], "url": link})
             _news_cache["ts"] = now
             _news_cache["headlines"] = headlines
+            # Persiste notícias novas no banco
+            for h in headlines:
+                if not CamilaNews.objects.filter(url=h["url"]).exists():
+                    CamilaNews.objects.create(title=h["title"], url=h["url"])
         except Exception:
             pass  # retorna cache anterior se houver falha
     return JsonResponse({"headlines": _news_cache["headlines"]})
+
+
+@login_required
+def camila_news_list(request):
+    """Retorna todas as notícias salvas pela Camila, mais recentes primeiro."""
+    qs = CamilaNews.objects.order_by("-fetched_at").values("title", "url", "fetched_at")[:200]
+    items = []
+    for n in qs:
+        items.append({
+            "title": n["title"],
+            "url": n["url"],
+            "date": n["fetched_at"].strftime("%d/%m/%Y %H:%M"),
+        })
+    return JsonResponse({"news": items})
 
 
 # ---------------------------------------------------------------

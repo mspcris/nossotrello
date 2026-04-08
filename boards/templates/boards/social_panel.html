@@ -590,6 +590,36 @@
           <span class="sp-mood-emoji">🤒</span>
           <span class="sp-mood-label">Indisposto</span>
         </label>
+        <label class="sp-mood-card {% if checkin.mood == 'sad' %}active{% endif %}">
+          <input type="radio" name="mood" value="sad" {% if checkin.mood == "sad" %}checked{% endif %}>
+          <span class="sp-mood-emoji">😢</span>
+          <span class="sp-mood-label">Triste</span>
+        </label>
+        <label class="sp-mood-card {% if checkin.mood == 'down' %}active{% endif %}">
+          <input type="radio" name="mood" value="down" {% if checkin.mood == "down" %}checked{% endif %}>
+          <span class="sp-mood-emoji">😞</span>
+          <span class="sp-mood-label">Desanimado</span>
+        </label>
+        <label class="sp-mood-card {% if checkin.mood == 'anxious' %}active{% endif %}">
+          <input type="radio" name="mood" value="anxious" {% if checkin.mood == "anxious" %}checked{% endif %}>
+          <span class="sp-mood-emoji">😰</span>
+          <span class="sp-mood-label">Ansioso</span>
+        </label>
+        <label class="sp-mood-card {% if checkin.mood == 'angry' %}active{% endif %}">
+          <input type="radio" name="mood" value="angry" {% if checkin.mood == "angry" %}checked{% endif %}>
+          <span class="sp-mood-emoji">😡</span>
+          <span class="sp-mood-label">Com raiva</span>
+        </label>
+        <label class="sp-mood-card {% if checkin.mood == 'inlove' %}active{% endif %}">
+          <input type="radio" name="mood" value="inlove" {% if checkin.mood == "inlove" %}checked{% endif %}>
+          <span class="sp-mood-emoji">😍</span>
+          <span class="sp-mood-label">Apaixonado</span>
+        </label>
+        <label class="sp-mood-card {% if checkin.mood == 'grateful' %}active{% endif %}">
+          <input type="radio" name="mood" value="grateful" {% if checkin.mood == "grateful" %}checked{% endif %}>
+          <span class="sp-mood-emoji">🙏</span>
+          <span class="sp-mood-label">Grato</span>
+        </label>
       </div>
 
       <input type="text" name="mood_note" class="sp-input"
@@ -905,15 +935,29 @@
         </a>
         <button type="button" class="sp-camila-close" onclick="spCloseCamila()">✕</button>
       </div>
-      <div id="sp-camila-messages" class="sp-camila-messages">
-        <div class="sp-chat-msg sp-chat-bot">Oi! Sou a Camila ✨ A IA interna da CAMIM. Posso ajudar com processos, regras e dúvidas operacionais. Se precisar de um atendente humano, toque no
-          <a href="https://wa.me/552124559600?text=Ol%C3%A1,%20gostaria%20de%20mais%20informa%C3%A7%C3%B5es" target="_blank" rel="noopener" style="color:#25d366;font-weight:600;">WhatsApp</a> acima.</div>
+      <!-- Tabs: Chat / Notícias -->
+      <div class="sp-camila-tabs">
+        <button type="button" class="sp-camila-tab sp-camila-tab-active" id="sp-camila-tab-chat" onclick="spCamilaTab('chat')">💬 Chat</button>
+        <button type="button" class="sp-camila-tab" id="sp-camila-tab-news" onclick="spCamilaTab('news')">📰 Notícias</button>
       </div>
-      <div class="sp-chat-input-row">
-        <input type="text" id="sp-camila-input" class="sp-chat-input"
-               placeholder="Fale com a Camila..." maxlength="1000"
-               onkeydown="if(event.key==='Enter')spSendCamila()">
-        <button type="button" class="sp-chat-send sp-camila-send" onclick="spSendCamila()">➤</button>
+      <!-- Chat view -->
+      <div id="sp-camila-chat-view">
+        <div id="sp-camila-messages" class="sp-camila-messages">
+          <div class="sp-chat-msg sp-chat-bot">Oi! Sou a Camila ✨ A IA interna da CAMIM. Posso ajudar com processos, regras e dúvidas operacionais. Se precisar de um atendente humano, toque no
+            <a href="https://wa.me/552124559600?text=Ol%C3%A1,%20gostaria%20de%20mais%20informa%C3%A7%C3%B5es" target="_blank" rel="noopener" style="color:#25d366;font-weight:600;">WhatsApp</a> acima.</div>
+        </div>
+        <div class="sp-chat-input-row">
+          <input type="text" id="sp-camila-input" class="sp-chat-input"
+                 placeholder="Fale com a Camila..." maxlength="1000"
+                 onkeydown="if(event.key==='Enter')spSendCamila()">
+          <button type="button" class="sp-chat-send sp-camila-send" onclick="spSendCamila()">➤</button>
+        </div>
+      </div>
+      <!-- Notícias view -->
+      <div id="sp-camila-news-view" class="sp-hidden">
+        <div id="sp-camila-news-list" class="sp-camila-news-list">
+          <div style="text-align:center;padding:24px;color:#9ca3af;">Carregando notícias...</div>
+        </div>
       </div>
     </div>
   </div>
@@ -2676,10 +2720,53 @@ document.addEventListener('click', function(e){
   };
 
   /* ═══ CAMILA CHAT ═══ */
+  var _camilaNewsLoaded = false;
+  window.spCamilaTab = function(tab){
+    var chatView = document.getElementById('sp-camila-chat-view');
+    var newsView = document.getElementById('sp-camila-news-view');
+    var tabChat  = document.getElementById('sp-camila-tab-chat');
+    var tabNews  = document.getElementById('sp-camila-tab-news');
+    if(tab === 'news'){
+      if(chatView) chatView.classList.add('sp-hidden');
+      if(newsView) newsView.classList.remove('sp-hidden');
+      if(tabChat) tabChat.classList.remove('sp-camila-tab-active');
+      if(tabNews) tabNews.classList.add('sp-camila-tab-active');
+      if(!_camilaNewsLoaded) _loadCamilaNews();
+    } else {
+      if(chatView) chatView.classList.remove('sp-hidden');
+      if(newsView) newsView.classList.add('sp-hidden');
+      if(tabChat) tabChat.classList.add('sp-camila-tab-active');
+      if(tabNews) tabNews.classList.remove('sp-camila-tab-active');
+    }
+  };
+  async function _loadCamilaNews(){
+    var list = document.getElementById('sp-camila-news-list');
+    if(!list) return;
+    try {
+      var r = await fetch('{% url "boards:camila_news_list" %}');
+      var d = await r.json();
+      if(!d.news || !d.news.length){
+        list.innerHTML = '<div style="text-align:center;padding:24px;color:#9ca3af;">Nenhuma notícia salva ainda.</div>';
+        return;
+      }
+      var html = '';
+      d.news.forEach(function(n){
+        html += '<a href="'+n.url.replace(/"/g,'&quot;')+'" target="_blank" rel="noopener" class="sp-camila-news-item">'
+              + '<span class="sp-camila-news-title">'+n.title.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</span>'
+              + '<span class="sp-camila-news-date">'+n.date+'</span>'
+              + '</a>';
+      });
+      list.innerHTML = html;
+      _camilaNewsLoaded = true;
+    } catch(e){
+      list.innerHTML = '<div style="text-align:center;padding:24px;color:#ef4444;">Erro ao carregar notícias.</div>';
+    }
+  }
   window.spOpenCamila = function(){
     var o = document.getElementById('sp-camila-overlay');
     if(o) o.classList.remove('sp-hidden');
     document.body.style.overflow = 'hidden';
+    spCamilaTab('chat');
     setTimeout(function(){
       var inp = document.getElementById('sp-camila-input');
       if(inp) inp.focus();

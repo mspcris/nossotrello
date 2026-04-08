@@ -1790,6 +1790,66 @@ video.sp-post-media {
 .sp-camila-send:hover {
   background: #6d28d9 !important;
 }
+/* ═══ Camila Tabs (Chat / Notícias) ═══ */
+.sp-camila-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 10px;
+  border-bottom: 2px solid #e5e7eb;
+}
+.sp-camila-tab {
+  flex: 1;
+  background: none;
+  border: none;
+  padding: 8px 4px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #9ca3af;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.sp-camila-tab-active {
+  color: #7c3aed;
+  border-bottom-color: #7c3aed;
+}
+/* ═══ Camila News List ═══ */
+.sp-camila-news-list {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 55vh;
+  min-height: 200px;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sp-camila-news-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  text-decoration: none;
+  color: inherit;
+  border-radius: 10px;
+  transition: background 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.sp-camila-news-item:active {
+  background: #f3e8ff;
+}
+.sp-camila-news-title {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #1f2937;
+  line-height: 1.3;
+}
+.sp-camila-news-date {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
 
 /* ═══════════ FAB ═══════════ */
 .sp-fab {

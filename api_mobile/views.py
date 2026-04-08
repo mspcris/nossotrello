@@ -15,6 +15,9 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
+import json as _json
+import logging
+
 from boards.models import (
     Board,
     BoardMembership,
@@ -34,6 +37,16 @@ from boards.models import (
     DailyCheckIn,
     Mention,
     NotificationBuffer,
+    HealthChatMessage,
+    CamilaNews,
+)
+
+from boards.views.social import (
+    _groq_chat,
+    _health_system_prompt,
+    _health_food_context,
+    _health_history_summary,
+    _get_or_create_profile,
 )
 
 from .serializers import (
@@ -444,7 +457,38 @@ def api_social_feed(request):
         reactions = SocialPostReaction.objects.filter(post=post).values("emoji").annotate(c=Count("id"))
         post._reactions_summary = {r["emoji"]: r["c"] for r in reactions}
 
-    return Response(SocialPostSerializer(posts, many=True, context={"request": request}).data)
+    serialized = SocialPostSerializer(posts, many=True, context={"request": request}).data
+
+    # Annotate friendship posts
+    User = get_user_model()
+    for item in serialized:
+        text = item.get("text") or ""
+        if text.startswith("__friendship__:"):
+            item["is_friendship"] = True
+            try:
+                friend_uid = int(text.split(":")[1])
+                friend_user = User.objects.select_related("profile").get(id=friend_uid)
+                friend_prof = getattr(friend_user, "profile", None)
+                # Find the post author profile
+                post_obj = next((p for p in posts if p.id == item["id"]), None)
+                post_prof = getattr(post_obj.user, "profile", None) if post_obj else None
+                item["friendship"] = {
+                    "friend_name": friend_prof.display_name if friend_prof and friend_prof.display_name else friend_user.get_full_name(),
+                    "friend_avatar": request.build_absolute_uri(friend_prof.avatar.url) if friend_prof and friend_prof.avatar else "",
+                    "friend_avatar_choice": friend_prof.avatar_choice if friend_prof else "",
+                    "friend_id": friend_uid,
+                    "user_name": post_prof.display_name if post_prof and post_prof.display_name else (post_obj.user.get_full_name() if post_obj else ""),
+                    "user_avatar": request.build_absolute_uri(post_prof.avatar.url) if post_prof and post_prof.avatar else "",
+                    "user_avatar_choice": post_prof.avatar_choice if post_prof else "",
+                }
+                item["text"] = ""  # Hide internal text
+            except Exception:
+                item["friendship"] = None
+        else:
+            item["is_friendship"] = False
+            item["friendship"] = None
+
+    return Response(serialized)
 
 
 @api_view(["POST"])
@@ -606,3 +650,101 @@ def api_search(request):
         "boards": [{"id": b.id, "name": b.name} for b in boards],
         "cards": [{"id": c.id, "title": c.title, "board_name": c.column.board.name, "column_name": c.column.name} for c in cards],
     })
+
+
+# ════════════════════════════════════════════════════════════════
+# SAÚDE E BEM ESTAR
+# ════════════════════════════════════════════════════════════════
+@api_view(["GET"])
+def api_health_analyze(request):
+    user = request.user
+    profile = _get_or_create_profile(user)
+    user_name = profile.display_name or user.email.split("@")[0]
+
+    food_context = _health_food_context(user)
+    history_summary, prev_messages = _health_history_summary(user)
+
+    if history_summary:
+        user_msg = "Retomando nossa conversa! Faça um resumo breve do que já conversamos e continue de onde paramos."
+    elif food_context:
+        user_msg = "Olá! Analise minha alimentação recente e me dê dicas."
+    else:
+        user_msg = "Olá! Quero começar a cuidar mais da minha saúde e alimentação."
+
+    prompt = _health_system_prompt(user_name, food_context, history_summary)
+    messages = [*prev_messages[-6:], {"role": "user", "content": user_msg}]
+
+    try:
+        from boards.models import CamilaConfig
+        cfg = CamilaConfig.get()
+        response = _groq_chat(messages, prompt, config=cfg)
+    except Exception as exc:
+        logging.getLogger(__name__).error("Health analyze error: %s", exc)
+        response = ""
+
+    if not response or response.startswith("Erro"):
+        response = (
+            f"Olá, {user_name}! Vamos falar sobre sua saúde e bem-estar? "
+            "Me conta: o que você vai comer hoje no almoço?"
+        )
+
+    HealthChatMessage.objects.create(user=user, role="assistant", text=response)
+
+    recent = list(HealthChatMessage.objects.filter(user=user).order_by("-created_at")[:30])
+    recent.reverse()
+    chat_history = [
+        {"role": m.role, "text": m.text, "time": m.created_at.strftime("%d/%m %H:%M")}
+        for m in recent
+    ]
+
+    return Response({"response": response, "user_name": user_name, "history": chat_history})
+
+
+@api_view(["POST"])
+def api_health_chat(request):
+    message = (request.data.get("message") or "").strip()
+    if not message:
+        return Response({"error": "Mensagem vazia."}, status=status.HTTP_400_BAD_REQUEST)
+
+    user = request.user
+    profile = _get_or_create_profile(user)
+    user_name = profile.display_name or user.email.split("@")[0]
+
+    HealthChatMessage.objects.create(user=user, role="user", text=message)
+
+    recent_db = list(HealthChatMessage.objects.filter(user=user).order_by("-created_at")[:12])
+    db_messages = [{"role": m.role, "content": m.text} for m in reversed(recent_db)]
+
+    food_context = _health_food_context(user)
+    prompt = _health_system_prompt(user_name, food_context)
+
+    try:
+        from boards.models import CamilaConfig
+        cfg = CamilaConfig.get()
+        response = _groq_chat(db_messages, prompt, config=cfg)
+    except Exception as exc:
+        logging.getLogger(__name__).error("Health chat error: %s", exc)
+        response = "Desculpe, não consegui processar. Tente novamente."
+
+    if response and not response.startswith("Erro"):
+        HealthChatMessage.objects.create(user=user, role="assistant", text=response)
+
+    return Response({"response": response})
+
+
+# ════════════════════════════════════════════════════════════════
+# CAMILA NEWS
+# ════════════════════════════════════════════════════════════════
+@api_view(["GET"])
+def api_camila_news(request):
+    """Retorna todas as notícias salvas pela Camila."""
+    qs = CamilaNews.objects.order_by("-fetched_at").values("title", "url", "fetched_at")[:200]
+    items = [
+        {
+            "title": n["title"],
+            "url": n["url"],
+            "date": n["fetched_at"].strftime("%d/%m/%Y %H:%M"),
+        }
+        for n in qs
+    ]
+    return Response({"news": items})

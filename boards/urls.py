@@ -169,6 +169,7 @@ from boards.views.social import (
     social_post_full,
     social_health_analyze,
     social_health_chat,
+    camila_news_list,
 )
 
 
@@ -249,6 +250,9 @@ urlpatterns = [
     # Saúde e Bem Estar
     path("social/health/analyze/", social_health_analyze, name="social_health_analyze"),
     path("social/health/chat/", social_health_chat, name="social_health_chat"),
+
+    # Camila News
+    path("social/camila/news/", camila_news_list, name="camila_news_list"),
 
     # Camila.AI Admin (staff only)
     path("camila/", camila_admin, name="camila_admin"),

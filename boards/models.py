@@ -1036,6 +1036,12 @@ class DailyCheckIn(models.Model):
         ("tired", "Cansado"),
         ("stressed", "Estressado"),
         ("sick", "Indisposto"),
+        ("sad", "Triste"),
+        ("down", "Desanimado"),
+        ("anxious", "Ansioso"),
+        ("angry", "Com raiva"),
+        ("inlove", "Apaixonado"),
+        ("grateful", "Grato"),
     ]
     MOOD_EMOJIS = {
         "excited": "\U0001f929",   # 🤩
@@ -1045,6 +1051,12 @@ class DailyCheckIn(models.Model):
         "tired": "\U0001f614",     # 😔
         "stressed": "\U0001f624",  # 😤
         "sick": "\U0001f912",      # 🤒
+        "sad": "\U0001f622",       # 😢
+        "down": "\U0001f61e",      # 😞
+        "anxious": "\U0001f630",   # 😰
+        "angry": "\U0001f621",     # 😡
+        "inlove": "\U0001f60d",    # 😍
+        "grateful": "\U0001f64f",  # 🙏
     }
 
     user = models.ForeignKey(
@@ -1420,6 +1432,24 @@ class HealthChatMessage(models.Model):
 
     def __str__(self):
         return f"{self.user} [{self.role}] {self.created_at:%d/%m %H:%M}"
+
+
+# ============================================================
+# CAMILA NEWS (notícias persistentes)
+# ============================================================
+class CamilaNews(models.Model):
+    title = models.CharField(max_length=250)
+    url = models.URLField(max_length=500)
+    fetched_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-fetched_at"]
+        indexes = [
+            models.Index(fields=["-fetched_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.title[:60]} ({self.fetched_at:%d/%m %H:%M})"
 
 
 # END boards/models.py
