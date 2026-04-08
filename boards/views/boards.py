@@ -45,6 +45,7 @@ from ..models import (
     BoardAccessRequest,
     CardSeen,
     CardFollow,
+    SocialPost,
 )
 
 from .helpers import (
@@ -1145,11 +1146,30 @@ def board_share(request, board_id):
             membership.save(update_fields=["role", "invited_at"])
 
     # ==========================================================
+    # POST NO SOCIAL (atividade de convite)
+    # ==========================================================
+    if created_membership:
+        try:
+            actor_name = _actor_label(request.user)
+            invited_name = _actor_label(user) if not created_user else user.email
+            board_url = request.build_absolute_uri(
+                reverse("boards:board_detail", args=[board.id])
+            )
+            post_text = (
+                f"📋 {actor_name} convidou {invited_name} "
+                f"para o quadro: {board.name}\n"
+                f"🔗 {board_url}"
+            )
+            SocialPost.objects.create(user=request.user, text=post_text)
+        except Exception:
+            pass  # não bloquear o fluxo se o post falhar
+
+    # ==========================================================
     # EMAIL (mantido como está no seu arquivo atual)
     # ==========================================================
     email_failed = False
     email_error_msg = ""
-    
+
     should_email = created_membership or created_user or (membership.accepted_at is None)
     if not should_email:
         return render_modal(status=200, msg_success=f"Acesso atualizado para {user.email}.")
