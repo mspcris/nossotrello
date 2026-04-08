@@ -11,6 +11,7 @@ O que este comando faz:
   2. Para migrations faltantes (disco mas não DB):
      a) Introspecciona o banco e verifica se as operações já estão aplicadas
      b) Se TODAS as operações já existem no schema → fake-aplica
+        (respeitando ordem topológica de dependências)
      c) Se há operações pendentes reais → deixa para `migrate`
   3. Reporta o resultado
 
@@ -44,21 +45,6 @@ def _get_existing_columns(table_name):
         return set()
 
 
-def _get_existing_indexes(table_name):
-    """Retorna set de nomes de colunas que têm índice."""
-    try:
-        with connection.cursor() as cursor:
-            constraints = connection.introspection.get_constraints(cursor, table_name)
-            indexed_columns = set()
-            for _name, info in constraints.items():
-                if info.get("index") or info.get("unique"):
-                    for col in info.get("columns", []):
-                        indexed_columns.add(col)
-            return indexed_columns
-    except Exception:
-        return set()
-
-
 def _migration_already_applied(app_label, migration_module):
     """
     Verifica se TODAS as operações de uma migration já estão refletidas
@@ -83,18 +69,17 @@ def _migration_already_applied(app_label, migration_module):
             if table not in existing_tables:
                 return False
             cols = _get_existing_columns(table)
-            # Django pode criar coluna com _id suffix para ForeignKeys
             col_name = op.name
             if col_name not in cols and f"{col_name}_id" not in cols:
                 return False
 
-        # RemoveField → coluna já não existe? (remoção já foi feita)
+        # RemoveField → coluna já não existe?
         elif isinstance(op, mig_module.RemoveField):
             table = f"{app_label}_{op.model_name.lower()}"
             if table in existing_tables:
                 cols = _get_existing_columns(table)
                 if op.name in cols or f"{op.name}_id" in cols:
-                    return False  # coluna ainda existe, migration não foi aplicada
+                    return False
 
         # RenameField → nova coluna existe?
         elif isinstance(op, mig_module.RenameField):
@@ -105,7 +90,7 @@ def _migration_already_applied(app_label, migration_module):
             if op.new_name not in cols and f"{op.new_name}_id" not in cols:
                 return False
 
-        # AlterField → coluna existe (não verificamos tipo, só existência)
+        # AlterField → coluna existe
         elif isinstance(op, mig_module.AlterField):
             table = f"{app_label}_{op.model_name.lower()}"
             if table not in existing_tables:
@@ -114,13 +99,18 @@ def _migration_already_applied(app_label, migration_module):
             if op.name not in cols and f"{op.name}_id" not in cols:
                 return False
 
-        # AddIndex → aceitar como já aplicado se a tabela existe
+        # AddIndex / RenameIndex → tabela existe é suficiente
         elif isinstance(op, mig_module.AddIndex):
             table = f"{app_label}_{op.model_name.lower()}"
             if table not in existing_tables:
                 return False
 
-        # RemoveIndex → aceitar como já aplicado
+        elif isinstance(op, mig_module.RenameIndex):
+            table = f"{app_label}_{op.model_name.lower()}"
+            if table not in existing_tables:
+                return False
+
+        # RemoveIndex → sempre safe
         elif isinstance(op, mig_module.RemoveIndex):
             pass
 
@@ -141,14 +131,13 @@ def _migration_already_applied(app_label, migration_module):
         elif isinstance(op, mig_module.DeleteModel):
             table = f"{app_label}_{op.name.lower()}"
             if table in existing_tables:
-                return False  # tabela ainda existe
+                return False
 
-        # RunPython, RunSQL → não conseguimos verificar, assumir aplicado
-        # se restante já bate
+        # RunPython, RunSQL → assumir aplicado se restante bate
         elif isinstance(op, (mig_module.RunPython, mig_module.RunSQL)):
             pass
 
-        # SeparateDatabaseAndState → verificar state_operations
+        # SeparateDatabaseAndState → safe
         elif isinstance(op, mig_module.SeparateDatabaseAndState):
             pass
 
@@ -157,6 +146,43 @@ def _migration_already_applied(app_label, migration_module):
             return False
 
     return True
+
+
+def _get_dependencies(app_label, app_config, name):
+    """Retorna nomes de migrations do mesmo app das quais esta depende."""
+    try:
+        mod = import_module(f"{app_config.name}.migrations.{name}")
+        deps = set()
+        for dep_app, dep_name in getattr(mod.Migration, "dependencies", []):
+            if dep_app == app_label:
+                deps.add(dep_name)
+        return deps
+    except Exception:
+        return set()
+
+
+def _topological_sort(names, deps_map):
+    """Ordena migrations respeitando dependências."""
+    sorted_list = []
+    visited = set()
+    visiting = set()
+
+    def visit(name):
+        if name in visited:
+            return
+        if name in visiting:
+            return  # ciclo, ignorar
+        visiting.add(name)
+        for dep in deps_map.get(name, set()):
+            if dep in names:
+                visit(dep)
+        visiting.discard(name)
+        visited.add(name)
+        sorted_list.append(name)
+
+    for name in sorted(names):
+        visit(name)
+    return sorted_list
 
 
 class Command(BaseCommand):
@@ -182,7 +208,6 @@ class Command(BaseCommand):
                 )
                 db_names = {row[0] for row in cursor.fetchall()}
         except Exception:
-            # Banco novo, django_migrations ainda não existe → migrate criará tudo
             self.stdout.write(self.style.SUCCESS(
                 "  Banco novo (sem django_migrations). Rode: python manage.py migrate"
             ))
@@ -195,11 +220,10 @@ class Command(BaseCommand):
         disk_names = set()
         for fname in os.listdir(migrations_dir):
             if fname.endswith(".py") and fname != "__init__.py":
-                disk_names.add(fname[:-3])  # remove .py
+                disk_names.add(fname[:-3])
 
-        # 3) Fantasmas: no DB mas sem arquivo
+        # 3) Fantasmas e faltantes
         ghosts = db_names - disk_names
-        # 4) Faltantes: arquivo existe mas não no DB
         missing = disk_names - db_names
 
         self.stdout.write(f"\n{'='*60}")
@@ -217,7 +241,7 @@ class Command(BaseCommand):
                 self.stdout.write(f"    - {name}")
             self.stdout.write("")
 
-        # Separar faltantes: já aplicadas no schema vs pendentes reais
+        # Classificar faltantes
         safe_to_fake = set()
         real_missing = set()
         for name in missing:
@@ -253,9 +277,7 @@ class Command(BaseCommand):
 
         if not apply:
             self.stdout.write(
-                self.style.WARNING(
-                    "  Dry-run. Rode com --apply para aplicar."
-                )
+                self.style.WARNING("  Dry-run. Rode com --apply para aplicar.")
             )
             return
 
@@ -263,6 +285,7 @@ class Command(BaseCommand):
         from django.utils import timezone
 
         with connection.cursor() as cursor:
+            # Remover fantasmas
             for name in sorted(ghosts):
                 cursor.execute(
                     "DELETE FROM django_migrations WHERE app = %s AND name = %s",
@@ -270,14 +293,35 @@ class Command(BaseCommand):
                 )
                 self.stdout.write(self.style.SUCCESS(f"  REMOVIDO fantasma: {name}"))
 
-            now = timezone.now().isoformat()
-            for name in sorted(safe_to_fake):
-                cursor.execute(
-                    "INSERT INTO django_migrations (app, name, applied) "
-                    "VALUES (%s, %s, %s)",
-                    [app_label, name, now],
-                )
-                self.stdout.write(self.style.SUCCESS(f"  REGISTRADO: {name}"))
+            # Registrar safe_to_fake em ordem topológica (dependências primeiro)
+            if safe_to_fake:
+                deps_map = {}
+                for name in safe_to_fake:
+                    deps_map[name] = _get_dependencies(app_label, app_config, name)
+
+                ordered = _topological_sort(safe_to_fake, deps_map)
+                now = timezone.now().isoformat()
+
+                for name in ordered:
+                    # Verificar que todas as dependências estão no DB
+                    deps = deps_map.get(name, set())
+                    all_deps_ok = all(
+                        d in db_names or d in safe_to_fake
+                        for d in deps
+                    )
+                    if not all_deps_ok:
+                        self.stdout.write(self.style.WARNING(
+                            f"  PULADO (deps faltantes): {name}"
+                        ))
+                        continue
+
+                    cursor.execute(
+                        "INSERT INTO django_migrations (app, name, applied) "
+                        "VALUES (%s, %s, %s)",
+                        [app_label, name, now],
+                    )
+                    db_names.add(name)  # atualiza para checagem das próximas
+                    self.stdout.write(self.style.SUCCESS(f"  REGISTRADO: {name}"))
 
         self.stdout.write("")
         if real_missing:
