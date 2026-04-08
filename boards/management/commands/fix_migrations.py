@@ -174,12 +174,19 @@ class Command(BaseCommand):
         app_label = "boards"
 
         # 1) Migrations no banco
-        with connection.cursor() as cursor:
-            cursor.execute(
-                "SELECT name FROM django_migrations WHERE app = %s ORDER BY name",
-                [app_label],
-            )
-            db_names = {row[0] for row in cursor.fetchall()}
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT name FROM django_migrations WHERE app = %s ORDER BY name",
+                    [app_label],
+                )
+                db_names = {row[0] for row in cursor.fetchall()}
+        except Exception:
+            # Banco novo, django_migrations ainda não existe → migrate criará tudo
+            self.stdout.write(self.style.SUCCESS(
+                "  Banco novo (sem django_migrations). Rode: python manage.py migrate"
+            ))
+            return
 
         # 2) Migrations no disco
         app_config = apps.get_app_config(app_label)

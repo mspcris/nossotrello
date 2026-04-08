@@ -2751,10 +2751,16 @@ document.addEventListener('click', function(e){
       }
       var html = '';
       d.news.forEach(function(n){
-        html += '<a href="'+n.url.replace(/"/g,'&quot;')+'" target="_blank" rel="noopener" class="sp-camila-news-item">'
-              + '<span class="sp-camila-news-title">'+n.title.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</span>'
-              + '<span class="sp-camila-news-date">'+n.date+'</span>'
-              + '</a>';
+        var safeUrl = n.url.replace(/"/g,'&quot;');
+        var safeTitle = n.title.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        html += '<div class="sp-camila-news-item">'
+              + '<a href="'+safeUrl+'" target="_blank" rel="noopener" class="sp-camila-news-body">'
+              +   '<span class="sp-camila-news-title">'+safeTitle+'</span>'
+              +   '<span class="sp-camila-news-date">'+n.date+'</span>'
+              + '</a>'
+              + '<button type="button" class="sp-camila-news-share" title="Publicar no feed"'
+              +   ' onclick="spPublishNews(\''+safeTitle.replace(/'/g,"\\'")+'\',\''+safeUrl.replace(/'/g,"\\'")+'\')">&#9998;</button>'
+              + '</div>';
       });
       list.innerHTML = html;
       _camilaNewsLoaded = true;
@@ -3680,6 +3686,7 @@ document.addEventListener('click', function(e){
 
         /* Preenche o nudge */
         var sug  = _pickSuggestion();
+        _currentNudgeSug = sug;
         var txt  = document.getElementById('sp-nudge-text');
         var lnk  = document.getElementById('sp-nudge-link');
         var cta  = document.getElementById('sp-nudge-cta');
@@ -3725,9 +3732,32 @@ document.addEventListener('click', function(e){
       if (_nudgeTimer) { clearTimeout(_nudgeTimer); _nudgeTimer = null; }
     };
 
-    window.spNudgeClick = function() {
-      spHideNudge();
+    /* ── Publica notícia no feed (preenche o textarea com título + link) ── */
+    window.spPublishNews = function(title, url) {
+      /* Fecha a Camila se estiver aberta */
+      if (window.spCloseCamila) spCloseCamila();
+      /* Abre o sheet de criação de post */
       if (window.spOpenSheet) spOpenSheet();
+      /* Pré-preenche o textarea */
+      var ta = document.getElementById('sp-post-textarea');
+      if (ta) {
+        ta.value = title + '\n' + url;
+        ta.focus();
+        /* Dispara input event para que auto-resize funcione */
+        ta.dispatchEvent(new Event('input', {bubbles: true}));
+      }
+    };
+
+    var _currentNudgeSug = null;
+
+    window.spNudgeClick = function() {
+      var sug = _currentNudgeSug;
+      spHideNudge();
+      if (sug && sug.url) {
+        spPublishNews(sug.text, sug.url);
+      } else {
+        if (window.spOpenSheet) spOpenSheet();
+      }
     };
 
     /* ── Polling de pílulas a cada 15 s ── */

@@ -1554,7 +1554,7 @@ def camila_news_list(request):
         items.append({
             "title": n["title"],
             "url": n["url"],
-            "date": n["fetched_at"].strftime("%d/%m/%Y %H:%M"),
+            "date": timezone.localtime(n["fetched_at"]).strftime("%d/%m/%Y %H:%M"),
         })
     return JsonResponse({"news": items})
 
