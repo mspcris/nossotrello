@@ -418,18 +418,28 @@ def api_social_feed(request):
     page = int(request.query_params.get("page", 1))
     per_page = 20
     offset = (page - 1) * per_page
+    owner_only = request.query_params.get("owner") == "true"
 
-    friends_ids = set()
-    for f in SocialFriendship.objects.filter(Q(requester=user) | Q(receiver=user), status="accepted"):
-        friends_ids.add(f.requester_id if f.receiver_id == user.id else f.receiver_id)
+    if owner_only:
+        posts = (
+            SocialPost.objects
+            .filter(user=user)
+            .select_related("user", "user__profile")
+            .annotate(_comments_count=Count("comments"))
+            .order_by("-created_at")[offset:offset + per_page]
+        )
+    else:
+        friends_ids = set()
+        for f in SocialFriendship.objects.filter(Q(requester=user) | Q(receiver=user), status="accepted"):
+            friends_ids.add(f.requester_id if f.receiver_id == user.id else f.receiver_id)
 
-    posts = (
-        SocialPost.objects
-        .filter(Q(user=user) | Q(visibility="all") | Q(user_id__in=friends_ids))
-        .select_related("user", "user__profile")
-        .annotate(_comments_count=Count("comments"))
-        .order_by("-created_at")[offset:offset + per_page]
-    )
+        posts = (
+            SocialPost.objects
+            .filter(Q(user=user) | Q(visibility="all") | Q(user_id__in=friends_ids))
+            .select_related("user", "user__profile")
+            .annotate(_comments_count=Count("comments"))
+            .order_by("-created_at")[offset:offset + per_page]
+        )
     for post in posts:
         reactions = SocialPostReaction.objects.filter(post=post).values("emoji").annotate(c=Count("id"))
         post._reactions_summary = {r["emoji"]: r["c"] for r in reactions}

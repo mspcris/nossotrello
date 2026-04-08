@@ -39,6 +39,11 @@ def _avatar_url(profile, request=None):
         if request:
             return request.build_absolute_uri(url)
         return url
+    if profile and profile.avatar_choice:
+        url = f"/static/images/avatar/{profile.avatar_choice}"
+        if request:
+            return request.build_absolute_uri(url)
+        return url
     return None
 
 
