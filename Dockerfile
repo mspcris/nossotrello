@@ -25,7 +25,7 @@ RUN mkdir -p /app/staticfiles
 # Entrypoint: migrate + collectstatic antes de iniciar
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
-ENTRYPOINT ["/app/entrypoint.sh"]
+ENTRYPOINT ["bash", "/app/entrypoint.sh"]
 
 # Comando final: gunicorn em modo produção
 CMD ["gunicorn", "nossotrello.wsgi:application", \
