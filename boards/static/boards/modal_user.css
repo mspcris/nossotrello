@@ -1043,19 +1043,19 @@
 }
 #sp-feed-wrap.sp-feed-fullscreen .sp-reel-slide{
   min-height:0; height:100%;
-  justify-content:flex-start; padding-top:52px; padding-bottom:0;
+  justify-content:center; padding-top:0; padding-bottom:0;
 }
 #sp-feed-wrap.sp-feed-fullscreen .sp-reel-slide > img,
 #sp-feed-wrap.sp-feed-fullscreen .sp-reel-slide > video{
-  flex:1 1 0; min-height:0; width:100%; object-fit:contain;
+  width:100%; max-height:100%; object-fit:contain; flex-shrink:1;
 }
+/* Texto sobre a imagem, fixo embaixo do slide */
 #sp-feed-wrap.sp-feed-fullscreen .sp-reel-text{
-  flex:0 0 auto; max-height:80px; overflow-y:auto;
-  padding:8px 16px; font-size:.85rem; line-height:1.3;
-  background:linear-gradient(to top, rgba(0,0,0,0.7), transparent);
-}
-#sp-feed-wrap.sp-feed-fullscreen .sp-reel-actions{
-  position:relative; background:rgba(0,0,0,0.8);
+  position:absolute; bottom:52px; left:0; right:0;
+  max-height:72px; overflow-y:auto;
+  padding:10px 16px 6px; font-size:.88rem; line-height:1.35;
+  background:linear-gradient(to top, rgba(0,0,0,0.85) 60%, transparent);
+  z-index:4;
 }
 /* Animação fullscreen */
 @keyframes sp-feed-enter{
