@@ -266,35 +266,7 @@
   <!-- ═══ AMIGOS (tab friends) ═══ -->
   <div id="sp-friends-reel-wrap" class="sp-friends-reel-wrap sp-hidden">
     <div class="sp-friends-section">
-    <!-- ═══ MEUS AMIGOS (amizades aceitas) ═══ -->
-    {% if real_friends %}
-    <div class="sp-friends-bar">
-      <div class="sp-section-title">💜 Meus Amigos</div>
-      <div class="sp-friends-scroll-wrap">
-        <button type="button" class="sp-scroll-arrow sp-scroll-left sp-hidden" onclick="spScrollRow(this,1)">‹</button>
-        <div class="sp-friends-row">
-          {% for friend in real_friends %}
-          {% with fp=friend.profile %}
-          <button type="button" class="sp-friend-btn" onclick="spOpenFriendSheet({{ friend.id }})"
-                  title="{{ fp.display_name|default:friend.email }}">
-            {% if fp and fp.avatar %}
-              <img src="{{ fp.avatar.url }}" alt="" class="sp-friend-av-img">
-            {% elif fp and fp.avatar_choice %}
-              <img src="{% static 'images/avatar/' %}{{ fp.avatar_choice }}" alt="" class="sp-friend-av-img">
-            {% else %}
-              <span class="sp-friend-av-fb">{{ fp.display_name|default:friend.email|first|upper }}</span>
-            {% endif %}
-            <span class="sp-friend-name">{{ fp.display_name|default:friend.email|truncatechars:12 }}</span>
-          </button>
-          {% endwith %}
-          {% endfor %}
-        </div>
-        <button type="button" class="sp-scroll-arrow sp-scroll-right" onclick="spScrollRow(this,-1)">›</button>
-      </div>
-    </div>
-    {% endif %}
-
-    <!-- ═══ SOLICITAÇÕES RECEBIDAS ═══ -->
+    <!-- ═══ SOLICITAÇÕES RECEBIDAS (no topo!) ═══ -->
     {% if pending_friend_requests %}
     <div class="sp-friends-bar" id="sp-friend-pills">
       <div class="sp-section-title">📩 Pediram sua amizade</div>
@@ -321,6 +293,34 @@
               <button type="button" class="sp-req-act-btn sp-req-act-reject" onclick="event.stopPropagation();spAnswerFriend({{ fr.requester_id }},'reject',this)">Recusar</button>
             </div>
           </div>
+          {% endwith %}
+          {% endfor %}
+        </div>
+        <button type="button" class="sp-scroll-arrow sp-scroll-right" onclick="spScrollRow(this,-1)">›</button>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- ═══ MEUS AMIGOS (amizades aceitas) ═══ -->
+    {% if real_friends %}
+    <div class="sp-friends-bar">
+      <div class="sp-section-title">💜 Meus Amigos</div>
+      <div class="sp-friends-scroll-wrap">
+        <button type="button" class="sp-scroll-arrow sp-scroll-left sp-hidden" onclick="spScrollRow(this,1)">‹</button>
+        <div class="sp-friends-row">
+          {% for friend in real_friends %}
+          {% with fp=friend.profile %}
+          <button type="button" class="sp-friend-btn" onclick="spOpenFriendSheet({{ friend.id }})"
+                  title="{{ fp.display_name|default:friend.email }}">
+            {% if fp and fp.avatar %}
+              <img src="{{ fp.avatar.url }}" alt="" class="sp-friend-av-img">
+            {% elif fp and fp.avatar_choice %}
+              <img src="{% static 'images/avatar/' %}{{ fp.avatar_choice }}" alt="" class="sp-friend-av-img">
+            {% else %}
+              <span class="sp-friend-av-fb">{{ fp.display_name|default:friend.email|first|upper }}</span>
+            {% endif %}
+            <span class="sp-friend-name">{{ fp.display_name|default:friend.email|truncatechars:12 }}</span>
+          </button>
           {% endwith %}
           {% endfor %}
         </div>
