@@ -713,24 +713,6 @@
   </div>
   {% endif %}
 
-  <!-- ═══ CHATBOT SAÚDE ═══ -->
-  <div class="sp-card">
-    <button type="button" class="sp-chat-toggle" onclick="spToggleChat()">
-      💚 Saúde &amp; Bem-Estar
-    </button>
-    <div id="sp-chat-box" class="sp-chat-box sp-hidden">
-      <div id="sp-chat-messages" class="sp-chat-messages">
-        <div class="sp-chat-msg sp-chat-bot">Oi! 👋 Pode falar sobre saúde, alimentação, bem-estar ou qualquer dúvida sobre cuidar de você. 💚</div>
-      </div>
-      <div class="sp-chat-input-row">
-        <input type="text" id="sp-camilo-input" class="sp-chat-input"
-               placeholder="Digite..." maxlength="500"
-               onkeydown="if(event.key==='Enter')spSendChat()">
-        <button type="button" class="sp-chat-send" onclick="spSendChat()">➤</button>
-      </div>
-    </div>
-  </div>
-
   <!-- ═══ OWNER FEED ═══ -->
   {% include "boards/social_feed_block.html" %}
 
