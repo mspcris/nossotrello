@@ -27,6 +27,7 @@ from ..models import (
     DailyCheckIn, Card, CardFollow, UserProfile,
     CamilaKnowledge, CamilaConfig, SocialFriendship, SocialCardDismiss, CamilaPOP,
     ChatConversation, ChatMessage, ChatSticker, SocialPostView,
+    HealthChatMessage,
 )
 
 User = get_user_model()
@@ -3049,24 +3050,44 @@ def social_mention_search(request):
 
 
 # ---------------------------------------------------------------
-# Saúde e Bem Estar — análise inicial das publicações
+# Saúde e Bem Estar — helpers
 # ---------------------------------------------------------------
-@login_required
-def social_health_analyze(request):
-    """Analisa publicações do usuário sobre alimentação e retorna
-    uma mensagem inicial da IA nutricionista."""
-    user = request.user
+def _health_system_prompt(user_name, food_context="", history_summary=""):
+    """Prompt de sistema para o assistente de saúde."""
+    parts = [
+        "Você é um assistente de saúde e bem-estar da rede social interna da CAMIM.",
+        "Seu tom é AMIGÁVEL, MOTIVADOR e DESCONTRAÍDO — como um amigo que entende de saúde.",
+        "Use emojis com moderação (1-2 por mensagem).",
+        "Respostas CURTAS e DIRETAS (máximo 4-5 frases).",
+        "NUNCA se apresente como nutricionista, médico ou profissional de saúde.",
+        "",
+        "REGRAS:",
+        "1. Fale sobre alimentação, exercícios, hidratação, sono e bem-estar geral.",
+        "2. Seja POSITIVO primeiro (elogie o que está bom), depois sugira melhorias.",
+        "3. Se o usuário diz o que vai comer, avalie e dê dicas práticas.",
+        "4. Seja MOTIVADOR. Nunca julgue negativamente.",
+        "5. Se a pergunta não for sobre saúde, redirecione gentilmente.",
+        f"6. O nome do usuário é {user_name}.",
+    ]
+    if history_summary:
+        parts.append(f"\nRESUMO DAS CONVERSAS ANTERIORES:\n{history_summary}")
+    if food_context:
+        parts.append(f"\nDADOS ALIMENTARES DO USUÁRIO:\n{food_context}")
+    return "\n".join(parts)
 
-    # Busca últimos 30 dias de check-ins com almoço
+
+def _health_food_context(user):
+    """Monta contexto alimentar a partir de check-ins e posts."""
+    from django.db.models import Q
     since = timezone.now() - timedelta(days=30)
+
     checkins = (
         DailyCheckIn.objects.filter(user=user, date__gte=since.date())
         .exclude(lunch_text="")
         .order_by("-date")
-        .values_list("lunch_text", "date")[:30]
+        .values_list("lunch_text", "date")[:20]
     )
 
-    # Busca posts com texto que mencionem comida
     food_keywords = [
         "almoço", "almoco", "janta", "jantar", "café", "cafe",
         "lanche", "comer", "comida", "refeição", "refeicao",
@@ -3078,54 +3099,80 @@ def social_health_analyze(request):
         "chocolate", "açúcar", "acucar", "fit", "dieta",
         "saudável", "saudavel", "fast food", "delivery",
     ]
-    from django.db.models import Q
     q = Q()
     for kw in food_keywords:
         q |= Q(text__icontains=kw)
     food_posts = (
         SocialPost.objects.filter(q, user=user, created_at__gte=since)
         .order_by("-created_at")
-        .values_list("text", "created_at")[:20]
+        .values_list("text", "created_at")[:15]
     )
 
-    # Monta contexto alimentar
-    food_context = ""
+    ctx = ""
     if checkins:
-        food_context += "ALMOÇOS REGISTRADOS (check-in diário):\n"
+        ctx += "ALMOÇOS REGISTRADOS:\n"
         for txt, dt in checkins:
-            food_context += f"- {dt.strftime('%d/%m')}: {txt}\n"
-
+            ctx += f"- {dt.strftime('%d/%m')}: {txt}\n"
     if food_posts:
-        food_context += "\nPUBLICAÇÕES SOBRE ALIMENTAÇÃO:\n"
+        ctx += "\nPUBLICAÇÕES SOBRE ALIMENTAÇÃO:\n"
         for txt, dt in food_posts:
-            food_context += f"- {dt.strftime('%d/%m')}: {txt[:200]}\n"
+            ctx += f"- {dt.strftime('%d/%m')}: {txt[:200]}\n"
+    return ctx
 
-    if not food_context:
-        food_context = "O usuário ainda não registrou informações sobre alimentação."
 
+def _health_history_summary(user):
+    """Carrega últimas mensagens gravadas e monta resumo para o LLM."""
+    msgs = (
+        HealthChatMessage.objects.filter(user=user)
+        .order_by("-created_at")[:40]
+    )
+    if not msgs:
+        return "", []
+
+    # Ordem cronológica para contexto
+    msgs = list(reversed(msgs))
+    summary_lines = []
+    history_for_llm = []
+    for m in msgs:
+        summary_lines.append(
+            f"[{m.created_at.strftime('%d/%m %H:%M')}] "
+            f"{'Usuário' if m.role == 'user' else 'IA'}: {m.text[:150]}"
+        )
+        history_for_llm.append({"role": m.role, "content": m.text})
+
+    return "\n".join(summary_lines[-20:]), history_for_llm[-10:]
+
+
+# ---------------------------------------------------------------
+# Saúde e Bem Estar — análise inicial (abre a aba)
+# ---------------------------------------------------------------
+@login_required
+def social_health_analyze(request):
+    """Carrega histórico, analisa alimentação e inicia conversa."""
+    user = request.user
     profile = _get_or_create_profile(user)
     user_name = profile.display_name or user.email.split("@")[0]
 
-    system_prompt = (
-        "Você é um assistente de saúde e bem-estar da rede social interna da CAMIM.\n"
-        "Seu tom é AMIGÁVEL, MOTIVADOR e DESCONTRAÍDO — como um amigo que entende de saúde.\n"
-        "Use emojis com moderação (1-2 por mensagem).\n"
-        "Respostas CURTAS e DIRETAS (máximo 4-5 frases).\n"
-        "NUNCA se apresente como nutricionista, médico ou profissional de saúde.\n\n"
-        "REGRAS:\n"
-        "1. Analise os dados alimentares do usuário e dê dicas gerais de bem-estar.\n"
-        "2. Seja POSITIVO primeiro (elogie o que está bom), depois sugira melhorias.\n"
-        "3. Fale sobre alimentação, exercícios, hidratação, sono e bem-estar geral.\n"
-        "4. Pergunte o que o usuário vai comer hoje para continuar a conversa.\n"
-        "5. Se não houver dados, pergunte sobre a alimentação de hoje de forma simpática.\n"
-        f"6. O nome do usuário é {user_name}.\n\n"
-        f"DADOS ALIMENTARES DO USUÁRIO:\n{food_context}"
-    )
+    food_context = _health_food_context(user)
+    history_summary, prev_messages = _health_history_summary(user)
 
-    messages = [{"role": "user", "content": "Olá! Analise minha alimentação recente e me dê dicas."}]
+    # Monta instrução inicial
+    if history_summary:
+        user_msg = (
+            "Retomando nossa conversa! Faça um resumo breve do que já conversamos "
+            "e continue de onde paramos. Se houver dados novos de alimentação, comente."
+        )
+    elif food_context:
+        user_msg = "Olá! Analise minha alimentação recente e me dê dicas."
+    else:
+        user_msg = "Olá! Quero começar a cuidar mais da minha saúde e alimentação."
+
+    prompt = _health_system_prompt(user_name, food_context, history_summary)
+    messages = [*prev_messages[-6:], {"role": "user", "content": user_msg}]
+
     cfg = CamilaConfig.get()
     try:
-        response = _groq_chat(messages, system_prompt, config=cfg)
+        response = _groq_chat(messages, prompt, config=cfg)
     except Exception as exc:
         logging.getLogger(__name__).error("Health analyze error: %s", exc)
         response = ""
@@ -3137,7 +3184,25 @@ def social_health_analyze(request):
             "Posso te dar dicas sobre alimentação, exercícios e muito mais!"
         )
 
-    return JsonResponse({"response": response, "user_name": user_name})
+    # Grava a mensagem inicial da IA
+    HealthChatMessage.objects.create(user=user, role="assistant", text=response)
+
+    # Retorna também últimas mensagens para exibir no chat
+    recent = (
+        HealthChatMessage.objects.filter(user=user)
+        .order_by("-created_at")[:30]
+    )
+    recent = list(reversed(recent))
+    chat_history = [
+        {"role": m.role, "text": m.text, "time": m.created_at.strftime("%d/%m %H:%M")}
+        for m in recent
+    ]
+
+    return JsonResponse({
+        "response": response,
+        "user_name": user_name,
+        "history": chat_history,
+    })
 
 
 # ---------------------------------------------------------------
@@ -3146,15 +3211,13 @@ def social_health_analyze(request):
 @login_required
 @require_POST
 def social_health_chat(request):
-    """Chat conversacional com a Nutri.AI sobre saúde e alimentação."""
+    """Chat conversacional sobre saúde — grava cada mensagem."""
     try:
         data = json.loads(request.body or "{}")
     except json.JSONDecodeError:
         return JsonResponse({"error": "JSON inválido."}, status=400)
 
     message = (data.get("message") or "").strip()
-    history = data.get("history") or []
-
     if not message:
         return JsonResponse({"error": "Mensagem vazia."}, status=400)
 
@@ -3162,36 +3225,27 @@ def social_health_chat(request):
     profile = _get_or_create_profile(user)
     user_name = profile.display_name or user.email.split("@")[0]
 
-    # Contexto leve — últimos check-ins de almoço
-    since = timezone.now() - timedelta(days=7)
-    checkins = (
-        DailyCheckIn.objects.filter(user=user, date__gte=since.date())
-        .exclude(lunch_text="")
-        .order_by("-date")
-        .values_list("lunch_text", "date")[:7]
-    )
-    food_ctx = ""
-    if checkins:
-        food_ctx = "\nÚLTIMOS ALMOÇOS:\n"
-        for txt, dt in checkins:
-            food_ctx += f"- {dt.strftime('%d/%m')}: {txt}\n"
+    # Grava mensagem do usuário
+    HealthChatMessage.objects.create(user=user, role="user", text=message)
 
-    system_prompt = (
-        "Você é um assistente de saúde e bem-estar da rede social interna da CAMIM.\n"
-        "Seu tom é AMIGÁVEL, MOTIVADOR e DESCONTRAÍDO.\n"
-        "Use emojis com moderação. Respostas CURTAS (máximo 4-5 frases).\n"
-        "NUNCA se apresente como nutricionista, médico ou profissional de saúde.\n\n"
-        "REGRAS:\n"
-        "1. Responda sobre alimentação, saúde, hidratação, exercícios, sono e bem-estar.\n"
-        "2. Se o usuário diz o que vai comer, avalie e dê dicas práticas.\n"
-        "3. Seja POSITIVO e MOTIVADOR. Nunca julgue negativamente.\n"
-        "4. Se a pergunta não for sobre saúde, redirecione gentilmente.\n"
-        f"5. O nome do usuário é {user_name}.\n"
-        f"{food_ctx}"
+    # Carrega últimas mensagens do banco para contexto
+    recent_db = (
+        HealthChatMessage.objects.filter(user=user)
+        .order_by("-created_at")[:12]
     )
+    db_messages = [
+        {"role": m.role, "content": m.text}
+        for m in reversed(recent_db)
+    ]
 
-    messages = [*history[-10:], {"role": "user", "content": message}]
+    food_context = _health_food_context(user)
+    prompt = _health_system_prompt(user_name, food_context)
+
     cfg = CamilaConfig.get()
-    response = _groq_chat(messages, system_prompt, config=cfg)
+    response = _groq_chat(db_messages, prompt, config=cfg)
+
+    # Grava resposta da IA
+    if response and not response.startswith("Erro"):
+        HealthChatMessage.objects.create(user=user, role="assistant", text=response)
 
     return JsonResponse({"response": response})

@@ -5348,7 +5348,15 @@ window.spShowProfilePhoto = function(url){
         clearTimeout(timer);
         var loading = document.getElementById('sp-health-loading');
         if(loading) loading.remove();
-        if(d.response){
+        /* Exibir histórico salvo */
+        if(d.history && d.history.length > 0){
+          d.history.forEach(function(m){
+            _appendHealthMsg(m.role === 'assistant' ? 'ai' : 'user', m.text, m.time);
+          });
+          _healthHistory = d.history.map(function(m){
+            return {role: m.role, content: m.text};
+          });
+        } else if(d.response){
           _healthHistory.push({role:'assistant', content: d.response});
           _appendHealthMsg('ai', d.response);
         } else {
@@ -5364,19 +5372,20 @@ window.spShowProfilePhoto = function(url){
   function _showHealthFallback(){
     var loading = document.getElementById('sp-health-loading');
     if(loading) loading.remove();
-    _appendHealthMsg('ai', 'Olá! Sou a Nutri.AI, sua nutricionista virtual. Me conta: o que você vai comer hoje?');
+    _appendHealthMsg('ai', 'Olá! Vamos falar sobre sua saúde e bem-estar? Me conta: o que você vai comer hoje?');
   }
 
-  function _appendHealthMsg(who, text){
+  function _appendHealthMsg(who, text, time){
     var body = document.getElementById('sp-health-body');
     if(!body) return;
     var div = document.createElement('div');
     div.className = 'sp-health-msg sp-health-msg-' + who;
+    var timeHtml = time ? '<div class="sp-health-time">' + time + '</div>' : '';
     if(who === 'ai'){
       div.innerHTML = '<img src="'+_nutriRobotUrl+'" class="sp-health-ai-icon" alt="">'
-        + '<div class="sp-health-bubble sp-health-bubble-ai">' + _escHealthHtml(text).replace(/\n/g,'<br>') + '</div>';
+        + '<div class="sp-health-bubble sp-health-bubble-ai">' + _escHealthHtml(text).replace(/\n/g,'<br>') + timeHtml + '</div>';
     } else {
-      div.innerHTML = '<div class="sp-health-bubble sp-health-bubble-user">' + _escHealthHtml(text).replace(/\n/g,'<br>') + '</div>';
+      div.innerHTML = '<div class="sp-health-bubble sp-health-bubble-user">' + _escHealthHtml(text).replace(/\n/g,'<br>') + timeHtml + '</div>';
     }
     body.appendChild(div);
     body.scrollTop = body.scrollHeight;

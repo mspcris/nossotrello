@@ -3443,6 +3443,11 @@ video.sp-post-media {
 }
 .sp-health-send-btn:active { transform: scale(.92); }
 
+.sp-health-time {
+  font-size: .65rem; color: #9ca3af; margin-top: 4px; text-align: right;
+}
+.sp-health-bubble-user .sp-health-time { color: rgba(255,255,255,.7); }
+
 .sp-health-dots-inline span {
   font-size: 1.5rem; font-weight: 700; color: #059669;
   animation: sp-health-dot 1.4s infinite;
