@@ -58,6 +58,7 @@ urlpatterns = [
     path("health/analyze/", views.api_health_analyze, name="health_analyze"),
     path("health/chat/", views.api_health_chat, name="health_chat"),
 
-    # ── Camila News ──────────────────────────────────────────────
+    # ── Camila AI ──────────────────────────────────────────────────
+    path("camila/chat/", views.api_camila_chat, name="camila_chat"),
     path("camila/news/", views.api_camila_news, name="camila_news"),
 ]

@@ -493,7 +493,13 @@ def api_social_feed(request):
 @api_view(["POST"])
 def api_social_post_create(request):
     text = (request.data.get("text") or "").strip()
-    post = SocialPost.objects.create(user=request.user, text=text, visibility=request.data.get("visibility", "all"))
+    text_style = request.data.get("text_style")
+    post = SocialPost.objects.create(
+        user=request.user,
+        text=text,
+        visibility=request.data.get("visibility", "all"),
+        text_style=text_style if isinstance(text_style, dict) else None,
+    )
     return Response(SocialPostSerializer(post, context={"request": request}).data, status=status.HTTP_201_CREATED)
 
 
@@ -728,6 +734,44 @@ def api_health_chat(request):
     if response and not response.startswith("Erro"):
         HealthChatMessage.objects.create(user=user, role="assistant", text=response)
 
+    return Response({"response": response})
+
+
+# ════════════════════════════════════════════════════════════════
+# CAMILA CHAT
+# ════════════════════════════════════════════════════════════════
+@api_view(["POST"])
+def api_camila_chat(request):
+    """Chat com a Camila.AI — assistente interna da CAMIM."""
+    message = (request.data.get("message") or "").strip()
+    history = request.data.get("history") or []
+    if not message:
+        return Response({"error": "Mensagem vazia."}, status=status.HTTP_400_BAD_REQUEST)
+
+    from boards.models import CamilaConfig, CamilaKnowledge, CamilaPOP
+    from boards.views.social import _groq_chat, _camila_knowledge_prompt, _get_weather_context
+
+    cfg = CamilaConfig.get()
+
+    social_ctx = (
+        "\n\n[REGRAS IMPORTANTES]\n"
+        "1. Você está DENTRO da rede social interna da CAMIM (tarefas.camim.com.br/social/).\n"
+        "2. NUNCA diga 'não entendi'. Se a mensagem for curta (ex: 'como?', 'como fazer?', 'sim'), "
+        "INTERPRETE pelo contexto da conversa anterior (history).\n"
+        "3. Respostas CURTAS e DIRETAS. Máximo 3-4 frases. Sem enrolação.\n"
+        "4. NUNCA redirecione para Central de Atendimento para dúvidas sobre a rede social.\n"
+        "\n[COMO USAR A REDE SOCIAL]\n"
+        "- PUBLICAR: tocar no botão de caneta (roxo) → escrever texto, "
+        "escolher foto/vídeo da galeria → enviar.\n"
+        "- REAGIR: nos posts do feed, tocar em emojis.\n"
+        "- COMENTAR: campo abaixo de cada post → digitar → enviar.\n"
+        "- PERFIL: menu lateral → Perfil → editar dados.\n"
+        "- HUMOR: aba Check-in → escolher emoji.\n"
+    )
+
+    prompt = cfg.prompt_chat + social_ctx + _camila_knowledge_prompt(message) + _get_weather_context()
+    messages = [*history[-10:], {"role": "user", "content": message}]
+    response = _groq_chat(messages, prompt, config=cfg)
     return Response({"response": response})
 
 
