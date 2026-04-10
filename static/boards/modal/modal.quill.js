@@ -113,6 +113,11 @@
       mentionDenotationChars: ["@"],
       showDenotationChar: true,
 
+      // popup escapa do editor (anexa no body com position:fixed)
+      positioningStrategy: "fixed",
+      defaultMenuOrientation: "bottom",
+      mentionContainer: document.body,
+
       source: async function (searchTerm, renderList) {
         try {
           if (!boardId) return renderList([], searchTerm);
