@@ -135,8 +135,13 @@ class BoardConsumer(AsyncJsonWebsocketConsumer):
 class UserConsumer(AsyncJsonWebsocketConsumer):
     """
     URL: ws://.../ws/me/
-    Entra automaticamente no grupo `user_<id>` do usuário autenticado.
+    Entra automaticamente no grupo `user_<id>` do usuário autenticado e
+    também no grupo `presence_global` (broadcast para todos os logados —
+    usado por eventos como `tracktime.activity.changed` que alimentam
+    o painel "Online" sem polling).
     """
+
+    PRESENCE_GROUP = "presence_global"
 
     group_name: str | None = None
 
@@ -148,6 +153,7 @@ class UserConsumer(AsyncJsonWebsocketConsumer):
 
         self.group_name = f"user_{user.id}"
         await self.channel_layer.group_add(self.group_name, self.channel_name)
+        await self.channel_layer.group_add(self.PRESENCE_GROUP, self.channel_name)
         await self.accept()
         await self.send_json({"type": "hello", "group": self.group_name})
 
@@ -159,6 +165,14 @@ class UserConsumer(AsyncJsonWebsocketConsumer):
                 )
             except Exception:  # noqa: BLE001
                 logger.debug("disconnect: group_discard falhou", exc_info=True)
+            try:
+                await self.channel_layer.group_discard(
+                    self.PRESENCE_GROUP, self.channel_name
+                )
+            except Exception:  # noqa: BLE001
+                logger.debug(
+                    "disconnect: group_discard presence falhou", exc_info=True
+                )
 
     async def receive_json(self, content, **kwargs):
         if (content or {}).get("type") == "ping":

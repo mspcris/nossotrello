@@ -292,7 +292,16 @@
   }
 
   // =========================
-  // 2) Elapsed updater (pode reiniciar após HTMX swap)
+  // 2) Elapsed updater — Phase 3 pub/sub
+  // ----------------------------------------------------------------
+  // ANTES: polling de 5s em /card_elapsed_json/ → 1 req/5s por card
+  //        aberto × 800 usuários = ruído crônico no Gunicorn.
+  //
+  // AGORA: 1 fetch inicial para pegar started_at_iso, depois o display
+  //        tica localmente (setInterval 1s) calculando
+  //        `Date.now() - startedAtMs` — absoluto, sem drift, sem rede.
+  //        Start/stop do timer chegam por WS (`user:tracktime.me.changed`)
+  //        e disparam um re-fetch pontual.
   // =========================
   function hhmmToHhMm(hhmm) {
     const s = String(hhmm || "");
@@ -301,8 +310,20 @@
     return `${m[1]}h${m[2]}m`;
   }
 
-  // guarda o timer no próprio painel (pra matar/recriar)
-  function stopTimer() {
+  function pad2(n) { return String(n).padStart(2, "0"); }
+
+  function formatElapsed(seconds) {
+    const s = Math.max(0, Math.floor(seconds));
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const ss = s % 60;
+    return h > 0
+      ? `${h}h${pad2(m)}m${pad2(ss)}s`
+      : `${m}m${pad2(ss)}s`;
+  }
+
+  // Estado do timer local guardado no próprio painel
+  function stopLocalTicker() {
     const id = panel.dataset.ttElapsedTimerId;
     if (id) {
       clearInterval(Number(id));
@@ -310,7 +331,24 @@
     }
   }
 
-  async function refreshElapsed(url, line) {
+  function setLocalState(startedHhmm, startedAtMs) {
+    panel.dataset.ttStartedAtMs = String(startedAtMs || 0);
+    panel.dataset.ttStartedHhmm = String(startedHhmm || "");
+  }
+
+  function renderLocalTick(line) {
+    const startedAtMs = Number(panel.dataset.ttStartedAtMs || 0);
+    const startedHhmm = panel.dataset.ttStartedHhmm || "";
+    if (!startedAtMs) {
+      line.textContent = "—";
+      return;
+    }
+    const elapsed = Math.max(0, (Date.now() - startedAtMs) / 1000);
+    const started = hhmmToHhMm(startedHhmm);
+    line.textContent = `${started} • ${formatElapsed(elapsed)}`;
+  }
+
+  async function fetchInitial(url, line) {
     try {
       const res = await fetch(url, {
         method: "GET",
@@ -324,7 +362,6 @@
         return;
       }
 
-      // proteção contra HTML (redirect/login) retornando 200
       const ct = (res.headers.get("content-type") || "").toLowerCase();
       if (!ct.includes("application/json")) {
         line.textContent = "Resposta não é JSON (ver login/redirect).";
@@ -332,25 +369,32 @@
       }
 
       const data = await res.json();
-
       if (!data) {
         line.textContent = "Falha ao ler JSON.";
         return;
       }
 
       if (!data.running) {
+        stopLocalTicker();
+        setLocalState("", 0);
         line.textContent = "Processando, Aguarde…";
         return;
       }
 
-      if (data.running && data.in_this_card === false) {
+      if (data.in_this_card === false) {
+        stopLocalTicker();
+        setLocalState("", 0);
         line.textContent = `Timer rodando em outro card (#${data.running_card_id}).`;
         return;
       }
 
-      const started = hhmmToHhMm(data.started_hhmm);
-      const mmss = String(data.elapsed_mmss || "");
-      line.textContent = `${started} • ${mmss}`;
+      // guarda estado local (started_at_iso é timezone-aware → Date aceita)
+      const startedAtMs = data.started_at_iso
+        ? new Date(data.started_at_iso).getTime()
+        : (Date.now() - Number(data.elapsed_seconds || 0) * 1000);
+
+      setLocalState(data.started_hhmm || "", startedAtMs);
+      renderLocalTick(line);
     } catch (_) {
       line.textContent = "Erro no fetch.";
     }
@@ -362,7 +406,7 @@
 
     // não tem spinner neste estado (ex: not running)
     if (!wrap || !line) {
-      stopTimer();
+      stopLocalTicker();
       return;
     }
 
@@ -376,20 +420,38 @@
       return;
     }
 
-    // sempre reinicia o timer ao montar o box (evita timer zumbi)
-    stopTimer();
+    // sempre reinicia o ticker ao montar o box (evita timer zumbi)
+    stopLocalTicker();
 
-    // primeira leitura imediata
-    refreshElapsed(url, line);
+    // fetch único → carrega started_at_iso → tick local a partir daí
+    fetchInitial(url, line);
 
-    // intervalo (não mexe no DOM do modal, só no texto)
-    const t = setInterval(() => refreshElapsed(url, line), 5000);
+    // ticker local a 1Hz. NÃO bate na rede — só recalcula Date.now()-startedAt.
+    const t = setInterval(() => renderLocalTick(line), 1000);
     panel.dataset.ttElapsedTimerId = String(t);
 
-    // mata timer se o painel sair do DOM
+    // Re-fetch pontual quando o timer do usuário muda (start/stop) via WS.
+    // Funde automaticamente com user.ws.js, que re-dispatcha eventos
+    // vindos de /ws/me/ como "user:<event_type>".
+    if (!panel.dataset.ttWsBound) {
+      panel.dataset.ttWsBound = "1";
+      const onWs = () => {
+        const w = panel.querySelector("#tt-elapsed-box");
+        const l = panel.querySelector("#tt-elapsed-line");
+        if (w && l && w.dataset.url) fetchInitial(w.dataset.url, l);
+      };
+      window.addEventListener("user:tracktime.me.changed", onWs);
+      panel._ttWsHandler = onWs;
+    }
+
+    // mata timer + listener se o painel sair do DOM
     const obs = new MutationObserver(() => {
       if (!document.body.contains(panel)) {
-        stopTimer();
+        stopLocalTicker();
+        if (panel._ttWsHandler) {
+          window.removeEventListener("user:tracktime.me.changed", panel._ttWsHandler);
+          delete panel._ttWsHandler;
+        }
         obs.disconnect();
       }
     });

@@ -9,9 +9,10 @@ o payload pelo WebSocket.
 
 Roteamento de eventos -> grupos do Channels:
 
-- Eventos que carregam `board_id`  -> grupo `board_<id>`
-- Eventos que carregam `user_id`   -> grupo `user_<id>`
-- Eventos que carregam `user_ids`  -> broadcast para cada `user_<id>` da lista
+- Eventos que carregam `board_id`   -> grupo `board_<id>`
+- Eventos que carregam `user_id`    -> grupo `user_<id>`
+- Eventos que carregam `user_ids`   -> broadcast para cada `user_<id>` da lista
+- Eventos com `global: True`        -> grupo `presence_global` (todos logados)
 - Eventos com ambos: entrega em *todos* os grupos relevantes.
 
 O consumer é *idempotente* no sentido de que o browser não vê reenvios
@@ -123,6 +124,9 @@ class Command(BaseCommand):
             for uid in user_ids:
                 if uid is not None:
                     groups.append(f"user_{uid}")
+
+        if payload.get("global") is True:
+            groups.append("presence_global")
 
         if not groups:
             logger.debug(

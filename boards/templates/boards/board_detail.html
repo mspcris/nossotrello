@@ -2559,7 +2559,14 @@ document.addEventListener("pointerup", (e) => {
   }
 
   setTimeout(poll, 2000);
-  setInterval(poll, 30000);
+  // Phase 3 pub/sub: era 30s × 800 usuários = 26 req/s só pra badges de
+  // membros. Agora 300s como safety net + refresh oportunístico quando
+  // chega qualquer evento de atividade no canal pessoal WS. (Social posts
+  // ainda não têm signal próprio — follow-up.)
+  function _bmaWsRefresh(){ if(!document.hidden) poll(); }
+  window.addEventListener('user:card.activity', _bmaWsRefresh);
+  window.addEventListener('user:chat.message.created', _bmaWsRefresh);
+  setInterval(poll, 300000);
   document.addEventListener('visibilitychange', function(){
     if(!document.hidden) setTimeout(poll, 500);
   });

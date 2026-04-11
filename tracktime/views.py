@@ -1330,6 +1330,10 @@ def card_elapsed_json(request, card_id: int):
         "started_hhmm": started_hhmm,
         "elapsed_mmss": _format_mmss(elapsed_seconds),
         "elapsed_seconds": elapsed_seconds,
+        # ISO timestamps para o JS calcular o tick localmente via
+        # Date.now() - startedAtMs (sem precisar polling de 1Hz).
+        "started_at_iso": running.started_at.isoformat(),
+        "server_now_iso": now.isoformat(),
         "ts": now.isoformat(),
     })
 

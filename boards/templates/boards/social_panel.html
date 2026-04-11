@@ -1040,7 +1040,17 @@ var _CAMILA_AVATARS = {
       }).catch(function(){});
   }
   _checkChatBadge();
-  setInterval(function(){ if(!document.hidden) _checkChatBadge(); }, 60000);
+
+  // ============================================================
+  // Phase 3 pub/sub — realtime via WebSocket + fallback lento
+  // ============================================================
+  // Push imediato quando chega mensagem nova (via user.ws.js)
+  window.addEventListener("user:chat.message.created", function(){
+    _checkChatBadge();
+  });
+  // Fallback de segurança — só dispara se o WS cair
+  // Era 60s, vira 5min. É o safety net, não a operação normal.
+  setInterval(function(){ if(!document.hidden) _checkChatBadge(); }, 300000);
 })();
 
 /* ════════════════════════════════════════════
@@ -3882,7 +3892,13 @@ document.addEventListener('click', function(e){
           });
         }).catch(function(){});
     }
-    setInterval(function(){ if(!document.hidden) _spPollPills(); }, 60000);
+    // Phase 3 pub/sub: era 60s. Agora safety net em 300s + refresh oportunístico
+    // ao receber qualquer evento no canal pessoal WS.
+    function _spPillsWsRefresh(){ if(!document.hidden) _spPollPills(); }
+    window.addEventListener('user:chat.message.created', _spPillsWsRefresh);
+    window.addEventListener('user:card.activity', _spPillsWsRefresh);
+    window.addEventListener('user:tracktime.me.changed', _spPillsWsRefresh);
+    setInterval(_spPillsWsRefresh, 300000);
 
     /* Busca notícias a cada 3h */
     function _fetchNews() {
@@ -4069,12 +4085,20 @@ document.addEventListener('click', function(e){
     }
     function _adjustPollRate(){
       if(_chatPollTimer) clearInterval(_chatPollTimer);
-      if(_pollIdleCount < 5) _pollInterval = 5000;
-      else if(_pollIdleCount < 15) _pollInterval = 10000;
-      else _pollInterval = 30000;
+      // Phase 3 pub/sub: o polling virou fallback lento. Os 3/5/10/30s
+      // viraram 300s (5min). Push real vem via user.ws.js dispatchando
+      // user:chat.message.created, o que chama _chatPoll imediatamente.
+      _pollInterval = 300000;
       _chatPollTimer = setInterval(_chatPoll, _pollInterval);
     }
-    _chatPollTimer = setInterval(_chatPoll, _pollInterval);
+    _chatPollTimer = setInterval(_chatPoll, 300000);
+
+    // Push: chega mensagem via WebSocket -> dispara _chatPoll AGORA
+    // O _chatPoll já usa _chatLastId e _chatOtherUid, então só pega
+    // mensagens da conversa aberta (chamadas extras são baratas).
+    window.addEventListener("user:chat.message.created", function(){
+      try { _chatPoll(); } catch(_){}
+    });
   }
 
   function _appendMsg(body, m) {
@@ -4913,7 +4937,17 @@ window.spShowReach = function(postId){
       }).catch(function(){});
   }
   _loadVisitorPills();
-  setInterval(function(){ if(!document.hidden) _loadVisitorPills(); }, 60000);
+  // Phase 3 pub/sub: antes era 60s × 800 usuários = 13 req/s só pra este pill.
+  // Agora: refresh oportunístico quando chega qualquer evento no canal pessoal
+  // (chat, tracktime, card activity em board do usuário) + fallback de 300s.
+  // Não há signal específico para comment_pills/reply_pills/friend_pills, mas
+  // tipicamente esses eventos ocorrem junto com outros sinais que já temos —
+  // então uma atualização rápida nesse momento cobre 90% dos casos.
+  function _pillsWsRefresh(){ if(!document.hidden) _loadVisitorPills(); }
+  window.addEventListener('user:chat.message.created', _pillsWsRefresh);
+  window.addEventListener('user:card.activity', _pillsWsRefresh);
+  window.addEventListener('user:tracktime.me.changed', _pillsWsRefresh);
+  setInterval(_pillsWsRefresh, 300000);
 })();
 
 /* ═══════════════════════════════════════════════

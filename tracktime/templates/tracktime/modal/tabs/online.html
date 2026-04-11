@@ -150,11 +150,33 @@
   if (btn) btn.addEventListener("click", refresh);
 
   refresh();
-  const t = setInterval(() => { if(!document.hidden) refresh(); }, 3000);
+
+  // Phase 3 pub/sub: push imediato quando QUALQUER timer muda.
+  // Substitui o polling de 3s que gerava ~266 req/s com 800 usuários conectados.
+  // - user:tracktime.me.changed       — minhas próprias mudanças (canal pessoal)
+  // - user:tracktime.activity.changed — mudanças de QUALQUER usuário
+  //   (broadcast via grupo presence_global — UserConsumer entra nele ao conectar).
+  // Debounce de 500ms porque 800 usuários podem gerar vários eventos
+  // quase-simultâneos quando vários começam/param timers.
+  let _debounceT = null;
+  function _onTracktimeWs(){
+    if (document.hidden) return;
+    if (_debounceT) clearTimeout(_debounceT);
+    _debounceT = setTimeout(refresh, 500);
+  }
+  window.addEventListener("user:tracktime.me.changed", _onTracktimeWs);
+  window.addEventListener("user:tracktime.activity.changed", _onTracktimeWs);
+
+  // Fallback polling: 300s (era 3s — 100x menos carga).
+  // Com pub/sub funcionando, este setInterval é só safety net.
+  const t = setInterval(() => { if(!document.hidden) refresh(); }, 300000);
 
   const obs = new MutationObserver(() => {
     if (!document.getElementById("tt-online-list")) {
       clearInterval(t);
+      if (_debounceT) clearTimeout(_debounceT);
+      window.removeEventListener("user:tracktime.me.changed", _onTracktimeWs);
+      window.removeEventListener("user:tracktime.activity.changed", _onTracktimeWs);
       obs.disconnect();
     }
   });

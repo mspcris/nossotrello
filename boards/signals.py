@@ -5,10 +5,10 @@ import re
 
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
-from django.db.models.signals import post_save
+from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
-from .models import Board, CardLog, UserProfile
+from .models import Board, BoardAccessRequest, CardLog, ChatMessage, UserProfile
 from .services.pubsub_service import publish_event
 
 logger = logging.getLogger(__name__)
@@ -153,6 +153,82 @@ def publish_card_activity(sender, instance, created, **kwargs):
             )
         except Exception:  # noqa: BLE001
             logger.debug("publish card.activity falhou", exc_info=True)
+
+    try:
+        transaction.on_commit(_fire)
+    except Exception:  # noqa: BLE001
+        _fire()
+
+
+# ======================================================================
+# PUB/SUB — solicitações de acesso ao board
+# ----------------------------------------------------------------------
+# O painel de solicitações do owner vivia em polling a cada 120s.
+# Agora publicamos um evento sempre que uma request é criada/resolvida
+# e o JS atualiza o bloco `#cm-accessreq-root` no push.
+# ======================================================================
+@receiver(post_save, sender=BoardAccessRequest)
+def publish_access_request_changed(sender, instance, **kwargs):
+    board_id = instance.board_id
+
+    def _fire():
+        try:
+            publish_event("access.request.changed", board_id=board_id)
+        except Exception:  # noqa: BLE001
+            logger.debug("publish access.request.changed falhou", exc_info=True)
+
+    try:
+        transaction.on_commit(_fire)
+    except Exception:  # noqa: BLE001
+        _fire()
+
+
+# ======================================================================
+# PUB/SUB — chat direto
+# ----------------------------------------------------------------------
+# Substitui os pollings `_chatPoll` (5-30s) e `_checkChatBadge` (60s).
+# Quando uma mensagem é criada, publicamos um evento para os DOIS lados
+# da conversa (sender e receiver) via user_ids.
+# ======================================================================
+@receiver(post_save, sender=ChatMessage)
+def publish_chat_message_created(sender, instance, created, **kwargs):
+    if not created:
+        return
+
+    msg_id = instance.id
+    conversation_id = instance.conversation_id
+    sender_id = instance.sender_id
+
+    def _fire():
+        try:
+            # Resolve os dois lados da conversa
+            conv = instance.conversation
+            user_ids = [conv.user_a_id, conv.user_b_id]
+            publish_event(
+                "chat.message.created",
+                user_ids=user_ids,
+                conversation_id=conversation_id,
+                message_id=msg_id,
+                sender_id=sender_id,
+            )
+        except Exception:  # noqa: BLE001
+            logger.debug("publish chat.message.created falhou", exc_info=True)
+
+    try:
+        transaction.on_commit(_fire)
+    except Exception:  # noqa: BLE001
+        _fire()
+
+
+@receiver(post_delete, sender=BoardAccessRequest)
+def publish_access_request_removed(sender, instance, **kwargs):
+    board_id = instance.board_id
+
+    def _fire():
+        try:
+            publish_event("access.request.changed", board_id=board_id)
+        except Exception:  # noqa: BLE001
+            logger.debug("publish access.request.changed (delete) falhou", exc_info=True)
 
     try:
         transaction.on_commit(_fire)

@@ -76,6 +76,12 @@
       const csrfToken = document.querySelector("meta[name='csrf-token']")?.content;
       if (csrfToken) event.detail.headers['X-CSRFToken'] = csrfToken;
     });
+
+    // ID do usuário logado — usado pelo user.ws.js para decidir se conecta
+    // ao WebSocket pessoal (/ws/me/). Só é setado para usuários autenticados.
+    {% if request.user.is_authenticated %}
+    window.USER_ID = {{ request.user.id }};
+    {% endif %}
   </script>
 
   <!-- ============================================================
@@ -128,6 +134,10 @@
   <!-- BOARD WEBSOCKET — realtime sync (Phase 1 pub/sub) -->
   <!-- Substitui o polling central. Fallback lento (5min) se WS cair. -->
   <script defer src="{% static 'boards/modal/board.ws.js' %}"></script>
+
+  <!-- USER WEBSOCKET — canal pessoal (/ws/me/) -->
+  <!-- Recebe chat, notificações, track-time, pills (Phase 3 pub/sub) -->
+  <script defer src="{% static 'boards/modal/user.ws.js' %}"></script>
 
 <!-- MODAL dock -->
   <script defer src="{% static 'boards/modal/modal.dock.js' %}"></script>
@@ -871,8 +881,11 @@ window.addEventListener("popstate", () => {
 
   document.addEventListener("DOMContentLoaded", refresh);
 
-  // opcional: revalida de tempos em tempos (se o usuário inicia/para track em outra aba)
-  setInterval(refresh, 35000);
+  // Phase 3 pub/sub: push imediato quando meu próprio timer muda
+  // (user.ws.js -> user:tracktime.me.changed). O setInterval vira
+  // fallback lento de 5 minutos se o WS estiver fora do ar.
+  window.addEventListener("user:tracktime.me.changed", refresh);
+  setInterval(refresh, 300000);
 })();
 </script>
 
