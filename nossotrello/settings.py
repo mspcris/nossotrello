@@ -94,6 +94,10 @@ else:
 
 INSTALLED_APPS = [
 
+    # Channels (WebSocket/ASGI) — precisa vir antes de staticfiles para o runserver
+    'daphne',
+    'channels',
+
     # apps do projeto tracktime
     'tracktime.apps.TracktimeConfig',
 
@@ -179,6 +183,7 @@ TEMPLATES = [
 
 
 WSGI_APPLICATION = 'nossotrello.wsgi.application'
+ASGI_APPLICATION = 'nossotrello.asgi.application'
 
 
 # ============================================================
@@ -389,4 +394,59 @@ LOGGING = {
         "handlers": ["console"],
         "level": "INFO",
     },
+    "loggers": {
+        # pika é ultra-verboso em DEBUG; silencia para WARNING.
+        "pika": {"handlers": ["console"], "level": "WARNING", "propagate": False},
+    },
 }
+
+
+# ============================================================
+# CHANNELS — Channel layer via Redis
+# ------------------------------------------------------------
+# O channel layer é o barramento que liga múltiplos processos
+# daphne aos grupos de WebSocket. Reusa o mesmo Redis do cache,
+# mas em um DB separado (db 2) para isolamento.
+# ============================================================
+
+def _channel_redis_url() -> str:
+    raw = (os.getenv("REDIS_URL") or "").strip()
+    if not raw:
+        return "redis://redis:6379/2"
+    # troca /<n> final pelo db 2 dedicado a channels
+    if "/" in raw.rsplit("//", 1)[-1]:
+        head, _tail = raw.rsplit("/", 1)
+        return f"{head}/2"
+    return raw.rstrip("/") + "/2"
+
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [_channel_redis_url()],
+            "capacity": 1500,
+            "expiry": 60,
+        },
+    },
+}
+
+
+# ============================================================
+# RabbitMQ — barramento pub/sub inter-serviço
+# ------------------------------------------------------------
+# Producer: Django web publica eventos quando algo muda.
+# Consumer: `rabbit_bridge` (management command) consome e
+# propaga para os grupos do Channels, que entregam por WebSocket.
+# ============================================================
+RABBITMQ_HOST = (os.getenv("RABBITMQ_HOST") or "").strip()
+RABBITMQ_PORT = int((os.getenv("RABBITMQ_PORT") or "5672").strip())
+RABBITMQ_USER = (os.getenv("RABBITMQ_USER") or "").strip()
+RABBITMQ_PASSWORD = (os.getenv("RABBITMQ_PASSWORD") or "").strip()
+RABBITMQ_VHOST = (os.getenv("RABBITMQ_VHOST") or "/").strip()
+RABBITMQ_EXCHANGE = (os.getenv("RABBITMQ_EXCHANGE") or "nossotrello").strip()
+RABBITMQ_ROUTING_KEY = (os.getenv("RABBITMQ_ROUTING_KEY") or f"{RABBITMQ_EXCHANGE}_router").strip()
+RABBITMQ_CONSUMER_QUEUE = (os.getenv("RABBITMQ_CONSUMER_QUEUE") or "nossotrello-bridge").strip()
+
+# Se o broker não estiver configurado o producer vira no-op (degrada suave).
+PUBSUB_ENABLED = bool(RABBITMQ_HOST and RABBITMQ_USER)

@@ -122,8 +122,12 @@
   <!-- Modal bootstrap -->
   <script defer src="{% static 'boards/modal/modal.index.js' %}"></script>
 
-  <!-- BOARD POLLING sync cols (se você realmente usa isso globalmente) -->
+  <!-- BOARD POLLING sync cols (legado, POLL_ENABLED=false, mantido só pelos helpers) -->
   <script defer src="{% static 'boards/modal/board.poll.js' %}"></script>
+
+  <!-- BOARD WEBSOCKET — realtime sync (Phase 1 pub/sub) -->
+  <!-- Substitui o polling central. Fallback lento (5min) se WS cair. -->
+  <script defer src="{% static 'boards/modal/board.ws.js' %}"></script>
 
 <!-- MODAL dock -->
   <script defer src="{% static 'boards/modal/modal.dock.js' %}"></script>

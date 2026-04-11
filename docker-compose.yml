@@ -25,6 +25,68 @@ services:
     expose:
       - "8000"
 
+  # ============================================================
+  # DAPHNE — servidor ASGI só para WebSocket (/ws/)
+  # ------------------------------------------------------------
+  # Roda em paralelo ao gunicorn. Nginx roteia /ws/ -> daphne,
+  # resto -> gunicorn. Isso evita migrar o HTTP inteiro para ASGI
+  # agora e mantém o deploy reversível.
+  # ============================================================
+  daphne:
+    build: .
+    restart: always
+    command: sh -lc "python manage.py collectstatic --noinput && daphne -b 0.0.0.0 -p 8001 nossotrello.asgi:application"
+    depends_on:
+      - db
+      - redis
+    env_file:
+      - .env
+    environment:
+      DJANGO_SETTINGS_MODULE: nossotrello.settings
+      REDIS_URL: redis://redis:6379/1
+      DB_ENGINE: postgresql
+      DB_NAME: nossotrello
+      DB_USER: nossotrello
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-nossotrello_secret}
+      DB_HOST: db
+      DB_PORT: "5432"
+    volumes:
+      - .:/app
+      - ${SQLITE_DIR:-./data/sqlite}:/app/db
+      - ./static:/app/staticfiles
+      - ./media:/app/media
+    expose:
+      - "8001"
+
+  # ============================================================
+  # BRIDGE — consumer RabbitMQ -> Channels (Redis)
+  # ------------------------------------------------------------
+  # Processo separado rodando `manage.py rabbit_bridge`. Lê eventos
+  # do exchange nossotrello e faz group_send no channel layer,
+  # o que entrega o payload ao browser via Daphne/WebSocket.
+  # ============================================================
+  bridge:
+    build: .
+    restart: always
+    command: sh -lc "python manage.py rabbit_bridge"
+    depends_on:
+      - db
+      - redis
+      - daphne
+    env_file:
+      - .env
+    environment:
+      DJANGO_SETTINGS_MODULE: nossotrello.settings
+      REDIS_URL: redis://redis:6379/1
+      DB_ENGINE: postgresql
+      DB_NAME: nossotrello
+      DB_USER: nossotrello
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-nossotrello_secret}
+      DB_HOST: db
+      DB_PORT: "5432"
+    volumes:
+      - .:/app
+
   db:
     image: postgres:16-alpine
     restart: always
@@ -60,6 +122,7 @@ services:
       - /etc/letsencrypt:/etc/letsencrypt
     depends_on:
       - web
+      - daphne
 
   certbot:
     image: certbot/certbot

@@ -1,4 +1,5 @@
 # boards/signals.py
+import logging
 import random
 import re
 
@@ -7,7 +8,10 @@ from django.db import IntegrityError, transaction
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from .models import UserProfile
+from .models import Board, CardLog, UserProfile
+from .services.pubsub_service import publish_event
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_AVATARS = [
     "avatar1.jpeg",
@@ -73,6 +77,87 @@ def _generate_unique_handle(email: str, *, max_attempts: int = 9999) -> str:
 
     # fallback extremo (não deve acontecer)
     return f"{base}01"
+
+
+# ======================================================================
+# PUB/SUB — invalidação de board em tempo real
+# ----------------------------------------------------------------------
+# Estratégia: toda vez que o objeto Board é salvo, publicamos um evento
+# `board.invalidated` no RabbitMQ com a `version` atual. O bridge entrega
+# ao grupo `board_<id>` do Channels e o JS no browser recebe o push via
+# WebSocket e busca o novo estado — substituindo o polling que rodava
+# a cada 60s.
+#
+# Como os ~40 call-sites de `board.version += 1` sempre chamam
+# `board.save()` em seguida, hookar `post_save` dá cobertura total sem
+# precisar tocar em cada view.
+#
+# transaction.on_commit garante que o evento só vai para o broker
+# DEPOIS que a transação efetivamente commitou — senão clientes
+# poderiam receber notificação de algo que acabou em rollback.
+# ======================================================================
+@receiver(post_save, sender=Board)
+def publish_board_invalidated(sender, instance, **kwargs):
+    board_id = instance.id
+    version = int(getattr(instance, "version", 0) or 0)
+
+    def _fire():
+        try:
+            publish_event(
+                "board.invalidated",
+                board_id=board_id,
+                version=version,
+            )
+        except Exception:  # noqa: BLE001
+            logger.debug("publish board.invalidated falhou", exc_info=True)
+
+    try:
+        transaction.on_commit(_fire)
+    except Exception:  # noqa: BLE001
+        # fora de transação — dispara imediatamente
+        _fire()
+
+
+# ======================================================================
+# PUB/SUB — atividade de card (log/comentário novo)
+# ----------------------------------------------------------------------
+# CardLog é criado toda vez que um card ganha um comentário, uma entrada
+# de histórico, etc. Publicar aqui substitui o polling
+# `/board/<id>/cards/unread-activity/` e `/board/<id>/history/unread-count/`.
+#
+# Resolve board_id via card.column.board_id de forma preguiçosa. Se a
+# lookup falhar (card deletado, inconsistência), ignora silenciosamente.
+# ======================================================================
+@receiver(post_save, sender=CardLog)
+def publish_card_activity(sender, instance, created, **kwargs):
+    if not created:
+        return
+
+    card_id = instance.card_id
+    actor_id = getattr(instance, "actor_id", None)
+
+    def _fire():
+        try:
+            # resolve board_id on-demand (mantém o signal barato)
+            card = instance.card
+            board_id = getattr(
+                getattr(card, "column", None), "board_id", None
+            )
+            if not board_id:
+                return
+            publish_event(
+                "card.activity",
+                board_id=board_id,
+                card_id=card_id,
+                actor_id=actor_id,
+            )
+        except Exception:  # noqa: BLE001
+            logger.debug("publish card.activity falhou", exc_info=True)
+
+    try:
+        transaction.on_commit(_fire)
+    except Exception:  # noqa: BLE001
+        _fire()
 
 
 @receiver(post_save, sender=get_user_model())

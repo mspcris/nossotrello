@@ -386,6 +386,13 @@ document.addEventListener("visibilitychange", () => {
 }
 
 
+// Exposto no window para o board.ws.js (Phase 1 pub/sub) reusar sem
+// duplicar lógica de fetch/DOM.
+window.syncUnreadBadge = syncUnreadBadge;
+window.syncAccessRequests = syncAccessRequests;
+window.tickTrackTimeBadges = tickTrackTimeBadges;
+
+
 async function syncCardUnreadBadges(boardId) {
   if (!boardId) return;
 
@@ -441,6 +448,9 @@ async function syncCardUnreadBadges(boardId) {
     console.warn("syncCardUnreadBadges failed", e);
   }
 }
+
+// Expõe syncCardUnreadBadges também (precisa estar DEPOIS da definição)
+window.syncCardUnreadBadges = syncCardUnreadBadges;
 
 })();
 

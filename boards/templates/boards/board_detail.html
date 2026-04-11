@@ -2177,8 +2177,13 @@ document.addEventListener("DOMContentLoaded", () => {
   // 🔁 ao fechar modal (quando backend marca como lido)
   document.addEventListener("modal:closed", refreshCardUnreadBadges);
 
-  // ⏱️ polling — 30s (N+1 eliminado no backend, mas ainda assim não precisa ser agressivo)
-  setInterval(refreshCardUnreadBadges, 30000);
+  // ============================================================
+  // Phase 1 pub/sub — polling desligado.
+  // Atualizações agora vêm via WebSocket (board.ws.js) disparando
+  // syncCardUnreadBadges() em resposta a `card.activity`.
+  // Mantemos apenas o refresh inicial + em swap/close — os ticks
+  // periódicos somem completamente.
+  // setInterval(refreshCardUnreadBadges, 30000);  // removido
 })();
 </script>
 
