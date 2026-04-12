@@ -1852,39 +1852,21 @@ var _CAMILA_AVATARS = {
     document.body.appendChild(ov);
   };
 
-  /* ── Compartilhar com texto + imagem via Web Share API (mobile)
-       ou fallback (desktop) ── */
+  /* ── Compartilhar externamente ── */
   window.spShareNative = function(postId, target){
     var menu = document.getElementById('sp-share-menu');
     if(menu) menu.remove();
 
     var data = _spGetPostData(postId);
     var text = data.text || '';
-
-    /* Tenta Web Share API com arquivo de imagem (mobile) */
-    if(navigator.share && navigator.canShare){
-      if(data.imgUrl){
-        _spUrlToFile(data.imgUrl, function(file){
-          var shareData = {text: text};
-          if(file && navigator.canShare({files:[file]})){
-            shareData.files = [file];
-          }
-          navigator.share(shareData).catch(function(){});
-        });
-        return;
-      }
-      /* Post sem imagem — compartilha só texto */
-      navigator.share({text: text}).catch(function(){});
-      return;
-    }
-
-    /* Fallback desktop */
     var url = location.origin + '/social/post/' + postId + '/view/';
-    if(target === 'whatsapp'){
-      var msg = text ? (text + '\n\n' + url) : url;
-      window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
-    } else if(target === 'facebook'){
+    var msg = text ? (text + '\n\n' + url) : url;
+
+    if(target === 'facebook'){
       window.open('https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(url) + '&quote=' + encodeURIComponent(text), '_blank');
+    } else if(target === 'whatsapp'){
+      /* Mobile: abre app direto. Desktop: abre web.whatsapp */
+      window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent(msg), '_blank');
     }
   };
 
