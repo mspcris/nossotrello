@@ -1049,39 +1049,46 @@ def card_move_options(request, card_id):
     if not _user_can_edit_board(request.user, board_current):
         return _deny_read_only(request)
 
-    boards = []
+    # IDs dos boards onde o user tem membership
+    member_ids = set(
+        BoardMembership.objects.filter(
+            user=request.user,
+            board__is_deleted=False,
+        ).values_list("board_id", flat=True)
+    )
 
-    for bm in BoardMembership.objects.filter(
-        user=request.user,
-        board__is_deleted=False,
-    ).select_related("board"):
-        boards.append(bm.board)
-
+    # Boards legados (sem nenhum membership) — filtra em batch
     legacy_qs = Board.objects.filter(is_deleted=False)
     if not request.user.is_staff:
         legacy_qs = legacy_qs.filter(created_by_id=request.user.id)
+    legacy_ids = set(
+        legacy_qs
+        .annotate(has_members=models.Exists(
+            BoardMembership.objects.filter(board=models.OuterRef("pk"))
+        ))
+        .filter(has_members=False)
+        .values_list("id", flat=True)
+    )
 
-    for b in legacy_qs:
-        if not b.memberships.exists():
-            boards.append(b)
+    all_ids = member_ids | legacy_ids
+    uniq = list(
+        Board.objects.filter(id__in=all_ids, is_deleted=False)
+        .order_by("-created_at")
+    )
 
-    seen = set()
-    uniq = []
-    for b in boards:
-        if b.id in seen:
-            continue
-        seen.add(b.id)
-        uniq.append(b)
-
-    uniq.sort(key=lambda x: (x.created_at or timezone.now()), reverse=True)
+    # Conta cards por coluna em UMA query (evita N+1)
+    from django.db.models import Count
+    all_cols = (
+        Column.objects.filter(board_id__in=all_ids, is_deleted=False)
+        .annotate(card_count=Count("cards", filter=models.Q(cards__is_deleted=False)))
+        .order_by("board_id", "position")
+    )
 
     columns_by_board = {}
-    for b in uniq:
-        cols = b.columns.filter(is_deleted=False).order_by("position")
-        columns_by_board[str(b.id)] = [
-            {"id": c.id, "name": c.name, "positions_total_plus_one": (c.cards.count() + 1)}
-            for c in cols
-        ]
+    for c in all_cols:
+        columns_by_board.setdefault(str(c.board_id), []).append(
+            {"id": c.id, "name": c.name, "positions_total_plus_one": c.card_count + 1}
+        )
 
     payload = {
         "current": {
