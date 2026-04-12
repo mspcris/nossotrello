@@ -657,6 +657,14 @@ li[data-card-id][data-term-status="ok"] .term-badge{ color: #16a34a; }
 #columns-wrapper li[data-card-id]{
   position: relative;
   overflow: hidden; /* necessário pro overlay do prazo */
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.25s ease;
+  will-change: transform;
+}
+#columns-wrapper li[data-card-id]:hover{
+  transform: scale(1.04) translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+  z-index: 5;
 }
 
 /* camada de cor do prazo (mantém o glass) */
