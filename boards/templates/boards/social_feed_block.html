@@ -154,11 +154,9 @@
                 hx-confirm="Excluir?">Excluir</button>
         {% else %}
           {% if post.visibility == "friends" %}<span class="sp-vis-badge" title="Apenas amigos">🔒</span>{% endif %}
-          {% if not post.is_friendship %}
-          <button type="button" class="sp-post-share-btn"
-                  onclick="spSharePost({{ post.id }})">↗ Compartilhar</button>
-          {% endif %}
         {% endif %}
+        <button type="button" class="sp-post-share-btn"
+                onclick="spSharePost({{ post.id }}{% if is_me %}, true{% endif %})">↗ Compartilhar</button>
       </div>
     </div>
     {% endfor %}
