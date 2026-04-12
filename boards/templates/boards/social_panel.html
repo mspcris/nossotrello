@@ -1789,6 +1789,29 @@ var _CAMILA_AVATARS = {
   };
 
   /* ═══ Compartilhar post ═══ */
+  /* ── Extrai texto e imagem de um post no DOM ── */
+  function _spGetPostData(postId){
+    var el = document.getElementById('sp-post-' + postId);
+    if(!el) return {text:'', imgUrl:null};
+    var textEl = el.querySelector('.sp-post-text') || el.querySelector('.sp-styled-text-inner');
+    var text = textEl ? textEl.textContent.trim() : '';
+    var imgEl = el.querySelector('img.sp-post-media');
+    var imgUrl = imgEl ? imgEl.src : null;
+    return {text: text, imgUrl: imgUrl};
+  }
+
+  /* ── Converte URL de imagem em File para navigator.share({files}) ── */
+  function _spUrlToFile(url, cb){
+    fetch(url)
+      .then(function(r){ return r.blob(); })
+      .then(function(blob){
+        var ext = (url.split('.').pop() || 'jpg').split('?')[0];
+        var mime = blob.type || 'image/jpeg';
+        cb(new File([blob], 'post.' + ext, {type: mime}));
+      })
+      .catch(function(){ cb(null); });
+  }
+
   window.spSharePost = function(postId, isMine){
     /* Remove menu anterior */
     var old = document.getElementById('sp-share-menu');
@@ -1812,15 +1835,15 @@ var _CAMILA_AVATARS = {
 
     /* WhatsApp */
     s += '<button style="width:100%;padding:13px;border:none;background:#dcfce7;color:#16a34a;border-radius:12px;font-size:0.9rem;cursor:pointer;margin-bottom:8px;font-weight:600;display:flex;align-items:center;gap:10px;justify-content:center" '
-      + 'onclick="spShareExternal('+postId+',\'whatsapp\')"><span style="font-size:1.2rem">💬</span> WhatsApp</button>';
-
-    /* Instagram */
-    s += '<button style="width:100%;padding:13px;border:none;background:linear-gradient(135deg,#fce7f3,#fef3c7);color:#c026d3;border-radius:12px;font-size:0.9rem;cursor:pointer;margin-bottom:8px;font-weight:600;display:flex;align-items:center;gap:10px;justify-content:center" '
-      + 'onclick="spShareExternal('+postId+',\'instagram\')"><span style="font-size:1.2rem">📷</span> Instagram</button>';
+      + 'onclick="spShareNative('+postId+',\'whatsapp\')"><span style="font-size:1.2rem">💬</span> WhatsApp</button>';
 
     /* Facebook */
     s += '<button style="width:100%;padding:13px;border:none;background:#dbeafe;color:#1d4ed8;border-radius:12px;font-size:0.9rem;cursor:pointer;margin-bottom:8px;font-weight:600;display:flex;align-items:center;gap:10px;justify-content:center" '
-      + 'onclick="spShareExternal('+postId+',\'facebook\')"><span style="font-size:1.2rem">📘</span> Facebook</button>';
+      + 'onclick="spShareNative('+postId+',\'facebook\')"><span style="font-size:1.2rem">📘</span> Facebook</button>';
+
+    /* Copiar link */
+    s += '<button style="width:100%;padding:13px;border:none;background:#f3f4f6;color:#374151;border-radius:12px;font-size:0.9rem;cursor:pointer;margin-bottom:8px;font-weight:600;display:flex;align-items:center;gap:10px;justify-content:center" '
+      + 'onclick="spCopyLink('+postId+')"><span style="font-size:1.2rem">📋</span> Copiar link</button>';
 
     /* Cancelar */
     s += '<button style="width:100%;padding:13px;border:none;background:#f1f5f9;color:#475569;border-radius:12px;font-size:0.9rem;cursor:pointer;font-weight:600;margin-top:4px" onclick="this.closest(\'#sp-share-menu\').remove()">Cancelar</button>';
@@ -1829,39 +1852,54 @@ var _CAMILA_AVATARS = {
     document.body.appendChild(ov);
   };
 
-  /* ── Compartilhar externamente (WhatsApp, Instagram, Facebook) ── */
-  window.spShareExternal = function(postId, target){
+  /* ── Compartilhar com texto + imagem via Web Share API (mobile)
+       ou fallback (desktop) ── */
+  window.spShareNative = function(postId, target){
     var menu = document.getElementById('sp-share-menu');
     if(menu) menu.remove();
 
-    var url = location.origin + '/social/post/' + postId + '/view/';
-    var text = 'Veja esta publicação no Espaço Social: ' + url;
+    var data = _spGetPostData(postId);
+    var text = data.text || '';
 
-    /* Mobile: tenta Web Share API (abre sheet nativo do OS) */
-    if(navigator.share && (target === 'whatsapp' || target === 'instagram')){
-      navigator.share({title: 'Espaço Social — Tarefas CAMIM', text: text, url: url}).catch(function(){});
+    /* Tenta Web Share API com arquivo de imagem (mobile) */
+    if(navigator.share && navigator.canShare){
+      if(data.imgUrl){
+        _spUrlToFile(data.imgUrl, function(file){
+          var shareData = {text: text};
+          if(file && navigator.canShare({files:[file]})){
+            shareData.files = [file];
+          }
+          navigator.share(shareData).catch(function(){});
+        });
+        return;
+      }
+      /* Post sem imagem — compartilha só texto */
+      navigator.share({text: text}).catch(function(){});
       return;
     }
 
-    /* Fallback por plataforma */
-    var shareUrl;
-    switch(target){
-      case 'whatsapp':
-        shareUrl = 'https://wa.me/?text=' + encodeURIComponent(text);
-        break;
-      case 'facebook':
-        shareUrl = 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(url);
-        break;
-      case 'instagram':
-        /* Instagram não tem URL de share direta — copia o link e avisa */
-        navigator.clipboard.writeText(url).then(function(){
-          _spToast('Link copiado! Cole no Instagram para compartilhar.');
-        }).catch(function(){
-          prompt('Copie o link:', url);
-        });
-        return;
+    /* Fallback desktop */
+    var url = location.origin + '/social/post/' + postId + '/view/';
+    if(target === 'whatsapp'){
+      var msg = text ? (text + '\n\n' + url) : url;
+      window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+    } else if(target === 'facebook'){
+      window.open('https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(url) + '&quote=' + encodeURIComponent(text), '_blank');
     }
-    if(shareUrl) window.open(shareUrl, '_blank', 'noopener,width=600,height=500');
+  };
+
+  /* ── Copiar link do post ── */
+  window.spCopyLink = function(postId){
+    var menu = document.getElementById('sp-share-menu');
+    if(menu) menu.remove();
+    var url = location.origin + '/social/post/' + postId + '/view/';
+    if(navigator.clipboard){
+      navigator.clipboard.writeText(url).then(function(){
+        _spToast('Link copiado!');
+      }).catch(function(){ prompt('Copie o link:', url); });
+    } else {
+      prompt('Copie o link:', url);
+    }
   };
 
   window.spRepost = function(postId){
