@@ -1,14 +1,21 @@
 name: Deploy Produção (VM)
 
-# Dispara quando a branch `deploy` recebe push, ou manualmente pela UI
-# (Actions -> Deploy Produção (VM) -> Run workflow).
+# Dispara quando a branch `deploy` recebe push, ou manualmente pela UI.
 on:
   push:
     branches: [deploy]
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "full = prune + rebuild tudo | fast = só rebuild + migrate"
+        required: false
+        default: "fast"
+        type: choice
+        options:
+          - fast
+          - full
 
-# Só um deploy por vez. Se dois pushes chegarem juntos, o segundo espera
-# o primeiro terminar (não cancela — evita deixar a VM em estado inconsistente).
+# Só um deploy por vez.
 concurrency:
   group: deploy-production
   cancel-in-progress: false
@@ -29,31 +36,35 @@ jobs:
           port: ${{ secrets.VM_PORT || 22 }}
           command_timeout: 25m
           script_stop: true
+          envs: DEPLOY_MODE
           script: |
             set -euo pipefail
             cd /opt/nossotrello
 
-            echo "==> docker system prune"
-            docker system prune -af --volumes
-
+            # ── Git sync (sempre) ──
             echo "==> git sync"
             git fetch origin
             git reset --hard origin/deploy
 
-            echo "==> compose down"
-            docker compose -p nossotrello down --remove-orphans
+            # ── Full: prune + down (só no modo full) ──
+            if [ "${DEPLOY_MODE}" = "full" ]; then
+              echo "==> docker system prune"
+              docker system prune -af --volumes
+              echo "==> compose down"
+              docker compose -p nossotrello down --remove-orphans
+            fi
 
+            # ── Build + recreate ──
             echo "==> compose up --build"
             docker compose -p nossotrello up -d --build --force-recreate
 
-            echo "==> collectstatic"
-            docker exec nossotrello-web-1 sh -lc "python manage.py collectstatic --noinput --clear"
-
-            echo "==> restart nginx"
-            docker compose -p nossotrello restart nginx
-
+            # ── Migrate + collectstatic (sempre) ──
             echo "==> migrate"
             docker exec nossotrello-web-1 python manage.py migrate
-            docker exec nossotrello-web-1 python manage.py showmigrations boards
+
+            echo "==> collectstatic"
+            docker exec nossotrello-web-1 sh -lc "python manage.py collectstatic --noinput"
 
             echo "==> done"
+        env:
+          DEPLOY_MODE: ${{ inputs.mode || 'fast' }}
