@@ -136,6 +136,16 @@
     const t = (evt && evt.type) || "";
     log("event", t, evt);
 
+    // Re-emite TODO evento como CustomEvent `board:<type>` no window.
+    // Isso permite que módulos novos (ex: card_edit_collab.js) escutem
+    // sem precisar hardcode aqui — e os casos específicos abaixo
+    // continuam tratados.
+    if (t && t !== "hello" && t !== "pong") {
+      try {
+        window.dispatchEvent(new CustomEvent(`board:${t}`, { detail: evt }));
+      } catch (_e) {}
+    }
+
     switch (t) {
       case "hello":
       case "pong":

@@ -17,6 +17,7 @@ from django.urls import path, reverse_lazy
 from . import views  # mantém apenas o que realmente está em boards/views/__init__.py (ex: first_login)
 
 from .views import cards as cards_views
+from .views import card_edit_collab as card_edit_collab_views
 from .views import checklists as checklist_views
 from .views import calendar as calendar_views
 from .views.mentions import board_mentions
@@ -514,6 +515,25 @@ urlpatterns = [
     path("card/<int:card_id>/edit/", cards_views.edit_card, name="edit_card"),
     path("card/<int:card_id>/update/", cards_views.update_card, name="update_card"),
     path("card/<int:card_id>/delete/", cards_views.delete_card, name="delete_card"),
+
+    # ============================================================
+    # Edição colaborativa (soft lock + live preview via WS)
+    # ============================================================
+    path(
+        "card/<int:card_id>/field/<str:field>/lock/",
+        card_edit_collab_views.card_field_lock,
+        name="card_field_lock",
+    ),
+    path(
+        "card/<int:card_id>/field/<str:field>/typing/",
+        card_edit_collab_views.card_field_typing,
+        name="card_field_typing",
+    ),
+    path(
+        "card/<int:card_id>/field/<str:field>/release/",
+        card_edit_collab_views.card_field_release,
+        name="card_field_release",
+    ),
 
     # Tags
     path("cards/<int:card_id>/tag-color/", cards_views.set_tag_color, name="set_tag_color"),
