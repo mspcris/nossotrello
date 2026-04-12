@@ -1833,17 +1833,9 @@ var _CAMILA_AVATARS = {
         + 'onclick="spRepost('+postId+')"><span style="font-size:1.2rem">📄</span> Na minha página</button>';
     }
 
-    /* WhatsApp */
-    s += '<button style="width:100%;padding:13px;border:none;background:#dcfce7;color:#16a34a;border-radius:12px;font-size:0.9rem;cursor:pointer;margin-bottom:8px;font-weight:600;display:flex;align-items:center;gap:10px;justify-content:center" '
-      + 'onclick="spShareNative('+postId+',\'whatsapp\')"><span style="font-size:1.2rem">💬</span> WhatsApp</button>';
-
-    /* Facebook */
-    s += '<button style="width:100%;padding:13px;border:none;background:#dbeafe;color:#1d4ed8;border-radius:12px;font-size:0.9rem;cursor:pointer;margin-bottom:8px;font-weight:600;display:flex;align-items:center;gap:10px;justify-content:center" '
-      + 'onclick="spShareNative('+postId+',\'facebook\')"><span style="font-size:1.2rem">📘</span> Facebook</button>';
-
-    /* Copiar link */
-    s += '<button style="width:100%;padding:13px;border:none;background:#f3f4f6;color:#374151;border-radius:12px;font-size:0.9rem;cursor:pointer;margin-bottom:8px;font-weight:600;display:flex;align-items:center;gap:10px;justify-content:center" '
-      + 'onclick="spCopyLink('+postId+')"><span style="font-size:1.2rem">📋</span> Copiar link</button>';
+    /* Compartilhar (sheet nativo do SO — texto + imagem) */
+    s += '<button style="width:100%;padding:13px;border:none;background:linear-gradient(135deg,#dbeafe,#ede9fe);color:#4338ca;border-radius:12px;font-size:0.9rem;cursor:pointer;margin-bottom:8px;font-weight:600;display:flex;align-items:center;gap:10px;justify-content:center" '
+      + 'onclick="spShareNative('+postId+')"><span style="font-size:1.2rem">📤</span> Compartilhar</button>';
 
     /* Cancelar */
     s += '<button style="width:100%;padding:13px;border:none;background:#f1f5f9;color:#475569;border-radius:12px;font-size:0.9rem;cursor:pointer;font-weight:600;margin-top:4px" onclick="this.closest(\'#sp-share-menu\').remove()">Cancelar</button>';
@@ -1852,35 +1844,41 @@ var _CAMILA_AVATARS = {
     document.body.appendChild(ov);
   };
 
-  /* ── Compartilhar externamente ── */
-  window.spShareNative = function(postId, target){
+  /* ── Compartilhar (sheet nativo do SO com texto + imagem) ── */
+  window.spShareNative = function(postId){
     var menu = document.getElementById('sp-share-menu');
     if(menu) menu.remove();
 
     var data = _spGetPostData(postId);
     var text = data.text || '';
-    var url = location.origin + '/social/post/' + postId + '/view/';
-    var msg = text ? (text + '\n\n' + url) : url;
 
-    if(target === 'facebook'){
-      window.open('https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(url) + '&quote=' + encodeURIComponent(text), '_blank');
-    } else if(target === 'whatsapp'){
-      /* Mobile: abre app direto. Desktop: abre web.whatsapp */
-      window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent(msg), '_blank');
+    /* Mobile com Web Share API */
+    if(navigator.share){
+      if(data.imgUrl){
+        _spUrlToFile(data.imgUrl, function(file){
+          var shareData = {text: text};
+          if(file && navigator.canShare && navigator.canShare({files:[file]})){
+            shareData.files = [file];
+          }
+          navigator.share(shareData).catch(function(){});
+        });
+        return;
+      }
+      navigator.share({text: text}).catch(function(){});
+      return;
     }
-  };
 
-  /* ── Copiar link do post ── */
-  window.spCopyLink = function(postId){
-    var menu = document.getElementById('sp-share-menu');
-    if(menu) menu.remove();
-    var url = location.origin + '/social/post/' + postId + '/view/';
-    if(navigator.clipboard){
-      navigator.clipboard.writeText(url).then(function(){
-        _spToast('Link copiado!');
-      }).catch(function(){ prompt('Copie o link:', url); });
-    } else {
-      prompt('Copie o link:', url);
+    /* Desktop: copia texto + abre imagem em nova aba */
+    if(text && navigator.clipboard){
+      navigator.clipboard.writeText(text).then(function(){
+        _spToast('Texto copiado!');
+      }).catch(function(){});
+    }
+    if(data.imgUrl){
+      window.open(data.imgUrl, '_blank');
+      if(text) setTimeout(function(){ _spToast('Texto copiado! Salve a imagem da aba aberta.'); }, 600);
+    } else if(!text){
+      _spToast('Nenhum conteúdo para compartilhar.');
     }
   };
 
