@@ -22,7 +22,6 @@ docker system prune -af --volumes
 
 echo "==> git sync"
 git fetch origin
-git checkout -B deploy origin/deploy
 git reset --hard origin/deploy
 
 echo "==> compose down"
