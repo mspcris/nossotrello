@@ -1292,10 +1292,13 @@ def card_modal(request, card_id):
         )
 
     if card.is_deleted:
-        # Busca quem deletou no log
+        # Busca quem deletou no log. A mensagem é gravada no campo `content`
+        # (HTML) pelo _log_card em views/cards.py:741 como:
+        #   "<p><strong>{actor}</strong> excluiu (soft delete) este card.</p>"
+        # Usar a frase literal evita pegar logs de checklist/item excluídos.
         delete_log = (
             CardLog.objects
-            .filter(card=card, body__contains="excluiu")
+            .filter(card=card, content__icontains="excluiu (soft delete) este card")
             .select_related("actor")
             .order_by("-created_at")
             .first()
