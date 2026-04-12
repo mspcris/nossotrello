@@ -1,0 +1,60 @@
+name: Deploy Produção (VM)
+
+# Dispara quando a branch `deploy` recebe push, ou manualmente pela UI
+# (Actions -> Deploy Produção (VM) -> Run workflow).
+on:
+  push:
+    branches: [deploy]
+  workflow_dispatch: {}
+
+# Só um deploy por vez. Se dois pushes chegarem juntos, o segundo espera
+# o primeiro terminar (não cancela — evita deixar a VM em estado inconsistente).
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: SSH + rebuild stack
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          port: ${{ secrets.VM_PORT || 22 }}
+          command_timeout: 25m
+          script_stop: true
+          script: |
+            set -euo pipefail
+            cd /opt/nossotrello
+
+            echo "==> docker system prune"
+            docker system prune -af --volumes
+
+            echo "==> git sync"
+            git fetch origin
+            git checkout -B deploy origin/deploy
+            git reset --hard origin/deploy
+
+            echo "==> compose down"
+            docker compose -p nossotrello down --remove-orphans
+
+            echo "==> compose up --build"
+            docker compose -p nossotrello up -d --build --force-recreate
+
+            echo "==> collectstatic"
+            docker exec nossotrello-web-1 sh -lc "python manage.py collectstatic --noinput --clear"
+
+            echo "==> restart nginx"
+            docker compose -p nossotrello restart nginx
+
+            echo "==> migrate"
+            docker exec nossotrello-web-1 python manage.py migrate
+            docker exec nossotrello-web-1 python manage.py showmigrations boards
+
+            echo "==> done"
