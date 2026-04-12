@@ -76,6 +76,8 @@ from boards.views.boards import (
     home_group_item_add,
     home_group_item_remove,
     home_favorite_toggle,
+    # onboarding da home
+    boards_onboarding_dismiss,
 )
 
 from boards.views.boards_state import (
@@ -485,6 +487,7 @@ urlpatterns = [
     ),
     path("home/favorites/toggle/<int:board_id>/", home_favorite_toggle, name="home_favorite_toggle"),
     path("home/search/", home_search, name="home_search"),
+    path("home/onboarding/done/", boards_onboarding_dismiss, name="boards_onboarding_dismiss"),
 
     # ============================================================
     # HOME WALLPAPER (papel de parede da home)

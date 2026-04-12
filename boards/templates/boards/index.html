@@ -8,6 +8,54 @@
   <link rel="stylesheet" href="{% url 'boards:home_wallpaper_css' %}">
   <link rel="stylesheet" href="{% static 'boards/home.css' %}">
 
+  <style>
+    /* ============================================================
+       PAINÉIS — separação visual clara entre agrupamentos de quadros
+       (Favoritos / Agrupamentos / Meus quadros / Compartilhados)
+       Fundo translúcido + blur para dar corpo sem esconder o wallpaper.
+       ============================================================ */
+    .home-panel {
+      background: rgba(15, 23, 42, 0.32);
+      backdrop-filter: blur(14px) saturate(1.1);
+      -webkit-backdrop-filter: blur(14px) saturate(1.1);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 18px;
+      padding: 22px 24px;
+      box-shadow:
+        0 6px 24px rgba(0, 0, 0, 0.22),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      transition: background 0.25s ease;
+    }
+    .home-panel:hover {
+      background: rgba(15, 23, 42, 0.38);
+    }
+    .home-panel--compact { padding: 18px 24px; }
+
+    .home-panel-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    .home-panel-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #fff;
+      margin: 0;
+      letter-spacing: -0.2px;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    }
+    .home-panel-hint {
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.7);
+      text-align: right;
+    }
+  </style>
+
   {# IMPORTANT: defer evita o crash "document.body is null" dentro do home_groups.js #}
   <script src="{% static 'boards/home_groups.js' %}" defer></script>
   <script src="{% static 'boards/home_board_search.js' %}" defer></script>
@@ -101,10 +149,10 @@
   <div id="home-groups-area" class="mb-8">
 
     {# ===================== FAVORITOS ===================== #}
-    <div class="mb-6" id="home-favorites-block">
-      <div class="flex items-center justify-between mb-2 gap-3">
-        <h2 class="text-lg font-semibold">⭐ Favoritos</h2>
-        <span class="text-xs text-white/80 text-right">
+    <section class="home-panel mb-6" id="home-favorites-block">
+      <div class="home-panel-header">
+        <h2 class="home-panel-title">⭐ Favoritos</h2>
+        <span class="home-panel-hint">
           Marque a estrela em um quadro para aparecer aqui.
         </span>
       </div>
@@ -120,10 +168,15 @@
           {% endfor %}
         </div>
       </div>
-    </div>
+    </section>
 
     {# ===================== CRIAR NOVO AGRUPAMENTO ===================== #}
-    <div class="flex flex-wrap gap-6">
+    <section class="home-panel home-panel--compact mb-6">
+      <div class="home-panel-header">
+        <h2 class="home-panel-title">📁 Agrupamentos</h2>
+        <span class="home-panel-hint">Organize seus quadros em grupos personalizados.</span>
+      </div>
+
       <form
         class="flex gap-2 items-center flex-wrap"
         hx-post="{% url 'boards:home_group_create' %}"
@@ -135,22 +188,24 @@
         <input type="text" name="name" class="rounded-lg px-3 py-2 w-64" placeholder="Novo agrupamento (ex: Clínicas RJ)">
         <button type="submit" class="px-3 py-2 bg-white/70 rounded-lg font-semibold">+ Criar agrupamento</button>
       </form>
-    </div>
 
-    {# ===================== GRUPOS CUSTOM ===================== #}
-    <div id="home-custom-groups" class="pt-2 pr-4">
-      {% for row in custom_groups %}
-        {% include "boards/partials/home_group_block.html" with g=row.group items=row.items favorite_board_ids=favorite_board_ids %}
-      {% empty %}
-      {% endfor %}
-    </div>
+      {# ===================== GRUPOS CUSTOM ===================== #}
+      <div id="home-custom-groups" class="pt-4">
+        {% for row in custom_groups %}
+          {% include "boards/partials/home_group_block.html" with g=row.group items=row.items favorite_board_ids=favorite_board_ids %}
+        {% empty %}
+        {% endfor %}
+      </div>
+    </section>
   </div>
 
   {# ===================== LISTAS BASE ===================== #}
-  <div class="pt-2 pr-4">
-    <h1 class="text-2xl font-bold mb-6 home-title">Quadros</h1>
+  <section class="home-panel mb-6">
+    <div class="home-panel-header">
+      <h2 class="home-panel-title">📋 Meus quadros</h2>
+      <span class="home-panel-hint">Quadros que você criou.</span>
+    </div>
 
-    <h2 class="text-lg font-semibold mb-3">Meus quadros</h2>
     <div class="boards-grid home-source-list" id="home-owned-list">
       {% for board in owned_boards %}
         {% include "boards/partials/home_board_card.html" with board=board favorite_board_ids=favorite_board_ids subtitle="Clique para abrir" show_delete_button=True is_shared=False %}
@@ -167,16 +222,22 @@
         + Criar novo quadro
       </div>
     </div>
+  </section>
 
-    {% if shared_boards %}
-      <h2 class="text-lg font-semibold mb-3">Compartilhados comigo</h2>
+  {% if shared_boards %}
+    <section class="home-panel mb-6">
+      <div class="home-panel-header">
+        <h2 class="home-panel-title">🤝 Compartilhados comigo</h2>
+        <span class="home-panel-hint">Quadros onde você foi convidado.</span>
+      </div>
+
       <div class="boards-grid home-source-list" id="home-shared-list">
         {% for board in shared_boards %}
           {% include "boards/partials/home_board_card.html" with board=board favorite_board_ids=favorite_board_ids subtitle="Compartilhado com você" show_delete_button=False is_shared=True owner_email=board.owner_email %}
         {% endfor %}
       </div>
-    {% endif %}
-  </div>
+    </section>
+  {% endif %}
 
   {# ===================== HOME GROUPS (mantido) ===================== #}
   <script>
@@ -238,5 +299,10 @@
     document.addEventListener("htmx:load", initModes);
   })();
   </script>
+
+  {# ===================== ONBOARDING (primeiro acesso) ===================== #}
+  {% if show_boards_onboarding %}
+    {% include "boards/partials/boards_onboarding_modal.html" %}
+  {% endif %}
 
 {% endblock %}

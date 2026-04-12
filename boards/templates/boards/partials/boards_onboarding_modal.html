@@ -1,0 +1,519 @@
+{# boards/templates/boards/partials/boards_onboarding_modal.html #}
+{# Modal de boas-vindas — aparece APENAS uma vez, no primeiro acesso do usuário. #}
+{# Marcado como concluído via POST para boards:boards_onboarding_dismiss. #}
+
+<div id="boards-onboarding-overlay" class="nt-ob-overlay" role="dialog" aria-modal="true" aria-labelledby="nt-ob-title">
+  <div class="nt-ob-card" role="document">
+
+    {# Barra de progresso dos slides #}
+    <div class="nt-ob-progress">
+      <div class="nt-ob-progress-bar" id="nt-ob-progress-bar"></div>
+    </div>
+
+    <button type="button" class="nt-ob-skip" id="nt-ob-skip" aria-label="Pular apresentação">
+      Pular
+    </button>
+
+    {# ============ SLIDES ============ #}
+    <div class="nt-ob-slides" id="nt-ob-slides">
+
+      {# --- slide 1: boas-vindas --- #}
+      <section class="nt-ob-slide is-active" data-slide="0">
+        <div class="nt-ob-hero nt-ob-hero--welcome">
+          <div class="nt-ob-emoji">👋</div>
+        </div>
+        <h2 class="nt-ob-title" id="nt-ob-title">Bem-vindo ao NossoTrello!</h2>
+        <p class="nt-ob-text">
+          Organize suas tarefas em <strong>quadros</strong>, trabalhe junto com seu time
+          e acompanhe tudo em um só lugar — com uma rede social integrada para conversar
+          e compartilhar.
+        </p>
+        <p class="nt-ob-hint">
+          Preparamos um <strong>Quadro de Exemplo</strong> pra você começar.
+          Vamos dar uma olhada rápida?
+        </p>
+      </section>
+
+      {# --- slide 2: quadros e colunas --- #}
+      <section class="nt-ob-slide" data-slide="1">
+        <div class="nt-ob-hero nt-ob-hero--board">
+          <div class="nt-ob-mini-board">
+            <div class="nt-ob-mini-col">
+              <div class="nt-ob-mini-col-h" style="background:#3b82f6">Tarefas</div>
+              <div class="nt-ob-mini-card"></div>
+              <div class="nt-ob-mini-card short"></div>
+            </div>
+            <div class="nt-ob-mini-col">
+              <div class="nt-ob-mini-col-h" style="background:#f59e0b">Em execução</div>
+              <div class="nt-ob-mini-card"></div>
+            </div>
+            <div class="nt-ob-mini-col">
+              <div class="nt-ob-mini-col-h" style="background:#10b981">Feito</div>
+              <div class="nt-ob-mini-card short"></div>
+            </div>
+          </div>
+        </div>
+        <h2 class="nt-ob-title">Quadros, colunas e cards</h2>
+        <p class="nt-ob-text">
+          Cada <strong>quadro</strong> é um projeto ou contexto. Dentro dele, você cria
+          <strong>colunas</strong> (tipo "A fazer", "Em execução", "Feito") e dentro das
+          colunas ficam os <strong>cards</strong> — cada tarefa é um card.
+        </p>
+      </section>
+
+      {# --- slide 3: arrastar cards --- #}
+      <section class="nt-ob-slide" data-slide="2">
+        <div class="nt-ob-hero nt-ob-hero--drag">
+          <div class="nt-ob-drag-demo">
+            <div class="nt-ob-mini-col">
+              <div class="nt-ob-mini-col-h" style="background:#3b82f6">Tarefas</div>
+              <div class="nt-ob-mini-card nt-ob-drag-src"></div>
+            </div>
+            <div class="nt-ob-drag-arrow">→</div>
+            <div class="nt-ob-mini-col">
+              <div class="nt-ob-mini-col-h" style="background:#f59e0b">Em execução</div>
+              <div class="nt-ob-mini-card nt-ob-drag-dst"></div>
+            </div>
+          </div>
+        </div>
+        <h2 class="nt-ob-title">Arraste para mover</h2>
+        <p class="nt-ob-text">
+          Quando começar uma tarefa, <strong>arraste o card</strong> pra coluna
+          "Em execução". Quando terminar, arraste pra "Feito". Simples assim.
+        </p>
+        <p class="nt-ob-hint">
+          Clique em qualquer card pra ver detalhes, adicionar <strong>checklist</strong>,
+          <strong>anexos</strong>, <strong>prazo</strong> e <strong>comentários</strong>.
+        </p>
+      </section>
+
+      {# --- slide 4: rede social --- #}
+      <section class="nt-ob-slide" data-slide="3">
+        <div class="nt-ob-hero nt-ob-hero--social">
+          <div class="nt-ob-emoji">💬</div>
+        </div>
+        <h2 class="nt-ob-title">Rede social integrada</h2>
+        <p class="nt-ob-text">
+          Além dos quadros, você tem uma <strong>rede social</strong> pra conversar
+          com o time, compartilhar posts, reagir, comentar e ficar por dentro do
+          que está acontecendo.
+        </p>
+        <p class="nt-ob-hint">
+          Pra chegar lá, clique no <strong>ícone de rede social</strong> no topo
+          (canto superior direito), ou acesse o menu do seu perfil.
+        </p>
+      </section>
+
+      {# --- slide 5: final --- #}
+      <section class="nt-ob-slide" data-slide="4">
+        <div class="nt-ob-hero nt-ob-hero--done">
+          <div class="nt-ob-emoji">🚀</div>
+        </div>
+        <h2 class="nt-ob-title">Pronto pra começar!</h2>
+        <p class="nt-ob-text">
+          Seu <strong>Quadro de Exemplo</strong> já está na sua home.
+          Abra ele pra experimentar, ou crie o seu primeiro quadro de verdade
+          clicando em <strong>"+ Criar novo quadro"</strong>.
+        </p>
+        <p class="nt-ob-hint">
+          Boas-vindas ao time! 🎉
+        </p>
+      </section>
+    </div>
+
+    {# ============ FOOTER ============ #}
+    <div class="nt-ob-footer">
+      <div class="nt-ob-dots" id="nt-ob-dots">
+        <button type="button" class="nt-ob-dot is-active" data-goto="0" aria-label="Ir para slide 1"></button>
+        <button type="button" class="nt-ob-dot" data-goto="1" aria-label="Ir para slide 2"></button>
+        <button type="button" class="nt-ob-dot" data-goto="2" aria-label="Ir para slide 3"></button>
+        <button type="button" class="nt-ob-dot" data-goto="3" aria-label="Ir para slide 4"></button>
+        <button type="button" class="nt-ob-dot" data-goto="4" aria-label="Ir para slide 5"></button>
+      </div>
+      <div class="nt-ob-actions">
+        <button type="button" class="nt-ob-btn nt-ob-btn--ghost" id="nt-ob-prev" disabled>
+          Voltar
+        </button>
+        <button type="button" class="nt-ob-btn nt-ob-btn--primary" id="nt-ob-next">
+          Próximo
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+/* ============================================================
+   ONBOARDING OVERLAY + CARD
+   ============================================================ */
+.nt-ob-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: radial-gradient(ellipse at center, rgba(10,20,40,0.75) 0%, rgba(5,10,25,0.92) 100%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: nt-ob-fade-in 0.4s ease;
+}
+@keyframes nt-ob-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+.nt-ob-card {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  background: linear-gradient(155deg, #ffffff 0%, #f8fafc 100%);
+  border-radius: 20px;
+  box-shadow:
+    0 25px 70px rgba(0,0,0,0.5),
+    0 0 0 1px rgba(255,255,255,0.1);
+  overflow: hidden;
+  animation: nt-ob-slide-up 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes nt-ob-slide-up {
+  from { transform: translateY(24px) scale(0.96); opacity: 0; }
+  to   { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+/* Barra de progresso no topo */
+.nt-ob-progress {
+  height: 4px;
+  background: #e2e8f0;
+  position: relative;
+}
+.nt-ob-progress-bar {
+  height: 100%;
+  width: 20%;
+  background: linear-gradient(90deg, #3b82f6, #06b6d4);
+  transition: width 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.nt-ob-skip {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  background: rgba(0,0,0,0.04);
+  border: none;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  z-index: 2;
+  transition: all 0.2s;
+}
+.nt-ob-skip:hover {
+  background: rgba(0,0,0,0.08);
+  color: #1e293b;
+}
+
+/* Slides */
+.nt-ob-slides {
+  position: relative;
+  min-height: 460px;
+}
+.nt-ob-slide {
+  position: absolute;
+  inset: 0;
+  padding: 32px 36px 24px;
+  opacity: 0;
+  transform: translateX(24px);
+  pointer-events: none;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+.nt-ob-slide.is-active {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+/* Hero: ilustração no topo de cada slide */
+.nt-ob-hero {
+  height: 180px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 22px;
+  position: relative;
+  overflow: hidden;
+}
+.nt-ob-hero--welcome {
+  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #6366f1 100%);
+}
+.nt-ob-hero--board {
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+}
+.nt-ob-hero--drag {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+}
+.nt-ob-hero--social {
+  background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 50%, #ec4899 100%);
+}
+.nt-ob-hero--done {
+  background: linear-gradient(135deg, #34d399 0%, #10b981 50%, #06b6d4 100%);
+}
+
+.nt-ob-emoji {
+  font-size: 4.5rem;
+  line-height: 1;
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15));
+  animation: nt-ob-bounce 2s ease infinite;
+}
+@keyframes nt-ob-bounce {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
+}
+
+/* Mini board mockup (slide 2) */
+.nt-ob-mini-board {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+}
+.nt-ob-mini-col {
+  width: 90px;
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.nt-ob-mini-col-h {
+  height: 18px;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 0.55rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  letter-spacing: 0.2px;
+}
+.nt-ob-mini-card {
+  height: 18px;
+  background: #f1f5f9;
+  border-radius: 4px;
+  border-left: 3px solid #cbd5e1;
+}
+.nt-ob-mini-card.short { height: 14px; width: 75%; }
+
+/* Drag demo (slide 3) */
+.nt-ob-drag-demo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px;
+}
+.nt-ob-drag-demo .nt-ob-mini-col {
+  width: 100px;
+}
+.nt-ob-drag-arrow {
+  font-size: 1.8rem;
+  color: #f59e0b;
+  font-weight: 900;
+  animation: nt-ob-arrow 1.5s ease infinite;
+}
+@keyframes nt-ob-arrow {
+  0%, 100% { transform: translateX(0); }
+  50%      { transform: translateX(6px); }
+}
+.nt-ob-drag-src {
+  background: #dbeafe !important;
+  border-left-color: #3b82f6 !important;
+  animation: nt-ob-fade-src 1.5s ease infinite;
+}
+.nt-ob-drag-dst {
+  background: #fef3c7 !important;
+  border-left-color: #f59e0b !important;
+  animation: nt-ob-fade-dst 1.5s ease infinite;
+}
+@keyframes nt-ob-fade-src {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.3; }
+}
+@keyframes nt-ob-fade-dst {
+  0%, 100% { opacity: 0.3; }
+  50%      { opacity: 1; }
+}
+
+/* Textos */
+.nt-ob-title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 10px;
+  letter-spacing: -0.5px;
+}
+.nt-ob-text {
+  font-size: 0.95rem;
+  color: #475569;
+  line-height: 1.55;
+  margin: 0 0 12px;
+}
+.nt-ob-text strong { color: #1e293b; }
+.nt-ob-hint {
+  font-size: 0.85rem;
+  color: #64748b;
+  line-height: 1.5;
+  margin: 0;
+  padding: 10px 14px;
+  background: rgba(59, 130, 246, 0.08);
+  border-left: 3px solid #3b82f6;
+  border-radius: 6px;
+}
+.nt-ob-hint strong { color: #1e40af; }
+
+/* Footer */
+.nt-ob-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 28px 24px;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+.nt-ob-dots {
+  display: flex;
+  gap: 8px;
+}
+.nt-ob-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: none;
+  background: #cbd5e1;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.2s;
+}
+.nt-ob-dot:hover { background: #94a3b8; }
+.nt-ob-dot.is-active {
+  background: #3b82f6;
+  width: 22px;
+  border-radius: 6px;
+}
+
+.nt-ob-actions {
+  display: flex;
+  gap: 10px;
+}
+.nt-ob-btn {
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.nt-ob-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.nt-ob-btn--ghost {
+  background: transparent;
+  color: #64748b;
+}
+.nt-ob-btn--ghost:not(:disabled):hover {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+.nt-ob-btn--primary {
+  background: linear-gradient(135deg, #3b82f6, #06b6d4);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+}
+.nt-ob-btn--primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.45);
+}
+.nt-ob-btn--primary:active { transform: translateY(0); }
+
+/* Responsivo */
+@media (max-width: 600px) {
+  .nt-ob-card { max-width: 100%; }
+  .nt-ob-slide { padding: 24px 22px 20px; }
+  .nt-ob-slides { min-height: 500px; }
+  .nt-ob-hero { height: 140px; margin-bottom: 16px; }
+  .nt-ob-emoji { font-size: 3.5rem; }
+  .nt-ob-title { font-size: 1.2rem; }
+  .nt-ob-text { font-size: 0.88rem; }
+  .nt-ob-footer { padding: 14px 20px 18px; }
+  .nt-ob-btn { padding: 9px 14px; font-size: 0.85rem; }
+}
+</style>
+
+<script>
+(function () {
+  var overlay  = document.getElementById('boards-onboarding-overlay');
+  if (!overlay) return;
+
+  var slides   = overlay.querySelectorAll('.nt-ob-slide');
+  var dots     = overlay.querySelectorAll('.nt-ob-dot');
+  var bar      = document.getElementById('nt-ob-progress-bar');
+  var prevBtn  = document.getElementById('nt-ob-prev');
+  var nextBtn  = document.getElementById('nt-ob-next');
+  var skipBtn  = document.getElementById('nt-ob-skip');
+  var total    = slides.length;
+  var current  = 0;
+
+  function go(n) {
+    if (n < 0 || n >= total) return;
+    current = n;
+    slides.forEach(function (s, i) { s.classList.toggle('is-active', i === n); });
+    dots.forEach(function (d, i) { d.classList.toggle('is-active', i === n); });
+    bar.style.width = (((n + 1) / total) * 100) + '%';
+    prevBtn.disabled = (n === 0);
+    nextBtn.textContent = (n === total - 1) ? 'Começar' : 'Próximo';
+  }
+
+  function dismiss() {
+    overlay.style.transition = 'opacity 0.3s';
+    overlay.style.opacity = '0';
+    setTimeout(function () { overlay.remove(); }, 300);
+
+    // Marca no backend — idempotente. A flag já foi setada no provisionamento
+    // do sample board, mas mandamos de qualquer forma por garantia.
+    try {
+      var csrf = (document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/) || [])[1] || '';
+      fetch('/home/onboarding/done/', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrf, 'X-Requested-With': 'XMLHttpRequest' },
+        credentials: 'same-origin',
+      }).catch(function () {});
+    } catch (e) {}
+  }
+
+  prevBtn.addEventListener('click', function () { go(current - 1); });
+  nextBtn.addEventListener('click', function () {
+    if (current === total - 1) { dismiss(); }
+    else { go(current + 1); }
+  });
+  skipBtn.addEventListener('click', dismiss);
+
+  overlay.querySelectorAll('.nt-ob-dot').forEach(function (d) {
+    d.addEventListener('click', function () {
+      var n = parseInt(d.getAttribute('data-goto') || '0', 10);
+      go(n);
+    });
+  });
+
+  // ESC fecha, setas navegam
+  document.addEventListener('keydown', function (e) {
+    if (!document.body.contains(overlay)) return;
+    if (e.key === 'Escape') { dismiss(); }
+    else if (e.key === 'ArrowRight') { go(Math.min(total - 1, current + 1)); }
+    else if (e.key === 'ArrowLeft')  { go(Math.max(0, current - 1)); }
+  });
+
+  go(0);
+})();
+</script>

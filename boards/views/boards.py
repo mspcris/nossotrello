@@ -132,7 +132,116 @@ def _gen_6digit_code() -> str:
 # HOME (lista de boards)
 # ======================================================================
 
+def _ensure_sample_board_for_new_user(user):
+    """
+    Provisiona "QUADRO DE EXEMPLO" no primeiro acesso do usuário.
+
+    Só roda uma vez por usuário — controlado por `UserProfile.boards_onboarding_done`.
+    Depois que a flag vira True, nunca mais recriamos (se o usuário apagar o
+    quadro, fica apagado de verdade).
+    """
+    from ..models import UserProfile
+
+    prof, _ = UserProfile.objects.get_or_create(user=user)
+    if prof.boards_onboarding_done:
+        return None
+
+    with transaction.atomic():
+        board = Board.objects.create(
+            name="QUADRO DE EXEMPLO",
+            created_by=user,
+            organization=get_or_create_user_default_organization(user),
+        )
+        BoardMembership.objects.create(
+            board=board,
+            user=user,
+            role=BoardMembership.Role.OWNER,
+        )
+
+        columns_spec = [
+            ("Tarefas", "blue"),
+            ("Em execução", "amber"),
+            ("Feito", "green"),
+        ]
+        columns = {}
+        for pos, (name, theme) in enumerate(columns_spec):
+            columns[name] = Column.objects.create(
+                board=board,
+                name=name,
+                position=pos,
+                theme=theme,
+            )
+
+        Card.objects.create(
+            column=columns["Tarefas"],
+            title="Aprender a usar o nossotrello",
+            description=(
+                "Bem-vindo! Este é um card de exemplo. "
+                "Arraste-o para a coluna 'Em execução' quando começar "
+                "e depois para 'Feito' quando concluir."
+            ),
+            position=0,
+            created_by=user,
+        )
+        Card.objects.create(
+            column=columns["Em execução"],
+            title="Estou aprendendo a usar a ferramenta",
+            description=(
+                "Clique em um card para ver detalhes, adicionar checklist, "
+                "anexos, prazos e comentários."
+            ),
+            position=0,
+            created_by=user,
+        )
+
+        prof.boards_onboarding_done = True
+        prof.save(update_fields=["boards_onboarding_done"])
+
+    return board
+
+
+@require_POST
+@login_required
+def boards_onboarding_dismiss(request):
+    """
+    Marca a flag de onboarding da home como concluída.
+    Usado quando o usuário fecha o modal de boas-vindas pela 1ª vez.
+    (A flag já é marcada no provisionamento do sample board, então este
+    endpoint serve apenas para casos em que o modal é mostrado sem sample
+    ter sido criado — idempotente.)
+    """
+    from ..models import UserProfile
+    prof, _ = UserProfile.objects.get_or_create(user=request.user)
+    if not prof.boards_onboarding_done:
+        prof.boards_onboarding_done = True
+        prof.save(update_fields=["boards_onboarding_done"])
+    return JsonResponse({"ok": True})
+
+
 def index(request):
+    # Primeiro acesso REAL: provisiona "QUADRO DE EXEMPLO" + 3 colunas + 2 cards
+    # e mostra o modal de boas-vindas.
+    #
+    # "Primeiro acesso real" = flag boards_onboarding_done False E usuário não
+    # tem NENHUM board membership. A segunda condição é crítica pra não
+    # afetar usuários pré-existentes (que vão ter a flag como False por default
+    # da migration, mas já possuem quadros e não precisam ver nada disso).
+    # Depois que o onboarding roda uma vez, a flag fica True pra sempre.
+    show_boards_onboarding = False
+    if request.user.is_authenticated:
+        from ..models import UserProfile
+        prof, _ = UserProfile.objects.get_or_create(user=request.user)
+        if not prof.boards_onboarding_done:
+            has_any_board = BoardMembership.objects.filter(user=request.user).exists()
+            if not has_any_board:
+                _ensure_sample_board_for_new_user(request.user)
+                show_boards_onboarding = True
+            else:
+                # Usuário pré-existente: marca a flag sem provisionar nada,
+                # pra nunca mais entrar nesse branch.
+                prof.boards_onboarding_done = True
+                prof.save(update_fields=["boards_onboarding_done"])
+
     if request.user.is_authenticated:
         qs = BoardMembership.objects.filter(
             user=request.user,
@@ -229,6 +338,7 @@ def index(request):
             "shared_boards": shared_boards,
             "home_bg": True,
             "home_bg_image": home_bg_image,
+            "show_boards_onboarding": show_boards_onboarding,
         },
     )
 

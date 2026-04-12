@@ -529,8 +529,11 @@ class UserProfile(models.Model):
     terms_accepted_at = models.DateTimeField(null=True, blank=True)
     terms_version = models.CharField(max_length=10, default="1.0", blank=True)
 
-    # Onboarding tour concluído
+    # Onboarding tour concluído (rede social)
     onboarding_done = models.BooleanField(default=False)
+
+    # Onboarding da home de quadros concluído (sample board + modal de boas-vindas)
+    boards_onboarding_done = models.BooleanField(default=False)
 
     created_at = models.DateTimeField(auto_now_add=True)
 
