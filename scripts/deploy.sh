@@ -30,6 +30,6 @@ echo "==> migrate"
 docker exec -it nossotrello-web-1 python manage.py migrate
 
 echo "==> collectstatic"
-docker exec -it nossotrello-web-1 sh -lc "python manage.py collectstatic --noinput"
+docker exec -it nossotrello-web-1 sh -lc "python manage.py collectstatic --noinput --clear"
 
 echo "==> done ($MODE)"

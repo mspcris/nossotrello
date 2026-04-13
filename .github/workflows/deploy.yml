@@ -63,7 +63,7 @@ jobs:
             docker exec nossotrello-web-1 python manage.py migrate
 
             echo "==> collectstatic"
-            docker exec nossotrello-web-1 sh -lc "python manage.py collectstatic --noinput"
+            docker exec nossotrello-web-1 sh -lc "python manage.py collectstatic --noinput --clear"
 
             echo "==> done"
         env:
