@@ -27,6 +27,21 @@ from boards.models import WhatsNewItem
 
 FEAT_RE = re.compile(r"^feat(\([^)]*\))?\s*:\s*(.+)$", re.IGNORECASE)
 
+# Palavras/padrões que indicam um commit NÃO-VISÍVEL ao usuário final.
+# Se bate aqui, o item é criado com is_published=False (fica pro admin decidir).
+TECHNICAL_RE = re.compile(
+    r"\b("
+    r"pubsub|websocket|channels|rabbitmq|redis|"
+    r"migration|migra[cç][aã]o|"
+    r"storage|bytea|postgres|database|db\b|"
+    r"rename|refactor|cleanup|"
+    r"ci\b|deploy|nginx|docker|gunicorn|"
+    r"endpoint\s+interno|polling|cron\b|"
+    r"debug\s+log|threading"
+    r")\b",
+    re.IGNORECASE,
+)
+
 EMOJI_RULES = [
     (r"\b(share|compartilh)", "📤"),
     (r"\b(chat|mensag)", "💬"),
@@ -107,13 +122,16 @@ class Command(BaseCommand):
             title = _humanize(subject)
             dt = parse_datetime(iso_dt) or datetime.fromisoformat(iso_dt)
 
+            # Commits técnicos entram despublicados — admin decide se libera.
+            is_published = not bool(TECHNICAL_RE.search(title))
+
             WhatsNewItem.objects.create(
                 commit_hash=commit_hash,
                 emoji=_pick_emoji(title),
                 title=title[:200],
                 description="",
                 published_at=dt,
-                is_published=True,
+                is_published=is_published,
             )
             created += 1
             self.stdout.write(self.style.SUCCESS(f"+ {commit_hash[:8]} {title}"))
