@@ -6,6 +6,7 @@ almoço, pendências do dia, feed de fotos do trabalho.
 import json
 import logging
 import os
+import random
 import re
 import xml.etree.ElementTree as ET
 from datetime import timedelta
@@ -705,6 +706,25 @@ def social_friends_feed(request):
             .select_related("user", "user__profile")
             .order_by("-created_at")
         )
+
+    # Colapsa "bursts": posts do mesmo usuário com intervalo < 60s viram 1 (escolhido aleatoriamente).
+    # Evita que alguém que postou 6x a mesma foto ocupe o feed inteiro.
+    posts_by_user = defaultdict(list)
+    for p in posts:
+        posts_by_user[p.user_id].append(p)
+
+    collapsed = []
+    for user_posts in posts_by_user.values():
+        user_posts.sort(key=lambda x: x.created_at)
+        cluster = [user_posts[0]]
+        for prev, curr in zip(user_posts, user_posts[1:]):
+            if (curr.created_at - prev.created_at).total_seconds() < 60:
+                cluster.append(curr)
+            else:
+                collapsed.append(random.choice(cluster))
+                cluster = [curr]
+        collapsed.append(random.choice(cluster))
+    posts = collapsed
 
     # Ordenar: por dia (desc), depois vídeos > imagens > texto, cronológico dentro do tipo
     def _media_rank(p):
