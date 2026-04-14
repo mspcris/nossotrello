@@ -295,6 +295,26 @@
   🔍
 </button>
 
+      {% if request.user.is_authenticated %}
+      <button
+        type="button"
+        id="wn-toggle"
+        class="relative h-10 w-10 flex items-center justify-center leading-none
+               rounded-full bg-white/70 border border-white/40 shadow
+               hover:bg-white transition"
+        aria-label="Novidades"
+        title="Novidades"
+        data-loaded="0"
+      >
+        🎁
+        <span id="wn-badge"
+              class="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1
+                     rounded-full text-[11px] leading-[18px] text-white bg-red-600 text-center font-bold
+                     {% if not whats_new_unseen %}hidden{% endif %}"
+        >{{ whats_new_unseen|default:0 }}</span>
+      </button>
+      {% endif %}
+
     </div>
   </div>
 
@@ -307,6 +327,13 @@
       <button type="button" class="bcs-btn" data-cols="auto">Auto</button>
     </div>
   </div>
+
+  {% if request.user.is_authenticated %}
+  <!-- WHAT'S NEW PANEL (toggle) -->
+  <div id="wn-panel" class="wn-panel" aria-hidden="true" hidden>
+    <div id="wn-panel-body"></div>
+  </div>
+  {% endif %}
 </header>
 
 {% if request.user.is_authenticated %}
@@ -1034,5 +1061,161 @@ document.addEventListener('keydown', function(e){
   document.addEventListener("DOMContentLoaded", initToasts);
 })();
 </script>
+
+{% if request.user.is_authenticated %}
+<!-- ============================================================
+     WHAT'S NEW — toggle + estilos
+     ============================================================ -->
+<style>
+  .wn-panel {
+    position: fixed;
+    top: 90px;
+    right: 16px;
+    width: 360px;
+    max-width: calc(100vw - 24px);
+    max-height: calc(100vh - 120px);
+    background: #fff;
+    color: #0f172a;
+    border: 1px solid rgba(0,0,0,.08);
+    border-radius: 14px;
+    box-shadow: 0 18px 40px rgba(0,0,0,.18);
+    z-index: 1700;
+    overflow: hidden;
+    display: none;
+  }
+  .wn-panel[data-open="true"] { display: block; }
+  html.dark .wn-panel { background: #0f172a; color: #e2e8f0; border-color: rgba(255,255,255,.1); }
+
+  #wn-panel-body { max-height: calc(100vh - 120px); overflow-y: auto; }
+
+  .wn-panel-inner { padding: 0; }
+
+  .wn-head {
+    padding: 16px 18px 12px;
+    background: linear-gradient(135deg, #a855f7, #6366f1);
+    color: #fff;
+  }
+  .wn-head-title { display: flex; gap: 10px; align-items: flex-start; }
+  .wn-head-icon { font-size: 1.7rem; line-height: 1; }
+  .wn-head h3 { font-weight: 700; font-size: 1rem; margin: 0; }
+  .wn-head p  { font-size: .78rem; margin: 2px 0 0; opacity: .9; }
+
+  .wn-list { list-style: none; margin: 0; padding: 6px 0; }
+  .wn-item {
+    display: flex; gap: 10px;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(0,0,0,.06);
+  }
+  html.dark .wn-item { border-bottom-color: rgba(255,255,255,.06); }
+  .wn-item:last-child { border-bottom: none; }
+  .wn-item-new { background: linear-gradient(90deg, rgba(168,85,247,.08), transparent); }
+
+  .wn-item-emoji { font-size: 1.4rem; line-height: 1.2; flex-shrink: 0; }
+  .wn-item-body  { flex: 1; min-width: 0; }
+  .wn-item-top   { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .wn-item-title { font-size: .92rem; font-weight: 600; }
+  .wn-item-badge {
+    font-size: .62rem; font-weight: 700;
+    background: #a855f7; color: #fff;
+    padding: 1px 6px; border-radius: 999px;
+    text-transform: uppercase; letter-spacing: .03em;
+  }
+  .wn-item-desc  { font-size: .82rem; opacity: .82; margin-top: 2px; line-height: 1.4; }
+  .wn-item-date  { font-size: .68rem; opacity: .6; margin-top: 4px; }
+
+  .wn-empty { padding: 30px 18px; text-align: center; opacity: .75; }
+  .wn-empty-emoji { font-size: 2rem; margin-bottom: 8px; }
+  .wn-empty p { font-size: .88rem; margin: 0; }
+
+  @media (max-width: 640px) {
+    .wn-panel {
+      top: 80px;
+      right: 8px;
+      left: 8px;
+      width: auto;
+    }
+  }
+</style>
+
+<script>
+(function () {
+  const btn   = document.getElementById("wn-toggle");
+  const panel = document.getElementById("wn-panel");
+  const body  = document.getElementById("wn-panel-body");
+  const badge = document.getElementById("wn-badge");
+  if (!btn || !panel || !body) return;
+
+  function getCSRF() {
+    return document.querySelector("meta[name='csrf-token']")?.content || "";
+  }
+
+  async function loadPanel() {
+    try {
+      const res = await fetch("{% url 'boards:whats_new_panel' %}", {
+        credentials: "same-origin",
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+      });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      body.innerHTML = await res.text();
+      btn.dataset.loaded = "1";
+    } catch (e) {
+      body.innerHTML = '<div class="wn-empty"><p>Erro ao carregar novidades.</p></div>';
+    }
+  }
+
+  async function markSeen() {
+    try {
+      await fetch("{% url 'boards:whats_new_mark_seen' %}", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "X-CSRFToken": getCSRF(),
+          "X-Requested-With": "XMLHttpRequest",
+        },
+      });
+    } catch {}
+    if (badge) {
+      badge.classList.add("hidden");
+      badge.textContent = "0";
+    }
+  }
+
+  function closePanel() {
+    panel.dataset.open = "false";
+    panel.setAttribute("hidden", "");
+    panel.setAttribute("aria-hidden", "true");
+  }
+
+  async function openPanel() {
+    panel.removeAttribute("hidden");
+    panel.dataset.open = "true";
+    panel.setAttribute("aria-hidden", "false");
+    if (btn.dataset.loaded !== "1") await loadPanel();
+    // marca como visto ao abrir
+    if (badge && !badge.classList.contains("hidden")) {
+      await markSeen();
+    }
+  }
+
+  btn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    if (panel.dataset.open === "true") closePanel();
+    else openPanel();
+  });
+
+  // clique fora fecha
+  document.addEventListener("click", function (e) {
+    if (panel.dataset.open !== "true") return;
+    if (panel.contains(e.target) || btn.contains(e.target)) return;
+    closePanel();
+  });
+
+  // ESC fecha
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && panel.dataset.open === "true") closePanel();
+  });
+})();
+</script>
+{% endif %}
 </body>
 </html>

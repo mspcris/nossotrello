@@ -39,6 +39,8 @@ from boards.views.account import (
 public_profile,
 )
 
+from boards.views.whats_new import whats_new_panel, whats_new_mark_seen
+
 # Módulo "boards" (boards/views/boards.py)
 from boards.views.boards import (
     # core
@@ -630,5 +632,11 @@ urlpatterns = [
     # ============================================================
     path("board/<int:board_id>/history/", views.board_history_modal, name="board_history_modal"),
     path("board/<int:board_id>/history/unread-count/", views.board_history_unread_count, name="board_history_unread_count"),
+
+    # ============================================================
+    # WHATS NEW — novidades do sistema
+    # ============================================================
+    path("whats-new/", whats_new_panel, name="whats_new_panel"),
+    path("whats-new/seen/", whats_new_mark_seen, name="whats_new_mark_seen"),
 ]
 # END file boards/urls.py

@@ -36,6 +36,9 @@ docker exec nossotrello-web-1 python manage.py makemigrations boards
 docker exec nossotrello-web-1 python manage.py migrate
 docker exec nossotrello-web-1 python manage.py showmigrations boards
 
+echo "[8.5/9] sync novidades (feat commits)..."
+docker exec nossotrello-web-1 python manage.py sync_whats_new --limit 300 || true
+
 echo "[9/9] logs web..."
 docker compose logs --tail=50 web
 

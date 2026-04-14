@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth import get_user_model
 
-from .models import Board, Column, Card, CardLog, UserProfile
+from .models import Board, Column, Card, CardLog, UserProfile, WhatsNewItem
 
 User = get_user_model()
 
@@ -55,3 +55,12 @@ class CardAdmin(admin.ModelAdmin):
 class CardLogAdmin(admin.ModelAdmin):
     list_display = ("id", "card", "created_at")
     search_fields = ("content",)
+
+
+@admin.register(WhatsNewItem)
+class WhatsNewItemAdmin(admin.ModelAdmin):
+    list_display = ("id", "emoji", "title", "published_at", "is_published", "commit_hash")
+    list_filter = ("is_published",)
+    search_fields = ("title", "description", "commit_hash")
+    date_hierarchy = "published_at"
+    fields = ("emoji", "title", "description", "published_at", "is_published", "commit_hash")

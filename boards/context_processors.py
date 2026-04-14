@@ -70,4 +70,21 @@ def user_profile(request):
     prof, _ = UserProfile.objects.get_or_create(user=request.user)
     return {"profile": prof}
 
+
+from .models import WhatsNewItem
+
+def whats_new_context(request):
+    user = getattr(request, "user", None)
+    if not (user and getattr(user, "is_authenticated", False)):
+        return {"whats_new_unseen": 0}
+    try:
+        prof, _ = UserProfile.objects.get_or_create(user=user)
+        qs = WhatsNewItem.objects.filter(is_published=True)
+        if prof.last_whatsnew_seen_at:
+            qs = qs.filter(published_at__gt=prof.last_whatsnew_seen_at)
+        count = qs.count()
+    except Exception:
+        count = 0
+    return {"whats_new_unseen": count}
+
 #END boards/context_processors.py

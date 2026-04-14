@@ -535,6 +535,9 @@ class UserProfile(models.Model):
     # Onboarding da home de quadros concluído (sample board + modal de boas-vindas)
     boards_onboarding_done = models.BooleanField(default=False)
 
+    # Última vez que o usuário abriu o painel "Novidades" (What's new)
+    last_whatsnew_seen_at = models.DateTimeField(null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -1482,6 +1485,29 @@ class StoredFile(models.Model):
 
     def __str__(self):
         return f"{self.original_name} ({self.size} bytes)"
+
+
+# ============================================================
+# WHATS NEW — novidades do sistema (tipo Trello "What's new")
+# ============================================================
+class WhatsNewItem(models.Model):
+    commit_hash = models.CharField(max_length=40, unique=True, blank=True, default="")
+    emoji = models.CharField(max_length=8, blank=True, default="✨")
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True, default="")
+    published_at = models.DateTimeField(default=timezone.now, db_index=True)
+    is_published = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-published_at"]
+        indexes = [
+            models.Index(fields=["-published_at"]),
+            models.Index(fields=["is_published", "-published_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.emoji} {self.title}"
 
 
 # END boards/models.py

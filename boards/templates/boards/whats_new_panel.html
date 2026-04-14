@@ -1,0 +1,39 @@
+{% load tz %}
+<div class="wn-panel-inner">
+  <header class="wn-head">
+    <div class="wn-head-title">
+      <span class="wn-head-icon">🎉</span>
+      <div>
+        <h3>Novidades do NossoTrello</h3>
+        <p>Tudo que chegou de novo por aqui.</p>
+      </div>
+    </div>
+  </header>
+
+  {% if items %}
+    <ul class="wn-list">
+      {% for item in items %}
+        <li class="wn-item {% if item.id in unseen_ids %}wn-item-new{% endif %}">
+          <div class="wn-item-emoji">{{ item.emoji|default:"✨" }}</div>
+          <div class="wn-item-body">
+            <div class="wn-item-top">
+              <strong class="wn-item-title">{{ item.title }}</strong>
+              {% if item.id in unseen_ids %}
+                <span class="wn-item-badge">Novo</span>
+              {% endif %}
+            </div>
+            {% if item.description %}
+              <div class="wn-item-desc">{{ item.description|linebreaksbr }}</div>
+            {% endif %}
+            <div class="wn-item-date">{{ item.published_at|date:"d/m/Y" }}</div>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <div class="wn-empty">
+      <div class="wn-empty-emoji">🌱</div>
+      <p>Nada de novo por enquanto. Volte em breve!</p>
+    </div>
+  {% endif %}
+</div>
