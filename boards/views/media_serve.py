@@ -6,6 +6,7 @@ ou ainda em caminhos legados do filesystem.
 
 import mimetypes
 import os
+import unicodedata
 import uuid
 
 from django.conf import settings
@@ -66,7 +67,11 @@ def _lookup_stored_file(file_ref: str) -> StoredFile | None:
     if not basename:
         return None
 
-    matches = list(StoredFile.objects.filter(original_name=basename)[:2])
+    candidates = {basename}
+    for form in ("NFC", "NFD", "NFKC", "NFKD"):
+        candidates.add(unicodedata.normalize(form, basename))
+
+    matches = list(StoredFile.objects.filter(original_name__in=list(candidates))[:2])
     if len(matches) == 1:
         return matches[0]
     return None
@@ -93,8 +98,20 @@ def serve_stored_file(request, file_ref):
     if stored:
         return _stored_file_response(stored)
 
-    legacy_path = _safe_legacy_path(file_ref)
-    if os.path.isfile(legacy_path):
-        return _filesystem_file_response(legacy_path, file_ref)
+    for variant in _path_variants(file_ref):
+        legacy_path = _safe_legacy_path(variant)
+        if os.path.isfile(legacy_path):
+            return _filesystem_file_response(legacy_path, variant)
 
     raise Http404("Arquivo nao encontrado")
+
+
+def _path_variants(file_ref: str):
+    if not file_ref:
+        return []
+    seen = []
+    for form in ("original", "NFC", "NFD", "NFKC", "NFKD"):
+        value = file_ref if form == "original" else unicodedata.normalize(form, file_ref)
+        if value not in seen:
+            seen.append(value)
+    return seen

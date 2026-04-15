@@ -2,6 +2,7 @@ import hashlib
 import mimetypes
 import os
 import re
+import unicodedata
 from collections import defaultdict
 
 from django.conf import settings
@@ -146,7 +147,13 @@ class Command(BaseCommand):
 
     def _resolve_target(self, name: str):
         basename = os.path.basename(name)
-        matches = list(StoredFile.objects.filter(original_name=basename).only("id", "checksum"))
+        candidates = {basename}
+        for form in ("NFC", "NFD", "NFKC", "NFKD"):
+            candidates.add(unicodedata.normalize(form, basename))
+
+        matches = list(
+            StoredFile.objects.filter(original_name__in=list(candidates)).only("id", "checksum")
+        )
 
         if len(matches) == 1:
             return matches[0].id, "unique_name"
@@ -171,11 +178,25 @@ class Command(BaseCommand):
         return None, "missing"
 
     def _legacy_path(self, name: str):
-        try:
-            path = safe_join(settings.MEDIA_ROOT, name)
-        except Exception:
-            return None
-        return path if os.path.isfile(path) else None
+        for variant in self._path_variants(name):
+            try:
+                path = safe_join(settings.MEDIA_ROOT, variant)
+            except Exception:
+                continue
+            if os.path.isfile(path):
+                return path
+        return None
+
+    @staticmethod
+    def _path_variants(name: str):
+        if not name:
+            return []
+        seen = []
+        for form in ("original", "NFC", "NFD", "NFKC", "NFKD"):
+            value = name if form == "original" else unicodedata.normalize(form, name)
+            if value not in seen:
+                seen.append(value)
+        return seen
 
     def _stored_file_from_path(self, file_path: str, original_name: str) -> StoredFile:
         with open(file_path, "rb") as fh:

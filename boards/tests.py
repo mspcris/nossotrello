@@ -1,5 +1,6 @@
 import tempfile
 import hashlib
+import unicodedata
 from pathlib import Path
 
 from django.contrib.auth import get_user_model
@@ -60,6 +61,24 @@ class MediaServeCompatTests(TestCase):
                 response = self.client.get("/media/serve/attachments/image.png/")
 
             self.assertEqual(response.status_code, 404)
+
+    def test_serves_legacy_reference_with_unicode_normalization_mismatch(self):
+        nfc_name = unicodedata.normalize("NFC", "MODELO_ÁGUA_1_6zkxGYF.xlsx")
+        nfd_name = unicodedata.normalize("NFD", "MODELO_ÁGUA_1_6zkxGYF.xlsx")
+        self.assertNotEqual(nfc_name, nfd_name)
+
+        StoredFile.objects.create(
+            original_name=nfd_name,
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            data=b"agua-data",
+            size=9,
+            checksum="9" * 64,
+        )
+
+        response = self.client.get(f"/media/serve/attachments/{nfc_name}/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(b"".join(response.streaming_content), b"agua-data")
 
     def test_falls_back_to_filesystem_for_legacy_reference(self):
         with tempfile.TemporaryDirectory() as tmpdir:
