@@ -36,6 +36,9 @@ docker exec nossotrello-web-1 python manage.py makemigrations boards
 docker exec nossotrello-web-1 python manage.py migrate
 docker exec nossotrello-web-1 python manage.py showmigrations boards
 
+echo "[8.2/9] reparar referencias legadas..."
+docker exec nossotrello-web-1 python manage.py repair_legacy_file_refs --apply
+
 echo "[8.5/9] sync novidades (feat commits)..."
 docker exec nossotrello-web-1 python manage.py sync_whats_new --limit 300 || true
 docker exec nossotrello-web-1 python manage.py curate_whats_new || true

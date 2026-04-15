@@ -29,6 +29,9 @@ docker compose -p nossotrello up -d --build --force-recreate
 echo "==> migrate"
 docker exec -it nossotrello-web-1 python manage.py migrate
 
+echo "==> repair legacy file refs"
+docker exec -it nossotrello-web-1 python manage.py repair_legacy_file_refs --apply
+
 echo "==> collectstatic"
 docker exec -it nossotrello-web-1 sh -lc "python manage.py collectstatic --noinput --clear"
 

@@ -62,6 +62,9 @@ jobs:
             echo "==> migrate"
             docker exec nossotrello-web-1 python manage.py migrate
 
+            echo "==> repair legacy file refs"
+            docker exec nossotrello-web-1 python manage.py repair_legacy_file_refs --apply
+
             echo "==> collectstatic"
             docker exec nossotrello-web-1 sh -lc "python manage.py collectstatic --noinput --clear"
 
