@@ -15,6 +15,7 @@ from boards.models import (
     CardAttachment,
     CardLog,
     ChatSticker,
+    Column,
     DailyCheckIn,
     SocialPost,
     SocialPostVersion,
@@ -199,9 +200,13 @@ class Command(BaseCommand):
         if isinstance(obj, Board):
             return obj.id
         if isinstance(obj, Card):
-            return obj.column.board_id
+            return Column.objects.filter(id=obj.column_id).values_list("board_id", flat=True).first()
         if isinstance(obj, (CardAttachment, CardLog)):
-            return obj.card.column.board_id
+            return (
+                Card.all_objects.filter(id=obj.card_id)
+                .values_list("column__board_id", flat=True)
+                .first()
+            )
         return None
 
     @staticmethod
