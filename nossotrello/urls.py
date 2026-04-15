@@ -61,9 +61,9 @@ urlpatterns = [
     path("api/mobile/", include(("api_mobile.urls", "api_mobile"), namespace="api_mobile")),
 ]
 
-# Serving de arquivos do banco (StoredFile)
+# Serving de arquivos do banco (StoredFile) e referencias legadas
 urlpatterns += [
-    path("media/serve/<uuid:file_id>/", serve_stored_file, name="serve_stored_file"),
+    path("media/serve/<path:file_ref>/", serve_stored_file, name="serve_stored_file"),
 ]
 
 # Fallback: serve arquivos do filesystem (migração gradual / dev)
