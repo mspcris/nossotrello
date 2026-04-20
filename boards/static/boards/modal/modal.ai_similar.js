@@ -260,12 +260,14 @@
       const id = b.getAttribute("data-card-id");
       if (!url || !id) return;
       ev.preventDefault();
+      ev.stopPropagation();
       closePopover();
-      if (window.Modal && typeof window.Modal.open === "function") {
-        // tenta abrir diretamente via Modal API
-        window.Modal.open({ cardId: Number(id), url });
-      } else if (window.htmx) {
-        // fallback: troca o conteúdo via HTMX
+      const nid = Number(id);
+      if (window.Modal && typeof window.Modal.openCard === "function") {
+        // API interna do projeto — carrega + abre + atualiza URL
+        window.Modal.openCard(nid, /* replaceUrl */ false, null);
+      } else if (window.htmx?.ajax) {
+        // fallback: troca o conteúdo via HTMX (modal já está aberto)
         window.htmx.ajax("GET", url, { target: "#modal-body", swap: "innerHTML" });
       } else {
         // fallback final: navega
