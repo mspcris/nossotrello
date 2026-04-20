@@ -40,14 +40,41 @@
     return p;
   }
 
-  function resetBtn() {
+  function hideBtn() {
     const btn = $btn();
     if (!btn) return;
     btn.classList.add("is-hidden");
     btn.setAttribute("hidden", "");
+    btn.dataset.state = "";
     btn.dataset.threshold = "";
     btn.dataset.count = "";
-    btn.removeAttribute("data-threshold");
+    btn.textContent = "";
+  }
+
+  function setLoading() {
+    const btn = $btn();
+    if (!btn) return;
+    btn.classList.remove("is-hidden");
+    btn.removeAttribute("hidden");
+    btn.dataset.state = "loading";
+    btn.dataset.threshold = "";
+    btn.dataset.count = "";
+    btn.textContent = "";
+    btn.title = "Verificando similaridade…";
+    btn.setAttribute("aria-label", "Verificando similaridade");
+  }
+
+  function setGenuine() {
+    const btn = $btn();
+    if (!btn) return;
+    btn.classList.remove("is-hidden");
+    btn.removeAttribute("hidden");
+    btn.dataset.state = "genuine";
+    btn.dataset.threshold = "";
+    btn.dataset.count = "0";
+    btn.textContent = "✓";
+    btn.title = "Card genuíno — nada parecido encontrado";
+    btn.setAttribute("aria-label", "Card genuíno");
   }
 
   function closePopover() {
@@ -63,12 +90,15 @@
     if (!btn) return;
     btn.classList.remove("is-hidden");
     btn.removeAttribute("hidden");
+    btn.dataset.state = "alert";
     btn.dataset.threshold = data.threshold || "low";
     btn.dataset.count = String(data.count || 0);
+    btn.textContent = "!";
     const pct = data.max_score ? Math.round(data.max_score * 100) : null;
     btn.title = pct
       ? `${data.count} cards semelhantes (até ${pct}%)`
       : `${data.count} cards semelhantes`;
+    btn.setAttribute("aria-label", "Cards semelhantes");
   }
 
   function statusBadge(status) {
@@ -143,6 +173,24 @@
     p.classList.add("is-open");
   }
 
+  function renderGenuinePopover() {
+    const p = $pop();
+    const btn = $btn();
+    if (!p || !btn) return;
+    p.innerHTML = `
+      <div class="ai-sim-head ai-sim-head-genuine">
+        ✅ <strong>Card genuíno</strong>
+        <span class="ai-sim-sub">Nada parecido nos quadros que você acessa.</span>
+      </div>
+      <div class="ai-sim-foot">Busca por similaridade semântica em todos os quadros que você tem acesso.</div>
+    `;
+    const r = btn.getBoundingClientRect();
+    p.style.top = `${Math.round(r.bottom + 8)}px`;
+    p.style.right = `${Math.max(8, Math.round(window.innerWidth - r.right))}px`;
+    p.hidden = false;
+    p.classList.add("is-open");
+  }
+
   function classifyPct(pct) {
     if (pct >= 90) return "high";
     if (pct >= 70) return "medium";
@@ -184,16 +232,13 @@
 
   async function onModalBodyReady() {
     closePopover();
-    resetBtn();
 
     const cardId = getOpenCardId();
-    if (!cardId || cardId === STATE.currentCardId) {
-      // mesma aba/card, nada a fazer
-    }
     STATE.currentCardId = cardId;
-    if (!cardId) return;
+    if (!cardId) { hideBtn(); return; }
 
-    if (STATE.inFlight) STATE.inFlight = null;
+    setLoading();
+    STATE.lastResponse = null;
 
     const reqId = Symbol("req");
     STATE.inFlight = reqId;
@@ -201,9 +246,13 @@
     const data = await fetchSimilar(cardId);
     if (STATE.inFlight !== reqId) return; // corrida: já houve outro pedido
 
-    if (!data || !data.count) return;
-    STATE.lastResponse = data;
-    showBtnFor(data);
+    if (data && data.count) {
+      STATE.lastResponse = data;
+      showBtnFor(data);
+    } else {
+      STATE.lastResponse = { genuine: true };
+      setGenuine();
+    }
   }
 
   // Observa trocas de conteúdo no #modal-body (HTMX swap)
@@ -216,7 +265,7 @@
         onModalBodyReady();
       } else {
         closePopover();
-        resetBtn();
+        hideBtn();
         STATE.currentCardId = null;
       }
     });
@@ -235,8 +284,15 @@
         ev.stopPropagation();
         const pop = $pop();
         if (!pop) return;
+        if (btn.dataset.state === "loading") return;
         if (!pop.hidden) { closePopover(); return; }
-        if (STATE.lastResponse) renderPopover(STATE.lastResponse);
+        if (btn.dataset.state === "genuine") {
+          renderGenuinePopover();
+          return;
+        }
+        if (STATE.lastResponse && STATE.lastResponse.results) {
+          renderPopover(STATE.lastResponse);
+        }
       });
     }
 
@@ -278,9 +334,10 @@
     // Quando o modal fecha, limpa estado
     document.addEventListener("modal:closed", () => {
       closePopover();
-      resetBtn();
+      hideBtn();
       STATE.currentCardId = null;
       STATE.lastResponse = null;
+      STATE.inFlight = null;
     });
   }
 

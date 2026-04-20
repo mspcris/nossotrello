@@ -3161,6 +3161,51 @@ html.dark #modal #modal-breadcrumb{
   filter: brightness(1.1);
 }
 
+/* loading — bolinha com anel rotativo enquanto consulta o backend */
+#modal .modal-ai-similar-btn[data-state="loading"]{
+  background: rgba(20, 24, 32, 0.55) !important;
+  border: 2px solid rgba(255,255,255,0.18) !important;
+  box-shadow:
+    0 2px 6px rgba(0,0,0,0.25),
+    0 0 10px rgba(94,184,255,0.25) !important;
+  animation: none !important;
+  cursor: progress;
+}
+#modal .modal-ai-similar-btn[data-state="loading"]::after{
+  content: "" !important;
+  display: block !important;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2.5px solid rgba(255,255,255,0.15);
+  border-top-color: #9be6ff;
+  border-right-color: #5eb8ff;
+  animation: aiSimSpin 0.9s linear infinite;
+  background: none !important;
+}
+#modal .modal-ai-similar-btn[data-state="loading"]:hover{
+  transform: none;
+  filter: none;
+}
+
+/* genuine (sem nada parecido) — verde com ✓ */
+#modal .modal-ai-similar-btn[data-state="genuine"]{
+  background: linear-gradient(160deg, #b8f5c6 0%, #4ad26a 50%, #1f9c42 100%) !important;
+  box-shadow:
+    0 2px 6px rgba(0,0,0,0.35),
+    0 0 16px rgba(74,210,106,0.55) !important;
+  animation: aiSimGenuineIn 0.5s ease-out 1;
+  font-size: 20px !important;
+}
+
+@keyframes aiSimSpin{
+  to { transform: rotate(360deg); }
+}
+@keyframes aiSimGenuineIn{
+  0%   { transform: scale(0.6); opacity: 0; }
+  60%  { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
 @keyframes aiSimPulse{
   0%, 100% { transform: scale(1); }
   50%      { transform: scale(1.12); }
@@ -3213,6 +3258,10 @@ html.dark #modal #modal-breadcrumb{
 .modal-ai-similar-popover .ai-sim-head-low{
   background: rgba(94, 184, 255, 0.14);
   border: 1px solid rgba(94, 184, 255, 0.35);
+}
+.modal-ai-similar-popover .ai-sim-head-genuine{
+  background: rgba(74, 210, 106, 0.14);
+  border: 1px solid rgba(74, 210, 106, 0.38);
 }
 
 .modal-ai-similar-popover .ai-sim-list{
