@@ -3106,54 +3106,59 @@ html.dark #modal #modal-breadcrumb{
 #modal .modal-ai-similar-btn[hidden]{ display: none !important; }
 #modal .modal-ai-similar-btn.is-hidden{ display: none !important; }
 
-/* Sobrescreve o content do X só pra este botão */
-#modal .modal-ai-similar-btn::before{
-  content: "❗" !important;
+/* Reseta a herança do .modal-top-x (que usa font-size:0 + color:transparent)
+   e desenha uma bolinha sólida com "!" no meio — sem depender de emoji. */
+#modal .modal-ai-similar-btn{
+  width: 34px !important;
+  height: 34px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #ffffff !important;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif !important;
   font-size: 22px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  text-align: center !important;
+  background: linear-gradient(160deg, #9be6ff 0%, #5eb8ff 50%, #2f8fe0 100%) !important;
+  border: 2px solid rgba(255,255,255,0.9) !important;
+  box-shadow:
+    0 2px 6px rgba(0,0,0,0.35),
+    0 0 18px rgba(94,184,255,0.55) !important;
   animation: aiSimPulse 1.8s ease-in-out infinite;
+  cursor: pointer;
 }
 
-/* Cor base (low ≥ 50%) — azul comunicativo */
+/* Mata o ::before herdado do X (que desenhava o "✖") */
 #modal .modal-ai-similar-btn::before{
-  background: linear-gradient(
-    115deg,
-    #ffffff 0%,
-    #9be6ff 18%,
-    #ffffff 32%,
-    #5eb8ff 50%,
-    #ffffff 68%,
-    #a7f3ff 82%,
-    #ffffff 100%
-  ) !important;
+  content: none !important;
+  display: none !important;
+  background: none !important;
+  animation: none !important;
 }
 
 /* medium (≥ 70%) — âmbar ponderado */
-#modal .modal-ai-similar-btn[data-threshold="medium"]::before{
-  background: linear-gradient(
-    115deg,
-    #fff7ec 0%,
-    #ffd48a 18%,
-    #ffffff 32%,
-    #ffb347 50%,
-    #ffffff 68%,
-    #ffd48a 82%,
-    #fff7ec 100%
-  ) !important;
+#modal .modal-ai-similar-btn[data-threshold="medium"]{
+  background: linear-gradient(160deg, #ffd48a 0%, #ffb347 50%, #d68818 100%) !important;
+  box-shadow:
+    0 2px 6px rgba(0,0,0,0.35),
+    0 0 18px rgba(255,179,71,0.65) !important;
 }
 
 /* high (≥ 90%) — vermelho incisivo, pulso mais rápido */
-#modal .modal-ai-similar-btn[data-threshold="high"]::before{
-  background: linear-gradient(
-    115deg,
-    #ffffff 0%,
-    #ffb0b0 18%,
-    #ffffff 32%,
-    #ff3b3b 50%,
-    #ffffff 68%,
-    #ffb0b0 82%,
-    #ffffff 100%
-  ) !important;
+#modal .modal-ai-similar-btn[data-threshold="high"]{
+  background: linear-gradient(160deg, #ffb0b0 0%, #ff3b3b 50%, #b81c1c 100%) !important;
+  box-shadow:
+    0 2px 6px rgba(0,0,0,0.35),
+    0 0 22px rgba(255,59,59,0.75) !important;
   animation: aiSimPulseFast 0.9s ease-in-out infinite;
+}
+
+#modal .modal-ai-similar-btn:hover{
+  transform: scale(1.08);
+  filter: brightness(1.1);
 }
 
 @keyframes aiSimPulse{
@@ -3168,19 +3173,19 @@ html.dark #modal #modal-breadcrumb{
 /* ----- popover ----- */
 .modal-ai-similar-popover{
   position: fixed;
-  z-index: 2100;
+  z-index: 99999;              /* acima do modal (2000) e de qualquer overlay interno */
   min-width: 320px;
   max-width: 440px;
   max-height: 70vh;
   overflow: auto;
-  background: rgba(20, 24, 32, 0.96);
+  background: #141820;          /* fundo OPACO — não pode vazar conteúdo atrás */
   color: #f5f7fa;
-  border: 1px solid rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.18);
   border-radius: 12px;
-  box-shadow: 0 18px 40px rgba(0,0,0,0.55);
+  box-shadow: 0 18px 40px rgba(0,0,0,0.65);
   padding: 12px;
   font-size: 13px;
-  backdrop-filter: blur(8px);
+  isolation: isolate;           /* cria stacking context próprio */
 }
 .modal-ai-similar-popover[hidden]{ display: none; }
 

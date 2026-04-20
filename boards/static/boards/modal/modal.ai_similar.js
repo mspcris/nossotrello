@@ -22,7 +22,23 @@
   };
 
   function $btn() { return document.getElementById(BTN_ID); }
-  function $pop() { return document.getElementById(POP_ID); }
+  function $pop() {
+    let p = document.getElementById(POP_ID);
+    if (!p) {
+      // cria o popover direto no body (evita stacking context do modal)
+      p = document.createElement("div");
+      p.id = POP_ID;
+      p.className = "modal-ai-similar-popover";
+      p.setAttribute("role", "dialog");
+      p.setAttribute("aria-label", "Cards semelhantes");
+      p.hidden = true;
+      document.body.appendChild(p);
+    } else if (p.parentNode && p.parentNode !== document.body) {
+      // move pra body caso tenha ficado dentro do modal
+      document.body.appendChild(p);
+    }
+    return p;
+  }
 
   function resetBtn() {
     const btn = $btn();
