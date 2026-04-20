@@ -196,6 +196,17 @@
           <!-- Aba: Descrição -->
           <section class="cm-panel is-active" data-cm-panel="desc" role="tabpanel">
             <div class="cm-card space-y-3">
+              {% if card.is_deleted %}
+                <div class="cm-status-banner cm-status-deleted" role="status">
+                  🗑️ <strong>Este card está na lixeira</strong>
+                  <span>(arquivo só de leitura até ser restaurado)</span>
+                </div>
+              {% elif card.is_archived %}
+                <div class="cm-status-banner cm-status-archived" role="status">
+                  📦 <strong>Este card está arquivado</strong>
+                  <span>(fora do quadro até ser desarquivado)</span>
+                </div>
+              {% endif %}
               <div>
                 <label class="cm-label">Título</label>
                 <input type="text" name="card_title" form="cm-main-form" value="{{ card.title }}" class="cm-input" data-cm-edit-field="title">

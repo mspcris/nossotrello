@@ -1510,4 +1510,29 @@ class WhatsNewItem(models.Model):
         return f"{self.emoji} {self.title}"
 
 
+# ============================================================
+# CARD EMBEDDING — vetor semântico para detectar cards similares
+# ============================================================
+class CardEmbedding(models.Model):
+    card = models.OneToOneField(
+        Card,
+        related_name="embedding",
+        on_delete=models.CASCADE,
+    )
+    content_hash = models.CharField(max_length=64, db_index=True)
+    embedding = models.JSONField(default=list)
+    model = models.CharField(max_length=64, default="text-embedding-3-small")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    objects = models.Manager()
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["content_hash"], name="cardemb_hash_idx"),
+        ]
+
+    def __str__(self):
+        return f"emb(card={self.card_id})"
+
+
 # END boards/models.py

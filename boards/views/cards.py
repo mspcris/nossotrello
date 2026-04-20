@@ -40,6 +40,7 @@ from boards.models import CardFollow, CardLog, CardMoveHistory, ColumnFollow
 
 
 from boards.services.notifications import mark_card_delivered, notify_delivery
+from boards.services.card_similarity import embed_card_async
 
 from boards.models import UserBoardPreference
 
@@ -168,6 +169,12 @@ def add_card(request, column_id):
                 actor=actor,
                 context_label="descrição",
             )
+
+        # dispara embedding semântico em background (não bloqueia resposta)
+        try:
+            embed_card_async(card.id)
+        except Exception:
+            pass
 
         response = render(request, "boards/partials/card_item.html", {"card": card})
         toast_html = build_notify_toast_html(_add_card_notify_plans)
@@ -618,6 +625,15 @@ def update_card(request, card_id):
         or saved_paths
     ):
         _log_card(card, request, f"<p><strong>{actor}</strong> atualizou o card.</p>")
+
+    # ============================================================
+    # EMBEDDING: regenera se título ou descrição mudaram
+    # ============================================================
+    if title_changed or desc_changed:
+        try:
+            embed_card_async(card.id)
+        except Exception:
+            pass
 
         # ============================================================
     # REBUILD CONTEXT (mesmo contrato do split do load inicial)
@@ -1896,6 +1912,101 @@ def tag_catalog_delete(request, board_id):
     profile.save(update_fields=["tag_catalog"])
 
     return JsonResponse({"ok": True})
+
+
+# ============================================================
+# AI: CARDS SIMILARES (embeddings + cosseno)
+# ============================================================
+@login_required
+@require_http_methods(["GET"])
+def card_similar(request, card_id):
+    """
+    Retorna JSON com os top-K cards semelhantes ao card atual
+    dentro dos boards que o usuário tem acesso (inclui arquivados
+    e excluídos).
+
+    GET params:
+      - min_score (float, default 0.5)
+      - top_k    (int,   default 5)
+
+    Response:
+      {
+        "ok": true,
+        "count": N,
+        "threshold": "high"|"medium"|"low"|null,  # baseado no maior score
+        "max_score": float | null,
+        "results": [
+          {
+            "id": int,
+            "title": str,
+            "score": float,         # 0..1
+            "percent": int,         # 0..100
+            "status": "active"|"archived"|"deleted",
+            "board": str,
+            "column": str,
+            "modal_url": str,
+          },
+          ...
+        ]
+      }
+    """
+    from django.urls import reverse
+    from boards.services.card_similarity import (
+        find_similar_cards,
+        classify_score,
+    )
+
+    card = get_object_or_404(Card.all_objects, id=card_id)
+
+    # usuário precisa ter acesso ao board do card atual
+    from boards.services.card_similarity import user_visible_board_ids
+    visible = user_visible_board_ids(request.user)
+    if card.column.board_id not in visible:
+        return JsonResponse({"error": "sem acesso"}, status=403)
+
+    try:
+        min_score = float(request.GET.get("min_score") or 0.5)
+    except Exception:
+        min_score = 0.5
+    try:
+        top_k = int(request.GET.get("top_k") or 5)
+    except Exception:
+        top_k = 5
+
+    try:
+        hits = find_similar_cards(card, request.user, top_k=top_k, min_score=min_score)
+    except Exception as e:
+        logger.warning("card_similar falhou card=%s: %s", card_id, e)
+        return JsonResponse({"ok": False, "error": "ia_indisponivel"}, status=200)
+
+    results = []
+    for h in hits:
+        c = h["card"]
+        try:
+            modal_url = reverse("boards:card_modal", args=[c.id])
+        except Exception:
+            modal_url = f"/card/{c.id}/modal/"
+        results.append({
+            "id": c.id,
+            "title": c.title or "(sem título)",
+            "score": round(float(h["score"]), 4),
+            "percent": int(round(float(h["score"]) * 100)),
+            "status": h["status"],
+            "board": getattr(c.column.board, "name", "") or "",
+            "column": getattr(c.column, "name", "") or "",
+            "modal_url": modal_url,
+        })
+
+    max_score = results[0]["score"] if results else None
+    threshold = classify_score(max_score) if max_score is not None else None
+
+    return JsonResponse({
+        "ok": True,
+        "count": len(results),
+        "threshold": threshold,
+        "max_score": max_score,
+        "results": results,
+    })
 
 
 # end file boards/views/cards.py

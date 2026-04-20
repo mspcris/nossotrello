@@ -517,6 +517,7 @@ urlpatterns = [
     # ============================================================
     path("card/<int:card_id>/modal/", cards_views.card_modal, name="card_modal"),
     path("card/<int:card_id>/snippet/", cards_views.card_snippet, name="card_snippet"),
+    path("card/<int:card_id>/similar/", cards_views.card_similar, name="card_similar"),
     path("card/<int:card_id>/edit/", cards_views.edit_card, name="edit_card"),
     path("card/<int:card_id>/update/", cards_views.update_card, name="update_card"),
     path("card/<int:card_id>/delete/", cards_views.delete_card, name="delete_card"),

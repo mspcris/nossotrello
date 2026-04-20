@@ -142,6 +142,9 @@
 <!-- MODAL dock -->
   <script defer src="{% static 'boards/modal/modal.dock.js' %}"></script>
 
+  <!-- AI: busca de cards semelhantes quando o modal abre -->
+  <script defer src="{% static 'boards/modal/modal.ai_similar.js' %}"></script>
+
   <script defer src="{% static 'boards/header_search.js' %}"></script>
 
   
@@ -519,6 +522,21 @@
           </div>
 
           <div id="modal-breadcrumb" class="text-sm opacity-90 truncate mr-2"></div>
+
+<!-- AI: Alerta de cards semelhantes (igualmente ridículo que o X) -->
+<button
+  type="button"
+  id="modal-ai-similar-btn"
+  class="modal-top-x modal-ai-similar-btn is-hidden"
+  aria-label="Cards semelhantes"
+  title="Cards semelhantes"
+  data-threshold=""
+  hidden>
+  !
+</button>
+
+<!-- Popover de similares (posicionado no body, aberto pelo botão acima) -->
+<div id="modal-ai-similar-popover" class="modal-ai-similar-popover" hidden role="dialog" aria-label="Cards semelhantes"></div>
 
 <!-- Fechar do modal(X) -->
 <button
