@@ -77,6 +77,19 @@
     btn.setAttribute("aria-label", "Card genuíno");
   }
 
+  function setError() {
+    const btn = $btn();
+    if (!btn) return;
+    btn.classList.remove("is-hidden");
+    btn.removeAttribute("hidden");
+    btn.dataset.state = "error";
+    btn.dataset.threshold = "";
+    btn.dataset.count = "";
+    btn.textContent = "!";
+    btn.title = "Falha ao verificar — clique para tentar novamente";
+    btn.setAttribute("aria-label", "Falha ao verificar — clique para tentar novamente");
+  }
+
   function closePopover() {
     const p = $pop();
     if (!p) return;
@@ -230,13 +243,8 @@
     return id ? Number(id) : null;
   }
 
-  async function onModalBodyReady() {
-    closePopover();
-
-    const cardId = getOpenCardId();
-    STATE.currentCardId = cardId;
-    if (!cardId) { hideBtn(); return; }
-
+  async function runSimilarityCheck(cardId) {
+    if (!cardId) return;
     setLoading();
     STATE.lastResponse = null;
 
@@ -244,8 +252,13 @@
     STATE.inFlight = reqId;
 
     const data = await fetchSimilar(cardId);
-    if (STATE.inFlight !== reqId) return; // corrida: já houve outro pedido
+    if (STATE.inFlight !== reqId) return;
 
+    if (data === null) {
+      STATE.lastResponse = null;
+      setError();
+      return;
+    }
     if (data && data.count) {
       STATE.lastResponse = data;
       showBtnFor(data);
@@ -253,6 +266,16 @@
       STATE.lastResponse = { genuine: true };
       setGenuine();
     }
+  }
+
+  async function onModalBodyReady() {
+    closePopover();
+
+    const cardId = getOpenCardId();
+    STATE.currentCardId = cardId;
+    if (!cardId) { hideBtn(); return; }
+
+    await runSimilarityCheck(cardId);
   }
 
   // Observa trocas de conteúdo no #modal-body (HTMX swap)
@@ -285,6 +308,13 @@
         const pop = $pop();
         if (!pop) return;
         if (btn.dataset.state === "loading") return;
+        if (btn.dataset.state === "error") {
+          // tenta de novo
+          closePopover();
+          const cid = STATE.currentCardId || getOpenCardId();
+          if (cid) runSimilarityCheck(cid);
+          return;
+        }
         if (!pop.hidden) { closePopover(); return; }
         if (btn.dataset.state === "genuine") {
           renderGenuinePopover();

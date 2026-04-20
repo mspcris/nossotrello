@@ -24,6 +24,11 @@ from boards.models import WhatsNewItem
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-04 ---
+    "2c7d1bd": (
+        "🧠",
+        "Alerta de cards parecidos com IA",
+        "Ao abrir um card, o NossoTrello verifica se já existe algo parecido em todos os quadros que você acessa — inclusive arquivados e na lixeira. Se achar, aparece um \"!\" ao lado do X; se não, um \"✓\" verde diz que o card é genuíno.",
+    ),
     "53debaa": (
         "📤",
         "Compartilhe um post com a foto junto",
