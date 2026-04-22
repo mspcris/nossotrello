@@ -399,31 +399,42 @@ pre{
   .cm-header-board-cover { width: 96px; height: 40px; }
   .cm-header-center { min-height: 56px; }
 
-  /* ─── Header mobile: handle + Sair viram segunda linha ───
+  /* ─── Header mobile: layout em 2 linhas ───
      Top:    [☰ logo]  [capa do quadro]  [avatar] [🎁]
-     Bottom: [@handle  Sair]   (centralizado, ocupa 100%)
+     Bottom: [@handle  Sair]   (via .cm-header-mobile-id no template)
   */
   .cm-header-right {
-    flex-wrap: wrap;
-    row-gap: 6px;
-    column-gap: 8px !important;
+    column-gap: 6px !important;
     justify-content: flex-end;
   }
-  .cm-header-identity-group {
-    order: 99;
-    flex-basis: 100%;
-    width: 100%;
-    justify-content: center;
-    margin-top: 4px;
-    flex-wrap: wrap;
-    row-gap: 4px;
-  }
-  /* Busca some no mobile — há barra de busca dedicada em outros lugares */
-  #header-search-toggle { display: none !important; }
-  /* Menu (☰) sem crescer demais */
+  /* Menu compacto, sem perder badge */
   #menuToggle { padding: 6px 10px; }
-  /* Logo CAMIM um pouco menor pra caber + capa */
-  .cm-header-bar img.rounded-full.h-14.w-14 { height: 44px; width: 44px; }
+  /* Logo CAMIM reduzido pra caber junto com a capa do quadro */
+  .cm-header-bar img.rounded-full.h-14.w-14 {
+    height: 40px !important;
+    width: 40px !important;
+  }
+  /* Avatar menor no mobile pra não disputar espaço com o 🎁 */
+  #my-avatar-wrap img {
+    height: 36px !important;
+    width: 36px !important;
+  }
+  /* Busca some no mobile — há busca dedicada em /social/ e na home */
+  #header-search-toggle { display: none !important; }
+  /* Botão de novidades 🎁 mais compacto */
+  #wn-toggle { height: 36px; width: 36px; }
+
+  /* Segunda linha (só mobile) — handle + Sair centralizados e espaçados */
+  .cm-header-mobile-id {
+    padding: 0 12px;
+  }
+  .cm-header-mobile-id .cm-identity-label-m {
+    max-width: 60vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: inline-block;
+  }
 }
 
 .cm-header-board-cover {

@@ -244,7 +244,8 @@
     <!-- DIREITA (volta pra dentro da barra verde) -->
     <div class="cm-header-right flex items-center justify-end gap-2 md:gap-3 w-auto md:w-[260px] flex-wrap">
       {% if request.user.is_authenticated %}
-        <div class="cm-header-identity-group flex items-center gap-2">
+        {# Inline no desktop; no mobile escondemos e mostramos numa segunda linha do header #}
+        <div class="cm-header-identity-group hidden md:flex items-center gap-2">
           {% with prof=request.user.profile %}
           <button type="button" id="cm-identity-toggle" class="text-left"
                   data-display-name="{{ prof.display_name|default:'' }}"
@@ -322,6 +323,35 @@
 
     </div>
   </div>
+
+  {# Segunda linha SÓ MOBILE: @handle + Sair centralizados #}
+  {% if request.user.is_authenticated %}
+  <div class="cm-header-mobile-id md:hidden flex items-center justify-center gap-2 mt-2">
+    {% with prof=request.user.profile %}
+    <button type="button" id="cm-identity-toggle-m" class="text-left"
+            data-display-name="{{ prof.display_name|default:'' }}"
+            data-email="{{ request.user.email|default:'' }}"
+            data-handle="{% if prof.handle %}@{{ prof.handle }}{% endif %}">
+      <span class="cm-identity-label-m text-sm bg-white/80 px-3 py-1 rounded-full border border-white/40 shadow-sm">
+        {% if prof.preferred_identity_label == 'email' %}
+          {{ request.user.email|default:prof.display_name }}
+        {% elif prof.preferred_identity_label == 'handle' and prof.handle %}
+          @{{ prof.handle }}
+        {% else %}
+          {{ prof.display_name|default:request.user.email }}
+        {% endif %}
+      </span>
+    </button>
+    {% endwith %}
+    <form method="post" action="{% url 'boards:logout' %}" class="inline">
+      {% csrf_token %}
+      <button type="submit"
+              class="text-sm px-4 py-1 rounded-full bg-emerald-600 text-white shadow hover:bg-emerald-700 transition">
+        Sair
+      </button>
+    </form>
+  </div>
+  {% endif %}
 
   <!-- switch mobile pode ficar aqui fora do bar -->
   <div class="w-full flex justify-center mt-3 md:hidden">
