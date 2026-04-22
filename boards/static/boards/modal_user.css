@@ -1522,6 +1522,49 @@ video.sp-post-media {
   object-fit: contain;
   background: #000;
 }
+
+/* ─── Buffering overlay para vídeos do feed/reel ─── */
+.sp-video-wrap {
+  position: relative;
+  display: block;
+  line-height: 0;
+}
+.sp-video-buffer-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(3px) saturate(1.1);
+  -webkit-backdrop-filter: blur(3px) saturate(1.1);
+  color: #fff;
+  z-index: 2;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+.sp-video-buffer-overlay.sp-hidden {
+  display: none !important;
+}
+.sp-video-buffer-spinner {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 4px solid rgba(255, 255, 255, 0.25);
+  border-top-color: #fff;
+  animation: sp-video-spin 0.9s linear infinite;
+}
+@keyframes sp-video-spin {
+  to { transform: rotate(360deg); }
+}
+.sp-video-buffer-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  letter-spacing: 0.02em;
+}
 .sp-post-text {
   padding: 12px 16px;
   font-size: 0.9375rem;

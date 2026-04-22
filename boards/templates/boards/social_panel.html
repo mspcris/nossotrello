@@ -1267,6 +1267,9 @@ var _CAMILA_AVATARS = {
     el.innerHTML = '<div class="sp-reel-track">' + html + '</div>';
     var _track = el.querySelector('.sp-reel-track');
 
+    /* Envolve vídeos de post com overlay de buffering (20% antes de tocar) */
+    if(window._spInitVideoBuffering) window._spInitVideoBuffering(el);
+
     /* Attach @mention autocomplete nos inputs de comentário do reel */
     if(window._spAttachMention){
       _reelPosts.forEach(function(p){
@@ -5762,6 +5765,119 @@ window.spShowReach = function(postId){
   if(modalPostId){
     setTimeout(function(){ spOpenPostModal(modalPostId); }, 500);
   }
+})();
+
+/* ═══════════════════════════════════════════════
+   BUFFERING OVERLAY para vídeos do feed/reel
+   - Envolve o <video> num wrap com overlay fumê
+   - Só libera o play depois de 20% carregado
+   - Aplica só em vídeos com atributo controls
+     (stickers autoplay/loop não entram)
+   ═══════════════════════════════════════════════ */
+(function(){
+  var THRESHOLD = 0.20;
+
+  function _wrapVideo(video){
+    if(!video || video.dataset.bufInit === '1') return;
+    video.dataset.bufInit = '1';
+    /* Só vale pra vídeos com controles (main post); stickers passam */
+    if(!video.hasAttribute('controls')) return;
+
+    video.preload = 'auto';
+
+    var parent = video.parentNode;
+    var wrap = document.createElement('div');
+    wrap.className = 'sp-video-wrap';
+    /* Mantém classes de tamanho do próprio vídeo no wrap */
+    parent.insertBefore(wrap, video);
+    wrap.appendChild(video);
+
+    var overlay = document.createElement('div');
+    overlay.className = 'sp-video-buffer-overlay';
+    overlay.innerHTML =
+      '<div class="sp-video-buffer-spinner"></div>' +
+      '<div class="sp-video-buffer-label">Carregando 0%</div>';
+    wrap.appendChild(overlay);
+
+    var label = overlay.querySelector('.sp-video-buffer-label');
+    var released = false;
+    var pendingPlay = false;
+
+    function _bufferedRatio(){
+      if(!video.duration || !isFinite(video.duration)) return 0;
+      var b = video.buffered;
+      if(!b || !b.length) return 0;
+      /* Pega o range que cobre o início (0) — mais comum em progressive */
+      for(var i = 0; i < b.length; i++){
+        if(b.start(i) <= 0.1){
+          return Math.min(1, b.end(i) / video.duration);
+        }
+      }
+      return Math.min(1, b.end(b.length - 1) / video.duration);
+    }
+
+    function _update(){
+      var r = _bufferedRatio();
+      var pct = Math.round(r * 100);
+      if(label) label.textContent = 'Carregando ' + pct + '%';
+      if(r >= THRESHOLD && !released){
+        released = true;
+        overlay.classList.add('sp-hidden');
+        if(pendingPlay){
+          pendingPlay = false;
+          video.play().catch(function(){});
+        }
+      }
+    }
+
+    /* Intercepta o primeiro play — se não carregou 20%, pausa e espera */
+    video.addEventListener('play', function(){
+      if(!released){
+        var r = _bufferedRatio();
+        if(r < THRESHOLD){
+          pendingPlay = true;
+          video.pause();
+          overlay.classList.remove('sp-hidden');
+          _update();
+        } else {
+          released = true;
+          overlay.classList.add('sp-hidden');
+        }
+      }
+    });
+
+    video.addEventListener('progress', _update);
+    video.addEventListener('loadedmetadata', _update);
+    video.addEventListener('canplay', _update);
+    /* Mostra overlay se travar durante reprodução também */
+    video.addEventListener('waiting', function(){
+      if(!released) overlay.classList.remove('sp-hidden');
+    });
+    video.addEventListener('playing', function(){
+      overlay.classList.add('sp-hidden');
+    });
+
+    /* Kick off download — alguns browsers ignoram preload=auto */
+    try { video.load(); } catch(e){}
+    _update();
+  }
+
+  window._spInitVideoBuffering = function(root){
+    var scope = root || document;
+    /* Vídeos do feed estático (social_feed_block) e do reel (JS render) */
+    var sel = 'video.sp-post-media[controls], video.sp-reel-media[controls]';
+    scope.querySelectorAll(sel).forEach(_wrapVideo);
+  };
+
+  function _initAll(){ window._spInitVideoBuffering(document); }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', _initAll);
+  } else {
+    _initAll();
+  }
+  document.body.addEventListener('htmx:afterSwap', _initAll);
+  document.body.addEventListener('htmx:load', _initAll);
 })();
 
 window.spShowProfilePhoto = function(url){
