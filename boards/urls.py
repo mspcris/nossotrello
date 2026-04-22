@@ -75,6 +75,7 @@ from boards.views.boards import (
     home_group_create,
     home_group_rename,
     home_group_delete,
+    home_group_move,
     home_group_item_add,
     home_group_item_remove,
     home_favorite_toggle,
@@ -481,6 +482,7 @@ urlpatterns = [
     path("home/groups/create/", home_group_create, name="home_group_create"),
     path("home/groups/<int:group_id>/rename/", home_group_rename, name="home_group_rename"),
     path("home/groups/<int:group_id>/delete/", home_group_delete, name="home_group_delete"),
+    path("home/groups/<int:group_id>/move/", home_group_move, name="home_group_move"),
     path("home/groups/<int:group_id>/items/add/", home_group_item_add, name="home_group_item_add"),
     path(
         "home/groups/<int:group_id>/items/<int:board_id>/remove/",

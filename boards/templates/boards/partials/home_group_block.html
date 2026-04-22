@@ -8,6 +8,28 @@
     <div class="flex items-center gap-4">
       <button
         type="button"
+        title="Subir agrupamento"
+        class="text-white/80 hover:text-white text-sm font-bold leading-none px-2 py-1 rounded bg-white/10 hover:bg-white/20 transition-colors"
+        hx-post="{% url 'boards:home_group_move' g.id %}"
+        hx-vals='{"direction": "up"}'
+        hx-swap="none"
+        hx-on::after-request="if(event.detail.successful){ location.reload(); }">
+        ↑
+      </button>
+
+      <button
+        type="button"
+        title="Descer agrupamento"
+        class="text-white/80 hover:text-white text-sm font-bold leading-none px-2 py-1 rounded bg-white/10 hover:bg-white/20 transition-colors"
+        hx-post="{% url 'boards:home_group_move' g.id %}"
+        hx-vals='{"direction": "down"}'
+        hx-swap="none"
+        hx-on::after-request="if(event.detail.successful){ location.reload(); }">
+        ↓
+      </button>
+
+      <button
+        type="button"
         class="text-emerald-200 hover:text-emerald-100 text-xs font-semibold transition-colors"
         onclick="
           const name = prompt('Novo nome do agrupamento:', '{{ g.name|escapejs }}');

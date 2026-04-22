@@ -348,7 +348,9 @@ def index(request):
 @transaction.atomic
 def home_group_create(request):
     org = _get_home_org(request)
-    name = (request.POST.get("name") or "").strip() or "Novo agrupamento"
+    name = (request.POST.get("name") or "").strip()
+    if not name:
+        return HttpResponse("Digite um nome para o agrupamento.", status=400)
 
     qs = BoardGroup.objects.filter(
         user=request.user,
@@ -397,6 +399,48 @@ def home_group_delete(request, group_id):
     g = get_object_or_404(BoardGroup, id=group_id, user=request.user, organization=org, is_favorites=False)
     g.delete()
     return HttpResponse("")
+
+
+@require_POST
+@login_required
+@transaction.atomic
+def home_group_move(request, group_id):
+    org = _get_home_org(request)
+    g = get_object_or_404(
+        BoardGroup, id=group_id, user=request.user, organization=org, is_favorites=False
+    )
+
+    direction = (request.POST.get("direction") or "").strip().lower()
+    if direction not in ("up", "down"):
+        return HttpResponse("direction inválido", status=400)
+
+    siblings = list(
+        BoardGroup.objects.filter(
+            user=request.user, organization=org, is_favorites=False
+        ).order_by("position", "id")
+    )
+
+    # Normaliza positions (1..n) caso existam empates/zeros
+    for i, item in enumerate(siblings, start=1):
+        if item.position != i:
+            item.position = i
+            item.save(update_fields=["position"])
+
+    idx = next((i for i, s in enumerate(siblings) if s.id == g.id), -1)
+    if idx < 0:
+        return HttpResponse("not found", status=404)
+
+    swap_idx = idx - 1 if direction == "up" else idx + 1
+    if swap_idx < 0 or swap_idx >= len(siblings):
+        return HttpResponse("OK")  # já está no topo/fim — no-op
+
+    a = siblings[idx]
+    b = siblings[swap_idx]
+    a.position, b.position = b.position, a.position
+    a.save(update_fields=["position"])
+    b.save(update_fields=["position"])
+
+    return HttpResponse("OK")
 
 
 @require_POST
