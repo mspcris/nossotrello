@@ -2437,8 +2437,8 @@ document.addEventListener('click', function(e){
       video.style.cssText = 'width:100%;max-height:200px;border-radius:12px;background:#000';
       preview.appendChild(video);
       video.addEventListener('loadedmetadata', function(){
-        if(video.duration > 10){
-          alert('Máximo 10 segundos! Seu vídeo tem ' + Math.round(video.duration) + 's.');
+        if(video.duration > 60){
+          alert('Máximo 1 minuto! Seu vídeo tem ' + Math.round(video.duration) + 's.');
           e.target.value = '';
           preview.innerHTML = '';
           preview.classList.add('sp-hidden');
