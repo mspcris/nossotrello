@@ -396,40 +396,87 @@ pre{
 }
 
 @media (max-width: 767px) {
-  .cm-header-board-cover { width: 96px; height: 40px; }
-  .cm-header-center { min-height: 56px; }
+  /* ─── Header mobile: layout limpo em 2 linhas ───
+     Linha 1:  [☰] [logo CAMIM] [capa]      [avatar] [🎁]
+     Linha 2 (.cm-header-mobile-id):  [@handle] [Sair]  (centralizado)
 
-  /* ─── Header mobile: layout em 2 linhas ───
-     Top:    [☰ logo]  [capa do quadro]  [avatar] [🎁]
-     Bottom: [@handle  Sair]   (via .cm-header-mobile-id no template)
+     Estratégia: vira a barra num flex simples e dita cada slot com
+     tamanho fixo. Isso vence inline styles e layouts herdados.
   */
-  .cm-header-right {
-    column-gap: 6px !important;
-    justify-content: flex-end;
+  .cm-header-bar {
+    display: flex !important;
+    align-items: center;
+    gap: 8px !important;
+    padding: 8px 10px !important;
+    grid-template-columns: none !important; /* mata o grid desktop */
   }
-  /* Menu compacto, sem perder badge */
-  #menuToggle { padding: 6px 10px; }
-  /* Logo CAMIM reduzido pra caber junto com a capa do quadro */
-  .cm-header-bar img.rounded-full.h-14.w-14 {
+
+  /* Coluna esquerda (☰ + logo CAMIM): contraída ao conteúdo */
+  .cm-header-bar > div:first-child {
+    flex: 0 0 auto !important;
+    gap: 8px !important;
+    width: auto !important;
+    min-width: 0 !important;
+  }
+  #menuToggle {
+    padding: 6px 10px !important;
+    line-height: 1;
+  }
+  /* Logo CAMIM: SEMPRE circular e no mesmo tamanho, sem distorção */
+  .cm-header-bar a img.rounded-full {
     height: 40px !important;
     width: 40px !important;
+    object-fit: cover !important;
+    aspect-ratio: 1 / 1;
+    flex: 0 0 auto;
   }
-  /* Avatar menor no mobile pra não disputar espaço com o 🎁 */
+
+  /* Centro (capa do quadro): flexível, mata inline width/height */
+  .cm-header-center {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    justify-content: center !important;
+  }
+  .cm-header-center .cm-header-board-cover,
+  .cm-header-center > div[style] {
+    width: 100% !important;
+    max-width: 150px !important;
+    height: 40px !important;
+    margin: 0 auto !important;
+  }
+  .cm-header-center .cm-header-board-cover-img,
+  .cm-header-center img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+  }
+
+  /* Coluna direita: só ícones (avatar + 🎁) no mobile */
+  .cm-header-right {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    gap: 6px !important;
+    flex-wrap: nowrap !important;
+    justify-content: flex-end;
+  }
   #my-avatar-wrap img {
     height: 36px !important;
     width: 36px !important;
   }
-  /* Busca some no mobile — há busca dedicada em /social/ e na home */
   #header-search-toggle { display: none !important; }
-  /* Botão de novidades 🎁 mais compacto */
-  #wn-toggle { height: 36px; width: 36px; }
+  #wn-toggle {
+    height: 36px !important;
+    width: 36px !important;
+  }
 
-  /* Segunda linha (só mobile) — handle + Sair centralizados e espaçados */
+  /* Segunda linha: handle + Sair centralizados, respira */
   .cm-header-mobile-id {
-    padding: 0 12px;
+    padding: 6px 12px 2px !important;
+    gap: 10px !important;
   }
   .cm-header-mobile-id .cm-identity-label-m {
-    max-width: 60vw;
+    max-width: 55vw;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
