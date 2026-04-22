@@ -53,7 +53,7 @@
   <script>tailwind.config = { darkMode: 'class' }</script>
 
   <!-- CSS Global -->
-  <link rel="stylesheet" href="{% static 'boards/base.css' %}?v=20260422b">
+  <link rel="stylesheet" href="{% static 'boards/base.css' %}?v=20260422c">
   <link rel="stylesheet" href="{% static 'boards/modal.css' %}?v=20260420c">
   <link rel="stylesheet" href="{% static 'boards/modal_user.css' %}?v=20260422a">
   <link rel="stylesheet" href="{% static 'boards/nossotrello_drawer.css' %}?v=20260413">
@@ -326,7 +326,7 @@
 
   {# Segunda linha SÓ MOBILE: @handle + Sair centralizados #}
   {% if request.user.is_authenticated %}
-  <div class="cm-header-mobile-id md:hidden flex items-center justify-center gap-2 mt-2">
+  <div class="cm-header-mobile-id md:hidden flex items-center justify-end gap-2 mt-2">
     {% with prof=request.user.profile %}
     <button type="button" id="cm-identity-toggle-m" class="text-left"
             data-display-name="{{ prof.display_name|default:'' }}"

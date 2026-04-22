@@ -470,13 +470,15 @@ pre{
     width: 36px !important;
   }
 
-  /* Segunda linha: handle + Sair centralizados, respira */
+  /* Segunda linha: handle + Sair alinhados à DIREITA, logo abaixo do 🎁.
+     Se o nome for grande, cresce pra esquerda (justify-content:flex-end). */
   .cm-header-mobile-id {
-    padding: 6px 12px 2px !important;
+    justify-content: flex-end !important;
+    padding: 6px 10px 2px !important;
     gap: 10px !important;
   }
   .cm-header-mobile-id .cm-identity-label-m {
-    max-width: 55vw;
+    max-width: 60vw;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
