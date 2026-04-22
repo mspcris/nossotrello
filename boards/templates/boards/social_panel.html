@@ -921,9 +921,22 @@
             <span id="sp-vis-icon">🌍</span>
             <span id="sp-vis-label">Todos</span>
           </button>
-          <button type="submit" class="sp-btn sp-btn-blue" style="flex:1">Publicar 🚀</button>
+          <button type="submit" id="sp-sheet-submit-btn" class="sp-btn sp-btn-blue" style="flex:1">Publicar 🚀</button>
         </div>
       </form>
+
+      <!-- Overlay de upload — aparece enquanto envia foto/vídeo -->
+      <div id="sp-publish-overlay" class="sp-publish-overlay sp-hidden" aria-hidden="true">
+        <div class="sp-publish-box">
+          <div class="sp-publish-spinner"></div>
+          <div class="sp-publish-title">Publicando…</div>
+          <div class="sp-publish-sub" id="sp-publish-sub">Enviando sua mídia. Não feche a aba.</div>
+          <div class="sp-publish-bar-wrap">
+            <div class="sp-publish-bar" id="sp-publish-bar"></div>
+          </div>
+          <div class="sp-publish-pct" id="sp-publish-pct">0%</div>
+        </div>
+      </div>
 
       <div class="sp-sheet-divider"></div>
 
@@ -4075,6 +4088,60 @@ document.addEventListener('click', function(e){
     var _sheetForm = document.getElementById('sp-sheet-form');
     if (_sheetForm) {
       _sheetForm.addEventListener('submit', function(){ sessionStorage.setItem('_spPublished', '1'); });
+
+      /* Overlay de "Publicando…" — aparece no submit e mostra progresso
+         real do upload (quando disponível) via htmx:xhr:progress. Evita a
+         sensação de app travado em vídeos grandes. */
+      var _pubOverlay = document.getElementById('sp-publish-overlay');
+      var _pubBar     = document.getElementById('sp-publish-bar');
+      var _pubPct     = document.getElementById('sp-publish-pct');
+      var _pubSub     = document.getElementById('sp-publish-sub');
+      var _pubBtn     = document.getElementById('sp-sheet-submit-btn');
+
+      function _showPub(){
+        if(!_pubOverlay) return;
+        _pubOverlay.classList.remove('sp-hidden');
+        _pubOverlay.setAttribute('aria-hidden', 'false');
+        if(_pubBar){
+          _pubBar.style.width = '0%';
+          _pubBar.classList.remove('indet');
+        }
+        if(_pubPct) _pubPct.textContent = '0%';
+        if(_pubSub) _pubSub.textContent = 'Enviando sua mídia. Não feche a aba.';
+        if(_pubBtn) _pubBtn.disabled = true;
+        document.body.style.overflow = 'hidden';
+      }
+      function _hidePub(){
+        if(!_pubOverlay) return;
+        _pubOverlay.classList.add('sp-hidden');
+        _pubOverlay.setAttribute('aria-hidden', 'true');
+        if(_pubBtn) _pubBtn.disabled = false;
+        document.body.style.overflow = '';
+      }
+
+      _sheetForm.addEventListener('htmx:beforeRequest', _showPub);
+      _sheetForm.addEventListener('htmx:xhr:progress', function(ev){
+        if(!_pubBar || !_pubPct) return;
+        var d = ev.detail || {};
+        if(d.lengthComputable && d.total){
+          var pct = Math.max(0, Math.min(100, Math.round((d.loaded / d.total) * 100)));
+          _pubBar.classList.remove('indet');
+          _pubBar.style.width = pct + '%';
+          _pubPct.textContent = pct + '%';
+          if(pct >= 99 && _pubSub){
+            _pubSub.textContent = 'Processando no servidor…';
+            _pubBar.classList.add('indet');
+          }
+        } else {
+          /* Sem total conhecido — barra indeterminada */
+          _pubBar.classList.add('indet');
+          _pubPct.textContent = '';
+        }
+      });
+      _sheetForm.addEventListener('htmx:afterRequest', _hidePub);
+      _sheetForm.addEventListener('htmx:responseError', _hidePub);
+      _sheetForm.addEventListener('htmx:sendError', _hidePub);
+      _sheetForm.addEventListener('htmx:timeout', _hidePub);
     }
 
     /* Disparo a cada 5 min, max 3x */
