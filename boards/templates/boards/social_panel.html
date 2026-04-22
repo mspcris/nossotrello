@@ -1172,7 +1172,7 @@ var _CAMILA_AVATARS = {
         ? '<img class="sp-reel-av" src="'+p.user_avatar+'" alt="">'
         : '<span class="sp-reel-av-placeholder">'+initials+'</span>';
 
-      var _isTextOnly = !p.photo && !p.video && !p.gif_url && !p.sticker_url && !p.friendship && p.text;
+      var _isTextOnly = !p.photo && !p.video && !p.gif_url && !p.sticker_url && !p.friendship && !p.card_like && p.text;
       html += '<div class="sp-reel-slide'+(_isTextOnly?' sp-reel-slide-textonly':'')+'" data-idx="'+i+'" data-post-id="'+p.id+'">';
       html += '<div class="sp-reel-header">';
       if(p.shared_from){
@@ -1194,8 +1194,27 @@ var _CAMILA_AVATARS = {
       }
       html += '</div>';
 
-      /* ── Conteúdo: amizade especial ou mídia normal ── */
-      if(p.friendship){
+      /* ── Conteúdo: card like, amizade especial, ou mídia normal ── */
+      if(p.card_like){
+        var cl = p.card_like;
+        var cardHref = cl.card_id
+          ? '/board/' + cl.board_id + '/?card=' + cl.card_id
+          : '#';
+        var mediaHtml = p.photo
+          ? '<div class="sp-cardlike-media"><img src="'+p.photo+'" alt="" loading="lazy"></div>'
+          : '<div class="sp-cardlike-media sp-cardlike-media-placeholder">📋</div>';
+        html += '<a class="sp-cardlike sp-cardlike-reel" href="'+cardHref+'">';
+        html += mediaHtml;
+        html += '<div class="sp-cardlike-body">';
+        html += '<div class="sp-cardlike-head">👍 '+_escHtml(cl.user_name||'')+' curtiu um card</div>';
+        html += '<div class="sp-cardlike-title">'+_escHtml(cl.card_title||'')+'</div>';
+        if(cl.board_name){
+          html += '<div class="sp-cardlike-board">📋 '+_escHtml(cl.board_name)+'</div>';
+        }
+        html += '<div class="sp-cardlike-cta">Abrir card →</div>';
+        html += '</div>';
+        html += '</a>';
+      } else if(p.friendship){
         var f = p.friendship;
         var av1 = f.user_avatar
           ? '<img src="'+f.user_avatar+'" class="sp-friendship-av">'

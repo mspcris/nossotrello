@@ -283,6 +283,36 @@ def _build_social_context(request, target_user, extra=None):
                 except Exception:
                     pass
 
+            # Card-like post annotation
+            post.is_card_like = False
+            post.card_like_data = None
+            if post.text.startswith("__card_like__:"):
+                post.is_card_like = True
+                try:
+                    cid = int(post.text.split(":", 1)[1])
+                    c = (
+                        Card.objects
+                        .select_related("column__board")
+                        .get(id=cid, is_deleted=False)
+                    )
+                    post_prof = getattr(post.user, "profile", None)
+                    post.card_like_data = {
+                        "card_id": c.id,
+                        "card_title": c.title,
+                        "board_id": c.column.board_id,
+                        "board_name": c.column.board.name,
+                        "user_name": post_prof.display_name if post_prof else post.user.get_full_name(),
+                    }
+                except Exception:
+                    # Card apagado ou sem acesso — exibe fallback simples
+                    post.card_like_data = {
+                        "card_id": 0,
+                        "card_title": "(card indisponível)",
+                        "board_id": 0,
+                        "board_name": "",
+                        "user_name": post.user.get_full_name() or post.user.username,
+                    }
+
     # Marca visto
     if not is_me and posts:
         SocialPostSeen.objects.update_or_create(
@@ -815,12 +845,40 @@ def social_friends_feed(request):
             except Exception:
                 pass
 
+        # Detectar post de curtida de card
+        card_like_data = None
+        if display_post.text.startswith("__card_like__:"):
+            try:
+                cid = int(display_post.text.split(":", 1)[1])
+                c = (
+                    Card.objects
+                    .select_related("column__board")
+                    .get(id=cid, is_deleted=False)
+                )
+                card_like_data = {
+                    "card_id": c.id,
+                    "card_title": c.title,
+                    "board_id": c.column.board_id,
+                    "board_name": c.column.board.name,
+                    "user_name": prof.display_name if prof else p.user.get_full_name(),
+                }
+            except Exception:
+                card_like_data = {
+                    "card_id": 0,
+                    "card_title": "(card indisponível)",
+                    "board_id": 0,
+                    "board_name": "",
+                    "user_name": prof.display_name if prof else p.user.get_full_name(),
+                }
+
+        # Limpa o texto marcador antes de mandar pro front
+        _is_marker = friendship_data or card_like_data
         result.append({
             "id": p.id,
             "user_name": prof.display_name if prof else p.user.get_full_name(),
             "user_avatar": _avatar_url(prof),
             "user_id": p.user_id,
-            "text": display_post.text if not friendship_data else "",
+            "text": "" if _is_marker else display_post.text,
             "photo": display_post.photo.url if display_post.photo else "",
             "video": display_post.video.url if display_post.video else "",
             "gif_url": display_post.gif_url,
@@ -833,6 +891,7 @@ def social_friends_feed(request):
             "text_style": display_post.text_style,
             "shared_from": shared_info,
             "friendship": friendship_data,
+            "card_like": card_like_data,
         })
 
     return JsonResponse({"posts": result})
@@ -1483,16 +1542,35 @@ def card_like_social(request, card_id: int):
     """Curte um card e publica automaticamente no feed social."""
     card = get_object_or_404(Card, id=card_id)
     board = card.column.board
-    user_name = request.user.get_full_name() or request.user.username
-    card_url = request.build_absolute_uri(f"/board/{board.id}/?card={card.id}")
-    text = (
-        f"👍 {user_name} curtiu o card: {card.title}\n"
-        f"📋 Quadro: {board.name}\n"
-        f"🔗 {card_url}"
-    )
+
+    # Marca especial igual ao padrão já usado em __friendship__:<id> — no
+    # render, o front detecta e monta um cartão bonito em vez de tratar
+    # como texto solto (que ficava ilegível no reel).
+    text = f"__card_like__:{card.id}"
+
     post_kwargs = {"user": request.user, "text": text}
+
+    # 1) capa do card tem prioridade. 2) senão, primeira imagem anexada.
+    photo = None
     if card.cover_image:
-        post_kwargs["photo"] = card.cover_image
+        photo = card.cover_image
+    else:
+        try:
+            first_img = (
+                card.attachments
+                .exclude(file__iexact="")
+                .order_by("-created_at")
+                .first()
+            )
+            if first_img and first_img.file:
+                name = (first_img.file.name or "").lower()
+                if name.endswith((".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif")):
+                    photo = first_img.file
+        except Exception:
+            photo = None
+    if photo:
+        post_kwargs["photo"] = photo
+
     SocialPost.objects.create(**post_kwargs)
     return JsonResponse({"ok": True})
 

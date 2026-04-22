@@ -10,7 +10,24 @@
           🔄 Compartilhou de <a href="/social/{{ post.original_user_id }}/" style="color:#2563eb;font-weight:600;text-decoration:none">{{ post.original_author }}</a>
         </div>
       {% endif %}
-      {% if post.is_friendship and post.friendship_data %}
+      {% if post.is_card_like and post.card_like_data %}
+        {# Post de curtida em card → preview clicável #}
+        <a class="sp-cardlike" href="/board/{{ post.card_like_data.board_id }}/?card={{ post.card_like_data.card_id }}" rel="noopener">
+          {% if post.photo %}
+            <div class="sp-cardlike-media"><img src="{{ post.photo.url }}" alt="" loading="lazy"></div>
+          {% else %}
+            <div class="sp-cardlike-media sp-cardlike-media-placeholder">📋</div>
+          {% endif %}
+          <div class="sp-cardlike-body">
+            <div class="sp-cardlike-head">👍 {{ post.card_like_data.user_name }} curtiu um card</div>
+            <div class="sp-cardlike-title">{{ post.card_like_data.card_title }}</div>
+            {% if post.card_like_data.board_name %}
+              <div class="sp-cardlike-board">📋 {{ post.card_like_data.board_name }}</div>
+            {% endif %}
+            <div class="sp-cardlike-cta">Abrir card →</div>
+          </div>
+        </a>
+      {% elif post.is_friendship and post.friendship_data %}
         {% load static %}
         <div class="sp-friendship-card" style="background:linear-gradient(135deg,#7c3aed,#a78bfa 40%,#c4b5fd 70%,#e9d5ff)">
           <div class="sp-friendship-bg">🤝</div>
@@ -51,7 +68,7 @@
       {% elif post.gif_url %}
         <img src="{{ post.gif_url }}" alt="GIF" class="sp-post-media" loading="lazy">
       {% endif %}
-      {% if post.text and not post.is_friendship %}
+      {% if post.text and not post.is_friendship and not post.is_card_like %}
         {% if post.text_style %}
           <div class="sp-styled-text" data-effect="{{ post.text_style.effect }}"
                style="min-height:180px;display:flex;align-items:center;justify-content:center;border-radius:12px;padding:24px 20px;font-size:1.4rem;font-weight:700;text-align:center;word-break:break-word;line-height:1.4;margin-bottom:8px;background:{{ post.text_style.bg }};color:{{ post.text_style.color }}">

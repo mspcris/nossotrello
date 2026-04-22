@@ -1523,6 +1523,87 @@ video.sp-post-media {
   background: #000;
 }
 
+/* ─── Card preview (post gerado ao curtir card no board) ─── */
+.sp-cardlike {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  background: linear-gradient(135deg, #eef2ff, #fae8ff);
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(124, 58, 237, 0.2);
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.12);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.sp-cardlike:hover,
+.sp-cardlike:active {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(124, 58, 237, 0.22);
+}
+.sp-cardlike-media {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #0f172a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.sp-cardlike-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.sp-cardlike-media-placeholder {
+  font-size: 3rem;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  color: #fff;
+}
+.sp-cardlike-body {
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sp-cardlike-head {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #6b21a8;
+  letter-spacing: 0.01em;
+}
+.sp-cardlike-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1e1b4b;
+  line-height: 1.35;
+  word-break: break-word;
+}
+.sp-cardlike-board {
+  font-size: 0.78rem;
+  color: #475569;
+}
+.sp-cardlike-cta {
+  margin-top: 4px;
+  align-self: flex-start;
+  background: #7c3aed;
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 7px 14px;
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(124, 58, 237, 0.35);
+}
+
+/* Variante compacta pro reel (fundo do slide é escuro) */
+.sp-cardlike-reel {
+  background: rgba(255, 255, 255, 0.96);
+  margin: 12px;
+  max-width: 520px;
+  width: calc(100% - 24px);
+}
+.sp-cardlike-reel .sp-cardlike-title { color: #1e1b4b; }
+
 /* ─── Buffering overlay para vídeos do feed/reel ─── */
 .sp-video-wrap {
   position: relative;
