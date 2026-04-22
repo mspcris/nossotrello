@@ -1633,6 +1633,14 @@ def set_card_cover(request, card_id):
     if getattr(f, "size", 0) and f.size > max_bytes:
         return HttpResponseBadRequest("Imagem muito grande. Tente uma menor (até 15MB).")
 
+    # Comprime pra não salvar foto de 12MB direto do celular quando 1-2MB já
+    # basta pra capa do card. GIF/WebP animado passa direto (preserva).
+    try:
+        from boards.services.image_compress import compress_image
+        f = compress_image(f)
+    except Exception:
+        pass
+
     # ============================================================
     # 1) Captura a capa anterior (RELATIVA) e copia para attachments/
     # ============================================================

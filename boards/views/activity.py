@@ -594,6 +594,13 @@ def quill_upload(request):
     except Exception:
         pass
 
+    # Comprime (JPEG q85, max 1600px) — GIF/WebP animado passa direto.
+    try:
+        from boards.services.image_compress import compress_image
+        f = compress_image(f)
+    except Exception:
+        pass
+
     ext = os.path.splitext(f.name or "")[1].lower()
     if ext not in [".png", ".jpg", ".jpeg", ".webp", ".gif"]:
         if ct == "image/png":

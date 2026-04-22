@@ -874,10 +874,12 @@ def social_post_create(request):
     if not text and not photo and not video and not gif_url and not sticker_url:
         extra["post_error"] = "Adicione um texto, foto ou vídeo antes de publicar."
     else:
+        from boards.services.image_compress import compress_image
+        compressed_photo = compress_image(photo) if photo else None
         post = SocialPost.objects.create(
             user=request.user,
             text=text,
-            photo=photo or None,
+            photo=compressed_photo,
             video=video or None,
             gif_url=gif_url,
             sticker_url=sticker_url,
@@ -983,6 +985,9 @@ def daily_checkin_save(request):
     lunch_text = (request.POST.get("lunch_text") or "").strip()
     daily_posto = (request.POST.get("daily_posto") or "").strip()
     lunch_photo = request.FILES.get("lunch_photo")
+    if lunch_photo:
+        from boards.services.image_compress import compress_image
+        lunch_photo = compress_image(lunch_photo)
 
     if mood:
         checkin.mood = mood
@@ -1062,16 +1067,16 @@ def social_cover_upload(request):
     f = request.FILES.get("cover_photo")
     extra = {}
     if f:
-        from django.core.files.base import ContentFile
-        f.seek(0)
-        cover_bytes = f.read()
-        f.seek(0)
-        prof.cover_photo = f
+        from boards.services.image_compress import compress_image
+        compressed = compress_image(f)
+        prof.cover_photo = compressed
         prof.save(update_fields=["cover_photo"])
+        # Reaproveita o arquivo comprimido no auto-post (evita comprimir 2x)
+        prof.refresh_from_db(fields=["cover_photo"])
         SocialPost.objects.create(
             user=request.user,
             text="📸 Atualizei minha foto de capa!",
-            photo=ContentFile(cover_bytes, name="cover.jpg"),
+            photo=prof.cover_photo,
         )
         extra["ai_react_text"] = "Troquei a foto de capa do meu perfil"
     else:
@@ -1651,19 +1656,16 @@ def social_avatar_upload(request):
         return JsonResponse({"error": "Arquivo inválido."}, status=400)
     if f.size > 5 * 1024 * 1024:
         return JsonResponse({"error": "Imagem muito grande (máx 5MB)."}, status=400)
-    prof.avatar = f
-    from django.core.files.base import ContentFile
+    from boards.services.image_compress import compress_image
+    compressed = compress_image(f, max_width=512)
+    prof.avatar = compressed
     prof.avatar_choice = ""
-    # Read file content before saving (Django moves the file pointer)
-    f.seek(0)
-    avatar_bytes = f.read()
-    f.seek(0)
     prof.save(update_fields=["avatar", "avatar_choice"])
-    # Auto-post with a copy of the file
+    # Auto-post usa a mesma imagem comprimida
     SocialPost.objects.create(
         user=request.user,
         text="🤳 Nova foto de perfil!",
-        photo=ContentFile(avatar_bytes, name="avatar.jpg"),
+        photo=prof.avatar,
     )
     return JsonResponse({"url": prof.avatar.url})
 
