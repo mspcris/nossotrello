@@ -106,7 +106,7 @@
                           {% if log.content %}
                             {{ log.content|safe }}
                           {% elif log.content_text %}
-                            {{ log.content_text|linebreaksbr }}
+                            {{ log.content_text|urlize|linebreaksbr }}
                           {% endif %}
 
                         </div>
@@ -182,7 +182,7 @@
                                         {% if r.content %}
                                           {{ r.content|safe }}
                                         {% elif r.content_text %}
-                                          {{ r.content_text|linebreaksbr }}
+                                          {{ r.content_text|urlize|linebreaksbr }}
                                         {% endif %}
                                       </div>
                                     </div>

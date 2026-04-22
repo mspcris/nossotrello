@@ -5294,10 +5294,22 @@ window.spShowReach = function(postId){
   var _activeInput = null;
   var _activeDropdown = null;
 
-  /* ── Converte @handle em links clicáveis (após escape HTML) ── */
+  /* ── Converte @handle E URLs http(s) em links clicáveis (após escape HTML) ──
+     Ordem: URLs primeiro (evita comer @ que venha depois de um link) e
+     @handles depois. Protege o href das URLs pra não mentionificar @ que
+     exista dentro da URL, usando placeholder. */
   window._spMentionify = function(escapedHtml){
-    return escapedHtml.replace(/@([a-z0-9_.]+)/gi, function(match, handle){
+    var stash = [];
+    var withUrls = escapedHtml.replace(/(https?:\/\/[^\s<>"]+)/gi, function(url){
+      var token = 'URL' + stash.length + '';
+      stash.push('<a href="' + url + '" target="_blank" rel="noopener" class="sp-url-link">' + url + '</a>');
+      return token;
+    });
+    var withMentions = withUrls.replace(/@([a-z0-9_.]+)/gi, function(match, handle){
       return '<a class="sp-mention-link" href="/social/@' + handle + '/">@' + handle + '</a>';
+    });
+    return withMentions.replace(/URL(\d+)/g, function(_, i){
+      return stash[Number(i)];
     });
   };
 

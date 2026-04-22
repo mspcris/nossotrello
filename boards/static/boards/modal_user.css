@@ -2112,6 +2112,14 @@ video.sp-post-media {
 }
 .sp-mention-link:hover { text-decoration: underline; }
 
+/* URL link rendered in post/comment text (via _spMentionify) */
+.sp-url-link {
+  color: #2563eb;
+  text-decoration: underline;
+  word-break: break-all;
+}
+.sp-url-link:hover { color: #1d4ed8; }
+
 .sp-sheet-preview {
   margin-bottom: 12px;
   border-radius: 12px;
