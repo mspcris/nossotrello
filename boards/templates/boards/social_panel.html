@@ -2443,9 +2443,9 @@ document.addEventListener('click', function(e){
     preview.innerHTML = '';
 
     if(file.type.startsWith('video/')){
-      /* Vídeo acima do limite do servidor (200MB no nginx) nem tenta subir */
-      if(file.size > 180 * 1024 * 1024){
-        alert('Vídeo muito grande (' + Math.round(file.size / (1024*1024)) + 'MB). Tente um menor que 180MB.');
+      /* Limite da infra CAMIM: 50MB. Nem tenta subir acima disso. */
+      if(file.size > 50 * 1024 * 1024){
+        alert('Vídeo muito grande (' + Math.round(file.size / (1024*1024)) + 'MB). O limite é 50MB — tente um vídeo mais curto ou em qualidade menor.');
         e.target.value = '';
         preview.innerHTML = '';
         preview.classList.add('sp-hidden');
