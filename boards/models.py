@@ -1443,6 +1443,38 @@ class HealthChatMessage(models.Model):
 
 
 # ============================================================
+# CAMILA CHAT (persiste conversa + reações automáticas)
+# ============================================================
+class CamilaChatMessage(models.Model):
+    ROLE_CHOICES = [("user", "Usuário"), ("assistant", "Camila")]
+    SOURCE_CHOICES = [
+        ("chat", "Chat direto"),
+        ("react", "Reação automática"),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="camila_messages",
+        on_delete=models.CASCADE,
+    )
+    role = models.CharField(max_length=10, choices=ROLE_CHOICES)
+    text = models.TextField()
+    source = models.CharField(
+        max_length=10, choices=SOURCE_CHOICES, default="chat",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+        indexes = [
+            models.Index(fields=["user", "created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user} [{self.role}/{self.source}] {self.created_at:%d/%m %H:%M}"
+
+
+# ============================================================
 # CAMILA NEWS (notícias persistentes)
 # ============================================================
 class CamilaNews(models.Model):

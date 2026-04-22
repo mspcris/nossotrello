@@ -28,7 +28,7 @@ from ..models import (
     DailyCheckIn, Card, CardFollow, UserProfile,
     CamilaKnowledge, CamilaConfig, SocialFriendship, SocialCardDismiss, CamilaPOP,
     ChatConversation, ChatMessage, ChatSticker, SocialPostView,
-    HealthChatMessage, CamilaNews,
+    HealthChatMessage, CamilaNews, CamilaChatMessage,
 )
 
 User = get_user_model()
@@ -1239,6 +1239,17 @@ def social_ai_react(request):
         prompt,
         config=cfg,
     )
+
+    # Persiste no chat da Camila para que a reação automática fique
+    # disponível quando o usuário abrir a conversa.
+    if response and not response.startswith("Erro"):
+        CamilaChatMessage.objects.create(
+            user=request.user, role="user", text=context, source="react",
+        )
+        CamilaChatMessage.objects.create(
+            user=request.user, role="assistant", text=response, source="react",
+        )
+
     return JsonResponse({"response": response})
 
 
@@ -1322,9 +1333,55 @@ def social_camila_chat(request):
     )
 
     prompt = cfg.prompt_chat + social_ctx + _camila_knowledge_prompt(message) + _get_weather_context()
-    messages = [*history[-10:], {"role": "user", "content": message}]
+
+    # Monta contexto com histórico do banco (canônico) + mensagem atual.
+    recent_db = list(
+        CamilaChatMessage.objects.filter(user=request.user)
+        .order_by("-created_at")[:12]
+    )
+    db_history = [
+        {"role": m.role, "content": m.text} for m in reversed(recent_db)
+    ]
+    combined = db_history or list(history[-10:])
+    messages = [*combined, {"role": "user", "content": message}]
     response = _groq_chat(messages, prompt, config=cfg)
+
+    # Persiste a conversa (mesmo se resposta vier vazia, registramos o
+    # pedido do usuário; resposta só é gravada se veio algo útil).
+    CamilaChatMessage.objects.create(
+        user=request.user, role="user", text=message, source="chat",
+    )
+    if response and not response.startswith("Erro"):
+        CamilaChatMessage.objects.create(
+            user=request.user, role="assistant", text=response, source="chat",
+        )
+
     return JsonResponse({"response": response})
+
+
+@login_required
+def social_camila_history(request):
+    """Retorna as últimas mensagens da conversa com a Camila (user + auto-reações)."""
+    limit = 60
+    try:
+        limit = max(1, min(200, int(request.GET.get("limit") or limit)))
+    except (TypeError, ValueError):
+        pass
+
+    qs = (
+        CamilaChatMessage.objects.filter(user=request.user)
+        .order_by("-created_at")[:limit]
+    )
+    items = [
+        {
+            "role": m.role,
+            "text": m.text,
+            "source": m.source,
+            "time": m.created_at.strftime("%d/%m %H:%M"),
+        }
+        for m in reversed(list(qs))
+    ]
+    return JsonResponse({"history": items})
 
 
 # ---------------------------------------------------------------

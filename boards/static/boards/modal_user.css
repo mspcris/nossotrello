@@ -276,6 +276,41 @@
 @media (min-width: 768px) {
   .sp-page-wrap {
     max-width: 1040px;
+    border-radius: 20px;
+    margin-top: 10px;
+    margin-bottom: 32px;
+    min-height: auto;
+    box-shadow:
+      0 10px 40px rgba(0, 0, 0, 0.28),
+      0 2px 10px rgba(0, 0, 0, 0.18);
+    overflow: hidden;
+  }
+}
+
+/* ── Fundo da página standalone (laterais fora do sp-page-wrap) ──
+   Substitui o branco por um gradiente "fumê" com orbs difusos que
+   remetem ao tom roxo da Camila. Fixo no viewport (sem scroll do bg). */
+body.sp-standalone-page {
+  background:
+    radial-gradient(circle at 12% 18%, rgba(139, 92, 246, 0.28), transparent 42%),
+    radial-gradient(circle at 88% 82%, rgba(236, 72, 153, 0.22), transparent 45%),
+    radial-gradient(circle at 50% 0%,  rgba(34, 197, 94, 0.10), transparent 55%),
+    linear-gradient(135deg, #0f172a 0%, #1e1b4b 45%, #3b0764 100%);
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+/* Noise sutil pra não parecer gradient chapado (desktop só) */
+@media (min-width: 768px) {
+  body.sp-standalone-page::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background-image:
+      radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+    background-size: 3px 3px;
+    mix-blend-mode: overlay;
   }
 }
 
@@ -357,6 +392,84 @@
 }
 /* Ao tocar mostra o hint */
 .sp-cover-tappable:active .sp-cover-hint { opacity: 1; }
+
+/* ─── Preview da capa em tela cheia ─── */
+.sp-cover-preview-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.82);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: sp-cover-fade-in 0.18s ease-out;
+}
+@keyframes sp-cover-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.sp-cover-preview-box {
+  position: relative;
+  max-width: 92vw;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.sp-cover-preview-img {
+  max-width: 100%;
+  max-height: 72vh;
+  object-fit: contain;
+  border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  background: #111;
+}
+.sp-cover-preview-close {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.95);
+  color: #111;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  z-index: 2;
+}
+.sp-cover-preview-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.sp-cover-preview-btn {
+  border: none;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.sp-cover-preview-btn-primary {
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.45);
+}
+.sp-cover-preview-btn-primary:active { transform: scale(0.97); }
+.sp-cover-preview-btn-secondary {
+  background: rgba(255, 255, 255, 0.95);
+  color: #333;
+}
+.sp-cover-preview-btn-secondary:active { transform: scale(0.97); }
 
 /* Avatar overlapping cover */
 .sp-avatar-over-cover {

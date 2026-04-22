@@ -13,20 +13,40 @@
           hx-encoding="multipart/form-data" enctype="multipart/form-data"
           style="margin:0;padding:0;display:block;">
       {% csrf_token %}
-      <input type="file" id="sp-cover-input" name="cover_photo" accept="image/*,image/gif"
+      <input type="file" id="sp-cover-input" name="cover_photo"
+             accept="image/png,image/jpeg,image/gif,image/webp,image/avif"
              style="display:none"
              onchange="document.getElementById('sp-cover-form').requestSubmit()">
       <div class="sp-cover sp-cover-tappable"
            {% if profile.cover_photo %}style="background-image:url('{{ profile.cover_photo.url }}')"{% endif %}
-           onclick="document.getElementById('sp-cover-input').click()">
+           data-cover-url="{% if profile.cover_photo %}{{ profile.cover_photo.url }}{% endif %}"
+           onclick="spOpenCoverPreview(this)">
         <div class="sp-cover-hint">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-          <span>Tocar para trocar a capa</span>
+          <span>{% if profile.cover_photo %}Tocar para ver{% else %}Tocar para escolher uma capa{% endif %}</span>
         </div>
       </div>
     </form>
     {% else %}
     <div class="sp-cover" {% if profile.cover_photo %}style="background-image:url('{{ profile.cover_photo.url }}')"{% endif %}></div>
+    {% endif %}
+
+    {% if is_me %}
+    <!-- Preview da capa (abre ao clicar — tem botão "Trocar capa" dentro) -->
+    <div id="sp-cover-preview-overlay" class="sp-cover-preview-overlay sp-hidden"
+         onclick="spCloseCoverPreview(event)">
+      <div class="sp-cover-preview-box">
+        <button type="button" class="sp-cover-preview-close"
+                onclick="spCloseCoverPreview(event)" aria-label="Fechar">✕</button>
+        <img id="sp-cover-preview-img" class="sp-cover-preview-img" alt="Capa do perfil">
+        <div class="sp-cover-preview-actions">
+          <button type="button" class="sp-cover-preview-btn sp-cover-preview-btn-secondary"
+                  onclick="spCloseCoverPreview(event)">Fechar</button>
+          <button type="button" class="sp-cover-preview-btn sp-cover-preview-btn-primary"
+                  onclick="spPickCoverFile(event)">🔄 Trocar capa</button>
+        </div>
+      </div>
+    </div>
     {% endif %}
 
     <!-- Avatar overlapping cover -->
@@ -541,7 +561,7 @@
   <div class="sp-card">
     <form id="sp-checkin-form" class="sp-checkin"
           hx-post="{% url 'boards:daily_checkin_save' %}"
-          hx-target="#social-panel" hx-swap="outerHTML"
+          hx-target="#social-panel" hx-swap="outerHTML show:#sp-checkin-form:top"
           hx-encoding="multipart/form-data" enctype="multipart/form-data">
       {% csrf_token %}
 
@@ -2839,11 +2859,51 @@ document.addEventListener('click', function(e){
     if(o) o.classList.remove('sp-hidden');
     document.body.style.overflow = 'hidden';
     spCamilaTab('chat');
+    _spLoadCamilaHistory();
     setTimeout(function(){
       var inp = document.getElementById('sp-camila-input');
       if(inp) inp.focus();
     }, 350);
   };
+
+  /* Carrega histórico persistido da Camila (chat + reações automáticas)
+     e renderiza no painel. Roda toda vez que abre — para pegar reações
+     geradas depois do último open. */
+  function _spLoadCamilaHistory(){
+    var msgs = document.getElementById('sp-camila-messages');
+    if(!msgs) return;
+    fetch('{% url "boards:social_camila_history" %}')
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var hist = (d && d.history) || [];
+        if(!hist.length){
+          window._spCamilaHistory = [];
+          return;
+        }
+        /* Limpa saudação inicial e repovoa com o histórico real */
+        msgs.innerHTML = '';
+        window._spCamilaHistory = [];
+        hist.forEach(function(m){
+          var b = document.createElement('div');
+          b.className = 'sp-chat-msg ' + (m.role === 'assistant' ? 'sp-chat-bot' : 'sp-chat-user');
+          if(m.role === 'assistant'){
+            b.innerHTML = _spLinkify(m.text || '');
+          } else {
+            b.textContent = m.text || '';
+          }
+          if(m.source === 'react'){
+            var tag = document.createElement('span');
+            tag.textContent = ' · reação automática';
+            tag.style.cssText = 'display:block;font-size:.65rem;opacity:.6;margin-top:2px';
+            b.appendChild(tag);
+          }
+          msgs.appendChild(b);
+          window._spCamilaHistory.push({role: m.role, content: m.text});
+        });
+        msgs.scrollTop = msgs.scrollHeight;
+      })
+      .catch(function(){});
+  }
   window.spCloseCamila = function(){
     var o = document.getElementById('sp-camila-overlay');
     if(o) o.classList.add('sp-hidden');
@@ -2888,6 +2948,38 @@ document.addEventListener('click', function(e){
       if(d.response) window._spCamilaHistory.push({role:'assistant',content:d.response});
     }
     msgs.scrollTop = msgs.scrollHeight;
+  };
+
+  /* ═══ COVER PREVIEW ═══ */
+  window.spOpenCoverPreview = function(el){
+    var url = (el && el.dataset && el.dataset.coverUrl) || '';
+    var overlay = document.getElementById('sp-cover-preview-overlay');
+    var img = document.getElementById('sp-cover-preview-img');
+    /* Sem capa ainda: pula o preview e vai direto ao picker para não
+       mostrar uma caixa vazia. */
+    if(!url){
+      var inp = document.getElementById('sp-cover-input');
+      if(inp){ inp.value = ''; inp.click(); }
+      return;
+    }
+    if(!overlay || !img) return;
+    img.src = url;
+    overlay.classList.remove('sp-hidden');
+    document.body.style.overflow = 'hidden';
+  };
+  window.spCloseCoverPreview = function(ev){
+    /* Só fecha se clicou no overlay/botão — não quando clicou na imagem. */
+    if(ev && ev.target && ev.target.id === 'sp-cover-preview-img') return;
+    var overlay = document.getElementById('sp-cover-preview-overlay');
+    if(overlay) overlay.classList.add('sp-hidden');
+    document.body.style.overflow = '';
+  };
+  window.spPickCoverFile = function(ev){
+    if(ev){ ev.preventDefault(); ev.stopPropagation(); }
+    var inp = document.getElementById('sp-cover-input');
+    if(inp){ inp.value = ''; inp.click(); }
+    /* Mantém o preview aberto — ao submeter o form via htmx, o painel
+       recarrega por inteiro e o overlay fica oculto pelo default. */
   };
 
   /* ═══ AVATAR MENU ═══ */
