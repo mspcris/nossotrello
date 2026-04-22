@@ -242,34 +242,36 @@
     </div>
 
     <!-- DIREITA (volta pra dentro da barra verde) -->
-    <div class="flex items-center justify-end gap-2 md:gap-3 w-auto md:w-[260px] flex-wrap">
+    <div class="cm-header-right flex items-center justify-end gap-2 md:gap-3 w-auto md:w-[260px] flex-wrap">
       {% if request.user.is_authenticated %}
-        {% with prof=request.user.profile %}
-        <button type="button" id="cm-identity-toggle" class="text-left"
-                data-display-name="{{ prof.display_name|default:'' }}"
-                data-email="{{ request.user.email|default:'' }}"
-                data-handle="{% if prof.handle %}@{{ prof.handle }}{% endif %}">
-          <span id="cm-identity-label" class="text-sm bg-white/70 px-2 py-1 rounded">
-            {% if prof.preferred_identity_label == 'email' %}
-              {{ request.user.email|default:prof.display_name }}
-            {% elif prof.preferred_identity_label == 'handle' and prof.handle %}
-              @{{ prof.handle }}
-            {% else %}
-              {{ prof.display_name|default:request.user.email }}
-            {% endif %}
-          </span>
-        </button>
-        {% endwith %}
+        <div class="cm-header-identity-group flex items-center gap-2">
+          {% with prof=request.user.profile %}
+          <button type="button" id="cm-identity-toggle" class="text-left"
+                  data-display-name="{{ prof.display_name|default:'' }}"
+                  data-email="{{ request.user.email|default:'' }}"
+                  data-handle="{% if prof.handle %}@{{ prof.handle }}{% endif %}">
+            <span id="cm-identity-label" class="text-sm bg-white/70 px-2 py-1 rounded">
+              {% if prof.preferred_identity_label == 'email' %}
+                {{ request.user.email|default:prof.display_name }}
+              {% elif prof.preferred_identity_label == 'handle' and prof.handle %}
+                @{{ prof.handle }}
+              {% else %}
+                {{ prof.display_name|default:request.user.email }}
+              {% endif %}
+            </span>
+          </button>
+          {% endwith %}
 
-        <button type="button" id="tt-jump-btn"
-                class="hidden ml-2 p-2 rounded bg-white/70 border border-white/30 shadow hover:bg-white transition"
-                title="Ir para meu card em track-time" aria-label="Ir para meu card em track-time">⏱</button>
+          <button type="button" id="tt-jump-btn"
+                  class="hidden ml-2 p-2 rounded bg-white/70 border border-white/30 shadow hover:bg-white transition"
+                  title="Ir para meu card em track-time" aria-label="Ir para meu card em track-time">⏱</button>
 
-        <form method="post" action="{% url 'boards:logout' %}" class="inline">
-          {% csrf_token %}
-          <button type="submit"
-                  class="text-sm px-3 py-1 rounded bg-emerald-600 text-white shadow hover:bg-emerald-700 transition">Sair</button>
-        </form>
+          <form method="post" action="{% url 'boards:logout' %}" class="inline">
+            {% csrf_token %}
+            <button type="submit"
+                    class="text-sm px-3 py-1 rounded bg-emerald-600 text-white shadow hover:bg-emerald-700 transition">Sair</button>
+          </form>
+        </div>
       {% endif %}
 
       <div id="my-avatar-wrap" style="position:relative;display:inline-block;">
