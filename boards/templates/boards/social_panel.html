@@ -2443,6 +2443,14 @@ document.addEventListener('click', function(e){
     preview.innerHTML = '';
 
     if(file.type.startsWith('video/')){
+      /* Vídeo acima do limite do servidor (200MB no nginx) nem tenta subir */
+      if(file.size > 180 * 1024 * 1024){
+        alert('Vídeo muito grande (' + Math.round(file.size / (1024*1024)) + 'MB). Tente um menor que 180MB.');
+        e.target.value = '';
+        preview.innerHTML = '';
+        preview.classList.add('sp-hidden');
+        return;
+      }
       var video = document.createElement('video');
       video.src = URL.createObjectURL(file);
       video.controls = true;
@@ -4138,10 +4146,45 @@ document.addEventListener('click', function(e){
           _pubPct.textContent = '';
         }
       });
-      _sheetForm.addEventListener('htmx:afterRequest', _hidePub);
-      _sheetForm.addEventListener('htmx:responseError', _hidePub);
-      _sheetForm.addEventListener('htmx:sendError', _hidePub);
-      _sheetForm.addEventListener('htmx:timeout', _hidePub);
+
+      /* htmx:afterRequest dispara em sucesso E em erro — só escondemos se
+         de fato foi sucesso. Em erro, delegamos pro handler dedicado. */
+      _sheetForm.addEventListener('htmx:afterRequest', function(ev){
+        var ok = ev.detail && ev.detail.successful;
+        if(ok) _hidePub();
+      });
+
+      function _showPubError(msg){
+        if(!_pubOverlay) return;
+        if(_pubSub) _pubSub.textContent = msg;
+        if(_pubBar){
+          _pubBar.classList.remove('indet');
+          _pubBar.style.width = '100%';
+          _pubBar.style.background = 'linear-gradient(90deg,#ef4444,#b91c1c)';
+        }
+        if(_pubPct) _pubPct.textContent = 'Erro';
+        if(_pubBtn) _pubBtn.disabled = false;
+        /* Some em 4s pra o usuário ler */
+        setTimeout(function(){
+          if(_pubBar){
+            _pubBar.style.background = '';
+          }
+          _hidePub();
+        }, 4000);
+      }
+      _sheetForm.addEventListener('htmx:responseError', function(ev){
+        var status = (ev.detail && ev.detail.xhr && ev.detail.xhr.status) || 0;
+        var msg = 'Não foi possível publicar (erro ' + status + ').';
+        if(status === 413) msg = 'Vídeo muito grande. Tente um arquivo menor.';
+        else if(status === 504 || status === 408) msg = 'O servidor demorou demais. Tente de novo.';
+        _showPubError(msg);
+      });
+      _sheetForm.addEventListener('htmx:sendError', function(){
+        _showPubError('Sem conexão. Verifique sua internet e tente de novo.');
+      });
+      _sheetForm.addEventListener('htmx:timeout', function(){
+        _showPubError('O envio demorou demais. Tente de novo.');
+      });
     }
 
     /* Disparo a cada 5 min, max 3x */
