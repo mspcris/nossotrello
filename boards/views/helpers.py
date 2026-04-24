@@ -224,6 +224,7 @@ def get_or_create_user_default_organization(user):
         owner=user,
         defaults={
             "name": f"Workspace de {display_name}",
+            "slug": f"workspace-{user.pk}",
             "home_wallpaper_filename": DEFAULT_WALLPAPER_FILENAME,
         },
     )

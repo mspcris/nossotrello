@@ -128,6 +128,16 @@
 <div class="ar-wrap">
   <div class="ar-card">
     <h2 class="ar-title">Ops… esse quadro é “VIP”. 😄</h2>
+    {% if existing_request %}
+    <p class="ar-sub">
+      Você já pediu acesso a <strong>{{ board.name }}</strong>
+      em {{ existing_request.created_at|date:"d/m/Y H:i" }}.
+      Aguarde a aprovação do dono do quadro{% if owner_user %} (<strong>{{ owner_user.get_full_name|default:owner_user.username }}</strong>){% endif %}.
+    </p>
+    <div class="ar-actions">
+      <a class="ar-btn" href="{% url 'boards:boards_index' %}">Voltar para a Home</a>
+    </div>
+    {% else %}
     <p class="ar-sub">
       Você está logado, mas ainda não tem autorização para ver <strong>{{ board.name }}</strong>.
       Se quiser, peça acesso rapidinho aqui embaixo.
@@ -176,9 +186,11 @@
         
       </div>
     </form>
+    {% endif %}
   </div>
 </div>
 
+{% if not existing_request %}
 <script>
 (function(){
   const nome = document.getElementById('ar-nome');
@@ -244,6 +256,7 @@
   });
 })();
 </script>
+{% endif %}
 
 
 {% endblock %}

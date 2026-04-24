@@ -566,12 +566,15 @@ def board_detail(request, board_id):
         owner_membership = memberships_qs.filter(role=BoardMembership.Role.OWNER).select_related("user").first()
         owner_user = owner_membership.user if owner_membership else None
 
+        existing_request = BoardAccessRequest.objects.filter(board=board, user=request.user).first()
+
         return render(
             request,
             "boards/board_no_access.html",
             {
                 "board": board,
                 "owner_user": owner_user,
+                "existing_request": existing_request,
             },
             status=403,
         )
