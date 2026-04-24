@@ -220,14 +220,16 @@ def get_or_create_user_default_organization(user):
 
     display_name = user.get_full_name() or user.get_username() or str(user)
 
-    org, _created = Organization.objects.get_or_create(
-        owner=user,
-        defaults={
-            "name": f"Workspace de {display_name}",
-            "slug": f"workspace-{user.pk}",
-            "home_wallpaper_filename": DEFAULT_WALLPAPER_FILENAME,
-        },
-    )
+    # Pode haver >1 org do mesmo owner (resquício de merge_users etc).
+    # O "default" é a mais antiga (primeira criada) — consistente entre acessos.
+    org = Organization.objects.filter(owner=user).order_by("id").first()
+    if org is None:
+        org = Organization.objects.create(
+            owner=user,
+            name=f"Workspace de {display_name}",
+            slug=f"workspace-{user.pk}",
+            home_wallpaper_filename=DEFAULT_WALLPAPER_FILENAME,
+        )
 
     if not (getattr(org, "home_wallpaper_filename", "") or "").strip():
         org.home_wallpaper_filename = DEFAULT_WALLPAPER_FILENAME
