@@ -15,6 +15,8 @@ from django.contrib.auth import get_user_model, login
 from django.shortcuts import redirect
 from django.views.decorators.http import require_GET
 
+from boards.services.camim_identity import resolve_or_create_camim_user
+
 logger = logging.getLogger(__name__)
 
 CAMIM_BASE     = "https://auth.camim.com.br"
@@ -135,31 +137,16 @@ def camim_callback(request):
         messages.error(request, "E-mail não retornado pelo Camim.")
         return redirect("boards:login")
 
-    # ── Busca ou cria o usuário pelo e-mail ──────────────────────
+    sub = (userinfo.get("sub") or "").strip()
+
+    # ── Busca ou cria o usuário (preferindo sub) ─────────────────
     name       = (userinfo.get("name") or "").strip()
     first_name = (userinfo.get("given_name") or name.split()[0] if name else "").strip()
     last_name  = (userinfo.get("family_name") or " ".join(name.split()[1:]) if name else "").strip()
 
-    try:
-        user = User.objects.get(email__iexact=email)
-    except User.DoesNotExist:
-        # Primeira vez: cria conta sem senha (só acessa via IDCamim)
-        username = email.split("@")[0]
-        # Garante username único
-        base_username = username
-        counter = 1
-        while User.objects.filter(username=username).exists():
-            username = f"{base_username}{counter}"
-            counter += 1
-        user = User.objects.create_user(
-            username=username,
-            email=email,
-            first_name=first_name,
-            last_name=last_name,
-            password=None,  # sem senha — login só via IDCamim
-        )
-    except User.MultipleObjectsReturned:
-        user = User.objects.filter(email__iexact=email).order_by("id").first()
+    user = resolve_or_create_camim_user(
+        sub=sub, email=email, first_name=first_name, last_name=last_name,
+    )
 
     if not user.is_active:
         messages.error(request, "Sua conta está inativa. Fale com o administrador.")

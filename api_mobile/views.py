@@ -138,25 +138,16 @@ def api_login_camim(request):
     if not email:
         return Response({"error": "Email não retornado pelo IDCamim"}, status=status.HTTP_400_BAD_REQUEST)
 
+    sub = (userinfo.get("sub") or "").strip()
+
     name = (userinfo.get("name") or "").strip()
     first_name = (userinfo.get("given_name") or name.split()[0] if name else "").strip()
     last_name = (userinfo.get("family_name") or " ".join(name.split()[1:]) if name else "").strip()
 
-    try:
-        user = User.objects.get(email__iexact=email)
-    except User.DoesNotExist:
-        username = email.split("@")[0]
-        base_username = username
-        counter = 1
-        while User.objects.filter(username=username).exists():
-            username = f"{base_username}{counter}"
-            counter += 1
-        user = User.objects.create_user(
-            username=username, email=email,
-            first_name=first_name, last_name=last_name, password=None,
-        )
-    except User.MultipleObjectsReturned:
-        user = User.objects.filter(email__iexact=email).order_by("id").first()
+    from boards.services.camim_identity import resolve_or_create_camim_user
+    user = resolve_or_create_camim_user(
+        sub=sub, email=email, first_name=first_name, last_name=last_name,
+    )
 
     if not user.is_active:
         return Response({"error": "Conta inativa"}, status=status.HTTP_403_FORBIDDEN)

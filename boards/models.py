@@ -421,6 +421,16 @@ class UserProfile(models.Model):
         on_delete=models.CASCADE,
     )
 
+    camim_sub = models.CharField(
+        max_length=64,
+        unique=True,
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="Identificador imutável do usuário no IDCamim (OAuth sub). "
+                  "Usado para casar o login mesmo que o email mude.",
+    )
+
     activity_sidebar = models.BooleanField(
         default=True,
         help_text="Mostrar atividade fixa na lateral do modal do card (estilo Trello)",
