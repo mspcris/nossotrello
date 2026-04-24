@@ -82,7 +82,15 @@
   }
 
   function closeCardModal() {
-    // tenta função global (se existir)
+    // API canônica (modal.core.js expõe Modal.close)
+    if (window.Modal && typeof window.Modal.close === "function") {
+      try {
+        window.Modal.close();
+        return;
+      } catch (_e) {}
+    }
+
+    // retrocompat (caso alguém tenha exposto window.closeModal)
     if (typeof window.closeModal === "function") {
       try {
         window.closeModal();
