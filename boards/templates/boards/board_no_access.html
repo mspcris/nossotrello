@@ -125,6 +125,17 @@
 </style>
 {% endblock %}
 {% block content %}
+<script>
+  // Sem acesso ao quadro: remove ?card= da URL antes que o modal global
+  // (modal.open.js) leia o parâmetro no DOMContentLoaded e tente abrir o card.
+  try {
+    var _u = new URL(window.location.href);
+    if (_u.searchParams.has("card")) {
+      _u.searchParams.delete("card");
+      history.replaceState(null, "", _u.toString());
+    }
+  } catch (e) {}
+</script>
 <div class="ar-wrap">
   <div class="ar-card">
     <h2 class="ar-title">Ops… esse quadro é “VIP”. 😄</h2>

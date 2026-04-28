@@ -1314,6 +1314,15 @@ def card_modal(request, card_id):
             }, request=request),
         )
 
+    # Espelha a regra do board_detail: se o board é compartilhado e o
+    # usuário não é membro, nega. Evita vazar conteúdo via auto-open do
+    # ?card= quando o feed social abre uma URL de board sem acesso.
+    board = card.column.board if card.column_id else None
+    if board is not None:
+        memberships_qs = board.memberships
+        if memberships_qs.exists() and not memberships_qs.filter(user=request.user).exists():
+            return HttpResponse(status=403)
+
     if card.is_deleted:
         # Busca quem deletou no log. A mensagem é gravada no campo `content`
         # (HTML) pelo _log_card em views/cards.py:741 como:
