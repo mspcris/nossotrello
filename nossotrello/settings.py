@@ -289,6 +289,32 @@ DEFAULT_FROM_EMAIL = (os.getenv("DEFAULT_FROM_EMAIL") or "no-reply@clinicacamim.
 
 
 # ============================================================
+# EMAIL — conta exclusiva da PARTE SOCIAL (KingHost)
+# ============================================================
+# Lido por boards/services/notifications.py via _build_social_email_connection().
+# Não vira EMAIL_BACKEND global — só as 4 funções da social usam.
+SOCIAL_EMAIL_HOST = (os.getenv("SOCIAL_EMAIL_HOST") or "").strip()
+SOCIAL_EMAIL_PORT = int(os.getenv("SOCIAL_EMAIL_PORT") or 465)
+SOCIAL_EMAIL_HOST_USER = (os.getenv("SOCIAL_EMAIL_HOST_USER") or "").strip()
+SOCIAL_EMAIL_HOST_PASSWORD = (os.getenv("SOCIAL_EMAIL_HOST_PASSWORD") or "").strip()
+SOCIAL_EMAIL_USE_SSL = _env_bool("SOCIAL_EMAIL_USE_SSL", default=True)
+SOCIAL_EMAIL_USE_TLS = _env_bool("SOCIAL_EMAIL_USE_TLS", default=False)
+SOCIAL_EMAIL_TIMEOUT = int(os.getenv("SOCIAL_EMAIL_TIMEOUT") or 30)
+SOCIAL_DEFAULT_FROM_EMAIL = (
+    os.getenv("SOCIAL_DEFAULT_FROM_EMAIL")
+    or SOCIAL_EMAIL_HOST_USER
+    or DEFAULT_FROM_EMAIL
+).strip()
+
+# TLS e SSL são mutuamente exclusivos
+if SOCIAL_EMAIL_USE_TLS and SOCIAL_EMAIL_USE_SSL:
+    if SOCIAL_EMAIL_PORT == 465:
+        SOCIAL_EMAIL_USE_TLS = False
+    else:
+        SOCIAL_EMAIL_USE_SSL = False
+
+
+# ============================================================
 # WHATSAPP -
 # ============================================================
 import os

@@ -10,7 +10,7 @@ from typing import Iterable, Optional
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.mail import send_mail
+from django.core.mail import get_connection, send_mail
 from django.urls import reverse
 from django.utils.html import strip_tags
 
@@ -316,17 +316,69 @@ def send_whatsapp(*, user, phone_digits: str, body: str, sync: bool = False) -> 
         t.start()
 
 
-def send_email_notification(*, to_email: str, subject: str, body: str) -> None:
-    from_email = getattr(settings, "DEFAULT_FROM_EMAIL", "") or None
+def _build_social_email_connection():
+    """
+    Conexão SMTP da conta exclusiva da rede social (KingHost).
+    Volta None se as variáveis SOCIAL_EMAIL_* não estiverem configuradas —
+    nesse caso o caller cai no SMTP global (Gmail/tarefas@).
+    """
+    host = getattr(settings, "SOCIAL_EMAIL_HOST", "") or ""
+    user = getattr(settings, "SOCIAL_EMAIL_HOST_USER", "") or ""
+    pwd = getattr(settings, "SOCIAL_EMAIL_HOST_PASSWORD", "") or ""
+    if not (host and user and pwd):
+        return None
+    return get_connection(
+        backend="boards.services.social_email_backend.KinghostSocialEmailBackend",
+        host=host,
+        port=int(getattr(settings, "SOCIAL_EMAIL_PORT", 465) or 465),
+        username=user,
+        password=pwd,
+        use_ssl=bool(getattr(settings, "SOCIAL_EMAIL_USE_SSL", True)),
+        use_tls=bool(getattr(settings, "SOCIAL_EMAIL_USE_TLS", False)),
+        timeout=int(getattr(settings, "SOCIAL_EMAIL_TIMEOUT", 30) or 30),
+        fail_silently=True,
+    )
+
+
+def send_email_notification(
+    *,
+    to_email: str,
+    subject: str,
+    body: str,
+    use_social: bool = False,
+) -> None:
+    """
+    Envia email de notificação em background.
+
+    use_social=True → tenta usar a conta exclusiva da rede social (KingHost,
+    via KinghostSocialEmailBackend). Se SOCIAL_EMAIL_* não estiver
+    configurado, cai no SMTP global.
+    """
+    if use_social:
+        social_conn = _build_social_email_connection()
+        from_email = getattr(settings, "SOCIAL_DEFAULT_FROM_EMAIL", "") \
+            or getattr(settings, "DEFAULT_FROM_EMAIL", "") \
+            or None
+    else:
+        social_conn = None
+        from_email = getattr(settings, "DEFAULT_FROM_EMAIL", "") or None
 
     def _send():
-        send_mail(
-            subject=(subject or "").strip(),
-            message=(body or "").strip(),
-            from_email=from_email,
-            recipient_list=[to_email],
-            fail_silently=True,
-        )
+        try:
+            send_mail(
+                subject=(subject or "").strip(),
+                message=(body or "").strip(),
+                from_email=from_email,
+                recipient_list=[to_email],
+                fail_silently=True,
+                connection=social_conn,
+            )
+        finally:
+            if social_conn is not None:
+                try:
+                    social_conn.close()
+                except Exception:
+                    pass
 
     threading.Thread(target=_send, daemon=True).start()
 
@@ -500,7 +552,7 @@ def notify_social_interaction(
         to_email = (getattr(recipient, "email", "") or "").strip()
         if to_email:
             try:
-                send_email_notification(to_email=to_email, subject=subject, body=email_body)
+                send_email_notification(to_email=to_email, subject=subject, body=email_body, use_social=True)
             except Exception:
                 logger.exception("social notify: email failed user_id=%s", getattr(recipient, "id", None))
 
@@ -561,7 +613,7 @@ def notify_social_mention(
         to_email = (getattr(recipient, "email", "") or "").strip()
         if to_email:
             try:
-                send_email_notification(to_email=to_email, subject=subject, body=email_body)
+                send_email_notification(to_email=to_email, subject=subject, body=email_body, use_social=True)
             except Exception:
                 logger.exception("mention notify: email failed user_id=%s", getattr(recipient, "id", None))
 
@@ -639,7 +691,7 @@ def notify_friendship_event(
         to_email = (getattr(recipient, "email", "") or "").strip()
         if to_email:
             try:
-                send_email_notification(to_email=to_email, subject=subject, body=email_body)
+                send_email_notification(to_email=to_email, subject=subject, body=email_body, use_social=True)
             except Exception:
                 logger.exception("friendship notify: email failed user_id=%s", getattr(recipient, "id", None))
 
@@ -691,6 +743,6 @@ def notify_chat_message(
         to_email = (getattr(recipient, "email", "") or "").strip()
         if to_email:
             try:
-                send_email_notification(to_email=to_email, subject=subject, body=email_body)
+                send_email_notification(to_email=to_email, subject=subject, body=email_body, use_social=True)
             except Exception:
                 logger.exception("chat notify: email failed user_id=%s", getattr(recipient, "id", None))
