@@ -89,8 +89,11 @@
 
         <a
           href="{% url 'boards:social_page' %}"
-          class="px-3 py-1 rounded border bg-white/70 hover:bg-white inline-block"
-        >Espaço Social ↗</a>
+          class="px-3 py-1 rounded border bg-white/70 hover:bg-white inline-flex items-center gap-2 js-social-link"
+        >
+          <img src="{% static 'images/social/camim_social_icon.png' %}" alt="" width="22" height="22" class="nt-social-chip-img">
+          Espaço Social
+        </a>
       </div>
 
       <!-- Panels -->

@@ -8,9 +8,13 @@ import threading
 from dataclasses import dataclass
 from typing import Iterable, Optional
 
+import os
+from email.mime.image import MIMEImage
+
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.mail import get_connection, send_mail
+from django.core.mail import EmailMultiAlternatives, get_connection, send_mail
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils.html import strip_tags
 
@@ -340,19 +344,39 @@ def _build_social_email_connection():
     )
 
 
+_SOCIAL_EMAIL_IMG_PATH = os.path.join(
+    settings.BASE_DIR, "boards", "static", "images", "social", "camim_social_md.png"
+)
+
+
+def _read_social_email_image():
+    try:
+        with open(_SOCIAL_EMAIL_IMG_PATH, "rb") as f:
+            return f.read()
+    except Exception:
+        logger.warning("social email: imagem nao encontrada em %s", _SOCIAL_EMAIL_IMG_PATH)
+        return None
+
+
 def send_email_notification(
     *,
     to_email: str,
     subject: str,
     body: str,
     use_social: bool = False,
+    cta_url: str = "",
+    cta_label: str = "",
 ) -> None:
     """
     Envia email de notificação em background.
 
-    use_social=True → tenta usar a conta exclusiva da rede social (KingHost,
-    via KinghostSocialEmailBackend). Se SOCIAL_EMAIL_* não estiver
-    configurado, cai no SMTP global.
+    use_social=True  → renderiza HTML criativo com a identidade da rede social
+                       (logo CAMIM social inline + botão CTA verde) e usa
+                       SOCIAL_DEFAULT_FROM_EMAIL como remetente. SMTP é o
+                       global (Gmail/tarefas@) a não ser que SOCIAL_EMAIL_*
+                       esteja configurado pra conta dedicada.
+    cta_url/cta_label → quando informados, renderiza um botão CTA no HTML
+                       e adiciona uma linha "Link: <url>" no fallback texto.
     """
     if use_social:
         social_conn = _build_social_email_connection()
@@ -365,14 +389,53 @@ def send_email_notification(
 
     def _send():
         try:
-            send_mail(
-                subject=(subject or "").strip(),
-                message=(body or "").strip(),
-                from_email=from_email,
-                recipient_list=[to_email],
-                fail_silently=True,
-                connection=social_conn,
-            )
+            subject_clean = (subject or "").strip()
+            body_clean = (body or "").strip()
+            cta_url_clean = (cta_url or "").strip()
+            cta_label_clean = (cta_label or "").strip() or "Abrir no NossoTrello"
+
+            if use_social:
+                text_body = body_clean
+                if cta_url_clean:
+                    text_body = f"{text_body}\n\nLink: {cta_url_clean}".strip()
+
+                html_body = render_to_string(
+                    "boards/emails/social_notification.html",
+                    {
+                        "subject": subject_clean,
+                        "body_text": body_clean,
+                        "cta_url": cta_url_clean,
+                        "cta_label": cta_label_clean,
+                    },
+                )
+
+                msg = EmailMultiAlternatives(
+                    subject=subject_clean,
+                    body=text_body,
+                    from_email=from_email,
+                    to=[to_email],
+                    connection=social_conn,
+                )
+                msg.attach_alternative(html_body, "text/html")
+
+                img_data = _read_social_email_image()
+                if img_data:
+                    msg.mixed_subtype = "related"
+                    img = MIMEImage(img_data)
+                    img.add_header("Content-ID", "<camim-social>")
+                    img.add_header("Content-Disposition", "inline", filename="camim_social.png")
+                    msg.attach(img)
+
+                msg.send(fail_silently=True)
+            else:
+                send_mail(
+                    subject=subject_clean,
+                    message=body_clean,
+                    from_email=from_email,
+                    recipient_list=[to_email],
+                    fail_silently=True,
+                    connection=social_conn,
+                )
         finally:
             if social_conn is not None:
                 try:
@@ -523,9 +586,9 @@ def notify_social_interaction(
         email_body = (
             f"Oi! 👋\n\n"
             f"{actor_name} deixou um comentário em {preview_str}.\n\n"
-            f"Acesse para ver e responder:\n{social_link}\n\n"
             f"— Equipe NossoTrello 😊"
         )
+        cta_label = "Ver e responder"
         wa_msg = (
             f"💬 *{_wa_safe(actor_name)}* comentou na sua publicação!\n\n"
             f"Veja aqui 👇\n{social_link}"
@@ -535,9 +598,9 @@ def notify_social_interaction(
         email_body = (
             f"Oi! 👋\n\n"
             f"{actor_name} respondeu ao seu comentário.\n\n"
-            f"Acesse para ver a resposta:\n{social_link}\n\n"
             f"— Equipe NossoTrello 😊"
         )
+        cta_label = "Ver resposta"
         wa_msg = (
             f"↩ *{_wa_safe(actor_name)}* respondeu ao seu comentário!\n\n"
             f"Veja aqui 👇\n{social_link}"
@@ -552,7 +615,10 @@ def notify_social_interaction(
         to_email = (getattr(recipient, "email", "") or "").strip()
         if to_email:
             try:
-                send_email_notification(to_email=to_email, subject=subject, body=email_body, use_social=True)
+                send_email_notification(
+                    to_email=to_email, subject=subject, body=email_body,
+                    use_social=True, cta_url=social_link, cta_label=cta_label,
+                )
             except Exception:
                 logger.exception("social notify: email failed user_id=%s", getattr(recipient, "id", None))
 
@@ -584,9 +650,9 @@ def notify_social_mention(
         email_body = (
             f"Oi! 👋\n\n"
             f"{actor_name} mencionou você em um comentário.\n\n"
-            f"Acesse para ver:\n{social_link}\n\n"
             f"— Equipe NossoTrello 😊"
         )
+        cta_label = "Ver comentário"
         wa_msg = (
             f"💬 *{_wa_safe(actor_name)}* marcou você em um comentário!\n\n"
             f"Veja aqui 👇\n{social_link}"
@@ -596,9 +662,9 @@ def notify_social_mention(
         email_body = (
             f"Oi! 👋\n\n"
             f"{actor_name} mencionou você em uma publicação.\n\n"
-            f"Acesse para ver:\n{social_link}\n\n"
             f"— Equipe NossoTrello 😊"
         )
+        cta_label = "Ver publicação"
         wa_msg = (
             f"📢 *{_wa_safe(actor_name)}* marcou você em uma publicação!\n\n"
             f"Veja aqui 👇\n{social_link}"
@@ -613,7 +679,10 @@ def notify_social_mention(
         to_email = (getattr(recipient, "email", "") or "").strip()
         if to_email:
             try:
-                send_email_notification(to_email=to_email, subject=subject, body=email_body, use_social=True)
+                send_email_notification(
+                    to_email=to_email, subject=subject, body=email_body,
+                    use_social=True, cta_url=social_link, cta_label=cta_label,
+                )
             except Exception:
                 logger.exception("mention notify: email failed user_id=%s", getattr(recipient, "id", None))
 
@@ -651,9 +720,9 @@ def notify_friendship_event(
         email_body = (
             f"Oi! 👋\n\n"
             f"{actor_name} enviou um convite de amizade para você.\n\n"
-            f"Acesse para aceitar ou recusar:\n{social_link}\n\n"
             f"— Equipe NossoTrello 😊"
         )
+        cta_label = "Aceitar ou recusar"
     elif kind == "accepted":
         subject = f"✅ {actor_name} aceitou sua amizade!"
         wa_msg = (
@@ -663,9 +732,9 @@ def notify_friendship_event(
         email_body = (
             f"Oi! 👋\n\n"
             f"{actor_name} aceitou seu convite de amizade! 🎉\n\n"
-            f"Acesse a rede social:\n{social_link}\n\n"
             f"— Equipe NossoTrello 😊"
         )
+        cta_label = "Abrir Espaço Social"
     elif kind == "rejected":
         # Notificação sutil — não explicita "rejeitou"
         subject = f"📬 Atualização do seu convite de amizade"
@@ -676,9 +745,10 @@ def notify_friendship_event(
         email_body = (
             f"Oi! 👋\n\n"
             f"Seu convite de amizade para {actor_name} não foi aceito.\n\n"
-            f"Que tal conhecer outros colegas?\n{social_link}\n\n"
+            f"Que tal conhecer outros colegas?\n\n"
             f"— Equipe NossoTrello 😊"
         )
+        cta_label = "Conhecer pessoas"
     else:
         return
 
@@ -691,7 +761,10 @@ def notify_friendship_event(
         to_email = (getattr(recipient, "email", "") or "").strip()
         if to_email:
             try:
-                send_email_notification(to_email=to_email, subject=subject, body=email_body, use_social=True)
+                send_email_notification(
+                    to_email=to_email, subject=subject, body=email_body,
+                    use_social=True, cta_url=social_link, cta_label=cta_label,
+                )
             except Exception:
                 logger.exception("friendship notify: email failed user_id=%s", getattr(recipient, "id", None))
 
@@ -730,7 +803,6 @@ def notify_chat_message(
     email_body = (
         f"Oi! 👋\n\n"
         f"{sender_name} te enviou uma mensagem no chat{preview_str}.\n\n"
-        f"Acesse para responder:\n{chat_link}\n\n"
         f"— Equipe NossoTrello 😊"
     )
 
@@ -743,6 +815,9 @@ def notify_chat_message(
         to_email = (getattr(recipient, "email", "") or "").strip()
         if to_email:
             try:
-                send_email_notification(to_email=to_email, subject=subject, body=email_body, use_social=True)
+                send_email_notification(
+                    to_email=to_email, subject=subject, body=email_body,
+                    use_social=True, cta_url=chat_link, cta_label="Responder no chat",
+                )
             except Exception:
                 logger.exception("chat notify: email failed user_id=%s", getattr(recipient, "id", None))
