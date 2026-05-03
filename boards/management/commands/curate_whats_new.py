@@ -23,6 +23,13 @@ from boards.models import WhatsNewItem
 # Textos pensados no USUÁRIO: o que ele ganha, não o que foi feito.
 # -------------------------------------------------------------
 CURATED = {
+    # --- 2026-05 ---
+    "d9a1594": (
+        "💌",
+        "Notificações sociais com cara nova",
+        "Comentários, menções, amizades e mensagens do chat agora chegam por e-mail num layout caprichado, com a marca da CAMIM social e um botão direto pra responder. A aba Espaço Social ganhou ícone próprio e abre com uma transição animada — nada de tela em branco enquanto carrega.",
+    ),
+
     # --- 2026-04 ---
     "2c7d1bd": (
         "🧠",
