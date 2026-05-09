@@ -3,9 +3,22 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
+{% if request.GET.next|slice:':8' == '/social/' %}
+<title>Espaço Social — Camim</title>
+<link rel="icon" type="image/png" href="{% static 'images/social/camim_social_icon_clean.png' %}">
+<link rel="apple-touch-icon" href="{% static 'images/social/camim_social_icon_clean.png' %}">
+<meta property="og:title" content="Espaço Social — Camim">
+<meta property="og:description" content="Conecte-se com sua equipe no Espaço Social">
+<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'images/social/camim_social_md.png' %}">
+<meta property="og:image:width" content="400">
+<meta property="og:image:height" content="400">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="NossoTrello">
+{% else %}
 <title>NossoTrello — Acesso</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" type="image/png" href="{% static 'images/logo-camim.png' %}">
+{% endif %}
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.4/css/all.min.css">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
