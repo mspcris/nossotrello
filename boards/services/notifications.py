@@ -30,6 +30,17 @@ from django.db import transaction
 logger = logging.getLogger(__name__)
 User = get_user_model()
 
+# Cache-buster do og:image em links que vão pro WhatsApp/email.
+# Bumpar quando o og:image / título / descrição da /social/ mudar e
+# precisarmos forçar WhatsApp/Telegram a re-buscar a OG metadata.
+_SOCIAL_OG_VERSION = "20260509"
+
+
+def _bust(url: str) -> str:
+    """Anexa ?v= (ou &v=) ao URL pra forçar re-fetch de OG cache."""
+    sep = "&" if "?" in url else "?"
+    return f"{url}{sep}v={_SOCIAL_OG_VERSION}"
+
 _RE_DATA_IMG = re.compile(
     r"""<img\b[^>]*\bsrc=["']data:image/[^"']+["'][^>]*>""",
     flags=re.IGNORECASE,
@@ -577,7 +588,7 @@ def notify_social_interaction(
     site_url = (getattr(settings, "SITE_URL", "") or "").rstrip("/")
     owner_id = getattr(recipient, "id", "")
     post_hash = f"#post-{post_id}" if post_id else ""
-    social_link = f"{site_url}/social/{owner_id}/{post_hash}"
+    social_link = f"{_bust(f'{site_url}/social/{owner_id}/')}{post_hash}"
 
     if kind == "comment":
         preview = (post_text or "").strip()[:60]
@@ -643,7 +654,7 @@ def notify_social_mention(
     site_url = (getattr(settings, "SITE_URL", "") or "").rstrip("/")
     owner_id = getattr(recipient, "id", "")
     post_hash = f"#post-{post_id}" if post_id else ""
-    social_link = f"{site_url}/social/{owner_id}/{post_hash}"
+    social_link = f"{_bust(f'{site_url}/social/{owner_id}/')}{post_hash}"
 
     if context == "comment":
         subject = f"💬 {actor_name} marcou você em um comentário!"
@@ -709,7 +720,7 @@ def notify_friendship_event(
     actor_name = actor_prof.display_name or actor.email.split("@")[0]
 
     site_url = (getattr(settings, "SITE_URL", "") or "").rstrip("/")
-    social_link = f"{site_url}/social/"
+    social_link = _bust(f"{site_url}/social/")
 
     if kind == "invite":
         subject = f"🤝 {actor_name} quer ser seu amigo!"
@@ -790,7 +801,7 @@ def notify_chat_message(
     sender_name = sender_prof.display_name or sender.email.split("@")[0]
 
     site_url = (getattr(settings, "SITE_URL", "") or "").rstrip("/")
-    chat_link = f"{site_url}/social/?chat={getattr(sender, 'id', '')}"
+    chat_link = _bust(f"{site_url}/social/?chat={getattr(sender, 'id', '')}")
 
     preview = (message_preview or "").strip()[:60]
     preview_str = f': "{preview}"' if preview else ""
