@@ -3,6 +3,11 @@
 
 {% block title %}Espaço Social — NossoTrello{% endblock %}
 
+{% block favicon %}
+<link rel="icon" type="image/png" href="{% static 'images/social/camim_social_icon_clean.png' %}">
+<link rel="apple-touch-icon" href="{% static 'images/social/camim_social_icon_clean.png' %}">
+{% endblock favicon %}
+
 {% block og_meta %}
 {% if focus_post_id %}
 <meta property="og:title" content="{{ profile.display_name|default:target_user.email }} — Espaço Social">
@@ -10,13 +15,15 @@
 {% if profile.avatar %}
 <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ profile.avatar.url }}">
 {% else %}
-<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'images/og-social.png' %}">
+<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'images/social/camim_social_md.png' %}">
 {% endif %}
 {% else %}
 <meta property="og:title" content="Espaço Social — Camim">
 <meta property="og:description" content="Conecte-se com sua equipe no Espaço Social">
-<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'images/og-social.png' %}">
+<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'images/social/camim_social_md.png' %}">
 {% endif %}
+<meta property="og:image:width" content="400">
+<meta property="og:image:height" content="400">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="NossoTrello">
 {% endblock og_meta %}
@@ -28,13 +35,28 @@
 {% endblock %}
 
 {% block header_center %}
-<span class="inline-flex items-center gap-3 text-white/95 font-semibold text-sm">
-  <img src="{% static 'images/social/camim_social_icon.png' %}"
-       alt="NossoTrello Social"
-       width="40" height="40"
-       style="display:block;width:40px;height:40px;border-radius:12px;box-shadow:0 2px 6px rgba(0,0,0,.18);">
-  Espaço Social
+<span class="sp-header-icon-wrap" aria-label="Espaço Social">
+  <img src="{% static 'images/social/camim_social_icon_clean.png' %}"
+       alt="Espaço Social"
+       class="sp-header-icon">
 </span>
+<style>
+  .sp-header-icon-wrap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .sp-header-icon {
+    display: block;
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,.25));
+  }
+  @media (min-width: 768px) {
+    .sp-header-icon { width: 56px; height: 56px; }
+  }
+</style>
 {% endblock %}
 
 {% block content %}

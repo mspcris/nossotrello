@@ -16,7 +16,9 @@
   <script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-javascript.min.js"></script>
 
   <!-- Favicon -->
+  {% block favicon %}
   <link rel="icon" type="image/png" href="{% static 'images/logo-camim.png' %}">
+  {% endblock favicon %}
 
   <!-- Open Graph -->
   {% block og_meta %}
