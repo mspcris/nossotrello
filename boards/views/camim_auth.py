@@ -156,8 +156,11 @@ def camim_callback(request):
     login(request, user, backend="boards.auth_backends.UsernameOrEmailBackend")
 
     next_url = request.session.pop("camim_next", "/")
-    # Garante que o next é seguro (mesma origem)
-    if not next_url or not next_url.startswith("/"):
+    # Garante que o next é seguro (mesma origem). Bloqueia '//host' (open redirect).
+    if (not next_url
+            or not next_url.startswith("/")
+            or next_url.startswith("//")
+            or next_url.startswith("/\\")):
         next_url = "/"
 
     return redirect(next_url)

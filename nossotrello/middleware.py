@@ -35,7 +35,8 @@ class LoginRequiredMiddleware:
             return self.get_response(request)
 
         if not request.user.is_authenticated:
-            query = urlencode({"next": path})
+            full_path = request.get_full_path() or path
+            query = urlencode({"next": full_path})
             return redirect(f"{self.login_url}?{query}")
 
         # Prefetch profile para evitar N+1 em todas as views e no TermsMiddleware
@@ -88,7 +89,8 @@ class TermsMiddleware:
             version_ok = getattr(profile, "terms_version", "") == self._CURRENT
             if not accepted or not version_ok:
                 if path != self._TERMS_URL:
-                    query = urlencode({"next": path})
+                    full_path = request.get_full_path() or path
+                    query = urlencode({"next": full_path})
                     return redirect(f"{self._TERMS_URL}?{query}")
 
         return self.get_response(request)
