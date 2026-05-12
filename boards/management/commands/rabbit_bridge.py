@@ -35,6 +35,8 @@ from django.core.management.base import BaseCommand
 from boards.services.pubsub_service import PubSubService
 
 logger = logging.getLogger(__name__)
+# Logger dedicado para inspeção do RabbitMQ — vai para logs/rabbitmq.log.
+rmq_logger = logging.getLogger("nossotrello.pubsub")
 
 
 class Command(BaseCommand):
@@ -80,9 +82,15 @@ class Command(BaseCommand):
 
         # Loop com reconexão: se a conexão Rabbit cair, dorme e tenta de novo.
         backoff = 1.0
+        reconnect_count = 0
         while True:
             service = PubSubService()
             try:
+                rmq_logger.info(
+                    "bridge.start queue=%s reconnect_count=%d",
+                    queue_name,
+                    reconnect_count,
+                )
                 service.start_consuming(
                     queue_name,
                     lambda payload: self._dispatch(channel_layer, payload),
@@ -90,14 +98,26 @@ class Command(BaseCommand):
                 )
             except KeyboardInterrupt:
                 self.stdout.write("Interrompido pelo usuário.")
+                rmq_logger.info("bridge.shutdown reason=keyboard_interrupt")
                 return
-            except Exception:  # noqa: BLE001
+            except Exception as exc:  # noqa: BLE001
+                reconnect_count += 1
+                sleep_for = min(backoff, 30.0)
+                rmq_logger.warning(
+                    "bridge.consumer_crashed err=%s:%s sleep_s=%.1f reconnect_count=%d",
+                    type(exc).__name__,
+                    exc,
+                    sleep_for,
+                    reconnect_count,
+                    exc_info=True,
+                )
                 logger.exception("rabbit_bridge: consumer caiu, reconectando")
-                time.sleep(min(backoff, 30.0))
+                time.sleep(sleep_for)
                 backoff = min(backoff * 2, 30.0)
                 continue
             else:
                 # start_consuming só retorna em shutdown limpo
+                rmq_logger.info("bridge.shutdown reason=clean_exit")
                 return
 
     # ------------------------------------------------------------------
@@ -105,6 +125,11 @@ class Command(BaseCommand):
     # ------------------------------------------------------------------
     def _dispatch(self, channel_layer, payload: dict[str, Any]) -> None:
         if not isinstance(payload, dict):
+            rmq_logger.warning(
+                "bridge.dispatch.bad_payload class=%s repr=%r",
+                type(payload).__name__,
+                payload,
+            )
             logger.warning("rabbit_bridge: payload não é dict, ignorando: %r", payload)
             return
 
@@ -144,22 +169,32 @@ class Command(BaseCommand):
             seen.add(g)
             unique_groups.append(g)
 
+        ok_count = 0
         for group in unique_groups:
             try:
                 async_to_sync(channel_layer.group_send)(
                     group,
                     {"type": "broadcast", "payload": payload},
                 )
-            except Exception:  # noqa: BLE001
+                ok_count += 1
+            except Exception as exc:  # noqa: BLE001
+                rmq_logger.exception(
+                    "bridge.group_send.fail group=%s type=%s err=%s:%s",
+                    group,
+                    etype,
+                    type(exc).__name__,
+                    exc,
+                )
                 logger.exception(
                     "rabbit_bridge: falha em group_send grupo=%s type=%s",
                     group,
                     etype,
                 )
 
-        logger.debug(
-            "rabbit_bridge: evento %s entregue a %d grupo(s)",
+        rmq_logger.info(
+            "bridge.dispatch.done type=%s groups_ok=%d groups_total=%d",
             etype,
+            ok_count,
             len(unique_groups),
         )
 

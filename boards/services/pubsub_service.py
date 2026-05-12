@@ -20,13 +20,23 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import socket
 import threading
+import time
 from typing import Any, Callable, Optional
 
 import pika
 from django.conf import settings
 
+# Logger geral (mantém compat com mensagens antigas que iam pro root)
 logger = logging.getLogger(__name__)
+
+# Logger dedicado a RabbitMQ — vai para logs/rabbitmq.log (ver settings.LOGGING).
+# Toda atividade de pub/sub passa por aqui: conexão, publish, fail, close.
+rmq_logger = logging.getLogger("nossotrello.pubsub")
+
+_HOSTNAME = socket.gethostname()
 
 
 class PubSubService:
@@ -49,6 +59,17 @@ class PubSubService:
         if existing is not None and existing.is_open:
             return existing
 
+        t0 = time.monotonic()
+        rmq_logger.info(
+            "connect.attempt host=%s:%s vhost=%s user=%s exchange=%s host_id=%s pid=%s",
+            settings.RABBITMQ_HOST,
+            settings.RABBITMQ_PORT,
+            settings.RABBITMQ_VHOST,
+            settings.RABBITMQ_USER,
+            settings.RABBITMQ_EXCHANGE,
+            _HOSTNAME,
+            os.getpid(),
+        )
         try:
             credentials = pika.PlainCredentials(
                 settings.RABBITMQ_USER, settings.RABBITMQ_PASSWORD
@@ -72,13 +93,24 @@ class PubSubService:
             )
             cls._local.connection = connection
             cls._local.channel = channel
-            return connection
-        except Exception:  # noqa: BLE001
-            logger.warning(
-                "PubSub: falha conectando ao RabbitMQ (%s:%s). "
-                "Publicação vira no-op.",
+            rmq_logger.info(
+                "connect.ok host=%s:%s vhost=%s exchange=%s took_ms=%.1f",
                 settings.RABBITMQ_HOST,
                 settings.RABBITMQ_PORT,
+                settings.RABBITMQ_VHOST,
+                settings.RABBITMQ_EXCHANGE,
+                (time.monotonic() - t0) * 1000.0,
+            )
+            return connection
+        except Exception as exc:  # noqa: BLE001
+            rmq_logger.warning(
+                "connect.fail host=%s:%s vhost=%s err=%s:%s took_ms=%.1f",
+                settings.RABBITMQ_HOST,
+                settings.RABBITMQ_PORT,
+                settings.RABBITMQ_VHOST,
+                type(exc).__name__,
+                exc,
+                (time.monotonic() - t0) * 1000.0,
                 exc_info=True,
             )
             cls._local.connection = None
@@ -102,13 +134,23 @@ class PubSubService:
         mensagem entrou no broker, False se caiu em no-op (degradação suave).
         NUNCA lança — o objetivo é não quebrar request por culpa do broker.
         """
+        etype = (data or {}).get("type") or "unknown"
+
         if not getattr(settings, "PUBSUB_ENABLED", False):
+            rmq_logger.debug("publish.skip reason=disabled type=%s", etype)
             return False
 
         channel = cls._channel()
         if channel is None:
+            rmq_logger.warning(
+                "publish.skip reason=no_channel type=%s board=%s user=%s",
+                etype,
+                data.get("board_id"),
+                data.get("user_id"),
+            )
             return False
 
+        t0 = time.monotonic()
         try:
             body = json.dumps(data, default=str).encode("utf-8")
             channel.basic_publish(
@@ -120,16 +162,41 @@ class PubSubService:
                     delivery_mode=2,  # persistente
                 ),
             )
+            rmq_logger.info(
+                "publish.ok type=%s bytes=%d board=%s user=%s users=%s global=%s took_ms=%.1f",
+                etype,
+                len(body),
+                data.get("board_id"),
+                data.get("user_id"),
+                len(data.get("user_ids") or []) if isinstance(data.get("user_ids"), (list, tuple)) else None,
+                bool(data.get("global")),
+                (time.monotonic() - t0) * 1000.0,
+            )
             return True
-        except Exception:  # noqa: BLE001
-            logger.warning("PubSub: falha publicando %s", data.get("type"), exc_info=True)
+        except Exception as exc:  # noqa: BLE001
+            rmq_logger.warning(
+                "publish.fail type=%s board=%s user=%s err=%s:%s took_ms=%.1f",
+                etype,
+                data.get("board_id"),
+                data.get("user_id"),
+                type(exc).__name__,
+                exc,
+                (time.monotonic() - t0) * 1000.0,
+                exc_info=True,
+            )
             # descarta conexão ruim; próxima publish tenta de novo
             try:
                 conn = getattr(cls._local, "connection", None)
                 if conn is not None:
                     conn.close()
-            except Exception:  # noqa: BLE001
-                pass
+                    rmq_logger.info("publish.fail.close_ok type=%s", etype)
+            except Exception as close_exc:  # noqa: BLE001
+                rmq_logger.debug(
+                    "publish.fail.close_err type=%s err=%s:%s",
+                    etype,
+                    type(close_exc).__name__,
+                    close_exc,
+                )
             cls._local.connection = None
             cls._local.channel = None
             return False
@@ -154,6 +221,16 @@ class PubSubService:
                 "de iniciar o consumer."
             )
 
+        rmq_logger.info(
+            "consumer.connect.attempt host=%s:%s vhost=%s queue=%s exchange=%s rk=%s",
+            settings.RABBITMQ_HOST,
+            settings.RABBITMQ_PORT,
+            settings.RABBITMQ_VHOST,
+            queue_name,
+            settings.RABBITMQ_EXCHANGE,
+            settings.RABBITMQ_ROUTING_KEY,
+        )
+
         credentials = pika.PlainCredentials(
             settings.RABBITMQ_USER, settings.RABBITMQ_PASSWORD
         )
@@ -167,6 +244,7 @@ class PubSubService:
         )
         connection = pika.BlockingConnection(parameters)
         channel = connection.channel()
+        rmq_logger.info("consumer.connect.ok queue=%s", queue_name)
         channel.exchange_declare(
             exchange=settings.RABBITMQ_EXCHANGE,
             exchange_type="direct",
@@ -183,19 +261,44 @@ class PubSubService:
         channel.basic_qos(prefetch_count=16)
 
         def _on_message(ch, method, properties, body):  # noqa: ANN001
+            recv_t0 = time.monotonic()
+            body_len = len(body or b"")
             try:
                 payload = json.loads(body.decode("utf-8"))
-            except Exception:  # noqa: BLE001
-                logger.exception("PubSub bridge: payload inválido; descartando")
+            except Exception as exc:  # noqa: BLE001
+                rmq_logger.exception(
+                    "consumer.payload_invalid bytes=%d err=%s:%s",
+                    body_len,
+                    type(exc).__name__,
+                    exc,
+                )
                 ch.basic_ack(delivery_tag=method.delivery_tag)
                 return
 
+            etype = (payload or {}).get("type") or "unknown"
+            rmq_logger.info(
+                "consumer.recv type=%s bytes=%d board=%s user=%s tag=%s",
+                etype,
+                body_len,
+                (payload or {}).get("board_id"),
+                (payload or {}).get("user_id"),
+                method.delivery_tag,
+            )
+
             try:
                 callback(payload)
-            except Exception:  # noqa: BLE001
-                logger.exception(
-                    "PubSub bridge: callback falhou para type=%s",
-                    (payload or {}).get("type"),
+                rmq_logger.info(
+                    "consumer.dispatch.ok type=%s took_ms=%.1f",
+                    etype,
+                    (time.monotonic() - recv_t0) * 1000.0,
+                )
+            except Exception as exc:  # noqa: BLE001
+                rmq_logger.exception(
+                    "consumer.callback_fail type=%s err=%s:%s took_ms=%.1f",
+                    etype,
+                    type(exc).__name__,
+                    exc,
+                    (time.monotonic() - recv_t0) * 1000.0,
                 )
             finally:
                 ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -203,15 +306,24 @@ class PubSubService:
         channel.basic_consume(queue=queue_name, on_message_callback=_on_message)
 
         if banner:
-            logger.info(
-                'PubSub bridge pronto. Aguardando mensagens em "%s" '
-                '(exchange=%s routing_key=%s).',
+            rmq_logger.info(
+                'consumer.ready queue=%s exchange=%s rk=%s prefetch=16',
                 queue_name,
                 settings.RABBITMQ_EXCHANGE,
                 settings.RABBITMQ_ROUTING_KEY,
             )
 
-        channel.start_consuming()
+        try:
+            channel.start_consuming()
+        except Exception as exc:  # noqa: BLE001
+            rmq_logger.warning(
+                "consumer.loop_exit queue=%s err=%s:%s",
+                queue_name,
+                type(exc).__name__,
+                exc,
+                exc_info=True,
+            )
+            raise
 
 
 # ----------------------------------------------------------------------

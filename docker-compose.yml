@@ -22,6 +22,7 @@ services:
       - ${SQLITE_DIR:-./data/sqlite}:/app/db
       - ./static:/app/staticfiles
       - ./media:/app/media
+      - ./logs:/app/logs
     expose:
       - "8000"
 
@@ -55,6 +56,7 @@ services:
       - ${SQLITE_DIR:-./data/sqlite}:/app/db
       - ./static:/app/staticfiles
       - ./media:/app/media
+      - ./logs:/app/logs
     expose:
       - "8001"
 
@@ -86,6 +88,7 @@ services:
       DB_PORT: "5432"
     volumes:
       - .:/app
+      - ./logs:/app/logs
 
   db:
     image: postgres:16-alpine

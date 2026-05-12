@@ -411,19 +411,60 @@ REST_FRAMEWORK = {
 }
 
 
+# Diretório de logs (gitignored). Em prod o docker-compose monta
+# ./logs:/app/logs, então o arquivo de RabbitMQ fica acessível no host
+# para inspeção mesmo se o container do bridge morrer.
+LOGS_DIR = BASE_DIR / "logs"
+try:
+    LOGS_DIR.mkdir(parents=True, exist_ok=True)
+except Exception:  # noqa: BLE001
+    # filesystem read-only / sem permissão: handler some no fallback console
+    pass
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": (
+                "%(asctime)s %(levelname)s %(name)s "
+                "[pid=%(process)d tid=%(thread)d] %(message)s"
+            ),
+        },
+    },
     "handlers": {
         "console": {"class": "logging.StreamHandler"},
+        # Handler dedicado a RabbitMQ / pub-sub. Rotaciona em 20MB,
+        # mantém 5 backups (~100MB total). Vai para arquivo separado
+        # justamente para facilitar `tail -f` durante incidentes do broker.
+        "rabbitmq_file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": str(LOGS_DIR / "rabbitmq.log"),
+            "maxBytes": 20 * 1024 * 1024,
+            "backupCount": 5,
+            "encoding": "utf-8",
+            "formatter": "verbose",
+        },
     },
     "root": {
         "handlers": ["console"],
         "level": "INFO",
     },
     "loggers": {
-        # pika é ultra-verboso em DEBUG; silencia para WARNING.
-        "pika": {"handlers": ["console"], "level": "WARNING", "propagate": False},
+        # pika é ultra-verboso em DEBUG; silencia para WARNING no console mas
+        # mantém INFO indo para o arquivo dedicado para diagnóstico de crash.
+        "pika": {
+            "handlers": ["console", "rabbitmq_file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        # Logger próprio do projeto (PubSubService + rabbit_bridge).
+        # INFO captura todo publish/receive/dispatch sem encher de DEBUG.
+        "nossotrello.pubsub": {
+            "handlers": ["console", "rabbitmq_file"],
+            "level": "INFO",
+            "propagate": False,
+        },
     },
 }
 
