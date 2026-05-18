@@ -1181,6 +1181,7 @@ body.sp-standalone-page {
   display:flex; align-items:center; justify-content:center;
   flex:1; font-size:1.4rem; padding:40px 24px;
   background:none; text-align:center;
+  align-self:stretch; width:100%;
 }
 /* Texto com estilo (bg/cor): aplicar e manter centralizado */
 #sp-feed-wrap.sp-feed-fullscreen .sp-reel-slide-textonly .sp-reel-text-styled{
@@ -1202,6 +1203,38 @@ body.sp-standalone-page {
 body:has(#sp-feed-wrap.sp-feed-fullscreen) .sp-fab,
 body:has(#sp-feed-wrap.sp-feed-fullscreen) .sp-reel-swipe-hint{
   display:none !important;
+}
+
+/* Desktop: reel fullscreen vira um "phone portrait" centralizado.
+   No mobile o slide ocupa 100vw (comportamento original). */
+@media (min-width: 768px){
+  #sp-feed-wrap.sp-feed-fullscreen{
+    align-items:center;
+    background:transparent;
+  }
+  #sp-feed-wrap.sp-feed-fullscreen .sp-feed-mini-tabs{
+    width:100%;
+  }
+  #sp-feed-wrap.sp-feed-fullscreen .sp-feed-toggle-row{
+    width:100%;
+  }
+  #sp-feed-wrap.sp-feed-fullscreen .sp-reel{
+    width:min(420px, calc((100vh - 120px) * 9 / 16));
+    max-width:90vw;
+    align-self:center;
+    border-radius:18px;
+    box-shadow:0 18px 60px rgba(0,0,0,.55);
+  }
+  #sp-feed-wrap.sp-feed-fullscreen .sp-reel-slide{
+    border-radius:18px;
+    overflow:hidden;
+  }
+  #sp-feed-wrap.sp-feed-fullscreen .sp-reel-arrow-left{
+    left:calc(50% - min(210px, calc((100vh - 120px) * 9 / 32)) - 48px);
+  }
+  #sp-feed-wrap.sp-feed-fullscreen .sp-reel-arrow-right{
+    right:calc(50% - min(210px, calc((100vh - 120px) * 9 / 32)) - 48px);
+  }
 }
 
 /* Mini tab-bar fixa no topo do fullscreen */
