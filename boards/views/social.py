@@ -6,7 +6,6 @@ almoço, pendências do dia, feed de fotos do trabalho.
 import json
 import logging
 import os
-import random
 import re
 import xml.etree.ElementTree as ET
 from datetime import timedelta
@@ -697,25 +696,26 @@ def social_post_detail(request, post_id: int):
 def social_friends_feed(request):
     """Retorna posts de amigos (accepted friendships) como JSON.
     Se ?all=1, retorna posts de todos os usuários.
+    Paginação: ?before=<post_id> retorna os 15 posts mais antigos que <post_id>.
+    Resposta inclui has_more (bool) — false quando não há mais posts antigos.
     """
     me = request.user
     show_all = request.GET.get("all") == "1"
+    PAGE_SIZE = 15
 
-    # Últimos 3 dias apenas
-    three_days_ago = timezone.now() - timedelta(days=3)
+    try:
+        before_id = int(request.GET.get("before") or 0)
+    except (TypeError, ValueError):
+        before_id = 0
 
     if show_all:
-        # Todos os posts (exceto os do próprio)
-        posts = list(
+        qs = (
             SocialPost.objects
-            .filter(is_active=True, created_at__gte=three_days_ago)
+            .filter(is_active=True)
             .exclude(user=me)
             .exclude(visibility="friends")
-            .select_related("user", "user__profile")
-            .order_by("-created_at")
         )
     else:
-        # Somente amizades aceitas
         accepted_out = SocialFriendship.objects.filter(
             requester=me, status="accepted"
         ).values_list("receiver_id", flat=True)
@@ -726,45 +726,31 @@ def social_friends_feed(request):
         friend_ids.update(accepted_in)
         friend_ids.discard(me.id)
 
-        # Incluir o próprio usuário para que veja seus posts no reel
         feed_ids = set(friend_ids)
         feed_ids.add(me.id)
 
-        posts = list(
-            SocialPost.objects
-            .filter(user_id__in=feed_ids, is_active=True, created_at__gte=three_days_ago)
-            .select_related("user", "user__profile")
-            .order_by("-created_at")
-        )
+        qs = SocialPost.objects.filter(user_id__in=feed_ids, is_active=True)
 
-    # Colapsa "bursts": posts do mesmo usuário com intervalo < 60s viram 1 (escolhido aleatoriamente).
-    # Evita que alguém que postou 6x a mesma foto ocupe o feed inteiro.
-    posts_by_user = defaultdict(list)
-    for p in posts:
-        posts_by_user[p.user_id].append(p)
+    if before_id:
+        qs = qs.filter(id__lt=before_id)
 
-    collapsed = []
-    for user_posts in posts_by_user.values():
-        user_posts.sort(key=lambda x: x.created_at)
-        cluster = [user_posts[0]]
-        for prev, curr in zip(user_posts, user_posts[1:]):
-            if (curr.created_at - prev.created_at).total_seconds() < 60:
-                cluster.append(curr)
-            else:
-                collapsed.append(random.choice(cluster))
-                cluster = [curr]
-        collapsed.append(random.choice(cluster))
-    posts = collapsed
+    posts = list(
+        qs.select_related("user", "user__profile")
+        .order_by("-id")
+        [: PAGE_SIZE + 1]
+    )
+    has_more = len(posts) > PAGE_SIZE
+    posts = posts[:PAGE_SIZE]
 
-    # Ordenar: por dia (desc), depois vídeos > imagens > texto, cronológico dentro do tipo
+    # Ordenação dentro da página: por dia (desc), vídeos > imagens > texto, cronológico
     def _media_rank(p):
         if p.video:
-            return 0  # vídeos primeiro
+            return 0
         if p.photo:
-            return 1  # imagens depois
+            return 1
         if p.gif_url or p.sticker_url:
-            return 1  # GIF/sticker = mesmo nível de imagem
-        return 2      # texto por último
+            return 1
+        return 2
 
     def _sort_key(p):
         local_dt = timezone.localtime(p.created_at)
@@ -774,7 +760,7 @@ def social_friends_feed(request):
     posts.sort(key=_sort_key)
 
     if not posts:
-        return JsonResponse({"posts": []})
+        return JsonResponse({"posts": [], "has_more": False})
 
     # Prefetch reactions
     post_ids = [p.id for p in posts]
@@ -894,7 +880,7 @@ def social_friends_feed(request):
             "card_like": card_like_data,
         })
 
-    return JsonResponse({"posts": result})
+    return JsonResponse({"posts": result, "has_more": has_more})
 
 
 # ---------------------------------------------------------------

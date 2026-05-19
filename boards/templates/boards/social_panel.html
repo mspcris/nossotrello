@@ -1093,6 +1093,10 @@ var _CAMILA_AVATARS = {
   var _reelLoaded = false;
   var _reelPosts = [];
   var _reelIdx = 0;
+  var _totalSlides = 0;
+  var _reelMode = 'friends';        /* 'friends' ou 'all' */
+  var _reelHasMore = true;
+  var _reelLoadingMore = false;
   var _myUserId = {{ request.user.id }};
   var _csrf = function(){ return document.querySelector("[name=csrfmiddlewaretoken]")?.value || ""; };
   window._csrf = _csrf;
@@ -1146,34 +1150,58 @@ var _CAMILA_AVATARS = {
   };
 
   var _friendsOnlyPosts = [];
+  var _friendsHasMore = true;
   function _loadReelFeed(){
     _reelLoaded = true;
+    _reelMode = 'friends';
     fetch('{% url "boards:social_friends_feed" %}')
       .then(function(r){ return r.json(); })
       .then(function(d){
         _reelPosts = d.posts || [];
         _friendsOnlyPosts = _reelPosts.slice();
+        _reelHasMore = !!d.has_more;
+        _friendsHasMore = _reelHasMore;
         _renderReel();
       })
       .catch(function(){ document.getElementById('sp-reel').innerHTML = '<div class="sp-reel-empty">Erro ao carregar.</div>'; });
   }
 
-  function _renderReel(){
-    var el = document.getElementById('sp-reel');
-    if(!_reelPosts.length){
-      el.innerHTML = '<div class="sp-reel-empty">Seus amigos ainda não publicaram nada.<br>Convide colegas! 🤝</div>';
-      return;
-    }
-    /* Mais novos à esquerda (backend já envia -created_at, manter) */
-    var html = '';
-    _reelPosts.forEach(function(p, i){
+  /* Paginação: busca os próximos N posts mais antigos. */
+  function _loadMoreReel(){
+    if(_reelLoadingMore || !_reelHasMore) return Promise.resolve(false);
+    if(!_reelPosts.length) return Promise.resolve(false);
+    _reelLoadingMore = true;
+    var lastId = _reelPosts[_reelPosts.length - 1].id;
+    var url = '{% url "boards:social_friends_feed" %}?before=' + encodeURIComponent(lastId);
+    if(_reelMode === 'all') url += '&all=1';
+    return fetch(url)
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        _reelLoadingMore = false;
+        var newPosts = d.posts || [];
+        _reelHasMore = !!d.has_more;
+        if(_reelMode === 'all') _allHasMore = _reelHasMore;
+        else _friendsHasMore = _reelHasMore;
+        if(!newPosts.length) return false;
+        var startIdx = _reelPosts.length;
+        _reelPosts = _reelPosts.concat(newPosts);
+        if(_reelMode === 'all') _allPosts = _reelPosts;
+        else _friendsOnlyPosts = _reelPosts;
+        _appendSlidesToTrack(newPosts, startIdx);
+        return true;
+      })
+      .catch(function(){ _reelLoadingMore = false; return false; });
+  }
+
+  function _buildSlideHTML(p, i){
+      var html = '';
       var initials = (p.user_name || '?').charAt(0).toUpperCase();
       var avHtml = p.user_avatar
         ? '<img class="sp-reel-av" src="'+p.user_avatar+'" alt="">'
         : '<span class="sp-reel-av-placeholder">'+initials+'</span>';
 
       var _isTextOnly = !p.photo && !p.video && !p.gif_url && !p.sticker_url && !p.friendship && !p.card_like && p.text;
-      html += '<div class="sp-reel-slide'+(_isTextOnly?' sp-reel-slide-textonly':'')+'" data-idx="'+i+'" data-post-id="'+p.id+'">';
+      html += '<div class="sp-reel-slide'+(_isTextOnly?' sp-reel-slide-textonly':'')+'" data-idx="'+i+'" data-user-id="'+p.user_id+'" data-post-id="'+p.id+'">';
       html += '<div class="sp-reel-header">';
       if(p.shared_from){
         /* Repost: mostra quem compartilhou + autor original */
@@ -1275,7 +1303,47 @@ var _CAMILA_AVATARS = {
       html += '<div class="sp-reel-comments sp-hidden" id="sp-reel-comments-'+p.id+'"></div>';
 
       html += '</div>';
+      return html;
+  }
+
+  function _appendSlidesToTrack(newPosts, startIdx){
+    var el = document.getElementById('sp-reel');
+    var track = el && el.querySelector('.sp-reel-track');
+    if(!track) return;
+    var html = '';
+    newPosts.forEach(function(p, j){
+      html += _buildSlideHTML(p, startIdx + j);
     });
+    track.insertAdjacentHTML('beforeend', html);
+
+    _totalSlides = _reelPosts.length;
+
+    if(window._spAttachMention){
+      newPosts.forEach(function(p){
+        var inp = document.getElementById('sp-reel-cinput-' + p.id);
+        var dd = document.getElementById('sp-reel-mention-dd-' + p.id);
+        if(inp && dd) window._spAttachMention(inp, dd);
+      });
+    }
+    if(window._spInitVideoBuffering) window._spInitVideoBuffering(el);
+
+    _renderDots();
+    _updateDots();
+  }
+
+  function _renderReel(){
+    var el = document.getElementById('sp-reel');
+    if(!_reelPosts.length){
+      el.innerHTML = '<div class="sp-reel-empty">Seus amigos ainda não publicaram nada.<br>Convide colegas! 🤝</div>';
+      _totalSlides = 0;
+      return;
+    }
+    /* Mais novos à esquerda (backend já envia ordenado) */
+    var html = '';
+    _reelPosts.forEach(function(p, i){
+      html += _buildSlideHTML(p, i);
+    });
+
     /* ═══ CARROSSEL TRANSFORM-BASED (suave, sem scroll-snap) ═══ */
     /* Abortar listeners e timers da renderização anterior */
     if(window._reelAbort) window._reelAbort.abort();
@@ -1300,11 +1368,26 @@ var _CAMILA_AVATARS = {
 
     /* ── Core: go to slide ── */
     _reelIdx = 0;
-    var _totalSlides = _reelPosts.length;
+    _totalSlides = _reelPosts.length;
 
     function _goToSlide(idx, animate){
-      if(idx < 0) idx = _totalSlides - 1;
-      if(idx >= _totalSlides) idx = 0;
+      if(idx < 0){
+        idx = _totalSlides - 1;
+      } else if(idx >= _totalSlides){
+        /* Bate no fim: tenta carregar mais antigos antes de fazer loop. */
+        if(_reelHasMore && !_reelLoadingMore){
+          var pending = idx;
+          _loadMoreReel().then(function(loaded){
+            if(loaded && pending < _totalSlides){
+              _goToSlide(pending, animate);
+            } else if(!_reelHasMore){
+              _goToSlide(0, animate);
+            }
+          });
+          return;
+        }
+        idx = 0;
+      }
       _reelIdx = idx;
       var w = el.offsetWidth || 1;
       var dest = 'translate3d(' + (-_reelIdx * w) + 'px, 0, 0)';
@@ -1609,23 +1692,14 @@ var _CAMILA_AVATARS = {
   }
 
   function _renderDots(){
+    /* Dots ocultos: com paginação eterna, mostrar bolinhas dava falsa sensação
+       de "acabaram as publicações". Mantemos a função como no-op + limpeza
+       defensiva caso alguma render anterior tenha deixado sobra no DOM. */
     var existing = document.querySelector('.sp-reel-dots');
     if(existing) existing.remove();
-    if(_reelPosts.length < 2) return;
-    var wrap = document.getElementById('sp-feed-wrap');
-    var dots = document.createElement('div');
-    dots.className = 'sp-reel-dots';
-    var max = Math.min(_reelPosts.length, 15);
-    for(var i=0; i<max; i++){
-      dots.innerHTML += '<span class="sp-reel-dot'+(i===0?' active':'')+'"></span>';
-    }
-    wrap.appendChild(dots);
   }
 
-  function _updateDots(){
-    var dots = document.querySelectorAll('.sp-reel-dot');
-    dots.forEach(function(d, i){ d.classList.toggle('active', i === _reelIdx % dots.length); });
-  }
+  function _updateDots(){ /* no-op — dots desativados */ }
 
   function _playCurrentVideo(el, idx){
     var slides = el.querySelectorAll('.sp-reel-slide');
@@ -1990,9 +2064,18 @@ var _CAMILA_AVATARS = {
   })();
 
   window.spReelNav = function(dir){
-    if(window._spGoToSlide){
-      window._spGoToSlide(_reelIdx + dir, true);
+    if(!window._spGoToSlide){ _showReelArrows(); return; }
+    var cur = _reelPosts[_reelIdx];
+    var curUser = cur ? cur.user_id : null;
+    var target = _reelIdx + dir;
+    /* Pula posts do mesmo autor que o atual; só para quando achar autor diferente
+       ou quando passar do fim/início (aí o _goToSlide cuida de paginação/wrap). */
+    while(target >= 0 && target < _totalSlides){
+      var p = _reelPosts[target];
+      if(!p || p.user_id !== curUser) break;
+      target += dir;
     }
+    window._spGoToSlide(target, true);
     _showReelArrows();
   };
 
@@ -2100,6 +2183,7 @@ var _CAMILA_AVATARS = {
   /* ═══ Feed toggle: Amigos / Todos ═══ */
   var _allPostsLoaded = false;
   var _allPosts = [];
+  var _allHasMore = true;
   window.spToggleFeedMode = function(showAll){
     localStorage.setItem('sp_feed_all', showAll ? '1' : '0');
     var lblF = document.getElementById('sp-feed-lbl-friends');
@@ -2107,19 +2191,29 @@ var _CAMILA_AVATARS = {
     if(lblF) lblF.classList.toggle('sp-feed-toggle-inactive', showAll);
     if(lblA) lblA.classList.toggle('sp-feed-toggle-inactive', !showAll);
     if(showAll){
+      _reelMode = 'all';
       if(!_allPostsLoaded){
         _allPostsLoaded = true;
         document.getElementById('sp-reel').innerHTML = '<div class="sp-reel-loading">Carregando...</div>';
         fetch('{% url "boards:social_friends_feed" %}?all=1')
           .then(function(r){ return r.json(); })
-          .then(function(d){ _allPosts = d.posts || []; _reelPosts = _allPosts; _renderReel(); })
+          .then(function(d){
+            _allPosts = d.posts || [];
+            _allHasMore = !!d.has_more;
+            _reelPosts = _allPosts;
+            _reelHasMore = _allHasMore;
+            _renderReel();
+          })
           .catch(function(){ document.getElementById('sp-reel').innerHTML = '<div class="sp-reel-empty">Erro.</div>'; });
       } else {
         _reelPosts = _allPosts;
+        _reelHasMore = _allHasMore;
         _renderReel();
       }
     } else {
+      _reelMode = 'friends';
       _reelPosts = _friendsOnlyPosts || [];
+      _reelHasMore = _friendsHasMore;
       _renderReel();
     }
   };
