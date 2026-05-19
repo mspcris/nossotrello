@@ -1374,19 +1374,25 @@ var _CAMILA_AVATARS = {
       if(idx < 0){
         idx = _totalSlides - 1;
       } else if(idx >= _totalSlides){
-        /* Bate no fim: tenta carregar mais antigos antes de fazer loop. */
-        if(_reelHasMore && !_reelLoadingMore){
+        /* Bate no fim: enquanto há mais antigos no servidor, NÃO wrappa.
+           Se nenhum load está em curso, dispara um agora. Em ambos os
+           casos faz snap back no slide atual (evita o reel ficar preso
+           a meio-arrasto). Quando o load resolver, levamos pro target. */
+        if(_reelHasMore){
           var pending = idx;
-          _loadMoreReel().then(function(loaded){
-            if(loaded && pending < _totalSlides){
-              _goToSlide(pending, animate);
-            } else if(!_reelHasMore){
-              _goToSlide(0, animate);
-            }
-          });
-          return;
+          if(!_reelLoadingMore){
+            _loadMoreReel().then(function(loaded){
+              if(loaded && pending < _totalSlides){
+                _goToSlide(pending, animate);
+              } else if(!_reelHasMore){
+                _goToSlide(0, animate);
+              }
+            });
+          }
+          idx = _reelIdx;   /* snap back no atual, sem wrap */
+        } else {
+          idx = 0;          /* server confirmou: acabou — aí sim, volta ao começo */
         }
-        idx = 0;
       }
       _reelIdx = idx;
       var w = el.offsetWidth || 1;
