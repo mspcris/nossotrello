@@ -1053,6 +1053,25 @@ var _CAMILA_AVATARS = {
 };
 
 /* ════════════════════════════════════════════
+   BUSY STATE (spinner sobre botão durante fetch)
+   Aplicado SÍNCRONO no clique — antes do request começar — pra
+   evitar toque múltiplo em internet lenta nos postos.
+   ════════════════════════════════════════════ */
+window._spBtnBusy = function(btn){
+  if(!btn || !btn.classList) return;
+  if(btn.classList.contains('sp-busy')) return;
+  btn.classList.add('sp-busy');
+  btn.setAttribute('aria-busy', 'true');
+  if(btn.tagName === 'BUTTON' || btn.tagName === 'INPUT') btn.disabled = true;
+};
+window._spBtnIdle = function(btn){
+  if(!btn || !btn.classList) return;
+  btn.classList.remove('sp-busy');
+  btn.removeAttribute('aria-busy');
+  if(btn.tagName === 'BUTTON' || btn.tagName === 'INPUT') btn.disabled = false;
+};
+
+/* ════════════════════════════════════════════
    CHAT UNREAD BADGE
    ════════════════════════════════════════════ */
 (function(){
@@ -1736,7 +1755,7 @@ var _CAMILA_AVATARS = {
 
   window.spReelLike = function(postId, btn){
     btn.classList.toggle('liked');
-    var reaction = btn.classList.contains('liked') ? 'like' : 'like';
+    window._spBtnBusy(btn);
     fetch('{% url "boards:social_post_react" 0 %}'.replace('/0/','/'+postId+'/'), {
       method:'POST', headers:{'X-CSRFToken':_csrf(), 'Content-Type':'application/x-www-form-urlencoded'},
       body:'reaction=like'
@@ -1745,7 +1764,9 @@ var _CAMILA_AVATARS = {
         btn.classList.toggle('liked', !!d.my_reaction);
         var cnt = btn.querySelector('.count');
         if(cnt) cnt.textContent = d.counts.like || '';
-      });
+      })
+      .catch(function(){})
+      .then(function(){ window._spBtnIdle(btn); });
   };
 
   window.spReelComment = function(postId, input){
@@ -1753,6 +1774,9 @@ var _CAMILA_AVATARS = {
     if(!text) return;
     input.value = '';
     input.blur(); /* tira foco para retomar auto-scroll */
+    var sendBtn = input.closest('.sp-reel-actions');
+    sendBtn = sendBtn ? sendBtn.querySelector('.sp-reel-comment-send') : null;
+    window._spBtnBusy(sendBtn);
     fetch('{% url "boards:social_post_comment" 0 %}'.replace('/0/','/'+postId+'/'), {
       method:'POST', headers:{'X-CSRFToken':_csrf(), 'Content-Type':'application/x-www-form-urlencoded'},
       body:'text='+encodeURIComponent(text)
@@ -1787,7 +1811,9 @@ var _CAMILA_AVATARS = {
           if(window._spResumeAutoScroll) window._spResumeAutoScroll();
         }
         setTimeout(function(){ input.placeholder = 'Comentar...'; }, 2000);
-      });
+      })
+      .catch(function(){})
+      .then(function(){ window._spBtnIdle(sendBtn); });
   };
 
   /* ═══ Editar post ═══ */
@@ -3426,6 +3452,7 @@ document.addEventListener('click', function(e){
       btn.classList.contains('sp-fs-mini-sent') ||
       btn.classList.contains('sp-fs-mini-accept')
     ));
+    window._spBtnBusy(btn);
     fetch('/social/'+uid+'/friend-request/', {method:'POST', headers:{'X-CSRFToken': csrf ? csrf.content : ''}})
     .then(function(r){ return r.json(); })
     .then(function(d){
@@ -3450,7 +3477,9 @@ document.addEventListener('click', function(e){
           btn.classList.remove('sp-fs-cancel'); btn.classList.add('sp-fs-add');
         }
       }
-    }).catch(function(){});
+    })
+    .catch(function(){})
+    .then(function(){ window._spBtnIdle(btn); });
   };
 
   /* Insere a pílula do novo amigo na barra "💜 Meus Amigos".
@@ -3488,32 +3517,44 @@ document.addEventListener('click', function(e){
       btn.classList.contains('sp-fs-mini-sent') ||
       btn.classList.contains('sp-fs-mini-accept')
     ));
+    window._spBtnBusy(btn);
+    var btnStillThere = true;
     fetch('/social/'+uid+'/friend-accept/', {method:'POST', headers:{'X-CSRFToken': csrf ? csrf.content : ''}})
     .then(function(r){ return r.json(); })
     .then(function(d){
       if(d.action === 'accepted'){
         if(isMini){
-          btn.remove();
+          btn.remove(); btnStillThere = false;
         } else {
           btn.replaceWith(Object.assign(document.createElement('span'), {className:'sp-fs-friends-tag', textContent:'💜 Amigos'}));
+          btnStillThere = false;
         }
         if(window._spPillKnownFriends) window._spPillKnownFriends.add(uid);
         _spInsertNewFriendPill(d.friend);
       }
-    }).catch(function(){});
+    })
+    .catch(function(){})
+    .then(function(){ if(btnStillThere) window._spBtnIdle(btn); });
   };
 
   window.spRemoveFriend = function(uid, btn){
     if(!confirm('Remover esta amizade?')) return;
     var csrf = document.querySelector('meta[name="csrf-token"]');
+    window._spBtnBusy(btn);
+    var btnReplaced = false;
     fetch('/social/'+uid+'/friend-remove/', {method:'POST', headers:{'X-CSRFToken': csrf ? csrf.content : ''}})
     .then(function(r){ return r.json(); })
     .then(function(d){
       if(d.action === 'removed'){
         var actions = btn.closest('.sp-fs-actions');
-        if(actions) actions.innerHTML = '<button class="sp-fs-btn sp-fs-add" onclick="spSendFriendReq('+uid+', this)">➕ Convidar como amigo</button>';
+        if(actions){
+          actions.innerHTML = '<button class="sp-fs-btn sp-fs-add" onclick="spSendFriendReq('+uid+', this)">➕ Convidar como amigo</button>';
+          btnReplaced = true;
+        }
       }
-    }).catch(function(){});
+    })
+    .catch(function(){})
+    .then(function(){ if(!btnReplaced) window._spBtnIdle(btn); });
   };
 
   window.spShareBoardMenu = function(uid, btn){
@@ -3660,6 +3701,11 @@ document.addEventListener('click', function(e){
     if(card && !card.classList.contains('sp-req-item') && !card.classList.contains('sp-friend-pill')){
       card = card.closest('.sp-req-item') || card.closest('.sp-friend-pill');
     }
+    /* Marca o botão clicado como busy (se foi um botão) — bloqueia
+       toques múltiplos antes da resposta. */
+    var actionBtn = (cardOrBtn && cardOrBtn.tagName === 'BUTTON') ? cardOrBtn : null;
+    window._spBtnBusy(actionBtn);
+    var cardWillFade = false;
     fetch(url, {
       method: 'POST',
       headers: {'X-CSRFToken': csrf ? csrf.content : ''}
@@ -3669,6 +3715,7 @@ document.addEventListener('click', function(e){
     }).then(function(d){
       if (!d) return;
       if (card) {
+        cardWillFade = true;
         card.style.transition = 'opacity 0.3s, transform 0.3s';
         card.style.opacity = '0';
         card.style.transform = 'scale(0.7)';
@@ -3679,17 +3726,21 @@ document.addEventListener('click', function(e){
         if(typeof _spToast==='function') _spToast('Amizade aceita! 🤝');
         _spInsertNewFriendPill(d.friend);
       }
-    }).catch(function(e){ alert('Erro: ' + e.message); });
+    })
+    .catch(function(e){ alert('Erro: ' + e.message); })
+    .then(function(){ if(!cardWillFade) window._spBtnIdle(actionBtn); });
   };
 
   window.spCancelFriendReq = function(uid, btn) {
     var csrf = document.querySelector('meta[name="csrf-token"]');
+    window._spBtnBusy(btn);
     fetch('/social/' + uid + '/friend-request/', {
       method: 'POST',
       headers: {'X-CSRFToken': csrf ? csrf.content : ''}
     }).then(function(r){ return r.json(); }).then(function(d){
       _spFadeOutCard(btn);
     }).catch(function(){});
+    /* Não chamamos _spBtnIdle aqui — _spFadeOutCard tira o card do DOM. */
   };
 
   /* ── Resposta a comentário ── */

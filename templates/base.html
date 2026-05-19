@@ -1339,6 +1339,7 @@ document.addEventListener('keydown', function(e){
     ov.classList.add('show');
     ov.setAttribute('aria-hidden', 'false');
   }
+  window.showSocialOverlay = showOverlay;
   function isSocialLink(a) {
     if (!a) return false;
     if (a.classList && a.classList.contains('js-social-link')) return true;

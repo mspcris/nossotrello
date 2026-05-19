@@ -2701,6 +2701,45 @@ video.sp-post-media {
 .sp-fs-mini-add    { background: #7c3aed; }
 .sp-fs-mini-sent   { background: #16a34a; }
 .sp-fs-mini-accept { background: #2563eb; font-size: 0.75rem; }
+
+/* ────────────────────────────────────────────────────────────
+   Estado "ocupado" universal pros botões do Espaço Social.
+   Aplicado *antes* do fetch começar — bloqueia novos cliques e
+   mostra um spinner sobre o botão, evitando o "toca 20 vezes
+   em internet lenta".
+   ──────────────────────────────────────────────────────────── */
+.sp-busy {
+  pointer-events: none;
+  position: relative;
+  opacity: 0.65;
+}
+.sp-busy::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.45);
+  border-radius: inherit;
+  pointer-events: none;
+}
+.sp-busy::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: sp-busy-spin 0.7s linear infinite;
+  z-index: 2;
+  color: #7c3aed;
+}
+@keyframes sp-busy-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .sp-busy::before { animation: none; }
+}
 .sp-board-picker {
   background: #fff;
   border: 1.5px solid #e5e7eb;
