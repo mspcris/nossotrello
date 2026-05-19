@@ -1,5 +1,4 @@
-{# Renderiza um único post do feed do perfil. Inclui via {% include %}
-   tanto em social_feed_block.html quanto no endpoint de "carregar mais". #}
+{% comment %}Renderiza um único post do feed do perfil. Usado por social_feed_block.html e pelo endpoint de "carregar mais".{% endcomment %}
 {% load static %}
 <div class="sp-post" id="sp-post-{{ post.id }}" data-post-id="{{ post.id }}">
   {% if post.is_repost and post.original_author %}

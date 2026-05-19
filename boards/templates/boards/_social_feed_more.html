@@ -1,5 +1,4 @@
-{# Fragmento devolvido pelo endpoint social_posts_more: nova leva de
-   posts + (opcional) botão "Ver mais" novo com o cursor atualizado. #}
+{% comment %}Fragmento devolvido pelo endpoint social_posts_more: nova leva de posts + (opcional) botão "Ver mais" novo com o cursor atualizado.{% endcomment %}
 {% for post in posts %}{% include "boards/_social_post_item.html" %}{% endfor %}
 {% if feed_has_more and feed_oldest_id %}
 <button type="button"
