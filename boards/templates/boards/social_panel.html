@@ -309,7 +309,7 @@
       <div class="sp-section-title">📩 Pediram sua amizade</div>
       <div class="sp-friends-scroll-wrap">
         <button type="button" class="sp-scroll-arrow sp-scroll-left sp-hidden" onclick="spScrollRow(this,1)">‹</button>
-        <div class="sp-friends-row">
+        <div class="sp-friends-row sp-row-collapsed">
           {% for fr in pending_friend_requests %}
           {% with fp=fr.requester.profile %}
           <div class="sp-friend-btn sp-req-item" data-friend-uid="{{ fr.requester_id }}"
@@ -335,6 +335,12 @@
         </div>
         <button type="button" class="sp-scroll-arrow sp-scroll-right" onclick="spScrollRow(this,-1)">›</button>
       </div>
+      {% if pending_friend_requests|length > 16 %}
+      <button type="button" class="sp-row-toggle-btn"
+              data-expand-label="Mostrar mais ({{ pending_friend_requests|length|add:'-16' }})"
+              data-collapse-label="Mostrar menos"
+              onclick="spToggleFriendsRow(this)">Mostrar mais ({{ pending_friend_requests|length|add:'-16' }})</button>
+      {% endif %}
     </div>
     {% endif %}
 
@@ -344,7 +350,7 @@
       <div class="sp-section-title">💜 Meus Amigos</div>
       <div class="sp-friends-scroll-wrap">
         <button type="button" class="sp-scroll-arrow sp-scroll-left sp-hidden" onclick="spScrollRow(this,1)">‹</button>
-        <div class="sp-friends-row" id="sp-real-friends-row">
+        <div class="sp-friends-row sp-row-collapsed" id="sp-real-friends-row">
           {% for friend in real_friends %}
           {% with fp=friend.profile %}
           <button type="button" class="sp-friend-btn" onclick="spOpenFriendSheet({{ friend.id }})"
@@ -363,6 +369,12 @@
         </div>
         <button type="button" class="sp-scroll-arrow sp-scroll-right" onclick="spScrollRow(this,-1)">›</button>
       </div>
+      {% if real_friends|length > 16 %}
+      <button type="button" class="sp-row-toggle-btn"
+              data-expand-label="Mostrar mais ({{ real_friends|length|add:'-16' }})"
+              data-collapse-label="Mostrar menos"
+              onclick="spToggleFriendsRow(this)">Mostrar mais ({{ real_friends|length|add:'-16' }})</button>
+      {% endif %}
     </div>
     {% endif %}
 
@@ -372,7 +384,7 @@
       <div class="sp-section-title">📤 Aguardando resposta</div>
       <div class="sp-friends-scroll-wrap">
         <button type="button" class="sp-scroll-arrow sp-scroll-left sp-hidden" onclick="spScrollRow(this,1)">‹</button>
-        <div class="sp-friends-row">
+        <div class="sp-friends-row sp-row-collapsed">
           {% for fr in sent_friend_requests %}
           {% with fp=fr.receiver.profile %}
           <button type="button" class="sp-friend-btn sp-sent-req-item"
@@ -398,6 +410,12 @@
         </div>
         <button type="button" class="sp-scroll-arrow sp-scroll-right" onclick="spScrollRow(this,-1)">›</button>
       </div>
+      {% if sent_friend_requests|length > 16 %}
+      <button type="button" class="sp-row-toggle-btn"
+              data-expand-label="Mostrar mais ({{ sent_friend_requests|length|add:'-16' }})"
+              data-collapse-label="Mostrar menos"
+              onclick="spToggleFriendsRow(this)">Mostrar mais ({{ sent_friend_requests|length|add:'-16' }})</button>
+      {% endif %}
     </div>
     {% endif %}
 
@@ -407,7 +425,7 @@
       <div class="sp-section-title">✨ Sugestões de Amizade</div>
       <div class="sp-friends-scroll-wrap">
         <button type="button" class="sp-scroll-arrow sp-scroll-left sp-hidden" onclick="spScrollRow(this,1)">‹</button>
-        <div class="sp-friends-row">
+        <div class="sp-friends-row sp-row-collapsed">
           {% for sug in unit_suggestions %}
           {% with sp=sug.profile %}
           <button type="button" class="sp-friend-btn" onclick="spOpenFriendSheet({{ sug.id }})"
@@ -426,6 +444,12 @@
         </div>
         <button type="button" class="sp-scroll-arrow sp-scroll-right" onclick="spScrollRow(this,-1)">›</button>
       </div>
+      {% if unit_suggestions|length > 16 %}
+      <button type="button" class="sp-row-toggle-btn"
+              data-expand-label="Mostrar mais ({{ unit_suggestions|length|add:'-16' }})"
+              data-collapse-label="Mostrar menos"
+              onclick="spToggleFriendsRow(this)">Mostrar mais ({{ unit_suggestions|length|add:'-16' }})</button>
+      {% endif %}
     </div>
     {% endif %}
 
@@ -1067,6 +1091,18 @@ var _CAMILA_AVATARS = {
   cold:          "{% static 'images/avatar/camila_cold_winter.png' %}",   /* frio — gorro vermelho 🧣 */
   snow:          "{% static 'images/avatar/camila_snow.png' %}",          /* neve — hoodie azul ❄️ */
   blizzard:      "{% static 'images/avatar/camila_blizzard.png' %}",      /* nevasca — parka com capuz 🌨️ */
+};
+
+/* Alterna o colapso de uma seção (Meus Amigos / Convites / Sugestões).
+   Mostra só as 4 primeiras linhas (16 itens com grid de 4 col) por padrão;
+   no clique expande pra mostrar tudo e troca o label. */
+window.spToggleFriendsRow = function(btn){
+  var bar = btn && btn.closest('.sp-friends-bar');
+  if(!bar) return;
+  var row = bar.querySelector('.sp-friends-row');
+  if(!row) return;
+  var collapsed = row.classList.toggle('sp-row-collapsed');
+  btn.textContent = collapsed ? btn.dataset.expandLabel : btn.dataset.collapseLabel;
 };
 
 /* ════════════════════════════════════════════
