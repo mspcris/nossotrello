@@ -2713,7 +2713,7 @@ video.sp-post-media {
 }
 .sp-user-search-input {
   width: 100%;
-  padding: 10px 36px 10px 12px;
+  padding: 10px 12px;
   border: 1.5px solid #e5e7eb;
   border-radius: 12px;
   font-size: 0.92rem;
@@ -2722,6 +2722,8 @@ video.sp-post-media {
   outline: none;
   transition: border-color .15s, box-shadow .15s;
 }
+/* Só reserva espaço pro X quando há algo digitado (botão X aparece). */
+.sp-user-search-input:not(:placeholder-shown) { padding-right: 36px; }
 .sp-user-search-input:focus {
   border-color: #7c3aed;
   box-shadow: 0 0 0 3px rgba(124,58,237,0.12);
