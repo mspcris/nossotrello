@@ -2677,14 +2677,15 @@ video.sp-post-media {
   align-items: center;
   position: relative;
 }
-.sp-fs-mini-add {
+.sp-fs-mini-add,
+.sp-fs-mini-sent,
+.sp-fs-mini-accept {
   position: absolute;
   top: -4px;
   right: -4px;
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: #7c3aed;
   color: #fff;
   font-size: 0.9rem;
   line-height: 1;
@@ -2693,7 +2694,13 @@ video.sp-post-media {
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
+  white-space: nowrap;
+  overflow: hidden;
 }
+.sp-fs-mini-add    { background: #7c3aed; }
+.sp-fs-mini-sent   { background: #16a34a; }
+.sp-fs-mini-accept { background: #2563eb; font-size: 0.75rem; }
 .sp-board-picker {
   background: #fff;
   border: 1.5px solid #e5e7eb;

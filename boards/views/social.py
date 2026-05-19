@@ -2003,7 +2003,9 @@ def _accepted_friend_ids(user):
 def social_user_network(request, user_id: int):
     """
     Retorna a rede de um usuário: seus amigos aceitos,
-    separados em 'em comum comigo' e 'outros'.
+    separados em 'em comum comigo' e 'outros'. Para cada item em "others",
+    inclui my_status / i_am_requester relativo ao usuário logado, pra UI
+    saber se já existe convite pendente.
     """
     target = get_object_or_404(User, id=user_id)
     target_friend_ids = _accepted_friend_ids(target)
@@ -2013,6 +2015,19 @@ def social_user_network(request, user_id: int):
     others = []
     users  = User.objects.filter(id__in=target_friend_ids).select_related("profile")
 
+    # Pré-carrega convites pendentes entre o usuário logado e a lista (1 query).
+    from django.db.models import Q
+    others_candidate_ids = [u.id for u in users if u.id != request.user.id and u.id not in my_friend_ids]
+    fs_map = {}
+    if others_candidate_ids:
+        fs_rows = SocialFriendship.objects.filter(
+            Q(requester=request.user, receiver_id__in=others_candidate_ids)
+            | Q(receiver=request.user, requester_id__in=others_candidate_ids)
+        ).only("requester_id", "receiver_id", "status")
+        for fs in fs_rows:
+            other_id = fs.receiver_id if fs.requester_id == request.user.id else fs.requester_id
+            fs_map[other_id] = (fs.status, fs.requester_id == request.user.id)
+
     for u in users:
         if u.id == request.user.id:
             continue
@@ -2020,6 +2035,9 @@ def social_user_network(request, user_id: int):
         if u.id in my_friend_ids:
             common.append(card)
         else:
+            st, is_req = fs_map.get(u.id, (None, False))
+            card["my_status"] = st
+            card["i_am_requester"] = is_req
             others.append(card)
 
     status, is_req = _friendship_status(request.user, target)

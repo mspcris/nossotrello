@@ -3381,6 +3381,21 @@ document.addEventListener('click', function(e){
     return html;
   }
 
+  function _renderFriendMiniBtn(f){
+    /* Botão pequeno no canto do avatar: + (convidar), ✓ (já solicitado, clique cancela),
+       ✅ (convite recebido, clique aceita). Se já é amigo, não mostra nada. */
+    var st = f.my_status;
+    var isReq = !!f.i_am_requester;
+    if(st === 'accepted') return '';
+    if(st === 'pending' && isReq){
+      return '<button class="sp-fs-mini-sent" title="Convite enviado — clique para cancelar" onclick="spSendFriendReq('+f.id+', this)">✓</button>';
+    }
+    if(st === 'pending' && !isReq){
+      return '<button class="sp-fs-mini-accept" title="Aceitar convite" onclick="spAcceptFriend('+f.id+', this)">✅</button>';
+    }
+    return '<button class="sp-fs-mini-add" title="Convidar" onclick="spSendFriendReq('+f.id+', this)">+</button>';
+  }
+
   function _friendSection(label, list, targetUid, showInvite){
     if(!list || !list.length) return '';
     var html = '<div class="sp-fs-section"><div class="sp-fs-section-title">'+label+' ('+list.length+')</div><div class="sp-fs-grid">';
@@ -3391,7 +3406,7 @@ document.addEventListener('click', function(e){
       html += '<div class="sp-fs-person">' +
         '<button class="sp-friend-btn" onclick="spOpenFriendSheet('+f.id+')">' + av +
           '<span class="sp-friend-name">'+(f.name||'').split(' ')[0]+'</span></button>' +
-        (showInvite ? '<button class="sp-fs-mini-add" title="Convidar" onclick="spSendFriendReq('+f.id+', this)">+</button>' : '') +
+        (showInvite ? _renderFriendMiniBtn(f) : '') +
         '</div>';
     });
     html += '</div></div>';
@@ -3400,15 +3415,34 @@ document.addEventListener('click', function(e){
 
   window.spSendFriendReq = function(uid, btn){
     var csrf = document.querySelector('meta[name="csrf-token"]');
+    var isMini = !!(btn && (
+      btn.classList.contains('sp-fs-mini-add') ||
+      btn.classList.contains('sp-fs-mini-sent') ||
+      btn.classList.contains('sp-fs-mini-accept')
+    ));
     fetch('/social/'+uid+'/friend-request/', {method:'POST', headers:{'X-CSRFToken': csrf ? csrf.content : ''}})
     .then(function(r){ return r.json(); })
     .then(function(d){
       if(d.action === 'sent'){
-        btn.textContent = '⏳ Convite enviado (cancelar)';
-        btn.classList.remove('sp-fs-add'); btn.classList.add('sp-fs-cancel');
+        if(isMini){
+          btn.classList.remove('sp-fs-mini-add', 'sp-fs-mini-accept');
+          btn.classList.add('sp-fs-mini-sent');
+          btn.textContent = '✓';
+          btn.title = 'Convite enviado — clique para cancelar';
+        } else {
+          btn.textContent = '⏳ Convite enviado (cancelar)';
+          btn.classList.remove('sp-fs-add'); btn.classList.add('sp-fs-cancel');
+        }
       } else {
-        btn.textContent = '➕ Convidar como amigo';
-        btn.classList.remove('sp-fs-cancel'); btn.classList.add('sp-fs-add');
+        if(isMini){
+          btn.classList.remove('sp-fs-mini-sent', 'sp-fs-mini-accept');
+          btn.classList.add('sp-fs-mini-add');
+          btn.textContent = '+';
+          btn.title = 'Convidar';
+        } else {
+          btn.textContent = '➕ Convidar como amigo';
+          btn.classList.remove('sp-fs-cancel'); btn.classList.add('sp-fs-add');
+        }
       }
     }).catch(function(){});
   };
@@ -3443,11 +3477,20 @@ document.addEventListener('click', function(e){
 
   window.spAcceptFriend = function(uid, btn){
     var csrf = document.querySelector('meta[name="csrf-token"]');
+    var isMini = !!(btn && btn.classList && (
+      btn.classList.contains('sp-fs-mini-add') ||
+      btn.classList.contains('sp-fs-mini-sent') ||
+      btn.classList.contains('sp-fs-mini-accept')
+    ));
     fetch('/social/'+uid+'/friend-accept/', {method:'POST', headers:{'X-CSRFToken': csrf ? csrf.content : ''}})
     .then(function(r){ return r.json(); })
     .then(function(d){
       if(d.action === 'accepted'){
-        btn.replaceWith(Object.assign(document.createElement('span'), {className:'sp-fs-friends-tag', textContent:'💜 Amigos'}));
+        if(isMini){
+          btn.remove();
+        } else {
+          btn.replaceWith(Object.assign(document.createElement('span'), {className:'sp-fs-friends-tag', textContent:'💜 Amigos'}));
+        }
         if(window._spPillKnownFriends) window._spPillKnownFriends.add(uid);
         _spInsertNewFriendPill(d.friend);
       }
