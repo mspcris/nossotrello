@@ -1125,14 +1125,8 @@ def social_cover_upload(request):
         # Reaproveita o arquivo comprimido no auto-post (evita comprimir 2x)
         prof.refresh_from_db(fields=["cover_photo"])
 
-        # Soft-delete avisos anteriores de "Atualizei minha foto de capa" do
-        # mesmo usuário — evita fila de avisos repetidos.
-        SocialPost.objects.filter(
-            user=request.user,
-            text="📸 Atualizei minha foto de capa!",
-            is_active=True,
-        ).update(is_active=False)
-
+        # Mantém o histórico completo de capas (sem dedupe): cada upload
+        # vira um post novo que aparece no perfil e no reel "Novidades".
         SocialPost.objects.create(
             user=request.user,
             text="📸 Atualizei minha foto de capa!",
@@ -1741,15 +1735,9 @@ def social_avatar_upload(request):
     prof.avatar_choice = ""
     prof.save(update_fields=["avatar", "avatar_choice"])
 
-    # Soft-delete avisos anteriores de "Nova foto de perfil" do mesmo usuário —
-    # só o anúncio mais recente fica no feed (sem fila de avisos repetidos).
-    SocialPost.objects.filter(
-        user=request.user,
-        text="🤳 Nova foto de perfil!",
-        is_active=True,
-    ).update(is_active=False)
-
-    # Auto-post usa a mesma imagem comprimida
+    # Auto-post usa a mesma imagem comprimida — mantém o histórico
+    # completo de fotos de perfil (aparece tanto no perfil quanto no reel
+    # "Novidades"). Não dedupe os anteriores: o usuário quer ver o legado.
     SocialPost.objects.create(
         user=request.user,
         text="🤳 Nova foto de perfil!",
