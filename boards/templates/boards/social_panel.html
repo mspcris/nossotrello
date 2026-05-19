@@ -16,7 +16,7 @@
       <input type="file" id="sp-cover-input" name="cover_photo"
              accept="image/png,image/jpeg,image/gif,image/webp,image/avif"
              style="display:none"
-             onchange="document.getElementById('sp-cover-form').requestSubmit()">
+             onchange="if(!this.files||!this.files.length)return;window.spShowUploadOverlay&&spShowUploadOverlay('Enviando capa…','Aguarde — estamos atualizando seu perfil.');document.getElementById('sp-cover-form').requestSubmit()">
       <div class="sp-cover sp-cover-tappable"
            {% if profile.cover_photo %}style="background-image:url('{{ profile.cover_photo.url }}')"{% endif %}
            data-cover-url="{% if profile.cover_photo %}{{ profile.cover_photo.url }}{% endif %}"
@@ -1091,6 +1091,41 @@ var _CAMILA_AVATARS = {
   cold:          "{% static 'images/avatar/camila_cold_winter.png' %}",   /* frio — gorro vermelho 🧣 */
   snow:          "{% static 'images/avatar/camila_snow.png' %}",          /* neve — hoodie azul ❄️ */
   blizzard:      "{% static 'images/avatar/camila_blizzard.png' %}",      /* nevasca — parka com capuz 🌨️ */
+};
+
+/* Overlay genérico de upload (capa, avatar, etc) — visível enquanto
+   o request roda. Cria/remove uma cópia fixa em document.body pra
+   funcionar mesmo se o disparador estiver em modal/sheet escondido. */
+window.spShowUploadOverlay = function(title, subtitle){
+  var prev = document.getElementById('sp-upload-overlay-temp');
+  if(prev){
+    if(prev._htmxHideHandler) document.body.removeEventListener('htmx:afterRequest', prev._htmxHideHandler);
+    prev.remove();
+  }
+  var ov = document.createElement('div');
+  ov.id = 'sp-upload-overlay-temp';
+  ov.className = 'sp-publish-overlay';
+  ov.setAttribute('aria-hidden', 'false');
+  ov.innerHTML = '<div class="sp-publish-box">'
+    + '<div class="sp-publish-spinner"></div>'
+    + '<div class="sp-publish-title">' + (title || 'Enviando…') + '</div>'
+    + '<div class="sp-publish-sub">' + (subtitle || 'Não feche a aba até terminar.') + '</div>'
+    + '</div>';
+  document.body.appendChild(ov);
+  /* Auto-esconde no fim do próximo request HTMX (cobre fluxo da capa,
+     que usa hx-post). Pro fluxo de avatar (fetch puro) a remoção é
+     manual via spHideUploadOverlay. */
+  ov._htmxHideHandler = function(){ spHideUploadOverlay(); };
+  document.body.addEventListener('htmx:afterRequest', ov._htmxHideHandler);
+  return ov;
+};
+window.spHideUploadOverlay = function(){
+  var ov = document.getElementById('sp-upload-overlay-temp');
+  if(!ov) return;
+  if(ov._htmxHideHandler){
+    document.body.removeEventListener('htmx:afterRequest', ov._htmxHideHandler);
+  }
+  ov.remove();
 };
 
 /* Carrega a próxima leva (30 posts) no feed do perfil. */
@@ -3415,6 +3450,7 @@ document.addEventListener('click', function(e){
       var fd = new FormData();
       fd.append('avatar', blob, 'avatar.jpg');
       var csrf = document.querySelector('meta[name="csrf-token"]');
+      window.spShowUploadOverlay && spShowUploadOverlay('Enviando foto…','Aguarde — estamos atualizando seu perfil.');
       try{
         var r = await fetch('{% url "boards:social_avatar_upload" %}', {
           method:'POST',
@@ -3440,6 +3476,9 @@ document.addEventListener('click', function(e){
           }
         }
       }catch(e){}
+      finally{
+        window.spHideUploadOverlay && spHideUploadOverlay();
+      }
       spCloseCropper();
     }, 'image/jpeg', 0.9);
   };
