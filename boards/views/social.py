@@ -3220,35 +3220,22 @@ def chat_conversation_action(request, conv_id: int):
 
 # ---------------------------------------------------------------
 # Buscar usuários para "Adicionar amigo" (GET ?q=...)
-# Procura por nome, handle e email; exclui você mesmo, amigos aceitos
-# e quem já tem convite pendente (ambos os lados).
+# Procura por nome, handle e email; inclui amigos, convites pendentes
+# e sugestões, agrupados na resposta.
 # ---------------------------------------------------------------
 @login_required
 def social_user_search(request):
     q = (request.GET.get("q") or "").strip()
     if len(q) < 2:
-        return JsonResponse({"results": []})
+        return JsonResponse({"friends": [], "pending": [], "suggestions": []})
 
     q_lower = q.lower()
-
-    # IDs a excluir: eu, amigos aceitos, qualquer convite pendente (envio/recebimento).
     me = request.user
-    excluded_ids = set(_accepted_friend_ids(me))
-    excluded_ids.update(
-        SocialFriendship.objects
-        .filter(requester=me, status="pending")
-        .values_list("receiver_id", flat=True)
-    )
-    excluded_ids.update(
-        SocialFriendship.objects
-        .filter(receiver=me, status="pending")
-        .values_list("requester_id", flat=True)
-    )
-    excluded_ids.add(me.id)
 
-    users = (
+    users = list(
         User.objects
         .filter(is_active=True)
+        .exclude(id=me.id)
         .select_related("profile")
         .filter(
             models.Q(profile__handle__icontains=q_lower)
@@ -3256,12 +3243,21 @@ def social_user_search(request):
             | models.Q(email__iexact=q_lower)
             | models.Q(email__icontains=q_lower)
         )
-        .exclude(id__in=excluded_ids)
-        .order_by("profile__display_name")[:10]
+        .order_by("profile__display_name")[:30]
     )
 
-    results = []
-    for u in users:
+    # Classifica cada match em uma das três faixas.
+    accepted_ids = set(_accepted_friend_ids(me))
+    pending_sent = set(
+        SocialFriendship.objects.filter(requester=me, status="pending")
+        .values_list("receiver_id", flat=True)
+    )
+    pending_received = set(
+        SocialFriendship.objects.filter(receiver=me, status="pending")
+        .values_list("requester_id", flat=True)
+    )
+
+    def _card(u):
         p = getattr(u, "profile", None)
         avatar = ""
         if p and getattr(p, "avatar", None):
@@ -3272,17 +3268,34 @@ def social_user_search(request):
         if not avatar and p and getattr(p, "avatar_choice", ""):
             from django.templatetags.static import static
             avatar = static(f"images/avatar/{p.avatar_choice}")
-
-        results.append({
+        return {
             "id": u.id,
             "name": (p.display_name if p else None) or u.get_full_name() or u.email,
             "handle": (p.handle if p else "") or "",
             "avatar": avatar,
             "unit": (p.unidade if p else "") or "",
             "email": u.email,
-        })
+        }
 
-    return JsonResponse({"results": results})
+    friends, pending, suggestions = [], [], []
+    for u in users:
+        c = _card(u)
+        if u.id in accepted_ids:
+            friends.append(c)
+        elif u.id in pending_sent:
+            c["pending_direction"] = "sent"
+            pending.append(c)
+        elif u.id in pending_received:
+            c["pending_direction"] = "received"
+            pending.append(c)
+        else:
+            suggestions.append(c)
+
+    return JsonResponse({
+        "friends": friends,
+        "pending": pending,
+        "suggestions": suggestions,
+    })
 
 
 # ---------------------------------------------------------------

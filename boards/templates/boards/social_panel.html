@@ -1111,32 +1111,50 @@ window._spBtnIdle = function(btn){
     results.classList.remove('sp-hidden');
   }
 
-  function _renderResults(list){
-    if(!list.length){
+  function _renderItem(u, badge){
+    var avHtml = u.avatar
+      ? '<img src="'+_esc(u.avatar)+'" class="sp-user-search-av" alt="">'
+      : '<span class="sp-user-search-av sp-user-search-av-fb">'+_esc((u.name||'?').charAt(0).toUpperCase())+'</span>';
+    var meta = '';
+    if(u.handle) meta += '@'+_esc(u.handle);
+    if(u.unit){
+      if(meta) meta += ' · ';
+      meta += _esc(u.unit);
+    }
+    if(!meta && u.email) meta = _esc(u.email);
+    return '<a class="sp-user-search-item" href="/social/'+u.id+'/">'
+      + avHtml
+      + '<div class="sp-user-search-info">'
+        + '<div class="sp-user-search-name">'+_esc(u.name || u.email || 'Usuário')
+          + (badge ? ' <span class="sp-user-search-badge">'+badge+'</span>' : '')
+        + '</div>'
+        + (meta ? '<div class="sp-user-search-meta">'+meta+'</div>' : '')
+      + '</div>'
+      + '<span class="sp-user-search-arrow">›</span>'
+      + '</a>';
+  }
+
+  function _renderGroup(label, items, badgeFor){
+    if(!items || !items.length) return '';
+    var html = '<div class="sp-user-search-group-title">'+label+' ('+items.length+')</div>';
+    items.forEach(function(u){ html += _renderItem(u, badgeFor ? badgeFor(u) : ''); });
+    return html;
+  }
+
+  function _renderResults(d){
+    var friends = (d && d.friends) || [];
+    var pending = (d && d.pending) || [];
+    var suggestions = (d && d.suggestions) || [];
+    if(!friends.length && !pending.length && !suggestions.length){
       _renderState('<div class="sp-user-search-empty">Nenhum usuário encontrado.</div>');
       return;
     }
     var html = '';
-    list.forEach(function(u){
-      var avHtml = u.avatar
-        ? '<img src="'+_esc(u.avatar)+'" class="sp-user-search-av" alt="">'
-        : '<span class="sp-user-search-av sp-user-search-av-fb">'+_esc((u.name||'?').charAt(0).toUpperCase())+'</span>';
-      var meta = '';
-      if(u.handle) meta += '@'+_esc(u.handle);
-      if(u.unit){
-        if(meta) meta += ' · ';
-        meta += _esc(u.unit);
-      }
-      if(!meta && u.email) meta = _esc(u.email);
-      html += '<a class="sp-user-search-item" href="/social/'+u.id+'/">'
-        + avHtml
-        + '<div class="sp-user-search-info">'
-          + '<div class="sp-user-search-name">'+_esc(u.name || u.email || 'Usuário')+'</div>'
-          + (meta ? '<div class="sp-user-search-meta">'+meta+'</div>' : '')
-        + '</div>'
-        + '<span class="sp-user-search-arrow">›</span>'
-        + '</a>';
+    html += _renderGroup('💜 Meus Amigos', friends);
+    html += _renderGroup('📩 Convites', pending, function(u){
+      return u.pending_direction === 'sent' ? 'aguardando' : 'pediu sua amizade';
     });
+    html += _renderGroup('✨ Sugestões', suggestions);
     _renderState(html);
   }
 
@@ -1149,7 +1167,7 @@ window._spBtnIdle = function(btn){
       .then(function(d){
         /* Confere se ainda é a query mais recente — descarta resposta antiga. */
         if(q !== lastQuery) return;
-        _renderResults((d && d.results) || []);
+        _renderResults(d || {});
       })
       .catch(function(err){
         if(err && err.name === 'AbortError') return;
