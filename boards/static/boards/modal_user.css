@@ -2703,6 +2703,119 @@ video.sp-post-media {
 .sp-fs-mini-accept { background: #2563eb; font-size: 0.75rem; }
 
 /* ────────────────────────────────────────────────────────────
+   Busca de usuários (Amigos: nome ou e-mail)
+   ──────────────────────────────────────────────────────────── */
+.sp-user-search-bar {
+  padding: 10px 12px 6px;
+}
+.sp-user-search-wrap {
+  position: relative;
+}
+.sp-user-search-input {
+  width: 100%;
+  padding: 10px 36px 10px 12px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 12px;
+  font-size: 0.92rem;
+  background: #fff;
+  color: #1f2937;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.sp-user-search-input:focus {
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 3px rgba(124,58,237,0.12);
+}
+.sp-user-search-clear {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 50%;
+  background: #f3f4f6;
+  color: #6b7280;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sp-user-search-clear:hover { background: #e5e7eb; color: #111827; }
+
+.sp-user-search-results {
+  margin-top: 8px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+  max-height: 320px;
+  overflow-y: auto;
+}
+.sp-user-search-empty {
+  padding: 14px 12px;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 0.85rem;
+}
+.sp-user-search-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  text-decoration: none;
+  color: #1f2937;
+  border-bottom: 1px solid #f3f4f6;
+  transition: background-color .12s;
+}
+.sp-user-search-item:last-child { border-bottom: none; }
+.sp-user-search-item:hover,
+.sp-user-search-item:focus { background: #f5f3ff; outline: none; }
+.sp-user-search-av {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.sp-user-search-av-fb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #a78bfa, #7c3aed);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+}
+.sp-user-search-info {
+  flex: 1;
+  min-width: 0;
+}
+.sp-user-search-name {
+  font-weight: 600;
+  font-size: 0.92rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sp-user-search-meta {
+  font-size: 0.78rem;
+  color: #6b7280;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sp-user-search-arrow {
+  color: #9ca3af;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+/* ────────────────────────────────────────────────────────────
    Estado "ocupado" universal pros botões do Espaço Social.
    Aplicado *antes* do fetch começar — bloqueia novos cliques e
    mostra um spinner sobre o botão, evitando o "toca 20 vezes

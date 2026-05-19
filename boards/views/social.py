@@ -3219,6 +3219,73 @@ def chat_conversation_action(request, conv_id: int):
 
 
 # ---------------------------------------------------------------
+# Buscar usuários para "Adicionar amigo" (GET ?q=...)
+# Procura por nome, handle e email; exclui você mesmo, amigos aceitos
+# e quem já tem convite pendente (ambos os lados).
+# ---------------------------------------------------------------
+@login_required
+def social_user_search(request):
+    q = (request.GET.get("q") or "").strip()
+    if len(q) < 2:
+        return JsonResponse({"results": []})
+
+    q_lower = q.lower()
+
+    # IDs a excluir: eu, amigos aceitos, qualquer convite pendente (envio/recebimento).
+    me = request.user
+    excluded_ids = set(_accepted_friend_ids(me))
+    excluded_ids.update(
+        SocialFriendship.objects
+        .filter(requester=me, status="pending")
+        .values_list("receiver_id", flat=True)
+    )
+    excluded_ids.update(
+        SocialFriendship.objects
+        .filter(receiver=me, status="pending")
+        .values_list("requester_id", flat=True)
+    )
+    excluded_ids.add(me.id)
+
+    users = (
+        User.objects
+        .filter(is_active=True)
+        .select_related("profile")
+        .filter(
+            models.Q(profile__handle__icontains=q_lower)
+            | models.Q(profile__display_name__icontains=q_lower)
+            | models.Q(email__iexact=q_lower)
+            | models.Q(email__icontains=q_lower)
+        )
+        .exclude(id__in=excluded_ids)
+        .order_by("profile__display_name")[:10]
+    )
+
+    results = []
+    for u in users:
+        p = getattr(u, "profile", None)
+        avatar = ""
+        if p and getattr(p, "avatar", None):
+            try:
+                avatar = p.avatar.url
+            except Exception:
+                avatar = ""
+        if not avatar and p and getattr(p, "avatar_choice", ""):
+            from django.templatetags.static import static
+            avatar = static(f"images/avatar/{p.avatar_choice}")
+
+        results.append({
+            "id": u.id,
+            "name": (p.display_name if p else None) or u.get_full_name() or u.email,
+            "handle": (p.handle if p else "") or "",
+            "avatar": avatar,
+            "unit": (p.unidade if p else "") or "",
+            "email": u.email,
+        })
+
+    return JsonResponse({"results": results})
+
+
+# ---------------------------------------------------------------
 # Buscar usuários para @menção social (GET ?q=...)
 # ---------------------------------------------------------------
 @login_required

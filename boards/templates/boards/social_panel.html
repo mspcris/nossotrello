@@ -286,6 +286,23 @@
   <!-- ═══ AMIGOS (tab friends) ═══ -->
   <div id="sp-friends-reel-wrap" class="sp-friends-reel-wrap sp-hidden">
     <div class="sp-friends-section">
+
+    <!-- ═══ BUSCAR AMIGO (nome ou e-mail) ═══ -->
+    <div class="sp-friends-bar sp-user-search-bar">
+      <div class="sp-user-search-wrap">
+        <input type="text"
+               id="sp-user-search-input"
+               class="sp-user-search-input"
+               placeholder="🔍 Buscar amigo por nome ou e-mail"
+               autocomplete="off"
+               inputmode="search"
+               aria-label="Buscar amigo por nome ou e-mail">
+        <button type="button" class="sp-user-search-clear sp-hidden" id="sp-user-search-clear"
+                onclick="spUserSearchClear()" aria-label="Limpar busca">×</button>
+      </div>
+      <div id="sp-user-search-results" class="sp-user-search-results sp-hidden"></div>
+    </div>
+
     <!-- ═══ SOLICITAÇÕES RECEBIDAS (no topo!) ═══ -->
     {% if pending_friend_requests %}
     <div class="sp-friends-bar" id="sp-friend-pills">
@@ -1070,6 +1087,100 @@ window._spBtnIdle = function(btn){
   btn.removeAttribute('aria-busy');
   if(btn.tagName === 'BUTTON' || btn.tagName === 'INPUT') btn.disabled = false;
 };
+
+/* ════════════════════════════════════════════
+   BUSCA DE USUÁRIOS (Amigos: nome ou e-mail)
+   ════════════════════════════════════════════ */
+(function(){
+  var input = document.getElementById('sp-user-search-input');
+  if(!input) return;
+  var results = document.getElementById('sp-user-search-results');
+  var clearBtn = document.getElementById('sp-user-search-clear');
+  var debounceTimer = null;
+  var lastQuery = '';
+  var inflightController = null;
+
+  function _esc(s){
+    var d = document.createElement('div');
+    d.textContent = s == null ? '' : String(s);
+    return d.innerHTML;
+  }
+
+  function _renderState(html){
+    results.innerHTML = html;
+    results.classList.remove('sp-hidden');
+  }
+
+  function _renderResults(list){
+    if(!list.length){
+      _renderState('<div class="sp-user-search-empty">Nenhum usuário encontrado.</div>');
+      return;
+    }
+    var html = '';
+    list.forEach(function(u){
+      var avHtml = u.avatar
+        ? '<img src="'+_esc(u.avatar)+'" class="sp-user-search-av" alt="">'
+        : '<span class="sp-user-search-av sp-user-search-av-fb">'+_esc((u.name||'?').charAt(0).toUpperCase())+'</span>';
+      var meta = '';
+      if(u.handle) meta += '@'+_esc(u.handle);
+      if(u.unit){
+        if(meta) meta += ' · ';
+        meta += _esc(u.unit);
+      }
+      if(!meta && u.email) meta = _esc(u.email);
+      html += '<a class="sp-user-search-item" href="/social/'+u.id+'/">'
+        + avHtml
+        + '<div class="sp-user-search-info">'
+          + '<div class="sp-user-search-name">'+_esc(u.name || u.email || 'Usuário')+'</div>'
+          + (meta ? '<div class="sp-user-search-meta">'+meta+'</div>' : '')
+        + '</div>'
+        + '<span class="sp-user-search-arrow">›</span>'
+        + '</a>';
+    });
+    _renderState(html);
+  }
+
+  function _doSearch(q){
+    if(inflightController){ try{ inflightController.abort(); }catch(e){} }
+    inflightController = ('AbortController' in window) ? new AbortController() : null;
+    var opts = inflightController ? {signal: inflightController.signal} : {};
+    fetch('{% url "boards:social_user_search" %}?q=' + encodeURIComponent(q), opts)
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        /* Confere se ainda é a query mais recente — descarta resposta antiga. */
+        if(q !== lastQuery) return;
+        _renderResults((d && d.results) || []);
+      })
+      .catch(function(err){
+        if(err && err.name === 'AbortError') return;
+        if(q !== lastQuery) return;
+        _renderState('<div class="sp-user-search-empty">Erro ao buscar. Tente de novo.</div>');
+      });
+  }
+
+  input.addEventListener('input', function(){
+    var q = (input.value || '').trim();
+    lastQuery = q;
+    if(clearBtn) clearBtn.classList.toggle('sp-hidden', !q);
+    if(debounceTimer) clearTimeout(debounceTimer);
+    if(q.length < 2){
+      results.classList.add('sp-hidden');
+      results.innerHTML = '';
+      return;
+    }
+    _renderState('<div class="sp-user-search-empty">Buscando…</div>');
+    debounceTimer = setTimeout(function(){ _doSearch(q); }, 250);
+  });
+
+  window.spUserSearchClear = function(){
+    input.value = '';
+    lastQuery = '';
+    results.classList.add('sp-hidden');
+    results.innerHTML = '';
+    if(clearBtn) clearBtn.classList.add('sp-hidden');
+    input.focus();
+  };
+})();
 
 /* ════════════════════════════════════════════
    CHAT UNREAD BADGE
