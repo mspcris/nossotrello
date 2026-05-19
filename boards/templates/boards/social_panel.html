@@ -323,11 +323,11 @@
 
     <!-- ═══ MEUS AMIGOS (amizades aceitas) ═══ -->
     {% if real_friends %}
-    <div class="sp-friends-bar">
+    <div class="sp-friends-bar" id="sp-real-friends-bar">
       <div class="sp-section-title">💜 Meus Amigos</div>
       <div class="sp-friends-scroll-wrap">
         <button type="button" class="sp-scroll-arrow sp-scroll-left sp-hidden" onclick="spScrollRow(this,1)">‹</button>
-        <div class="sp-friends-row">
+        <div class="sp-friends-row" id="sp-real-friends-row">
           {% for friend in real_friends %}
           {% with fp=friend.profile %}
           <button type="button" class="sp-friend-btn" onclick="spOpenFriendSheet({{ friend.id }})"
@@ -3413,12 +3413,44 @@ document.addEventListener('click', function(e){
     }).catch(function(){});
   };
 
+  /* Insere a pílula do novo amigo na barra "💜 Meus Amigos".
+     Se a barra ainda não existe (primeiro amigo), recarrega a página
+     pra renderizar a seção completa via template. Retorna true se inseriu. */
+  function _spInsertNewFriendPill(friend){
+    if(!friend || !friend.id) return false;
+    var row = document.getElementById('sp-real-friends-row');
+    if(!row){
+      try { location.reload(); } catch(e){}
+      return false;
+    }
+    if(row.querySelector('.sp-friend-btn[data-friend-id="'+friend.id+'"]')) return true;
+    var name = (friend.name || '').toString();
+    var initial = (name.charAt(0) || '?').toUpperCase();
+    var avHtml = friend.avatar
+      ? '<img src="'+friend.avatar+'" alt="" class="sp-friend-av-img">'
+      : '<span class="sp-friend-av-fb">'+initial+'</span>';
+    var display = name.length > 12 ? name.slice(0, 12) : name;
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'sp-friend-btn';
+    btn.dataset.friendId = friend.id;
+    btn.title = name;
+    btn.setAttribute('onclick', 'spOpenFriendSheet('+friend.id+')');
+    btn.innerHTML = avHtml + '<span class="sp-friend-name">'+display+'</span>';
+    row.insertBefore(btn, row.firstChild);
+    return true;
+  }
+
   window.spAcceptFriend = function(uid, btn){
     var csrf = document.querySelector('meta[name="csrf-token"]');
     fetch('/social/'+uid+'/friend-accept/', {method:'POST', headers:{'X-CSRFToken': csrf ? csrf.content : ''}})
     .then(function(r){ return r.json(); })
     .then(function(d){
-      if(d.action === 'accepted') btn.replaceWith(Object.assign(document.createElement('span'), {className:'sp-fs-friends-tag', textContent:'💜 Amigos'}));
+      if(d.action === 'accepted'){
+        btn.replaceWith(Object.assign(document.createElement('span'), {className:'sp-fs-friends-tag', textContent:'💜 Amigos'}));
+        if(window._spPillKnownFriends) window._spPillKnownFriends.add(uid);
+        _spInsertNewFriendPill(d.friend);
+      }
     }).catch(function(){});
   };
 
@@ -3594,7 +3626,10 @@ document.addEventListener('click', function(e){
         setTimeout(function(){ card.remove(); }, 300);
       }
       if(window._spPillKnownFriends) window._spPillKnownFriends.add(uid);
-      if(action === 'accept' && typeof _spToast==='function') _spToast('Amizade aceita! 🤝');
+      if(action === 'accept'){
+        if(typeof _spToast==='function') _spToast('Amizade aceita! 🤝');
+        _spInsertNewFriendPill(d.friend);
+      }
     }).catch(function(e){ alert('Erro: ' + e.message); });
   };
 

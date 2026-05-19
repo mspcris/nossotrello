@@ -2076,7 +2076,26 @@ def social_friend_accept(request, user_id: int):
         visibility="all",
     )
 
-    return JsonResponse({"action": "accepted"})
+    # Avatar URL: upload > avatar_choice estático > vazio (fallback iniciais no front).
+    avatar_url = ""
+    if friend_prof:
+        if getattr(friend_prof, "avatar", None):
+            try:
+                avatar_url = friend_prof.avatar.url
+            except Exception:
+                avatar_url = ""
+        if not avatar_url and getattr(friend_prof, "avatar_choice", ""):
+            from django.templatetags.static import static
+            avatar_url = static(f"images/avatar/{friend_prof.avatar_choice}")
+
+    return JsonResponse({
+        "action": "accepted",
+        "friend": {
+            "id": fs.requester_id,
+            "name": friend_name,
+            "avatar": avatar_url,
+        },
+    })
 
 
 @login_required
