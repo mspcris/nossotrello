@@ -1,0 +1,174 @@
+{# Renderiza um único post do feed do perfil. Inclui via {% include %}
+   tanto em social_feed_block.html quanto no endpoint de "carregar mais". #}
+{% load static %}
+<div class="sp-post" id="sp-post-{{ post.id }}" data-post-id="{{ post.id }}">
+  {% if post.is_repost and post.original_author %}
+    <div style="font-size:.8rem;color:#6b7280;margin-bottom:6px;padding:0 4px">
+      🔄 Compartilhou de <a href="/social/{{ post.original_user_id }}/" style="color:#2563eb;font-weight:600;text-decoration:none">{{ post.original_author }}</a>
+    </div>
+  {% endif %}
+  {% if post.is_card_like and post.card_like_data %}
+    {# Post de curtida em card → preview clicável #}
+    <a class="sp-cardlike" href="/board/{{ post.card_like_data.board_id }}/?card={{ post.card_like_data.card_id }}" rel="noopener">
+      {% if post.photo %}
+        <div class="sp-cardlike-media"><img src="{{ post.photo.url }}" alt="" loading="lazy"></div>
+      {% else %}
+        <div class="sp-cardlike-media sp-cardlike-media-placeholder">📋</div>
+      {% endif %}
+      <div class="sp-cardlike-body">
+        <div class="sp-cardlike-head">👍 {{ post.card_like_data.user_name }} curtiu um card</div>
+        <div class="sp-cardlike-title">{{ post.card_like_data.card_title }}</div>
+        {% if post.card_like_data.board_name %}
+          <div class="sp-cardlike-board">📋 {{ post.card_like_data.board_name }}</div>
+        {% endif %}
+        <div class="sp-cardlike-cta">Abrir card →</div>
+      </div>
+    </a>
+  {% elif post.is_friendship and post.friendship_data %}
+    <div class="sp-friendship-card" style="background:linear-gradient(135deg,#7c3aed,#a78bfa 40%,#c4b5fd 70%,#e9d5ff)">
+      <div class="sp-friendship-bg">🤝</div>
+      <div class="sp-friendship-avatars">
+        <a href="/social/{{ post.user_id }}/">
+          {% if post.friendship_data.user_avatar %}
+            <img src="{{ post.friendship_data.user_avatar }}" class="sp-friendship-av">
+          {% elif post.friendship_data.user_avatar_choice %}
+            <img src="{% static 'images/avatar/' %}{{ post.friendship_data.user_avatar_choice }}" class="sp-friendship-av">
+          {% else %}
+            <span class="sp-friendship-av sp-friendship-av-fb">{{ post.friendship_data.user_name|first|upper }}</span>
+          {% endif %}
+        </a>
+        <span class="sp-friendship-heart">❤️</span>
+        <a href="/social/{{ post.friendship_data.friend_id }}/">
+          {% if post.friendship_data.friend_avatar %}
+            <img src="{{ post.friendship_data.friend_avatar }}" class="sp-friendship-av">
+          {% elif post.friendship_data.friend_avatar_choice %}
+            <img src="{% static 'images/avatar/' %}{{ post.friendship_data.friend_avatar_choice }}" class="sp-friendship-av">
+          {% else %}
+            <span class="sp-friendship-av sp-friendship-av-fb">{{ post.friendship_data.friend_name|first|upper }}</span>
+          {% endif %}
+        </a>
+      </div>
+      <div class="sp-friendship-names">{{ post.friendship_data.user_name }} e {{ post.friendship_data.friend_name }}</div>
+      <div class="sp-friendship-label">agora são amigos!</div>
+    </div>
+  {% elif post.video %}
+    <video src="{{ post.video.url }}" class="sp-post-media" controls preload="auto" playsinline></video>
+  {% elif post.photo %}
+    <img src="{{ post.photo.url }}" alt="" class="sp-post-media" loading="lazy">
+  {% elif post.sticker_url %}
+    {% if ".mp4" in post.sticker_url %}
+      <video src="{{ post.sticker_url }}" class="sp-post-media" autoplay loop muted playsinline></video>
+    {% else %}
+      <img src="{{ post.sticker_url }}" alt="Figurinha" class="sp-post-media" loading="lazy" style="object-fit:contain;background:#f9fafb">
+    {% endif %}
+  {% elif post.gif_url %}
+    <img src="{{ post.gif_url }}" alt="GIF" class="sp-post-media" loading="lazy">
+  {% endif %}
+  {% if post.text and not post.is_friendship and not post.is_card_like %}
+    {% if post.text_style %}
+      <div class="sp-styled-text" data-effect="{{ post.text_style.effect }}"
+           style="min-height:180px;display:flex;align-items:center;justify-content:center;border-radius:12px;padding:24px 20px;font-size:1.4rem;font-weight:700;text-align:center;word-break:break-word;line-height:1.4;margin-bottom:8px;background:{{ post.text_style.bg }};color:{{ post.text_style.color }}">
+        <span class="sp-styled-text-inner">{{ post.text|linebreaksbr }}</span>
+      </div>
+    {% else %}
+      <p class="sp-post-text">{{ post.text|urlize|linebreaksbr }}</p>
+    {% endif %}
+  {% endif %}
+
+  <!-- Reactions -->
+  <div class="sp-reactions" id="sp-reactions-{{ post.id }}" data-post-reactions data-post-id="{{ post.id }}">
+    <button type="button" class="sp-react-btn {% if post.my_reaction == 'like' %}active{% endif %}"
+            data-reaction="like" onclick="spReact({{ post.id }},'like')">
+      👍{% if post.reaction_counts.like %}<span class="sp-react-count">{{ post.reaction_counts.like }}</span>{% endif %}
+    </button>
+    <button type="button" class="sp-react-btn {% if post.my_reaction == 'love' %}active{% endif %}"
+            data-reaction="love" onclick="spReact({{ post.id }},'love')">
+      ❤️{% if post.reaction_counts.love %}<span class="sp-react-count">{{ post.reaction_counts.love }}</span>{% endif %}
+    </button>
+    <button type="button" class="sp-react-btn {% if post.my_reaction == 'haha' %}active{% endif %}"
+            data-reaction="haha" onclick="spReact({{ post.id }},'haha')">
+      😂{% if post.reaction_counts.haha %}<span class="sp-react-count">{{ post.reaction_counts.haha }}</span>{% endif %}
+    </button>
+    <button type="button" class="sp-react-btn {% if post.my_reaction == 'fire' %}active{% endif %}"
+            data-reaction="fire" onclick="spReact({{ post.id }},'fire')">
+      🔥{% if post.reaction_counts.fire %}<span class="sp-react-count">{{ post.reaction_counts.fire }}</span>{% endif %}
+    </button>
+    <button type="button" class="sp-react-btn {% if post.my_reaction == 'clap' %}active{% endif %}"
+            data-reaction="clap" onclick="spReact({{ post.id }},'clap')">
+      👏{% if post.reaction_counts.clap %}<span class="sp-react-count">{{ post.reaction_counts.clap }}</span>{% endif %}
+    </button>
+    {% for emoji, count in post.custom_reactions.items %}
+    <button type="button" class="sp-react-btn {% if post.my_reaction == emoji %}active{% endif %}"
+            data-reaction="{{ emoji }}" onclick="spReact({{ post.id }},'{{ emoji }}')">
+      {{ emoji }}<span class="sp-react-count">{{ count }}</span>
+    </button>
+    {% endfor %}
+    <button type="button" class="sp-react-btn sp-react-more" onclick="spReactMore({{ post.id }},this)">+</button>
+  </div>
+
+  <!-- Comments -->
+  <div class="sp-comments-section">
+    <div class="sp-comments-list {% if not post.comment_list %}sp-hidden{% endif %}" id="sp-comments-{{ post.id }}">
+      {% for c in post.comment_list %}
+      <div class="sp-comment{% if c.reply_to_id %} sp-reply-comment{% endif %}" id="sp-comment-{{ c.id }}">
+        {% if c.reply_to_id %}<span class="sp-reply-indicator">↩</span>{% endif %}
+        <span class="sp-comment-author">{{ c.user.profile.display_name|default:c.user.email }}</span>
+        <span class="sp-comment-text">{{ c.text|urlize|linebreaksbr }}</span>
+        <span class="sp-comment-time">{{ c.created_at|date:"d/m H:i" }}</span>
+        <span class="sp-comment-reactions" id="sp-creact-{{ c.id }}"></span>
+        <button type="button" class="sp-comment-react-btn" onclick="spToggleCommentReactions({{ c.id }}, this)" title="Reagir">😊</button>
+        <button type="button" class="sp-reply-btn"
+                onclick="spShowReply({{ c.id }}, '{{ c.user.profile.display_name|default:c.user.email|escapejs }}', {{ post.id }})">↩</button>
+      </div>
+      <div class="sp-reply-form sp-hidden" id="sp-reply-form-{{ c.id }}">
+        <input type="text" id="sp-reply-input-{{ c.id }}" class="sp-comment-input sp-reply-input"
+               maxlength="500"
+               onkeydown="if(event.key==='Enter')spSendReply({{ c.id }}, {{ post.id }})">
+        <button type="button" class="sp-comment-send" onclick="spSendReply({{ c.id }}, {{ post.id }})">➤</button>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="sp-comment-form">
+      <input type="text" class="sp-comment-input" id="sp-comment-input-{{ post.id }}"
+             placeholder="Escreva um comentário..."
+             maxlength="500"
+             onkeydown="if(event.key==='Enter')spComment({{ post.id }})">
+      <button type="button" class="sp-comment-send" onclick="spComment({{ post.id }})">➤</button>
+    </div>
+  </div>
+
+  <div class="sp-post-footer">
+    <span>{{ post.created_at|date:"d/m/Y H:i" }}</span>
+    {% if post.view_count %}
+    <span class="sp-view-count sp-stat-btn" data-post-id="{{ post.id }}"
+          onclick="spShowViewers({{ post.id }})">
+      👁 {{ post.view_count }}
+    </span>
+    {% endif %}
+    {% if post.reach_count %}
+    <span class="sp-reach-count sp-stat-btn" data-post-id="{{ post.id }}"
+          onclick="spShowReach({{ post.id }})">
+      📡 {{ post.reach_count }}
+    </span>
+    {% endif %}
+    {% if is_me %}
+    <button type="button" class="sp-vis-post-btn" id="sp-vis-post-{{ post.id }}"
+            onclick="spTogglePostVis({{ post.id }})"
+            title="{% if post.visibility == 'friends' %}Apenas amigos{% else %}Todos{% endif %}">
+      {% if post.visibility == "friends" %}🔒{% else %}🌍{% endif %}
+    </button>
+    {% if not post.is_friendship %}
+    <button type="button" class="sp-post-edit-btn"
+            onclick="spEditPostFeed({{ post.id }},this)">✏️ Editar</button>
+    {% endif %}
+    <button type="button" class="sp-post-delete"
+            hx-post="{% url 'boards:social_post_delete' post.id %}"
+            hx-target="#social-panel" hx-swap="outerHTML"
+            hx-confirm="Excluir?">Excluir</button>
+    {% else %}
+      {% if post.visibility == "friends" %}<span class="sp-vis-badge" title="Apenas amigos">🔒</span>{% endif %}
+    {% endif %}
+    <button type="button" class="sp-post-share-btn"
+            onclick="spSharePost({{ post.id }}{% if is_me %}, true{% endif %})">↗ Compartilhar</button>
+  </div>
+</div>

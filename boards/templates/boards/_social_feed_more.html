@@ -1,0 +1,11 @@
+{# Fragmento devolvido pelo endpoint social_posts_more: nova leva de
+   posts + (opcional) botão "Ver mais" novo com o cursor atualizado. #}
+{% for post in posts %}{% include "boards/_social_post_item.html" %}{% endfor %}
+{% if feed_has_more and feed_oldest_id %}
+<button type="button"
+        id="sp-feed-load-more"
+        class="sp-feed-load-more"
+        data-user-id="{{ target_user.id }}"
+        data-before="{{ feed_oldest_id }}"
+        onclick="spFeedLoadMore(this)">Ver mais publicações</button>
+{% endif %}

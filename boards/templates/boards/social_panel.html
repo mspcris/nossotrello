@@ -1093,6 +1093,38 @@ var _CAMILA_AVATARS = {
   blizzard:      "{% static 'images/avatar/camila_blizzard.png' %}",      /* nevasca — parka com capuz 🌨️ */
 };
 
+/* Carrega a próxima leva (30 posts) no feed do perfil. */
+window.spFeedLoadMore = function(btn){
+  if(!btn) return;
+  var uid = btn.dataset.userId;
+  var before = btn.dataset.before;
+  if(!uid || !before) return;
+  if(window._spBtnBusy) window._spBtnBusy(btn);
+  fetch('/social/' + encodeURIComponent(uid) + '/posts/more/?before=' + encodeURIComponent(before))
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      var html = (d && d.html) || '';
+      var list = document.getElementById('sp-feed-list');
+      var tmp = document.createElement('div');
+      tmp.innerHTML = html;
+      /* Separa: posts vão pro fim da lista; novo botão substitui o atual. */
+      var newBtn = tmp.querySelector('#sp-feed-load-more');
+      if(list){
+        while(tmp.firstChild && tmp.firstChild !== newBtn){
+          list.appendChild(tmp.firstChild);
+        }
+      }
+      var oldBtn = document.getElementById('sp-feed-load-more');
+      if(oldBtn){
+        if(newBtn) oldBtn.parentNode.replaceChild(newBtn, oldBtn);
+        else oldBtn.remove();
+      }
+    })
+    .catch(function(){
+      if(window._spBtnIdle) window._spBtnIdle(btn);
+    });
+};
+
 /* Alterna o colapso de uma seção (Meus Amigos / Convites / Sugestões).
    Mostra só as 4 primeiras linhas (16 itens com grid de 4 col) por padrão;
    no clique expande pra mostrar tudo e troca o label. */

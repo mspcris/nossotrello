@@ -2526,6 +2526,23 @@ video.sp-post-media {
   transition: background-color .12s;
 }
 .sp-row-toggle-btn:hover { background: #faf5ff; }
+
+/* Botão "Ver mais publicações" no fim do feed do perfil. */
+.sp-feed-load-more {
+  display: block;
+  width: calc(100% - 16px);
+  margin: 12px auto;
+  padding: 12px 16px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #7c3aed;
+  cursor: pointer;
+  transition: background-color .12s, border-color .12s;
+}
+.sp-feed-load-more:hover { background: #faf5ff; border-color: #ddd6fe; }
 .sp-friend-btn {
   display: flex;
   flex-direction: column;

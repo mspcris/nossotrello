@@ -153,6 +153,134 @@ def _get_today_tasks(user):
     return cards
 
 
+def _annotate_profile_posts(posts, viewer):
+    """Anexa atributos de UI a cada SocialPost (reactions, comments, repost
+    info, friendship/card_like flags etc.) usados pelo partial
+    boards/_social_post_item.html. Mutates `posts` in place."""
+    if not posts:
+        return
+
+    post_ids = [p.id for p in posts]
+
+    reactions_by_post = defaultdict(list)
+    for r in SocialPostReaction.objects.filter(post_id__in=post_ids).select_related("user"):
+        reactions_by_post[r.post_id].append(r)
+
+    comments_by_post = defaultdict(list)
+    for c in (
+        SocialPostComment.objects
+        .filter(post_id__in=post_ids)
+        .select_related("user")
+        .order_by("created_at")
+    ):
+        comments_by_post[c.post_id].append(c)
+
+    view_counts = dict(
+        SocialPostView.objects
+        .filter(post_id__in=post_ids, source="profile")
+        .values_list("post_id")
+        .annotate(cnt=models.Count("id"))
+    )
+    reach_counts = dict(
+        SocialPostView.objects
+        .filter(post_id__in=post_ids, source="feed")
+        .values_list("post_id")
+        .annotate(cnt=models.Count("id"))
+    )
+
+    preset_keys = set(dict(SocialPostReaction.REACTION_CHOICES).keys())
+
+    for post in posts:
+        post_reactions = reactions_by_post.get(post.id, [])
+        post.reaction_counts = dict(Counter(r.reaction for r in post_reactions))
+        post.total_reactions = len(post_reactions)
+        post.my_reaction = next(
+            (r.reaction for r in post_reactions if r.user_id == viewer.id), None
+        )
+        post.custom_reactions = {
+            k: v for k, v in post.reaction_counts.items() if k not in preset_keys
+        }
+        post.comment_list = comments_by_post.get(post.id, [])
+        post.comment_count = len(post.comment_list)
+        post.view_count = view_counts.get(post.id, 0)
+        post.reach_count = reach_counts.get(post.id, 0)
+
+        post.is_repost = False
+        post.original_author = None
+        if post.shared_from_id:
+            post.is_repost = True
+            try:
+                orig = SocialPost.objects.select_related("user__profile").get(
+                    id=post.shared_from_id, is_active=True
+                )
+                orig_prof = getattr(orig.user, "profile", None)
+                post.original_author = orig_prof.display_name if orig_prof else orig.user.get_full_name()
+                post.original_user_id = orig.user_id
+                if not post.text and orig.text:
+                    post.text = orig.text
+                if not post.photo and orig.photo:
+                    post.photo = orig.photo
+                if not post.video and orig.video:
+                    post.video = orig.video
+                if not post.gif_url and orig.gif_url:
+                    post.gif_url = orig.gif_url
+                if not post.sticker_url and orig.sticker_url:
+                    post.sticker_url = orig.sticker_url
+                if not post.text_style and orig.text_style:
+                    post.text_style = orig.text_style
+            except SocialPost.DoesNotExist:
+                pass
+
+        post.is_friendship = False
+        post.friendship_data = None
+        if post.text.startswith("__friendship__:"):
+            post.is_friendship = True
+            try:
+                friend_uid = int(post.text.split(":")[1])
+                friend_user = User.objects.select_related("profile").get(id=friend_uid)
+                friend_prof = getattr(friend_user, "profile", None)
+                post_prof = getattr(post.user, "profile", None)
+                post.friendship_data = {
+                    "friend_name": friend_prof.display_name if friend_prof else friend_user.get_full_name(),
+                    "friend_avatar": friend_prof.avatar.url if friend_prof and friend_prof.avatar else "",
+                    "friend_avatar_choice": friend_prof.avatar_choice if friend_prof else "",
+                    "friend_id": friend_uid,
+                    "user_name": post_prof.display_name if post_prof else post.user.get_full_name(),
+                    "user_avatar": post_prof.avatar.url if post_prof and post_prof.avatar else "",
+                    "user_avatar_choice": post_prof.avatar_choice if post_prof else "",
+                }
+            except Exception:
+                pass
+
+        post.is_card_like = False
+        post.card_like_data = None
+        if post.text.startswith("__card_like__:"):
+            post.is_card_like = True
+            try:
+                cid = int(post.text.split(":", 1)[1])
+                c = (
+                    Card.objects
+                    .select_related("column__board")
+                    .get(id=cid, is_deleted=False)
+                )
+                post_prof = getattr(post.user, "profile", None)
+                post.card_like_data = {
+                    "card_id": c.id,
+                    "card_title": c.title,
+                    "board_id": c.column.board_id,
+                    "board_name": c.column.board.name,
+                    "user_name": post_prof.display_name if post_prof else post.user.get_full_name(),
+                }
+            except Exception:
+                post.card_like_data = {
+                    "card_id": 0,
+                    "card_title": "(card indisponível)",
+                    "board_id": 0,
+                    "board_name": "",
+                    "user_name": post.user.get_full_name() or post.user.username,
+                }
+
+
 def _build_social_context(request, target_user, extra=None):
     is_me = request.user.id == target_user.id
     prof = _get_or_create_profile(target_user)
@@ -181,136 +309,12 @@ def _build_social_context(request, target_user, extra=None):
         ).exists()
         if not is_friend:
             posts_qs = posts_qs.exclude(visibility="friends")
-    posts = list(posts_qs[:30])
+    PAGE_SIZE = 30
+    posts_plus_one = list(posts_qs[: PAGE_SIZE + 1])
+    feed_has_more = len(posts_plus_one) > PAGE_SIZE
+    posts = posts_plus_one[:PAGE_SIZE]
 
-    if posts:
-        post_ids = [p.id for p in posts]
-
-        # Prefetch reactions
-        reactions_by_post = defaultdict(list)
-        for r in SocialPostReaction.objects.filter(post_id__in=post_ids).select_related("user"):
-            reactions_by_post[r.post_id].append(r)
-
-        # Prefetch comments
-        comments_by_post = defaultdict(list)
-        for c in (
-            SocialPostComment.objects
-            .filter(post_id__in=post_ids)
-            .select_related("user")
-            .order_by("created_at")
-        ):
-            comments_by_post[c.post_id].append(c)
-
-        # Prefetch view counts (perfil)
-        view_counts = dict(
-            SocialPostView.objects
-            .filter(post_id__in=post_ids, source="profile")
-            .values_list("post_id")
-            .annotate(cnt=models.Count("id"))
-        )
-        # Prefetch reach counts (feed)
-        reach_counts = dict(
-            SocialPostView.objects
-            .filter(post_id__in=post_ids, source="feed")
-            .values_list("post_id")
-            .annotate(cnt=models.Count("id"))
-        )
-
-        # Annotate each post
-        for post in posts:
-            post_reactions = reactions_by_post.get(post.id, [])
-            post.reaction_counts = dict(Counter(r.reaction for r in post_reactions))
-            post.total_reactions = len(post_reactions)
-            post.my_reaction = next(
-                (r.reaction for r in post_reactions if r.user_id == request.user.id), None
-            )
-            # Custom reactions (not in the 5 presets)
-            preset_keys = set(dict(SocialPostReaction.REACTION_CHOICES).keys())
-            post.custom_reactions = {
-                k: v for k, v in post.reaction_counts.items() if k not in preset_keys
-            }
-            post.comment_list = comments_by_post.get(post.id, [])
-            post.comment_count = len(post.comment_list)
-            post.view_count = view_counts.get(post.id, 0)
-            post.reach_count = reach_counts.get(post.id, 0)
-
-            # Repost: herda conteúdo do post original
-            post.is_repost = False
-            post.original_author = None
-            if post.shared_from_id:
-                post.is_repost = True
-                try:
-                    orig = SocialPost.objects.select_related("user__profile").get(id=post.shared_from_id, is_active=True)
-                    orig_prof = getattr(orig.user, "profile", None)
-                    post.original_author = orig_prof.display_name if orig_prof else orig.user.get_full_name()
-                    post.original_user_id = orig.user_id
-                    # Herda mídia/texto do original se o repost está vazio
-                    if not post.text and orig.text:
-                        post.text = orig.text
-                    if not post.photo and orig.photo:
-                        post.photo = orig.photo
-                    if not post.video and orig.video:
-                        post.video = orig.video
-                    if not post.gif_url and orig.gif_url:
-                        post.gif_url = orig.gif_url
-                    if not post.sticker_url and orig.sticker_url:
-                        post.sticker_url = orig.sticker_url
-                    if not post.text_style and orig.text_style:
-                        post.text_style = orig.text_style
-                except SocialPost.DoesNotExist:
-                    pass
-
-            # Friendship post annotation
-            post.is_friendship = False
-            post.friendship_data = None
-            if post.text.startswith("__friendship__:"):
-                post.is_friendship = True
-                try:
-                    friend_uid = int(post.text.split(":")[1])
-                    friend_user = User.objects.select_related("profile").get(id=friend_uid)
-                    friend_prof = getattr(friend_user, "profile", None)
-                    post_prof = getattr(post.user, "profile", None)
-                    post.friendship_data = {
-                        "friend_name": friend_prof.display_name if friend_prof else friend_user.get_full_name(),
-                        "friend_avatar": friend_prof.avatar.url if friend_prof and friend_prof.avatar else "",
-                        "friend_avatar_choice": friend_prof.avatar_choice if friend_prof else "",
-                        "friend_id": friend_uid,
-                        "user_name": post_prof.display_name if post_prof else post.user.get_full_name(),
-                        "user_avatar": post_prof.avatar.url if post_prof and post_prof.avatar else "",
-                        "user_avatar_choice": post_prof.avatar_choice if post_prof else "",
-                    }
-                except Exception:
-                    pass
-
-            # Card-like post annotation
-            post.is_card_like = False
-            post.card_like_data = None
-            if post.text.startswith("__card_like__:"):
-                post.is_card_like = True
-                try:
-                    cid = int(post.text.split(":", 1)[1])
-                    c = (
-                        Card.objects
-                        .select_related("column__board")
-                        .get(id=cid, is_deleted=False)
-                    )
-                    post_prof = getattr(post.user, "profile", None)
-                    post.card_like_data = {
-                        "card_id": c.id,
-                        "card_title": c.title,
-                        "board_id": c.column.board_id,
-                        "board_name": c.column.board.name,
-                        "user_name": post_prof.display_name if post_prof else post.user.get_full_name(),
-                    }
-                except Exception:
-                    # Card apagado ou sem acesso — exibe fallback simples
-                    post.card_like_data = {
-                        "card_id": 0,
-                        "card_title": "(card indisponível)",
-                        "board_id": 0,
-                        "board_name": "",
-                        "user_name": post.user.get_full_name() or post.user.username,
-                    }
+    _annotate_profile_posts(posts, request.user)
 
     # Marca visto
     if not is_me and posts:
@@ -469,6 +473,8 @@ def _build_social_context(request, target_user, extra=None):
         "target_user": target_user,
         "profile": prof,
         "posts": posts,
+        "feed_has_more": feed_has_more,
+        "feed_oldest_id": posts[-1].id if posts else None,
         "is_me": is_me,
         "checkin": checkin,
         "latest_checkin": latest_checkin,
@@ -3234,6 +3240,58 @@ def chat_conversation_action(request, conv_id: int):
         return JsonResponse({"error": "Ação inválida."}, status=400)
 
     return JsonResponse({"ok": True})
+
+
+# ---------------------------------------------------------------
+# Paginação do feed de perfil — "Ver mais publicações" (GET ?before=<id>)
+# Devolve HTML fragmentado com os próximos 30 posts + (opcional) novo
+# botão "Ver mais" com o próximo cursor.
+# ---------------------------------------------------------------
+@login_required
+def social_posts_more(request, user_id: int):
+    target_user = get_object_or_404(User, id=user_id)
+    if not _can_see_social(request, target_user):
+        return JsonResponse({"error": "forbidden"}, status=403)
+
+    try:
+        before_id = int(request.GET.get("before") or 0)
+    except (TypeError, ValueError):
+        before_id = 0
+    if before_id <= 0:
+        return JsonResponse({"error": "invalid before"}, status=400)
+
+    is_me = request.user.id == target_user.id
+
+    qs = SocialPost.objects.filter(
+        user=target_user, is_active=True, id__lt=before_id
+    ).order_by("-created_at")
+    if not is_me:
+        is_friend = SocialFriendship.objects.filter(
+            models.Q(requester=request.user, receiver=target_user, status="accepted")
+            | models.Q(requester=target_user, receiver=request.user, status="accepted")
+        ).exists()
+        if not is_friend:
+            qs = qs.exclude(visibility="friends")
+
+    PAGE_SIZE = 30
+    posts_plus_one = list(qs[: PAGE_SIZE + 1])
+    feed_has_more = len(posts_plus_one) > PAGE_SIZE
+    posts = posts_plus_one[:PAGE_SIZE]
+
+    _annotate_profile_posts(posts, request.user)
+
+    html = render(
+        request,
+        "boards/_social_feed_more.html",
+        {
+            "posts": posts,
+            "is_me": is_me,
+            "target_user": target_user,
+            "feed_has_more": feed_has_more,
+            "feed_oldest_id": posts[-1].id if posts else None,
+        },
+    ).content.decode("utf-8")
+    return JsonResponse({"html": html})
 
 
 # ---------------------------------------------------------------
