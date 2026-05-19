@@ -13,6 +13,7 @@ _ALWAYS_FREE = [
     "/auth/camim/",   # OAuth2 IDCamim (login + callback)
     "/api/",          # API mobile (auth via Token, não via session)
     "/media/serve/",  # arquivos públicos servidos do banco (StoredFile)
+    "/500/",          # página de teste de erro 500 (handler500 também usa o template)
 ]
 
 

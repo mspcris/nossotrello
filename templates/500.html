@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Erro 500 - Servidor em manutenção</title>
+  <style>
+    :root {
+      --bg: #070b1d;
+      --panel: #111a3a;
+      --panel-2: #18265a;
+      --line: #2d7dff;
+      --accent: #ffd23f;
+      --danger: #ff4d6d;
+      --ok: #44e28a;
+      --text: #f6f7ff;
+      --muted: #aab4df;
+      --shadow: rgba(0, 0, 0, .35);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 20% 20%, rgba(52, 104, 255, .25), transparent 32%),
+        radial-gradient(circle at 80% 10%, rgba(255, 77, 109, .18), transparent 28%),
+        radial-gradient(circle at 80% 90%, rgba(255, 210, 63, .12), transparent 28%),
+        linear-gradient(135deg, #050716 0%, #0a1233 48%, #050716 100%);
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        radial-gradient(circle, rgba(255,255,255,.22) 1px, transparent 1.5px),
+        radial-gradient(circle, rgba(255,210,63,.4) 1px, transparent 1.5px);
+      background-size: 90px 90px, 140px 140px;
+      opacity: .35;
+      animation: stars 18s linear infinite;
+    }
+
+    @keyframes stars {
+      from { transform: translateY(0); }
+      to { transform: translateY(90px); }
+    }
+
+    .error-code {
+      position: fixed;
+      top: 22px;
+      right: 28px;
+      z-index: 20;
+      font-size: clamp(42px, 8vw, 118px);
+      line-height: .8;
+      font-weight: 1000;
+      color: #fff;
+      text-shadow:
+        0 0 0 #1e2b68,
+        4px 4px 0 #1e2b68,
+        9px 9px 0 rgba(45,125,255,.4),
+        0 0 28px rgba(255,255,255,.25);
+      letter-spacing: -5px;
+    }
+
+    .wrap {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 44px 0 34px;
+      position: relative;
+      z-index: 2;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 26px;
+    }
+
+    .bot-logo {
+      width: 50px;
+      height: 50px;
+      border-radius: 16px;
+      background: linear-gradient(145deg, #2d7dff, #8a5cff);
+      display: grid;
+      place-items: center;
+      box-shadow: 0 12px 30px var(--shadow);
+      border: 1px solid rgba(255,255,255,.18);
+    }
+
+    .bot-logo::before {
+      content: "🤖";
+      font-size: 28px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: clamp(22px, 3vw, 34px);
+      letter-spacing: -.02em;
+    }
+
+    .brand p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(320px, 1.2fr) minmax(300px, .8fr);
+      gap: 28px;
+      align-items: center;
+    }
+
+    .arcade {
+      border-radius: 34px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.08), transparent 16%),
+        linear-gradient(145deg, #151b3c, #080d22);
+      border: 2px solid rgba(255,255,255,.15);
+      padding: 18px;
+      box-shadow:
+        0 28px 70px rgba(0,0,0,.45),
+        inset 0 0 0 2px rgba(45,125,255,.14);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .arcade::before,
+    .arcade::after {
+      content: "";
+      position: absolute;
+      border-radius: 999px;
+      filter: blur(2px);
+      opacity: .8;
+      pointer-events: none;
+    }
+
+    .arcade::before {
+      width: 150px;
+      height: 150px;
+      left: -50px;
+      top: -50px;
+      background: rgba(45,125,255,.24);
+    }
+
+    .arcade::after {
+      width: 130px;
+      height: 130px;
+      right: -45px;
+      bottom: -45px;
+      background: rgba(255,77,109,.18);
+    }
+
+    .marquee {
+      position: relative;
+      z-index: 2;
+      height: 62px;
+      border-radius: 20px;
+      background: #050817;
+      border: 1px solid rgba(45,125,255,.5);
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 12px;
+      padding: 0 18px;
+      color: var(--accent);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      text-shadow: 0 0 12px rgba(255,210,63,.5);
+      margin-bottom: 14px;
+    }
+
+    .marquee span:nth-child(2) {
+      font-size: clamp(20px, 3vw, 32px);
+      font-weight: 900;
+      letter-spacing: 2px;
+      white-space: nowrap;
+    }
+
+    .hud {
+      color: #67c7ff;
+      font-weight: 800;
+      text-align: right;
+      font-size: 15px;
+    }
+
+    .life {
+      color: var(--danger);
+      font-weight: 900;
+      font-size: 18px;
+    }
+
+    .game-shell {
+      position: relative;
+      z-index: 2;
+      border-radius: 22px;
+      background: #030612;
+      border: 2px solid rgba(45,125,255,.65);
+      padding: 10px;
+      box-shadow: inset 0 0 22px rgba(45,125,255,.16);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      image-rendering: pixelated;
+      border-radius: 14px;
+      background: #050817;
+      outline: none;
+    }
+
+    .controls {
+      position: relative;
+      z-index: 2;
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 16px;
+      align-items: center;
+      border-radius: 20px;
+      background: rgba(5,8,23,.82);
+      border: 1px solid rgba(255,255,255,.12);
+      padding: 14px;
+    }
+
+    .control-pad {
+      display: grid;
+      grid-template-columns: repeat(3, 38px);
+      grid-template-rows: repeat(2, 38px);
+      gap: 6px;
+      justify-content: center;
+    }
+
+    .key {
+      border: 1px solid rgba(255,255,255,.18);
+      background: linear-gradient(180deg, #303a72, #18204d);
+      color: #fff;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+      box-shadow: 0 6px 0 rgba(0,0,0,.25);
+      user-select: none;
+    }
+
+    .key.up { grid-column: 2; }
+    .key.left { grid-column: 1; grid-row: 2; }
+    .key.down { grid-column: 2; grid-row: 2; }
+    .key.right { grid-column: 3; grid-row: 2; }
+
+    .tip {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+      text-align: center;
+    }
+
+    .tip strong {
+      color: var(--accent);
+    }
+
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    button, .home-link {
+      appearance: none;
+      border: 0;
+      border-radius: 14px;
+      padding: 12px 16px;
+      font-weight: 800;
+      cursor: pointer;
+      text-decoration: none;
+      text-align: center;
+      transition: transform .15s ease, filter .15s ease;
+      font-size: 15px;
+    }
+
+    button:hover, .home-link:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.07);
+    }
+
+    .retry {
+      color: #211400;
+      background: linear-gradient(180deg, #ffe478, #ffb928);
+      box-shadow: 0 10px 22px rgba(255,185,40,.18);
+    }
+
+    .home-link {
+      color: #d9e8ff;
+      border: 1px solid rgba(103,199,255,.35);
+      background: rgba(45,125,255,.13);
+    }
+
+    .message {
+      position: relative;
+      min-height: 540px;
+      padding-top: 98px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid rgba(255,77,109,.35);
+      background: rgba(255,77,109,.12);
+      color: #ffd6de;
+      border-radius: 999px;
+      padding: 9px 13px;
+      font-weight: 800;
+      margin-bottom: 18px;
+    }
+
+    .message h2 {
+      margin: 0;
+      font-size: clamp(34px, 5vw, 64px);
+      line-height: .98;
+      letter-spacing: -.04em;
+    }
+
+    .message h2 em {
+      color: var(--danger);
+      font-style: normal;
+    }
+
+    .message p {
+      color: #d8defa;
+      font-size: clamp(16px, 2vw, 20px);
+      line-height: 1.55;
+      max-width: 540px;
+      margin: 22px 0;
+    }
+
+    .status-cards {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 22px;
+      max-width: 520px;
+    }
+
+    .status {
+      border-radius: 18px;
+      background: rgba(8,13,34,.72);
+      border: 1px solid rgba(255,255,255,.12);
+      padding: 14px;
+      box-shadow: 0 14px 28px rgba(0,0,0,.18);
+    }
+
+    .status strong {
+      display: block;
+      color: #fff;
+      margin-bottom: 5px;
+    }
+
+    .status span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .illustrations {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .robot, .server, .plug, .bubble, .planet, .warning {
+      position: absolute;
+      filter: drop-shadow(0 16px 18px rgba(0,0,0,.3));
+    }
+
+    .robot {
+      right: 12px;
+      bottom: 4px;
+      width: 145px;
+      height: 145px;
+      border-radius: 38px;
+      background: linear-gradient(145deg, #eef5ff, #8ca8ff);
+      transform: rotate(-5deg);
+      animation: float 3.8s ease-in-out infinite;
+    }
+
+    .robot::before {
+      content: "";
+      position: absolute;
+      left: 28px;
+      top: 32px;
+      width: 90px;
+      height: 54px;
+      border-radius: 20px;
+      background: #071027;
+      box-shadow: inset 0 0 0 4px rgba(45,125,255,.35);
+    }
+
+    .robot::after {
+      content: "●  ●";
+      position: absolute;
+      left: 49px;
+      top: 44px;
+      font-size: 28px;
+      letter-spacing: 8px;
+      color: #44e28a;
+      text-shadow: 0 0 10px rgba(68,226,138,.8);
+    }
+
+    .server {
+      right: 18px;
+      top: 172px;
+      width: 95px;
+      height: 130px;
+      border-radius: 18px;
+      background: linear-gradient(145deg, #20295b, #080d22);
+      border: 1px solid rgba(255,255,255,.16);
+      animation: tilt 4.5s ease-in-out infinite;
+    }
+
+    .server::before {
+      content: ": )";
+      position: absolute;
+      left: 18px;
+      top: 17px;
+      width: 58px;
+      height: 34px;
+      border-radius: 10px;
+      background: #050817;
+      color: #44e28a;
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+    }
+
+    .server::after {
+      content: "";
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      bottom: 24px;
+      height: 42px;
+      background:
+        radial-gradient(circle, #44e28a 3px, transparent 4px) 0 0 / 18px 18px,
+        linear-gradient(#314083 0 0) 0 50% / 100% 2px no-repeat;
+    }
+
+    .plug {
+      left: 30%;
+      top: 22px;
+      width: 220px;
+      height: 60px;
+      animation: spark 1.5s ease-in-out infinite;
+    }
+
+    .plug::before, .plug::after {
+      content: "";
+      position: absolute;
+      top: 22px;
+      width: 88px;
+      height: 28px;
+      border-radius: 10px;
+      background: linear-gradient(90deg, #2d7dff, #8a5cff);
+      box-shadow: 0 0 18px rgba(45,125,255,.35);
+    }
+
+    .plug::before { left: 0; transform: rotate(8deg); }
+    .plug::after { right: 0; background: linear-gradient(90deg, #ff4d6d, #ffb928); transform: rotate(-8deg); }
+
+    .bubble {
+      right: 152px;
+      bottom: 130px;
+      max-width: 190px;
+      border-radius: 18px;
+      background: rgba(45,125,255,.14);
+      border: 1px solid rgba(103,199,255,.35);
+      color: #dcecff;
+      padding: 14px;
+      font-size: 13px;
+    }
+
+    .warning {
+      left: 8px;
+      top: 90px;
+      border: 1px solid rgba(255,210,63,.35);
+      background: rgba(255,210,63,.11);
+      color: #ffe478;
+      padding: 12px 14px;
+      border-radius: 16px;
+      font-weight: 900;
+      transform: rotate(-3deg);
+    }
+
+    .planet {
+      right: 0;
+      top: 60px;
+      width: 74px;
+      height: 74px;
+      border-radius: 999px;
+      background:
+        radial-gradient(circle at 30% 30%, #fff, #67c7ff 18%, #3050ff 56%, #131a4c 100%);
+      opacity: .7;
+      animation: float 5.5s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%,100% { transform: translateY(0) rotate(-5deg); }
+      50% { transform: translateY(-12px) rotate(4deg); }
+    }
+
+    @keyframes tilt {
+      0%,100% { transform: rotate(4deg); }
+      50% { transform: rotate(-4deg); }
+    }
+
+    @keyframes spark {
+      0%,100% { filter: drop-shadow(0 0 0 rgba(255,210,63,0)); }
+      50% { filter: drop-shadow(0 0 16px rgba(255,210,63,.8)); }
+    }
+
+    .mobile-pad {
+      display: none;
+      grid-template-columns: repeat(3, 58px);
+      grid-template-rows: repeat(2, 58px);
+      gap: 8px;
+      justify-content: center;
+      margin-top: 14px;
+    }
+
+    .mobile-pad button {
+      padding: 0;
+      border-radius: 16px;
+      color: #fff;
+      background: linear-gradient(180deg, #303a72, #18204d);
+      border: 1px solid rgba(255,255,255,.15);
+      font-size: 22px;
+      box-shadow: 0 8px 0 rgba(0,0,0,.22);
+    }
+
+    .mobile-pad .m-up { grid-column: 2; }
+    .mobile-pad .m-left { grid-column: 1; grid-row: 2; }
+    .mobile-pad .m-down { grid-column: 2; grid-row: 2; }
+    .mobile-pad .m-right { grid-column: 3; grid-row: 2; }
+
+    footer {
+      margin-top: 24px;
+      color: rgba(216,222,250,.8);
+      font-size: 13px;
+      text-align: center;
+    }
+
+    @media (max-width: 980px) {
+      .layout { grid-template-columns: 1fr; }
+      .message {
+        min-height: auto;
+        padding-top: 8px;
+      }
+      .error-code {
+        position: absolute;
+        font-size: 64px;
+        top: 20px;
+        right: 24px;
+      }
+      .illustrations {
+        display: none;
+      }
+      .message p {
+        max-width: none;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .wrap {
+        width: min(100% - 20px, 1180px);
+        padding-top: 22px;
+      }
+
+      .arcade { padding: 10px; border-radius: 24px; }
+      .marquee {
+        grid-template-columns: 1fr;
+        height: auto;
+        padding: 12px;
+        text-align: center;
+      }
+      .life, .hud { text-align: center; }
+      .controls {
+        grid-template-columns: 1fr;
+      }
+      .control-pad { display: none; }
+      .mobile-pad { display: grid; }
+      .status-cards { grid-template-columns: 1fr; }
+      .error-code {
+        opacity: .22;
+        font-size: 84px;
+        top: 20px;
+        right: 18px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="error-code" aria-label="Erro 500">500</div>
+
+  <main class="wrap">
+    <header>
+      <div class="bot-logo" aria-hidden="true"></div>
+      <div class="brand">
+        <h1>Servidor em modo arcade</h1>
+        <p>Erro interno detectado. Enquanto a equipe resolve, jogue uma partida rápida.</p>
+      </div>
+    </header>
+
+    <section class="layout">
+      <section class="arcade" aria-label="Jogo Byte Maze">
+        <div class="marquee">
+          <div class="life" id="lives">♥ 3</div>
+          <span>BYTE MAZE</span>
+          <div class="hud">
+            PONTOS<br />
+            <span id="score">00000</span>
+          </div>
+        </div>
+
+        <div class="game-shell">
+          <canvas id="game" width="672" height="504" tabindex="0" aria-label="Jogo estilo labirinto. Use as setas do teclado para jogar."></canvas>
+        </div>
+
+        <div class="mobile-pad" aria-label="Controles para celular">
+          <button class="m-up" data-dir="up" type="button">↑</button>
+          <button class="m-left" data-dir="left" type="button">←</button>
+          <button class="m-down" data-dir="down" type="button">↓</button>
+          <button class="m-right" data-dir="right" type="button">→</button>
+        </div>
+
+        <div class="controls">
+          <div class="control-pad" aria-hidden="true">
+            <div class="key up">↑</div>
+            <div class="key left">←</div>
+            <div class="key down">↓</div>
+            <div class="key right">→</div>
+          </div>
+
+          <div class="tip">
+            <strong>Como jogar</strong><br />
+            Use as setas. Coma os pontos, evite os bugs e pegue o raio para ficar invencível por alguns segundos.
+          </div>
+
+          <div class="actions">
+            <button class="retry" type="button" onclick="location.reload()">↻ Tentar novamente</button>
+            <a class="home-link" href="/">⌂ Voltar ao início</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="message">
+        <div class="illustrations" aria-hidden="true">
+          <div class="warning">⚠ ERRO INTERNO DO SERVIDOR</div>
+          <div class="plug"></div>
+          <div class="planet"></div>
+          <div class="server"></div>
+          <div class="bubble">A equipe já foi avisada e está trabalhando nisso.</div>
+          <div class="robot"></div>
+        </div>
+
+        <div class="badge">● Falha temporária</div>
+        <h2>Ops! Tivemos um <em>erro interno.</em></h2>
+        <p>
+          O servidor encontrou um problema inesperado e não conseguiu concluir sua solicitação.
+          Nenhuma ação sua é necessária. Enquanto isso, a página abaixo funciona offline e tem um mini-jogo jogável.
+        </p>
+
+        <div class="status-cards">
+          <div class="status">
+            <strong>Banco de dados</strong>
+            <span>Verificação em andamento</span>
+          </div>
+          <div class="status">
+            <strong>Serviços internos</strong>
+            <span>Reconectando rotas</span>
+          </div>
+          <div class="status">
+            <strong>API Gateway</strong>
+            <span>Tratando exceção</span>
+          </div>
+          <div class="status">
+            <strong>Experiência do usuário</strong>
+            <span>Modo arcade ativado</span>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <footer>
+      Página autocontida: HTML + CSS + JavaScript puro. Não depende de internet, CDN, imagem externa ou framework.
+    </footer>
+  </main>
+
+  <script>
+    (() => {
+      const canvas = document.getElementById("game");
+      const ctx = canvas.getContext("2d");
+      const scoreEl = document.getElementById("score");
+      const livesEl = document.getElementById("lives");
+
+      const TILE = 24;
+      const COLS = 28;
+      const ROWS = 21;
+
+      const map = [
+        "############################",
+        "#............##............#",
+        "#.####.#####.##.#####.####.#",
+        "#o####.#####.##.#####.####o#",
+        "#..........................#",
+        "#.####.##.########.##.####.#",
+        "#......##....##....##......#",
+        "######.##### ## #####.######",
+        "     #.##          ##.#     ",
+        "######.## ###--### ##.######",
+        "      .   #      #   .      ",
+        "######.## ######## ##.######",
+        "     #.##          ##.#     ",
+        "######.## ######## ##.######",
+        "#............##............#",
+        "#.####.#####.##.#####.####.#",
+        "#o..##................##..o#",
+        "###.##.##.########.##.##.###",
+        "#......##....##....##......#",
+        "#.##########.##.##########.#",
+        "#..........................#",
+        "############################"
+      ];
+
+      const walls = new Set();
+      const pellets = new Set();
+      const powers = new Set();
+
+      function key(x, y) {
+        return x + "," + y;
+      }
+
+      for (let y = 0; y < map.length; y++) {
+        for (let x = 0; x < map[y].length; x++) {
+          const c = map[y][x];
+          if (c === "#") walls.add(key(x, y));
+          if (c === ".") pellets.add(key(x, y));
+          if (c === "o") powers.add(key(x, y));
+        }
+      }
+
+      const playerStart = { x: 13, y: 16 };
+      const ghostStarts = [
+        { x: 13, y: 10, color: "#ff4d6d" },
+        { x: 14, y: 10, color: "#67c7ff" },
+        { x: 12, y: 10, color: "#ff8f3f" },
+        { x: 15, y: 10, color: "#b06bff" }
+      ];
+
+      let score = 0;
+      let lives = 3;
+      let levelWon = false;
+      let gameOver = false;
+      let frightenedUntil = 0;
+
+      const player = {
+        x: playerStart.x,
+        y: playerStart.y,
+        px: playerStart.x * TILE + TILE / 2,
+        py: playerStart.y * TILE + TILE / 2,
+        dir: { x: 0, y: 0 },
+        nextDir: { x: 0, y: 0 },
+        mouth: 0
+      };
+
+      const ghosts = ghostStarts.map((g, index) => ({
+        x: g.x,
+        y: g.y,
+        px: g.x * TILE + TILE / 2,
+        py: g.y * TILE + TILE / 2,
+        dir: index % 2 ? { x: 1, y: 0 } : { x: -1, y: 0 },
+        color: g.color,
+        moveDelay: 0
+      }));
+
+      const dirs = {
+        ArrowUp: { x: 0, y: -1 },
+        ArrowDown: { x: 0, y: 1 },
+        ArrowLeft: { x: -1, y: 0 },
+        ArrowRight: { x: 1, y: 0 },
+        up: { x: 0, y: -1 },
+        down: { x: 0, y: 1 },
+        left: { x: -1, y: 0 },
+        right: { x: 1, y: 0 }
+      };
+
+      function isWall(x, y) {
+        if (x < 0 || x >= COLS || y < 0 || y >= ROWS + 1) return true;
+        return walls.has(key(x, y));
+      }
+
+      function canMove(entity, dir) {
+        const nx = entity.x + dir.x;
+        const ny = entity.y + dir.y;
+        if (nx < 0 || nx >= COLS) return true;
+        return !isWall(nx, ny);
+      }
+
+      function resetPositions() {
+        player.x = playerStart.x;
+        player.y = playerStart.y;
+        player.px = player.x * TILE + TILE / 2;
+        player.py = player.y * TILE + TILE / 2;
+        player.dir = { x: 0, y: 0 };
+        player.nextDir = { x: 0, y: 0 };
+
+        ghosts.forEach((g, i) => {
+          g.x = ghostStarts[i].x;
+          g.y = ghostStarts[i].y;
+          g.px = g.x * TILE + TILE / 2;
+          g.py = g.y * TILE + TILE / 2;
+          g.dir = i % 2 ? { x: 1, y: 0 } : { x: -1, y: 0 };
+        });
+      }
+
+      function updateHud() {
+        scoreEl.textContent = String(score).padStart(5, "0");
+        livesEl.textContent = "♥ " + lives;
+      }
+
+      function moveGrid(entity, speed) {
+        const tx = entity.x * TILE + TILE / 2;
+        const ty = entity.y * TILE + TILE / 2;
+        const nearCenter = Math.abs(entity.px - tx) < speed && Math.abs(entity.py - ty) < speed;
+
+        if (nearCenter) {
+          entity.px = tx;
+          entity.py = ty;
+
+          if (entity === player && canMove(entity, entity.nextDir)) {
+            entity.dir = { ...entity.nextDir };
+          }
+
+          if (!canMove(entity, entity.dir)) {
+            if (entity !== player) chooseGhostDir(entity);
+            else entity.dir = { x: 0, y: 0 };
+          }
+
+          entity.x += entity.dir.x;
+          entity.y += entity.dir.y;
+
+          if (entity.x < 0) entity.x = COLS - 1;
+          if (entity.x >= COLS) entity.x = 0;
+        }
+
+        entity.px += entity.dir.x * speed;
+        entity.py += entity.dir.y * speed;
+      }
+
+      function chooseGhostDir(g) {
+        const options = [
+          { x: 1, y: 0 },
+          { x: -1, y: 0 },
+          { x: 0, y: 1 },
+          { x: 0, y: -1 }
+        ].filter(d => canMove(g, d) && !(d.x === -g.dir.x && d.y === -g.dir.y));
+
+        if (!options.length) {
+          g.dir = { x: -g.dir.x, y: -g.dir.y };
+          return;
+        }
+
+        const frightened = Date.now() < frightenedUntil;
+
+        options.sort((a, b) => {
+          const da = Math.abs((g.x + a.x) - player.x) + Math.abs((g.y + a.y) - player.y);
+          const db = Math.abs((g.x + b.x) - player.x) + Math.abs((g.y + b.y) - player.y);
+          return frightened ? db - da : da - db;
+        });
+
+        const randomness = frightened ? 0.55 : 0.25;
+        g.dir = Math.random() < randomness
+          ? options[Math.floor(Math.random() * options.length)]
+          : options[0];
+      }
+
+      function update() {
+        if (gameOver || levelWon) return;
+
+        moveGrid(player, 2.35);
+        player.mouth += 0.18;
+
+        const playerTile = key(player.x, player.y);
+
+        if (pellets.has(playerTile)) {
+          pellets.delete(playerTile);
+          score += 10;
+          updateHud();
+        }
+
+        if (powers.has(playerTile)) {
+          powers.delete(playerTile);
+          score += 50;
+          frightenedUntil = Date.now() + 6500;
+          updateHud();
+        }
+
+        ghosts.forEach(g => {
+          const speed = Date.now() < frightenedUntil ? 1.45 : 1.75;
+          moveGrid(g, speed);
+
+          const dx = g.px - player.px;
+          const dy = g.py - player.py;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < 16) {
+            if (Date.now() < frightenedUntil) {
+              score += 200;
+              g.x = 13;
+              g.y = 10;
+              g.px = g.x * TILE + TILE / 2;
+              g.py = g.y * TILE + TILE / 2;
+              updateHud();
+            } else {
+              lives -= 1;
+              updateHud();
+              if (lives <= 0) {
+                gameOver = true;
+              } else {
+                resetPositions();
+              }
+            }
+          }
+        });
+
+        if (pellets.size === 0 && powers.size === 0) {
+          levelWon = true;
+        }
+      }
+
+      function drawRoundedRect(x, y, w, h, r, fill, stroke) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + w, y, x + w, y + h, r);
+        ctx.arcTo(x + w, y + h, x, y + h, r);
+        ctx.arcTo(x, y + h, x, y, r);
+        ctx.arcTo(x, y, x + w, y, r);
+        ctx.closePath();
+        if (fill) ctx.fill();
+        if (stroke) ctx.stroke();
+      }
+
+      function drawMap() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const grd = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+        grd.addColorStop(0, "#020513");
+        grd.addColorStop(1, "#071033");
+        ctx.fillStyle = grd;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.strokeStyle = "rgba(45,125,255,.08)";
+        ctx.lineWidth = 1;
+        for (let x = 0; x < canvas.width; x += TILE) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, canvas.height);
+          ctx.stroke();
+        }
+        for (let y = 0; y < canvas.height; y += TILE) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(canvas.width, y);
+          ctx.stroke();
+        }
+
+        walls.forEach(k => {
+          const [x, y] = k.split(",").map(Number);
+          const px = x * TILE;
+          const py = y * TILE;
+
+          ctx.fillStyle = "#071c52";
+          ctx.strokeStyle = "#2d7dff";
+          ctx.lineWidth = 2;
+          ctx.shadowColor = "rgba(45,125,255,.75)";
+          ctx.shadowBlur = 8;
+          drawRoundedRect(px + 2, py + 2, TILE - 4, TILE - 4, 6, true, true);
+          ctx.shadowBlur = 0;
+        });
+
+        pellets.forEach(k => {
+          const [x, y] = k.split(",").map(Number);
+          ctx.beginPath();
+          ctx.fillStyle = "#ffd23f";
+          ctx.shadowColor = "rgba(255,210,63,.65)";
+          ctx.shadowBlur = 8;
+          ctx.arc(x * TILE + TILE / 2, y * TILE + TILE / 2, 3.2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        });
+
+        powers.forEach(k => {
+          const [x, y] = k.split(",").map(Number);
+          ctx.beginPath();
+          ctx.fillStyle = "#fff1a8";
+          ctx.shadowColor = "rgba(255,210,63,.95)";
+          ctx.shadowBlur = 14;
+          ctx.arc(x * TILE + TILE / 2, y * TILE + TILE / 2, 7.2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        });
+      }
+
+      function drawPlayer() {
+        const angle = Math.abs(Math.sin(player.mouth)) * 0.55 + 0.15;
+        let rotation = 0;
+
+        if (player.dir.x === -1) rotation = Math.PI;
+        if (player.dir.y === -1) rotation = -Math.PI / 2;
+        if (player.dir.y === 1) rotation = Math.PI / 2;
+
+        ctx.save();
+        ctx.translate(player.px, player.py);
+        ctx.rotate(rotation);
+        ctx.beginPath();
+        ctx.fillStyle = "#ffd23f";
+        ctx.shadowColor = "rgba(255,210,63,.7)";
+        ctx.shadowBlur = 16;
+        ctx.moveTo(0, 0);
+        ctx.arc(0, 0, 11, angle, Math.PI * 2 - angle);
+        ctx.closePath();
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.restore();
+      }
+
+      function drawGhost(g) {
+        const frightened = Date.now() < frightenedUntil;
+
+        ctx.save();
+        ctx.translate(g.px, g.py);
+
+        ctx.fillStyle = frightened ? "#4667ff" : g.color;
+        ctx.shadowColor = frightened ? "rgba(70,103,255,.65)" : g.color;
+        ctx.shadowBlur = 12;
+
+        ctx.beginPath();
+        ctx.arc(0, -4, 11, Math.PI, 0);
+        ctx.lineTo(11, 9);
+        ctx.lineTo(6, 5);
+        ctx.lineTo(2, 9);
+        ctx.lineTo(-2, 5);
+        ctx.lineTo(-6, 9);
+        ctx.lineTo(-11, 5);
+        ctx.lineTo(-11, -4);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = "#fff";
+        ctx.beginPath();
+        ctx.arc(-4, -4, 3, 0, Math.PI * 2);
+        ctx.arc(5, -4, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "#071027";
+        ctx.beginPath();
+        ctx.arc(-3, -4, 1.4, 0, Math.PI * 2);
+        ctx.arc(6, -4, 1.4, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+      }
+
+      function drawOverlay(title, subtitle) {
+        ctx.save();
+        ctx.fillStyle = "rgba(3,6,18,.78)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#fff";
+        ctx.font = "900 42px system-ui, sans-serif";
+        ctx.fillText(title, canvas.width / 2, canvas.height / 2 - 26);
+
+        ctx.fillStyle = "#ffd23f";
+        ctx.font = "700 18px system-ui, sans-serif";
+        ctx.fillText(subtitle, canvas.width / 2, canvas.height / 2 + 18);
+
+        ctx.fillStyle = "#aab4df";
+        ctx.font = "500 14px system-ui, sans-serif";
+        ctx.fillText("Pressione ESPAÇO para reiniciar o jogo", canvas.width / 2, canvas.height / 2 + 52);
+        ctx.restore();
+      }
+
+      function draw() {
+        drawMap();
+        drawPlayer();
+        ghosts.forEach(drawGhost);
+
+        if (gameOver) {
+          drawOverlay("Fim de jogo", "O servidor ainda está tentando se recuperar.");
+        }
+
+        if (levelWon) {
+          drawOverlay("Você venceu!", "Pontos coletados. A equipe agradece a paciência.");
+        }
+      }
+
+      function loop() {
+        update();
+        draw();
+        requestAnimationFrame(loop);
+      }
+
+      function restartGame() {
+        location.reload();
+      }
+
+      window.addEventListener("keydown", (e) => {
+        if (dirs[e.key]) {
+          e.preventDefault();
+          player.nextDir = dirs[e.key];
+          canvas.focus();
+        }
+
+        if (e.code === "Space" && (gameOver || levelWon)) {
+          e.preventDefault();
+          restartGame();
+        }
+      });
+
+      document.querySelectorAll(".mobile-pad button").forEach(btn => {
+        const setDirection = () => {
+          player.nextDir = dirs[btn.dataset.dir];
+          canvas.focus();
+        };
+        btn.addEventListener("click", setDirection);
+        btn.addEventListener("touchstart", (e) => {
+          e.preventDefault();
+          setDirection();
+        }, { passive: false });
+      });
+
+      canvas.addEventListener("click", () => canvas.focus());
+
+      updateHud();
+      canvas.focus();
+      loop();
+    })();
+  </script>
+</body>
+</html>

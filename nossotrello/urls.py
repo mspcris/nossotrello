@@ -32,9 +32,18 @@ from boards.views.legal import (
     cookie_reject_view,
 )
 from boards.views.media_serve import serve_stored_file
+from nossotrello.error_views import server_error as custom_500
+
+# Página custom de erro 500 (byte_maze) — usada pelo Django quando uma
+# request resulta em exception não-tratada.
+handler500 = "nossotrello.error_views.server_error"
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+
+    # Endpoint de teste pra abrir a mesma página 500 sem precisar forçar
+    # um crash. Retorna status 500 com o HTML do template 500.html.
+    path("500/", custom_500, name="test_500"),
 
     # ── Legal (isento de termos/cookies no middleware) ──────────────
     path("legal/termos/",      terms_view,         name="terms"),
