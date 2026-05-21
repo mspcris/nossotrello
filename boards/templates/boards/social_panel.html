@@ -602,7 +602,7 @@
   </script>
   {% endif %}
 
-  <!-- ═══ DAILY CHECK-IN ═══ -->
+  <!-- ═══ CHECK-IN #1: ASTRAL + POSTO ═══ -->
   <div class="sp-card">
     <form id="sp-checkin-form" class="sp-checkin"
           hx-post="{% url 'boards:daily_checkin_save' %}"
@@ -611,6 +611,7 @@
       {% csrf_token %}
 
       <div class="sp-section-title">Como tá o astral? 🎭</div>
+      <p class="sp-section-sub">Marca como você tá hoje — a Camila te entende e o time tá junto.</p>
 
       <!-- Mood Grid — big tappable cards -->
       <div class="sp-mood-grid">
@@ -724,9 +725,27 @@
       </div>
       {% endif %}
 
-      <!-- Almoço -->
+      <button type="submit" class="sp-btn sp-btn-green">Salvar astral ✅</button>
+    </form>
+  </div>
+
+  <!-- ═══ CHECK-IN #2: ALMOÇO (separado pra dar foco) ═══ -->
+  <div class="sp-card sp-lunch-card">
+    <form id="sp-lunch-form" class="sp-checkin"
+          hx-post="{% url 'boards:daily_checkin_save' %}"
+          hx-target="#social-panel" hx-swap="outerHTML show:#sp-lunch-form:top"
+          hx-encoding="multipart/form-data" enctype="multipart/form-data">
+      {% csrf_token %}
+
+      <div class="sp-section-title">Almoço de hoje 🍽️</div>
+      <p class="sp-section-sub">
+        Anote o que você comeu (ou vai comer). A <strong>Camila</strong>, nossa
+        nutricionista, acompanha seus registros pra te orientar a comer melhor
+        e cuidar da saúde no dia a dia.
+      </p>
+
       <div class="sp-field-group">
-        <label class="sp-field-label">🍽️ O que vai comer?</label>
+        <label class="sp-field-label" for="sp-lunch-input">O prato:</label>
         <div class="sp-lunch-row">
           <input type="text" name="lunch_text" class="sp-input sp-input-lunch" id="sp-lunch-input"
                  placeholder="Frango e salada"
@@ -736,8 +755,8 @@
         <input type="file" id="sp-lunch-file" name="lunch_photo" style="display:none"
                onchange="spPreviewLunch(this)">
         <div class="sp-lunch-capture sp-hidden" id="sp-lunch-capture">
-          <button type="button" class="sp-lunch-cap-btn" onclick="spLunchCapture('photo')">📸 Foto</button>
-          <button type="button" class="sp-lunch-cap-btn" onclick="spLunchCapture('gallery')">🖼️ Galeria</button>
+          <button type="button" class="sp-lunch-cap-btn" onclick="spLunchCapture('photo')">📸 Tirar foto</button>
+          <button type="button" class="sp-lunch-cap-btn" onclick="spLunchCapture('gallery')">🖼️ Da galeria</button>
         </div>
         <div id="sp-lunch-preview" class="sp-lunch-preview {% if not checkin.lunch_photo %}sp-hidden{% endif %}">
           {% if checkin.lunch_photo %}
@@ -746,7 +765,12 @@
         </div>
       </div>
 
-      <button type="submit" class="sp-btn sp-btn-green">Salvar check-in ✅</button>
+      <p class="sp-lunch-tip">
+        💡 Foto do prato ajuda a Camila a entender melhor sua refeição.
+        Sem foto, escrever o nome do prato já é um ótimo começo.
+      </p>
+
+      <button type="submit" class="sp-btn sp-btn-orange">Registrar almoço 🥗</button>
     </form>
   </div>
 

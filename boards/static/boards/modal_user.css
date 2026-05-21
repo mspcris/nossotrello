@@ -336,8 +336,39 @@ body.sp-standalone-page {
   font-size: 1rem;
   font-weight: 700;
   color: #111827;
-  margin-bottom: 12px;
+  margin-bottom: 6px;
 }
+/* Subtítulo abaixo do título (explicação curta do contexto da seção) */
+.sp-section-sub {
+  font-size: .82rem;
+  color: #6b7280;
+  margin: 0 0 14px;
+  line-height: 1.4;
+}
+.sp-section-sub strong { color: #1f2937; font-weight: 700; }
+
+/* Card de almoço: pega-emprestado a vibe nutricional (verde/laranja suave)
+   pra deixar claro que é uma seção separada do astral. */
+.sp-lunch-card {
+  background: linear-gradient(140deg, #fffbeb 0%, #fff 60%);
+  border: 1px solid #fde68a;
+}
+.sp-lunch-tip {
+  font-size: .78rem;
+  color: #92400e;
+  background: #fef3c7;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 12px 0 12px;
+  line-height: 1.45;
+}
+
+/* Botão laranja pro almoço — diferencia visualmente do "Salvar astral" verde */
+.sp-btn-orange {
+  background: #f97316;
+  color: #fff;
+}
+.sp-btn-orange:hover { background: #ea580c; }
 
 /* ── Error ── */
 .sp-error {
