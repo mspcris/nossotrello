@@ -4537,3 +4537,168 @@ video.sp-post-media {
   color: #fff;
   box-shadow: 0 4px 14px rgba(16,185,129,.45);
 }
+
+/* ═══ TRIM DE VÍDEO (galeria > 30s) ═══════════════════════════════ */
+.sp-vtrim-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #0f172a;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  padding-top: calc(env(safe-area-inset-top, 20px) + 20px);
+  padding-bottom: calc(env(safe-area-inset-bottom, 20px) + 20px);
+  color: #fff;
+}
+.sp-vtrim-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255,255,255,.1);
+  color: #fff;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+.sp-vtrim-header {
+  text-align: center;
+  margin-bottom: 12px;
+  margin-top: 8px;
+}
+.sp-vtrim-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.sp-vtrim-range-label {
+  display: inline-block;
+  padding: 4px 12px;
+  background: rgba(255,255,255,.1);
+  border-radius: 999px;
+  font-size: .9rem;
+  font-weight: 600;
+  color: #a5f3fc;
+}
+.sp-vtrim-video {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  max-height: 50vh;
+  background: #000;
+  object-fit: contain;
+  border-radius: 12px;
+  margin-bottom: 18px;
+}
+.sp-vtrim-track {
+  margin-bottom: 18px;
+}
+.sp-vtrim-slider {
+  width: 100%;
+  margin: 0 0 8px;
+  accent-color: #10b981;
+}
+.sp-vtrim-track-bar {
+  position: relative;
+  height: 6px;
+  background: rgba(255,255,255,.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.sp-vtrim-track-window {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, #10b981, #34d399);
+  border-radius: 3px;
+  transition: left .12s ease, width .12s ease;
+}
+.sp-vtrim-track-times {
+  font-size: .75rem;
+  color: rgba(255,255,255,.6);
+  text-align: right;
+  margin-top: 6px;
+}
+.sp-vtrim-actions {
+  display: flex;
+  gap: 12px;
+}
+.sp-vtrim-cancel,
+.sp-vtrim-confirm {
+  flex: 1;
+  padding: 14px;
+  border: none;
+  border-radius: 999px;
+  font-size: .95rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.sp-vtrim-cancel {
+  background: rgba(255,255,255,.1);
+  color: #fff;
+}
+.sp-vtrim-confirm {
+  background: #10b981;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(16,185,129,.45);
+}
+.sp-vtrim-confirm:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+/* Overlay de progresso enquanto o trim re-grava */
+.sp-vtrim-progress {
+  position: absolute;
+  inset: 0;
+  background: rgba(15,23,42,.85);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+.sp-vtrim-progress-card {
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 18px;
+  padding: 28px 24px;
+  width: 90%;
+  max-width: 340px;
+  text-align: center;
+}
+.sp-vtrim-progress-spinner {
+  width: 44px;
+  height: 44px;
+  border: 4px solid rgba(255,255,255,.15);
+  border-top-color: #10b981;
+  border-radius: 50%;
+  margin: 0 auto 14px;
+  animation: sp-vtrim-spin 1s linear infinite;
+}
+@keyframes sp-vtrim-spin {
+  to { transform: rotate(360deg); }
+}
+.sp-vtrim-progress-label {
+  font-size: .95rem;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 14px;
+}
+.sp-vtrim-progress-bar {
+  height: 6px;
+  background: rgba(255,255,255,.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.sp-vtrim-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #10b981, #34d399);
+  border-radius: 3px;
+  transition: width .15s ease;
+}

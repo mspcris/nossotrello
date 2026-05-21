@@ -1120,6 +1120,39 @@
     </div>
   </div>
 
+  <!-- ═══ TRIM DE VÍDEO (Galeria > 30s) ═══
+       Mostra o vídeo com slider de início. Janela fixa de 30s. Usuário
+       escolhe ONDE começa. Re-grava só o trecho selecionado via
+       captureStream() + MediaRecorder (1.5Mbps) — sempre cabe em 50MB. -->
+  <div id="sp-vtrim-overlay" class="sp-vtrim-overlay sp-hidden" aria-hidden="true">
+    <button type="button" class="sp-vtrim-close" onclick="window.spCloseVtrim()" aria-label="Fechar">✕</button>
+    <div class="sp-vtrim-header">
+      <div class="sp-vtrim-title">Escolha 30 segundos do vídeo</div>
+      <div class="sp-vtrim-range-label" id="sp-vtrim-range-label">0:00 → 0:30</div>
+    </div>
+    <video id="sp-vtrim-video" class="sp-vtrim-video" playsinline muted></video>
+    <div class="sp-vtrim-track">
+      <input type="range" id="sp-vtrim-slider" class="sp-vtrim-slider" min="0" max="0" step="0.1" value="0">
+      <div class="sp-vtrim-track-bar">
+        <div class="sp-vtrim-track-window" id="sp-vtrim-track-window"></div>
+      </div>
+      <div class="sp-vtrim-track-times">
+        <span id="sp-vtrim-time-total">0:00</span>
+      </div>
+    </div>
+    <div class="sp-vtrim-actions">
+      <button type="button" class="sp-vtrim-cancel" onclick="window.spCloseVtrim()">Cancelar</button>
+      <button type="button" class="sp-vtrim-confirm" id="sp-vtrim-confirm" onclick="window.spVtrimConfirm()">Usar este trecho →</button>
+    </div>
+    <div class="sp-vtrim-progress sp-hidden" id="sp-vtrim-progress">
+      <div class="sp-vtrim-progress-card">
+        <div class="sp-vtrim-progress-spinner"></div>
+        <div class="sp-vtrim-progress-label" id="sp-vtrim-progress-label">Cortando vídeo...</div>
+        <div class="sp-vtrim-progress-bar"><div class="sp-vtrim-progress-fill" id="sp-vtrim-progress-fill"></div></div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -3271,6 +3304,250 @@ document.addEventListener('click', function(e){
     _vrecResetUI();
   };
 
+  /* ═══ TRIM DE VÍDEO (galeria > 30s) ═══════════════════════════════ */
+  var _vtrimState = {
+    file: null,
+    duration: 0,
+    start: 0,
+    blobUrl: null,
+    window: 30,
+  };
+
+  function _vtrimFmtTime(s){
+    s = Math.max(0, Math.floor(s));
+    var m = Math.floor(s / 60);
+    var sec = s % 60;
+    return m + ':' + (sec < 10 ? '0' : '') + sec;
+  }
+
+  function _vtrimUpdateLabel(){
+    var s = _vtrimState.start;
+    var e = Math.min(s + _vtrimState.window, _vtrimState.duration);
+    var label = document.getElementById('sp-vtrim-range-label');
+    if(label) label.textContent = _vtrimFmtTime(s) + ' → ' + _vtrimFmtTime(e);
+    /* Atualiza posição visual da janela na barra */
+    var win = document.getElementById('sp-vtrim-track-window');
+    if(win && _vtrimState.duration > 0){
+      var pctStart = (s / _vtrimState.duration) * 100;
+      var pctWidth = ((e - s) / _vtrimState.duration) * 100;
+      win.style.left = pctStart + '%';
+      win.style.width = pctWidth + '%';
+    }
+  }
+
+  window.spOpenVtrim = function(file, duration){
+    var overlay = document.getElementById('sp-vtrim-overlay');
+    var video = document.getElementById('sp-vtrim-video');
+    var slider = document.getElementById('sp-vtrim-slider');
+    var total = document.getElementById('sp-vtrim-time-total');
+    if(!overlay || !video || !slider) return;
+
+    /* Reset state */
+    _vtrimState.file = file;
+    _vtrimState.duration = duration;
+    _vtrimState.start = 0;
+    _vtrimState.window = Math.min(30, duration);
+    if(_vtrimState.blobUrl){ try { URL.revokeObjectURL(_vtrimState.blobUrl); } catch(e){} }
+    _vtrimState.blobUrl = URL.createObjectURL(file);
+
+    video.src = _vtrimState.blobUrl;
+    video.currentTime = 0;
+    video.muted = true;
+    video.loop = false;
+    try { video.load(); } catch(e){}
+
+    slider.min = '0';
+    slider.max = String(Math.max(0, duration - _vtrimState.window));
+    slider.step = '0.1';
+    slider.value = '0';
+
+    if(total) total.textContent = _vtrimFmtTime(duration) + ' total';
+
+    /* Drag do slider atualiza a posição inicial e o currentTime do preview */
+    slider.oninput = function(){
+      _vtrimState.start = parseFloat(this.value) || 0;
+      _vtrimUpdateLabel();
+      try { video.currentTime = _vtrimState.start; } catch(e){}
+    };
+
+    /* Quando o vídeo passar do fim da janela, volta pro início pra
+       facilitar a previewzinha contínua */
+    video.ontimeupdate = function(){
+      var end = _vtrimState.start + _vtrimState.window;
+      if(video.currentTime >= end - 0.05){
+        try { video.currentTime = _vtrimState.start; } catch(e){}
+      }
+    };
+
+    _vtrimUpdateLabel();
+    overlay.classList.remove('sp-hidden');
+    overlay.setAttribute('aria-hidden', 'false');
+  };
+
+  window.spCloseVtrim = function(reset){
+    var overlay = document.getElementById('sp-vtrim-overlay');
+    var video = document.getElementById('sp-vtrim-video');
+    if(video){
+      try { video.pause(); } catch(e){}
+      video.ontimeupdate = null;
+      video.removeAttribute('src');
+      try { video.load(); } catch(e){}
+    }
+    if(_vtrimState.blobUrl){ try { URL.revokeObjectURL(_vtrimState.blobUrl); } catch(e){} _vtrimState.blobUrl = null; }
+    if(overlay){
+      overlay.classList.add('sp-hidden');
+      overlay.setAttribute('aria-hidden', 'true');
+      var prog = document.getElementById('sp-vtrim-progress');
+      if(prog) prog.classList.add('sp-hidden');
+    }
+    /* Limpa o file input se o usuário cancelou (não confirmou) */
+    if(reset !== false){
+      var inp = document.getElementById('sp-media-input');
+      if(inp) inp.value = '';
+    }
+    _vtrimState.file = null;
+    _vtrimState.duration = 0;
+    _vtrimState.start = 0;
+  };
+
+  window.spVtrimConfirm = async function(){
+    var video = document.getElementById('sp-vtrim-video');
+    var btn = document.getElementById('sp-vtrim-confirm');
+    var prog = document.getElementById('sp-vtrim-progress');
+    var progLabel = document.getElementById('sp-vtrim-progress-label');
+    var progFill = document.getElementById('sp-vtrim-progress-fill');
+    if(!video || !_vtrimState.file) return;
+
+    var start = _vtrimState.start;
+    var end = Math.min(start + _vtrimState.window, _vtrimState.duration);
+    var sliceSec = end - start;
+
+    /* captureStream pra recapturar o playback. iOS Safari mais novo já
+       tem; Android Chrome também. */
+    var stream = null;
+    try {
+      if(video.captureStream) stream = video.captureStream();
+      else if(video.mozCaptureStream) stream = video.mozCaptureStream();
+    } catch(e){ stream = null; }
+    if(!stream){
+      alert('Seu navegador não suporta cortar vídeo. Use um vídeo de até 30s.');
+      return;
+    }
+
+    var mime = _vrecPickMime();
+    if(!mime){
+      alert('Seu navegador não suporta gravação. Atualize o navegador.');
+      return;
+    }
+
+    if(btn) btn.disabled = true;
+    if(prog){ prog.classList.remove('sp-hidden'); }
+    if(progLabel) progLabel.textContent = 'Cortando vídeo... 0%';
+    if(progFill) progFill.style.width = '0%';
+
+    var recorder;
+    try {
+      recorder = new MediaRecorder(stream, {
+        mimeType: mime,
+        videoBitsPerSecond: VREC_VIDEO_BPS,
+        audioBitsPerSecond: VREC_AUDIO_BPS,
+      });
+    } catch(e1){
+      try { recorder = new MediaRecorder(stream, { mimeType: mime }); }
+      catch(e2){
+        alert('Falha ao iniciar gravação: ' + (e2 && e2.message));
+        if(btn) btn.disabled = false;
+        if(prog) prog.classList.add('sp-hidden');
+        return;
+      }
+    }
+
+    var chunks = [];
+    recorder.ondataavailable = function(e){ if(e.data && e.data.size > 0) chunks.push(e.data); };
+
+    var stopped = false;
+    function _doStop(){
+      if(stopped) return;
+      stopped = true;
+      try { video.pause(); } catch(e){}
+      if(recorder.state === 'recording'){ try { recorder.stop(); } catch(e){} }
+    }
+
+    /* Posiciona no início e dá play. Captura via stream → MediaRecorder. */
+    try { video.currentTime = start; } catch(e){}
+    await new Promise(function(resolve){
+      var doneSeek = function(){ video.removeEventListener('seeked', doneSeek); resolve(); };
+      video.addEventListener('seeked', doneSeek);
+      /* Safety: se seek demorar */
+      setTimeout(resolve, 800);
+    });
+
+    video.muted = false; /* destmuta pra captureStream pegar áudio */
+    var donePromise = new Promise(function(resolve){ recorder.onstop = resolve; });
+    recorder.start(250);
+
+    try { await video.play(); } catch(e){
+      /* autoplay com som pode falhar em alguns navegadores; tenta muted */
+      video.muted = true;
+      try { await video.play(); } catch(e2){
+        alert('Não consegui dar play no vídeo pra cortar. Tente de novo.');
+        if(btn) btn.disabled = false;
+        if(prog) prog.classList.add('sp-hidden');
+        return;
+      }
+    }
+
+    /* Acompanha progresso e para quando bater no end */
+    var startWall = Date.now();
+    var tickTimer = setInterval(function(){
+      var elapsedClip = Math.min(sliceSec, video.currentTime - start);
+      var pct = Math.round((elapsedClip / sliceSec) * 100);
+      if(progLabel) progLabel.textContent = 'Cortando vídeo... ' + pct + '%';
+      if(progFill) progFill.style.width = pct + '%';
+      if(video.currentTime >= end - 0.05){
+        clearInterval(tickTimer);
+        _doStop();
+      }
+    }, 100);
+
+    /* Safety timer: para no máx 1.5x a duração do clip */
+    var maxWaitMs = Math.ceil(sliceSec * 1500);
+    var safetyTimer = setTimeout(function(){
+      clearInterval(tickTimer);
+      _doStop();
+    }, maxWaitMs);
+
+    await donePromise;
+    clearInterval(tickTimer);
+    clearTimeout(safetyTimer);
+
+    if(!chunks.length){
+      alert('Não consegui gerar o corte. Tente um trecho diferente.');
+      if(btn) btn.disabled = false;
+      if(prog) prog.classList.add('sp-hidden');
+      return;
+    }
+
+    var blob = new Blob(chunks, { type: mime.split(';')[0] });
+    var ext = (mime.indexOf('mp4') >= 0) ? 'mp4' : 'webm';
+    var trimmed = new File([blob], 'trim_' + Date.now() + '.' + ext, { type: blob.type });
+
+    /* Injeta no input e dispara o handler de change pra renderizar preview */
+    var inp = document.getElementById('sp-media-input');
+    if(inp){
+      try {
+        var dt = new DataTransfer();
+        dt.items.add(trimmed);
+        inp.files = dt.files;
+        inp.dispatchEvent(new Event('change', { bubbles: true }));
+      } catch(e){ console.warn('vtrim inject failed', e); }
+    }
+
+    if(btn) btn.disabled = false;
+    /* Fecha SEM resetar o input (já tem o arquivo trimmed) */
+    window.spCloseVtrim(false);
+  };
+
   window.spVrecUse = function(){
     if(!_vrecState.blob){ window.spCloseVideoRecorder(); return; }
     var ext = (_vrecState.mimeType.indexOf('mp4') >= 0) ? 'mp4' : 'webm';
@@ -3305,10 +3582,6 @@ document.addEventListener('click', function(e){
     preview.innerHTML = '';
 
     if(file.type.startsWith('video/')){
-      /* Limites atuais: 30s de duração + 50MB. O cap em 30s é pra
-         maximizar a chance de caber no 50MB sem perder qualidade.
-         Quando o nginx frontal do camim.com.br for pra 100MB, subimos
-         daqui também. */
       var sizeMB = file.size / (1024 * 1024);
       var video = document.createElement('video');
       video.src = URL.createObjectURL(file);
@@ -3318,26 +3591,31 @@ document.addEventListener('click', function(e){
       preview.appendChild(video);
       video.addEventListener('loadedmetadata', function(){
         var dur = video.duration;
+        /* Vídeo > 30s: abre o TRIM UI pra usuário escolher 30s dentro
+           do vídeo. Nada de bloquear. */
         if(dur > 30){
-          alert('Máximo 30 segundos. Seu vídeo tem ' + Math.round(dur) + 's — recorte e tente de novo.');
-          e.target.value = '';
           preview.innerHTML = '';
           preview.classList.add('sp-hidden');
+          /* Não limpa o input ainda — só vai limpar se o usuário cancelar
+             o trim. Se confirmar, o resultado substitui o file. */
+          if(window.spOpenVtrim){
+            window.spOpenVtrim(file, dur);
+          } else {
+            alert('Trim não disponível neste navegador. Use um vídeo de até 30s.');
+            e.target.value = '';
+          }
           return;
         }
         if(file.size > 50 * 1024 * 1024){
           alert(
-            'Vídeo de ' + sizeMB.toFixed(1) + 'MB ultrapassa o limite atual de 50MB.\n\n' +
-            'Dicas:\n' +
-            '• Grave em qualidade mais baixa nas configurações do celular (ex.: 1080p em vez de 4K)\n' +
-            '• Ou faça um vídeo mais curto (' + Math.round(dur) + 's está OK no tempo, só a qualidade que pesou)'
+            'Vídeo de ' + sizeMB.toFixed(1) + 'MB ultrapassa o limite de 50MB.\n\n' +
+            'Grave em qualidade mais baixa no celular (1080p em vez de 4K).'
           );
           e.target.value = '';
           preview.innerHTML = '';
           preview.classList.add('sp-hidden');
           return;
         }
-        /* Mostra info útil ao lado do preview pra orientar a gravação */
         var info = document.createElement('div');
         info.style.cssText = 'font-size:.78rem;color:rgba(255,255,255,.85);margin-top:6px;padding:6px 10px;background:rgba(0,0,0,.4);border-radius:8px';
         info.textContent = Math.round(dur) + 's · ' + sizeMB.toFixed(1) + 'MB / 50MB';
