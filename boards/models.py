@@ -876,6 +876,10 @@ class SocialPost(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
+    # Quando preenchido, indica que a foto deste post foi gerada por IA a
+    # partir de um texto que foi reconhecido como prato (ex: "Strogonoff").
+    # Usado para cota (1/dia/usuário) e auditoria.
+    ai_food_dish = models.CharField(max_length=120, blank=True, default="")
 
     class Meta:
         ordering = ["-created_at"]

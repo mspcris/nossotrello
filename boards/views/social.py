@@ -1040,6 +1040,14 @@ def social_post_create(request):
         # Notificar @menções
         if text:
             _notify_mentions(text, request.user, post.id, context="post")
+        # Geração de foto do prato (IA) para posts text-only sobre comida.
+        # Dispara em background; quota 1/dia/usuário; falha silenciosa.
+        if text and not photo and not video and not gif_url and not sticker_url and not text.startswith("__"):
+            try:
+                from boards.services.food_image import schedule_food_image
+                schedule_food_image(post.id)
+            except Exception:
+                _mention_logger.exception("food_image: falha ao agendar post_id=%s", post.id)
         # AI react trigger
         parts = []
         if text:
