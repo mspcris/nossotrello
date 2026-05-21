@@ -327,6 +327,7 @@ body.sp-standalone-page {
 .sp-card {
   background: #fff;
   border-radius: 16px;
+  border: 1px solid #e5e7eb; /* slate-200 — separação suave entre os processos, sem competir com o conteúdo */
   padding: 16px;
   box-shadow: 0 1px 4px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04);
 }
