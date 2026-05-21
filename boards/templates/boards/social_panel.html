@@ -1539,6 +1539,7 @@ window._spBtnIdle = function(btn){
         html += '</div>';
       } else if(p.video){
         html += '<video src="'+p.video+'" class="sp-reel-media" controls preload="auto" playsinline muted></video>';
+        html += '<button type="button" class="sp-reel-sound-btn" data-post-id="'+p.id+'" onclick="spReelToggleSound(this)" title="Som"></button>';
       } else if(p.photo){
         html += '<img src="'+p.photo+'" alt="" loading="lazy">';
       } else if(p.sticker_url){
@@ -1716,44 +1717,7 @@ window._spBtnIdle = function(btn){
     }, _sig);
 
     /* Preload: carregar imagens dos próximos slides antecipadamente */
-    var _videoPrefetched = {};
-    function _prefetchVideoBuffer(url){
-      if(!url || _videoPrefetched[url]) return;
-      _videoPrefetched[url] = true;
-      /* Dispara um fetch em background que enche o cache HTTP do browser.
-         Quando o <video> for carregar o mesmo URL depois, vem do cache.
-         Limita a ~4MB lidos e cancela — só queremos o suficiente pra
-         começar a tocar fluido. */
-      try {
-        fetch(url, {credentials: 'same-origin'}).then(function(r){
-          if(!r || !r.ok || !r.body) return;
-          var reader = r.body.getReader();
-          var bytes = 0;
-          var MAX_BYTES = 4 * 1024 * 1024;
-          function pump(){
-            return reader.read().then(function(res){
-              if(res.done) return;
-              bytes += res.value ? res.value.length : 0;
-              if(bytes >= MAX_BYTES){ try { reader.cancel(); } catch(e){} return; }
-              return pump();
-            }).catch(function(){});
-          }
-          pump();
-        }).catch(function(){
-          /* Falhou — permite tentar de novo numa próxima */
-          _videoPrefetched[url] = false;
-        });
-      } catch(e){
-        _videoPrefetched[url] = false;
-      }
-    }
-
     function _preloadAround(idx){
-      /* Vídeo do slide atual também — alimenta o cache pra primeira tocada */
-      var cur = _reelPosts[idx];
-      if(cur && cur.video){
-        _prefetchVideoBuffer(cur.video);
-      }
       for(var d = 1; d <= 3; d++){
         var ni = idx + d;
         if(ni >= _totalSlides) ni -= _totalSlides;
@@ -1769,12 +1733,23 @@ window._spBtnIdle = function(btn){
           var av = new Image();
           av.src = p.user_avatar;
         }
-        /* Vídeo: prefetch dos 2 próximos. Não usa <video> pra evitar que
-           o browser dispare múltiplos loads paralelos e engasgue. */
-        if(p.video && d <= 2){
-          _prefetchVideoBuffer(p.video);
-        }
       }
+      /* Vídeos: chama .load() explicitamente no slide atual + próximos 2.
+         Sem isso, _wrapVideo só dispara .load() ao montar o <video> uma
+         vez, mas browsers móveis throttlam loads paralelos. */
+      [idx, idx + 1, idx + 2].forEach(function(ni){
+        if(ni >= _totalSlides) return;
+        var p = _reelPosts[ni];
+        if(!p || !p.video) return;
+        var slideEl = el.querySelector('.sp-reel-slide[data-post-id="' + p.id + '"]');
+        if(!slideEl) return;
+        var vid = slideEl.querySelector('video.sp-reel-media');
+        if(vid && !vid.dataset.loadKicked){
+          vid.dataset.loadKicked = '1';
+          vid.preload = 'auto';
+          try { vid.load(); } catch(e){}
+        }
+      });
     }
     _preloadAround(0);
 
@@ -2042,14 +2017,54 @@ window._spBtnIdle = function(btn){
 
   function _updateDots(){ /* no-op — dots desativados */ }
 
+  /* Som no reel: muted é o default (pro autoplay funcionar em mobile).
+     Usuário libera via botão estilo Instagram — preferência salva em
+     localStorage e reaplicada a cada slide. */
+  function _reelSoundOn(){
+    try { return localStorage.getItem('sp_reel_sound') === '1'; } catch(e){ return false; }
+  }
+  function _setReelSound(on){
+    try { localStorage.setItem('sp_reel_sound', on ? '1' : '0'); } catch(e){}
+  }
+  function _applySoundToSlide(slide){
+    if(!slide) return;
+    var vid = slide.querySelector('video.sp-reel-media');
+    var btn = slide.querySelector('.sp-reel-sound-btn');
+    if(!vid) return;
+    var on = _reelSoundOn();
+    vid.muted = !on;
+    if(btn) btn.textContent = on ? '🔊' : '🔇';
+  }
+
+  window.spReelToggleSound = function(btn){
+    var slide = btn.closest('.sp-reel-slide');
+    if(!slide) return;
+    var on = !_reelSoundOn();
+    _setReelSound(on);
+    _applySoundToSlide(slide);
+    /* Reflete em todos os slides do reel pra próximos manterem coerência */
+    var all = document.querySelectorAll('#sp-reel .sp-reel-slide');
+    all.forEach(_applySoundToSlide);
+  };
+
   function _playCurrentVideo(el, idx){
     var slides = el.querySelectorAll('.sp-reel-slide');
     slides.forEach(function(slide, i){
       var vid = slide.querySelector('video');
       if(!vid) return;
       if(i === idx){
+        _applySoundToSlide(slide);
         vid.currentTime = 0;
-        vid.play().catch(function(){});
+        vid.play().catch(function(err){
+          /* Browser bloqueou autoplay com som (mobile). Força mute e tenta
+             de novo — usuário ainda pode ativar via botão. */
+          if(!vid.muted){
+            vid.muted = true;
+            var btn = slide.querySelector('.sp-reel-sound-btn');
+            if(btn) btn.textContent = '🔇';
+            vid.play().catch(function(){});
+          }
+        });
       } else {
         vid.pause();
       }
@@ -6435,8 +6450,24 @@ window.spShowReach = function(postId){
       overlay.classList.add('sp-hidden');
     });
 
-    /* Kick off download — alguns browsers ignoram preload=auto */
-    try { video.load(); } catch(e){}
+    /* Não chama .load() pra todos os vídeos de uma vez (engasga browser).
+       IntersectionObserver dispara o load só quando o vídeo entra ou está
+       perto da viewport (rootMargin: 100% = ~1 tela de buffer). Funciona
+       pro reel (slides horizontais) e pro perfil (lista vertical). */
+    if(window.IntersectionObserver){
+      var io = new IntersectionObserver(function(entries){
+        entries.forEach(function(e){
+          if(e.isIntersecting && !video.dataset.loadKicked){
+            video.dataset.loadKicked = '1';
+            try { video.load(); } catch(_){}
+            io.disconnect();
+          }
+        });
+      }, {rootMargin: '100% 100% 100% 100%', threshold: 0});
+      io.observe(video);
+    } else {
+      try { video.load(); } catch(e){}
+    }
     _update();
   }
 

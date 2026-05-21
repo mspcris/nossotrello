@@ -1362,6 +1362,34 @@ body:has(#sp-feed-wrap.sp-feed-fullscreen) .sp-reel-swipe-hint{
 .sp-reel-name{ font-weight:700; font-size:.85rem; color:#fff; text-shadow:0 1px 4px rgba(0,0,0,.75); }
 .sp-reel-time{ font-size:.7rem; color:rgba(255,255,255,.9); text-shadow:0 1px 3px rgba(0,0,0,.7); }
 
+/* Botão de som (estilo Instagram): canto superior direito do slide.
+   Floating, fundo semitransparente, em cima do vídeo. */
+.sp-reel-sound-btn{
+  position:absolute;
+  top:64px;
+  right:14px;
+  z-index:7;
+  width:38px;
+  height:38px;
+  border:none;
+  border-radius:50%;
+  background:rgba(0,0,0,.55);
+  color:#fff;
+  font-size:1.05rem;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  transition:transform .12s ease, background .12s ease;
+  backdrop-filter: blur(4px);
+  box-shadow:0 2px 8px rgba(0,0,0,.4);
+}
+.sp-reel-sound-btn:hover,
+.sp-reel-sound-btn:active{
+  background:rgba(0,0,0,.75);
+  transform:scale(1.08);
+}
+
 /* Bottom actions overlay */
 .sp-reel-actions{
   position:absolute; bottom:0; left:0; right:0;

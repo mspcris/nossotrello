@@ -2,16 +2,21 @@
 """
 Views publicas para servir arquivos que podem estar no banco (StoredFile)
 ou ainda em caminhos legados do filesystem.
+
+Suporta HTTP Range Requests (RFC 7233) — sem isso, o <video> tag espera o
+arquivo inteiro chegar antes de começar a tocar (vídeo de 17MB engasga em
+'Carregando 0%' por dezenas de segundos).
 """
 
 import mimetypes
 import os
+import re
 import unicodedata
 import uuid
 
 from django.conf import settings
 from django.core.exceptions import SuspiciousFileOperation
-from django.http import FileResponse, Http404
+from django.http import FileResponse, Http404, HttpResponse, StreamingHttpResponse
 from django.utils._os import safe_join
 from django.views.decorators.http import require_GET
 
@@ -19,6 +24,7 @@ from boards.models import StoredFile
 
 
 INLINE_CONTENT_PREFIXES = ("image/", "video/", "audio/", "application/pdf")
+_RANGE_RE = re.compile(r"^bytes=(\d*)-(\d*)$")
 
 
 def _content_disposition(content_type: str, original_name: str) -> str:
@@ -30,26 +36,108 @@ def _content_disposition(content_type: str, original_name: str) -> str:
     return f'{disposition}; filename="{safe_name}"'
 
 
-def _stored_file_response(stored: StoredFile) -> FileResponse:
-    response = FileResponse(
-        streaming_content=iter([bytes(stored.data)]),
-        content_type=stored.content_type,
-    )
-    response["Content-Disposition"] = _content_disposition(
-        stored.content_type or "application/octet-stream",
-        stored.original_name,
-    )
-    response["Content-Length"] = stored.size
+def _parse_range(header: str, total: int):
+    """Parseia 'bytes=START-END' e retorna (start, end) clipped ao tamanho.
+    Retorna None se inválido ou ausente. END é inclusivo, como no HTTP."""
+    if not header or total <= 0:
+        return None
+    m = _RANGE_RE.match(header.strip())
+    if not m:
+        return None
+    start_s, end_s = m.group(1), m.group(2)
+    if start_s == "" and end_s == "":
+        return None
+    if start_s == "":
+        # 'bytes=-N' → últimos N bytes
+        try:
+            n = int(end_s)
+        except ValueError:
+            return None
+        if n <= 0:
+            return None
+        start = max(0, total - n)
+        end = total - 1
+    else:
+        try:
+            start = int(start_s)
+        except ValueError:
+            return None
+        if start >= total:
+            return None
+        if end_s == "":
+            end = total - 1
+        else:
+            try:
+                end = int(end_s)
+            except ValueError:
+                return None
+            end = min(end, total - 1)
+        if end < start:
+            return None
+    return start, end
+
+
+def _stored_file_response(stored: StoredFile, request) -> HttpResponse:
+    total = stored.size
+    content_type = stored.content_type or "application/octet-stream"
+    data = bytes(stored.data)
+
+    range_header = request.META.get("HTTP_RANGE", "")
+    parsed = _parse_range(range_header, total)
+
+    if parsed is not None:
+        start, end = parsed
+        length = end - start + 1
+        response = HttpResponse(
+            data[start:end + 1],
+            status=206,
+            content_type=content_type,
+        )
+        response["Content-Range"] = f"bytes {start}-{end}/{total}"
+        response["Content-Length"] = str(length)
+    else:
+        response = HttpResponse(data, content_type=content_type)
+        response["Content-Length"] = str(total)
+
+    response["Accept-Ranges"] = "bytes"
+    response["Content-Disposition"] = _content_disposition(content_type, stored.original_name)
     response["Cache-Control"] = "public, max-age=604800, immutable"
     response["ETag"] = f'"{stored.checksum}"'
     return response
 
 
-def _filesystem_file_response(file_path: str, file_ref: str) -> FileResponse:
+def _filesystem_file_response(file_path: str, file_ref: str, request) -> HttpResponse:
     content_type = mimetypes.guess_type(file_ref)[0] or "application/octet-stream"
-    response = FileResponse(open(file_path, "rb"), content_type=content_type)
+    total = os.path.getsize(file_path)
+
+    range_header = request.META.get("HTTP_RANGE", "")
+    parsed = _parse_range(range_header, total)
+
+    if parsed is not None:
+        start, end = parsed
+        length = end - start + 1
+
+        def _chunks():
+            CHUNK = 64 * 1024
+            with open(file_path, "rb") as f:
+                f.seek(start)
+                remaining = length
+                while remaining > 0:
+                    buf = f.read(min(CHUNK, remaining))
+                    if not buf:
+                        break
+                    remaining -= len(buf)
+                    yield buf
+
+        response = StreamingHttpResponse(_chunks(), status=206, content_type=content_type)
+        response["Content-Range"] = f"bytes {start}-{end}/{total}"
+        response["Content-Length"] = str(length)
+    else:
+        response = FileResponse(open(file_path, "rb"), content_type=content_type)
+        response["Content-Length"] = str(total)
+
+    response["Accept-Ranges"] = "bytes"
     response["Content-Disposition"] = _content_disposition(content_type, os.path.basename(file_ref))
-    response["Content-Length"] = os.path.getsize(file_path)
     response["Cache-Control"] = "public, max-age=604800"
     return response
 
@@ -96,12 +184,12 @@ def serve_stored_file(request, file_ref):
     """
     stored = _lookup_stored_file(file_ref)
     if stored:
-        return _stored_file_response(stored)
+        return _stored_file_response(stored, request)
 
     for variant in _path_variants(file_ref):
         legacy_path = _safe_legacy_path(variant)
         if os.path.isfile(legacy_path):
-            return _filesystem_file_response(legacy_path, variant)
+            return _filesystem_file_response(legacy_path, variant, request)
 
     raise Http404("Arquivo nao encontrado")
 
