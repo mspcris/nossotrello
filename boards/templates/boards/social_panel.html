@@ -1081,21 +1081,40 @@
        Garante 720p / 1.5Mbps / 30s — sempre cabe nos 50MB.
        Auto-para em 30s. Sem dependência de app de câmera nativo. -->
   <div id="sp-vrec-overlay" class="sp-vrec-overlay sp-hidden" aria-hidden="true">
-    <video id="sp-vrec-preview" class="sp-vrec-preview" autoplay muted playsinline></video>
-    <button type="button" class="sp-vrec-close" onclick="window.spCloseVideoRecorder()" aria-label="Fechar">✕</button>
-    <div class="sp-vrec-timer" id="sp-vrec-timer">0:00 / 0:30</div>
-    <div class="sp-vrec-controls" id="sp-vrec-controls">
-      <button type="button" class="sp-vrec-record" id="sp-vrec-record" onclick="window.spVrecToggle()" aria-label="Gravar">
-        <span class="sp-vrec-record-inner"></span>
-      </button>
-      <div class="sp-vrec-hint" id="sp-vrec-hint">Toque pra começar — máx 30s</div>
+    <!-- ETAPA 1: Briefing das regras (mostra ANTES da câmera abrir) -->
+    <div class="sp-vrec-brief" id="sp-vrec-brief">
+      <button type="button" class="sp-vrec-close" onclick="window.spCloseVideoRecorder()" aria-label="Fechar">✕</button>
+      <div class="sp-vrec-brief-card">
+        <div class="sp-vrec-brief-emoji">🎬</div>
+        <h2 class="sp-vrec-brief-title">Vídeo de até 30 segundos</h2>
+        <ul class="sp-vrec-brief-rules">
+          <li><strong>Para sozinho aos 30s.</strong> A gravação encerra automaticamente — você não precisa apertar parar.</li>
+          <li><strong>Gravamos em 720p.</strong> Qualidade boa, garantindo que sempre vai caber no upload.</li>
+          <li><strong>Pode rever antes de publicar.</strong> No final você decide se usa esse vídeo ou regrava.</li>
+        </ul>
+        <button type="button" class="sp-vrec-brief-go" onclick="window.spVrecStartCamera()">Começar 🎥</button>
+        <button type="button" class="sp-vrec-brief-cancel" onclick="window.spCloseVideoRecorder()">Cancelar</button>
+      </div>
     </div>
-    <div class="sp-vrec-review sp-hidden" id="sp-vrec-review">
-      <video id="sp-vrec-playback" controls playsinline class="sp-vrec-playback"></video>
-      <div class="sp-vrec-review-info" id="sp-vrec-review-info"></div>
-      <div class="sp-vrec-review-actions">
-        <button type="button" class="sp-vrec-redo" onclick="window.spVrecRedo()">↺ Re-gravar</button>
-        <button type="button" class="sp-vrec-use" onclick="window.spVrecUse()">Usar este vídeo →</button>
+
+    <!-- ETAPA 2: Câmera + controles (escondido até clicar em "Começar") -->
+    <div class="sp-vrec-cam sp-hidden" id="sp-vrec-cam">
+      <video id="sp-vrec-preview" class="sp-vrec-preview" autoplay muted playsinline></video>
+      <button type="button" class="sp-vrec-close" onclick="window.spCloseVideoRecorder()" aria-label="Fechar">✕</button>
+      <div class="sp-vrec-timer" id="sp-vrec-timer">0:00 / 0:30</div>
+      <div class="sp-vrec-controls" id="sp-vrec-controls">
+        <button type="button" class="sp-vrec-record" id="sp-vrec-record" onclick="window.spVrecToggle()" aria-label="Gravar">
+          <span class="sp-vrec-record-inner"></span>
+        </button>
+        <div class="sp-vrec-hint" id="sp-vrec-hint">Toque pra começar — para sozinho em 30s</div>
+      </div>
+      <div class="sp-vrec-review sp-hidden" id="sp-vrec-review">
+        <video id="sp-vrec-playback" controls playsinline class="sp-vrec-playback"></video>
+        <div class="sp-vrec-review-info" id="sp-vrec-review-info"></div>
+        <div class="sp-vrec-review-actions">
+          <button type="button" class="sp-vrec-redo" onclick="window.spVrecRedo()">↺ Re-gravar</button>
+          <button type="button" class="sp-vrec-use" onclick="window.spVrecUse()">Usar este vídeo →</button>
+        </div>
       </div>
     </div>
   </div>
@@ -3054,13 +3073,13 @@ document.addEventListener('click', function(e){
     if(review) review.classList.add('sp-hidden');
   }
 
-  window.spOpenVideoRecorder = async function(){
+  window.spOpenVideoRecorder = function(){
     var overlay = document.getElementById('sp-vrec-overlay');
-    var preview = document.getElementById('sp-vrec-preview');
-    if(!overlay || !preview) return;
+    var brief = document.getElementById('sp-vrec-brief');
+    var cam = document.getElementById('sp-vrec-cam');
+    if(!overlay) return;
 
     if(typeof MediaRecorder === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-      /* Fallback: usa o input file nativo com capture */
       var inp = document.getElementById('sp-media-input');
       if(inp){
         inp.accept = 'video/*';
@@ -3078,8 +3097,17 @@ document.addEventListener('click', function(e){
     }
 
     _vrecResetUI();
+    if(brief) brief.classList.remove('sp-hidden');
+    if(cam) cam.classList.add('sp-hidden');
     overlay.classList.remove('sp-hidden');
     overlay.setAttribute('aria-hidden', 'false');
+  };
+
+  window.spVrecStartCamera = async function(){
+    var preview = document.getElementById('sp-vrec-preview');
+    var brief = document.getElementById('sp-vrec-brief');
+    var cam = document.getElementById('sp-vrec-cam');
+    if(!preview) return;
 
     try {
       _vrecState.stream = await navigator.mediaDevices.getUserMedia({
@@ -3092,12 +3120,12 @@ document.addEventListener('click', function(e){
         audio: true,
       });
       preview.srcObject = _vrecState.stream;
+      if(brief) brief.classList.add('sp-hidden');
+      if(cam) cam.classList.remove('sp-hidden');
       try { await preview.play(); } catch(e){}
     } catch(err){
-      overlay.classList.add('sp-hidden');
-      overlay.setAttribute('aria-hidden', 'true');
       alert('Não consegui acessar a câmera. Verifique a permissão do site.\n\n' + (err && err.message ? err.message : ''));
-      _vrecCleanupStream();
+      window.spCloseVideoRecorder();
     }
   };
 

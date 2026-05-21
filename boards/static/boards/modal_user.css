@@ -4270,6 +4270,88 @@ video.sp-post-media {
   align-items: center;
   justify-content: center;
 }
+
+/* Briefing antes da câmera abrir — explica as regras */
+.sp-vrec-brief {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(160deg, #0f172a 0%, #1e293b 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 4;
+}
+.sp-vrec-brief-card {
+  width: 100%;
+  max-width: 380px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 18px;
+  padding: 28px 22px 22px;
+  text-align: center;
+  color: #fff;
+  backdrop-filter: blur(8px);
+}
+.sp-vrec-brief-emoji {
+  font-size: 2.6rem;
+  margin-bottom: 8px;
+}
+.sp-vrec-brief-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  margin: 0 0 18px;
+  color: #fff;
+}
+.sp-vrec-brief-rules {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 22px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.sp-vrec-brief-rules li {
+  font-size: .92rem;
+  line-height: 1.45;
+  color: rgba(255,255,255,.88);
+  padding: 10px 14px;
+  background: rgba(255,255,255,.05);
+  border-radius: 12px;
+  border-left: 3px solid #10b981;
+}
+.sp-vrec-brief-rules li strong { color: #fff; }
+.sp-vrec-brief-go {
+  width: 100%;
+  padding: 14px 18px;
+  margin-bottom: 8px;
+  border: none;
+  border-radius: 999px;
+  background: #10b981;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(16,185,129,.45);
+}
+.sp-vrec-brief-go:active { transform: scale(.98); }
+.sp-vrec-brief-cancel {
+  width: 100%;
+  padding: 10px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(255,255,255,.7);
+  font-size: .85rem;
+  cursor: pointer;
+}
+.sp-vrec-brief-cancel:active { color: #fff; }
+
+.sp-vrec-cam {
+  position: absolute;
+  inset: 0;
+}
 .sp-vrec-preview {
   position: absolute;
   inset: 0;
