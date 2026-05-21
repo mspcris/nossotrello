@@ -26,6 +26,13 @@ from boards.models import StoredFile
 INLINE_CONTENT_PREFIXES = ("image/", "video/", "audio/", "application/pdf")
 _RANGE_RE = re.compile(r"^bytes=(\d*)-(\d*)$")
 
+# Range 'bytes=N-' (open-ended) é capado a este tamanho. Sem isso, o browser
+# pede 'bytes=0-' e nós devolvemos o arquivo inteiro num 206 — pra vídeo de
+# 17MB, o player espera tudo chegar antes de começar a tocar (20-30s). Com
+# o cap, o browser recebe o primeiro chunk, começa a tocar, e pede o próximo
+# range conforme precisa.
+_MAX_OPEN_RANGE_BYTES = 2 * 1024 * 1024
+
 
 def _content_disposition(content_type: str, original_name: str) -> str:
     disposition = "inline"
@@ -38,7 +45,11 @@ def _content_disposition(content_type: str, original_name: str) -> str:
 
 def _parse_range(header: str, total: int):
     """Parseia 'bytes=START-END' e retorna (start, end) clipped ao tamanho.
-    Retorna None se inválido ou ausente. END é inclusivo, como no HTTP."""
+    Retorna None se inválido ou ausente. END é inclusivo, como no HTTP.
+
+    Para Range 'bytes=N-' (open-ended), o end é CAPADO a _MAX_OPEN_RANGE_BYTES
+    a partir de start — assim 'bytes=0-' num arquivo de 17MB devolve só os
+    primeiros 2MB e o browser pede os próximos chunks conforme precisa."""
     if not header or total <= 0:
         return None
     m = _RANGE_RE.match(header.strip())
@@ -65,7 +76,8 @@ def _parse_range(header: str, total: int):
         if start >= total:
             return None
         if end_s == "":
-            end = total - 1
+            # Open-ended: cap pra forçar o browser a pedir o próximo chunk
+            end = min(total - 1, start + _MAX_OPEN_RANGE_BYTES - 1)
         else:
             try:
                 end = int(end_s)
@@ -80,7 +92,6 @@ def _parse_range(header: str, total: int):
 def _stored_file_response(stored: StoredFile, request) -> HttpResponse:
     total = stored.size
     content_type = stored.content_type or "application/octet-stream"
-    data = bytes(stored.data)
 
     range_header = request.META.get("HTTP_RANGE", "")
     parsed = _parse_range(range_header, total)
@@ -88,15 +99,22 @@ def _stored_file_response(stored: StoredFile, request) -> HttpResponse:
     if parsed is not None:
         start, end = parsed
         length = end - start + 1
-        response = HttpResponse(
-            data[start:end + 1],
+        # Slice direto na memória do bytea — para chunks pequenos (até 2MB
+        # capados) o custo é aceitável. Streaming aqui é mais sobre marcar
+        # com 206 + Content-Range que o cliente entende.
+        body = bytes(stored.data[start:end + 1])
+        response = StreamingHttpResponse(
+            iter([body]),
             status=206,
             content_type=content_type,
         )
         response["Content-Range"] = f"bytes {start}-{end}/{total}"
         response["Content-Length"] = str(length)
     else:
-        response = HttpResponse(data, content_type=content_type)
+        response = StreamingHttpResponse(
+            iter([bytes(stored.data)]),
+            content_type=content_type,
+        )
         response["Content-Length"] = str(total)
 
     response["Accept-Ranges"] = "bytes"

@@ -1362,6 +1362,21 @@ body:has(#sp-feed-wrap.sp-feed-fullscreen) .sp-reel-swipe-hint{
 .sp-reel-name{ font-weight:700; font-size:.85rem; color:#fff; text-shadow:0 1px 4px rgba(0,0,0,.75); }
 .sp-reel-time{ font-size:.7rem; color:rgba(255,255,255,.9); text-shadow:0 1px 3px rgba(0,0,0,.7); }
 
+/* Overlay invisível em cima do <video> pra capturar tap/click ANTES do
+   player nativo pausar. Deixa os 60px do fundo livres pra barra de
+   controles (play/pause/scrub) continuar funcionando. */
+.sp-reel-video-tap{
+  position:absolute;
+  top:0;
+  left:0;
+  right:0;
+  bottom:60px;
+  z-index:4;
+  cursor:pointer;
+  background:transparent;
+  touch-action:manipulation;
+}
+
 /* Som no vídeo do reel: toque em qualquer ponto do vídeo (fora da barra
    de controles nativa) alterna entre mute/unmute. Um ícone aparece no
    centro do slide e some em ~0.7s pra dar feedback visual. */
