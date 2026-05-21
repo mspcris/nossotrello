@@ -1077,6 +1077,29 @@
     </div>
   </div>
 
+  <!-- ═══ GRAVADOR DE VÍDEO IN-BROWSER ═══
+       Garante 720p / 1.5Mbps / 30s — sempre cabe nos 50MB.
+       Auto-para em 30s. Sem dependência de app de câmera nativo. -->
+  <div id="sp-vrec-overlay" class="sp-vrec-overlay sp-hidden" aria-hidden="true">
+    <video id="sp-vrec-preview" class="sp-vrec-preview" autoplay muted playsinline></video>
+    <button type="button" class="sp-vrec-close" onclick="window.spCloseVideoRecorder()" aria-label="Fechar">✕</button>
+    <div class="sp-vrec-timer" id="sp-vrec-timer">0:00 / 0:30</div>
+    <div class="sp-vrec-controls" id="sp-vrec-controls">
+      <button type="button" class="sp-vrec-record" id="sp-vrec-record" onclick="window.spVrecToggle()" aria-label="Gravar">
+        <span class="sp-vrec-record-inner"></span>
+      </button>
+      <div class="sp-vrec-hint" id="sp-vrec-hint">Toque pra começar — máx 30s</div>
+    </div>
+    <div class="sp-vrec-review sp-hidden" id="sp-vrec-review">
+      <video id="sp-vrec-playback" controls playsinline class="sp-vrec-playback"></video>
+      <div class="sp-vrec-review-info" id="sp-vrec-review-info"></div>
+      <div class="sp-vrec-review-actions">
+        <button type="button" class="sp-vrec-redo" onclick="window.spVrecRedo()">↺ Re-gravar</button>
+        <button type="button" class="sp-vrec-use" onclick="window.spVrecUse()">Usar este vídeo →</button>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -2949,11 +2972,19 @@ document.addEventListener('click', function(e){
   window.spCapture = function(type){
     var inp = document.getElementById('sp-media-input');
     if(!inp) return;
-    if(type === 'photo'){
-      inp.accept = 'image/*';
-      inp.setAttribute('capture', 'environment');
-    } else if(type === 'video'){
+    if(type === 'video'){
+      /* Vídeo agora abre um gravador custom no browser que força 720p +
+         1.5Mbps + auto-stop em 30s — sempre cabe em 50MB. Sem isso o user
+         podia gravar em 4K do celular e perder o vídeo no upload. */
+      if(window.spOpenVideoRecorder){
+        window.spOpenVideoRecorder();
+        return;
+      }
+      /* Fallback se o browser não suportar MediaRecorder (iOS muito velho) */
       inp.accept = 'video/*';
+      inp.setAttribute('capture', 'environment');
+    } else if(type === 'photo'){
+      inp.accept = 'image/*';
       inp.setAttribute('capture', 'environment');
     } else {
       inp.accept = 'image/*,video/*';
@@ -2961,6 +2992,235 @@ document.addEventListener('click', function(e){
     }
     inp.value = '';
     inp.click();
+  };
+
+  /* ═══ GRAVADOR DE VÍDEO IN-BROWSER ═══════════════════════════════ */
+  var _vrecState = {
+    stream: null,
+    recorder: null,
+    chunks: [],
+    startTime: 0,
+    autoStopTimer: null,
+    tickTimer: null,
+    blob: null,
+    blobUrl: null,
+    mimeType: '',
+  };
+  var VREC_MAX_SECONDS = 30;
+  var VREC_VIDEO_BPS = 1500000;
+  var VREC_AUDIO_BPS = 96000;
+
+  function _vrecPickMime(){
+    var candidates = [
+      'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+      'video/mp4',
+      'video/webm;codecs=vp9,opus',
+      'video/webm;codecs=vp8,opus',
+      'video/webm',
+    ];
+    if(typeof MediaRecorder === 'undefined' || !MediaRecorder.isTypeSupported) return '';
+    for(var i = 0; i < candidates.length; i++){
+      if(MediaRecorder.isTypeSupported(candidates[i])) return candidates[i];
+    }
+    return '';
+  }
+
+  function _vrecFmtTime(sec){
+    sec = Math.max(0, Math.floor(sec));
+    var m = Math.floor(sec / 60);
+    var s = sec % 60;
+    return m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  function _vrecCleanupStream(){
+    if(_vrecState.stream){
+      _vrecState.stream.getTracks().forEach(function(t){ try { t.stop(); } catch(e){} });
+      _vrecState.stream = null;
+    }
+    if(_vrecState.autoStopTimer){ clearTimeout(_vrecState.autoStopTimer); _vrecState.autoStopTimer = null; }
+    if(_vrecState.tickTimer){ clearInterval(_vrecState.tickTimer); _vrecState.tickTimer = null; }
+  }
+
+  function _vrecResetUI(){
+    var rec = document.getElementById('sp-vrec-record');
+    var hint = document.getElementById('sp-vrec-hint');
+    var timer = document.getElementById('sp-vrec-timer');
+    var controls = document.getElementById('sp-vrec-controls');
+    var review = document.getElementById('sp-vrec-review');
+    if(rec) rec.classList.remove('sp-vrec-recording');
+    if(hint) hint.textContent = 'Toque pra começar — máx 30s';
+    if(timer) timer.textContent = '0:00 / 0:30';
+    if(controls) controls.classList.remove('sp-hidden');
+    if(review) review.classList.add('sp-hidden');
+  }
+
+  window.spOpenVideoRecorder = async function(){
+    var overlay = document.getElementById('sp-vrec-overlay');
+    var preview = document.getElementById('sp-vrec-preview');
+    if(!overlay || !preview) return;
+
+    if(typeof MediaRecorder === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      /* Fallback: usa o input file nativo com capture */
+      var inp = document.getElementById('sp-media-input');
+      if(inp){
+        inp.accept = 'video/*';
+        inp.setAttribute('capture', 'environment');
+        inp.value = '';
+        inp.click();
+      }
+      return;
+    }
+
+    _vrecState.mimeType = _vrecPickMime();
+    if(!_vrecState.mimeType){
+      alert('Seu navegador não suporta gravação de vídeo direta. Use a opção Galeria.');
+      return;
+    }
+
+    _vrecResetUI();
+    overlay.classList.remove('sp-hidden');
+    overlay.setAttribute('aria-hidden', 'false');
+
+    try {
+      _vrecState.stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'environment',
+          width:  { ideal: 1280, max: 1280 },
+          height: { ideal: 720,  max: 720  },
+          frameRate: { ideal: 30, max: 30 },
+        },
+        audio: true,
+      });
+      preview.srcObject = _vrecState.stream;
+      try { await preview.play(); } catch(e){}
+    } catch(err){
+      overlay.classList.add('sp-hidden');
+      overlay.setAttribute('aria-hidden', 'true');
+      alert('Não consegui acessar a câmera. Verifique a permissão do site.\n\n' + (err && err.message ? err.message : ''));
+      _vrecCleanupStream();
+    }
+  };
+
+  window.spCloseVideoRecorder = function(){
+    if(_vrecState.recorder && _vrecState.recorder.state === 'recording'){
+      try { _vrecState.recorder.stop(); } catch(e){}
+    }
+    _vrecCleanupStream();
+    _vrecState.chunks = [];
+    _vrecState.blob = null;
+    if(_vrecState.blobUrl){ try { URL.revokeObjectURL(_vrecState.blobUrl); } catch(e){} _vrecState.blobUrl = null; }
+    var overlay = document.getElementById('sp-vrec-overlay');
+    var preview = document.getElementById('sp-vrec-preview');
+    if(preview){ preview.srcObject = null; }
+    if(overlay){
+      overlay.classList.add('sp-hidden');
+      overlay.setAttribute('aria-hidden', 'true');
+    }
+    _vrecResetUI();
+  };
+
+  window.spVrecToggle = function(){
+    var rec = _vrecState.recorder;
+    if(rec && rec.state === 'recording'){
+      try { rec.stop(); } catch(e){}
+      return;
+    }
+    if(!_vrecState.stream){ return; }
+    try {
+      _vrecState.chunks = [];
+      _vrecState.recorder = new MediaRecorder(_vrecState.stream, {
+        mimeType: _vrecState.mimeType,
+        videoBitsPerSecond: VREC_VIDEO_BPS,
+        audioBitsPerSecond: VREC_AUDIO_BPS,
+      });
+    } catch(err){
+      /* Fallback sem options */
+      try {
+        _vrecState.recorder = new MediaRecorder(_vrecState.stream, { mimeType: _vrecState.mimeType });
+      } catch(err2){
+        alert('Não consegui iniciar a gravação: ' + (err2 && err2.message ? err2.message : err.message));
+        return;
+      }
+    }
+
+    _vrecState.recorder.ondataavailable = function(e){
+      if(e.data && e.data.size > 0) _vrecState.chunks.push(e.data);
+    };
+    _vrecState.recorder.onstop = function(){
+      if(_vrecState.autoStopTimer){ clearTimeout(_vrecState.autoStopTimer); _vrecState.autoStopTimer = null; }
+      if(_vrecState.tickTimer){ clearInterval(_vrecState.tickTimer); _vrecState.tickTimer = null; }
+      var btn = document.getElementById('sp-vrec-record');
+      if(btn) btn.classList.remove('sp-vrec-recording');
+
+      var blob = new Blob(_vrecState.chunks, { type: _vrecState.mimeType.split(';')[0] });
+      _vrecState.blob = blob;
+      if(_vrecState.blobUrl){ try { URL.revokeObjectURL(_vrecState.blobUrl); } catch(e){} }
+      _vrecState.blobUrl = URL.createObjectURL(blob);
+
+      var playback = document.getElementById('sp-vrec-playback');
+      var info = document.getElementById('sp-vrec-review-info');
+      var controls = document.getElementById('sp-vrec-controls');
+      var review = document.getElementById('sp-vrec-review');
+      if(playback){ playback.src = _vrecState.blobUrl; }
+      if(info){
+        var sizeMB = (blob.size / (1024*1024)).toFixed(1);
+        var dur = ((Date.now() - _vrecState.startTime) / 1000).toFixed(1);
+        info.textContent = dur + 's · ' + sizeMB + 'MB / 50MB';
+      }
+      if(controls) controls.classList.add('sp-hidden');
+      if(review) review.classList.remove('sp-hidden');
+    };
+
+    _vrecState.recorder.start(1000);
+    _vrecState.startTime = Date.now();
+    var btn = document.getElementById('sp-vrec-record');
+    var hint = document.getElementById('sp-vrec-hint');
+    if(btn) btn.classList.add('sp-vrec-recording');
+    if(hint) hint.textContent = 'Gravando — toque pra parar';
+
+    _vrecState.tickTimer = setInterval(function(){
+      var elapsed = (Date.now() - _vrecState.startTime) / 1000;
+      var timer = document.getElementById('sp-vrec-timer');
+      if(timer) timer.textContent = _vrecFmtTime(elapsed) + ' / 0:30';
+    }, 200);
+
+    _vrecState.autoStopTimer = setTimeout(function(){
+      if(_vrecState.recorder && _vrecState.recorder.state === 'recording'){
+        try { _vrecState.recorder.stop(); } catch(e){}
+      }
+    }, VREC_MAX_SECONDS * 1000);
+  };
+
+  window.spVrecRedo = function(){
+    if(_vrecState.blobUrl){ try { URL.revokeObjectURL(_vrecState.blobUrl); } catch(e){} _vrecState.blobUrl = null; }
+    _vrecState.chunks = [];
+    _vrecState.blob = null;
+    var playback = document.getElementById('sp-vrec-playback');
+    if(playback){ playback.removeAttribute('src'); playback.load(); }
+    _vrecResetUI();
+  };
+
+  window.spVrecUse = function(){
+    if(!_vrecState.blob){ window.spCloseVideoRecorder(); return; }
+    var ext = (_vrecState.mimeType.indexOf('mp4') >= 0) ? 'mp4' : 'webm';
+    var file = new File(
+      [_vrecState.blob],
+      'reel_' + Date.now() + '.' + ext,
+      { type: _vrecState.blob.type || _vrecState.mimeType.split(';')[0] }
+    );
+    var inp = document.getElementById('sp-media-input');
+    if(inp){
+      try {
+        var dt = new DataTransfer();
+        dt.items.add(file);
+        inp.files = dt.files;
+        /* Dispara o handler de preview/validação que já existe */
+        inp.dispatchEvent(new Event('change', { bubbles: true }));
+      } catch(e){
+        console.warn('vrec: falha no DataTransfer', e);
+      }
+    }
+    window.spCloseVideoRecorder();
   };
 
   /* ── Media preview after file selection ── */
