@@ -153,6 +153,91 @@ def _get_today_tasks(user):
     return cards
 
 
+def _avatar_url_from_profile(prof):
+    """URL do avatar do profile: upload > avatar_choice > vazio."""
+    if prof and getattr(prof, "avatar", None):
+        try:
+            return prof.avatar.url
+        except Exception:
+            pass
+    if prof and getattr(prof, "avatar_choice", ""):
+        from django.templatetags.static import static
+        return static(f"images/avatar/{prof.avatar_choice}")
+    return ""
+
+
+def _build_board_invite_data(post):
+    """Se post.text é '__board_invite__:<board_id>:<invited_user_id>', retorna
+    dict com board + inviter + invited para renderização. None caso contrário."""
+    if not post.text.startswith("__board_invite__:"):
+        return None
+    parts = post.text.split(":")
+    if len(parts) < 3:
+        return None
+    try:
+        board_id = int(parts[1])
+        invited_id = int(parts[2])
+    except (TypeError, ValueError):
+        return None
+
+    inviter = post.user
+    inviter_prof = getattr(inviter, "profile", None)
+    inviter_name = (
+        (inviter_prof.display_name if inviter_prof else None)
+        or inviter.get_full_name()
+        or inviter.username
+        or inviter.email
+    )
+    inviter_avatar = _avatar_url_from_profile(inviter_prof)
+
+    board = Board.all_objects.filter(id=board_id).first()
+    board_name = board.name if board else "(quadro indisponível)"
+    board_image = ""
+    if board:
+        try:
+            if board.image:
+                board_image = board.image.url
+        except Exception:
+            pass
+        if not board_image:
+            try:
+                if board.background_image:
+                    board_image = board.background_image.url
+            except Exception:
+                pass
+
+    invited_user = (
+        User.objects.filter(id=invited_id).select_related("profile").first()
+        if invited_id
+        else None
+    )
+    if invited_user:
+        invited_prof = getattr(invited_user, "profile", None)
+        invited_name = (
+            (invited_prof.display_name if invited_prof else None)
+            or invited_user.get_full_name()
+            or invited_user.username
+            or invited_user.email
+        )
+        invited_avatar = _avatar_url_from_profile(invited_prof)
+    else:
+        invited_name = ""
+        invited_avatar = ""
+
+    return {
+        "board_id": board_id,
+        "board_name": board_name,
+        "board_image": board_image,
+        "board_available": bool(board and not board.is_deleted),
+        "inviter_id": inviter.id,
+        "inviter_name": inviter_name,
+        "inviter_avatar": inviter_avatar,
+        "invited_id": invited_id,
+        "invited_name": invited_name,
+        "invited_avatar": invited_avatar,
+    }
+
+
 def _annotate_profile_posts(posts, viewer):
     """Anexa atributos de UI a cada SocialPost (reactions, comments, repost
     info, friendship/card_like flags etc.) usados pelo partial
@@ -251,6 +336,11 @@ def _annotate_profile_posts(posts, viewer):
                 }
             except Exception:
                 pass
+
+        post.is_board_invite = False
+        post.board_invite_data = _build_board_invite_data(post)
+        if post.board_invite_data:
+            post.is_board_invite = True
 
         post.is_card_like = False
         post.card_like_data = None
@@ -560,6 +650,10 @@ def social_post_full(request, post_id: int):
         except Exception:
             pass
 
+    # Board invite post
+    board_invite_data = _build_board_invite_data(post)
+    is_board_invite = bool(board_invite_data)
+
     # Se é repost, herda do original
     is_repost = False
     original_author = None
@@ -633,6 +727,8 @@ def social_post_full(request, post_id: int):
         "original_author": original_author,
         "is_friendship": is_friendship,
         "friendship_data": friendship_data,
+        "is_board_invite": is_board_invite,
+        "board_invite": board_invite_data,
         "reaction_counts": reaction_counts,
         "my_reaction": my_reaction,
         "total_reactions": len(list(reactions)),
@@ -863,8 +959,11 @@ def social_friends_feed(request):
                     "user_name": prof.display_name if prof else p.user.get_full_name(),
                 }
 
+        # Detectar post de convite de quadro
+        board_invite_data = _build_board_invite_data(display_post)
+
         # Limpa o texto marcador antes de mandar pro front
-        _is_marker = friendship_data or card_like_data
+        _is_marker = friendship_data or card_like_data or board_invite_data
         result.append({
             "id": p.id,
             "user_name": prof.display_name if prof else p.user.get_full_name(),
@@ -884,6 +983,7 @@ def social_friends_feed(request):
             "shared_from": shared_info,
             "friendship": friendship_data,
             "card_like": card_like_data,
+            "board_invite": board_invite_data,
         })
 
     return JsonResponse({"posts": result, "has_more": has_more})

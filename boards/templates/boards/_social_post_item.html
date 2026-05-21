@@ -6,7 +6,34 @@
       🔄 Compartilhou de <a href="/social/{{ post.original_user_id }}/" style="color:#2563eb;font-weight:600;text-decoration:none">{{ post.original_author }}</a>
     </div>
   {% endif %}
-  {% if post.is_card_like and post.card_like_data %}
+  {% if post.is_board_invite and post.board_invite_data %}
+    {# Post de convite de quadro → preview clicável #}
+    <a class="sp-cardlike sp-boardinvite" href="{% if post.board_invite_data.board_available %}/board/{{ post.board_invite_data.board_id }}/{% else %}#{% endif %}" rel="noopener">
+      {% if post.board_invite_data.board_image %}
+        <div class="sp-cardlike-media"><img src="{{ post.board_invite_data.board_image }}" alt="" loading="lazy"></div>
+      {% else %}
+        <div class="sp-cardlike-media sp-binvite-media-avatars">
+          {% if post.board_invite_data.inviter_avatar %}
+            <img src="{{ post.board_invite_data.inviter_avatar }}" class="sp-binvite-av" alt="">
+          {% else %}
+            <span class="sp-binvite-av sp-binvite-av-fb">{{ post.board_invite_data.inviter_name|first|upper }}</span>
+          {% endif %}
+          <span class="sp-binvite-arrow">→</span>
+          {% if post.board_invite_data.invited_avatar %}
+            <img src="{{ post.board_invite_data.invited_avatar }}" class="sp-binvite-av" alt="">
+          {% else %}
+            <span class="sp-binvite-av sp-binvite-av-fb">{{ post.board_invite_data.invited_name|default:"?"|first|upper }}</span>
+          {% endif %}
+        </div>
+      {% endif %}
+      <div class="sp-cardlike-body">
+        <div class="sp-cardlike-head">📋 {{ post.board_invite_data.inviter_name }} convidou {{ post.board_invite_data.invited_name|default:"alguém" }}</div>
+        <div class="sp-cardlike-title">{{ post.board_invite_data.board_name }}</div>
+        <div class="sp-cardlike-board">Quadro</div>
+        <div class="sp-cardlike-cta">{% if post.board_invite_data.board_available %}Abrir quadro →{% else %}Quadro indisponível{% endif %}</div>
+      </div>
+    </a>
+  {% elif post.is_card_like and post.card_like_data %}
     {# Post de curtida em card → preview clicável #}
     <a class="sp-cardlike" href="/board/{{ post.card_like_data.board_id }}/?card={{ post.card_like_data.card_id }}" rel="noopener">
       {% if post.photo %}
@@ -63,7 +90,7 @@
   {% elif post.gif_url %}
     <img src="{{ post.gif_url }}" alt="GIF" class="sp-post-media" loading="lazy">
   {% endif %}
-  {% if post.text and not post.is_friendship and not post.is_card_like %}
+  {% if post.text and not post.is_friendship and not post.is_card_like and not post.is_board_invite %}
     {% if post.text_style %}
       <div class="sp-styled-text" data-effect="{{ post.text_style.effect }}"
            style="min-height:180px;display:flex;align-items:center;justify-content:center;border-radius:12px;padding:24px 20px;font-size:1.4rem;font-weight:700;text-align:center;word-break:break-word;line-height:1.4;margin-bottom:8px;background:{{ post.text_style.bg }};color:{{ post.text_style.color }}">

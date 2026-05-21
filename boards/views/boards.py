@@ -1307,17 +1307,10 @@ def board_share(request, board_id):
     # ==========================================================
     if created_membership:
         try:
-            actor_name = _actor_label(request.user)
-            invited_name = _actor_label(user) if not created_user else user.email
-            board_url = request.build_absolute_uri(
-                reverse("boards:board_detail", args=[board.id])
+            SocialPost.objects.create(
+                user=request.user,
+                text=f"__board_invite__:{board.id}:{user.id}",
             )
-            post_text = (
-                f"📋 {actor_name} convidou {invited_name} "
-                f"para o quadro: {board.name}\n"
-                f"🔗 {board_url}"
-            )
-            SocialPost.objects.create(user=request.user, text=post_text)
         except Exception:
             pass  # não bloquear o fluxo se o post falhar
 

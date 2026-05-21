@@ -1641,6 +1641,50 @@ video.sp-post-media {
 }
 .sp-cardlike-reel .sp-cardlike-title { color: #1e1b4b; }
 
+/* ─── Convite de quadro ─── */
+.sp-boardinvite {
+  background: linear-gradient(135deg, #ecfdf5, #d1fae5 45%, #a7f3d0);
+  border-color: rgba(16, 185, 129, 0.25);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.18);
+}
+.sp-boardinvite:hover,
+.sp-boardinvite:active {
+  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.28);
+}
+.sp-boardinvite .sp-cardlike-head { color: #065f46; }
+.sp-boardinvite .sp-cardlike-title { color: #064e3b; }
+.sp-boardinvite .sp-cardlike-cta {
+  background: #10b981;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.4);
+}
+.sp-binvite-media-avatars {
+  background: linear-gradient(135deg, #065f46, #047857 50%, #10b981);
+  gap: 18px;
+}
+.sp-binvite-av {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.sp-binvite-av-fb {
+  background: linear-gradient(135deg, #10b981, #34d399);
+  color: #fff;
+  font-weight: 800;
+  font-size: 1.6rem;
+}
+.sp-binvite-arrow {
+  color: #fff;
+  font-size: 1.8rem;
+  font-weight: 800;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
 /* ─── Buffering overlay para vídeos do feed/reel ─── */
 .sp-video-wrap {
   position: relative;

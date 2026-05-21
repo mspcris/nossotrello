@@ -1451,7 +1451,7 @@ window._spBtnIdle = function(btn){
         ? '<img class="sp-reel-av" src="'+p.user_avatar+'" alt="">'
         : '<span class="sp-reel-av-placeholder">'+initials+'</span>';
 
-      var _isTextOnly = !p.photo && !p.video && !p.gif_url && !p.sticker_url && !p.friendship && !p.card_like && p.text;
+      var _isTextOnly = !p.photo && !p.video && !p.gif_url && !p.sticker_url && !p.friendship && !p.card_like && !p.board_invite && p.text;
       html += '<div class="sp-reel-slide'+(_isTextOnly?' sp-reel-slide-textonly':'')+'" data-idx="'+i+'" data-user-id="'+p.user_id+'" data-post-id="'+p.id+'">';
       html += '<div class="sp-reel-header">';
       if(p.shared_from){
@@ -1473,8 +1473,34 @@ window._spBtnIdle = function(btn){
       }
       html += '</div>';
 
-      /* ── Conteúdo: card like, amizade especial, ou mídia normal ── */
-      if(p.card_like){
+      /* ── Conteúdo: card like, amizade especial, convite de quadro, ou mídia normal ── */
+      if(p.board_invite){
+        var bi = p.board_invite;
+        var boardHref = bi.board_available ? '/board/' + bi.board_id + '/' : '#';
+        var inviterName = bi.inviter_name || '';
+        var invitedName = bi.invited_name || 'alguém';
+        var mediaHtml;
+        if(bi.board_image){
+          mediaHtml = '<div class="sp-cardlike-media"><img src="'+bi.board_image+'" alt="" loading="lazy"></div>';
+        } else {
+          var av1 = bi.inviter_avatar
+            ? '<img src="'+bi.inviter_avatar+'" class="sp-binvite-av" alt="">'
+            : '<span class="sp-binvite-av sp-binvite-av-fb">'+_escHtml((inviterName||'?').charAt(0).toUpperCase())+'</span>';
+          var av2 = bi.invited_avatar
+            ? '<img src="'+bi.invited_avatar+'" class="sp-binvite-av" alt="">'
+            : '<span class="sp-binvite-av sp-binvite-av-fb">'+_escHtml((invitedName||'?').charAt(0).toUpperCase())+'</span>';
+          mediaHtml = '<div class="sp-cardlike-media sp-binvite-media-avatars">'+av1+'<span class="sp-binvite-arrow">→</span>'+av2+'</div>';
+        }
+        html += '<a class="sp-cardlike sp-cardlike-reel sp-boardinvite" href="'+boardHref+'">';
+        html += mediaHtml;
+        html += '<div class="sp-cardlike-body">';
+        html += '<div class="sp-cardlike-head">📋 '+_escHtml(inviterName)+' convidou '+_escHtml(invitedName)+'</div>';
+        html += '<div class="sp-cardlike-title">'+_escHtml(bi.board_name||'')+'</div>';
+        html += '<div class="sp-cardlike-board">Quadro</div>';
+        html += '<div class="sp-cardlike-cta">'+(bi.board_available ? 'Abrir quadro →' : 'Quadro indisponível')+'</div>';
+        html += '</div>';
+        html += '</a>';
+      } else if(p.card_like){
         var cl = p.card_like;
         var cardHref = cl.card_id
           ? '/board/' + cl.board_id + '/?card=' + cl.card_id
