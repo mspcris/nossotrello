@@ -36,25 +36,32 @@
 
 {% block header_center %}
 <span class="sp-header-icon-wrap" aria-label="Espaço Social">
-  <img src="{% static 'images/social/camim_social_icon_clean.png' %}"
+  <img src="{% static 'images/social/camim_social_icon_clean.png' %}?v=20260521a"
        alt="Espaço Social"
        class="sp-header-icon">
 </span>
 <style>
   .sp-header-icon-wrap {
-    display: inline-flex;
+    display: inline-flex !important;
     align-items: center;
     justify-content: center;
+    width: auto !important;
+    max-width: none !important;
+    height: auto !important;
+    background: transparent !important;
+    border: 0 !important;
   }
+  /* !important pra ganhar do override em base.css @media (max-width:767px)
+     que força .cm-header-center img a 100%/100%. */
   .sp-header-icon {
-    display: block;
-    width: 18px;
-    height: 18px;
-    object-fit: contain;
+    display: block !important;
+    width: 9px !important;
+    height: 9px !important;
+    object-fit: contain !important;
     filter: drop-shadow(0 2px 4px rgba(0,0,0,.25));
   }
   @media (min-width: 768px) {
-    .sp-header-icon { width: 56px; height: 56px; }
+    .sp-header-icon { width: 28px !important; height: 28px !important; }
   }
 </style>
 {% endblock %}
