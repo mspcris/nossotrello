@@ -263,12 +263,16 @@
       </label>
       <span class="sp-feed-toggle-label sp-feed-toggle-inactive" id="sp-feed-lbl-all">Todos</span>
 
-      <span style="margin-left:auto;display:flex;align-items:center;gap:4px;">
-        <span class="sp-feed-toggle-label" style="font-size:.7rem;opacity:.8">Rolagem auto</span>
-        <label class="sp-feed-toggle-switch sp-feed-toggle-switch-sm">
-          <input type="checkbox" id="sp-autoscroll-toggle" checked onchange="spToggleAutoScroll(this.checked)">
-          <span class="sp-feed-toggle-slider"></span>
-        </label>
+      <span style="margin-left:auto;display:flex;align-items:center;gap:10px;">
+        <button type="button" id="sp-reel-sound-toggle" class="sp-reel-sound-toggle"
+                onclick="spToggleReelSoundGlobal()" title="Som dos vídeos">🔇</button>
+        <span style="display:flex;align-items:center;gap:4px;">
+          <span class="sp-feed-toggle-label" style="font-size:.7rem;opacity:.8">Rolagem auto</span>
+          <label class="sp-feed-toggle-switch sp-feed-toggle-switch-sm">
+            <input type="checkbox" id="sp-autoscroll-toggle" checked onchange="spToggleAutoScroll(this.checked)">
+            <span class="sp-feed-toggle-slider"></span>
+          </label>
+        </span>
       </span>
     </div>
 
@@ -1662,6 +1666,9 @@ window._spBtnIdle = function(btn){
       });
     }
 
+    /* Sincroniza ícone do toggle de som fixo com a preferência salva */
+    _syncReelSoundToggleIcon();
+
     /* ── Core: go to slide ── */
     _reelIdx = 0;
     _totalSlides = _reelPosts.length;
@@ -2073,15 +2080,27 @@ window._spBtnIdle = function(btn){
     slide.appendChild(flash);
     setTimeout(function(){ flash.remove(); }, 700);
   }
+  function _syncReelSoundToggleIcon(){
+    var btn = document.getElementById('sp-reel-sound-toggle');
+    if(btn) btn.textContent = _reelSoundOn() ? '🔊' : '🔇';
+  }
   function _toggleReelSound(slide){
     if(!slide || !slide.querySelector('video.sp-reel-media')) return false;
     var on = !_reelSoundOn();
     _setReelSound(on);
     /* Aplica em TODOS os slides do reel — coerente pros próximos */
     document.querySelectorAll('#sp-reel .sp-reel-slide').forEach(_applySoundToSlide);
+    _syncReelSoundToggleIcon();
     _flashSoundIcon(slide, on);
     return true;
   }
+  /* Toggle fixo do topo: funciona mesmo se o slide atual não for vídeo */
+  window.spToggleReelSoundGlobal = function(){
+    var on = !_reelSoundOn();
+    _setReelSound(on);
+    document.querySelectorAll('#sp-reel .sp-reel-slide').forEach(_applySoundToSlide);
+    _syncReelSoundToggleIcon();
+  };
 
   function _playCurrentVideo(el, idx){
     var slides = el.querySelectorAll('.sp-reel-slide');
@@ -5784,13 +5803,13 @@ function _showViewersList(title, viewers){
 window.spShowViewers = function(postId){
   fetch('/social/post/' + postId + '/viewers/')
     .then(function(r){ return r.json(); })
-    .then(function(d){ _showViewersList('👁 Quem viu', d.viewers); });
+    .then(function(d){ _showViewersList('👀 Quem viu no meu perfil', d.viewers); });
 };
 
 window.spShowReach = function(postId){
   fetch('/social/post/' + postId + '/reach/')
     .then(function(r){ return r.json(); })
-    .then(function(d){ _showViewersList('📡 Alcance no Feed', d.viewers); });
+    .then(function(d){ _showViewersList('🛜 Alcance no Feed', d.viewers); });
 };
 
 /* ═══════════════════════════════════════════════
@@ -6172,6 +6191,28 @@ window.spShowReach = function(postId){
     _spAttachMention(postTA, postDD);
   }
 
+  /* ── Inicializa nos inputs de comentário do feed do perfil ──
+     Cada post.id tem um par {input: sp-comment-input-X, dropdown:
+     sp-comment-mention-dd-X}. Roda no load inicial e depois de cada
+     htmx swap (que carrega mais posts). */
+  function _spAttachAllCommentMentions(root){
+    var scope = root || document;
+    scope.querySelectorAll('input[id^="sp-comment-input-"]').forEach(function(inp){
+      if(inp.dataset.mentionAttached) return;
+      var post_id = inp.id.replace('sp-comment-input-', '');
+      var dd = document.getElementById('sp-comment-mention-dd-' + post_id);
+      if(dd){
+        inp.dataset.mentionAttached = '1';
+        _spAttachMention(inp, dd);
+      }
+    });
+  }
+  window._spAttachAllCommentMentions = _spAttachAllCommentMentions;
+  _spAttachAllCommentMentions(document);
+  document.body.addEventListener('htmx:afterSwap', function(e){
+    _spAttachAllCommentMentions(e.target || document);
+  });
+
   /* ── Fechar dropdown ao clicar fora ── */
   document.addEventListener('click', function(e){
     if(!e.target.closest('.sp-mention-wrap')){
@@ -6346,7 +6387,7 @@ window.spShowReach = function(postId){
 
     /* Footer */
     html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 16px 14px;font-size:0.75rem;color:#9ca3af">';
-    if(d.view_count) html += '<span>👁 '+d.view_count+' visualizações</span>';
+    if(d.view_count) html += '<span>👀 '+d.view_count+' visualizações</span>';
     html += '<span>'+_esc(d.created_at)+'</span>';
     html += '</div>';
 

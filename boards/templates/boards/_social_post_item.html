@@ -155,10 +155,13 @@
       {% endfor %}
     </div>
     <div class="sp-comment-form">
-      <input type="text" class="sp-comment-input" id="sp-comment-input-{{ post.id }}"
-             placeholder="Escreva um comentário..."
-             maxlength="500"
-             onkeydown="if(event.key==='Enter')spComment({{ post.id }})">
+      <div class="sp-mention-wrap" style="flex:1;position:relative">
+        <div class="sp-mention-dropdown" id="sp-comment-mention-dd-{{ post.id }}"></div>
+        <input type="text" class="sp-comment-input" id="sp-comment-input-{{ post.id }}"
+               placeholder="Escreva um comentário..."
+               maxlength="500"
+               onkeydown="if(event.key==='Enter'&&!document.getElementById('sp-comment-mention-dd-{{ post.id }}').classList.contains('active'))spComment({{ post.id }})">
+      </div>
       <button type="button" class="sp-comment-send" onclick="spComment({{ post.id }})">➤</button>
     </div>
   </div>
@@ -168,13 +171,13 @@
     {% if post.view_count %}
     <span class="sp-view-count sp-stat-btn" data-post-id="{{ post.id }}"
           onclick="spShowViewers({{ post.id }})">
-      👁 {{ post.view_count }}
+      👀 {{ post.view_count }}
     </span>
     {% endif %}
     {% if post.reach_count %}
     <span class="sp-reach-count sp-stat-btn" data-post-id="{{ post.id }}"
           onclick="spShowReach({{ post.id }})">
-      📡 {{ post.reach_count }}
+      🛜 {{ post.reach_count }}
     </span>
     {% endif %}
     {% if is_me %}

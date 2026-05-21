@@ -1362,6 +1362,28 @@ body:has(#sp-feed-wrap.sp-feed-fullscreen) .sp-reel-swipe-hint{
 .sp-reel-name{ font-weight:700; font-size:.85rem; color:#fff; text-shadow:0 1px 4px rgba(0,0,0,.75); }
 .sp-reel-time{ font-size:.7rem; color:rgba(255,255,255,.9); text-shadow:0 1px 3px rgba(0,0,0,.7); }
 
+/* Botão fixo de som no topo da aba Novidades, ao lado do "Rolagem auto" */
+.sp-reel-sound-toggle{
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.15);
+  color:#fff;
+  width:30px;
+  height:30px;
+  border-radius:50%;
+  font-size:.95rem;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  padding:0;
+  transition:background .12s ease, transform .12s ease;
+}
+.sp-reel-sound-toggle:hover,
+.sp-reel-sound-toggle:active{
+  background:rgba(255,255,255,.18);
+  transform:scale(1.08);
+}
+
 /* Overlay invisível em cima do <video> pra capturar tap/click ANTES do
    player nativo pausar. Deixa os 60px do fundo livres pra barra de
    controles (play/pause/scrub) continuar funcionando. */
