@@ -24,6 +24,11 @@ from boards.models import WhatsNewItem
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-05 ---
+    "2ef754d": (
+        "💚",
+        "Seu coração, sua cor",
+        "Agora o coração das publicações é verde por padrão. E tem mais: segure o coração do feed por um instante e escolha entre 9 cores (vermelho, laranja, amarelo, verde, azul, roxo, preto, branco ou marrom). A cor que você escolher fica como SUA cor de coração em todos os corações que você toca.",
+    ),
     "d9a1594": (
         "💌",
         "Notificações sociais com cara nova",
