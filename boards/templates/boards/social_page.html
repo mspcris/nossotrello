@@ -35,11 +35,11 @@
 {% endblock %}
 
 {% block header_center %}
-<span class="sp-header-icon-wrap" aria-label="Espaço Social">
+<button type="button" class="sp-header-icon-wrap" aria-label="Ver ícone do Espaço Social" onclick="window.spZoomSocialIcon()">
   <img src="{% static 'images/social/camim_social_icon_clean.png' %}?v=20260521a"
        alt="Espaço Social"
        class="sp-header-icon">
-</span>
+</button>
 <style>
   /* Subindo a especificidade pra ganhar do .cm-header-center img (0,1,1)
      do base.css em @media (max-width:767px) que força width/height 100%.
@@ -53,18 +53,74 @@
     height: auto !important;
     background: transparent !important;
     border: 0 !important;
+    padding: 0 !important;
+    cursor: pointer;
+    transition: transform .15s ease;
   }
+  .cm-header-center .sp-header-icon-wrap:hover,
+  .cm-header-center .sp-header-icon-wrap:active { transform: scale(1.05); }
   .cm-header-center img.sp-header-icon {
     display: block !important;
-    width: 44px !important;
-    height: 44px !important;
+    width: 53px !important;
+    height: 53px !important;
     object-fit: contain !important;
     filter: drop-shadow(0 2px 4px rgba(0,0,0,.25));
   }
   @media (min-width: 768px) {
-    .cm-header-center img.sp-header-icon { width: 68px !important; height: 68px !important; }
+    .cm-header-center img.sp-header-icon { width: 82px !important; height: 82px !important; }
+  }
+
+  /* Lightbox: ao tocar no ícone, aparece em 200% do tamanho ao centro
+     da tela com fundo escurecido. Toca fora pra fechar. */
+  .sp-icon-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0, 0, 0, .82);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+    animation: sp-icon-lb-in .18s ease;
+    cursor: zoom-out;
+  }
+  .sp-icon-lightbox img {
+    width: 106px;   /* 53 × 2 */
+    height: 106px;
+    object-fit: contain;
+    filter: drop-shadow(0 8px 24px rgba(0,0,0,.5));
+    animation: sp-icon-lb-zoom .22s ease;
+  }
+  @media (min-width: 768px) {
+    .sp-icon-lightbox img { width: 164px; height: 164px; }  /* 82 × 2 */
+  }
+  @keyframes sp-icon-lb-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes sp-icon-lb-zoom {
+    from { transform: scale(.4); opacity: 0; }
+    to   { transform: scale(1);  opacity: 1; }
   }
 </style>
+<script>
+  window.spZoomSocialIcon = function(){
+    if(document.querySelector('.sp-icon-lightbox')) return;
+    var lb = document.createElement('div');
+    lb.className = 'sp-icon-lightbox';
+    lb.setAttribute('role', 'dialog');
+    lb.setAttribute('aria-label', 'Ícone do Espaço Social ampliado');
+    var img = document.createElement('img');
+    img.src = "{% static 'images/social/camim_social_icon_clean.png' %}?v=20260521a";
+    img.alt = "Espaço Social";
+    lb.appendChild(img);
+    lb.addEventListener('click', function(){ lb.remove(); });
+    document.addEventListener('keydown', function _esc(e){
+      if(e.key === 'Escape'){ lb.remove(); document.removeEventListener('keydown', _esc); }
+    });
+    document.body.appendChild(lb);
+  };
+</script>
 {% endblock %}
 
 {% block content %}
