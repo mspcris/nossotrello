@@ -1362,32 +1362,31 @@ body:has(#sp-feed-wrap.sp-feed-fullscreen) .sp-reel-swipe-hint{
 .sp-reel-name{ font-weight:700; font-size:.85rem; color:#fff; text-shadow:0 1px 4px rgba(0,0,0,.75); }
 .sp-reel-time{ font-size:.7rem; color:rgba(255,255,255,.9); text-shadow:0 1px 3px rgba(0,0,0,.7); }
 
-/* Botão de som (estilo Instagram): canto superior direito do slide.
-   Floating, fundo semitransparente, em cima do vídeo. */
-.sp-reel-sound-btn{
+/* Som no vídeo do reel: toque em qualquer ponto do vídeo (fora da barra
+   de controles nativa) alterna entre mute/unmute. Um ícone aparece no
+   centro do slide e some em ~0.7s pra dar feedback visual. */
+.sp-reel-sound-flash{
   position:absolute;
-  top:64px;
-  right:14px;
-  z-index:7;
-  width:38px;
-  height:38px;
-  border:none;
+  top:50%;
+  left:50%;
+  z-index:8;
+  width:88px;
+  height:88px;
   border-radius:50%;
-  background:rgba(0,0,0,.55);
+  background:rgba(0,0,0,.62);
   color:#fff;
-  font-size:1.05rem;
   display:flex;
   align-items:center;
   justify-content:center;
-  cursor:pointer;
-  transition:transform .12s ease, background .12s ease;
-  backdrop-filter: blur(4px);
-  box-shadow:0 2px 8px rgba(0,0,0,.4);
+  font-size:2.4rem;
+  pointer-events:none;
+  box-shadow:0 4px 14px rgba(0,0,0,.45);
+  animation: sp-sound-flash .7s ease-out forwards;
 }
-.sp-reel-sound-btn:hover,
-.sp-reel-sound-btn:active{
-  background:rgba(0,0,0,.75);
-  transform:scale(1.08);
+@keyframes sp-sound-flash{
+  0%   { transform: translate(-50%, -50%) scale(.5); opacity: 0; }
+  18%  { transform: translate(-50%, -50%) scale(1.05); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1.45); opacity: 0; }
 }
 
 /* Bottom actions overlay */

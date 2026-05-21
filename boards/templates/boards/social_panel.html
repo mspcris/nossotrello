@@ -1539,7 +1539,6 @@ window._spBtnIdle = function(btn){
         html += '</div>';
       } else if(p.video){
         html += '<video src="'+p.video+'" class="sp-reel-media" controls preload="auto" playsinline muted></video>';
-        html += '<button type="button" class="sp-reel-sound-btn" data-post-id="'+p.id+'" onclick="spReelToggleSound(this)" title="Som"></button>';
       } else if(p.photo){
         html += '<img src="'+p.photo+'" alt="" loading="lazy">';
       } else if(p.sticker_url){
@@ -1650,7 +1649,10 @@ window._spBtnIdle = function(btn){
 
     function _goToSlide(idx, animate){
       if(idx < 0){
-        idx = _totalSlides - 1;
+        /* Borda esquerda: snap back no primeiro slide. NÃO wrappa pro fim,
+           porque com paginação infinita "último" muda a cada load e não
+           tem sentido fixar nele. */
+        idx = 0;
       } else if(idx >= _totalSlides){
         /* Bate no fim: enquanto há mais antigos no servidor, NÃO wrappa.
            Se nenhum load está em curso, dispara um agora. Em ambos os
@@ -1853,24 +1855,53 @@ window._spBtnIdle = function(btn){
       _resumeAutoScroll();
     }, {passive: true, signal: _sig.signal});
 
-    /* ── Double-tap to like ── */
+    /* ── Single-tap = toggle sound (no vídeo) | Double-tap = like ── */
     var _lastTapTime = 0;
+    var _soundTapTimer = null;
+    var CONTROLS_GAP_PX = 80; /* zona da barra de controles nativa no fundo do vídeo */
+
+    function _isTapInVideoBody(e, slide){
+      var vid = slide.querySelector('video.sp-reel-media');
+      if(!vid) return false;
+      var rect = vid.getBoundingClientRect();
+      var t = e.changedTouches && e.changedTouches[0];
+      var tapY = t ? t.clientY : e.clientY;
+      if(tapY < rect.top || tapY > rect.bottom) return false;
+      if(tapY > rect.bottom - CONTROLS_GAP_PX) return false; /* não rouba do play/scrub nativo */
+      return true;
+    }
+
     el.addEventListener('touchend', function(e){
       if(e.target.closest('.sp-reel-actions') || e.target.closest('.sp-reel-header')) return;
       if(Math.abs(_txDelta) > 15) return; /* foi swipe, não tap */
       var now = Date.now();
+      var slide = e.target.closest('.sp-reel-slide');
       if(now - _lastTapTime < 350){
-        var slide = e.target.closest('.sp-reel-slide');
+        /* Double-tap: cancela toggle de som pendente e curte */
+        if(_soundTapTimer){ clearTimeout(_soundTapTimer); _soundTapTimer = null; }
         if(slide){
           var postId = parseInt(slide.dataset.postId);
           var likeBtn = slide.querySelector('.sp-reel-like');
           _doReelLike(postId, likeBtn, slide);
         }
+      } else if(slide && _isTapInVideoBody(e, slide)){
+        /* Single-tap em vídeo: agenda toggle de som (cancelado se vier double) */
+        if(_soundTapTimer) clearTimeout(_soundTapTimer);
+        _soundTapTimer = setTimeout(function(){
+          _soundTapTimer = null;
+          _toggleReelSound(slide);
+        }, 280);
       }
       _lastTapTime = now;
     }, {passive: true, signal: _sig.signal});
 
     el.querySelectorAll('.sp-reel-slide').forEach(function(slide){
+      /* Desktop: click no corpo do vídeo alterna som; dblclick curte */
+      slide.addEventListener('click', function(e){
+        if(e.target.closest('.sp-reel-actions') || e.target.closest('.sp-reel-header')) return;
+        if(!_isTapInVideoBody(e, slide)) return;
+        _toggleReelSound(slide);
+      });
       slide.addEventListener('dblclick', function(e){
         if(e.target.closest('.sp-reel-actions') || e.target.closest('.sp-reel-header')) return;
         var postId = parseInt(slide.dataset.postId);
@@ -2018,8 +2049,9 @@ window._spBtnIdle = function(btn){
   function _updateDots(){ /* no-op — dots desativados */ }
 
   /* Som no reel: muted é o default (pro autoplay funcionar em mobile).
-     Usuário libera via botão estilo Instagram — preferência salva em
-     localStorage e reaplicada a cada slide. */
+     Tap em qualquer lugar do vídeo (fora da barra de controles nativa)
+     alterna mute. Preferência salva em localStorage e reaplicada a todos
+     os slides — uma vez ligado, segue ligado nos próximos vídeos. */
   function _reelSoundOn(){
     try { return localStorage.getItem('sp_reel_sound') === '1'; } catch(e){ return false; }
   }
@@ -2029,23 +2061,26 @@ window._spBtnIdle = function(btn){
   function _applySoundToSlide(slide){
     if(!slide) return;
     var vid = slide.querySelector('video.sp-reel-media');
-    var btn = slide.querySelector('.sp-reel-sound-btn');
     if(!vid) return;
-    var on = _reelSoundOn();
-    vid.muted = !on;
-    if(btn) btn.textContent = on ? '🔊' : '🔇';
+    vid.muted = !_reelSoundOn();
   }
-
-  window.spReelToggleSound = function(btn){
-    var slide = btn.closest('.sp-reel-slide');
+  function _flashSoundIcon(slide, on){
     if(!slide) return;
+    var flash = document.createElement('div');
+    flash.className = 'sp-reel-sound-flash';
+    flash.textContent = on ? '🔊' : '🔇';
+    slide.appendChild(flash);
+    setTimeout(function(){ flash.remove(); }, 700);
+  }
+  function _toggleReelSound(slide){
+    if(!slide || !slide.querySelector('video.sp-reel-media')) return false;
     var on = !_reelSoundOn();
     _setReelSound(on);
-    _applySoundToSlide(slide);
-    /* Reflete em todos os slides do reel pra próximos manterem coerência */
-    var all = document.querySelectorAll('#sp-reel .sp-reel-slide');
-    all.forEach(_applySoundToSlide);
-  };
+    /* Aplica em TODOS os slides do reel — coerente pros próximos */
+    document.querySelectorAll('#sp-reel .sp-reel-slide').forEach(_applySoundToSlide);
+    _flashSoundIcon(slide, on);
+    return true;
+  }
 
   function _playCurrentVideo(el, idx){
     var slides = el.querySelectorAll('.sp-reel-slide');
@@ -2055,13 +2090,10 @@ window._spBtnIdle = function(btn){
       if(i === idx){
         _applySoundToSlide(slide);
         vid.currentTime = 0;
-        vid.play().catch(function(err){
-          /* Browser bloqueou autoplay com som (mobile). Força mute e tenta
-             de novo — usuário ainda pode ativar via botão. */
+        vid.play().catch(function(){
+          /* Browser bloqueou autoplay com som — força mute e tenta de novo */
           if(!vid.muted){
             vid.muted = true;
-            var btn = slide.querySelector('.sp-reel-sound-btn');
-            if(btn) btn.textContent = '🔇';
             vid.play().catch(function(){});
           }
         });
