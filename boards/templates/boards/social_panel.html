@@ -1130,7 +1130,10 @@
       <div class="sp-vtrim-title">Escolha 30 segundos do vídeo</div>
       <div class="sp-vtrim-range-label" id="sp-vtrim-range-label">0:00 → 0:30</div>
     </div>
-    <video id="sp-vtrim-video" class="sp-vtrim-video" playsinline muted></video>
+    <div class="sp-vtrim-video-wrap">
+      <video id="sp-vtrim-video" class="sp-vtrim-video" playsinline muted></video>
+      <button type="button" class="sp-vtrim-play" id="sp-vtrim-play" onclick="window.spVtrimPlayPause()" aria-label="Tocar prévia">▶</button>
+    </div>
     <div class="sp-vtrim-track">
       <input type="range" id="sp-vtrim-slider" class="sp-vtrim-slider" min="0" max="0" step="0.1" value="0">
       <div class="sp-vtrim-track-bar">
@@ -3379,9 +3382,39 @@ document.addEventListener('click', function(e){
       }
     };
 
+    /* Sincroniza o ícone do botão play/pause com o estado do <video> */
+    var playBtn = document.getElementById('sp-vtrim-play');
+    video.onplay  = function(){ if(playBtn) playBtn.textContent = '⏸'; if(playBtn) playBtn.classList.add('sp-vtrim-play-hidden-icon'); };
+    video.onpause = function(){ if(playBtn) playBtn.textContent = '▶'; if(playBtn) playBtn.classList.remove('sp-vtrim-play-hidden-icon'); };
+    if(playBtn){ playBtn.textContent = '▶'; playBtn.classList.remove('sp-vtrim-play-hidden-icon'); }
+
     _vtrimUpdateLabel();
     overlay.classList.remove('sp-hidden');
     overlay.setAttribute('aria-hidden', 'false');
+  };
+
+  window.spVtrimPlayPause = function(){
+    var video = document.getElementById('sp-vtrim-video');
+    if(!video) return;
+    if(video.paused){
+      /* Garante que está no início da janela selecionada quando dá play
+         do zero (depois de mudar o slider). */
+      var start = _vtrimState.start;
+      if(video.currentTime < start || video.currentTime >= start + _vtrimState.window - 0.1){
+        try { video.currentTime = start; } catch(e){}
+      }
+      video.muted = false;  /* preview COM som */
+      var p = video.play();
+      if(p && p.catch){
+        p.catch(function(){
+          /* Autoplay com som bloqueado em alguns browsers — tenta mutado */
+          video.muted = true;
+          video.play().catch(function(){});
+        });
+      }
+    } else {
+      video.pause();
+    }
   };
 
   window.spCloseVtrim = function(reset){
@@ -3591,13 +3624,16 @@ document.addEventListener('click', function(e){
       preview.appendChild(video);
       video.addEventListener('loadedmetadata', function(){
         var dur = video.duration;
-        /* Vídeo > 30s: abre o TRIM UI pra usuário escolher 30s dentro
-           do vídeo. Nada de bloquear. */
-        if(dur > 30){
+        /* Arquivos vindos do nosso próprio trim (nome 'trim_*') JÁ estão
+           recortados — pula a checagem pra não cair em loop. Alguns
+           MediaRecorders também reportam duration='Infinity' até o
+           primeiro seek, o que enganaria o check. */
+        var isOurTrim = file.name && file.name.indexOf('trim_') === 0;
+        var validDur = isFinite(dur) && !isNaN(dur);
+        /* Vídeo > 30s: abre o TRIM UI pra usuário escolher 30s dentro do vídeo. */
+        if(!isOurTrim && validDur && dur > 30.5){
           preview.innerHTML = '';
           preview.classList.add('sp-hidden');
-          /* Não limpa o input ainda — só vai limpar se o usuário cancelar
-             o trim. Se confirmar, o resultado substitui o file. */
           if(window.spOpenVtrim){
             window.spOpenVtrim(file, dur);
           } else {

@@ -4584,15 +4584,56 @@ video.sp-post-media {
   font-weight: 600;
   color: #a5f3fc;
 }
-.sp-vtrim-video {
+.sp-vtrim-video-wrap {
+  position: relative;
   width: 100%;
   flex: 1;
   min-height: 0;
   max-height: 50vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: #000;
-  object-fit: contain;
   border-radius: 12px;
   margin-bottom: 18px;
+  overflow: hidden;
+}
+.sp-vtrim-video {
+  width: 100%;
+  height: 100%;
+  background: #000;
+  object-fit: contain;
+}
+/* Play/Pause overlay: aparece quando pausado, some quando tocando.
+   Botão grande e centralizado, estilo Reels/Stories. */
+.sp-vtrim-play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0,0,0,.55);
+  color: #fff;
+  font-size: 1.8rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  backdrop-filter: blur(4px);
+  transition: opacity .2s ease, transform .2s ease;
+}
+.sp-vtrim-play:active { transform: translate(-50%, -50%) scale(.92); }
+.sp-vtrim-play.sp-vtrim-play-hidden-icon {
+  opacity: 0;
+  pointer-events: auto; /* mantém clicável pra pausar */
+}
+.sp-vtrim-video-wrap:hover .sp-vtrim-play.sp-vtrim-play-hidden-icon,
+.sp-vtrim-video-wrap:active .sp-vtrim-play.sp-vtrim-play-hidden-icon {
+  opacity: .55;
 }
 .sp-vtrim-track {
   margin-bottom: 18px;
