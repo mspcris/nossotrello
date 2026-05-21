@@ -84,15 +84,20 @@
     animation: sp-icon-lb-in .18s ease;
     cursor: zoom-out;
   }
+  /* Ícone ampliado: preenche ~75% da menor dimensão da tela (lado quadrado),
+     limitado a 420px pra não exagerar em telas grandes. */
   .sp-icon-lightbox img {
-    width: 106px;   /* 53 × 2 */
-    height: 106px;
+    width: min(75vw, 75vh, 320px);
+    height: min(75vw, 75vh, 320px);
     object-fit: contain;
-    filter: drop-shadow(0 8px 24px rgba(0,0,0,.5));
+    filter: drop-shadow(0 8px 32px rgba(0,0,0,.55));
     animation: sp-icon-lb-zoom .22s ease;
   }
   @media (min-width: 768px) {
-    .sp-icon-lightbox img { width: 164px; height: 164px; }  /* 82 × 2 */
+    .sp-icon-lightbox img {
+      width: min(45vw, 70vh, 420px);
+      height: min(45vw, 70vh, 420px);
+    }
   }
   @keyframes sp-icon-lb-in {
     from { opacity: 0; }
