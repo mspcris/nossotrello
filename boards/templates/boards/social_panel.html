@@ -1716,7 +1716,44 @@ window._spBtnIdle = function(btn){
     }, _sig);
 
     /* Preload: carregar imagens dos próximos slides antecipadamente */
+    var _videoPrefetched = {};
+    function _prefetchVideoBuffer(url){
+      if(!url || _videoPrefetched[url]) return;
+      _videoPrefetched[url] = true;
+      /* Dispara um fetch em background que enche o cache HTTP do browser.
+         Quando o <video> for carregar o mesmo URL depois, vem do cache.
+         Limita a ~4MB lidos e cancela — só queremos o suficiente pra
+         começar a tocar fluido. */
+      try {
+        fetch(url, {credentials: 'same-origin'}).then(function(r){
+          if(!r || !r.ok || !r.body) return;
+          var reader = r.body.getReader();
+          var bytes = 0;
+          var MAX_BYTES = 4 * 1024 * 1024;
+          function pump(){
+            return reader.read().then(function(res){
+              if(res.done) return;
+              bytes += res.value ? res.value.length : 0;
+              if(bytes >= MAX_BYTES){ try { reader.cancel(); } catch(e){} return; }
+              return pump();
+            }).catch(function(){});
+          }
+          pump();
+        }).catch(function(){
+          /* Falhou — permite tentar de novo numa próxima */
+          _videoPrefetched[url] = false;
+        });
+      } catch(e){
+        _videoPrefetched[url] = false;
+      }
+    }
+
     function _preloadAround(idx){
+      /* Vídeo do slide atual também — alimenta o cache pra primeira tocada */
+      var cur = _reelPosts[idx];
+      if(cur && cur.video){
+        _prefetchVideoBuffer(cur.video);
+      }
       for(var d = 1; d <= 3; d++){
         var ni = idx + d;
         if(ni >= _totalSlides) ni -= _totalSlides;
@@ -1731,6 +1768,11 @@ window._spBtnIdle = function(btn){
         if(p.user_avatar){
           var av = new Image();
           av.src = p.user_avatar;
+        }
+        /* Vídeo: prefetch dos 2 próximos. Não usa <video> pra evitar que
+           o browser dispare múltiplos loads paralelos e engasgue. */
+        if(p.video && d <= 2){
+          _prefetchVideoBuffer(p.video);
         }
       }
     }
@@ -6301,7 +6343,12 @@ window.spShowReach = function(postId){
      (stickers autoplay/loop não entram)
    ═══════════════════════════════════════════════ */
 (function(){
-  var THRESHOLD = 0.20;
+  /* Libera o play quando atingir um dos dois critérios:
+     - 10% da duração total buffered, OU
+     - 3 segundos de buffer no início (o que vier primeiro)
+     Pra vídeos curtos o ratio domina; pra longos os 3s soltam logo. */
+  var RATIO_THRESHOLD = 0.10;
+  var SECONDS_THRESHOLD = 3.0;
 
   function _wrapVideo(video){
     if(!video || video.dataset.bufInit === '1') return;
@@ -6329,24 +6376,29 @@ window.spShowReach = function(postId){
     var released = false;
     var pendingPlay = false;
 
-    function _bufferedRatio(){
-      if(!video.duration || !isFinite(video.duration)) return 0;
+    function _bufferedInfo(){
       var b = video.buffered;
-      if(!b || !b.length) return 0;
+      if(!b || !b.length) return {ratio: 0, seconds: 0};
       /* Pega o range que cobre o início (0) — mais comum em progressive */
+      var endSec = 0;
       for(var i = 0; i < b.length; i++){
-        if(b.start(i) <= 0.1){
-          return Math.min(1, b.end(i) / video.duration);
-        }
+        if(b.start(i) <= 0.1){ endSec = b.end(i); break; }
       }
-      return Math.min(1, b.end(b.length - 1) / video.duration);
+      if(!endSec) endSec = b.end(b.length - 1);
+      var dur = video.duration;
+      var ratio = (dur && isFinite(dur)) ? Math.min(1, endSec / dur) : 0;
+      return {ratio: ratio, seconds: endSec};
+    }
+
+    function _isReady(info){
+      return info.seconds >= SECONDS_THRESHOLD || info.ratio >= RATIO_THRESHOLD;
     }
 
     function _update(){
-      var r = _bufferedRatio();
-      var pct = Math.round(r * 100);
+      var info = _bufferedInfo();
+      var pct = Math.round(info.ratio * 100);
       if(label) label.textContent = 'Carregando ' + pct + '%';
-      if(r >= THRESHOLD && !released){
+      if(_isReady(info) && !released){
         released = true;
         overlay.classList.add('sp-hidden');
         if(pendingPlay){
@@ -6356,11 +6408,11 @@ window.spShowReach = function(postId){
       }
     }
 
-    /* Intercepta o primeiro play — se não carregou 20%, pausa e espera */
+    /* Intercepta o primeiro play — se não estiver pronto, pausa e espera */
     video.addEventListener('play', function(){
       if(!released){
-        var r = _bufferedRatio();
-        if(r < THRESHOLD){
+        var info = _bufferedInfo();
+        if(!_isReady(info)){
           pendingPlay = true;
           video.pause();
           overlay.classList.remove('sp-hidden');
