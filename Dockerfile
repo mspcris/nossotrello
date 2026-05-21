@@ -9,8 +9,10 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 # Instalar dependências do sistema
-RUN apt update && apt install -y build-essential libpq-dev \
-    && apt clean
+# ffmpeg: usado por boards/services/video_compress.py pra transcodificar
+# uploads de vídeo (faststart, 720p, ~1Mbps) + gerar poster image.
+RUN apt update && apt install -y build-essential libpq-dev ffmpeg \
+    && apt clean && rm -rf /var/lib/apt/lists/*
 
 # Instalar dependências Python
 COPY requirements.txt /app/

@@ -721,6 +721,7 @@ def social_post_full(request, post_id: int):
         "text_style": text_style,
         "photo": photo_url,
         "video": video_url,
+        "video_poster": post.video_poster.url if post.video_poster else None,
         "gif_url": post.gif_url or None,
         "sticker_url": post.sticker_url or None,
         "is_repost": is_repost,
@@ -844,13 +845,16 @@ def social_friends_feed(request):
     has_more = len(posts) > PAGE_SIZE
     posts = posts[:PAGE_SIZE]
 
-    # Ordenação dentro da página: por dia (desc), vídeos > imagens > texto, cronológico
+    # Ordenação dentro da página: por dia (desc), imagens > vídeos > texto,
+    # cronológico. Foto/gif/sticker carregam instantâneo; vídeo demora pra
+    # buffer — colocar foto primeiro melhora a percepção de "carregou rápido"
+    # e dá tempo do prefetch dos próximos vídeos rodar em background.
     def _media_rank(p):
-        if p.video:
-            return 0
         if p.photo:
-            return 1
+            return 0
         if p.gif_url or p.sticker_url:
+            return 0
+        if p.video:
             return 1
         return 2
 
@@ -972,6 +976,7 @@ def social_friends_feed(request):
             "text": "" if _is_marker else display_post.text,
             "photo": display_post.photo.url if display_post.photo else "",
             "video": display_post.video.url if display_post.video else "",
+            "video_poster": display_post.video_poster.url if display_post.video_poster else "",
             "gif_url": display_post.gif_url,
             "sticker_url": display_post.sticker_url,
             "created_at": timezone.localtime(p.created_at).strftime("%d/%m %H:%M"),
@@ -1048,6 +1053,15 @@ def social_post_create(request):
                 schedule_food_image(post.id)
             except Exception:
                 _mention_logger.exception("food_image: falha ao agendar post_id=%s", post.id)
+        # Transcodificação de vídeo (ffmpeg) em background: faststart, 720p,
+        # ~1Mbps + poster do 1º frame. Reduz vídeo de ~17MB pra ~7MB e faz
+        # o player começar a tocar em segundos.
+        if video:
+            try:
+                from boards.services.video_compress import schedule_video_compress
+                schedule_video_compress(post.id)
+            except Exception:
+                _mention_logger.exception("video_compress: falha ao agendar post_id=%s", post.id)
         # AI react trigger
         parts = []
         if text:

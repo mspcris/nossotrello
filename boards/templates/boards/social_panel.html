@@ -1538,7 +1538,8 @@ window._spBtnIdle = function(btn){
         html += '<div class="sp-friendship-label">agora são amigos!</div>';
         html += '</div>';
       } else if(p.video){
-        html += '<video src="'+p.video+'" class="sp-reel-media" controls preload="auto" playsinline muted></video>';
+        var posterAttr = p.video_poster ? ' poster="' + p.video_poster + '"' : '';
+        html += '<video src="'+p.video+'" class="sp-reel-media" controls preload="auto" playsinline muted'+posterAttr+'></video>';
         /* Overlay transparente: captura tap pro toggle de som SEM deixar o
            <video controls> pausar nativamente. Deixa os ~60px do fundo
            livres pra barra de controle (play/pause/scrub) ainda funcionar. */

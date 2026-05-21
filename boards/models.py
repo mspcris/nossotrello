@@ -866,6 +866,9 @@ class SocialPost(models.Model):
     text = models.TextField(blank=True, default="")
     photo = models.ImageField(upload_to="social/", blank=True, null=True)
     video = models.FileField(upload_to="social/videos/", blank=True, null=True)
+    # Poster (1º frame) gerado por ffmpeg pra <video poster=...> — usuário
+    # vê algo instantâneo enquanto o vídeo carrega.
+    video_poster = models.ImageField(upload_to="social/posters/", blank=True, null=True)
     gif_url = models.URLField(blank=True, default="")
     sticker_url = models.URLField(blank=True, default="")
     text_style = models.JSONField(blank=True, null=True, default=None)

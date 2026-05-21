@@ -78,7 +78,7 @@
       <div class="sp-friendship-label">agora são amigos!</div>
     </div>
   {% elif post.video %}
-    <video src="{{ post.video.url }}" class="sp-post-media" controls preload="auto" playsinline></video>
+    <video src="{{ post.video.url }}" class="sp-post-media" controls preload="auto" playsinline{% if post.video_poster %} poster="{{ post.video_poster.url }}"{% endif %}></video>
   {% elif post.photo %}
     <img src="{{ post.photo.url }}" alt="" class="sp-post-media" loading="lazy">
   {% elif post.sticker_url %}
