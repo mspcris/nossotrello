@@ -4369,6 +4369,33 @@ video.sp-post-media {
   object-fit: cover;
   background: #000;
 }
+/* Espelha o preview quando câmera frontal (selfie cam padrão). Só visual:
+   o MediaRecorder captura o stream raw, então o vídeo gravado NÃO sai
+   espelhado — vai com a orientação correta pra quem assiste. */
+.sp-vrec-preview.sp-vrec-preview-mirror {
+  transform: scaleX(-1);
+}
+/* Botão de trocar câmera (frontal ↔ traseira) */
+.sp-vrec-flip {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 3;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0,0,0,.55);
+  color: #fff;
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform .15s ease, background .15s ease;
+}
+.sp-vrec-flip:active { transform: scale(.92); }
+.sp-vrec-flip:disabled { opacity: .35; cursor: not-allowed; }
 .sp-vrec-close {
   position: absolute;
   top: 14px;

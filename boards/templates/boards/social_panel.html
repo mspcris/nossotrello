@@ -1101,6 +1101,7 @@
     <div class="sp-vrec-cam sp-hidden" id="sp-vrec-cam">
       <video id="sp-vrec-preview" class="sp-vrec-preview" autoplay muted playsinline></video>
       <button type="button" class="sp-vrec-close" onclick="window.spCloseVideoRecorder()" aria-label="Fechar">✕</button>
+      <button type="button" class="sp-vrec-flip" id="sp-vrec-flip" onclick="window.spVrecFlipCamera()" aria-label="Trocar câmera">🔄</button>
       <div class="sp-vrec-timer" id="sp-vrec-timer">0:00 / 0:30</div>
       <div class="sp-vrec-controls" id="sp-vrec-controls">
         <button type="button" class="sp-vrec-record" id="sp-vrec-record" onclick="window.spVrecToggle()" aria-label="Gravar">
@@ -3024,6 +3025,7 @@ document.addEventListener('click', function(e){
     blob: null,
     blobUrl: null,
     mimeType: '',
+    facingMode: 'user',  /* default = frontal (selfie) */
   };
   var VREC_MAX_SECONDS = 30;
   var VREC_VIDEO_BPS = 1500000;
@@ -3103,29 +3105,66 @@ document.addEventListener('click', function(e){
     overlay.setAttribute('aria-hidden', 'false');
   };
 
-  window.spVrecStartCamera = async function(){
+  async function _vrecAcquireStream(facing){
     var preview = document.getElementById('sp-vrec-preview');
-    var brief = document.getElementById('sp-vrec-brief');
-    var cam = document.getElementById('sp-vrec-cam');
-    if(!preview) return;
-
+    if(!preview) return false;
+    /* Para o stream anterior, se houver, ANTES de pegar o novo */
+    if(_vrecState.stream){
+      _vrecState.stream.getTracks().forEach(function(t){ try { t.stop(); } catch(e){} });
+      _vrecState.stream = null;
+    }
     try {
       _vrecState.stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: 'environment',
+          facingMode: facing,
           width:  { ideal: 1280, max: 1280 },
           height: { ideal: 720,  max: 720  },
           frameRate: { ideal: 30, max: 30 },
         },
         audio: true,
       });
-      preview.srcObject = _vrecState.stream;
-      if(brief) brief.classList.add('sp-hidden');
-      if(cam) cam.classList.remove('sp-hidden');
-      try { await preview.play(); } catch(e){}
     } catch(err){
-      alert('Não consegui acessar a câmera. Verifique a permissão do site.\n\n' + (err && err.message ? err.message : ''));
+      /* Pode falhar se o device não tem a câmera pedida — tenta o outro */
+      var alt = (facing === 'user') ? 'environment' : 'user';
+      try {
+        _vrecState.stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: alt, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
+          audio: true,
+        });
+        _vrecState.facingMode = alt;
+      } catch(err2){
+        return false;
+      }
+    }
+    preview.srcObject = _vrecState.stream;
+    /* Espelhar preview quando câmera frontal — comportamento padrão de selfie cam */
+    preview.classList.toggle('sp-vrec-preview-mirror', _vrecState.facingMode === 'user');
+    try { await preview.play(); } catch(e){}
+    return true;
+  }
+
+  window.spVrecStartCamera = async function(){
+    var brief = document.getElementById('sp-vrec-brief');
+    var cam = document.getElementById('sp-vrec-cam');
+    _vrecState.facingMode = 'user';  /* sempre começa frontal */
+    var ok = await _vrecAcquireStream(_vrecState.facingMode);
+    if(!ok){
+      alert('Não consegui acessar a câmera. Verifique a permissão do site.');
       window.spCloseVideoRecorder();
+      return;
+    }
+    if(brief) brief.classList.add('sp-hidden');
+    if(cam) cam.classList.remove('sp-hidden');
+  };
+
+  window.spVrecFlipCamera = async function(){
+    /* Não pode flipar enquanto grava — derrubaria o MediaRecorder */
+    if(_vrecState.recorder && _vrecState.recorder.state === 'recording') return;
+    _vrecState.facingMode = (_vrecState.facingMode === 'user') ? 'environment' : 'user';
+    var ok = await _vrecAcquireStream(_vrecState.facingMode);
+    if(!ok){
+      /* Reverte se falhou */
+      _vrecState.facingMode = (_vrecState.facingMode === 'user') ? 'environment' : 'user';
     }
   };
 
@@ -3178,7 +3217,9 @@ document.addEventListener('click', function(e){
       if(_vrecState.autoStopTimer){ clearTimeout(_vrecState.autoStopTimer); _vrecState.autoStopTimer = null; }
       if(_vrecState.tickTimer){ clearInterval(_vrecState.tickTimer); _vrecState.tickTimer = null; }
       var btn = document.getElementById('sp-vrec-record');
+      var flipBtn = document.getElementById('sp-vrec-flip');
       if(btn) btn.classList.remove('sp-vrec-recording');
+      if(flipBtn) flipBtn.disabled = false;
 
       var blob = new Blob(_vrecState.chunks, { type: _vrecState.mimeType.split(';')[0] });
       _vrecState.blob = blob;
@@ -3203,8 +3244,10 @@ document.addEventListener('click', function(e){
     _vrecState.startTime = Date.now();
     var btn = document.getElementById('sp-vrec-record');
     var hint = document.getElementById('sp-vrec-hint');
+    var flipBtn = document.getElementById('sp-vrec-flip');
     if(btn) btn.classList.add('sp-vrec-recording');
     if(hint) hint.textContent = 'Gravando — toque pra parar';
+    if(flipBtn) flipBtn.disabled = true;
 
     _vrecState.tickTimer = setInterval(function(){
       var elapsed = (Date.now() - _vrecState.startTime) / 1000;
