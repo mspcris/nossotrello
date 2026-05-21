@@ -63,7 +63,7 @@
             <span class="sp-friendship-av sp-friendship-av-fb">{{ post.friendship_data.user_name|first|upper }}</span>
           {% endif %}
         </a>
-        <span class="sp-friendship-heart">❤️</span>
+        <span class="sp-friendship-heart">💚</span>
         <a href="/social/{{ post.friendship_data.friend_id }}/">
           {% if post.friendship_data.friend_avatar %}
             <img src="{{ post.friendship_data.friend_avatar }}" class="sp-friendship-av">
@@ -107,9 +107,9 @@
             data-reaction="like" onclick="spReact({{ post.id }},'like')">
       👍{% if post.reaction_counts.like %}<span class="sp-react-count">{{ post.reaction_counts.like }}</span>{% endif %}
     </button>
-    <button type="button" class="sp-react-btn {% if post.my_reaction == 'love' %}active{% endif %}"
-            data-reaction="love" onclick="spReact({{ post.id }},'love')">
-      ❤️{% if post.reaction_counts.love %}<span class="sp-react-count">{{ post.reaction_counts.love }}</span>{% endif %}
+    <button type="button" class="sp-react-btn sp-heart-btn {% if post.my_reaction == 'love' %}active{% endif %}"
+            data-reaction="love" data-heart-btn onclick="spReact({{ post.id }},'love')">
+      <span class="sp-heart-emoji">💚</span>{% if post.reaction_counts.love %}<span class="sp-react-count">{{ post.reaction_counts.love }}</span>{% endif %}
     </button>
     <button type="button" class="sp-react-btn {% if post.my_reaction == 'haha' %}active{% endif %}"
             data-reaction="haha" onclick="spReact({{ post.id }},'haha')">

@@ -1261,6 +1261,7 @@ window.spFeedLoadMore = function(btn){
         if(newBtn) oldBtn.parentNode.replaceChild(newBtn, oldBtn);
         else oldBtn.remove();
       }
+      if(window._applyUserHeart) window._applyUserHeart(list);
     })
     .catch(function(){
       if(window._spBtnIdle) window._spBtnIdle(btn);
@@ -1297,6 +1298,122 @@ window._spBtnIdle = function(btn){
   btn.removeAttribute('aria-busy');
   if(btn.tagName === 'BUTTON' || btn.tagName === 'INPUT') btn.disabled = false;
 };
+
+/* ════════════════════════════════════════════
+   COR DE CORAÇÃO PERSONALIZADA (long-press picker)
+   - Default 💚. Usuário escolhe via long-press na barra de cores.
+   - Preferência salva em localStorage e aplicada em todos os .sp-heart-emoji.
+   ════════════════════════════════════════════ */
+window._HEART_COLORS = ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎'];
+window._userHeart = function(){
+  try { return localStorage.getItem('sp_user_heart') || '💚'; } catch(e){ return '💚'; }
+};
+window._setUserHeart = function(h){
+  try { localStorage.setItem('sp_user_heart', h); } catch(e){}
+  document.querySelectorAll('.sp-heart-emoji').forEach(function(el){ el.textContent = h; });
+};
+window._applyUserHeart = function(root){
+  var h = window._userHeart();
+  (root || document).querySelectorAll('.sp-heart-emoji').forEach(function(el){ el.textContent = h; });
+};
+
+window._showHeartPicker = function(btn){
+  var existing = document.getElementById('sp-heart-picker');
+  if(existing) existing.remove();
+  var picker = document.createElement('div');
+  picker.id = 'sp-heart-picker';
+  picker.className = 'sp-heart-picker';
+  var current = window._userHeart();
+  window._HEART_COLORS.forEach(function(h){
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'sp-heart-picker-btn' + (h === current ? ' active' : '');
+    b.textContent = h;
+    b.addEventListener('click', function(ev){
+      ev.preventDefault(); ev.stopPropagation();
+      window._setUserHeart(h);
+      picker.remove();
+    });
+    picker.appendChild(b);
+  });
+  document.body.appendChild(picker);
+  var rect = btn.getBoundingClientRect();
+  var pickerRect = picker.getBoundingClientRect();
+  var left = rect.left + (rect.width/2) - (pickerRect.width/2);
+  left = Math.max(8, Math.min(left, window.innerWidth - pickerRect.width - 8));
+  var top = rect.top - pickerRect.height - 10;
+  if(top < 8) top = rect.bottom + 10;
+  picker.style.left = left + 'px';
+  picker.style.top = top + 'px';
+  setTimeout(function(){
+    document.addEventListener('pointerdown', function close(e){
+      if(!picker.contains(e.target)){
+        picker.remove();
+        document.removeEventListener('pointerdown', close, true);
+      }
+    }, true);
+  }, 0);
+};
+
+(function _initHeartLongPress(){
+  var pressTimer = null;
+  var pressBtn = null;
+  var startX = 0, startY = 0;
+  var suppressClick = false;
+  function _isHeartBtn(el){ return el && el.closest && el.closest('[data-heart-btn]'); }
+  function _start(e){
+    var btn = _isHeartBtn(e.target);
+    if(!btn) return;
+    pressBtn = btn;
+    suppressClick = false;  /* novo gesto: zera estado pendente */
+    var t = e.touches ? e.touches[0] : e;
+    startX = t.clientX; startY = t.clientY;
+    pressTimer = setTimeout(function(){
+      pressTimer = null;
+      suppressClick = true;
+      if(navigator.vibrate) try{ navigator.vibrate(15); }catch(_e){}
+      window._showHeartPicker(pressBtn);
+    }, 450);
+  }
+  function _move(e){
+    if(!pressTimer) return;
+    var t = e.touches ? e.touches[0] : e;
+    if(Math.abs(t.clientX - startX) > 10 || Math.abs(t.clientY - startY) > 10){
+      clearTimeout(pressTimer); pressTimer = null;
+    }
+  }
+  function _end(e){
+    if(pressTimer){ clearTimeout(pressTimer); pressTimer = null; }
+    if(suppressClick){
+      /* impede que o click sintetizado dispare o like/love */
+      if(e.cancelable) e.preventDefault();
+      e.stopPropagation();
+    }
+    pressBtn = null;
+  }
+  document.addEventListener('touchstart', _start, {passive:true});
+  document.addEventListener('touchmove', _move, {passive:true});
+  document.addEventListener('touchend', _end, true);
+  document.addEventListener('touchcancel', _end, true);
+  document.addEventListener('mousedown', _start);
+  document.addEventListener('mousemove', _move);
+  document.addEventListener('mouseup', _end, true);
+  document.addEventListener('contextmenu', function(e){
+    if(_isHeartBtn(e.target)) e.preventDefault();
+  });
+  document.addEventListener('click', function(e){
+    if(suppressClick && _isHeartBtn(e.target)){
+      e.preventDefault(); e.stopPropagation();
+      suppressClick = false;
+    } else if(suppressClick){
+      /* click em outro lugar — limpa a flag */
+      suppressClick = false;
+    }
+  }, true);
+})();
+
+document.addEventListener('DOMContentLoaded', function(){ window._applyUserHeart(); });
+if(document.readyState !== 'loading'){ window._applyUserHeart(); }
 
 /* ════════════════════════════════════════════
    BUSCA DE USUÁRIOS (Amigos: nome ou e-mail)
@@ -1638,7 +1755,7 @@ window._spBtnIdle = function(btn){
         html += '<div class="sp-friendship-bg">🤝</div>';
         html += '<div class="sp-friendship-avatars">';
         html += '<a href="/social/'+p.user_id+'/">'+av1+'</a>';
-        html += '<span class="sp-friendship-heart">❤️</span>';
+        html += '<span class="sp-friendship-heart">💚</span>';
         html += '<a href="/social/'+f.friend_id+'/">'+av2+'</a>';
         html += '</div>';
         html += '<div class="sp-friendship-names">'+_escHtml(f.user_name)+' e '+_escHtml(f.friend_name)+'</div>';
@@ -1679,7 +1796,7 @@ window._spBtnIdle = function(btn){
       var likeCount = p.reaction_counts.like || 0;
       var commentBadge = p.comment_count > 0 ? ' <span class="count">' + p.comment_count + '</span>' : '';
       html += '<div class="sp-reel-actions">';
-      html += '<button class="sp-reel-action sp-reel-like'+likeClass+'" onclick="spReelLike('+p.id+',this)" title="Curtir">❤️ <span class="count">'+(likeCount||'')+'</span></button>';
+      html += '<button class="sp-reel-action sp-reel-like sp-heart-btn'+likeClass+'" data-heart-btn onclick="spReelLike('+p.id+',this)" title="Curtir"><span class="sp-heart-emoji">'+_userHeart()+'</span> <span class="count">'+(likeCount||'')+'</span></button>';
       html += '<button class="sp-reel-action" onclick="spReelToggleComments('+p.id+',this)" title="Comentários">💬'+commentBadge+'</button>';
       html += '<div class="sp-mention-wrap" style="flex:1;position:relative">';
       html += '<div class="sp-mention-dropdown sp-reel-mention-dd" id="sp-reel-mention-dd-'+p.id+'"></div>';
@@ -2230,7 +2347,7 @@ window._spBtnIdle = function(btn){
     /* Heart animation */
     var heart = document.createElement('div');
     heart.className = 'sp-reel-heart';
-    heart.textContent = '❤️';
+    heart.textContent = _userHeart();
     slide.appendChild(heart);
     setTimeout(function(){ heart.remove(); }, 800);
 
@@ -4818,7 +4935,7 @@ document.addEventListener('click', function(e){
   /* ── Resposta a comentário ── */
   /* ── Reações a comentários ── */
   var _commentReactionEmojis = [
-    {key:'like', emoji:'👍'}, {key:'love', emoji:'❤️'},
+    {key:'like', emoji:'👍'}, {key:'love', emoji:'💚'},
     {key:'haha', emoji:'😂'}, {key:'fire', emoji:'🔥'}, {key:'clap', emoji:'👏'}
   ];
 
@@ -4869,7 +4986,7 @@ document.addEventListener('click', function(e){
   function _renderCommentReactions(commentId, counts, myReaction) {
     var el = document.getElementById('sp-creact-' + commentId);
     if(!el) return;
-    var emojiMap = {like:'👍', love:'❤️', haha:'😂', fire:'🔥', clap:'👏'};
+    var emojiMap = {like:'👍', love:'💚', haha:'😂', fire:'🔥', clap:'👏'};
     var html = '';
     for(var k in counts){
       if(counts[k] > 0){
@@ -6988,7 +7105,7 @@ window.spShowReach = function(postId){
       html += '<div style="font-size:3rem;position:absolute;top:8px;left:50%;transform:translateX(-50%);opacity:0.15">🤝</div>';
       html += '<div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:12px">';
       html += '<a href="/social/'+fd.user.id+'/">'+uAv+'</a>';
-      html += '<span style="font-size:1.5rem">❤️</span>';
+      html += '<span style="font-size:1.5rem">💚</span>';
       html += '<a href="/social/'+fd.friend.id+'/">'+fAv+'</a>';
       html += '</div>';
       html += '<div style="color:#fff;font-weight:700;font-size:1rem">'+_esc(fd.user.name)+' e '+_esc(fd.friend.name)+'</div>';
@@ -7026,7 +7143,7 @@ window.spShowReach = function(postId){
     }
 
     /* Reações */
-    var EMOJIS = {like:'👍',love:'❤️',haha:'😂',fire:'🔥',clap:'👏'};
+    var EMOJIS = {like:'👍',love:'💚',haha:'😂',fire:'🔥',clap:'👏'};
     html += '<div style="display:flex;flex-wrap:wrap;gap:6px;padding:8px 16px;align-items:center">';
     for(var k in d.reaction_counts){
       var emoji = EMOJIS[k] || k;

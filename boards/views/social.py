@@ -1506,7 +1506,7 @@ def social_camila_chat(request):
         "\n[COMO USAR A REDE SOCIAL]\n"
         "- PUBLICAR: tocar no botão + (roxo, canto inferior direito) → escrever texto, "
         "escolher foto/vídeo da galeria ou tirar na hora → enviar.\n"
-        "- REAGIR: nos posts do feed, tocar em 👍 ❤️ 😂 🔥 👏.\n"
+        "- REAGIR: nos posts do feed, tocar em 👍 💚 😂 🔥 👏.\n"
         "- COMENTAR: campo abaixo de cada post → digitar → enviar.\n"
         "- PERFIL: tocar no avatar → editar foto, capa, posto, setor, telefone.\n"
         "- HUMOR: seção 'Como tá o astral?' → escolher emoji.\n"

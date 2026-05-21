@@ -1471,7 +1471,31 @@ body:has(#sp-feed-wrap.sp-feed-fullscreen) .sp-reel-swipe-hint{
 }
 .sp-reel-action:hover{ transform:scale(1.15); }
 .sp-reel-action .count{ font-size:.75rem; font-weight:600; }
-.sp-reel-action.liked{ color:#ef4444; }
+.sp-reel-action.liked{ color:#10b981; }
+
+/* ── Long-press picker de cor de coração ── */
+.sp-heart-btn{ -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
+.sp-heart-btn .sp-heart-emoji{ display:inline-block; pointer-events:none; }
+.sp-heart-picker{
+  position:fixed; z-index:9999;
+  background:#1f2937; border-radius:30px;
+  padding:6px 10px; display:flex; gap:2px;
+  box-shadow:0 8px 24px rgba(0,0,0,0.35);
+  animation:sp-heart-picker-in .18s cubic-bezier(.22,1,.36,1);
+}
+@keyframes sp-heart-picker-in{
+  from{ transform:translateY(8px) scale(.85); opacity:0; }
+  to  { transform:translateY(0) scale(1); opacity:1; }
+}
+.sp-heart-picker-btn{
+  background:none; border:none; cursor:pointer;
+  font-size:1.5rem; line-height:1; padding:6px;
+  border-radius:50%; transition:transform .12s ease;
+  -webkit-tap-highlight-color:transparent;
+}
+.sp-heart-picker-btn:hover,
+.sp-heart-picker-btn:active{ transform:scale(1.35); }
+.sp-heart-picker-btn.active{ background:rgba(255,255,255,.12); transform:scale(1.15); }
 
 .sp-reel-comment-input{
   flex:1; border:1px solid rgba(255,255,255,.3); border-radius:20px;
