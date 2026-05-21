@@ -1688,6 +1688,11 @@ window._spBtnIdle = function(btn){
       _preloadAround(_reelIdx);
       _registerFeedView(_reelIdx);
       _scheduleNext();
+      /* Pré-fetch antecipado: dispara load quando faltar ≤2 slides pro fim,
+         pra rolagem pra direita seguir fluida até esgotar tudo. */
+      if(_reelHasMore && !_reelLoadingMore && _reelIdx >= _totalSlides - 2){
+        _loadMoreReel();
+      }
     }
 
     /* Registrar visualização no feed (fire-and-forget) */
@@ -1776,14 +1781,25 @@ window._spBtnIdle = function(btn){
       e.preventDefault();
       _txDelta = dx;
 
-      /* Resistência nas bordas */
+      /* Resistência nas bordas:
+         - esquerda (slide 0 + arrasto pra direita): sempre resiste
+         - direita: SÓ resiste se realmente não há mais conteúdo (caso contrário
+           o swipe parece travado mesmo quando ainda há posts pra carregar) */
       var w = el.offsetWidth || 1;
       var baseOffset = -_reelIdx * w;
       var resistance = 1;
-      if((_reelIdx === 0 && dx > 0) || (_reelIdx === _totalSlides - 1 && dx < 0)){
+      if(_reelIdx === 0 && dx > 0){
+        resistance = 0.25;
+      } else if(_reelIdx === _totalSlides - 1 && dx < 0 && !_reelHasMore){
         resistance = 0.25;
       }
       _track.style.transform = 'translate3d(' + (baseOffset + dx * resistance) + 'px, 0, 0)';
+
+      /* Pré-fetch enquanto o usuário ainda está arrastando pra próxima — assim
+         o conteúdo já está carregado quando o swipe completa. */
+      if(dx < 0 && _reelHasMore && !_reelLoadingMore && _reelIdx >= _totalSlides - 3){
+        _loadMoreReel();
+      }
     }, {passive: false, signal: _sig.signal});
 
     el.addEventListener('touchend', function(e){
