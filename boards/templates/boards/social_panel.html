@@ -2974,14 +2974,11 @@ document.addEventListener('click', function(e){
     preview.innerHTML = '';
 
     if(file.type.startsWith('video/')){
-      /* Limite da infra CAMIM: 50MB. Nem tenta subir acima disso. */
-      if(file.size > 50 * 1024 * 1024){
-        alert('Vídeo muito grande (' + Math.round(file.size / (1024*1024)) + 'MB). O limite é 50MB — tente um vídeo mais curto ou em qualidade menor.');
-        e.target.value = '';
-        preview.innerHTML = '';
-        preview.classList.add('sp-hidden');
-        return;
-      }
+      /* Limites atuais: 30s de duração + 50MB. O cap em 30s é pra
+         maximizar a chance de caber no 50MB sem perder qualidade.
+         Quando o nginx frontal do camim.com.br for pra 100MB, subimos
+         daqui também. */
+      var sizeMB = file.size / (1024 * 1024);
       var video = document.createElement('video');
       video.src = URL.createObjectURL(file);
       video.controls = true;
@@ -2989,12 +2986,31 @@ document.addEventListener('click', function(e){
       video.style.cssText = 'width:100%;max-height:200px;border-radius:12px;background:#000';
       preview.appendChild(video);
       video.addEventListener('loadedmetadata', function(){
-        if(video.duration > 60){
-          alert('Máximo 1 minuto! Seu vídeo tem ' + Math.round(video.duration) + 's.');
+        var dur = video.duration;
+        if(dur > 30){
+          alert('Máximo 30 segundos. Seu vídeo tem ' + Math.round(dur) + 's — recorte e tente de novo.');
           e.target.value = '';
           preview.innerHTML = '';
           preview.classList.add('sp-hidden');
+          return;
         }
+        if(file.size > 50 * 1024 * 1024){
+          alert(
+            'Vídeo de ' + sizeMB.toFixed(1) + 'MB ultrapassa o limite atual de 50MB.\n\n' +
+            'Dicas:\n' +
+            '• Grave em qualidade mais baixa nas configurações do celular (ex.: 1080p em vez de 4K)\n' +
+            '• Ou faça um vídeo mais curto (' + Math.round(dur) + 's está OK no tempo, só a qualidade que pesou)'
+          );
+          e.target.value = '';
+          preview.innerHTML = '';
+          preview.classList.add('sp-hidden');
+          return;
+        }
+        /* Mostra info útil ao lado do preview pra orientar a gravação */
+        var info = document.createElement('div');
+        info.style.cssText = 'font-size:.78rem;color:rgba(255,255,255,.85);margin-top:6px;padding:6px 10px;background:rgba(0,0,0,.4);border-radius:8px';
+        info.textContent = Math.round(dur) + 's · ' + sizeMB.toFixed(1) + 'MB / 50MB';
+        preview.appendChild(info);
       });
     } else {
       var img = document.createElement('img');
@@ -4813,7 +4829,7 @@ document.addEventListener('click', function(e){
       _sheetForm.addEventListener('htmx:responseError', function(ev){
         var status = (ev.detail && ev.detail.xhr && ev.detail.xhr.status) || 0;
         var msg = 'Não foi possível publicar (erro ' + status + ').';
-        if(status === 413) msg = 'Vídeo muito grande. Tente um arquivo menor.';
+        if(status === 413) msg = 'Vídeo muito grande. Limite: 30s e 50MB. Grave em qualidade mais baixa ou um trecho menor.';
         else if(status === 504 || status === 408) msg = 'O servidor demorou demais. Tente de novo.';
         _showPubError(msg);
       });
