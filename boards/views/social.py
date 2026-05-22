@@ -1209,11 +1209,18 @@ def daily_checkin_save(request):
     # Auto-post lunch to feed
     if lunch_text or lunch_photo:
         post_text = f"🍽️ {lunch_text}" if lunch_text else "🍽️ Almoço do dia"
-        SocialPost.objects.create(
+        lunch_post = SocialPost.objects.create(
             user=request.user,
             text=post_text,
             photo=lunch_photo or None,
         )
+        # Foto IA do prato — só quando é text-only (sem foto manual)
+        if lunch_text and not lunch_photo:
+            try:
+                from boards.services.food_image import schedule_food_image
+                schedule_food_image(lunch_post.id)
+            except Exception:
+                _mention_logger.exception("food_image: falha ao agendar almoço post_id=%s", lunch_post.id)
 
     # AI react trigger — só o que foi ALTERADO nesta requisição
     parts = []

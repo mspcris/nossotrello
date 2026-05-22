@@ -36,7 +36,7 @@ _OPENAI_IMAGE_URL = "https://api.openai.com/v1/images/generations"
 # Retorna b64_json por padrão (diferente do DALL-E 3 que devolvia URL).
 _OPENAI_IMAGE_MODEL = "gpt-image-1"
 
-_CONFIDENCE_THRESHOLD = 0.95
+_CONFIDENCE_THRESHOLD = 0.85
 
 _DETECTOR_SYSTEM_PROMPT = (
     "Você é um detector de pratos de comida em posts curtos de rede social. "
@@ -46,9 +46,9 @@ _DETECTOR_SYSTEM_PROMPT = (
     "- is_food=true SÓ se o texto menciona claramente um prato de comida REAL e CONHECIDO "
     "(ex: Strogonoff, Feijoada, Lasanha, Pizza Margherita, Tapioca, Bobó de camarão, Sushi, "
     "Hambúrguer, Macarrão à bolonhesa).\n"
-    "- confidence ≥ 0.95 SÓ quando você tem certeza ABSOLUTA de que é um prato específico "
-    "e conhecido pelo nome dado. Frases vagas como 'comi um lanche', 'almoço gostoso', "
-    "'um docinho' devem ter confidence baixa.\n"
+    "- confidence ≥ 0.85 quando o texto descreve uma refeição reconhecível "
+    "(ex: 'Frango com batata', 'Arroz feijão e bife', 'Macarrão com molho de tomate' contam). "
+    "Frases vagas como 'comi um lanche', 'almoço gostoso', 'um docinho' devem ter confidence baixa.\n"
     "- dish_name deve ser o nome canônico curto (1-4 palavras), sem emoji, sem reticências, "
     "sem adjetivos do autor ('delicioso', 'maravilhoso'). Bebidas e ingredientes soltos "
     "(arroz puro, batata, leite) NÃO contam como prato → is_food=false.\n"
@@ -149,6 +149,7 @@ def generate_dish_image(dish_name: str) -> bytes:
                 "model": _OPENAI_IMAGE_MODEL,
                 "prompt": prompt,
                 "size": "1024x1024",
+                "quality": "low",
                 "n": 1,
             },
             timeout=120,
