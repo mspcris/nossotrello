@@ -3215,6 +3215,21 @@ html.dark #modal #modal-breadcrumb{
 }
 #modal .modal-ai-similar-btn[data-state="error"]{ position: relative; }
 
+/* idle — estado inicial neutro, aguarda clique do usuário */
+#modal .modal-ai-similar-btn[data-state="idle"]{
+  background: linear-gradient(160deg, #d4d8e0 0%, #8892a0 50%, #5a6270 100%) !important;
+  box-shadow:
+    0 2px 6px rgba(0,0,0,0.30),
+    0 0 10px rgba(140,150,165,0.35) !important;
+  animation: none !important;
+  font-size: 20px !important;
+  opacity: 0.9;
+}
+#modal .modal-ai-similar-btn[data-state="idle"]:hover{
+  opacity: 1;
+  filter: brightness(1.15);
+}
+
 /* genuine (sem nada parecido) — verde com ✓ */
 #modal .modal-ai-similar-btn[data-state="genuine"]{
   background: linear-gradient(160deg, #b8f5c6 0%, #4ad26a 50%, #1f9c42 100%) !important;
@@ -3407,6 +3422,38 @@ html.dark #modal #modal-breadcrumb{
   margin-top: 8px;
   padding-top: 8px;
   border-top: 1px dashed rgba(255,255,255,0.1);
+}
+
+/* Botões de confirmação ("Verificar?" antes de gastar embedding) */
+.modal-ai-similar-popover .ai-sim-confirm-actions{
+  display: flex;
+  gap: 8px;
+  margin: 4px 0 6px 0;
+}
+.modal-ai-similar-popover .ai-sim-confirm-yes,
+.modal-ai-similar-popover .ai-sim-confirm-no{
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.06);
+  color: #f5f7fa;
+  transition: filter 0.15s, transform 0.05s;
+}
+.modal-ai-similar-popover .ai-sim-confirm-yes{
+  background: linear-gradient(160deg, #5eb8ff 0%, #2f8fe0 100%);
+  border-color: rgba(94,184,255,0.6);
+}
+.modal-ai-similar-popover .ai-sim-confirm-yes:hover,
+.modal-ai-similar-popover .ai-sim-confirm-no:hover{
+  filter: brightness(1.12);
+}
+.modal-ai-similar-popover .ai-sim-confirm-yes:active,
+.modal-ai-similar-popover .ai-sim-confirm-no:active{
+  transform: translateY(1px);
 }
 
 

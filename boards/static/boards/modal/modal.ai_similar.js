@@ -1,12 +1,13 @@
 // boards/static/boards/modal/modal.ai_similar.js
-// Detecção automática de cards semelhantes quando o modal do card abre.
-// - Faz fetch em /card/<id>/similar/
-// - Mostra botão "!" ao lado do X do modal se houver similaridade >= 50%
-// - Cor/intensidade conforme threshold:
-//     high   (>= 90%) — incisivo (vermelho)
-//     medium (>= 70%) — ponderado (âmbar)
-//     low    (>= 50%) — comunicativo (azul)
-// - Popover com lista ao clicar; cada item abre o card via Modal.open().
+// Verificação ON-DEMAND de cards semelhantes.
+// - Ao abrir o modal, mostra o botão em estado "idle" (cinza, neutro).
+// - Clique no botão idle abre um popover de confirmação ("Verificar?")
+//   pra evitar embedding desnecessário em todo modal aberto.
+// - Confirmado, faz fetch em /card/<id>/similar/ e mostra resultados.
+// - Estados pós-busca:
+//     alert  (count > 0) — bolinha colorida com "!" + popover de resultados
+//     genuine (count = 0) — verde com ✓
+//     error — cinza com ↻ (clique tenta de novo, sem confirmação)
 (() => {
   if (window.__aiSimilarLoaded) return;
   window.__aiSimilarLoaded = true;
@@ -25,7 +26,6 @@
   function $pop() {
     let p = document.getElementById(POP_ID);
     if (!p) {
-      // cria o popover direto no body (evita stacking context do modal)
       p = document.createElement("div");
       p.id = POP_ID;
       p.className = "modal-ai-similar-popover";
@@ -34,7 +34,6 @@
       p.hidden = true;
       document.body.appendChild(p);
     } else if (p.parentNode && p.parentNode !== document.body) {
-      // move pra body caso tenha ficado dentro do modal
       document.body.appendChild(p);
     }
     return p;
@@ -49,6 +48,19 @@
     btn.dataset.threshold = "";
     btn.dataset.count = "";
     btn.textContent = "";
+  }
+
+  function setIdle() {
+    const btn = $btn();
+    if (!btn) return;
+    btn.classList.remove("is-hidden");
+    btn.removeAttribute("hidden");
+    btn.dataset.state = "idle";
+    btn.dataset.threshold = "";
+    btn.dataset.count = "";
+    btn.textContent = "?";
+    btn.title = "Verificar cards parecidos";
+    btn.setAttribute("aria-label", "Verificar cards parecidos");
   }
 
   function setLoading() {
@@ -143,6 +155,34 @@
     </div>`;
   }
 
+  function positionPop() {
+    const p = $pop();
+    const btn = $btn();
+    if (!p || !btn) return;
+    const r = btn.getBoundingClientRect();
+    p.style.top = `${Math.round(r.bottom + 8)}px`;
+    p.style.right = `${Math.max(8, Math.round(window.innerWidth - r.right))}px`;
+  }
+
+  function renderConfirmPopover() {
+    const p = $pop();
+    if (!p) return;
+    p.innerHTML = `
+      <div class="ai-sim-head ai-sim-head-low">
+        💡 <strong>Verificar cards parecidos?</strong>
+        <span class="ai-sim-sub">Compara este card com os demais que você tem acesso.</span>
+      </div>
+      <div class="ai-sim-confirm-actions">
+        <button type="button" class="ai-sim-confirm-yes">Verificar</button>
+        <button type="button" class="ai-sim-confirm-no">Cancelar</button>
+      </div>
+      <div class="ai-sim-foot">Pode levar 1-2 segundos.</div>
+    `;
+    positionPop();
+    p.hidden = false;
+    p.classList.add("is-open");
+  }
+
   function renderPopover(data) {
     const p = $pop();
     const btn = $btn();
@@ -177,19 +217,14 @@
       <ul class="ai-sim-list">${itemsHtml || '<li class="ai-sim-empty">Nada encontrado.</li>'}</ul>
       <div class="ai-sim-foot">Busca por similaridade semântica em todos os quadros que você tem acesso.</div>
     `;
-
-    // posiciona perto do botão
-    const r = btn.getBoundingClientRect();
-    p.style.top = `${Math.round(r.bottom + 8)}px`;
-    p.style.right = `${Math.max(8, Math.round(window.innerWidth - r.right))}px`;
+    positionPop();
     p.hidden = false;
     p.classList.add("is-open");
   }
 
   function renderGenuinePopover() {
     const p = $pop();
-    const btn = $btn();
-    if (!p || !btn) return;
+    if (!p) return;
     p.innerHTML = `
       <div class="ai-sim-head ai-sim-head-genuine">
         ✅ <strong>Card genuíno</strong>
@@ -197,9 +232,7 @@
       </div>
       <div class="ai-sim-foot">Busca por similaridade semântica em todos os quadros que você tem acesso.</div>
     `;
-    const r = btn.getBoundingClientRect();
-    p.style.top = `${Math.round(r.bottom + 8)}px`;
-    p.style.right = `${Math.max(8, Math.round(window.innerWidth - r.right))}px`;
+    positionPop();
     p.hidden = false;
     p.classList.add("is-open");
   }
@@ -262,23 +295,28 @@
     if (data && data.count) {
       STATE.lastResponse = data;
       showBtnFor(data);
+      renderPopover(data);
     } else {
       STATE.lastResponse = { genuine: true };
       setGenuine();
+      renderGenuinePopover();
     }
   }
 
-  async function onModalBodyReady() {
+  function onModalBodyReady() {
     closePopover();
 
     const cardId = getOpenCardId();
     STATE.currentCardId = cardId;
+    STATE.lastResponse = null;
+    STATE.inFlight = null;
     if (!cardId) { hideBtn(); return; }
 
-    await runSimilarityCheck(cardId);
+    // ON-DEMAND: não dispara mais a busca automaticamente.
+    // O botão aparece em estado idle e só consulta quando o usuário clica.
+    setIdle();
   }
 
-  // Observa trocas de conteúdo no #modal-body (HTMX swap)
   function boot() {
     const body = document.getElementById("modal-body");
     if (!body) return;
@@ -294,12 +332,11 @@
     });
     mo.observe(body, { childList: true, subtree: true });
 
-    // também tenta no load inicial (caso já tenha conteúdo)
     if (document.getElementById("cm-root")) {
       onModalBodyReady();
     }
 
-    // clique no botão abre/fecha popover
+    // Clique no botão: comportamento depende do estado.
     const btn = document.getElementById(BTN_ID);
     if (btn) {
       btn.addEventListener("click", (ev) => {
@@ -307,26 +344,54 @@
         ev.stopPropagation();
         const pop = $pop();
         if (!pop) return;
-        if (btn.dataset.state === "loading") return;
-        if (btn.dataset.state === "error") {
-          // tenta de novo
-          closePopover();
-          const cid = STATE.currentCardId || getOpenCardId();
+        const state = btn.dataset.state || "";
+        if (state === "loading") return;
+
+        // Popover já aberto → fecha (toggle)
+        if (!pop.hidden) { closePopover(); return; }
+
+        const cid = STATE.currentCardId || getOpenCardId();
+
+        if (state === "idle") {
+          // Primeira interação: pede confirmação antes de gastar embedding.
+          renderConfirmPopover();
+          return;
+        }
+        if (state === "error") {
+          // Erro: tenta de novo direto, sem nova confirmação.
           if (cid) runSimilarityCheck(cid);
           return;
         }
-        if (!pop.hidden) { closePopover(); return; }
-        if (btn.dataset.state === "genuine") {
+        if (state === "genuine") {
           renderGenuinePopover();
           return;
         }
+        // alert (resultados cached)
         if (STATE.lastResponse && STATE.lastResponse.results) {
           renderPopover(STATE.lastResponse);
         }
       });
     }
 
-    // clique fora do popover ou ESC → fecha
+    // Clique nos botões DENTRO do popover de confirmação
+    document.addEventListener("click", (ev) => {
+      if (ev.target.closest?.(".ai-sim-confirm-yes")) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        closePopover();
+        const cid = STATE.currentCardId || getOpenCardId();
+        if (cid) runSimilarityCheck(cid);
+        return;
+      }
+      if (ev.target.closest?.(".ai-sim-confirm-no")) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        closePopover();
+        return;
+      }
+    });
+
+    // Clique fora do popover ou ESC → fecha
     document.addEventListener("click", (ev) => {
       const pop = $pop();
       if (!pop || pop.hidden) return;
@@ -338,7 +403,7 @@
       if (ev.key === "Escape") closePopover();
     });
 
-    // clique em um item abre o card correspondente no próprio modal
+    // Clique em um item abre o card correspondente no próprio modal
     document.addEventListener("click", (ev) => {
       const b = ev.target.closest?.(".ai-sim-item-btn");
       if (!b) return;
@@ -350,18 +415,14 @@
       closePopover();
       const nid = Number(id);
       if (window.Modal && typeof window.Modal.openCard === "function") {
-        // API interna do projeto — carrega + abre + atualiza URL
         window.Modal.openCard(nid, /* replaceUrl */ false, null);
       } else if (window.htmx?.ajax) {
-        // fallback: troca o conteúdo via HTMX (modal já está aberto)
         window.htmx.ajax("GET", url, { target: "#modal-body", swap: "innerHTML" });
       } else {
-        // fallback final: navega
         window.location.href = url;
       }
     });
 
-    // Quando o modal fecha, limpa estado
     document.addEventListener("modal:closed", () => {
       closePopover();
       hideBtn();

@@ -40,7 +40,6 @@ from boards.models import CardFollow, CardLog, CardMoveHistory, ColumnFollow
 
 
 from boards.services.notifications import mark_card_delivered, notify_delivery
-from boards.services.card_similarity import embed_card_async
 
 from boards.models import UserBoardPreference
 
@@ -169,12 +168,6 @@ def add_card(request, column_id):
                 actor=actor,
                 context_label="descrição",
             )
-
-        # dispara embedding semântico em background (não bloqueia resposta)
-        try:
-            embed_card_async(card.id)
-        except Exception:
-            pass
 
         response = render(request, "boards/partials/card_item.html", {"card": card})
         toast_html = build_notify_toast_html(_add_card_notify_plans)
@@ -627,15 +620,6 @@ def update_card(request, card_id):
         _log_card(card, request, f"<p><strong>{actor}</strong> atualizou o card.</p>")
 
     # ============================================================
-    # EMBEDDING: regenera se título ou descrição mudaram
-    # ============================================================
-    if title_changed or desc_changed:
-        try:
-            embed_card_async(card.id)
-        except Exception:
-            pass
-
-        # ============================================================
     # REBUILD CONTEXT (mesmo contrato do split do load inicial)
     # ============================================================
     # Recarrega card com relacionamentos essenciais (evita estado/caches)
