@@ -1289,7 +1289,8 @@ def daily_checkin_save(request):
         prof.fixed_posto = False
         prof.save(update_fields=["fixed_posto"])
 
-    # Auto-post mood to feed (somente se mudou o humor AGORA)
+    # Auto-post mood to feed — cada submit do astral vira post novo. Sem
+    # dedupe: usuário quer histórico de cada mudança de humor no dia.
     if mood:
         mood_labels = dict(DailyCheckIn.MOOD_CHOICES)
         emoji = DailyCheckIn.MOOD_EMOJIS.get(mood, "😐")
@@ -1297,20 +1298,13 @@ def daily_checkin_save(request):
         post_text = f"{emoji} {label}"
         if mood_note:
             post_text += f" — {mood_note}"
-        # Evitar duplicata: não criar se já postou mood hoje
-        already_posted = SocialPost.objects.filter(
+        from boards.services.camilinho import pick_variant
+        SocialPost.objects.create(
             user=request.user,
-            created_at__date=today,
-            text__startswith=emoji,
-        ).exists()
-        if not already_posted:
-            from boards.services.camilinho import pick_variant
-            SocialPost.objects.create(
-                user=request.user,
-                text=post_text,
-                mood_code=mood,
-                camilinho_variant=pick_variant(mood),
-            )
+            text=post_text,
+            mood_code=mood,
+            camilinho_variant=pick_variant(mood),
+        )
 
     # Auto-post lunch to feed
     if lunch_text or lunch_photo:

@@ -696,40 +696,58 @@
              placeholder="Quer contar mais? (opcional)"
              value="{{ checkin.mood_note|default:'' }}" maxlength="300">
 
-      <!-- Posto do dia -->
-      {% if not profile.fixed_posto %}
-      <div class="sp-field-group">
-        <label class="sp-field-label">📍 Onde vai trabalhar hoje?</label>
-        <select name="daily_posto" class="sp-select">
-          <option value="">Selecione...</option>
-          <option value="Realengo" {% if checkin.daily_posto == "Realengo" or not checkin.daily_posto and profile.posto == "Realengo" %}selected{% endif %}>Realengo</option>
-          <option value="Campinho" {% if checkin.daily_posto == "Campinho" or not checkin.daily_posto and profile.posto == "Campinho" %}selected{% endif %}>Campinho</option>
-          <option value="Anchieta" {% if checkin.daily_posto == "Anchieta" or not checkin.daily_posto and profile.posto == "Anchieta" %}selected{% endif %}>Anchieta</option>
-          <option value="Jacarepaguá" {% if checkin.daily_posto == "Jacarepaguá" or not checkin.daily_posto and profile.posto == "Jacarepaguá" %}selected{% endif %}>Jacarepaguá</option>
-          <option value="Campo Grande" {% if checkin.daily_posto == "Campo Grande" or not checkin.daily_posto and profile.posto == "Campo Grande" %}selected{% endif %}>Campo Grande</option>
-          <option value="Nova Iguaçu" {% if checkin.daily_posto == "Nova Iguaçu" or not checkin.daily_posto and profile.posto == "Nova Iguaçu" %}selected{% endif %}>Nova Iguaçu</option>
-          <option value="Bangu" {% if checkin.daily_posto == "Bangu" or not checkin.daily_posto and profile.posto == "Bangu" %}selected{% endif %}>Bangu</option>
-          <option value="Nilópolis" {% if checkin.daily_posto == "Nilópolis" or not checkin.daily_posto and profile.posto == "Nilópolis" %}selected{% endif %}>Nilópolis</option>
-          <option value="Del Castilho" {% if checkin.daily_posto == "Del Castilho" or not checkin.daily_posto and profile.posto == "Del Castilho" %}selected{% endif %}>Del Castilho</option>
-          <option value="X Campo Grande" {% if checkin.daily_posto == "X Campo Grande" or not checkin.daily_posto and profile.posto == "X Campo Grande" %}selected{% endif %}>X Campo Grande</option>
-          <option value="Madureira" {% if checkin.daily_posto == "Madureira" or not checkin.daily_posto and profile.posto == "Madureira" %}selected{% endif %}>Madureira</option>
-          <option value="Rio das Pedras" {% if checkin.daily_posto == "Rio das Pedras" or not checkin.daily_posto and profile.posto == "Rio das Pedras" %}selected{% endif %}>Rio das Pedras</option>
-          <option value="Y Campo Grande" {% if checkin.daily_posto == "Y Campo Grande" or not checkin.daily_posto and profile.posto == "Y Campo Grande" %}selected{% endif %}>Y Campo Grande</option>
-        </select>
-        <label class="sp-check-inline">
-          <input type="checkbox" name="fixed_posto" value="1">
-          <span>Sempre neste posto</span>
-        </label>
-      </div>
-      {% else %}
-      <input type="hidden" name="daily_posto" value="{{ profile.posto }}">
-      <div class="sp-fixed-posto">
-        📍 {{ profile.posto }}
-        <button type="button" class="sp-link-btn" onclick="this.closest('.sp-fixed-posto').innerHTML='<input type=hidden name=fixed_posto value=0><span>Salve para alterar</span>'">alterar</button>
-      </div>
+      <button type="submit" class="sp-btn sp-btn-green">Salvar astral ✅</button>
+    </form>
+  </div>
+
+  <!-- ═══ CHECK-IN: POSTO DE TRABALHO (separado pra ter foco próprio) ═══ -->
+  <div class="sp-card">
+    <form id="sp-posto-form" class="sp-checkin"
+          hx-post="{% url 'boards:daily_checkin_save' %}"
+          hx-target="#social-panel" hx-swap="outerHTML show:#sp-posto-form:top">
+      {% csrf_token %}
+
+      <div class="sp-section-title">📍 Onde vai trabalhar hoje?</div>
+      <p class="sp-section-sub">
+        {% if profile.fixed_posto and profile.posto %}
+          Seu posto fixo é <strong>{{ profile.posto }}</strong>. Pode mudar quando quiser.
+        {% else %}
+          Marca onde tá hoje — Home Office, num posto da rede ou de folga.
+        {% endif %}
+      </p>
+
+      {% if checkin.daily_posto %}
+        <div class="sp-fixed-posto" style="background:#ecfdf5;border:1px solid #10b981;color:#065f46;padding:10px 14px;border-radius:10px;margin-bottom:10px;display:flex;align-items:center;gap:10px;justify-content:space-between;">
+          <span>✅ Hoje você marcou: <strong>{{ checkin.daily_posto }}</strong></span>
+          <button type="button" class="sp-link-btn" onclick="document.getElementById('sp-posto-select-wrap').classList.remove('sp-hidden');this.closest('.sp-fixed-posto').remove();">trocar</button>
+        </div>
       {% endif %}
 
-      <button type="submit" class="sp-btn sp-btn-green">Salvar astral ✅</button>
+      <div id="sp-posto-select-wrap" class="sp-field-group {% if checkin.daily_posto %}sp-hidden{% endif %}">
+        <select name="daily_posto" class="sp-select">
+          <option value="">Selecione...</option>
+          <option value="Home Office">🏠 Home Office</option>
+          <option value="Realengo">Realengo</option>
+          <option value="Campinho">Campinho</option>
+          <option value="Anchieta">Anchieta</option>
+          <option value="Jacarepaguá">Jacarepaguá</option>
+          <option value="Campo Grande">Campo Grande</option>
+          <option value="Nova Iguaçu">Nova Iguaçu</option>
+          <option value="Bangu">Bangu</option>
+          <option value="Nilópolis">Nilópolis</option>
+          <option value="Del Castilho">Del Castilho</option>
+          <option value="X Campo Grande">X Campo Grande</option>
+          <option value="Madureira">Madureira</option>
+          <option value="Rio das Pedras">Rio das Pedras</option>
+          <option value="Y Campo Grande">Y Campo Grande</option>
+          <option value="Folga">🌴 Não vou trabalhar (folga)</option>
+        </select>
+        <label class="sp-check-inline">
+          <input type="checkbox" name="fixed_posto" value="1" {% if profile.fixed_posto %}checked{% endif %}>
+          <span>Sempre neste posto (não me perguntar mais)</span>
+        </label>
+        <button type="submit" class="sp-btn sp-btn-green" style="margin-top:8px">Registrar posto 📍</button>
+      </div>
     </form>
   </div>
 
@@ -748,33 +766,52 @@
         equilibrada no dia a dia.
       </p>
 
-      <div class="sp-field-group">
-        <label class="sp-field-label" for="sp-lunch-input">O prato:</label>
-        <div class="sp-lunch-row">
-          <input type="text" name="lunch_text" class="sp-input sp-input-lunch" id="sp-lunch-input"
-                 placeholder="Frango e salada"
-                 value="{{ checkin.lunch_text|default:'' }}" maxlength="200">
-          <button type="button" class="sp-photo-sm" title="Foto do almoço" onclick="spOpenLunchCapture()">📷</button>
+      {% if checkin.lunch_text or checkin.lunch_photo %}
+        <!-- Estado "já registrado": resumo + botão Alterar -->
+        <div class="sp-fixed-posto" style="background:#fffbeb;border:1px solid #fbbf24;color:#92400e;padding:12px 14px;border-radius:10px;display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
+            {% if checkin.lunch_photo %}
+              <img src="{{ checkin.lunch_photo.url }}" alt="Almoço" style="width:48px;height:48px;border-radius:8px;object-fit:cover;flex-shrink:0;">
+            {% else %}
+              <span style="font-size:1.6rem;flex-shrink:0">🥗</span>
+            {% endif %}
+            <span style="overflow:hidden;text-overflow:ellipsis;">
+              ✅ <strong>{{ checkin.lunch_text|default:"Almoço registrado" }}</strong>
+            </span>
+          </div>
+          <button type="button" class="sp-link-btn" onclick="document.getElementById('sp-lunch-edit-wrap').classList.remove('sp-hidden');this.closest('.sp-fixed-posto').remove();">alterar</button>
         </div>
-        <input type="file" id="sp-lunch-file" name="lunch_photo" style="display:none"
-               onchange="spPreviewLunch(this)">
-        <div class="sp-lunch-capture sp-hidden" id="sp-lunch-capture">
-          <button type="button" class="sp-lunch-cap-btn" onclick="spLunchCapture('photo')">📸 Tirar foto</button>
-          <button type="button" class="sp-lunch-cap-btn" onclick="spLunchCapture('gallery')">🖼️ Da galeria</button>
+      {% endif %}
+
+      <div id="sp-lunch-edit-wrap" class="{% if checkin.lunch_text or checkin.lunch_photo %}sp-hidden{% endif %}">
+        <div class="sp-field-group">
+          <label class="sp-field-label" for="sp-lunch-input">O prato:</label>
+          <div class="sp-lunch-row">
+            <input type="text" name="lunch_text" class="sp-input sp-input-lunch" id="sp-lunch-input"
+                   placeholder="Frango e salada"
+                   value="{{ checkin.lunch_text|default:'' }}" maxlength="200">
+            <button type="button" class="sp-photo-sm" title="Foto do almoço" onclick="spOpenLunchCapture()">📷</button>
+          </div>
+          <input type="file" id="sp-lunch-file" name="lunch_photo" style="display:none"
+                 onchange="spPreviewLunch(this)">
+          <div class="sp-lunch-capture sp-hidden" id="sp-lunch-capture">
+            <button type="button" class="sp-lunch-cap-btn" onclick="spLunchCapture('photo')">📸 Tirar foto</button>
+            <button type="button" class="sp-lunch-cap-btn" onclick="spLunchCapture('gallery')">🖼️ Da galeria</button>
+          </div>
+          <div id="sp-lunch-preview" class="sp-lunch-preview {% if not checkin.lunch_photo %}sp-hidden{% endif %}">
+            {% if checkin.lunch_photo %}
+              <img src="{{ checkin.lunch_photo.url }}" alt="Almoço">
+            {% endif %}
+          </div>
         </div>
-        <div id="sp-lunch-preview" class="sp-lunch-preview {% if not checkin.lunch_photo %}sp-hidden{% endif %}">
-          {% if checkin.lunch_photo %}
-            <img src="{{ checkin.lunch_photo.url }}" alt="Almoço">
-          {% endif %}
-        </div>
+
+        <p class="sp-lunch-tip">
+          💡 Uma foto do prato deixa o registro mais rico e a Camila consegue
+          sugerir ideias melhores. Sem foto também tá ótimo — anota só o nome.
+        </p>
+
+        <button type="submit" class="sp-btn sp-btn-green">Registrar almoço 🥗</button>
       </div>
-
-      <p class="sp-lunch-tip">
-        💡 Uma foto do prato deixa o registro mais rico e a Camila consegue
-        sugerir ideias melhores. Sem foto também tá ótimo — anota só o nome.
-      </p>
-
-      <button type="submit" class="sp-btn sp-btn-green">Registrar almoço 🥗</button>
     </form>
   </div>
 
@@ -3125,9 +3162,18 @@ document.addEventListener('click', function(e){
   document.querySelectorAll('.sp-mood-card').forEach(function(card){
     card.addEventListener('click', function(){
       if(card.classList.contains('sp-mood-more-btn')) return;
+      var inp = card.querySelector('input');
+      var newMood = inp ? inp.value : '';
+      /* Trocou de humor? Limpa o "Quer contar mais?" — o texto era do
+         humor anterior e não tem mais sentido pro novo. */
+      var prevActive = document.querySelector('.sp-mood-card.active input');
+      var prevMood = prevActive ? prevActive.value : '';
+      if(prevMood && newMood && prevMood !== newMood){
+        var noteInp = document.querySelector('input[name="mood_note"]');
+        if(noteInp) noteInp.value = '';
+      }
       document.querySelectorAll('.sp-mood-card').forEach(function(c){ c.classList.remove('active'); });
       card.classList.add('active');
-      var inp = card.querySelector('input');
       if(inp) inp.checked = true;
     });
   });
