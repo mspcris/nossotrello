@@ -1988,7 +1988,11 @@ if(document.readyState !== 'loading'){ window._applyUserHeart(); }
       }
       _reelIdx = idx;
       var w = el.offsetWidth || 1;
-      var dest = 'translate3d(' + (-_reelIdx * w) + 'px, 0, 0)';
+      /* Subpixel rendering: -idx*w pode dar -720.499 e o navegador
+         arredonda PRA -720, sobrando 0.5px do slide anterior à esquerda.
+         Round na MAGNITUDE positiva primeiro garante consistência
+         (Math.round em negativo trata .5 diferente). */
+      var dest = 'translate3d(-' + Math.round(_reelIdx * w) + 'px, 0, 0)';
       if(animate !== false){
         /* Remover classe, forçar reflow, re-adicionar — garante transição */
         _track.classList.remove('sp-animating');
@@ -2032,6 +2036,27 @@ if(document.readyState !== 'loading'){ window._applyUserHeart(); }
       if(_resizeRaf) cancelAnimationFrame(_resizeRaf);
       _resizeRaf = requestAnimationFrame(function(){ _goToSlide(_reelIdx, false); });
     }, _sig);
+
+    /* ResizeObserver no próprio reel — fecha o bug de "bleed do slide
+       vizinho" quando o layout muda DEPOIS do load inicial (imagens com
+       dimensão diferente do esperado, font load, scrollbar aparecendo/
+       sumindo, etc). Sempre que offsetWidth mudar, reposiciona. */
+    if(typeof ResizeObserver !== 'undefined' && el){
+      var _lastReelWidth = el.offsetWidth || 0;
+      var _resizeObserverRaf = null;
+      var _ro = new ResizeObserver(function(){
+        var w = el.offsetWidth || 0;
+        if(w && w !== _lastReelWidth){
+          _lastReelWidth = w;
+          if(_resizeObserverRaf) cancelAnimationFrame(_resizeObserverRaf);
+          _resizeObserverRaf = requestAnimationFrame(function(){
+            _goToSlide(_reelIdx, false);
+          });
+        }
+      });
+      _ro.observe(el);
+      _sig.signal.addEventListener('abort', function(){ try { _ro.disconnect(); } catch(e){} });
+    }
 
     /* Preload: carregar imagens dos próximos slides antecipadamente */
     function _preloadAround(idx){
