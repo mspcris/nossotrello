@@ -368,8 +368,14 @@ function startViewerPolling() {
 
   tick();
 
-  // seu relato é “10s”; aqui está 10s (ajuste se quiser outro ritmo)
-  setInterval(tick, 10000);
+  // Polling agora é FALLBACK só. WS push (board.ws.js) entrega mudanças
+  // em tempo real — pollar 10s além disso era duplicação que multiplicava
+  // por (viewers × boards × 6 req/min) e detonava dockerd. Intervalo grande
+  // (5min) só cobre o caso do WS estar morto silenciosamente.
+  setInterval(() => {
+    if (window.__BOARD_WS_INSTALLED__) return;  // WS instalado → ele cuida
+    tick();
+  }, 300000);
 
   // se algum swap acontecer localmente, atualiza o baseline
   document.body.addEventListener("htmx:afterSwap", () => {
