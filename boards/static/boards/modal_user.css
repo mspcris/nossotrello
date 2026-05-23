@@ -1246,7 +1246,7 @@ body.sp-standalone-page {
   }
   /* sp-reel-row vira o flex container: setas, reel, painel */
   #sp-feed-wrap:not(.sp-feed-fullscreen) .sp-reel-row{
-    display:flex; justify-content:center; align-items:flex-start;
+    display:flex; flex-direction:row; justify-content:center; align-items:flex-start;
     gap:24px; padding:14px 0 24px; position:relative;
   }
   #sp-feed-wrap:not(.sp-feed-fullscreen) .sp-reel{
@@ -1429,7 +1429,7 @@ body:has(#sp-feed-wrap.sp-feed-fullscreen) .sp-reel-swipe-hint{
   }
   /* O sp-reel-row vira o flex container central com setas + reel + painel */
   #sp-feed-wrap.sp-feed-fullscreen .sp-reel-row{
-    display:flex; flex:1; min-height:0;
+    display:flex; flex-direction:row; flex:1; min-height:0;
     justify-content:center; align-items:center;
     gap:32px; padding:8px 24px 24px; position:relative;
   }
