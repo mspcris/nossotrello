@@ -276,10 +276,14 @@
       </span>
     </div>
 
-    <button type="button" class="sp-reel-arrow sp-reel-arrow-left" id="sp-reel-arrow-left" onclick="spReelNav(-1)">‹</button>
-    <button type="button" class="sp-reel-arrow sp-reel-arrow-right" id="sp-reel-arrow-right" onclick="spReelNav(1)">›</button>
-    <div class="sp-reel" id="sp-reel">
-      <div class="sp-reel-loading">Carregando...</div>
+    <div class="sp-reel-row">
+      <button type="button" class="sp-reel-arrow sp-reel-arrow-left" id="sp-reel-arrow-left" onclick="spReelNav(-1)">‹</button>
+      <button type="button" class="sp-reel-arrow sp-reel-arrow-right" id="sp-reel-arrow-right" onclick="spReelNav(1)">›</button>
+      <div class="sp-reel" id="sp-reel">
+        <div class="sp-reel-loading">Carregando...</div>
+      </div>
+      <!-- Painel lateral (visível só em desktop, populado pelo JS a cada slide change) -->
+      <aside class="sp-reel-side-panel" id="sp-reel-side-panel" aria-label="Detalhes da publicação"></aside>
     </div>
     <!-- Dica de swipe (some ao primeiro scroll) -->
     <div class="sp-reel-swipe-hint" id="sp-reel-swipe-hint" style="display:block">
@@ -1851,11 +1855,67 @@ if(document.readyState !== 'loading'){ window._applyUserHeart(); }
     _updateDots();
   }
 
+  /* Popula o painel lateral (desktop only — em mobile o painel tem display:none).
+     É chamado a cada troca de slide. Renderiza autor, texto, repost-header e
+     contadores. Comentários e reações continuam via overlay no slide pra
+     simplicidade — Fase 2 vai trazer comentários inline pro painel. */
+  function _renderSidePanel(p){
+    var side = document.getElementById('sp-reel-side-panel');
+    if(!side) return;
+    if(!p){
+      side.innerHTML = '<div class="sp-side-empty">Carregando…</div>';
+      return;
+    }
+    var initials = (p.user_name || '?').charAt(0).toUpperCase();
+    var avHtml = p.user_avatar
+      ? '<img src="'+p.user_avatar+'" alt="">'
+      : '<span class="sp-side-av-fb">'+initials+'</span>';
+
+    var html = '';
+    if(p.shared_from){
+      html += '<div class="sp-side-shared">🔄 '+_escHtml(p.user_name)+' compartilhou de:</div>';
+      var origInitials = (p.shared_from.original_user_name || '?').charAt(0).toUpperCase();
+      var origAv = p.shared_from.original_user_avatar
+        ? '<img src="'+p.shared_from.original_user_avatar+'" alt="">'
+        : '<span class="sp-side-av-fb">'+origInitials+'</span>';
+      html += '<div class="sp-side-author">'+origAv;
+      html += '<div><a class="sp-side-name" href="/social/'+p.shared_from.original_user_id+'/">'+_escHtml(p.shared_from.original_user_name)+'</a>';
+      html += '<span class="sp-side-time">'+_escHtml(p.created_at)+'</span></div></div>';
+    } else {
+      html += '<div class="sp-side-author">'+avHtml;
+      html += '<div><a class="sp-side-name" href="/social/'+p.user_id+'/">'+_escHtml(p.user_name)+'</a>';
+      html += '<span class="sp-side-time">'+_escHtml(p.created_at)+'</span></div></div>';
+    }
+
+    if(p.text){
+      html += '<div class="sp-side-text">'+_spMentionify(_escHtml(p.text))+'</div>';
+    } else if(p.friendship){
+      html += '<div class="sp-side-text">🤝 '+_escHtml(p.friendship.user_name)+' e '+_escHtml(p.friendship.friend_name)+' agora são amigos.</div>';
+    } else if(p.card_like){
+      html += '<div class="sp-side-text">👍 Curtiu o card "'+_escHtml(p.card_like.card_title||'')+'".</div>';
+    } else if(p.board_invite){
+      html += '<div class="sp-side-text">📋 '+_escHtml(p.board_invite.inviter_name||'')+' convidou '+_escHtml(p.board_invite.invited_name||'alguém')+' para o quadro "'+_escHtml(p.board_invite.board_name||'')+'".</div>';
+    } else {
+      html += '<div class="sp-side-text"></div>';
+    }
+
+    var likeCount = (p.reaction_counts && p.reaction_counts.like) || 0;
+    var commentCount = p.comment_count || 0;
+    html += '<div class="sp-side-stats">';
+    html += '<button onclick="spReelLike('+p.id+',this)" title="Curtir"><span>'+_userHeart()+'</span> <span class="sp-side-stat-num">'+likeCount+'</span></button>';
+    html += '<button onclick="spReelToggleComments('+p.id+',this)" title="Comentários">💬 <span class="sp-side-stat-num">'+commentCount+'</span></button>';
+    html += '<button onclick="spSharePost('+p.id+','+(p.user_id===_myUserId?'true':'false')+')" title="Compartilhar" style="margin-left:auto"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>';
+    html += '</div>';
+
+    side.innerHTML = html;
+  }
+
   function _renderReel(){
     var el = document.getElementById('sp-reel');
     if(!_reelPosts.length){
       el.innerHTML = '<div class="sp-reel-empty">Seus amigos ainda não publicaram nada.<br>Convide colegas! 🤝</div>';
       _totalSlides = 0;
+      _renderSidePanel(null);
       return;
     }
     /* Mais novos à esquerda (backend já envia ordenado) */
@@ -1936,10 +1996,12 @@ if(document.readyState !== 'loading'){ window._applyUserHeart(); }
       _playCurrentVideo(el, _reelIdx);
       _preloadAround(_reelIdx);
       _registerFeedView(_reelIdx);
+      _renderSidePanel(_reelPosts[_reelIdx]);
       _scheduleNext();
-      /* Pré-fetch antecipado: dispara load quando faltar ≤2 slides pro fim,
-         pra rolagem pra direita seguir fluida até esgotar tudo. */
-      if(_reelHasMore && !_reelLoadingMore && _reelIdx >= _totalSlides - 2){
+      /* Pré-fetch antecipado: dispara load quando faltar ≤6 slides pro fim,
+         pra rolagem pra direita seguir fluida até esgotar tudo (dá tempo do
+         round-trip mesmo em conexões lentas). */
+      if(_reelHasMore && !_reelLoadingMore && _reelIdx >= _totalSlides - 6){
         _loadMoreReel();
       }
     }
@@ -1955,6 +2017,7 @@ if(document.readyState !== 'loading'){ window._applyUserHeart(); }
       }).catch(function(){});
     }
     _registerFeedView(0); /* primeiro slide */
+    _renderSidePanel(_reelPosts[0]); /* popula painel lateral pra desktop */
     window._spGoToSlide = _goToSlide;
 
     /* Reajustar posição ao redimensionar tela / rotação */
@@ -2062,7 +2125,7 @@ if(document.readyState !== 'loading'){ window._applyUserHeart(); }
 
       /* Pré-fetch enquanto o usuário ainda está arrastando pra próxima — assim
          o conteúdo já está carregado quando o swipe completa. */
-      if(dx < 0 && _reelHasMore && !_reelLoadingMore && _reelIdx >= _totalSlides - 3){
+      if(dx < 0 && _reelHasMore && !_reelLoadingMore && _reelIdx >= _totalSlides - 6){
         _loadMoreReel();
       }
     }, {passive: false, signal: _sig.signal});
@@ -2700,12 +2763,23 @@ if(document.readyState !== 'loading'){ window._applyUserHeart(); }
 
   window.spReelNav = function(dir){
     if(!window._spGoToSlide){ _showReelArrows(); return; }
-    /* Movimento de 1 post por clique — sem pular posts do mesmo autor.
-       Assim repetir clique na seta esquerda sempre alcança o primeiro post
-       (idx 0). _goToSlide cuida dos limites: à esquerda clampa em 0; à
-       direita carrega mais ou faz wrap pro início quando o servidor confirma
-       que esgotou. */
-    window._spGoToSlide(_reelIdx + dir, true);
+    var cur = _reelPosts[_reelIdx];
+    var curUser = cur ? cur.user_id : null;
+    var stepOne = _reelIdx + dir;
+    var target = stepOne;
+    /* Pula posts do mesmo autor pra acelerar quando alguém publicou 5 coisas
+       seguidas. MAS se varrer até a borda sem achar autor diferente, usa o
+       fallback "um passo só" — assim o usuário não pula direto pro início do
+       feed só porque os posts anteriores são todos do mesmo autor. */
+    while(target >= 0 && target < _totalSlides){
+      var p = _reelPosts[target];
+      if(!p || p.user_id !== curUser) break;
+      target += dir;
+    }
+    if(target < 0 || target >= _totalSlides){
+      target = stepOne;
+    }
+    window._spGoToSlide(target, true);
     _showReelArrows();
   };
 

@@ -816,7 +816,7 @@ def social_friends_feed(request):
     """
     me = request.user
     show_all = request.GET.get("all") == "1"
-    PAGE_SIZE = 15
+    PAGE_SIZE = 30
 
     try:
         before_id = int(request.GET.get("before") or 0)
