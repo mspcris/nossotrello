@@ -5,17 +5,28 @@
 
 /* ============================================================
    DENSIDADE GLOBAL
+   Mobile: densidade reduzida (85% + zoom 0.9) — cabe mais coisa na tela.
+   Desktop ≥1024px: densidade NATURAL (100%, sem zoom) pra acessibilidade.
+     Quem usa NossoTrello no PC normalmente tem leitor maior e quer
+     fontes/botões legíveis. Espaço pra desperdiçar não é problema.
    ============================================================ */
-html { font-size: 85%; } /* 16px -> ~13.6px (sua densidade) */
+html { font-size: 85%; }
 
 body{
   font-size: 1rem;
   line-height: 1.35;
 }
 
-/* Opcional (Chromium): manter 100% (ajuste fino) */
 @supports (zoom: 0.8){
   body{ zoom: 0.9; }
+}
+
+@media (min-width: 1024px){
+  html { font-size: 100%; }
+  body { line-height: 1.45; }
+  @supports (zoom: 1){
+    body { zoom: 1; }
+  }
 }
 
 /* =======================================================================

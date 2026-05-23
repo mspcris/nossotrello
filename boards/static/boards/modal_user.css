@@ -286,6 +286,19 @@
     overflow: hidden;
   }
 }
+/* Desktop largo: aproveita o espaço lateral. Quem usa NossoTrello no PC
+   normalmente quer ver mais ao mesmo tempo. */
+@media (min-width: 1280px){
+  .sp-page-wrap {
+    max-width: 1240px;
+    padding: 20px;
+  }
+}
+@media (min-width: 1600px){
+  .sp-page-wrap {
+    max-width: 1400px;
+  }
+}
 
 /* ── Fundo da página standalone (laterais fora do sp-page-wrap) ──
    Substitui o branco por um gradiente "fumê" com orbs difusos que
@@ -394,6 +407,12 @@ body.sp-standalone-page {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   background-size: cover;
   background-position: center;
+}
+@media (min-width: 1024px){
+  .sp-cover { height: 180px; }
+}
+@media (min-width: 1440px){
+  .sp-cover { height: 220px; }
 }
 .sp-cover-tappable {
   cursor: pointer;
@@ -525,6 +544,14 @@ body.sp-standalone-page {
   background: #e5e7eb;
   box-shadow: 0 2px 10px rgba(0,0,0,0.15);
 }
+@media (min-width: 1024px){
+  .sp-avatar { width: 112px; height: 112px; border-width: 4px; }
+  .sp-avatar-over-cover { margin-top: -60px; }
+}
+@media (min-width: 1440px){
+  .sp-avatar { width: 132px; height: 132px; }
+  .sp-avatar-over-cover { margin-top: -70px; }
+}
 .sp-avatar-placeholder {
   display: flex;
   align-items: center;
@@ -603,6 +630,15 @@ body.sp-standalone-page {
 .sp-handle {
   font-size: 0.8125rem;
   color: #6b7280;
+}
+@media (min-width: 1024px){
+  .sp-name { font-size: 1.6rem; }
+  .sp-handle { font-size: 1rem; }
+  .sp-section-title { font-size: 1.2rem; }
+  .sp-section-sub { font-size: .95rem; }
+  .sp-mood-card { padding: 16px 12px; }
+  .sp-mood-card .sp-mood-emoji { font-size: 2.2rem; }
+  .sp-btn-orange { padding: 14px 22px; font-size: 1rem; }
 }
 
 /* Crop modal */
