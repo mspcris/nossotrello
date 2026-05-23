@@ -1638,6 +1638,12 @@ class BannedTerm(models.Model):
         (SEVERITY_BLOCK, "Bloqueia (HTTP 400)"),
         (SEVERITY_FLAG, "Sinaliza para revisão humana"),
     ]
+    MATCH_SUBSTRING = "substring"
+    MATCH_WORD = "word"
+    MATCH_CHOICES = [
+        (MATCH_SUBSTRING, "Substring (qualquer lugar)"),
+        (MATCH_WORD, "Palavra inteira (evita falso positivo em termos curtos)"),
+    ]
     CATEGORY_CHOICES = [
         ("hate", "Discurso de ódio"),
         ("sexual", "Conteúdo sexual"),
@@ -1658,6 +1664,13 @@ class BannedTerm(models.Model):
     )
     severity = models.CharField(
         max_length=10, choices=SEVERITY_CHOICES, default=SEVERITY_BLOCK,
+    )
+    match_mode = models.CharField(
+        max_length=10, choices=MATCH_CHOICES, default=MATCH_SUBSTRING,
+        help_text="'substring' (padrão) casa em qualquer parte do texto. "
+                  "'word' exige fronteira de palavra — use em termos curtos "
+                  "(cu, pau, bunda) pra evitar falso positivo em palavras "
+                  "normais (currículo, Paula, abundância).",
     )
     category = models.CharField(
         max_length=20, choices=CATEGORY_CHOICES, default="other", db_index=True,

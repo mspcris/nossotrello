@@ -1,4 +1,11 @@
-"""Camada 1 — match determinístico contra BannedTerm."""
+"""Camada 1 — match determinístico contra BannedTerm.
+
+Suporta 2 modos de match por termo (campo `match_mode` em BannedTerm):
+  - substring: casa `gozay` em `gozaydorme77` (default — pega ataques de
+    concatenação)
+  - word:      casa `\\bbunda\\b` em "olha aquela bunda" mas NÃO em
+    "abundância" (usar pra termos curtos que colidem com palavras normais)
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -6,7 +13,12 @@ from typing import Optional
 
 from django.core.cache import cache
 
-from .normalize import contains, normalize
+from .normalize import (
+    contains_substring,
+    contains_word,
+    normalize_pack,
+    normalize_tokens,
+)
 
 
 @dataclass
@@ -18,7 +30,7 @@ class BlocklistHit:
     terms_clause: str
 
 
-_CACHE_KEY = "moderation:bannedterms:v1"
+_CACHE_KEY = "moderation:bannedterms:v2"
 _CACHE_TTL = 60  # 1 minuto — suficiente pro admin ver mudanças logo
 
 
@@ -32,7 +44,7 @@ def _load_terms() -> list[dict]:
     rows = list(
         BannedTerm.objects
         .filter(active=True)
-        .values("id", "term", "severity", "category", "terms_clause")
+        .values("id", "term", "severity", "category", "terms_clause", "match_mode")
     )
     cache.set(_CACHE_KEY, rows, _CACHE_TTL)
     return rows
@@ -45,21 +57,29 @@ def invalidate_cache() -> None:
 def scan(text: str) -> Optional[BlocklistHit]:
     """Retorna o primeiro BlocklistHit ou None.
 
-    Prioriza severity='block' sobre 'flag' (se um termo block aparece, esse vence).
+    Prioriza severity='block' sobre 'flag'. Pré-normaliza nos 2 modos uma vez
+    só por chamada.
     """
     if not text:
         return None
-    normalized = normalize(text)
-    if not normalized:
+    packed = normalize_pack(text)
+    tokens = normalize_tokens(text)
+    if not packed and not tokens:
         return None
 
     flag_hit: Optional[BlocklistHit] = None
     for row in _load_terms():
-        if not contains(normalized, row["term"]):
+        term = row["term"]
+        mode = row.get("match_mode") or "substring"
+        if mode == "word":
+            matched = contains_word(tokens, term)
+        else:
+            matched = contains_substring(packed, term)
+        if not matched:
             continue
         hit = BlocklistHit(
             term_id=row["id"],
-            term=row["term"],
+            term=term,
             severity=row["severity"],
             category=row["category"],
             terms_clause=row["terms_clause"] or "4.4",

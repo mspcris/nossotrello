@@ -72,10 +72,12 @@ class WhatsNewItemAdmin(admin.ModelAdmin):
 
 @admin.register(BannedTerm)
 class BannedTermAdmin(admin.ModelAdmin):
-    list_display = ("term", "display", "severity", "category", "terms_clause", "active", "created_at")
-    list_filter = ("severity", "category", "active")
+    list_display = ("term", "display", "severity", "match_mode", "category", "terms_clause", "active", "created_at")
+    list_filter = ("severity", "match_mode", "category", "active")
     search_fields = ("term", "display", "notes")
     ordering = ("term",)
+    fields = ("term", "display", "severity", "match_mode", "category", "terms_clause", "active", "notes", "created_by", "created_at")
+    readonly_fields = ("created_by", "created_at")
 
     def save_model(self, request, obj, form, change):
         if not change and not obj.created_by_id:
