@@ -1834,9 +1834,13 @@ if(document.readyState !== 'loading'){ window._applyUserHeart(); }
             + ' style="background:'+p.text_style.bg+';color:'+(p.text_style.color||'#fff')+'">'
             + '<span class="sp-styled-text-inner">'+_spMentionify(_escHtml(p.text))+'</span></div>';
         } else {
-          /* Mood post com Camilinho: mostra a imagem grande acima do texto */
-          if(p.camilinho){
-            html += '<div class="sp-reel-camilinho-wrap"><img class="sp-reel-camilinho '+(p.camilinho.anim_class||'')+'" src="'+p.camilinho.url+'" alt="Camilinho '+(p.camilinho.mood||'')+'"></div>';
+          /* Mood post com Camilinho: div com sprite no lugar de <img>.
+             Sprite WebP único: 1 download pra todas as 39 variantes. */
+          if(p.camilinho && p.camilinho.sprite_class){
+            html += '<div class="sp-reel-camilinho-wrap" aria-label="Camilinho '+(p.camilinho.mood||'')+'">'
+              + '<div class="sp-reel-camilinho '+(p.camilinho.anim_class||'')+'">'
+              + '<div class="'+p.camilinho.sprite_class+'"></div>'
+              + '</div></div>';
           }
           html += '<div class="sp-reel-text">'+_spMentionify(_escHtml(p.text))+'</div>';
         }

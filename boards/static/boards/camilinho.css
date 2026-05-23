@@ -7,8 +7,12 @@
   display:flex; justify-content:center; align-items:center;
   margin:6px 0 10px;
 }
+/* Cada Camilinho vira um DIV de proporção 1:1 com o sprite renderizado
+   via background-image. Sprite WebP único de 1MB pra todas as 39 imagens
+   substitui os 39 PNGs individuais — 1 request em vez de 39, e o WebP
+   é ~50% menor que PNG pra mesma qualidade. */
 .cm-mood-img{
-  width:min(220px, 70vw); height:auto;
+  width:min(220px, 70vw); aspect-ratio: 1;
   display:block;
   filter: drop-shadow(0 6px 16px rgba(0,0,0,0.15));
 }
@@ -23,9 +27,59 @@
   margin:0 0 12px;
 }
 .sp-reel-camilinho{
-  width:min(82%, 360px); height:auto;
+  width:min(82%, 360px); aspect-ratio: 1;
   filter: drop-shadow(0 10px 22px rgba(0,0,0,0.20));
 }
+
+/* ────────────────────────────────────────────────────────────
+   SPRITE WEBP — 1 arquivo único pros 39 Camilinhos
+   ──────────────────────────────────────────────────────────── */
+.cm-sprite{
+  display:inline-block;
+  width:100%; height:100%;
+  background-image: url('/static/boards/images/camilinho_sprite.webp');
+  background-size: 1300% 300%;
+  background-repeat: no-repeat;
+}
+.cm-sprite-animado-1{ background-position: 0.0000% 0.0000%; }
+.cm-sprite-animado-2{ background-position: 0.0000% 50.0000%; }
+.cm-sprite-animado-3{ background-position: 0.0000% 100.0000%; }
+.cm-sprite-bem-1{ background-position: 8.3333% 0.0000%; }
+.cm-sprite-bem-2{ background-position: 8.3333% 50.0000%; }
+.cm-sprite-bem-3{ background-position: 8.3333% 100.0000%; }
+.cm-sprite-tranquilo-1{ background-position: 16.6667% 0.0000%; }
+.cm-sprite-tranquilo-2{ background-position: 16.6667% 50.0000%; }
+.cm-sprite-tranquilo-3{ background-position: 16.6667% 100.0000%; }
+.cm-sprite-normal-1{ background-position: 25.0000% 0.0000%; }
+.cm-sprite-normal-2{ background-position: 25.0000% 50.0000%; }
+.cm-sprite-normal-3{ background-position: 25.0000% 100.0000%; }
+.cm-sprite-cansado-1{ background-position: 33.3333% 0.0000%; }
+.cm-sprite-cansado-2{ background-position: 33.3333% 50.0000%; }
+.cm-sprite-cansado-3{ background-position: 33.3333% 100.0000%; }
+.cm-sprite-estressado-1{ background-position: 41.6667% 0.0000%; }
+.cm-sprite-estressado-2{ background-position: 41.6667% 50.0000%; }
+.cm-sprite-estressado-3{ background-position: 41.6667% 100.0000%; }
+.cm-sprite-indisposto-1{ background-position: 50.0000% 0.0000%; }
+.cm-sprite-indisposto-2{ background-position: 50.0000% 50.0000%; }
+.cm-sprite-indisposto-3{ background-position: 50.0000% 100.0000%; }
+.cm-sprite-triste-1{ background-position: 58.3333% 0.0000%; }
+.cm-sprite-triste-2{ background-position: 58.3333% 50.0000%; }
+.cm-sprite-triste-3{ background-position: 58.3333% 100.0000%; }
+.cm-sprite-desanimado-1{ background-position: 66.6667% 0.0000%; }
+.cm-sprite-desanimado-2{ background-position: 66.6667% 50.0000%; }
+.cm-sprite-desanimado-3{ background-position: 66.6667% 100.0000%; }
+.cm-sprite-ansioso-1{ background-position: 75.0000% 0.0000%; }
+.cm-sprite-ansioso-2{ background-position: 75.0000% 50.0000%; }
+.cm-sprite-ansioso-3{ background-position: 75.0000% 100.0000%; }
+.cm-sprite-com_raiva-1{ background-position: 83.3333% 0.0000%; }
+.cm-sprite-com_raiva-2{ background-position: 83.3333% 50.0000%; }
+.cm-sprite-com_raiva-3{ background-position: 83.3333% 100.0000%; }
+.cm-sprite-apaixonado-1{ background-position: 91.6667% 0.0000%; }
+.cm-sprite-apaixonado-2{ background-position: 91.6667% 50.0000%; }
+.cm-sprite-apaixonado-3{ background-position: 91.6667% 100.0000%; }
+.cm-sprite-grato-1{ background-position: 100.0000% 0.0000%; }
+.cm-sprite-grato-2{ background-position: 100.0000% 50.0000%; }
+.cm-sprite-grato-3{ background-position: 100.0000% 100.0000%; }
 
 /* Mood post: slide com Camilinho ganha fundo CLARO (em vez do preto padrão
    do reel). Antes a camisa branca do Camilinho misturava com o preto e

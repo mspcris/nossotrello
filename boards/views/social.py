@@ -1017,11 +1017,12 @@ def social_friends_feed(request):
         # expõe url da imagem e classe CSS de animação.
         camilinho = None
         if display_post.mood_code and display_post.camilinho_variant:
-            from boards.services.camilinho import image_url, animation_class
-            url = image_url(display_post.mood_code, display_post.camilinho_variant)
-            if url:
+            from boards.services.camilinho import image_url, sprite_class, animation_class
+            spr = sprite_class(display_post.mood_code, display_post.camilinho_variant)
+            if spr:
                 camilinho = {
-                    "url": url,
+                    "url": image_url(display_post.mood_code, display_post.camilinho_variant),
+                    "sprite_class": spr,
                     "mood": display_post.mood_code,
                     "anim_class": animation_class(display_post.mood_code),
                 }

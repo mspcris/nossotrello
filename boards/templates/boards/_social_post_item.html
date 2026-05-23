@@ -108,8 +108,10 @@
         <span class="sp-styled-text-inner">{{ post.text|linebreaksbr }}</span>
       </div>
     {% else %}
-      {% if post.camilinho_url %}
-        <div class="cm-mood-wrap"><img src="{{ post.camilinho_url }}" alt="Camilinho {{ post.mood_code }}" class="cm-mood-img {{ post.camilinho_anim_class }}" loading="lazy"></div>
+      {% if post.camilinho_sprite_class %}
+        <div class="cm-mood-wrap" aria-label="Camilinho {{ post.mood_code }}">
+          <div class="cm-mood-img {{ post.camilinho_anim_class }}"><div class="{{ post.camilinho_sprite_class }}"></div></div>
+        </div>
       {% endif %}
       <p class="sp-post-text">{{ post.text|urlize|linebreaksbr }}</p>
     {% endif %}

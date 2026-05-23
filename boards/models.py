@@ -934,11 +934,19 @@ class SocialPost(models.Model):
 
     @property
     def camilinho_url(self):
-        """URL static da imagem do mascote pra esse post (se for mood post)."""
+        """URL static da imagem do mascote (modo individual PNG — legado/fallback)."""
         if not self.mood_code or not self.camilinho_variant:
             return ""
         from boards.services.camilinho import image_url
         return image_url(self.mood_code, self.camilinho_variant)
+
+    @property
+    def camilinho_sprite_class(self):
+        """CSS class pra div renderizar via sprite WebP (preferido)."""
+        if not self.mood_code or not self.camilinho_variant:
+            return ""
+        from boards.services.camilinho import sprite_class
+        return sprite_class(self.mood_code, self.camilinho_variant)
 
     @property
     def camilinho_anim_class(self):

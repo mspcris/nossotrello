@@ -44,11 +44,22 @@ def pick_variant(mood_code: str) -> int:
 
 
 def image_url(mood_code: str, variant: int) -> str:
-    """Static URL pra imagem do Camilinho desse mood+variant. '' se inválido."""
+    """Static URL pra imagem do Camilinho desse mood+variant. '' se inválido.
+    Mantido pra compat — atualmente usamos sprite_class (vide abaixo)."""
     slug = MOOD_TO_SLUG.get(mood_code)
     if not slug or not (1 <= variant <= VARIANTS_PER_MOOD):
         return ""
     return static(f"boards/images/camilinho/{slug}_v{variant}.png")
+
+
+def sprite_class(mood_code: str, variant: int) -> str:
+    """CSS class pra renderizar o Camilinho via sprite WebP único.
+    Ex: 'cm-sprite cm-sprite-excited-1' → div pega o frame correto do sprite.
+    '' se inválido."""
+    slug = MOOD_TO_SLUG.get(mood_code)
+    if not slug or not (1 <= variant <= VARIANTS_PER_MOOD):
+        return ""
+    return f"cm-sprite cm-sprite-{slug}-{variant}"
 
 
 def animation_class(mood_code: str) -> str:
