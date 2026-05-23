@@ -29,6 +29,11 @@ CURATED = {
         "Espaço Social mais seguro",
         "Toda publicação agora passa por uma checagem em duas camadas: uma lista de termos proibidos que bloqueia na hora e uma IA que analisa o contexto. Se algo for marcado, você recebe um e-mail explicando o que aconteceu, qual cláusula dos Termos foi violada e a referência do caso. Em Menu → Minhas publicações sob moderação você acompanha tudo: o que está em análise, o que foi bloqueado e qualquer aviso recebido.",
     ),
+    "WORKPLACE_SEED": (
+        "🏢",
+        "Régua de moderação ajustada pro ambiente corporativo",
+        "A lista de termos bloqueados foi reforçada para refletir o que é esperado num ambiente profissional. Linguagem chula, ofensas, conteúdo sexual e discurso de ódio agora caem na cláusula 4.5 dos Termos de Uso (conduta no Espaço Social). Lembrete: o Espaço Social é uma rede profissional — registros podem ser usados em processos disciplinares.",
+    ),
     "2ef754d": (
         "💚",
         "Seu coração, sua cor",
