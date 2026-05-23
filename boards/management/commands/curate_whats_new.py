@@ -24,6 +24,11 @@ from boards.models import WhatsNewItem
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-05 ---
+    "643c38a": (
+        "🛡️",
+        "Espaço Social mais seguro",
+        "Toda publicação agora passa por uma checagem em duas camadas: uma lista de termos proibidos que bloqueia na hora e uma IA que analisa o contexto. Se algo for marcado, você recebe um e-mail explicando o que aconteceu, qual cláusula dos Termos foi violada e a referência do caso. Em Menu → Minhas publicações sob moderação você acompanha tudo: o que está em análise, o que foi bloqueado e qualquer aviso recebido.",
+    ),
     "2ef754d": (
         "💚",
         "Seu coração, sua cor",
