@@ -1399,12 +1399,14 @@ body:has(#sp-feed-wrap.sp-feed-fullscreen) .sp-reel-swipe-hint{
   display:none !important;
 }
 
-/* Desktop: reel fullscreen vira um "phone portrait" centralizado.
-   No mobile o slide ocupa 100vw (comportamento original). */
+/* Desktop fullscreen: phone portrait + painel lateral, backdrop escuro,
+   nada da página atrás sangrando. Mobile mantém o slide ocupando 100vw. */
 @media (min-width: 768px){
   #sp-feed-wrap.sp-feed-fullscreen{
-    align-items:center;
-    background:transparent;
+    align-items:stretch;
+    /* Backdrop sólido: tira a página atrás do caminho */
+    background:radial-gradient(ellipse at center, rgba(15,12,40,0.96) 0%, rgba(8,6,28,0.98) 80%);
+    backdrop-filter: blur(6px);
   }
   #sp-feed-wrap.sp-feed-fullscreen .sp-feed-mini-tabs{
     width:100%;
@@ -1412,22 +1414,63 @@ body:has(#sp-feed-wrap.sp-feed-fullscreen) .sp-reel-swipe-hint{
   #sp-feed-wrap.sp-feed-fullscreen .sp-feed-toggle-row{
     width:100%;
   }
+  /* O sp-reel-row vira o flex container central com setas + reel + painel */
+  #sp-feed-wrap.sp-feed-fullscreen .sp-reel-row{
+    display:flex; flex:1; min-height:0;
+    justify-content:center; align-items:center;
+    gap:32px; padding:8px 24px 24px; position:relative;
+  }
   #sp-feed-wrap.sp-feed-fullscreen .sp-reel{
-    width:min(420px, calc((100vh - 120px) * 9 / 16));
-    max-width:90vw;
+    flex:0 0 auto;
+    /* Telefone maior em desktop (até 520px de largura ou o que couber na altura) */
+    width:min(520px, calc((100vh - 180px) * 9 / 16));
+    aspect-ratio: 9 / 16;
+    max-width:46vw;
+    height:auto; max-height:calc(100vh - 180px);
     align-self:center;
-    border-radius:18px;
-    box-shadow:0 18px 60px rgba(0,0,0,.55);
+    border-radius:20px;
+    box-shadow:0 24px 60px rgba(0,0,0,.65);
   }
   #sp-feed-wrap.sp-feed-fullscreen .sp-reel-slide{
-    border-radius:18px;
+    border-radius:20px;
     overflow:hidden;
   }
+  /* Painel lateral em fullscreen também */
+  #sp-feed-wrap.sp-feed-fullscreen .sp-reel-side-panel{
+    display:flex; flex-direction:column;
+    flex:0 0 380px; width:380px;
+    max-height:calc(100vh - 180px);
+    background:#fff; color:#1f2937;
+    border-radius:18px;
+    box-shadow:0 16px 40px rgba(0,0,0,0.4);
+    padding:22px;
+    overflow-y:auto;
+    align-self:center;
+  }
+  @media (max-width: 1200px){
+    #sp-feed-wrap.sp-feed-fullscreen .sp-reel-side-panel{
+      flex-basis:300px; width:300px;
+    }
+  }
+  /* Setas absolute-positioned, ancoradas no centro do conjunto reel+painel */
+  #sp-feed-wrap.sp-feed-fullscreen .sp-reel-arrow{
+    top:50%; transform:translateY(-50%);
+  }
   #sp-feed-wrap.sp-feed-fullscreen .sp-reel-arrow-left{
-    left:calc(50% - min(210px, calc((100vh - 120px) * 9 / 32)) - 48px);
+    /* meio da viewport - metade do reel - gap/2 - metade do painel - 60px de folga */
+    left:calc(50% - min(260px, 23vw) - 16px - 190px - 60px); right:auto;
   }
   #sp-feed-wrap.sp-feed-fullscreen .sp-reel-arrow-right{
-    right:calc(50% - min(210px, calc((100vh - 120px) * 9 / 32)) - 48px);
+    /* meio + metade do reel + gap/2 + metade do painel + 60px de folga */
+    right:calc(50% - min(260px, 23vw) - 16px - 190px - 60px); left:auto;
+  }
+  @media (max-width: 1200px){
+    #sp-feed-wrap.sp-feed-fullscreen .sp-reel-arrow-left{
+      left:calc(50% - min(260px, 23vw) - 16px - 150px - 50px);
+    }
+    #sp-feed-wrap.sp-feed-fullscreen .sp-reel-arrow-right{
+      right:calc(50% - min(260px, 23vw) - 16px - 150px - 50px);
+    }
   }
 }
 

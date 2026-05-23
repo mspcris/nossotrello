@@ -212,6 +212,14 @@ def _build_board_invite_data(post):
         if invited_id
         else None
     )
+    # Se o convidado foi banido (is_active=False), esconde o post — mesma lógica
+    # aplicada em friendship: não faz sentido anunciar "X convidou [banido]".
+    # Idem se o convite faz referência a usuário que não existe mais.
+    if invited_id and (not invited_user or not invited_user.is_active):
+        return None
+    # Mesma proteção pro inviter: se o autor do convite foi banido depois.
+    if not getattr(inviter, "is_active", True):
+        return None
     if invited_user:
         invited_prof = getattr(invited_user, "profile", None)
         invited_name = (
@@ -826,7 +834,7 @@ def social_friends_feed(request):
     if show_all:
         qs = (
             SocialPost.objects
-            .filter(is_active=True, moderation_status=SocialPost.MOD_CLEAN)
+            .filter(is_active=True, user__is_active=True, moderation_status=SocialPost.MOD_CLEAN)
             .exclude(user=me)
             .exclude(visibility="friends")
         )
@@ -844,10 +852,13 @@ def social_friends_feed(request):
         feed_ids = set(friend_ids)
         feed_ids.add(me.id)
 
-        # Feed: posts liberados de amigos + TODOS os meus posts (mesmo em análise/bloqueados,
-        # pra que o autor veja o próprio estado de moderação)
+        # Feed: posts liberados de amigos ATIVOS + TODOS os meus posts (mesmo em análise/bloqueados,
+        # pra que o autor veja o próprio estado de moderação). user__is_active=False
+        # filtra posts do autor banido.
         qs = SocialPost.objects.filter(user_id__in=feed_ids, is_active=True).filter(
-            models.Q(moderation_status=SocialPost.MOD_CLEAN) | models.Q(user=me)
+            models.Q(user=me) | models.Q(
+                user__is_active=True, moderation_status=SocialPost.MOD_CLEAN
+            )
         )
 
     if before_id:
@@ -936,22 +947,32 @@ def social_friends_feed(request):
                 "original_user_avatar": _avatar_url(orig_prof),
             }
 
-        # Detectar post de amizade
+        # Detectar post de amizade. Se o "outro" da amizade está banido
+        # (is_active=False), o post inteiro é escondido — não faz sentido
+        # mostrar "X e [banido] são amigos!" no feed.
         friendship_data = None
+        _skip_due_to_banned = False
         if display_post.text.startswith("__friendship__:"):
             try:
                 friend_uid = int(display_post.text.split(":")[1])
                 friend_user = User.objects.select_related("profile").get(id=friend_uid)
-                friend_prof = getattr(friend_user, "profile", None)
-                friendship_data = {
-                    "friend_name": friend_prof.display_name if friend_prof else friend_user.get_full_name(),
-                    "friend_avatar": _avatar_url(friend_prof),
-                    "friend_id": friend_uid,
-                    "user_name": prof.display_name if prof else p.user.get_full_name(),
-                    "user_avatar": _avatar_url(prof),
-                }
+                if not friend_user.is_active:
+                    _skip_due_to_banned = True
+                else:
+                    friend_prof = getattr(friend_user, "profile", None)
+                    friendship_data = {
+                        "friend_name": friend_prof.display_name if friend_prof else friend_user.get_full_name(),
+                        "friend_avatar": _avatar_url(friend_prof),
+                        "friend_id": friend_uid,
+                        "user_name": prof.display_name if prof else p.user.get_full_name(),
+                        "user_avatar": _avatar_url(prof),
+                    }
+            except User.DoesNotExist:
+                _skip_due_to_banned = True
             except Exception:
                 pass
+        if _skip_due_to_banned:
+            continue
 
         # Detectar post de curtida de card
         card_like_data = None
