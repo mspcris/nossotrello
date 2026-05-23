@@ -801,9 +801,17 @@ def social_post_detail(request, post_id: int):
     for c in comments:
         prof = getattr(c.user, "profile", None)
         counts = dict(creact_map.get(c.id, {}))
+        avatar_url = ""
+        if prof and getattr(prof, "avatar", None):
+            try:
+                avatar_url = prof.avatar.url
+            except Exception:
+                pass
         result.append({
             "id": c.id,
             "author": prof.display_name if prof else c.user.email,
+            "author_avatar": avatar_url,
+            "author_id": c.user_id,
             "text": c.text,
             "time": timezone.localtime(c.created_at).strftime("%d/%m %H:%M"),
             "reaction_counts": counts,

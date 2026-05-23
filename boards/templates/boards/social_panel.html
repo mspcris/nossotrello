@@ -1810,7 +1810,7 @@ if(document.readyState !== 'loading'){ window._applyUserHeart(); }
       html += '<button class="sp-reel-action" onclick="spReelToggleComments('+p.id+',this)" title="Comentários">💬'+commentBadge+'</button>';
       html += '<div class="sp-mention-wrap" style="flex:1;position:relative">';
       html += '<div class="sp-mention-dropdown sp-reel-mention-dd" id="sp-reel-mention-dd-'+p.id+'"></div>';
-      html += '<input class="sp-reel-comment-input" id="sp-reel-cinput-'+p.id+'" placeholder="Comentar..." maxlength="500" onkeydown="if(event.key===\'Enter\'&&!document.getElementById(\'sp-reel-mention-dd-'+p.id+'\').classList.contains(\'active\'))spReelComment('+p.id+',this)">';
+      html += '<input class="sp-reel-comment-input" id="sp-reel-cinput-'+p.id+'" placeholder="Comentar..." maxlength="500" readonly onclick="spReelToggleComments('+p.id+',this)" onkeydown="if(event.key===\'Enter\'&&!document.getElementById(\'sp-reel-mention-dd-'+p.id+'\').classList.contains(\'active\'))spReelComment('+p.id+',this)">';
       html += '</div>';
       html += '<button class="sp-reel-comment-send" onclick="spReelComment('+p.id+',this.previousElementSibling.querySelector(\'input\'))">➤</button>';
       html += '<button class="sp-reel-action sp-reel-share" onclick="spSharePost('+p.id+','+(p.user_id===_myUserId?'true':'false')+')" title="Compartilhar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>';
@@ -1865,9 +1865,9 @@ if(document.readyState !== 'loading'){ window._applyUserHeart(); }
   }
 
   /* Popula o painel lateral (desktop only — em mobile o painel tem display:none).
-     É chamado a cada troca de slide. Renderiza autor, texto, repost-header e
-     contadores. Comentários e reações continuam via overlay no slide pra
-     simplicidade — Fase 2 vai trazer comentários inline pro painel. */
+     Renderiza autor, texto, ações (curtir/comentar/compartilhar), e a lista
+     de comentários carregada via fetch. Comentar inline disponível no
+     input embaixo do painel. */
   function _renderSidePanel(p){
     var side = document.getElementById('sp-reel-side-panel');
     if(!side) return;
@@ -1904,20 +1904,92 @@ if(document.readyState !== 'loading'){ window._applyUserHeart(); }
       html += '<div class="sp-side-text">👍 Curtiu o card "'+_escHtml(p.card_like.card_title||'')+'".</div>';
     } else if(p.board_invite){
       html += '<div class="sp-side-text">📋 '+_escHtml(p.board_invite.inviter_name||'')+' convidou '+_escHtml(p.board_invite.invited_name||'alguém')+' para o quadro "'+_escHtml(p.board_invite.board_name||'')+'".</div>';
-    } else {
-      html += '<div class="sp-side-text"></div>';
     }
 
     var likeCount = (p.reaction_counts && p.reaction_counts.like) || 0;
     var commentCount = p.comment_count || 0;
     html += '<div class="sp-side-stats">';
     html += '<button onclick="spReelLike('+p.id+',this)" title="Curtir"><span>'+_userHeart()+'</span> <span class="sp-side-stat-num">'+likeCount+'</span></button>';
-    html += '<button onclick="spReelToggleComments('+p.id+',this)" title="Comentários">💬 <span class="sp-side-stat-num">'+commentCount+'</span></button>';
+    html += '<button onclick="spReelToggleComments('+p.id+',this)" title="Ver no modo cheio">💬 <span class="sp-side-stat-num">'+commentCount+'</span></button>';
     html += '<button onclick="spSharePost('+p.id+','+(p.user_id===_myUserId?'true':'false')+')" title="Compartilhar" style="margin-left:auto"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>';
     html += '</div>';
 
+    /* Lista de comentários (rolável) + input de novo comentário no rodapé */
+    html += '<div class="sp-side-comments" id="sp-side-comments" data-post-id="'+p.id+'">';
+    html += '<div class="sp-side-comments-loading">Carregando comentários…</div>';
+    html += '</div>';
+    html += '<div class="sp-side-comment-form">';
+    html += '<div class="sp-mention-wrap" style="flex:1;position:relative">';
+    html += '<div class="sp-mention-dropdown" id="sp-side-mention-dd-'+p.id+'"></div>';
+    html += '<input type="text" class="sp-side-comment-input" id="sp-side-cinput-'+p.id+'" placeholder="Comentar…" maxlength="500" onkeydown="if(event.key===\'Enter\'&&!document.getElementById(\'sp-side-mention-dd-'+p.id+'\').classList.contains(\'active\'))spReelComment('+p.id+',this)">';
+    html += '</div>';
+    html += '<button class="sp-side-comment-send" onclick="spReelComment('+p.id+',this.previousElementSibling.querySelector(\'input\'))" title="Enviar">➤</button>';
+    html += '</div>';
+
     side.innerHTML = html;
+
+    /* Mentions no input do painel */
+    if(window._spAttachMention){
+      var inp = document.getElementById('sp-side-cinput-'+p.id);
+      var dd = document.getElementById('sp-side-mention-dd-'+p.id);
+      if(inp && dd) window._spAttachMention(inp, dd);
+    }
+
+    /* Carrega comentários do post atual no painel (sem bloquear o render) */
+    _loadSideComments(p.id);
   }
+
+  /* Cache simples: evita refetch quando volta pro mesmo slide */
+  var _sideCommentsCache = {};
+
+  function _loadSideComments(postId){
+    var box = document.getElementById('sp-side-comments');
+    if(!box || String(box.dataset.postId) !== String(postId)) return;
+
+    function _render(data){
+      var stillCurrent = box.dataset.postId === String(postId);
+      if(!stillCurrent) return;
+      if(!data.comments || !data.comments.length){
+        box.innerHTML = '<div class="sp-side-comments-empty">Seja o primeiro a comentar 💬</div>';
+        return;
+      }
+      var html = '';
+      data.comments.forEach(function(c){
+        var avInit = (c.author || '?').charAt(0).toUpperCase();
+        var av = c.author_avatar
+          ? '<img class="sp-side-cm-av" src="'+c.author_avatar+'" alt="">'
+          : '<span class="sp-side-cm-av-fb">'+avInit+'</span>';
+        html += '<div class="sp-side-comment">'+av+
+          '<div class="sp-side-cm-body">'+
+          '<div class="sp-side-cm-head"><strong>'+_escHtml(c.author)+'</strong> <span class="sp-side-cm-time">'+_escHtml(c.time||'')+'</span></div>'+
+          '<div class="sp-side-cm-text">'+_spMentionify(_escHtml(c.text||''))+'</div>'+
+          '</div></div>';
+      });
+      box.innerHTML = html;
+      box.scrollTop = box.scrollHeight;
+    }
+
+    if(_sideCommentsCache[postId]){
+      _render(_sideCommentsCache[postId]);
+      return;
+    }
+    fetch('/social/posts/' + postId + '/')
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        _sideCommentsCache[postId] = d;
+        _render(d);
+      })
+      .catch(function(){
+        if(box.dataset.postId === String(postId)){
+          box.innerHTML = '<div class="sp-side-comments-empty">Não consegui carregar agora.</div>';
+        }
+      });
+  }
+  /* Expõe pra invalidação externa (ex: ao postar um comentário novo, refresca) */
+  window._spInvalidateSideComments = function(postId){
+    delete _sideCommentsCache[postId];
+    _loadSideComments(postId);
+  };
 
   function _renderReel(){
     var el = document.getElementById('sp-reel');
@@ -2509,6 +2581,16 @@ if(document.readyState !== 'loading'){ window._applyUserHeart(); }
                 cmtBtn.innerHTML = '💬 <span class="count">1</span>';
               }
             }
+          }
+
+          /* ── Refresca o painel lateral (desktop) e o seu contador ── */
+          if(window._spInvalidateSideComments){
+            window._spInvalidateSideComments(postId);
+          }
+          var sideCmtBtn = document.querySelector('.sp-side-stats button[title="Ver no modo cheio"]');
+          if(sideCmtBtn){
+            var sideNum = sideCmtBtn.querySelector('.sp-side-stat-num');
+            if(sideNum){ sideNum.textContent = String((parseInt(sideNum.textContent)||0) + 1); }
           }
 
           /* ── Abre e carrega comentários automaticamente ── */

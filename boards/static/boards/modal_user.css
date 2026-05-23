@@ -1290,6 +1290,17 @@ body.sp-standalone-page {
   #sp-feed-wrap:not(.sp-feed-fullscreen) .sp-reel-swipe-hint{
     display:none;
   }
+  /* Em desktop, todas as ações (curtir/comentar/compartilhar/comentar inline)
+     migram pro painel lateral à direita. Esconde a barra no slide pra não
+     duplicar info e libera espaço pra mídia respirar. */
+  #sp-feed-wrap:not(.sp-feed-fullscreen) .sp-reel-actions,
+  #sp-feed-wrap.sp-feed-fullscreen .sp-reel-actions{
+    display:none;
+  }
+  #sp-feed-wrap:not(.sp-feed-fullscreen) .sp-reel-slide,
+  #sp-feed-wrap.sp-feed-fullscreen .sp-reel-slide{
+    padding-bottom:0;
+  }
   /* PAINEL LATERAL — visível só desktop, populado por JS */
   #sp-feed-wrap:not(.sp-feed-fullscreen) .sp-reel-side-panel{
     display:flex; flex-direction:column;
@@ -1340,6 +1351,52 @@ body.sp-standalone-page {
   }
   .sp-side-stats button:hover{ color:#065f46; }
   .sp-side-stats .sp-side-stat-num{ font-weight:700; }
+  /* Lista de comentários inline + input do painel */
+  .sp-side-comments{
+    flex:1 1 auto; min-height:0; overflow-y:auto;
+    margin:8px -6px 0; padding:4px 6px 6px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .sp-side-comments-loading,
+  .sp-side-comments-empty{
+    font-size:.8rem; color:#9ca3af; text-align:center; padding:16px 8px;
+    font-style:italic;
+  }
+  .sp-side-comment{
+    display:flex; gap:8px; align-items:flex-start;
+    padding:6px 0;
+  }
+  .sp-side-cm-av, .sp-side-cm-av-fb{
+    width:30px; height:30px; border-radius:50%; flex:0 0 30px;
+    background:linear-gradient(135deg,#7c3aed,#a78bfa);
+    display:inline-flex; align-items:center; justify-content:center;
+    color:#fff; font-weight:700; font-size:.78rem;
+    object-fit:cover;
+  }
+  .sp-side-cm-body{ flex:1 1 auto; min-width:0; }
+  .sp-side-cm-head{ font-size:.78rem; color:#374151; }
+  .sp-side-cm-head strong{ color:#111827; font-weight:700; }
+  .sp-side-cm-time{ color:#9ca3af; margin-left:6px; font-size:.7rem; }
+  .sp-side-cm-text{ font-size:.86rem; color:#1f2937; line-height:1.4; word-break:break-word; }
+  /* Form de novo comentário no rodapé do painel */
+  .sp-side-comment-form{
+    display:flex; gap:8px; align-items:center;
+    border-top:1px solid #e5e7eb; padding-top:10px; margin-top:8px;
+    flex:0 0 auto;
+  }
+  .sp-side-comment-input{
+    flex:1; border:1px solid #d1d5db; border-radius:18px;
+    background:#fff; color:#1f2937; padding:7px 12px;
+    font-size:.85rem; outline:none;
+  }
+  .sp-side-comment-input:focus{ border-color:#065f46; box-shadow:0 0 0 3px rgba(6,95,70,0.15); }
+  .sp-side-comment-send{
+    background:#065f46; color:#fff; border:none;
+    width:34px; height:34px; min-width:34px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; font-size:1rem; transition:background .15s;
+  }
+  .sp-side-comment-send:hover{ background:#047857; }
   .sp-side-empty{
     color:#9ca3af; font-style:italic; text-align:center;
     padding:24px 12px; font-size:.85rem;
@@ -1563,6 +1620,20 @@ body:has(#sp-feed-wrap.sp-feed-fullscreen) .sp-reel-swipe-hint{
   flex:0 0 100%; position:relative;
   display:flex; flex-direction:column; align-items:center; justify-content:center;
   min-height:420px; padding-bottom:56px; background:#000; color:#fff; user-select:none;
+}
+/* Borda interna esmaecida — cobre qualquer subpixel-bleed do slide vizinho
+   e dá aquela vinheta estilo Stories. Pseudo-elemento sem pointer-events. */
+.sp-reel-slide::after{
+  content:"";
+  position:absolute; inset:0;
+  pointer-events:none;
+  box-shadow:
+    inset 6px 0 12px 2px rgba(0,0,0,0.65),
+    inset -6px 0 12px 2px rgba(0,0,0,0.65),
+    inset 0 6px 12px 0 rgba(0,0,0,0.45),
+    inset 0 -6px 12px 0 rgba(0,0,0,0.55);
+  border-radius:inherit;
+  z-index:3;
 }
 .sp-reel-slide > img,
 .sp-reel-slide > video{
