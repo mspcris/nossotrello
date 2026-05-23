@@ -24,7 +24,39 @@
 }
 .sp-reel-camilinho{
   width:min(82%, 360px); height:auto;
-  filter: drop-shadow(0 10px 22px rgba(0,0,0,0.35));
+  filter: drop-shadow(0 10px 22px rgba(0,0,0,0.20));
+}
+
+/* Mood post: slide com Camilinho ganha fundo CLARO (em vez do preto padrão
+   do reel). Antes a camisa branca do Camilinho misturava com o preto e
+   parecia verde escura — agora fica como cartão Polaroid quentinho. */
+.sp-reel-slide:has(.sp-reel-camilinho){
+  background: linear-gradient(180deg, #fef9c3 0%, #fef3c7 40%, #fffbeb 100%);
+  color: #1f2937;
+}
+.sp-reel-slide:has(.sp-reel-camilinho) .sp-reel-text{
+  color: #1f2937;
+  text-shadow: none;
+}
+/* Sombra interna leve (vinheta de Stories) — bem mais sutil que o padrão
+   escuro, pra não escurecer a camisa branca de novo. */
+.sp-reel-slide:has(.sp-reel-camilinho)::after{
+  box-shadow:
+    inset 4px 0 12px 2px rgba(0,0,0,0.06),
+    inset -4px 0 12px 2px rgba(0,0,0,0.06),
+    inset 0 4px 12px 0 rgba(0,0,0,0.05),
+    inset 0 -4px 12px 0 rgba(0,0,0,0.08);
+}
+/* O header (avatar + nome + tempo) tinha gradient escuro pra contrastar com
+   foto. Em mood post o fundo é claro, então o header precisa de texto escuro. */
+.sp-reel-slide:has(.sp-reel-camilinho) .sp-reel-header{
+  background: linear-gradient(to bottom, rgba(255,255,255,0.85) 30%, rgba(255,255,255,0.45) 70%, transparent);
+}
+.sp-reel-slide:has(.sp-reel-camilinho) .sp-reel-header .sp-reel-name,
+.sp-reel-slide:has(.sp-reel-camilinho) .sp-reel-header .sp-reel-time,
+.sp-reel-slide:has(.sp-reel-camilinho) .sp-reel-header a{
+  color: #1f2937 !important;
+  text-shadow: none;
 }
 
 /* ────────────────────────────────────────────────────────────
