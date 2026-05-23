@@ -1215,9 +1215,20 @@ body.sp-standalone-page {
   position:relative; overflow:hidden; border-radius:16px;
   background:#000; min-height:480px;
 }
-/* Mobile / default: o wrapper sp-reel-row é "transparente" no layout
-   (children behave as direct children of sp-feed-wrap). Side panel oculto. */
-.sp-reel-row{ display:contents; }
+/* Wrapper do conjunto setas + reel + painel.
+   Em mobile/non-fullscreen: flex column transparente — o reel dentro herda
+   o comportamento de "ocupa o que tiver" igual antes. NÃO usamos
+   display:contents porque mobile browsers quebram a cadeia flex quando o
+   pai é fixed/flex e o "filho-fantasma" sumido contém position:absolute.
+   Em desktop a mesma classe vira flex row pra acomodar o painel lateral. */
+.sp-reel-row{
+  display:flex; flex-direction:column;
+  flex:1 1 auto; min-height:0;
+  position:relative;
+}
+.sp-reel-row > .sp-reel{
+  flex:1 1 auto; min-height:0;
+}
 .sp-reel-side-panel{ display:none; }
 
 /* Desktop não-fullscreen: o wrap fica transparente, o reel vira um "phone
@@ -1240,14 +1251,16 @@ body.sp-standalone-page {
   }
   #sp-feed-wrap:not(.sp-feed-fullscreen) .sp-reel{
     flex:0 0 auto;
-    width:min(420px, 92vw);
-    aspect-ratio: 9 / 16;
-    max-height:calc(100vh - 220px);
-    min-height:0; height:auto;
-    margin:0;
+    /* Tamanho explícito (sem aspect-ratio) pra garantir que offsetWidth
+       que o JS lê == slide width — evita bleed do slide vizinho. */
+    height:min(720px, calc(100vh - 220px));
+    width:calc(min(720px, calc(100vh - 220px)) * 9 / 16);
+    max-width:92vw;
+    min-height:0; margin:0;
     border-radius:22px;
     background:#000;
     box-shadow:0 22px 50px rgba(0,0,0,0.45), 0 4px 12px rgba(0,0,0,0.35);
+    overflow:hidden;
   }
   #sp-feed-wrap:not(.sp-feed-fullscreen) .sp-reel-track,
   #sp-feed-wrap:not(.sp-feed-fullscreen) .sp-reel-slide{
@@ -1422,14 +1435,17 @@ body:has(#sp-feed-wrap.sp-feed-fullscreen) .sp-reel-swipe-hint{
   }
   #sp-feed-wrap.sp-feed-fullscreen .sp-reel{
     flex:0 0 auto;
-    /* Telefone maior em desktop (até 520px de largura ou o que couber na altura) */
-    width:min(520px, calc((100vh - 180px) * 9 / 16));
-    aspect-ratio: 9 / 16;
+    /* Tamanho explícito sem aspect-ratio — evita o offsetWidth do reel
+       descasar da slide width e causar bleed do slide vizinho + click no
+       botão errado. Altura é capada pelo viewport, largura derivada
+       respeitando 9:16. Max-width só pra não ficar gigante em monitores 4K. */
+    height:min(calc(100vh - 180px), 924px);
+    width:calc(min(calc(100vh - 180px), 924px) * 9 / 16);
     max-width:46vw;
-    height:auto; max-height:calc(100vh - 180px);
     align-self:center;
     border-radius:20px;
     box-shadow:0 24px 60px rgba(0,0,0,.65);
+    overflow:hidden;
   }
   #sp-feed-wrap.sp-feed-fullscreen .sp-reel-slide{
     border-radius:20px;

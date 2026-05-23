@@ -1605,12 +1605,18 @@ if(document.readyState !== 'loading'){ window._applyUserHeart(); }
       setTimeout(function(){
         feed.classList.add('sp-feed-fullscreen');
         document.body.style.overflow = 'hidden';
-        /* Reajustar transform para novo tamanho após layout */
+        /* Reajustar transform para novo tamanho após layout. Múltiplas
+           passadas: rAF×2 pra primeiro paint após classe nova, e mais
+           uma após 200ms pra cobrir casos em que aspect-ratio/imagens
+           ainda estão se acertando e o offsetWidth muda. Sem isso a
+           track ficava posicionada errada e o slide vizinho sangrava. */
+        var _reposition = function(){
+          if(window._spGoToSlide) window._spGoToSlide(_reelIdx, false);
+        };
         requestAnimationFrame(function(){
-          requestAnimationFrame(function(){
-            if(window._spGoToSlide) window._spGoToSlide(_reelIdx, false);
-          });
+          requestAnimationFrame(_reposition);
         });
+        setTimeout(_reposition, 200);
       }, 30);
     }
   };
