@@ -1,6 +1,17 @@
 {% comment %}Renderiza um único post do feed do perfil. Usado por social_feed_block.html e pelo endpoint de "carregar mais".{% endcomment %}
 {% load static %}
-<div class="sp-post" id="sp-post-{{ post.id }}" data-post-id="{{ post.id }}">
+<div class="sp-post sp-mod-{{ post.moderation_status }}" id="sp-post-{{ post.id }}" data-post-id="{{ post.id }}">
+  {% if post.user_id == request.user.id and post.moderation_status != 'clean' %}
+    <div class="sp-mod-badge sp-mod-badge-{{ post.moderation_status }}" style="margin:0 0 8px;padding:10px 12px;border-radius:10px;font-size:.85rem;line-height:1.45;border:1px solid;{% if post.moderation_status == 'pending_review' %}background:#fef3c7;border-color:#fbbf24;color:#92400e;{% elif post.moderation_status == 'blocked' %}background:#fee2e2;border-color:#f87171;color:#991b1b;{% else %}background:#f3f4f6;border-color:#9ca3af;color:#374151;{% endif %}">
+      {% if post.moderation_status == 'pending_review' %}
+        ⏳ <strong>Em análise.</strong> Sua publicação está sendo revisada pela nossa equipe e está oculta do feed até a decisão. Você vai receber um email quando estiver decidido.
+      {% elif post.moderation_status == 'blocked' %}
+        🚫 <strong>Bloqueado pela política.</strong> {{ post.moderation_reason|default:"Conteúdo viola os Termos de Uso." }}{% if post.moderation_clause %} (Cláusula {{ post.moderation_clause }}).{% endif %} Detalhes foram enviados no seu email.
+      {% elif post.moderation_status == 'removed_by_moderator' %}
+        🛑 <strong>Removido por moderador.</strong> {{ post.moderation_reason|default:"Conteúdo viola os Termos de Uso." }}{% if post.moderation_clause %} (Cláusula {{ post.moderation_clause }}).{% endif %}
+      {% endif %}
+    </div>
+  {% endif %}
   {% if post.is_repost and post.original_author %}
     <div style="font-size:.8rem;color:#6b7280;margin-bottom:6px;padding:0 4px">
       🔄 Compartilhou de <a href="/social/{{ post.original_user_id }}/" style="color:#2563eb;font-weight:600;text-decoration:none">{{ post.original_author }}</a>

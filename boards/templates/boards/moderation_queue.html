@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Moderação — Fila{% endblock %}
+{% block content %}
+<style>
+  .mq-wrap { max-width: 1100px; margin: 24px auto; padding: 0 16px; font-family: system-ui, -apple-system, sans-serif; }
+  .mq-tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .mq-tab { padding: 6px 14px; border-radius: 999px; background: #f3f4f6; color: #374151; text-decoration: none; font-size: .88rem; border: 1px solid #e5e7eb; }
+  .mq-tab.active { background: #065f46; color: #fff; border-color: #065f46; }
+  .mq-case { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+  .mq-case-head { display: flex; align-items: center; gap: 10px; font-size: .82rem; color: #6b7280; margin-bottom: 8px; flex-wrap: wrap; }
+  .mq-chip { display: inline-block; padding: 2px 8px; border-radius: 8px; background: #f3f4f6; font-weight: 600; font-size: .75rem; }
+  .mq-chip-blocked { background: #fee2e2; color: #991b1b; }
+  .mq-chip-pending { background: #fef3c7; color: #92400e; }
+  .mq-chip-approved { background: #d1fae5; color: #065f46; }
+  .mq-chip-rejected { background: #fecaca; color: #7f1d1d; }
+  .mq-subject { background: #f9fafb; border-left: 3px solid #6b7280; padding: 10px 14px; margin: 10px 0; font-style: italic; white-space: pre-wrap; word-break: break-word; }
+  .mq-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
+  .mq-actions input[type=text] { flex: 1; min-width: 240px; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: .88rem; }
+  .mq-actions select { padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: .88rem; background: #fff; }
+  .mq-btn { padding: 6px 14px; border-radius: 8px; border: none; cursor: pointer; font-size: .88rem; font-weight: 600; }
+  .mq-btn-ok { background: #065f46; color: #fff; }
+  .mq-btn-no { background: #dc2626; color: #fff; }
+  .mq-scores { font-size: .75rem; color: #6b7280; margin-top: 4px; }
+  .mq-empty { text-align: center; padding: 40px; color: #9ca3af; }
+  .mq-author { font-weight: 600; color: #111827; }
+  .mq-link { color: #2563eb; text-decoration: none; }
+</style>
+
+<div class="mq-wrap">
+  <h1 style="margin: 0 0 4px;">Fila de moderação</h1>
+  <p style="color:#6b7280;margin:0 0 16px;">Posts e conteúdos que precisam de decisão humana.</p>
+
+  <div class="mq-tabs">
+    {% for s, label in status_choices %}
+      <a class="mq-tab {% if current_status == s %}active{% endif %}" href="?status={{ s }}">{{ label }}</a>
+    {% endfor %}
+    <a class="mq-tab {% if current_status == 'all' %}active{% endif %}" href="?status=all">Todos</a>
+  </div>
+
+  {% if not cases %}
+    <div class="mq-empty">✨ Nenhum caso nesse filtro.</div>
+  {% endif %}
+
+  {% for item in cases %}
+    {% with c=item.case %}
+    <div class="mq-case">
+      <div class="mq-case-head">
+        <span class="mq-chip mq-chip-{% if c.status == 'auto_blocked' %}blocked{% elif c.status == 'pending_human' %}pending{% elif c.status == 'human_approved' %}approved{% elif c.status == 'human_rejected' %}rejected{% endif %}">
+          #{{ c.id }} · {{ c.get_status_display }}
+        </span>
+        <span>{{ item.kind_label }}</span>
+        <span>Autor: <span class="mq-author">{{ c.author.get_full_name|default:c.author.email }}</span></span>
+        <span>· {{ c.created_at|date:"d/m/Y H:i" }}</span>
+        {% if item.link %}<a class="mq-link" href="{{ item.link }}" target="_blank">Abrir conteúdo →</a>{% endif %}
+      </div>
+
+      {% if c.layer1_hit and c.layer1_term %}
+        <div style="font-size:.85rem;color:#991b1b;">
+          🚫 <strong>Camada 1 (blocklist):</strong> termo «{{ c.layer1_term.display|default:c.layer1_term.term }}» — categoria {{ c.layer1_term.get_category_display }} — cláusula {{ c.layer1_term.terms_clause }}.
+        </div>
+      {% endif %}
+
+      {% if c.layer2_provider %}
+        <div style="font-size:.85rem;color:#92400e;">
+          🤖 <strong>Camada 2 ({{ c.layer2_provider }}):</strong> flagged={{ c.layer2_flagged }} · categorias={{ c.layer2_categories|join:", "|default:"—" }}
+        </div>
+        <div class="mq-scores">
+          {% for k, v in c.layer2_scores.items %}{{ k }}={{ v|floatformat:3 }} · {% endfor %}
+        </div>
+      {% endif %}
+
+      <div class="mq-subject">{{ c.subject_text|default:"(sem texto — provável bloqueio de mídia)" }}</div>
+
+      {% if c.status == 'pending_human' or c.status == 'auto_blocked' %}
+        <form method="post" action="{% url 'boards:moderation_approve' c.id %}{% if current_status %}?status={{ current_status }}{% endif %}" class="mq-actions" style="border-bottom:1px dashed #e5e7eb;padding-bottom:10px;">
+          {% csrf_token %}
+          <input type="text" name="notes" placeholder="Observações (opcional, vai pro email do usuário)">
+          <button class="mq-btn mq-btn-ok" type="submit">✓ Aprovar</button>
+        </form>
+
+        <form method="post" action="{% url 'boards:moderation_reject' c.id %}{% if current_status %}?status={{ current_status }}{% endif %}" class="mq-actions" style="margin-top:8px;">
+          {% csrf_token %}
+          <input type="text" name="notes" placeholder="Motivo da rejeição (vai pro email)" required>
+          <input type="text" name="terms_clause" placeholder="Cláusula" value="{% if c.layer1_term %}{{ c.layer1_term.terms_clause }}{% else %}4.4{% endif %}" style="max-width:80px;flex:0 0 auto;">
+          <select name="escalate">
+            <option value="warn">⚠️ Só avisar (remove post + warn)</option>
+            <option value="post_block" selected>🚫 Bloquear o post</option>
+            <option value="social_block">🔒 Bloquear acesso social</option>
+            <option value="account_block">🛑 Bloquear conta NossoTrello</option>
+            <option value="idcamim_block">⛔ Bloquear no IDCamim (máximo)</option>
+          </select>
+          <button class="mq-btn mq-btn-no" type="submit" onclick="return confirm('Confirma rejeição? O usuário será notificado por email.')">✗ Rejeitar</button>
+        </form>
+      {% else %}
+        <div style="margin-top:8px;font-size:.85rem;color:#6b7280;">
+          {% if c.decision_by %}Decidido por <strong>{{ c.decision_by.get_full_name|default:c.decision_by.email }}</strong> em {{ c.decision_at|date:"d/m/Y H:i" }}.{% endif %}
+          {% if c.decision_notes %}<br>Notas: {{ c.decision_notes }}{% endif %}
+        </div>
+      {% endif %}
+    </div>
+    {% endwith %}
+  {% endfor %}
+</div>
+{% endblock %}

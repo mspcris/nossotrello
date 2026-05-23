@@ -532,6 +532,16 @@
           <li>
             <a class="nt-link" href="{% url 'manual' %}">Manual</a>
           </li>
+          {% if request.user.is_authenticated %}
+          <li>
+            <a class="nt-link" href="{% url 'boards:social_my_under_review' %}">Minhas publicações sob moderação</a>
+          </li>
+          {% if request.user.is_staff %}
+          <li>
+            <a class="nt-link" href="{% url 'boards:moderation_queue' %}">Fila de moderação (staff)</a>
+          </li>
+          {% endif %}
+          {% endif %}
 
           <li><div class="nt-divider"></div></li>
 

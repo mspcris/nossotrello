@@ -554,6 +554,21 @@ class UserProfile(models.Model):
     # Última vez que o usuário abriu o painel "Novidades" (What's new)
     last_whatsnew_seen_at = models.DateTimeField(null=True, blank=True)
 
+    # ── Moderação social ──
+    # social_blocked: usuário não pode publicar/comentar/usar chat. account_blocked:
+    # nem pode logar localmente. idcamim_blocked: pedido de desativação no IDCamim
+    # já foi feito (registro local, fonte de verdade é o IDCamim).
+    social_blocked = models.BooleanField(default=False)
+    social_blocked_until = models.DateTimeField(null=True, blank=True)
+    social_blocked_reason = models.CharField(max_length=240, blank=True, default="")
+    account_blocked = models.BooleanField(default=False)
+    account_blocked_until = models.DateTimeField(null=True, blank=True)
+    idcamim_blocked = models.BooleanField(default=False)
+    idcamim_blocked_at = models.DateTimeField(null=True, blank=True)
+    social_warn_count = models.PositiveIntegerField(default=0)
+    social_block_count = models.PositiveIntegerField(default=0)
+    last_offense_at = models.DateTimeField(null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -884,10 +899,27 @@ class SocialPost(models.Model):
     # Usado para cota (1/dia/usuário) e auditoria.
     ai_food_dish = models.CharField(max_length=120, blank=True, default="")
 
+    MOD_CLEAN = "clean"
+    MOD_PENDING = "pending_review"
+    MOD_BLOCKED = "blocked"
+    MOD_REMOVED = "removed_by_moderator"
+    MOD_CHOICES = [
+        (MOD_CLEAN, "Liberado"),
+        (MOD_PENDING, "Em análise"),
+        (MOD_BLOCKED, "Bloqueado pela política"),
+        (MOD_REMOVED, "Removido por moderador"),
+    ]
+    moderation_status = models.CharField(
+        max_length=24, choices=MOD_CHOICES, default=MOD_CLEAN, db_index=True,
+    )
+    moderation_reason = models.CharField(max_length=160, blank=True, default="")
+    moderation_clause = models.CharField(max_length=20, blank=True, default="")
+
     class Meta:
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["user", "-created_at"]),
+            models.Index(fields=["moderation_status", "-created_at"]),
         ]
 
     @property
@@ -1588,6 +1620,220 @@ class CardEmbedding(models.Model):
 
     def __str__(self):
         return f"emb(card={self.card_id})"
+
+
+# ============================================================
+# MODERATION — content review & banishment audit
+# ============================================================
+class BannedTerm(models.Model):
+    """Lista de termos proibidos (Camada 1 — bloqueio determinístico).
+
+    O termo é guardado em forma normalizada (minúsculas, sem acentos, sem
+    separadores) — a normalização do conteúdo a ser checado é feita em
+    boards/services/moderation/normalize.py.
+    """
+    SEVERITY_BLOCK = "block"
+    SEVERITY_FLAG = "flag"
+    SEVERITY_CHOICES = [
+        (SEVERITY_BLOCK, "Bloqueia (HTTP 400)"),
+        (SEVERITY_FLAG, "Sinaliza para revisão humana"),
+    ]
+    CATEGORY_CHOICES = [
+        ("hate", "Discurso de ódio"),
+        ("sexual", "Conteúdo sexual"),
+        ("violence", "Violência"),
+        ("harassment", "Assédio"),
+        ("spam", "Spam"),
+        ("pii", "Dados pessoais sensíveis"),
+        ("political", "Político/religioso/comercial externo"),
+        ("other", "Outro"),
+    ]
+    term = models.CharField(
+        max_length=80, unique=True,
+        help_text="Termo normalizado (minúsculas, sem acentos/separadores)."
+    )
+    display = models.CharField(
+        max_length=120, blank=True, default="",
+        help_text="Forma humana do termo (só pra leitura no admin)."
+    )
+    severity = models.CharField(
+        max_length=10, choices=SEVERITY_CHOICES, default=SEVERITY_BLOCK,
+    )
+    category = models.CharField(
+        max_length=20, choices=CATEGORY_CHOICES, default="other", db_index=True,
+    )
+    terms_clause = models.CharField(
+        max_length=20, blank=True, default="4.4",
+        help_text="Cláusula dos Termos de Uso violada (ex: 4.4).",
+    )
+    active = models.BooleanField(default=True, db_index=True)
+    notes = models.TextField(blank=True, default="")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="+",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["term"]
+        verbose_name = "Termo banido"
+        verbose_name_plural = "Termos banidos"
+
+    def __str__(self):
+        return f"{self.term} [{self.severity}/{self.category}]"
+
+
+class ModerationCase(models.Model):
+    """1 caso = 1 análise de conteúdo (qualquer tipo: post, comentário, chat, perfil).
+
+    Identifica o conteúdo via (content_kind, object_id) — evitamos GenericFK
+    formal pra não ter que carregar contenttypes em todo lugar.
+    """
+    KIND_SOCIAL_POST = "social_post"
+    KIND_SOCIAL_COMMENT = "social_comment"
+    KIND_CHAT_MESSAGE = "chat_message"
+    KIND_USER_HANDLE = "user_handle"
+    KIND_USER_NAME = "user_name"
+    KIND_USER_BIO = "user_bio"
+    KIND_CHOICES = [
+        (KIND_SOCIAL_POST, "Post"),
+        (KIND_SOCIAL_COMMENT, "Comentário"),
+        (KIND_CHAT_MESSAGE, "Mensagem de chat"),
+        (KIND_USER_HANDLE, "Handle"),
+        (KIND_USER_NAME, "Nome do usuário"),
+        (KIND_USER_BIO, "Bio"),
+    ]
+
+    STATUS_AUTO_BLOCKED = "auto_blocked"
+    STATUS_PENDING_HUMAN = "pending_human"
+    STATUS_HUMAN_APPROVED = "human_approved"
+    STATUS_HUMAN_REJECTED = "human_rejected"
+    STATUS_AUTO_CLEARED = "auto_cleared"
+    STATUS_CHOICES = [
+        (STATUS_AUTO_BLOCKED, "Bloqueado automaticamente (Camada 1)"),
+        (STATUS_PENDING_HUMAN, "Aguardando revisão humana"),
+        (STATUS_HUMAN_APPROVED, "Aprovado por moderador"),
+        (STATUS_HUMAN_REJECTED, "Rejeitado por moderador"),
+        (STATUS_AUTO_CLEARED, "Liberado automaticamente (Camada 2)"),
+    ]
+
+    content_kind = models.CharField(max_length=20, choices=KIND_CHOICES, db_index=True)
+    object_id = models.PositiveIntegerField(db_index=True)
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="moderation_cases",
+        on_delete=models.CASCADE,
+    )
+    subject_text = models.TextField(
+        blank=True, default="",
+        help_text="Snapshot do texto analisado (evidência imutável).",
+    )
+
+    # Camada 1
+    layer1_hit = models.BooleanField(default=False)
+    layer1_term = models.ForeignKey(
+        BannedTerm, null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
+    )
+
+    # Camada 2
+    layer2_provider = models.CharField(max_length=40, blank=True, default="")
+    layer2_scores = models.JSONField(default=dict, blank=True)
+    layer2_flagged = models.BooleanField(default=False)
+    layer2_categories = models.JSONField(default=list, blank=True)
+    layer2_at = models.DateTimeField(null=True, blank=True)
+
+    status = models.CharField(
+        max_length=24, choices=STATUS_CHOICES, default=STATUS_PENDING_HUMAN, db_index=True,
+    )
+    decision_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="+",
+    )
+    decision_at = models.DateTimeField(null=True, blank=True)
+    decision_notes = models.TextField(blank=True, default="")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["status", "-created_at"]),
+            models.Index(fields=["content_kind", "object_id"]),
+            models.Index(fields=["author", "-created_at"]),
+        ]
+        verbose_name = "Caso de moderação"
+        verbose_name_plural = "Casos de moderação"
+
+    def __str__(self):
+        return f"#{self.pk} {self.content_kind} obj={self.object_id} [{self.status}]"
+
+
+class BanLog(models.Model):
+    """Registro imutável de cada ação punitiva — auditoria/compliance.
+
+    Cada linha é uma punição aplicada (warn, post_block, social_block,
+    account_block, idcamim_block). Pode estar ligada a um ModerationCase
+    que originou a punição, ou ser aplicada manualmente pelo admin.
+    """
+    ACTION_WARN = "warn"
+    ACTION_POST_BLOCK = "post_block"
+    ACTION_SOCIAL_BLOCK = "social_block"
+    ACTION_ACCOUNT_BLOCK = "account_block"
+    ACTION_IDCAMIM_BLOCK = "idcamim_block"
+    ACTION_CHOICES = [
+        (ACTION_WARN, "Aviso"),
+        (ACTION_POST_BLOCK, "Bloqueio do post"),
+        (ACTION_SOCIAL_BLOCK, "Bloqueio do social (não publica/comenta)"),
+        (ACTION_ACCOUNT_BLOCK, "Bloqueio da conta NossoTrello"),
+        (ACTION_IDCAMIM_BLOCK, "Bloqueio do IDCamim"),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="ban_logs",
+        on_delete=models.CASCADE,
+    )
+    action = models.CharField(max_length=20, choices=ACTION_CHOICES, db_index=True)
+    case = models.ForeignKey(
+        ModerationCase, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="ban_logs",
+    )
+    reason = models.TextField(
+        help_text="Texto livre que vai pro email do usuário banido.",
+    )
+    terms_clause = models.CharField(
+        max_length=40, blank=True, default="",
+        help_text="Cláusula dos Termos de Uso violada (ex: 4.4).",
+    )
+    applied_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="ban_logs_applied",
+        help_text="Quem aplicou (null = sistema/automático).",
+    )
+    applied_at = models.DateTimeField(auto_now_add=True)
+    effective_until = models.DateTimeField(
+        null=True, blank=True,
+        help_text="Quando expira (null = permanente até revogação).",
+    )
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    revoked_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="+",
+    )
+    revoke_reason = models.TextField(blank=True, default="")
+    email_sent_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-applied_at"]
+        indexes = [
+            models.Index(fields=["user", "-applied_at"]),
+            models.Index(fields=["action", "-applied_at"]),
+        ]
+        verbose_name = "Punição aplicada"
+        verbose_name_plural = "Punições aplicadas"
+
+    def __str__(self):
+        return f"{self.user} → {self.action} @ {self.applied_at:%Y-%m-%d %H:%M}"
 
 
 # END boards/models.py

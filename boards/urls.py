@@ -181,6 +181,13 @@ from boards.views.social import (
     camila_news_list,
 )
 
+from boards.views.moderation_admin import (
+    queue as moderation_queue,
+    approve as moderation_approve,
+    reject as moderation_reject,
+)
+from boards.views.moderation_user import my_under_review
+
 
 app_name = "boards"
 
@@ -265,6 +272,14 @@ urlpatterns = [
 
     # Camila News
     path("social/camila/news/", camila_news_list, name="camila_news_list"),
+
+    # Moderação — usuário vê suas próprias publicações em análise
+    path("social/meus-em-analise/", my_under_review, name="social_my_under_review"),
+
+    # Moderação — fila staff
+    path("moderation/queue/", moderation_queue, name="moderation_queue"),
+    path("moderation/<int:case_id>/approve/", moderation_approve, name="moderation_approve"),
+    path("moderation/<int:case_id>/reject/", moderation_reject, name="moderation_reject"),
 
     # Camila.AI Admin (staff only)
     path("camila/", camila_admin, name="camila_admin"),

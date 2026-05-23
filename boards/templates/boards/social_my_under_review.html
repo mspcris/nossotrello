@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Minhas publicações sob análise{% endblock %}
+{% block content %}
+<style>
+  .ur-wrap { max-width: 760px; margin: 24px auto; padding: 0 16px; font-family: system-ui, -apple-system, sans-serif; }
+  .ur-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+  .ur-status { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: .76rem; font-weight: 700; }
+  .ur-status-pending_review { background: #fef3c7; color: #92400e; }
+  .ur-status-blocked { background: #fee2e2; color: #991b1b; }
+  .ur-status-removed_by_moderator { background: #fecaca; color: #7f1d1d; }
+  .ur-when { font-size: .8rem; color: #6b7280; }
+  .ur-text { background: #f9fafb; padding: 10px 12px; border-radius: 8px; margin: 8px 0; white-space: pre-wrap; word-break: break-word; }
+  .ur-reason { font-size: .85rem; color: #4b5563; margin-top: 6px; }
+  .ur-section { margin: 28px 0 12px; font-size: 1.1rem; font-weight: 700; color: #111827; }
+  .ur-empty { text-align: center; color: #9ca3af; padding: 30px; }
+  .ur-banlog { border-left: 3px solid #dc2626; padding-left: 10px; margin-bottom: 10px; }
+  .ur-banlog.warn { border-color: #f59e0b; }
+  .ur-banlog.post_block { border-color: #ef4444; }
+  .ur-banlog.social_block, .ur-banlog.account_block, .ur-banlog.idcamim_block { border-color: #991b1b; }
+</style>
+
+<div class="ur-wrap">
+  <h1 style="margin: 0 0 4px;">Minhas publicações sob moderação</h1>
+  <p style="color:#6b7280;margin:0 0 16px;">
+    Aqui você vê suas publicações bloqueadas pela política, sob análise da nossa
+    equipe ou removidas por moderador. Todas as decisões são também enviadas pro
+    seu email.
+  </p>
+
+  <div class="ur-section">Publicações</div>
+  {% if not posts %}
+    <div class="ur-empty">✅ Nenhuma publicação sob moderação. Tudo limpo.</div>
+  {% endif %}
+  {% for p in posts %}
+    <div class="ur-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+        <span class="ur-status ur-status-{{ p.moderation_status }}">{{ p.get_moderation_status_display }}</span>
+        <span class="ur-when">{{ p.created_at|date:"d/m/Y H:i" }}</span>
+      </div>
+      {% if p.text %}<div class="ur-text">{{ p.text }}</div>{% endif %}
+      {% if p.moderation_reason %}
+        <div class="ur-reason">
+          <strong>Motivo:</strong> {{ p.moderation_reason }}{% if p.moderation_clause %} (Cláusula {{ p.moderation_clause }}){% endif %}
+        </div>
+      {% endif %}
+    </div>
+  {% endfor %}
+
+  <div class="ur-section">Histórico de decisões da moderação</div>
+  {% if not cases %}
+    <div class="ur-empty">Nenhum caso registrado.</div>
+  {% endif %}
+  {% for c in cases %}
+    <div class="ur-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+        <span class="ur-status ur-status-{{ c.status }}" style="background:#e5e7eb;color:#374151;">{{ c.get_status_display }}</span>
+        <span class="ur-when">Caso #{{ c.id }} · {{ c.created_at|date:"d/m/Y H:i" }}</span>
+      </div>
+      <div class="ur-text">{{ c.subject_text|truncatechars:200 }}</div>
+      {% if c.decision_notes %}
+        <div class="ur-reason"><strong>Observações:</strong> {{ c.decision_notes }}</div>
+      {% endif %}
+    </div>
+  {% endfor %}
+
+  <div class="ur-section">Punições aplicadas à sua conta</div>
+  {% if not ban_logs %}
+    <div class="ur-empty">Nenhuma punição registrada.</div>
+  {% endif %}
+  {% for b in ban_logs %}
+    <div class="ur-banlog {{ b.action }}">
+      <div class="ur-when">{{ b.applied_at|date:"d/m/Y H:i" }} · {{ b.get_action_display }}{% if b.terms_clause %} · cláusula {{ b.terms_clause }}{% endif %}</div>
+      <div class="ur-reason">{{ b.reason }}</div>
+      {% if b.effective_until %}<div class="ur-when">Vigência: até {{ b.effective_until|date:"d/m/Y H:i" }}</div>{% endif %}
+      {% if b.revoked_at %}<div class="ur-when">Revogada em {{ b.revoked_at|date:"d/m/Y H:i" }}.</div>{% endif %}
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -27,8 +27,9 @@ from ..models import (
     DailyCheckIn, Card, CardFollow, UserProfile,
     CamilaKnowledge, CamilaConfig, SocialFriendship, SocialCardDismiss, CamilaPOP,
     ChatConversation, ChatMessage, ChatSticker, SocialPostView,
-    HealthChatMessage, CamilaNews, CamilaChatMessage,
+    HealthChatMessage, CamilaNews, CamilaChatMessage, ModerationCase,
 )
+from ..services.moderation import ContentBlocked, check_or_block, schedule_layer2
 
 User = get_user_model()
 
@@ -296,7 +297,8 @@ def _annotate_profile_posts(posts, viewer):
             post.is_repost = True
             try:
                 orig = SocialPost.objects.select_related("user__profile").get(
-                    id=post.shared_from_id, is_active=True
+                    id=post.shared_from_id, is_active=True,
+                    moderation_status=SocialPost.MOD_CLEAN,
                 )
                 orig_prof = getattr(orig.user, "profile", None)
                 post.original_author = orig_prof.display_name if orig_prof else orig.user.get_full_name()
@@ -399,6 +401,8 @@ def _build_social_context(request, target_user, extra=None):
         ).exists()
         if not is_friend:
             posts_qs = posts_qs.exclude(visibility="friends")
+        # Visitante só vê posts liberados — o próprio autor vê todos
+        posts_qs = posts_qs.filter(moderation_status=SocialPost.MOD_CLEAN)
     PAGE_SIZE = 30
     posts_plus_one = list(posts_qs[: PAGE_SIZE + 1])
     feed_has_more = len(posts_plus_one) > PAGE_SIZE
@@ -614,6 +618,9 @@ def social_page(request, user_id: int = None, handle: str = None):
 def social_post_page(request, post_id: int):
     """Abre MEU perfil e exibe a publicação em modal."""
     post = get_object_or_404(SocialPost, id=post_id, is_active=True)
+    # Visitante não vê post em análise/bloqueado — só o autor
+    if post.moderation_status != SocialPost.MOD_CLEAN and post.user_id != request.user.id:
+        raise Http404("Post não disponível.")
     ctx = _build_social_context(request, request.user)
     ctx["modal_post_id"] = post.id
     return render(request, "boards/social_page.html", ctx)
@@ -626,6 +633,8 @@ def social_post_page(request, post_id: int):
 def social_post_full(request, post_id: int):
     """Retorna JSON completo de um post: autor, mídia, reações, comentários."""
     post = get_object_or_404(SocialPost, id=post_id, is_active=True)
+    if post.moderation_status != SocialPost.MOD_CLEAN and post.user_id != request.user.id:
+        raise Http404("Post não disponível.")
 
     # Autor
     author = _user_card(post.user)
@@ -663,7 +672,8 @@ def social_post_full(request, post_id: int):
         is_repost = True
         try:
             orig = SocialPost.objects.select_related("user__profile").get(
-                id=post.shared_from_id, is_active=True
+                id=post.shared_from_id, is_active=True,
+                moderation_status=SocialPost.MOD_CLEAN,
             )
             original_author = _user_card(orig.user)
             if not text and orig.text:
@@ -761,6 +771,8 @@ def social_posts_panel(request, user_id: int):
 def social_post_detail(request, post_id: int):
     """Retorna comentários de um post como JSON."""
     post = get_object_or_404(SocialPost, id=post_id, is_active=True)
+    if post.moderation_status != SocialPost.MOD_CLEAN and post.user_id != request.user.id:
+        raise Http404("Post não disponível.")
     comments = list(
         SocialPostComment.objects
         .filter(post=post, is_active=True)
@@ -814,7 +826,7 @@ def social_friends_feed(request):
     if show_all:
         qs = (
             SocialPost.objects
-            .filter(is_active=True)
+            .filter(is_active=True, moderation_status=SocialPost.MOD_CLEAN)
             .exclude(user=me)
             .exclude(visibility="friends")
         )
@@ -832,7 +844,11 @@ def social_friends_feed(request):
         feed_ids = set(friend_ids)
         feed_ids.add(me.id)
 
-        qs = SocialPost.objects.filter(user_id__in=feed_ids, is_active=True)
+        # Feed: posts liberados de amigos + TODOS os meus posts (mesmo em análise/bloqueados,
+        # pra que o autor veja o próprio estado de moderação)
+        qs = SocialPost.objects.filter(user_id__in=feed_ids, is_active=True).filter(
+            models.Q(moderation_status=SocialPost.MOD_CLEAN) | models.Q(user=me)
+        )
 
     if before_id:
         qs = qs.filter(id__lt=before_id)
@@ -1027,9 +1043,27 @@ def social_post_create(request):
         visibility = "all"
 
     extra = {}
+    # Bloqueio social do autor (decorrente de banimento prévio)
+    prof = getattr(request.user, "profile", None)
+    if prof is not None and getattr(prof, "social_blocked", False):
+        extra["post_error"] = (
+            "Seu acesso ao Espaço Social está bloqueado. "
+            "Verifique seu email pra mais detalhes."
+        )
+        ctx = _build_social_context(request, request.user, extra)
+        return render(request, "boards/social_panel.html", ctx)
+
     if not text and not photo and not video and not gif_url and not sticker_url:
         extra["post_error"] = "Adicione um texto, foto ou vídeo antes de publicar."
     else:
+        # Camada 1 — bloqueio determinístico antes de qualquer create/upload
+        try:
+            check_or_block(text=text, author=request.user, kind=ModerationCase.KIND_SOCIAL_POST)
+        except ContentBlocked as exc:
+            extra["post_error"] = exc.user_message
+            ctx = _build_social_context(request, request.user, extra)
+            return render(request, "boards/social_panel.html", ctx)
+
         from boards.services.image_compress import compress_image
         compressed_photo = compress_image(photo) if photo else None
         post = SocialPost.objects.create(
@@ -1042,6 +1076,12 @@ def social_post_create(request):
             text_style=text_style,
             visibility=visibility,
         )
+        # Camada 2 — análise contextual via OpenAI Moderation (async)
+        if text:
+            schedule_layer2(
+                obj=post, kind=ModerationCase.KIND_SOCIAL_POST,
+                text=text, author=request.user,
+            )
         # Notificar @menções
         if text:
             _notify_mentions(text, request.user, post.id, context="post")
@@ -1115,7 +1155,19 @@ def social_post_edit(request, post_id: int):
 
     updated = []
     if new_text is not None:
-        post.text = new_text.strip()
+        new_text_stripped = new_text.strip()
+        # Camada 1 — checa o texto editado antes de salvar
+        try:
+            check_or_block(
+                text=new_text_stripped, author=request.user,
+                kind=ModerationCase.KIND_SOCIAL_POST,
+            )
+        except ContentBlocked as exc:
+            return JsonResponse(
+                {"ok": False, "error": exc.user_message, "terms_clause": exc.terms_clause},
+                status=400,
+            )
+        post.text = new_text_stripped
         updated.append("text")
     if new_visibility in ("all", "friends"):
         post.visibility = new_visibility
@@ -1123,6 +1175,12 @@ def social_post_edit(request, post_id: int):
 
     if updated:
         post.save(update_fields=updated)
+        # Camada 2 — re-análise contextual do texto editado
+        if "text" in updated and post.text:
+            schedule_layer2(
+                obj=post, kind=ModerationCase.KIND_SOCIAL_POST,
+                text=post.text, author=request.user,
+            )
 
     return JsonResponse({
         "ok": True,

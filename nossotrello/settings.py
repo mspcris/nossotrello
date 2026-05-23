@@ -360,11 +360,23 @@ SITE_URL = (os.getenv("SITE_URL") or "http://localhost:8000").strip().rstrip("/"
 CAMIM_CLIENT_ID     = (os.getenv("CAMIM_CLIENT_ID") or "").strip()
 CAMIM_CLIENT_SECRET = (os.getenv("CAMIM_CLIENT_SECRET") or "").strip()
 
+# Admin API — usada para desativar conta no IDCamim quando banido aqui.
+# Endpoint DELETE /admin/users/:userId requer header x-admin-api-key.
+CAMIM_ADMIN_API_BASE = (os.getenv("CAMIM_ADMIN_API_BASE") or "https://auth.camim.com.br").strip()
+CAMIM_ADMIN_API_KEY  = (os.getenv("CAMIM_ADMIN_API_KEY") or "").strip()
+
 
 # ============================================================
 # GROQ AI API (mood check-in / chatbot motivacional)
 # ============================================================
 GROQ_API_KEY = (os.getenv("GROQ_API_KEY") or "").strip()
+
+
+# ============================================================
+# OpenAI — usada por: cards similares (embedding) e moderação social
+# (boards/services/moderation/openai_client.py — Moderation API gratuita).
+# ============================================================
+OPENAI_API_KEY = (os.getenv("OPENAI_API_KEY") or "").strip()
 
 
 # ============================================================
