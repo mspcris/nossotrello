@@ -1859,6 +1859,9 @@ if(document.readyState !== 'loading'){ window._applyUserHeart(); }
 
     _renderDots();
     _updateDots();
+    /* Slides novos não têm width inteiro lockado ainda — reposiciona pra
+       forçar o lock e manter pixel-perfect quando paginação cresce. */
+    if(window._spGoToSlide) window._spGoToSlide(_reelIdx, false);
   }
 
   /* Popula o painel lateral (desktop only — em mobile o painel tem display:none).
@@ -1987,12 +1990,23 @@ if(document.readyState !== 'loading'){ window._applyUserHeart(); }
         }
       }
       _reelIdx = idx;
-      var w = el.offsetWidth || 1;
-      /* Subpixel rendering: -idx*w pode dar -720.499 e o navegador
-         arredonda PRA -720, sobrando 0.5px do slide anterior à esquerda.
-         Round na MAGNITUDE positiva primeiro garante consistência
-         (Math.round em negativo trata .5 diferente). */
-      var dest = 'translate3d(-' + Math.round(_reelIdx * w) + 'px, 0, 0)';
+      /* Largura INTEIRA pra eliminar sub-pixel rendering. Float widths
+         vinham de flex:0 0 100% + container com aspect-ratio/calc dando
+         valor não-inteiro — cada slide ficava ~0.5px off, somando 1px
+         de vazamento do slide vizinho. Forçamos cada slide a `w` pixels
+         integer explícitos e a track a `w * N` integer. */
+      var w = Math.round(el.offsetWidth) || 1;
+      var slides = _track.querySelectorAll('.sp-reel-slide');
+      for(var si=0; si<slides.length; si++){
+        var s = slides[si];
+        if(s.dataset.lockedW !== String(w)){
+          s.style.flex = '0 0 ' + w + 'px';
+          s.style.width = w + 'px';
+          s.dataset.lockedW = String(w);
+        }
+      }
+      _track.style.width = (w * slides.length) + 'px';
+      var dest = 'translate3d(-' + (_reelIdx * w) + 'px, 0, 0)';
       if(animate !== false){
         /* Remover classe, forçar reflow, re-adicionar — garante transição */
         _track.classList.remove('sp-animating');
