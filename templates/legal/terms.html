@@ -330,45 +330,93 @@
       <div class="error-msg">{{ error }}</div>
       {% endif %}
 
-      <div id="scroll-hint" class="scroll-hint">
-        &darr; Role ate o final para aceitar os termos
-      </div>
-
-      <form method="post" id="terms-form">
-        {% csrf_token %}
-        <input type="hidden" name="next" value="{{ next_url }}">
-
-        <div class="checkbox-row">
-          <input type="checkbox" name="cookies_accept" id="cookies_accept" value="1">
-          <label for="cookies_accept">
-            Aceito o uso de cookies de preferencias
-            (<a href="{% url 'cookie_policy' %}" target="_blank" style="color:#065f46;">saiba mais</a>)
-          </label>
+      {% if already_accepted %}
+        <!-- ─── Modo consulta: usuário já aceitou versão atual ─── -->
+        <div style="background:#ecfdf5;border:1px solid #10b981;color:#065f46;padding:10px 14px;border-radius:10px;margin-bottom:12px;font-size:0.9rem;line-height:1.45;">
+          ✅ Você já aceitou a versão <strong>{{ current_version }}</strong> dos Termos de Uso.
+          {% if acceptance_history %}
+            Último aceite: <strong>{{ acceptance_history.0.accepted_at|date:"d/m/Y H:i" }}</strong>
+            (IP {{ acceptance_history.0.ip_address|default:"—" }}).
+          {% endif %}
         </div>
 
-        <div class="checkbox-row" style="margin-bottom:14px;">
-          <input type="checkbox" name="accept" id="accept" value="1" disabled>
-          <label for="accept" style="font-weight:600;">
-            Li e aceito os Termos de Uso e a
-            <a href="{% url 'privacy' %}" target="_blank" style="color:#065f46;">Politica de Privacidade</a>
-          </label>
+        {% if acceptance_history %}
+        <details style="margin-bottom:14px;font-size:0.86rem;">
+          <summary style="cursor:pointer;color:#065f46;font-weight:600;padding:6px 0;">
+            Ver histórico de aceites ({{ acceptance_history|length }})
+          </summary>
+          <div style="margin-top:6px;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.82rem;">
+              <thead>
+                <tr style="background:#f9fafb;color:#374151;">
+                  <th style="padding:6px 10px;text-align:left;font-weight:600;">Versão</th>
+                  <th style="padding:6px 10px;text-align:left;font-weight:600;">Quando</th>
+                  <th style="padding:6px 10px;text-align:left;font-weight:600;">IP</th>
+                  <th style="padding:6px 10px;text-align:left;font-weight:600;">Cookies</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for log in acceptance_history %}
+                <tr style="border-top:1px solid #e5e7eb;">
+                  <td style="padding:5px 10px;">{{ log.version }}</td>
+                  <td style="padding:5px 10px;">{{ log.accepted_at|date:"d/m/Y H:i:s" }}</td>
+                  <td style="padding:5px 10px;font-family:monospace;color:#6b7280;">{{ log.ip_address|default:"—" }}</td>
+                  <td style="padding:5px 10px;">{% if log.cookies_accepted %}✅{% else %}—{% endif %}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </details>
+        {% endif %}
+
+        <a href="{{ next_url|default:'/' }}" class="accept-btn" style="display:block;text-align:center;text-decoration:none;line-height:24px;">
+          ← Voltar
+        </a>
+      {% else %}
+        <!-- ─── Modo gate: precisa aceitar pra continuar ─── -->
+        <div id="scroll-hint" class="scroll-hint">
+          &darr; Role ate o final para aceitar os termos
         </div>
 
-        <button type="submit" class="accept-btn" id="accept-btn" disabled>
-          Continuar
-        </button>
-      </form>
+        <form method="post" id="terms-form">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ next_url }}">
+
+          <div class="checkbox-row">
+            <input type="checkbox" name="cookies_accept" id="cookies_accept" value="1">
+            <label for="cookies_accept">
+              Aceito o uso de cookies de preferencias
+              (<a href="{% url 'cookie_policy' %}" target="_blank" style="color:#065f46;">saiba mais</a>)
+            </label>
+          </div>
+
+          <div class="checkbox-row" style="margin-bottom:14px;">
+            <input type="checkbox" name="accept" id="accept" value="1" disabled>
+            <label for="accept" style="font-weight:600;">
+              Li e aceito os Termos de Uso e a
+              <a href="{% url 'privacy' %}" target="_blank" style="color:#065f46;">Politica de Privacidade</a>
+            </label>
+          </div>
+
+          <button type="submit" class="accept-btn" id="accept-btn" disabled>
+            Continuar
+          </button>
+        </form>
+      {% endif %}
     </div>
 
   </div>
 </div>
 
+{% if not already_accepted %}
 <script>
 (function () {
   const scroll   = document.getElementById("terms-scroll");
   const hint     = document.getElementById("scroll-hint");
   const checkbox = document.getElementById("accept");
   const btn      = document.getElementById("accept-btn");
+  if (!scroll || !checkbox || !btn) return;
 
   function unlock() {
     checkbox.disabled = false;
@@ -385,15 +433,14 @@
 
   scroll.addEventListener("scroll", onScroll, { passive: true });
 
-  // Habilita botao somente quando checkbox marcado
   checkbox.addEventListener("change", function () {
     btn.disabled = !this.checked;
   });
 
-  // Se ja estava no final (texto curto / zoom alto)
   onScroll();
 })();
 </script>
+{% endif %}
 
 </body>
 </html>

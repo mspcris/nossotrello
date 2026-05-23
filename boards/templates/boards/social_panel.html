@@ -250,7 +250,7 @@
       <button type="button" class="sp-feed-mini-tab" onclick="spExitFeedFull('mine')">Meu Espaço</button>
       <button type="button" class="sp-feed-mini-tab" onclick="spExitFeedFull('friends')">Amigos</button>
       <button type="button" class="sp-feed-mini-tab active">Novidades</button>
-      <button type="button" class="sp-feed-mini-tab" onclick="spExitFeedFull('chat')">💬</button>
+      <button type="button" class="sp-feed-mini-tab" onclick="spReelOpenAuthorChat()" title="Conversar com quem publicou">💬</button>
       <button type="button" class="sp-feed-mini-close" onclick="spExitFeedFull('mine')" title="Fechar">✕</button>
     </div>
 
@@ -2766,6 +2766,20 @@ if(document.readyState !== 'loading'){ window._applyUserHeart(); }
     wrap.addEventListener('mousemove', _showReelArrows);
     wrap.addEventListener('touchstart', _showReelArrows, {passive:true});
   })();
+
+  /* Abre DM com o autor do post atualmente visível no reel. Usado pelo
+     botão 💬 na mini-tab do fullscreen — porque na tab Novidades faz mais
+     sentido conversar com QUEM publicou do que abrir a lista geral. */
+  window.spReelOpenAuthorChat = function(){
+    var p = _reelPosts[_reelIdx];
+    var uid = p && (p.shared_from ? p.shared_from.original_user_id : p.user_id);
+    if(uid && window.spOpenChat){
+      window.spOpenChat(uid);
+    } else if(window.spOpenChatList){
+      /* Fallback: sem post carregado → abre lista normal */
+      window.spOpenChatList();
+    }
+  };
 
   window.spReelNav = function(dir){
     if(!window._spGoToSlide){ _showReelArrows(); return; }
