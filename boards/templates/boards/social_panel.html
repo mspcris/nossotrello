@@ -2700,17 +2700,12 @@ if(document.readyState !== 'loading'){ window._applyUserHeart(); }
 
   window.spReelNav = function(dir){
     if(!window._spGoToSlide){ _showReelArrows(); return; }
-    var cur = _reelPosts[_reelIdx];
-    var curUser = cur ? cur.user_id : null;
-    var target = _reelIdx + dir;
-    /* Pula posts do mesmo autor que o atual; só para quando achar autor diferente
-       ou quando passar do fim/início (aí o _goToSlide cuida de paginação/wrap). */
-    while(target >= 0 && target < _totalSlides){
-      var p = _reelPosts[target];
-      if(!p || p.user_id !== curUser) break;
-      target += dir;
-    }
-    window._spGoToSlide(target, true);
+    /* Movimento de 1 post por clique — sem pular posts do mesmo autor.
+       Assim repetir clique na seta esquerda sempre alcança o primeiro post
+       (idx 0). _goToSlide cuida dos limites: à esquerda clampa em 0; à
+       direita carrega mais ou faz wrap pro início quando o servidor confirma
+       que esgotou. */
+    window._spGoToSlide(_reelIdx + dir, true);
     _showReelArrows();
   };
 
