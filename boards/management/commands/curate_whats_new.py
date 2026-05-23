@@ -34,6 +34,11 @@ CURATED = {
         "Régua de moderação ajustada pro ambiente corporativo",
         "A lista de termos bloqueados foi reforçada para refletir o que é esperado num ambiente profissional. Linguagem chula, ofensas, conteúdo sexual e discurso de ódio agora caem na cláusula 4.5 dos Termos de Uso (conduta no Espaço Social). Lembrete: o Espaço Social é uma rede profissional — registros podem ser usados em processos disciplinares.",
     ),
+    "CAMILINHO_MOODS": (
+        "🦸",
+        "Camilinho ilustrado em cada astral",
+        "Toda vez que você marca como tá hoje no check-in do astral, o Camilinho aparece junto da publicação com uma carinha pra cada emoção — 13 humores no total, com 3 desenhos diferentes em cada (sorteado aleatoriamente). Animado pula, Apaixonado pulsa coração, Com raiva treme, Triste cai a cabecinha. Tudo animado por CSS, sem peso extra.",
+    ),
     "2ef754d": (
         "💚",
         "Seu coração, sua cor",

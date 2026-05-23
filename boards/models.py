@@ -899,6 +899,12 @@ class SocialPost(models.Model):
     # Usado para cota (1/dia/usuário) e auditoria.
     ai_food_dish = models.CharField(max_length=120, blank=True, default="")
 
+    # Mood post: quando vem do daily_checkin_save, grava o mood code e a
+    # variante (1..N) do Camilinho que foi sorteada — pra renderizar a mesma
+    # imagem sempre, e pro front saber qual asset buscar.
+    mood_code = models.CharField(max_length=16, blank=True, default="", db_index=True)
+    camilinho_variant = models.PositiveSmallIntegerField(default=0)
+
     MOD_CLEAN = "clean"
     MOD_PENDING = "pending_review"
     MOD_BLOCKED = "blocked"
@@ -925,6 +931,21 @@ class SocialPost(models.Model):
     @property
     def has_media(self):
         return bool(self.photo) or bool(self.video)
+
+    @property
+    def camilinho_url(self):
+        """URL static da imagem do mascote pra esse post (se for mood post)."""
+        if not self.mood_code or not self.camilinho_variant:
+            return ""
+        from boards.services.camilinho import image_url
+        return image_url(self.mood_code, self.camilinho_variant)
+
+    @property
+    def camilinho_anim_class(self):
+        if not self.mood_code:
+            return ""
+        from boards.services.camilinho import animation_class
+        return animation_class(self.mood_code)
 
     def __str__(self):
         return f"{self.user} — {self.created_at:%Y-%m-%d}"

@@ -1,0 +1,128 @@
+/* ============================================================
+   Camilinho — mascote nos posts de mood
+   Tamanho + posição responsivos + animações por mood (zero JS).
+   ============================================================ */
+
+.cm-mood-wrap{
+  display:flex; justify-content:center; align-items:center;
+  margin:6px 0 10px;
+}
+.cm-mood-img{
+  width:min(220px, 70vw); height:auto;
+  display:block;
+  filter: drop-shadow(0 6px 16px rgba(0,0,0,0.15));
+}
+@media (min-width: 1024px){
+  .cm-mood-img{ width:min(260px, 50%); }
+}
+
+/* No reel/fullscreen — maior, ocupa boa parte do "phone" */
+.sp-reel-camilinho-wrap{
+  display:flex; justify-content:center; align-items:center;
+  flex:1 1 auto; min-height:0;
+  margin:0 0 12px;
+}
+.sp-reel-camilinho{
+  width:min(82%, 360px); height:auto;
+  filter: drop-shadow(0 10px 22px rgba(0,0,0,0.35));
+}
+
+/* ────────────────────────────────────────────────────────────
+   ANIMAÇÕES POR MOOD (CSS keyframes — zero custo)
+   ──────────────────────────────────────────────────────────── */
+
+/* Animado: pulinho contínuo */
+@keyframes cm-bounce{
+  0%, 100% { transform: translateY(0) scale(1, 1); }
+  40%      { transform: translateY(-14px) scale(0.96, 1.04); }
+  60%      { transform: translateY(-14px) scale(0.96, 1.04); }
+  75%      { transform: translateY(0) scale(1.04, 0.96); }
+}
+.cm-anim-bounce{ animation: cm-bounce 1.6s ease-in-out infinite; transform-origin: bottom; }
+
+/* Bem: levinho bob */
+@keyframes cm-bob{
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-5px); }
+}
+.cm-anim-bob{ animation: cm-bob 2.2s ease-in-out infinite; }
+
+/* Tranquilo: respiração suave */
+@keyframes cm-breathe{
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.025); }
+}
+.cm-anim-breathe{ animation: cm-breathe 3.4s ease-in-out infinite; transform-origin: center; }
+
+/* Cansado / Indisposto: balanço lento */
+@keyframes cm-sway{
+  0%, 100% { transform: rotate(-2deg); }
+  50%      { transform: rotate(2deg); }
+}
+.cm-anim-sway{ animation: cm-sway 3.2s ease-in-out infinite; transform-origin: bottom center; }
+
+/* Estressado: tremor rápido */
+@keyframes cm-shake-fast{
+  0%, 100% { transform: translate(0, 0) rotate(0); }
+  20% { transform: translate(-2px, 1px) rotate(-1deg); }
+  40% { transform: translate(2px, -1px) rotate(1deg); }
+  60% { transform: translate(-2px, 0) rotate(-1deg); }
+  80% { transform: translate(2px, 1px) rotate(1deg); }
+}
+.cm-anim-shake-fast{ animation: cm-shake-fast 0.45s linear infinite; }
+
+/* Com raiva: shake mais forte com vermelho pulsando (subtle) */
+@keyframes cm-shake-hard{
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-4px, 1px); }
+  20% { transform: translate(4px, -2px); }
+  30% { transform: translate(-3px, 2px); }
+  40% { transform: translate(3px, -1px); }
+  50% { transform: translate(-4px, 0); }
+  60% { transform: translate(4px, 2px); }
+  70% { transform: translate(-3px, -2px); }
+  80% { transform: translate(3px, 1px); }
+  90% { transform: translate(-2px, 0); }
+}
+.cm-anim-shake-hard{ animation: cm-shake-hard 0.5s linear infinite; }
+
+/* Triste / Desanimado: cabeça cai e sobe lentamente */
+@keyframes cm-droop{
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50%      { transform: translateY(3px) rotate(-5deg); }
+}
+.cm-anim-droop{ animation: cm-droop 4s ease-in-out infinite; transform-origin: bottom center; }
+
+/* Ansioso: jitter pequeno e irregular */
+@keyframes cm-jitter{
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(-1px, 1px); }
+  50% { transform: translate(2px, 0); }
+  75% { transform: translate(-1px, -1px); }
+}
+.cm-anim-jitter{ animation: cm-jitter 0.18s linear infinite; }
+
+/* Apaixonado: pulsar coração */
+@keyframes cm-pulse{
+  0%, 100% { transform: scale(1); }
+  20%      { transform: scale(1.06); }
+  40%      { transform: scale(0.98); }
+  60%      { transform: scale(1.04); }
+}
+.cm-anim-pulse{ animation: cm-pulse 1.2s ease-in-out infinite; transform-origin: center; }
+
+/* Grato: reverência sutil */
+@keyframes cm-bow{
+  0%, 100% { transform: translateY(0) rotate(0); }
+  50%      { transform: translateY(4px) rotate(2deg); }
+}
+.cm-anim-bow{ animation: cm-bow 3s ease-in-out infinite; transform-origin: bottom center; }
+
+/* Respeitar preferência do sistema de reduzir movimento (acessibilidade) */
+@media (prefers-reduced-motion: reduce){
+  .cm-anim-bounce, .cm-anim-bob, .cm-anim-breathe, .cm-anim-sway,
+  .cm-anim-shake-fast, .cm-anim-shake-hard, .cm-anim-droop,
+  .cm-anim-jitter, .cm-anim-pulse, .cm-anim-bow{
+    animation: none;
+  }
+}

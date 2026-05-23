@@ -1013,6 +1013,18 @@ def social_friends_feed(request):
 
         # Limpa o texto marcador antes de mandar pro front
         _is_marker = friendship_data or card_like_data or board_invite_data
+        # Camilinho: se o post é de mood (mood_code + camilinho_variant gravados),
+        # expõe url da imagem e classe CSS de animação.
+        camilinho = None
+        if display_post.mood_code and display_post.camilinho_variant:
+            from boards.services.camilinho import image_url, animation_class
+            url = image_url(display_post.mood_code, display_post.camilinho_variant)
+            if url:
+                camilinho = {
+                    "url": url,
+                    "mood": display_post.mood_code,
+                    "anim_class": animation_class(display_post.mood_code),
+                }
         result.append({
             "id": p.id,
             "user_name": prof.display_name if prof else p.user.get_full_name(),
@@ -1034,6 +1046,7 @@ def social_friends_feed(request):
             "friendship": friendship_data,
             "card_like": card_like_data,
             "board_invite": board_invite_data,
+            "camilinho": camilinho,
         })
 
     return JsonResponse({"posts": result, "has_more": has_more})
@@ -1291,7 +1304,13 @@ def daily_checkin_save(request):
             text__startswith=emoji,
         ).exists()
         if not already_posted:
-            SocialPost.objects.create(user=request.user, text=post_text)
+            from boards.services.camilinho import pick_variant
+            SocialPost.objects.create(
+                user=request.user,
+                text=post_text,
+                mood_code=mood,
+                camilinho_variant=pick_variant(mood),
+            )
 
     # Auto-post lunch to feed
     if lunch_text or lunch_photo:
