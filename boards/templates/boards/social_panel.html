@@ -2999,7 +2999,7 @@ if(document.readyState !== 'loading'){ window._applyUserHeart(); }
     var html = '<div class="sp-reel-comments-modal">'
       + '<div class="sp-reel-comments-header"><h3>Comentários</h3>'
       + '<button class="sp-reel-comments-close" onclick="_closeCommentsModal()">\u00d7</button></div>'
-      + '<div class="sp-reel-comments-body" id="sp-reel-cm-body">'
+      + '<div class="sp-reel-comments-body" id="sp-reel-cm-body" data-post-id="'+postId+'">'
       + '<div style="padding:16px;color:#9ca3af;font-size:.85rem;text-align:center">Carregando...</div>'
       + '</div>'
       + '<div class="sp-reel-comments-input-row">'
@@ -5294,6 +5294,7 @@ document.addEventListener('click', function(e){
         return r.json();
       })
       .then(function(d){
+        console.log('[comment-react] response', commentId, d);
         if(d.error){
           console.warn('[comment-react] server returned error', d.error);
           _flashCommentBadge(commentId, '⚠', '#ef4444');
@@ -5304,9 +5305,17 @@ document.addEventListener('click', function(e){
         } catch(e){
           console.error('[comment-react] render fail', commentId, e);
         }
+        /* Modal do reel aberto? Refetch dos comentários é a forma mais
+           robusta de garantir que o badge aparece — bypassa qualquer
+           problema de DOM/CSS in-place. _loadCommentsModal lê o
+           data-post-id setado em _openCommentsModal. */
+        var modalBody = document.getElementById('sp-reel-cm-body');
+        if(modalBody && modalBody.dataset.postId){
+          var pid = parseInt(modalBody.dataset.postId, 10);
+          if(!isNaN(pid)) _loadCommentsModal(pid);
+        }
         /* Confirma visualmente que a reação foi recebida — flash do
-           emoji escolhido em cima do comentário. Garante feedback mesmo
-           se o badge não pintar por qualquer motivo de layout/CSS. */
+           emoji escolhido em cima do comentário. */
         var emojiMap = {like:'👍', love:'💚', haha:'😂', fire:'🔥', clap:'👏'};
         _flashCommentBadge(commentId, emojiMap[d.my_reaction] || '✓', '#10b981');
         /* Fecha o painel de ações — a reação já está visível no comentário */
