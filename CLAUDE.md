@@ -3,31 +3,6 @@
 App Django em `tarefas.camim.com.br`. Login via IDCamim
 ([`boards/views/camim_auth.py`](boards/views/camim_auth.py)) ou local (Django LoginView).
 
-## ⚠️ DEPLOY PENDENTE — feat: preservar `?next=` no login (2026-05-06)
-
-Implementação da regra "Preservar URL após login" feita localmente em **2026-05-06**. **Não commitado, não deployado ainda.** Antes de mais nada: revisar diff, commitar, push e deployar.
-
-### Arquivos modificados deste fix
-
-- [`nossotrello/middleware.py`](nossotrello/middleware.py) — `LoginRequiredMiddleware` e `TermsMiddleware` passaram a usar `request.get_full_path()` (path + query) em vez de `request.path`, para preservar deep links como `/board/71/?card=1081`.
-- [`boards/views/camim_auth.py`](boards/views/camim_auth.py) — `camim_login` grava em `request.session["camim_next"]`; `camim_callback` faz pop e redireciona, validando contra `//` e `/\` (anti open-redirect).
-- [`CLAUDE.md`](CLAUDE.md) — este arquivo (novo).
-
-### ⚠️ Arquivos untracked NÃO relacionados
-
-- `.codex` — arquivo solto no working tree. Conferir o que é antes de commitar (possivelmente adicionar ao `.gitignore`).
-
-### Como deployar
-
-Ver [`deploy.sh`](deploy.sh) (prod) ou [`deploy-hml.sh`](deploy-hml.sh) (homol). Após `git pull` na VM, rodar migrations se necessário e reiniciar o gunicorn/uvicorn.
-
-### Testar após deploy (aba anônima)
-
-1. Pegar um link de card que abre direto: `https://tarefas.camim.com.br/board/<id>/?card=<id>` e abrir sem estar logado.
-2. Deve cair em `/login/?next=%2Fboard%2F<id>%2F%3Fcard%3D<id>` (com a query preservada).
-3. Clicar "Entrar com IDCamim" → após callback, abrir o board JÁ NO CARD certo (não na home).
-4. Validar também o `TermsMiddleware`: usuário sem termos aceitos deve cair em `/legal/termos/?next=...` e voltar para a URL original após aceitar.
-
 ## Regra de design — Preservar URL após login (`?next=`)
 
 Sempre que um usuário deslogado tentar acessar uma URL protegida, capturar o
@@ -36,6 +11,7 @@ fluxo de autenticação, de modo que ao final ele caia na URL original — nunca
 uma home/dashboard genérico.
 
 **Onde está implementado:**
+
 - [`nossotrello/middleware.py`](nossotrello/middleware.py) — `LoginRequiredMiddleware` e
   `TermsMiddleware` usam `request.get_full_path()` (NÃO `request.path`) para preservar
   query strings em deep links como `/board/71/?card=1081`.

@@ -3017,8 +3017,15 @@ if(document.readyState !== 'loading'){ window._applyUserHeart(); }
   function _loadCommentsModal(postId){
     var body = document.getElementById('sp-reel-cm-body');
     if(!body) return;
-    fetch('/social/posts/' + postId + '/')
-      .then(function(r){ return r.json(); })
+    fetch('/social/posts/' + postId + '/', {credentials:'same-origin'})
+      .then(function(r){
+        if(!r.ok){
+          var e = new Error('HTTP ' + r.status);
+          e.status = r.status;
+          throw e;
+        }
+        return r.json();
+      })
       .then(function(d){
         if(!d.comments || !d.comments.length){
           body.innerHTML = '<div style="padding:20px;color:#9ca3af;font-size:.85rem;text-align:center">Nenhum comentário ainda. Seja o primeiro!</div>';
@@ -3026,24 +3033,37 @@ if(document.readyState !== 'loading'){ window._applyUserHeart(); }
         }
         var html = '';
         d.comments.forEach(function(c){
-          var authorEsc = _escHtml(c.author).replace(/'/g,"\\'");
+          var authorEsc = _escHtml(c.author || '').replace(/'/g,"\\'");
           html += '<div class="sp-reel-comment-item sp-comment-tappable" style="position:relative" '
             + 'onclick="_spToggleCommentActions(this,'+c.id+','+(c.author_id||0)+',\''+authorEsc+'\','+postId+')">'
-            + '<strong>' + _escHtml(c.author) + '</strong> '
-            + '<span>' + _spMentionify(_escHtml(c.text)) + '</span>'
-            + '<span class="sp-reel-comment-time">' + c.time + '</span>'
+            + '<strong>' + _escHtml(c.author || '') + '</strong> '
+            + '<span>' + _spMentionify(_escHtml(c.text || '')) + '</span>'
+            + '<span class="sp-reel-comment-time">' + _escHtml(c.time || '') + '</span>'
             + '<span class="sp-comment-reactions" id="sp-creact-' + c.id + '"></span>'
             + '</div>';
         });
         body.innerHTML = html;
         body.scrollTop = body.scrollHeight;
+        /* Reações: se uma quebrar, NÃO derruba a lista inteira (o .catch
+           do fetch sobrescreve body.innerHTML — wrap individual evita isso). */
         d.comments.forEach(function(c){
-          if(c.reaction_counts && Object.keys(c.reaction_counts).length){
-            _renderCommentReactions(c.id, c.reaction_counts, c.my_reaction);
+          try {
+            if(c.reaction_counts && Object.keys(c.reaction_counts).length){
+              _renderCommentReactions(c.id, c.reaction_counts, c.my_reaction);
+            }
+          } catch(e){
+            console.warn('[reel-comments] reaction render fail', c.id, e);
           }
         });
       })
-      .catch(function(){ body.innerHTML = '<div style="padding:16px;color:#ef4444;text-align:center">Erro ao carregar.</div>'; });
+      .catch(function(err){
+        console.error('[reel-comments] load fail postId=' + postId, err);
+        var detail = err && err.message ? String(err.message).slice(0, 80) : '';
+        body.innerHTML = '<div style="padding:16px;color:#ef4444;text-align:center;font-size:.85rem">'
+          + 'Erro ao carregar.'
+          + (detail ? '<br><small style="color:#9ca3af;font-size:.7rem">' + _escHtml(detail) + '</small>' : '')
+          + '</div>';
+      });
   }
 
   window._sendCommentModal = function(postId){
