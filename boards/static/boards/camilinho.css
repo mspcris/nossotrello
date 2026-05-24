@@ -11,10 +11,19 @@
    via background-image. Sprite WebP único de 1MB pra todas as 39 imagens
    substitui os 39 PNGs individuais — 1 request em vez de 39, e o WebP
    é ~50% menor que PNG pra mesma qualidade. */
+/* Padding-bottom hack pra altura quadrada — funciona em QUALQUER browser
+   e flex layout (aspect-ratio às vezes resolve 0 em flex children). */
 .cm-mood-img{
-  width:min(220px, 70vw); aspect-ratio: 1;
+  width:min(220px, 70vw);
+  position:relative;
   display:block;
   filter: drop-shadow(0 6px 16px rgba(0,0,0,0.15));
+}
+.cm-mood-img::before{
+  content:""; display:block; padding-bottom:100%;
+}
+.cm-mood-img > *{
+  position:absolute; inset:0;
 }
 @media (min-width: 1024px){
   .cm-mood-img{ width:min(260px, 50%); }
@@ -27,8 +36,15 @@
   margin:0 0 12px;
 }
 .sp-reel-camilinho{
-  width:min(82%, 360px); aspect-ratio: 1;
+  width:min(82%, 360px);
+  position:relative;
   filter: drop-shadow(0 10px 22px rgba(0,0,0,0.20));
+}
+.sp-reel-camilinho::before{
+  content:""; display:block; padding-bottom:100%;
+}
+.sp-reel-camilinho > *{
+  position:absolute; inset:0;
 }
 
 /* ────────────────────────────────────────────────────────────
