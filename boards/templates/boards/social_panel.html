@@ -3035,6 +3035,22 @@ if(document.readyState !== 'loading'){ window._applyUserHeart(); }
           body.innerHTML = '<div style="padding:20px;color:#9ca3af;font-size:.85rem;text-align:center">Nenhum comentário ainda. Seja o primeiro!</div>';
           return;
         }
+        /* Pre-renderiza badges de reação dentro do HTML inicial — não
+           depende de chamada cross-IIFE posterior, que falhava em
+           contextos sutis no mobile. */
+        var _emojiMap = {like:'👍', love:'💚', haha:'😂', fire:'🔥', clap:'👏'};
+        function _badgesFor(cid, counts, myReaction){
+          if(!counts) return '';
+          var out = '';
+          for(var k in counts){
+            if(counts[k] > 0){
+              var act = (k === myReaction) ? ' sp-creact-active' : '';
+              out += '<span class="sp-creact-badge'+act+'" onclick="event.stopPropagation();spCommentReact('+cid+',\''+k+'\')">'
+                + _emojiMap[k] + (counts[k] > 1 ? ' ' + counts[k] : '') + '</span>';
+            }
+          }
+          return out;
+        }
         var html = '';
         d.comments.forEach(function(c){
           var authorEsc = _escHtml(c.author || '').replace(/'/g,"\\'");
@@ -3043,25 +3059,13 @@ if(document.readyState !== 'loading'){ window._applyUserHeart(); }
             + '<strong>' + _escHtml(c.author || '') + '</strong> '
             + '<span>' + _spMentionify(_escHtml(c.text || '')) + '</span>'
             + '<span class="sp-reel-comment-time">' + _escHtml(c.time || '') + '</span>'
-            + '<span class="sp-comment-reactions" id="sp-creact-' + c.id + '"></span>'
+            + '<span class="sp-comment-reactions" id="sp-creact-' + c.id + '">'
+            + _badgesFor(c.id, c.reaction_counts, c.my_reaction)
+            + '</span>'
             + '</div>';
         });
         body.innerHTML = html;
         body.scrollTop = body.scrollHeight;
-        /* Reações: se uma quebrar, NÃO derruba a lista inteira (o .catch
-           do fetch sobrescreve body.innerHTML — wrap individual evita isso). */
-        d.comments.forEach(function(c){
-          try {
-            /* _renderCommentReactions vive em outro IIFE — acessar via
-               window pra cruzar a barreira de escopo. */
-            var rcr = window._renderCommentReactions;
-            if(rcr && c.reaction_counts && Object.keys(c.reaction_counts).length){
-              rcr(c.id, c.reaction_counts, c.my_reaction);
-            }
-          } catch(e){
-            console.warn('[reel-comments] reaction render fail', c.id, e);
-          }
-        });
       })
       .catch(function(err){
         console.error('[reel-comments] load fail postId=' + postId, err);
