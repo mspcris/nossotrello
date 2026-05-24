@@ -3878,11 +3878,25 @@ video.sp-post-media {
   text-decoration: none;
 }
 .sp-visitor-bar-btn:active { transform: scale(0.96); }
+/* Pílula verde fluorescente pra deixar óbvio que dá pra voltar ao próprio
+   perfil — antes era cinza e visitantes não enxergavam. */
 .sp-vbar-home {
-  background: #f3f4f6;
-  color: #374151;
+  background: linear-gradient(135deg, #a3e635, #65a30d);
+  color: #1a2e05;
+  box-shadow: 0 0 0 2px rgba(163, 230, 53, 0.35), 0 0 14px rgba(132, 204, 22, 0.55);
+  animation: spVbarHomePulse 2s ease-in-out infinite;
 }
-.sp-vbar-home:hover { background: #e5e7eb; }
+.sp-vbar-home:hover {
+  background: linear-gradient(135deg, #bef264, #84cc16);
+  box-shadow: 0 0 0 3px rgba(163, 230, 53, 0.5), 0 0 20px rgba(132, 204, 22, 0.7);
+}
+@keyframes spVbarHomePulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(163, 230, 53, 0.35), 0 0 14px rgba(132, 204, 22, 0.55); }
+  50%      { box-shadow: 0 0 0 4px rgba(163, 230, 53, 0.5),  0 0 22px rgba(132, 204, 22, 0.85); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sp-vbar-home { animation: none; }
+}
 .sp-vbar-chat {
   background: linear-gradient(135deg, #7c3aed, #a855f7);
   color: #fff;
