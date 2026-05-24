@@ -265,13 +265,28 @@ def _annotate_profile_posts(posts, viewer):
         reactions_by_post[r.post_id].append(r)
 
     comments_by_post = defaultdict(list)
-    for c in (
+    all_comments_list = list(
         SocialPostComment.objects
         .filter(post_id__in=all_target_ids)
         .select_related("user")
         .order_by("created_at")
-    ):
+    )
+    for c in all_comments_list:
         comments_by_post[c.post_id].append(c)
+
+    # Prefetch reações dos comentários carregados — anexa contagem e
+    # reação do viewer em cada Comment pra render no template.
+    all_comment_ids = [c.id for c in all_comments_list]
+    creacts_by_comment = defaultdict(list)
+    if all_comment_ids:
+        for r in SocialCommentReaction.objects.filter(comment_id__in=all_comment_ids):
+            creacts_by_comment[r.comment_id].append(r)
+    for c in all_comments_list:
+        crlist = creacts_by_comment.get(c.id, [])
+        c.reaction_counts = dict(Counter(r.reaction for r in crlist))
+        c.my_reaction = next(
+            (r.reaction for r in crlist if r.user_id == viewer.id), None
+        )
 
     # Compartilhamentos: SO o ORIGINAL (não repost) exibe contador.
     shares_by_post = defaultdict(int)

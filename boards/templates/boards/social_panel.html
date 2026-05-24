@@ -5260,6 +5260,9 @@ document.addEventListener('click', function(e){
       .then(function(d){
         if(d.error) return;
         _renderCommentReactions(commentId, d.counts, d.my_reaction);
+        /* Fecha o painel de ações — a reação já está visível no comentário */
+        document.querySelectorAll('.sp-comment-actions-panel').forEach(function(p){ p.remove(); });
+        document.querySelectorAll('.sp-comment-active').forEach(function(el){ el.classList.remove('sp-comment-active'); });
       });
   };
 
@@ -5271,7 +5274,8 @@ document.addEventListener('click', function(e){
     for(var k in counts){
       if(counts[k] > 0){
         var isActive = (k === myReaction) ? ' sp-creact-active' : '';
-        html += '<span class="sp-creact-badge'+isActive+'" onclick="spCommentReact('+commentId+',\''+k+'\')">'
+        /* stopPropagation evita reabrir o painel de ações ao clicar no badge */
+        html += '<span class="sp-creact-badge'+isActive+'" onclick="event.stopPropagation();spCommentReact('+commentId+',\''+k+'\')">'
           + emojiMap[k] + (counts[k] > 1 ? ' ' + counts[k] : '') + '</span>';
       }
     }

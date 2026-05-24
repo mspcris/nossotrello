@@ -159,7 +159,14 @@
         <span class="sp-comment-author">{{ c.user.profile.display_name|default:c.user.email }}</span>
         <span class="sp-comment-text">{{ c.text|urlize|linebreaksbr }}</span>
         <span class="sp-comment-time">{{ c.created_at|date:"d/m H:i" }}</span>
-        <span class="sp-comment-reactions" id="sp-creact-{{ c.id }}"></span>
+        <span class="sp-comment-reactions" id="sp-creact-{{ c.id }}">
+          {% for k, v in c.reaction_counts.items %}
+            {% if v %}
+              <span class="sp-creact-badge {% if c.my_reaction == k %}sp-creact-active{% endif %}"
+                    onclick="event.stopPropagation();spCommentReact({{ c.id }},'{{ k }}')">{% if k == 'like' %}👍{% elif k == 'love' %}💚{% elif k == 'haha' %}😂{% elif k == 'fire' %}🔥{% elif k == 'clap' %}👏{% endif %}{% if v > 1 %} {{ v }}{% endif %}</span>
+            {% endif %}
+          {% endfor %}
+        </span>
       </div>
       {% endfor %}
     </div>
