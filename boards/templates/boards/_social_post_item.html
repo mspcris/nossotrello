@@ -196,6 +196,11 @@
       🛜 {{ post.reach_count }}
     </span>
     {% endif %}
+    {% if post.share_count %}
+    <span class="sp-share-count" title="{{ post.share_count }} compartilhamento{{ post.share_count|pluralize:'s' }}">
+      🔁 {{ post.share_count }}
+    </span>
+    {% endif %}
     {% if is_me %}
     <button type="button" class="sp-vis-post-btn" id="sp-vis-post-{{ post.id }}"
             onclick="spTogglePostVis({{ post.id }})"

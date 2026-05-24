@@ -273,6 +273,16 @@ def _annotate_profile_posts(posts, viewer):
     ):
         comments_by_post[c.post_id].append(c)
 
+    # Compartilhamentos: SO o ORIGINAL (não repost) exibe contador.
+    shares_by_post = defaultdict(int)
+    for pid, cnt in (
+        SocialPost.objects
+        .filter(shared_from_id__in=post_ids, is_active=True)
+        .values_list("shared_from_id")
+        .annotate(cnt=models.Count("id"))
+    ):
+        shares_by_post[pid] = cnt
+
     view_counts = dict(
         SocialPostView.objects
         .filter(post_id__in=post_ids, source="profile")
@@ -289,7 +299,9 @@ def _annotate_profile_posts(posts, viewer):
     preset_keys = set(dict(SocialPostReaction.REACTION_CHOICES).keys())
 
     for post in posts:
-        post_reactions = reactions_by_post.get(post.id, [])
+        # Repost: reactions e comments ficam na publicação raiz.
+        target_id = post.shared_from_id or post.id
+        post_reactions = reactions_by_post.get(target_id, [])
         post.reaction_counts = dict(Counter(r.reaction for r in post_reactions))
         post.total_reactions = len(post_reactions)
         post.my_reaction = next(
@@ -298,10 +310,12 @@ def _annotate_profile_posts(posts, viewer):
         post.custom_reactions = {
             k: v for k, v in post.reaction_counts.items() if k not in preset_keys
         }
-        post.comment_list = comments_by_post.get(post.id, [])
+        post.comment_list = comments_by_post.get(target_id, [])
         post.comment_count = len(post.comment_list)
         post.view_count = view_counts.get(post.id, 0)
         post.reach_count = reach_counts.get(post.id, 0)
+        # Compartilhamentos: só publicação ORIGINAL (não-repost) mostra.
+        post.share_count = 0 if post.shared_from_id else shares_by_post.get(post.id, 0)
 
         post.is_repost = False
         post.original_author = None
@@ -699,15 +713,16 @@ def social_post_full(request, post_id: int):
         except SocialPost.DoesNotExist:
             pass
 
-    # Reações
-    reactions = SocialPostReaction.objects.filter(post=post).select_related("user", "user__profile")
+    # Reações e comentários — sempre da publicação raiz (interação concentrada).
+    target_post = post.shared_from if post.shared_from_id else post
+    reactions = SocialPostReaction.objects.filter(post=target_post).select_related("user", "user__profile")
     reaction_counts = dict(Counter(r.reaction for r in reactions))
     my_reaction = next((r.reaction for r in reactions if r.user_id == request.user.id), None)
 
     # Comentários
     comments_qs = (
         SocialPostComment.objects
-        .filter(post=post, is_active=True)
+        .filter(post=target_post, is_active=True)
         .select_related("user", "user__profile")
         .order_by("created_at")
     )
@@ -929,6 +944,17 @@ def social_friends_feed(request):
     ):
         comments_by_post[pid] = cnt
 
+    # Quantos reposts cada publicação raiz acumulou. Mostrado SOMENTE no
+    # original — repost não exibe contador de "reposts do repost".
+    shares_by_post = defaultdict(int)
+    for pid, cnt in (
+        SocialPost.objects
+        .filter(shared_from_id__in=all_target_ids, is_active=True)
+        .values_list("shared_from_id")
+        .annotate(cnt=models.Count("id"))
+    ):
+        shares_by_post[pid] = cnt
+
     # Prefetch shared_from (reposts)
     shared_posts = {}
     if shared_ids_list:
@@ -1057,6 +1083,7 @@ def social_friends_feed(request):
             "total_reactions": len(p_reactions),
             "my_reaction": my_reaction,
             "comment_count": comments_by_post.get(target_id, 0),
+            "share_count": shares_by_post.get(p.id, 0) if not p.shared_from_id else 0,
             "text_style": display_post.text_style,
             "shared_from": shared_info,
             "friendship": friendship_data,
