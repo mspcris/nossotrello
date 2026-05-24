@@ -3066,6 +3066,20 @@ if(document.readyState !== 'loading'){ window._applyUserHeart(); }
         });
         body.innerHTML = html;
         body.scrollTop = body.scrollHeight;
+        /* Diagnóstico visual: conta total de reações que vieram do GET
+           e mostra via toast (debug pra confirmar se o backend está
+           devolvendo reaction_counts ao reabrir o modal). */
+        var _totalRx = 0, _comWithRx = 0;
+        d.comments.forEach(function(c){
+          if(c.reaction_counts){
+            var n = 0;
+            for(var k in c.reaction_counts) n += (c.reaction_counts[k] || 0);
+            if(n > 0){ _totalRx += n; _comWithRx++; }
+          }
+        });
+        if(window._spToast){
+          window._spToast('GET: '+_totalRx+' reações em '+_comWithRx+' comentário(s)', '#0ea5e9');
+        }
       })
       .catch(function(err){
         console.error('[reel-comments] load fail postId=' + postId, err);
