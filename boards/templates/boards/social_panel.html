@@ -5267,7 +5267,14 @@ document.addEventListener('click', function(e){
       b.type = 'button';
       b.className = 'sp-creact-emoji';
       b.textContent = r.emoji;
-      b.onclick = function(){ spCommentReact(commentId, r.key); picker.remove(); };
+      b.onclick = function(ev){
+        ev.stopPropagation();
+        /* Remove o picker ANTES do spCommentReact pra garantir UI fechado
+           mesmo se a função quebrar. */
+        picker.remove();
+        try { spCommentReact(commentId, r.key); }
+        catch(e){ console.error('[picker] spCommentReact crashed', e); }
+      };
       picker.appendChild(b);
     });
 
@@ -5311,14 +5318,6 @@ document.addEventListener('click', function(e){
           _renderCommentReactions(commentId, d.counts, d.my_reaction);
         } catch(e){
           console.error('[comment-react] render fail', commentId, e);
-        }
-        /* Modal do reel aberto? Refetch dos comentários é a forma mais
-           robusta de garantir que o badge aparece. _loadCommentsModal
-           vive em outro IIFE — exposto via window. */
-        var modalBody = document.getElementById('sp-reel-cm-body');
-        if(modalBody && modalBody.dataset.postId && typeof window._loadCommentsModal === 'function'){
-          var pid = parseInt(modalBody.dataset.postId, 10);
-          if(!isNaN(pid)) window._loadCommentsModal(pid);
         }
         /* Confirma visualmente que a reação foi recebida — flash do
            emoji escolhido em cima do comentário. */
