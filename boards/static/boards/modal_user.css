@@ -2422,6 +2422,56 @@ video.sp-post-media {
   background: #fef2f2;
   border-color: #b91c1c;
 }
+/* Reagir — amarelo quentinho */
+.sp-comment-actions-panel .sp-ca-react {
+  background: linear-gradient(135deg, #fde047, #f59e0b);
+  color: #422006;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.35);
+  position: relative; /* picker é absolute-anchored aqui */
+}
+/* Responder — azul claro */
+.sp-comment-actions-panel .sp-ca-reply {
+  background: linear-gradient(135deg, #38bdf8, #0284c7);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.35);
+}
+
+/* Slot do input de resposta — ocupa linha inteira embaixo das pílulas */
+.sp-ca-reply-slot {
+  flex-basis: 100%;
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.sp-ca-reply-slot:empty { display: none; }
+.sp-ca-reply-input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1.5px solid #c4b5fd;
+  border-radius: 24px;
+  font-size: 0.9rem;
+  background: #fff;
+  color: #1f2937;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.sp-ca-reply-input:focus {
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.18);
+}
+.sp-ca-reply-send {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  color: #fff;
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.35);
+  flex-shrink: 0;
+}
+.sp-ca-reply-send:hover { filter: brightness(1.1); }
+.sp-ca-reply-send:active { transform: scale(0.95); }
 .sp-comment-text {
   color: #374151;
   word-break: break-word;

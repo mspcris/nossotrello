@@ -2006,7 +2006,7 @@ if(document.readyState !== 'loading'){ window._applyUserHeart(); }
           ? '<img class="sp-side-cm-av" src="'+c.author_avatar+'" alt="">'
           : '<span class="sp-side-cm-av-fb">'+avInit+'</span>';
         var authorEsc = _escHtml(c.author).replace(/'/g,"\\'");
-        var tapAttr = 'onclick="_spToggleCommentActions(this,'+c.id+','+(c.author_id||0)+',\''+authorEsc+'\')"';
+        var tapAttr = 'onclick="_spToggleCommentActions(this,'+c.id+','+(c.author_id||0)+',\''+authorEsc+'\','+postId+')"';
         html += '<div class="sp-side-comment sp-comment-tappable" '+tapAttr+'>'+av+
           '<div class="sp-side-cm-body">'+
           '<div class="sp-side-cm-head"><strong>'+_escHtml(c.author)+'</strong> <span class="sp-side-cm-time">'+_escHtml(c.time||'')+'</span></div>'+
@@ -3019,12 +3019,11 @@ if(document.readyState !== 'loading'){ window._applyUserHeart(); }
         d.comments.forEach(function(c){
           var authorEsc = _escHtml(c.author).replace(/'/g,"\\'");
           html += '<div class="sp-reel-comment-item sp-comment-tappable" style="position:relative" '
-            + 'onclick="_spToggleCommentActions(this,'+c.id+','+(c.author_id||0)+',\''+authorEsc+'\')">'
+            + 'onclick="_spToggleCommentActions(this,'+c.id+','+(c.author_id||0)+',\''+authorEsc+'\','+postId+')">'
             + '<strong>' + _escHtml(c.author) + '</strong> '
             + '<span>' + _spMentionify(_escHtml(c.text)) + '</span>'
             + '<span class="sp-reel-comment-time">' + c.time + '</span>'
             + '<span class="sp-comment-reactions" id="sp-creact-' + c.id + '"></span>'
-            + '<button type="button" class="sp-comment-react-btn" onclick="event.stopPropagation();spToggleCommentReactions(' + c.id + ', this)" title="Reagir">😊</button>'
             + '</div>';
         });
         body.innerHTML = html;
@@ -5963,9 +5962,9 @@ document.addEventListener('click', function(e){
 
   /* ═══ Ações do comentário — INLINE embaixo do próprio comentário ═══
      Toca no comentário, ele expande logo abaixo e mostra pílulas grandes
-     (Chat / Perfil / Denunciar) atreladas àquele comentário específico.
+     (Responder / Perfil / Chat / Denunciar) atreladas àquele comentário.
      Toca de novo (ou em outro comentário) recolhe. */
-  window._spToggleCommentActions = function(commentEl, commentId, authorId, authorName){
+  window._spToggleCommentActions = function(commentEl, commentId, authorId, authorName, postId){
     /* Fecha qualquer painel aberto antes — só um por vez */
     var openPanels = document.querySelectorAll('.sp-comment-actions-panel');
     var alreadyOpenForThis = false;
@@ -5982,26 +5981,96 @@ document.addEventListener('click', function(e){
     var myUid = (typeof _myUserId !== 'undefined') ? _myUserId : 0;
     var isMine = (authorId === myUid);
     var nameSafe = (authorName || 'usuário').replace(/[<>&"]/g, '');
+    var nameJs = nameSafe.replace(/'/g,"\\'");
 
     var panel = document.createElement('div');
     panel.className = 'sp-comment-actions-panel';
     panel.dataset.commentId = String(commentId);
 
     var html = '';
+    /* Reagir — abre picker de emojis (👍💚😂🔥👏) posicionado relativo
+       ao próprio botão. A função existente spToggleCommentReactions cuida. */
+    html += '<button type="button" class="sp-ca-btn sp-ca-react" onclick="event.stopPropagation();spToggleCommentReactions('+commentId+',this)">'
+          + '<span class="sp-ca-icon">😊</span><span>Reagir</span></button>';
+    /* Responder — só faz sentido se temos postId (todos os 3 contextos passam) */
+    if(postId){
+      html += '<button type="button" class="sp-ca-btn sp-ca-reply" onclick="event.stopPropagation();_spReplyToComment('+commentId+','+postId+',\''+nameJs+'\')">'
+            + '<span class="sp-ca-icon">↩</span><span>Responder</span></button>';
+    }
     html += '<a href="/social/'+authorId+'/" class="sp-ca-btn sp-ca-profile">'
           + '<span class="sp-ca-icon">👤</span><span>Perfil de '+nameSafe+'</span></a>';
     if(!isMine){
       html += '<button type="button" class="sp-ca-btn sp-ca-chat" onclick="event.stopPropagation();spOpenChat('+authorId+')">'
             + '<span class="sp-ca-icon">💬</span><span>Chat com '+nameSafe+'</span></button>';
-      html += '<button type="button" class="sp-ca-btn sp-ca-report" onclick="event.stopPropagation();_spReportComment('+commentId+',\''+nameSafe.replace(/\'/g,"\\\'")+'\')">'
+      html += '<button type="button" class="sp-ca-btn sp-ca-report" onclick="event.stopPropagation();_spReportComment('+commentId+',\''+nameJs+'\')">'
             + '<span class="sp-ca-icon">🚩</span><span>Denunciar</span></button>';
     }
+    /* Slot pro input de resposta — aparece quando clicar em Responder */
+    html += '<div class="sp-ca-reply-slot" id="sp-ca-reply-slot-'+commentId+'"></div>';
     panel.innerHTML = html;
     /* Insere logo após o comentário */
     if(commentEl.parentNode){
       commentEl.classList.add('sp-comment-active');
       commentEl.parentNode.insertBefore(panel, commentEl.nextSibling);
     }
+  };
+
+  /* Mostra um input embaixo das pílulas pra responder o comentário. Envia
+     pro endpoint social_post_comment com reply_to_id, igual ao botão ↩ do
+     perfil — só que disponível em todos os contextos (modal, side, perfil). */
+  window._spReplyToComment = function(commentId, postId, authorName){
+    var slot = document.getElementById('sp-ca-reply-slot-' + commentId);
+    if(!slot) return;
+    if(slot.dataset.open === '1'){
+      slot.innerHTML = '';
+      slot.dataset.open = '0';
+      return;
+    }
+    slot.dataset.open = '1';
+    slot.innerHTML = '<input type="text" class="sp-ca-reply-input" id="sp-ca-reply-input-'+commentId+'"'
+      + ' placeholder="Respondendo a '+authorName+'…" maxlength="500"'
+      + ' onclick="event.stopPropagation()"'
+      + ' onkeydown="if(event.key===\'Enter\'){event.stopPropagation();_spSubmitReply('+commentId+','+postId+');}">'
+      + '<button type="button" class="sp-ca-reply-send" onclick="event.stopPropagation();_spSubmitReply('+commentId+','+postId+')">➤</button>';
+    var inp = document.getElementById('sp-ca-reply-input-' + commentId);
+    if(inp) inp.focus();
+  };
+
+  window._spSubmitReply = function(commentId, postId){
+    var inp = document.getElementById('sp-ca-reply-input-' + commentId);
+    if(!inp) return;
+    var text = (inp.value || '').trim();
+    if(!text) return;
+    inp.disabled = true;
+    fetch('/social/post/' + postId + '/comment/', {
+      method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRFToken': _csrf()},
+      body:'text=' + encodeURIComponent(text) + '&reply_to_id=' + commentId
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(d.error){ alert(d.error); inp.disabled = false; return; }
+      /* Fecha o painel e recarrega comments do contexto ativo */
+      document.querySelectorAll('.sp-comment-actions-panel').forEach(function(p){ p.remove(); });
+      document.querySelectorAll('.sp-comment-active').forEach(function(el){ el.classList.remove('sp-comment-active'); });
+      /* Modal do reel aberto? */
+      if(document.getElementById('sp-reel-cm-body') && typeof _loadCommentsModal === 'function'){
+        _loadCommentsModal(postId);
+      }
+      /* Side panel aberto? */
+      if(window._spInvalidateSideComments){ window._spInvalidateSideComments(postId); }
+      /* Perfil (Django) — recarrega a página é overkill, então só sinaliza */
+      var inlineList = document.getElementById('sp-comments-' + postId);
+      if(inlineList && !document.getElementById('sp-reel-cm-body')){
+        /* Mostra toast simples — usuário pode dar F5 pra ver a resposta encadeada */
+        var t = document.createElement('div');
+        t.textContent = 'Resposta enviada ✓';
+        t.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#16a34a;color:#fff;padding:10px 18px;border-radius:24px;font-weight:600;z-index:10000;box-shadow:0 4px 12px rgba(0,0,0,0.2)';
+        document.body.appendChild(t);
+        setTimeout(function(){ t.remove(); }, 2200);
+      }
+    })
+    .catch(function(){ alert('Erro ao enviar resposta.'); inp.disabled = false; });
   };
 
   window._spReportComment = function(commentId, authorName){
