@@ -3056,6 +3056,17 @@ if(document.readyState !== 'loading'){ window._applyUserHeart(); }
         if(cnt){ cnt.textContent = parseInt(cnt.textContent||'0') + 1; }
         else { btn.innerHTML = '💬 <span class="count">1</span>'; }
       }
+      /* Painel lateral (desktop): incrementa o "💬 N" e invalida o cache de
+         comentários pra que o próximo render mostre o novo comentário. */
+      var sideBtn = document.querySelector('.sp-side-stats button[title="Ver no modo cheio"] .sp-side-stat-num');
+      if(sideBtn){ sideBtn.textContent = String((parseInt(sideBtn.textContent)||0) + 1); }
+      if(window._spInvalidateSideComments){ window._spInvalidateSideComments(postId); }
+      /* Reflete também no objeto in-memory pra que ao trocar de slide e voltar,
+         o número renderizado já venha incrementado (sem F5). */
+      try{
+        var pp = _reelPosts.find(function(x){ return x.id === postId; });
+        if(pp){ pp.comment_count = (pp.comment_count||0) + 1; }
+      }catch(_){}
     })
     .catch(function(){});
   };

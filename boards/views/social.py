@@ -255,15 +255,19 @@ def _annotate_profile_posts(posts, viewer):
         return
 
     post_ids = [p.id for p in posts]
+    # Inclui IDs dos originais — reações/comentários ficam SEMPRE na raiz e
+    # reposts apenas espelham os números/lista da publicação original.
+    shared_ids_list = [p.shared_from_id for p in posts if p.shared_from_id]
+    all_target_ids = list(set(post_ids) | set(shared_ids_list))
 
     reactions_by_post = defaultdict(list)
-    for r in SocialPostReaction.objects.filter(post_id__in=post_ids).select_related("user"):
+    for r in SocialPostReaction.objects.filter(post_id__in=all_target_ids).select_related("user"):
         reactions_by_post[r.post_id].append(r)
 
     comments_by_post = defaultdict(list)
     for c in (
         SocialPostComment.objects
-        .filter(post_id__in=post_ids)
+        .filter(post_id__in=all_target_ids)
         .select_related("user")
         .order_by("created_at")
     ):
@@ -777,13 +781,16 @@ def social_posts_panel(request, user_id: int):
 # ---------------------------------------------------------------
 @login_required
 def social_post_detail(request, post_id: int):
-    """Retorna comentários de um post como JSON."""
+    """Retorna comentários de um post como JSON.
+    Se o post é repost, retorna os comentários do ORIGINAL — interação é
+    sempre na publicação raiz."""
     post = get_object_or_404(SocialPost, id=post_id, is_active=True)
     if post.moderation_status != SocialPost.MOD_CLEAN and post.user_id != request.user.id:
         raise Http404("Post não disponível.")
+    target_post = post.shared_from if post.shared_from_id else post
     comments = list(
         SocialPostComment.objects
-        .filter(post=post, is_active=True)
+        .filter(post=target_post, is_active=True)
         .select_related("user", "user__profile")
         .order_by("created_at")
     )
@@ -903,25 +910,29 @@ def social_friends_feed(request):
     if not posts:
         return JsonResponse({"posts": [], "has_more": False})
 
-    # Prefetch reactions
+    # Prefetch reactions e comments — incluindo IDs dos originais (shared_from)
+    # pra que reposts mostrem counts da publicação raiz (interação vai sempre
+    # pro original).
     post_ids = [p.id for p in posts]
+    shared_ids_list = [p.shared_from_id for p in posts if p.shared_from_id]
+    all_target_ids = list(set(post_ids) | set(shared_ids_list))
+
     reactions_by_post = defaultdict(list)
-    for r in SocialPostReaction.objects.filter(post_id__in=post_ids).select_related("user"):
+    for r in SocialPostReaction.objects.filter(post_id__in=all_target_ids).select_related("user"):
         reactions_by_post[r.post_id].append(r)
     comments_by_post = defaultdict(int)
     for pid, cnt in (
         SocialPostComment.objects
-        .filter(post_id__in=post_ids)
+        .filter(post_id__in=all_target_ids)
         .values_list("post_id")
         .annotate(cnt=models.Count("id"))
     ):
         comments_by_post[pid] = cnt
 
     # Prefetch shared_from (reposts)
-    shared_ids = [p.shared_from_id for p in posts if p.shared_from_id]
     shared_posts = {}
-    if shared_ids:
-        for sp in SocialPost.objects.filter(id__in=shared_ids).select_related("user", "user__profile"):
+    if shared_ids_list:
+        for sp in SocialPost.objects.filter(id__in=shared_ids_list).select_related("user", "user__profile"):
             shared_posts[sp.id] = sp
 
     def _avatar_url(prof):
@@ -939,7 +950,11 @@ def social_friends_feed(request):
     result = []
     for p in posts:
         prof = getattr(p.user, "profile", None)
-        p_reactions = reactions_by_post.get(p.id, [])
+        # Reações e comentários SEMPRE vêm da publicação raiz — se p é repost,
+        # interação fica concentrada no original. Isso casa com o roteamento
+        # em social_post_react / social_post_comment.
+        target_id = p.shared_from_id or p.id
+        p_reactions = reactions_by_post.get(target_id, [])
         my_reaction = next((r.reaction for r in p_reactions if r.user_id == me.id), None)
 
         # Se for repost, usa mídia/texto do original
@@ -1041,7 +1056,7 @@ def social_friends_feed(request):
             "reaction_counts": dict(Counter(r.reaction for r in p_reactions)),
             "total_reactions": len(p_reactions),
             "my_reaction": my_reaction,
-            "comment_count": comments_by_post.get(p.id, 0),
+            "comment_count": comments_by_post.get(target_id, 0),
             "text_style": display_post.text_style,
             "shared_from": shared_info,
             "friendship": friendship_data,
@@ -1689,7 +1704,10 @@ def social_post_react(request, post_id: int):
     if not reaction_type:
         return JsonResponse({"error": "Reação inválida."}, status=400)
 
-    existing = SocialPostReaction.objects.filter(user=request.user, post=post).first()
+    # Se é repost, reação vai pro original — interação é sempre na publicação raiz.
+    target_post = post.shared_from if post.shared_from_id else post
+
+    existing = SocialPostReaction.objects.filter(user=request.user, post=target_post).first()
     my_reaction = None
 
     if existing:
@@ -1701,12 +1719,12 @@ def social_post_react(request, post_id: int):
             my_reaction = reaction_type
     else:
         SocialPostReaction.objects.create(
-            user=request.user, post=post, reaction=reaction_type,
+            user=request.user, post=target_post, reaction=reaction_type,
         )
         my_reaction = reaction_type
 
     counts = dict(Counter(
-        SocialPostReaction.objects.filter(post=post).values_list("reaction", flat=True)
+        SocialPostReaction.objects.filter(post=target_post).values_list("reaction", flat=True)
     ))
 
     return JsonResponse({
@@ -1812,13 +1830,16 @@ def social_post_comment(request, post_id: int):
     if not text:
         return JsonResponse({"error": "Comentário vazio."}, status=400)
 
+    # Se é repost, comentário vai pro original — interação é sempre na publicação raiz.
+    target_post = post.shared_from if post.shared_from_id else post
+
     # Resposta a outro comentário?
     reply_to = None
     reply_to_id = request.POST.get("reply_to_id")
     if reply_to_id:
         try:
             reply_to = SocialPostComment.objects.select_related("user").get(
-                id=int(reply_to_id), post=post
+                id=int(reply_to_id), post=target_post
             )
         except (SocialPostComment.DoesNotExist, ValueError):
             pass
@@ -1826,17 +1847,17 @@ def social_post_comment(request, post_id: int):
     # reply_seen=True se quem responde É o autor do comentário-pai (sem notificação)
     reply_seen = reply_to is None or (reply_to.user_id == request.user.id)
 
-    # seen_by_owner=True se quem comenta é o próprio dono do post
+    # seen_by_owner=True se quem comenta é o próprio dono do post (target = original).
     comment = SocialPostComment.objects.create(
         user=request.user,
-        post=post,
+        post=target_post,
         text=text,
-        seen_by_owner=(request.user.id == post.user_id),
+        seen_by_owner=(request.user.id == target_post.user_id),
         reply_to=reply_to,
         reply_seen=reply_seen,
     )
 
-    # Notificações sociais (email + WhatsApp)
+    # Notificações sociais (email + WhatsApp) — sempre miram o dono do ORIGINAL.
     try:
         from boards.services.notifications import notify_social_interaction
         if reply_to:
@@ -1846,23 +1867,23 @@ def social_post_comment(request, post_id: int):
                     recipient=reply_to.user,
                     actor=request.user,
                     kind="reply",
-                    post_id=post.id,
+                    post_id=target_post.id,
                 )
         else:
-            # Comentário simples → avisa o dono do post
-            if post.user_id != request.user.id:
+            # Comentário simples → avisa o dono do post original
+            if target_post.user_id != request.user.id:
                 notify_social_interaction(
-                    recipient=post.user,
+                    recipient=target_post.user,
                     actor=request.user,
                     kind="comment",
-                    post_text=post.text or "",
-                    post_id=post.id,
+                    post_text=target_post.text or "",
+                    post_id=target_post.id,
                 )
     except Exception:
         _mention_logger.exception("social notify: unexpected error")
 
-    # Notificar @menções no comentário
-    _notify_mentions(text, request.user, post.id, context="comment")
+    # Notificar @menções no comentário (no contexto do post original)
+    _notify_mentions(text, request.user, target_post.id, context="comment")
 
     prof = _get_or_create_profile(request.user)
     reply_to_user = None
