@@ -2013,9 +2013,16 @@ if(document.readyState !== 'loading'){ window._applyUserHeart(); }
           '<div class="sp-side-cm-body">'+
           '<div class="sp-side-cm-head"><strong>'+_escHtml(c.author)+'</strong> <span class="sp-side-cm-time">'+_escHtml(c.time||'')+'</span></div>'+
           '<div class="sp-side-cm-text">'+_spMentionify(_escHtml(c.text||''))+'</div>'+
+          '<span class="sp-comment-reactions" id="sp-creact-'+c.id+'"></span>'+
           '</div></div>';
       });
       box.innerHTML = html;
+      /* Renderiza badges iniciais de reação em cada comentário */
+      data.comments.forEach(function(c){
+        if(c.reaction_counts && Object.keys(c.reaction_counts).length){
+          _renderCommentReactions(c.id, c.reaction_counts, c.my_reaction);
+        }
+      });
       box.scrollTop = box.scrollHeight;
     }
 
@@ -5982,7 +5989,14 @@ document.addEventListener('click', function(e){
     document.querySelectorAll('.sp-comment-active').forEach(function(el){
       el.classList.remove('sp-comment-active');
     });
-    if(alreadyOpenForThis) return; /* segundo toque = fecha */
+    if(alreadyOpenForThis){
+      /* segundo toque = fecha → retoma auto-scroll */
+      if(window._spResumeAutoScroll) window._spResumeAutoScroll();
+      return;
+    }
+    /* Painel aberto = pausa o auto-scroll do reel até o user fechar
+       ou clicar fora. 5 minutos é o teto de segurança. */
+    if(window._pauseAutoFor) window._pauseAutoFor(300);
 
     var myUid = (typeof _myUserId !== 'undefined') ? _myUserId : 0;
     var isMine = (authorId === myUid);
@@ -6018,6 +6032,21 @@ document.addEventListener('click', function(e){
     if(commentEl.parentNode){
       commentEl.classList.add('sp-comment-active');
       commentEl.parentNode.insertBefore(panel, commentEl.nextSibling);
+
+      /* Click FORA do painel/comentário fecha e retoma auto-scroll. */
+      setTimeout(function(){
+        function _outsideClose(ev){
+          if(panel.contains(ev.target) || commentEl.contains(ev.target)) return;
+          /* Outro comentário clicado? Já é tratado por _spToggleCommentActions */
+          if(ev.target.closest('.sp-comment-tappable')) return;
+          panel.remove();
+          commentEl.classList.remove('sp-comment-active');
+          if(window._spResumeAutoScroll) window._spResumeAutoScroll();
+          document.removeEventListener('click', _outsideClose);
+        }
+        document.addEventListener('click', _outsideClose);
+      }, 0);
+
       /* Faz scroll DENTRO do container scrollable mais próximo (no perfil
          é .sp-comments-list, no side é .sp-side-comments, no modal é
          .sp-reel-comments-body) — não na página inteira. Esperar 2 frames
