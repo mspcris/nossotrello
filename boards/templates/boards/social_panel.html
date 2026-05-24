@@ -1834,13 +1834,14 @@ if(document.readyState !== 'loading'){ window._applyUserHeart(); }
             + ' style="background:'+p.text_style.bg+';color:'+(p.text_style.color||'#fff')+'">'
             + '<span class="sp-styled-text-inner">'+_spMentionify(_escHtml(p.text))+'</span></div>';
         } else {
-          /* Mood post com Camilinho: div com sprite no lugar de <img>.
-             Sprite WebP único: 1 download pra todas as 39 variantes. */
-          if(p.camilinho && p.camilinho.sprite_class){
+          /* Mood post com Camilinho: <img> individual (PNG cached por
+             browser eternamente). Sprite era frágil em CSS — quebrava
+             toda hora mostrando cells empilhadas. */
+          if(p.camilinho && p.camilinho.url){
             html += '<div class="sp-reel-camilinho-wrap" aria-label="Camilinho '+(p.camilinho.mood||'')+'">'
-              + '<div class="sp-reel-camilinho '+(p.camilinho.anim_class||'')+'">'
-              + '<div class="'+p.camilinho.sprite_class+'"></div>'
-              + '</div></div>';
+              + '<img src="'+p.camilinho.url+'" alt="Camilinho '+(p.camilinho.mood||'')+'"'
+              + ' class="sp-reel-camilinho '+(p.camilinho.anim_class||'')+'">'
+              + '</div>';
           }
           html += '<div class="sp-reel-text">'+_spMentionify(_escHtml(p.text))+'</div>';
         }
