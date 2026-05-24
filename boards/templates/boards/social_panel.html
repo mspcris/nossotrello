@@ -2017,10 +2017,12 @@ if(document.readyState !== 'loading'){ window._applyUserHeart(); }
           '</div></div>';
       });
       box.innerHTML = html;
-      /* Renderiza badges iniciais de reação em cada comentário */
+      /* Renderiza badges iniciais de reação em cada comentário.
+         _renderCommentReactions vive em outro IIFE — via window. */
+      var rcr = window._renderCommentReactions;
       data.comments.forEach(function(c){
-        if(c.reaction_counts && Object.keys(c.reaction_counts).length){
-          _renderCommentReactions(c.id, c.reaction_counts, c.my_reaction);
+        if(rcr && c.reaction_counts && Object.keys(c.reaction_counts).length){
+          rcr(c.id, c.reaction_counts, c.my_reaction);
         }
       });
       box.scrollTop = box.scrollHeight;
@@ -3048,8 +3050,11 @@ if(document.readyState !== 'loading'){ window._applyUserHeart(); }
            do fetch sobrescreve body.innerHTML — wrap individual evita isso). */
         d.comments.forEach(function(c){
           try {
-            if(c.reaction_counts && Object.keys(c.reaction_counts).length){
-              _renderCommentReactions(c.id, c.reaction_counts, c.my_reaction);
+            /* _renderCommentReactions vive em outro IIFE — acessar via
+               window pra cruzar a barreira de escopo. */
+            var rcr = window._renderCommentReactions;
+            if(rcr && c.reaction_counts && Object.keys(c.reaction_counts).length){
+              rcr(c.id, c.reaction_counts, c.my_reaction);
             }
           } catch(e){
             console.warn('[reel-comments] reaction render fail', c.id, e);
@@ -3065,6 +3070,8 @@ if(document.readyState !== 'loading'){ window._applyUserHeart(); }
           + '</div>';
       });
   }
+  /* Expõe pra outros IIFEs (ex: spCommentReact refetch após reagir). */
+  window._loadCommentsModal = _loadCommentsModal;
 
   window._sendCommentModal = function(postId){
     var input = document.getElementById('sp-reel-cm-input');
@@ -5306,13 +5313,12 @@ document.addEventListener('click', function(e){
           console.error('[comment-react] render fail', commentId, e);
         }
         /* Modal do reel aberto? Refetch dos comentários é a forma mais
-           robusta de garantir que o badge aparece — bypassa qualquer
-           problema de DOM/CSS in-place. _loadCommentsModal lê o
-           data-post-id setado em _openCommentsModal. */
+           robusta de garantir que o badge aparece. _loadCommentsModal
+           vive em outro IIFE — exposto via window. */
         var modalBody = document.getElementById('sp-reel-cm-body');
-        if(modalBody && modalBody.dataset.postId){
+        if(modalBody && modalBody.dataset.postId && typeof window._loadCommentsModal === 'function'){
           var pid = parseInt(modalBody.dataset.postId, 10);
-          if(!isNaN(pid)) _loadCommentsModal(pid);
+          if(!isNaN(pid)) window._loadCommentsModal(pid);
         }
         /* Confirma visualmente que a reação foi recebida — flash do
            emoji escolhido em cima do comentário. */
@@ -5356,6 +5362,9 @@ document.addEventListener('click', function(e){
     }
     el.innerHTML = html;
   }
+  /* Expõe pra outros IIFEs (ex: _loadCommentsModal e _loadSideComments
+     que renderizam badges iniciais ao carregar a lista de comentários). */
+  window._renderCommentReactions = _renderCommentReactions;
 
   window.spShowReply = function(commentId, authorName, postId) {
     document.querySelectorAll('.sp-reply-form').forEach(function(f){ f.classList.add('sp-hidden'); });
