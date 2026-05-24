@@ -6017,20 +6017,42 @@ document.addEventListener('click', function(e){
     if(commentEl.parentNode){
       commentEl.classList.add('sp-comment-active');
       commentEl.parentNode.insertBefore(panel, commentEl.nextSibling);
-      /* Empurra a página pra que comentário + painel fiquem visíveis. Usa
-         scrollIntoView no painel (que tá logo abaixo) com block:'nearest'
-         pra mover só o necessário. Atraso de 1 frame pra layout estabilizar
-         (animação max-height 0→200px). */
+      /* Faz scroll DENTRO do container scrollable mais próximo (no perfil
+         é .sp-comments-list, no side é .sp-side-comments, no modal é
+         .sp-reel-comments-body) — não na página inteira. Esperar 2 frames
+         pra animação max-height 0→200px terminar de medir. */
       requestAnimationFrame(function(){
-        try {
-          var rect = panel.getBoundingClientRect();
-          var vh = window.innerHeight || document.documentElement.clientHeight;
-          if(rect.bottom > vh - 8){
-            panel.scrollIntoView({behavior:'smooth', block:'end'});
-          } else if(rect.top < 8){
-            commentEl.scrollIntoView({behavior:'smooth', block:'start'});
-          }
-        } catch(_) {}
+        requestAnimationFrame(function(){
+          try {
+            /* Encontra ancestral scrollable */
+            var scrollParent = panel.parentElement;
+            while(scrollParent && scrollParent !== document.body){
+              var st = getComputedStyle(scrollParent);
+              if(/(auto|scroll)/.test(st.overflowY) && scrollParent.scrollHeight > scrollParent.clientHeight){
+                break;
+              }
+              scrollParent = scrollParent.parentElement;
+            }
+            if(scrollParent && scrollParent !== document.body){
+              /* Rola o container scrollable interno */
+              var panelBottom = panel.offsetTop + panel.offsetHeight;
+              var visibleBottom = scrollParent.scrollTop + scrollParent.clientHeight;
+              if(panelBottom > visibleBottom - 8){
+                scrollParent.scrollTo({
+                  top: panelBottom - scrollParent.clientHeight + 12,
+                  behavior:'smooth'
+                });
+              }
+            } else {
+              /* Sem container interno — usa página */
+              var rect = panel.getBoundingClientRect();
+              var vh = window.innerHeight || document.documentElement.clientHeight;
+              if(rect.bottom > vh - 8){
+                panel.scrollIntoView({behavior:'smooth', block:'end'});
+              }
+            }
+          } catch(_) {}
+        });
       });
     }
   };
