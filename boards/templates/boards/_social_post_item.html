@@ -154,7 +154,8 @@
       {% for c in post.comment_list %}
       <div class="sp-comment{% if c.reply_to_id %} sp-reply-comment{% endif %}" id="sp-comment-{{ c.id }}">
         {% if c.reply_to_id %}<span class="sp-reply-indicator">↩</span>{% endif %}
-        <span class="sp-comment-author">{{ c.user.profile.display_name|default:c.user.email }}</span>
+        <span class="sp-comment-author sp-comment-author-link"
+              onclick="_spShowCommentMenu(this,{{ c.id }},{{ c.user_id }},'{{ c.user.profile.display_name|default:c.user.email|escapejs }}')">{{ c.user.profile.display_name|default:c.user.email }}</span>
         <span class="sp-comment-text">{{ c.text|urlize|linebreaksbr }}</span>
         <span class="sp-comment-time">{{ c.created_at|date:"d/m H:i" }}</span>
         <span class="sp-comment-reactions" id="sp-creact-{{ c.id }}"></span>

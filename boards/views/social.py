@@ -1804,6 +1804,51 @@ def social_comment_react(request, comment_id: int):
 
 
 # ---------------------------------------------------------------
+# Denúncia de comentário (cria caso pra revisão humana)
+# ---------------------------------------------------------------
+@login_required
+@require_POST
+def social_comment_report(request, comment_id: int):
+    """Usuário denuncia um comentário — entra na fila de revisão humana.
+    Não bloqueia nada automaticamente; só sinaliza pra moderação olhar."""
+    from boards.models import ModerationCase
+
+    comment = get_object_or_404(SocialPostComment, id=comment_id, is_active=True)
+
+    # Não denuncia o próprio comentário.
+    if comment.user_id == request.user.id:
+        return JsonResponse({"error": "Você não pode denunciar seu próprio comentário."}, status=400)
+
+    reason = (request.POST.get("reason") or "").strip()[:500]
+
+    # Evita duplicar — se já existe caso pendente desse comentário, só registra a denúncia adicional como texto.
+    existing = (
+        ModerationCase.objects
+        .filter(
+            content_kind=ModerationCase.KIND_SOCIAL_COMMENT,
+            object_id=comment.id,
+            status=ModerationCase.STATUS_PENDING_HUMAN,
+        )
+        .first()
+    )
+    if existing:
+        # Anota a denúncia adicional no subject_text (auditoria simples).
+        suffix = f"\n[denúncia adicional por {request.user.email}: {reason or '(sem motivo)'}]"
+        existing.subject_text = (existing.subject_text + suffix)[:5000]
+        existing.save(update_fields=["subject_text"])
+        return JsonResponse({"ok": True, "case_id": existing.id, "deduped": True})
+
+    case = ModerationCase.objects.create(
+        content_kind=ModerationCase.KIND_SOCIAL_COMMENT,
+        object_id=comment.id,
+        author=comment.user,
+        subject_text=f"{comment.text}\n[denunciado por {request.user.email}: {reason or '(sem motivo)'}]",
+        status=ModerationCase.STATUS_PENDING_HUMAN,
+    )
+    return JsonResponse({"ok": True, "case_id": case.id})
+
+
+# ---------------------------------------------------------------
 # Like em card → publica no feed social
 # ---------------------------------------------------------------
 @login_required
