@@ -6017,6 +6017,21 @@ document.addEventListener('click', function(e){
     if(commentEl.parentNode){
       commentEl.classList.add('sp-comment-active');
       commentEl.parentNode.insertBefore(panel, commentEl.nextSibling);
+      /* Empurra a página pra que comentário + painel fiquem visíveis. Usa
+         scrollIntoView no painel (que tá logo abaixo) com block:'nearest'
+         pra mover só o necessário. Atraso de 1 frame pra layout estabilizar
+         (animação max-height 0→200px). */
+      requestAnimationFrame(function(){
+        try {
+          var rect = panel.getBoundingClientRect();
+          var vh = window.innerHeight || document.documentElement.clientHeight;
+          if(rect.bottom > vh - 8){
+            panel.scrollIntoView({behavior:'smooth', block:'end'});
+          } else if(rect.top < 8){
+            commentEl.scrollIntoView({behavior:'smooth', block:'start'});
+          }
+        } catch(_) {}
+      });
     }
   };
 
