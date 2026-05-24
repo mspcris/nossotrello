@@ -610,7 +610,8 @@
   <div class="sp-card">
     <form id="sp-checkin-form" class="sp-checkin"
           hx-post="{% url 'boards:daily_checkin_save' %}"
-          hx-target="#social-panel" hx-swap="outerHTML show:#sp-checkin-form:top"
+          hx-target="#social-panel" hx-swap="outerHTML"
+          hx-on::after-swap="var p=document.querySelector('#social-panel .sp-post');if(p)p.scrollIntoView({behavior:'smooth',block:'start'});"
           hx-encoding="multipart/form-data" enctype="multipart/form-data">
       {% csrf_token %}
 
