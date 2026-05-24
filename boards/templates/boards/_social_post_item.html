@@ -152,16 +152,16 @@
   <div class="sp-comments-section">
     <div class="sp-comments-list {% if not post.comment_list %}sp-hidden{% endif %}" id="sp-comments-{{ post.id }}">
       {% for c in post.comment_list %}
-      <div class="sp-comment{% if c.reply_to_id %} sp-reply-comment{% endif %}" id="sp-comment-{{ c.id }}">
+      <div class="sp-comment sp-comment-tappable{% if c.reply_to_id %} sp-reply-comment{% endif %}" id="sp-comment-{{ c.id }}"
+           onclick="_spToggleCommentActions(this,{{ c.id }},{{ c.user_id }},'{{ c.user.profile.display_name|default:c.user.email|escapejs }}')">
         {% if c.reply_to_id %}<span class="sp-reply-indicator">↩</span>{% endif %}
-        <span class="sp-comment-author sp-comment-author-link"
-              onclick="_spShowCommentMenu(this,{{ c.id }},{{ c.user_id }},'{{ c.user.profile.display_name|default:c.user.email|escapejs }}')">{{ c.user.profile.display_name|default:c.user.email }}</span>
+        <span class="sp-comment-author">{{ c.user.profile.display_name|default:c.user.email }}</span>
         <span class="sp-comment-text">{{ c.text|urlize|linebreaksbr }}</span>
         <span class="sp-comment-time">{{ c.created_at|date:"d/m H:i" }}</span>
         <span class="sp-comment-reactions" id="sp-creact-{{ c.id }}"></span>
-        <button type="button" class="sp-comment-react-btn" onclick="spToggleCommentReactions({{ c.id }}, this)" title="Reagir">😊</button>
+        <button type="button" class="sp-comment-react-btn" onclick="event.stopPropagation();spToggleCommentReactions({{ c.id }}, this)" title="Reagir">😊</button>
         <button type="button" class="sp-reply-btn"
-                onclick="spShowReply({{ c.id }}, '{{ c.user.profile.display_name|default:c.user.email|escapejs }}', {{ post.id }})">↩</button>
+                onclick="event.stopPropagation();spShowReply({{ c.id }}, '{{ c.user.profile.display_name|default:c.user.email|escapejs }}', {{ post.id }})">↩</button>
       </div>
       <div class="sp-reply-form sp-hidden" id="sp-reply-form-{{ c.id }}">
         <input type="text" id="sp-reply-input-{{ c.id }}" class="sp-comment-input sp-reply-input"

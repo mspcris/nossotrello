@@ -2345,64 +2345,82 @@ video.sp-post-media {
   color: #1f2937;
   flex-shrink: 0;
 }
-/* Nome do comentarista é clicável e abre menu de ações (Chat/Perfil/Denunciar).
-   Sublinhado pontilhado discreto pra sinalizar "clica aqui". */
-.sp-comment-author-link {
+/* Comentário inteiro é tappable — toque expande um painel de ações logo
+   abaixo (Chat / Perfil / Denunciar). Cursor + leve hover sinalizam. */
+.sp-comment-tappable {
   cursor: pointer;
-  text-decoration: underline dotted rgba(124, 58, 237, 0.4);
-  text-underline-offset: 2px;
+  transition: background-color 0.12s;
 }
-.sp-comment-author-link:hover {
-  color: #7c3aed;
-  text-decoration-color: #7c3aed;
+.sp-comment-tappable:hover {
+  background: rgba(124, 58, 237, 0.04);
+}
+.sp-comment-tappable.sp-comment-active {
+  background: rgba(124, 58, 237, 0.10);
+  box-shadow: inset 3px 0 0 #7c3aed;
 }
 
-/* Popover do menu de comentário — flutua sobre tudo, posicionado via JS. */
-.sp-comment-menu {
-  position: fixed;
-  z-index: 10000;
-  min-width: 220px;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08);
-  padding: 6px;
+/* Painel de ações inserido inline DEPOIS do comentário ativo.
+   Pílulas grandes, claras, com ícone + texto. */
+.sp-comment-actions-panel {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  animation: spCmFadeIn 0.12s ease-out;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  margin: 0 0 6px;
+  background: linear-gradient(180deg, rgba(124,58,237,0.06) 0%, rgba(124,58,237,0.02) 100%);
+  border-left: 3px solid #7c3aed;
+  border-radius: 0 12px 12px 0;
+  animation: spCaSlideDown 0.18s ease-out;
 }
-@keyframes spCmFadeIn {
-  from { opacity: 0; transform: translateY(-4px); }
-  to   { opacity: 1; transform: translateY(0); }
+@keyframes spCaSlideDown {
+  from { opacity: 0; transform: translateY(-6px); max-height: 0; }
+  to   { opacity: 1; transform: translateY(0);    max-height: 200px; }
 }
-.sp-comment-menu .sp-cm-item {
-  display: flex;
+.sp-comment-actions-panel .sp-ca-btn {
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  background: transparent;
-  border: none;
-  border-radius: 8px;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 24px;
   font-size: 0.9rem;
-  color: #1f2937;
-  text-align: left;
+  font-weight: 600;
   cursor: pointer;
+  border: none;
   text-decoration: none;
-  font-weight: 500;
+  transition: transform 0.12s, box-shadow 0.12s, filter 0.12s;
+  white-space: nowrap;
 }
-.sp-comment-menu .sp-cm-item:hover {
-  background: #f3f4f6;
+.sp-comment-actions-panel .sp-ca-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
 }
-.sp-comment-menu .sp-cm-item.sp-cm-danger {
-  color: #b91c1c;
-}
-.sp-comment-menu .sp-cm-item.sp-cm-danger:hover {
-  background: #fef2f2;
-}
-.sp-comment-menu .sp-cm-icon {
-  font-size: 1rem;
+.sp-comment-actions-panel .sp-ca-btn:active { transform: scale(0.97); }
+.sp-comment-actions-panel .sp-ca-icon {
+  font-size: 1.05rem;
   flex-shrink: 0;
+}
+/* Perfil — verde lime (mesma cor do "Meu Perfil") */
+.sp-comment-actions-panel .sp-ca-profile {
+  background: linear-gradient(135deg, #a3e635, #65a30d);
+  color: #1a2e05;
+  box-shadow: 0 2px 8px rgba(132, 204, 22, 0.4);
+}
+/* Chat — roxo (mesma cor do "Conversar com X") */
+.sp-comment-actions-panel .sp-ca-chat {
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.35);
+}
+/* Denunciar — vermelho discreto */
+.sp-comment-actions-panel .sp-ca-report {
+  background: #fff;
+  color: #b91c1c;
+  border: 1.5px solid #fca5a5;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.sp-comment-actions-panel .sp-ca-report:hover {
+  background: #fef2f2;
+  border-color: #b91c1c;
 }
 .sp-comment-text {
   color: #374151;

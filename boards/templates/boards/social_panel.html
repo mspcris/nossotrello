@@ -2006,10 +2006,10 @@ if(document.readyState !== 'loading'){ window._applyUserHeart(); }
           ? '<img class="sp-side-cm-av" src="'+c.author_avatar+'" alt="">'
           : '<span class="sp-side-cm-av-fb">'+avInit+'</span>';
         var authorEsc = _escHtml(c.author).replace(/'/g,"\\'");
-        var menuAttr = 'onclick="_spShowCommentMenu(this,'+c.id+','+(c.author_id||0)+',\''+authorEsc+'\')"';
-        html += '<div class="sp-side-comment">'+av+
+        var tapAttr = 'onclick="_spToggleCommentActions(this,'+c.id+','+(c.author_id||0)+',\''+authorEsc+'\')"';
+        html += '<div class="sp-side-comment sp-comment-tappable" '+tapAttr+'>'+av+
           '<div class="sp-side-cm-body">'+
-          '<div class="sp-side-cm-head"><strong class="sp-comment-author-link" '+menuAttr+'>'+_escHtml(c.author)+'</strong> <span class="sp-side-cm-time">'+_escHtml(c.time||'')+'</span></div>'+
+          '<div class="sp-side-cm-head"><strong>'+_escHtml(c.author)+'</strong> <span class="sp-side-cm-time">'+_escHtml(c.time||'')+'</span></div>'+
           '<div class="sp-side-cm-text">'+_spMentionify(_escHtml(c.text||''))+'</div>'+
           '</div></div>';
       });
@@ -3018,12 +3018,13 @@ if(document.readyState !== 'loading'){ window._applyUserHeart(); }
         var html = '';
         d.comments.forEach(function(c){
           var authorEsc = _escHtml(c.author).replace(/'/g,"\\'");
-          html += '<div class="sp-reel-comment-item" style="position:relative">'
-            + '<strong class="sp-comment-author-link" onclick="_spShowCommentMenu(this,'+c.id+','+(c.author_id||0)+',\''+authorEsc+'\')">' + _escHtml(c.author) + '</strong> '
+          html += '<div class="sp-reel-comment-item sp-comment-tappable" style="position:relative" '
+            + 'onclick="_spToggleCommentActions(this,'+c.id+','+(c.author_id||0)+',\''+authorEsc+'\')">'
+            + '<strong>' + _escHtml(c.author) + '</strong> '
             + '<span>' + _spMentionify(_escHtml(c.text)) + '</span>'
             + '<span class="sp-reel-comment-time">' + c.time + '</span>'
             + '<span class="sp-comment-reactions" id="sp-creact-' + c.id + '"></span>'
-            + '<button type="button" class="sp-comment-react-btn" onclick="spToggleCommentReactions(' + c.id + ', this)" title="Reagir">😊</button>'
+            + '<button type="button" class="sp-comment-react-btn" onclick="event.stopPropagation();spToggleCommentReactions(' + c.id + ', this)" title="Reagir">😊</button>'
             + '</div>';
         });
         body.innerHTML = html;
@@ -5960,61 +5961,54 @@ document.addEventListener('click', function(e){
       }).catch(function(){ alert('Erro ao abrir chat.'); });
   };
 
-  /* ═══ Menu de ações ao tocar num comentário ═══
-     Mostra Chat / Perfil / Denunciar. Usa popover posicionado perto do
-     anchor. Click outside fecha. */
-  window._spShowCommentMenu = function(anchorEl, commentId, authorId, authorName){
-    /* Fecha menu anterior se existir */
-    var old = document.getElementById('sp-comment-menu');
-    if(old){ old.remove(); }
+  /* ═══ Ações do comentário — INLINE embaixo do próprio comentário ═══
+     Toca no comentário, ele expande logo abaixo e mostra pílulas grandes
+     (Chat / Perfil / Denunciar) atreladas àquele comentário específico.
+     Toca de novo (ou em outro comentário) recolhe. */
+  window._spToggleCommentActions = function(commentEl, commentId, authorId, authorName){
+    /* Fecha qualquer painel aberto antes — só um por vez */
+    var openPanels = document.querySelectorAll('.sp-comment-actions-panel');
+    var alreadyOpenForThis = false;
+    openPanels.forEach(function(p){
+      if(p.dataset.commentId === String(commentId)){ alreadyOpenForThis = true; }
+      p.remove();
+    });
+    /* Tira destaque visual de qualquer comentário "selecionado" */
+    document.querySelectorAll('.sp-comment-active').forEach(function(el){
+      el.classList.remove('sp-comment-active');
+    });
+    if(alreadyOpenForThis) return; /* segundo toque = fecha */
 
     var myUid = (typeof _myUserId !== 'undefined') ? _myUserId : 0;
     var isMine = (authorId === myUid);
     var nameSafe = (authorName || 'usuário').replace(/[<>&"]/g, '');
 
-    var menu = document.createElement('div');
-    menu.id = 'sp-comment-menu';
-    menu.className = 'sp-comment-menu';
-    menu.setAttribute('role', 'menu');
+    var panel = document.createElement('div');
+    panel.className = 'sp-comment-actions-panel';
+    panel.dataset.commentId = String(commentId);
+
     var html = '';
+    html += '<a href="/social/'+authorId+'/" class="sp-ca-btn sp-ca-profile">'
+          + '<span class="sp-ca-icon">👤</span><span>Perfil de '+nameSafe+'</span></a>';
     if(!isMine){
-      html += '<button type="button" class="sp-cm-item" onclick="document.getElementById(\'sp-comment-menu\').remove();spOpenChat('+authorId+')">'
-            + '<span class="sp-cm-icon">💬</span> Chat com '+nameSafe+'</button>';
+      html += '<button type="button" class="sp-ca-btn sp-ca-chat" onclick="event.stopPropagation();spOpenChat('+authorId+')">'
+            + '<span class="sp-ca-icon">💬</span><span>Chat com '+nameSafe+'</span></button>';
+      html += '<button type="button" class="sp-ca-btn sp-ca-report" onclick="event.stopPropagation();_spReportComment('+commentId+',\''+nameSafe.replace(/\'/g,"\\\'")+'\')">'
+            + '<span class="sp-ca-icon">🚩</span><span>Denunciar</span></button>';
     }
-    html += '<a href="/social/'+authorId+'/" class="sp-cm-item"><span class="sp-cm-icon">👤</span> Ir para o perfil de '+nameSafe+'</a>';
-    if(!isMine){
-      html += '<button type="button" class="sp-cm-item sp-cm-danger" onclick="_spReportComment('+commentId+',\''+nameSafe.replace(/\'/g,"\\\'")+'\')">'
-            + '<span class="sp-cm-icon">🚩</span> Denunciar</button>';
+    panel.innerHTML = html;
+    /* Insere logo após o comentário */
+    if(commentEl.parentNode){
+      commentEl.classList.add('sp-comment-active');
+      commentEl.parentNode.insertBefore(panel, commentEl.nextSibling);
     }
-    menu.innerHTML = html;
-    document.body.appendChild(menu);
-
-    /* Posiciona logo abaixo do anchor */
-    var rect = anchorEl.getBoundingClientRect();
-    var menuW = menu.offsetWidth || 220;
-    var left = Math.min(window.innerWidth - menuW - 8, Math.max(8, rect.left));
-    var top = rect.bottom + 6;
-    if(top + menu.offsetHeight > window.innerHeight - 8){
-      top = Math.max(8, rect.top - menu.offsetHeight - 6);
-    }
-    menu.style.left = left + 'px';
-    menu.style.top = top + 'px';
-
-    /* Click fora fecha. setTimeout pra não pegar o próprio clique que abriu. */
-    setTimeout(function(){
-      function _close(e){
-        if(!menu.contains(e.target)){
-          menu.remove();
-          document.removeEventListener('click', _close);
-        }
-      }
-      document.addEventListener('click', _close);
-    }, 0);
   };
 
   window._spReportComment = function(commentId, authorName){
-    var menu = document.getElementById('sp-comment-menu');
-    if(menu){ menu.remove(); }
+    /* Fecha painel ao iniciar fluxo */
+    document.querySelectorAll('.sp-comment-actions-panel').forEach(function(p){ p.remove(); });
+    document.querySelectorAll('.sp-comment-active').forEach(function(el){ el.classList.remove('sp-comment-active'); });
+
     var reason = prompt('Por que está denunciando o comentário de ' + authorName + '?\n(opcional)');
     if(reason === null) return; /* cancelou */
     fetch('/social/comment/' + commentId + '/report/', {
