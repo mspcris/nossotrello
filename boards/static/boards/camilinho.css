@@ -7,13 +7,16 @@
   display:flex; justify-content:center; align-items:center;
   margin:6px 0 10px;
 }
-/* Cada Camilinho vira um DIV quadrado via aspect-ratio no próprio .cm-sprite.
-   Sprite WebP único pra todas as 40 imagens (13 moods × 3 variantes + 1
-   extra de com_raiva). Pai só define largura — altura vem do aspect-ratio
-   do filho, que é mais robusto que padding-bottom + position:absolute. */
+/* Estratégia robusta: o PAI (.cm-mood-img / .sp-reel-camilinho) tem width
+   definida + aspect-ratio:1/1 + overflow:hidden (cinto-e-suspensórios: se
+   por algum motivo o filho passar do quadrado, recorta). O sprite preenche
+   100% × 100% do pai. Isso é mais robusto que aspect-ratio no filho —
+   evita cells empilhadas em qualquer layout (flex/block). */
 .cm-mood-img{
   width:min(220px, 70vw);
+  aspect-ratio: 1 / 1;
   display:block;
+  overflow:hidden;
   filter: drop-shadow(0 6px 16px rgba(0,0,0,0.15));
 }
 @media (min-width: 1024px){
@@ -31,18 +34,19 @@
 }
 .sp-reel-camilinho{
   width:min(82%, 360px);
+  aspect-ratio: 1 / 1;
+  overflow:hidden;
   filter: drop-shadow(0 10px 22px rgba(0,0,0,0.20));
 }
 
 /* ────────────────────────────────────────────────────────────
    SPRITE WEBP — 1 arquivo único pros 40 Camilinhos
-   aspect-ratio:1/1 garante quadrado direto (sem depender de padding-hack
-   do pai, que quebrava em flex containers e mostrava cells empilhadas).
+   Sprite ocupa 100% × 100% do pai (que é quadrado por aspect-ratio).
    ──────────────────────────────────────────────────────────── */
 .cm-sprite{
   display:block;
   width:100%;
-  aspect-ratio: 1 / 1;
+  height:100%;
   background-image: url('/static/boards/images/camilinho_sprite.webp');
   background-size: 1300% 400%;
   background-repeat: no-repeat;
