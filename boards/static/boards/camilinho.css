@@ -59,48 +59,49 @@
   display:inline-block;
   width:100%; height:100%;
   background-image: url('/static/boards/images/camilinho_sprite.webp');
-  background-size: 1300% 300%;
+  background-size: 1300% 400%;
   background-repeat: no-repeat;
 }
 .cm-sprite-animado-1{ background-position: 0.0000% 0.0000%; }
-.cm-sprite-animado-2{ background-position: 0.0000% 50.0000%; }
-.cm-sprite-animado-3{ background-position: 0.0000% 100.0000%; }
+.cm-sprite-animado-2{ background-position: 0.0000% 33.3333%; }
+.cm-sprite-animado-3{ background-position: 0.0000% 66.6667%; }
 .cm-sprite-bem-1{ background-position: 8.3333% 0.0000%; }
-.cm-sprite-bem-2{ background-position: 8.3333% 50.0000%; }
-.cm-sprite-bem-3{ background-position: 8.3333% 100.0000%; }
+.cm-sprite-bem-2{ background-position: 8.3333% 33.3333%; }
+.cm-sprite-bem-3{ background-position: 8.3333% 66.6667%; }
 .cm-sprite-tranquilo-1{ background-position: 16.6667% 0.0000%; }
-.cm-sprite-tranquilo-2{ background-position: 16.6667% 50.0000%; }
-.cm-sprite-tranquilo-3{ background-position: 16.6667% 100.0000%; }
+.cm-sprite-tranquilo-2{ background-position: 16.6667% 33.3333%; }
+.cm-sprite-tranquilo-3{ background-position: 16.6667% 66.6667%; }
 .cm-sprite-normal-1{ background-position: 25.0000% 0.0000%; }
-.cm-sprite-normal-2{ background-position: 25.0000% 50.0000%; }
-.cm-sprite-normal-3{ background-position: 25.0000% 100.0000%; }
+.cm-sprite-normal-2{ background-position: 25.0000% 33.3333%; }
+.cm-sprite-normal-3{ background-position: 25.0000% 66.6667%; }
 .cm-sprite-cansado-1{ background-position: 33.3333% 0.0000%; }
-.cm-sprite-cansado-2{ background-position: 33.3333% 50.0000%; }
-.cm-sprite-cansado-3{ background-position: 33.3333% 100.0000%; }
+.cm-sprite-cansado-2{ background-position: 33.3333% 33.3333%; }
+.cm-sprite-cansado-3{ background-position: 33.3333% 66.6667%; }
 .cm-sprite-estressado-1{ background-position: 41.6667% 0.0000%; }
-.cm-sprite-estressado-2{ background-position: 41.6667% 50.0000%; }
-.cm-sprite-estressado-3{ background-position: 41.6667% 100.0000%; }
+.cm-sprite-estressado-2{ background-position: 41.6667% 33.3333%; }
+.cm-sprite-estressado-3{ background-position: 41.6667% 66.6667%; }
 .cm-sprite-indisposto-1{ background-position: 50.0000% 0.0000%; }
-.cm-sprite-indisposto-2{ background-position: 50.0000% 50.0000%; }
-.cm-sprite-indisposto-3{ background-position: 50.0000% 100.0000%; }
+.cm-sprite-indisposto-2{ background-position: 50.0000% 33.3333%; }
+.cm-sprite-indisposto-3{ background-position: 50.0000% 66.6667%; }
 .cm-sprite-triste-1{ background-position: 58.3333% 0.0000%; }
-.cm-sprite-triste-2{ background-position: 58.3333% 50.0000%; }
-.cm-sprite-triste-3{ background-position: 58.3333% 100.0000%; }
+.cm-sprite-triste-2{ background-position: 58.3333% 33.3333%; }
+.cm-sprite-triste-3{ background-position: 58.3333% 66.6667%; }
 .cm-sprite-desanimado-1{ background-position: 66.6667% 0.0000%; }
-.cm-sprite-desanimado-2{ background-position: 66.6667% 50.0000%; }
-.cm-sprite-desanimado-3{ background-position: 66.6667% 100.0000%; }
+.cm-sprite-desanimado-2{ background-position: 66.6667% 33.3333%; }
+.cm-sprite-desanimado-3{ background-position: 66.6667% 66.6667%; }
 .cm-sprite-ansioso-1{ background-position: 75.0000% 0.0000%; }
-.cm-sprite-ansioso-2{ background-position: 75.0000% 50.0000%; }
-.cm-sprite-ansioso-3{ background-position: 75.0000% 100.0000%; }
+.cm-sprite-ansioso-2{ background-position: 75.0000% 33.3333%; }
+.cm-sprite-ansioso-3{ background-position: 75.0000% 66.6667%; }
 .cm-sprite-com_raiva-1{ background-position: 83.3333% 0.0000%; }
-.cm-sprite-com_raiva-2{ background-position: 83.3333% 50.0000%; }
-.cm-sprite-com_raiva-3{ background-position: 83.3333% 100.0000%; }
+.cm-sprite-com_raiva-2{ background-position: 83.3333% 33.3333%; }
+.cm-sprite-com_raiva-3{ background-position: 83.3333% 66.6667%; }
+.cm-sprite-com_raiva-4{ background-position: 83.3333% 100.0000%; }
 .cm-sprite-apaixonado-1{ background-position: 91.6667% 0.0000%; }
-.cm-sprite-apaixonado-2{ background-position: 91.6667% 50.0000%; }
-.cm-sprite-apaixonado-3{ background-position: 91.6667% 100.0000%; }
+.cm-sprite-apaixonado-2{ background-position: 91.6667% 33.3333%; }
+.cm-sprite-apaixonado-3{ background-position: 91.6667% 66.6667%; }
 .cm-sprite-grato-1{ background-position: 100.0000% 0.0000%; }
-.cm-sprite-grato-2{ background-position: 100.0000% 50.0000%; }
-.cm-sprite-grato-3{ background-position: 100.0000% 100.0000%; }
+.cm-sprite-grato-2{ background-position: 100.0000% 33.3333%; }
+.cm-sprite-grato-3{ background-position: 100.0000% 66.6667%; }
 
 /* Mood post: slide com Camilinho ganha fundo CLARO (em vez do preto padrão
    do reel). Antes a camisa branca do Camilinho misturava com o preto e
