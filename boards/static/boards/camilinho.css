@@ -7,23 +7,14 @@
   display:flex; justify-content:center; align-items:center;
   margin:6px 0 10px;
 }
-/* Cada Camilinho vira um DIV de proporção 1:1 com o sprite renderizado
-   via background-image. Sprite WebP único de 1MB pra todas as 39 imagens
-   substitui os 39 PNGs individuais — 1 request em vez de 39, e o WebP
-   é ~50% menor que PNG pra mesma qualidade. */
-/* Padding-bottom hack pra altura quadrada — funciona em QUALQUER browser
-   e flex layout (aspect-ratio às vezes resolve 0 em flex children). */
+/* Cada Camilinho vira um DIV quadrado via aspect-ratio no próprio .cm-sprite.
+   Sprite WebP único pra todas as 40 imagens (13 moods × 3 variantes + 1
+   extra de com_raiva). Pai só define largura — altura vem do aspect-ratio
+   do filho, que é mais robusto que padding-bottom + position:absolute. */
 .cm-mood-img{
   width:min(220px, 70vw);
-  position:relative;
   display:block;
   filter: drop-shadow(0 6px 16px rgba(0,0,0,0.15));
-}
-.cm-mood-img::before{
-  content:""; display:block; padding-bottom:100%;
-}
-.cm-mood-img > *{
-  position:absolute; inset:0;
 }
 @media (min-width: 1024px){
   .cm-mood-img{ width:min(260px, 50%); }
@@ -31,9 +22,7 @@
 
 /* No reel/fullscreen — maior, ocupa boa parte do "phone".
    width:100% + align-self:stretch são CRÍTICOS: o slide pai é flex column
-   com align-items:center, o que faz cada filho ter largura NATURAL. Com
-   <img> antigo a largura natural era a da imagem; com o div sprite (sem
-   width intrínseco), o wrap colapsava pra 0 e nada renderizava. */
+   com align-items:center, o que faz cada filho ter largura NATURAL. */
 .sp-reel-camilinho-wrap{
   display:flex; justify-content:center; align-items:center;
   flex:1 1 auto; min-height:0;
@@ -42,22 +31,18 @@
 }
 .sp-reel-camilinho{
   width:min(82%, 360px);
-  position:relative;
   filter: drop-shadow(0 10px 22px rgba(0,0,0,0.20));
-}
-.sp-reel-camilinho::before{
-  content:""; display:block; padding-bottom:100%;
-}
-.sp-reel-camilinho > *{
-  position:absolute; inset:0;
 }
 
 /* ────────────────────────────────────────────────────────────
-   SPRITE WEBP — 1 arquivo único pros 39 Camilinhos
+   SPRITE WEBP — 1 arquivo único pros 40 Camilinhos
+   aspect-ratio:1/1 garante quadrado direto (sem depender de padding-hack
+   do pai, que quebrava em flex containers e mostrava cells empilhadas).
    ──────────────────────────────────────────────────────────── */
 .cm-sprite{
-  display:inline-block;
-  width:100%; height:100%;
+  display:block;
+  width:100%;
+  aspect-ratio: 1 / 1;
   background-image: url('/static/boards/images/camilinho_sprite.webp');
   background-size: 1300% 400%;
   background-repeat: no-repeat;
