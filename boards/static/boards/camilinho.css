@@ -29,10 +29,15 @@
   .cm-mood-img{ width:min(260px, 50%); }
 }
 
-/* No reel/fullscreen — maior, ocupa boa parte do "phone" */
+/* No reel/fullscreen — maior, ocupa boa parte do "phone".
+   width:100% + align-self:stretch são CRÍTICOS: o slide pai é flex column
+   com align-items:center, o que faz cada filho ter largura NATURAL. Com
+   <img> antigo a largura natural era a da imagem; com o div sprite (sem
+   width intrínseco), o wrap colapsava pra 0 e nada renderizava. */
 .sp-reel-camilinho-wrap{
   display:flex; justify-content:center; align-items:center;
   flex:1 1 auto; min-height:0;
+  width:100%; align-self:stretch;
   margin:0 0 12px;
 }
 .sp-reel-camilinho{
