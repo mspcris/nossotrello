@@ -5282,17 +5282,55 @@ document.addEventListener('click', function(e){
     var csrf = document.querySelector('meta[name="csrf-token"]');
     fetch('/social/comment/' + commentId + '/react/', {
       method: 'POST',
+      credentials: 'same-origin',
       headers: {'X-CSRFToken': csrf ? csrf.content : '', 'Content-Type':'application/x-www-form-urlencoded'},
       body: 'reaction=' + reaction
-    }).then(function(r){ return r.json(); })
+    }).then(function(r){
+        if(!r.ok){
+          var e = new Error('HTTP ' + r.status);
+          e.status = r.status;
+          throw e;
+        }
+        return r.json();
+      })
       .then(function(d){
-        if(d.error) return;
-        _renderCommentReactions(commentId, d.counts, d.my_reaction);
+        if(d.error){
+          console.warn('[comment-react] server returned error', d.error);
+          _flashCommentBadge(commentId, '⚠', '#ef4444');
+          return;
+        }
+        try {
+          _renderCommentReactions(commentId, d.counts, d.my_reaction);
+        } catch(e){
+          console.error('[comment-react] render fail', commentId, e);
+        }
+        /* Confirma visualmente que a reação foi recebida — flash do
+           emoji escolhido em cima do comentário. Garante feedback mesmo
+           se o badge não pintar por qualquer motivo de layout/CSS. */
+        var emojiMap = {like:'👍', love:'💚', haha:'😂', fire:'🔥', clap:'👏'};
+        _flashCommentBadge(commentId, emojiMap[d.my_reaction] || '✓', '#10b981');
         /* Fecha o painel de ações — a reação já está visível no comentário */
         document.querySelectorAll('.sp-comment-actions-panel').forEach(function(p){ p.remove(); });
         document.querySelectorAll('.sp-comment-active').forEach(function(el){ el.classList.remove('sp-comment-active'); });
+      })
+      .catch(function(err){
+        console.error('[comment-react] fetch fail', commentId, err);
+        _flashCommentBadge(commentId, '⚠ ' + (err.message || ''), '#ef4444');
       });
   };
+
+  /* Flash temporário sobre o span de reações do comentário — feedback
+     visual independente do badge "permanente". */
+  function _flashCommentBadge(commentId, text, color){
+    var el = document.getElementById('sp-creact-' + commentId);
+    if(!el) return;
+    var flash = document.createElement('span');
+    flash.textContent = ' ' + text;
+    flash.style.cssText = 'color:'+color+';font-size:.75rem;font-weight:600;margin-left:6px;opacity:1;transition:opacity 1.2s';
+    el.appendChild(flash);
+    setTimeout(function(){ flash.style.opacity = '0'; }, 800);
+    setTimeout(function(){ if(flash.parentNode) flash.remove(); }, 2200);
+  }
 
   function _renderCommentReactions(commentId, counts, myReaction) {
     var el = document.getElementById('sp-creact-' + commentId);
