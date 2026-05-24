@@ -2919,13 +2919,15 @@ if(document.readyState !== 'loading'){ window._applyUserHeart(); }
     document.head.appendChild(st);
   })();
 
-  function _spToast(msg){
+  function _spToast(msg, bg){
     var t = document.createElement('div');
-    t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1f2937;color:#fff;padding:10px 20px;border-radius:12px;font-size:0.85rem;z-index:9999;animation:fadeIn .3s';
+    t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:'+(bg||'#1f2937')+';color:#fff;padding:10px 20px;border-radius:12px;font-size:0.85rem;z-index:9999;animation:fadeIn .3s;box-shadow:0 4px 12px rgba(0,0,0,0.2)';
     t.textContent = msg;
     document.body.appendChild(t);
     setTimeout(function(){ t.style.opacity='0'; t.style.transition='opacity .3s'; setTimeout(function(){ t.remove(); }, 350); }, 3000);
   }
+  /* Expõe pra outros IIFEs (b.onclick do picker de reações em outro escopo). */
+  window._spToast = _spToast;
 
   /* ═══ Setas de navegação no reel ═══ */
   var _reelArrowTimer = null;
@@ -5269,11 +5271,17 @@ document.addEventListener('click', function(e){
       b.textContent = r.emoji;
       b.onclick = function(ev){
         ev.stopPropagation();
+        /* Toast imediato confirma que o touch foi recebido — independente
+           do que aconteça depois com o JS. */
+        if(window._spToast) window._spToast(r.emoji + '…', '#7c3aed');
         /* Remove o picker ANTES do spCommentReact pra garantir UI fechado
            mesmo se a função quebrar. */
         picker.remove();
         try { spCommentReact(commentId, r.key); }
-        catch(e){ console.error('[picker] spCommentReact crashed', e); }
+        catch(e){
+          console.error('[picker] spCommentReact crashed', e);
+          if(window._spToast) window._spToast('Erro: ' + (e.message || e), '#ef4444');
+        }
       };
       picker.appendChild(b);
     });
