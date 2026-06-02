@@ -24,6 +24,15 @@ from boards.models import WhatsNewItem
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-06 ---
+    "3ce9d49": (
+        "👥",
+        "Mude quem vê o código compartilhado quando quiser",
+        "Nos \"Códigos compartilhados\" do card agora dá pra ver exatamente quem "
+        "tem acesso a cada segredo e mexer nisso a qualquer momento: em "
+        "\"⚙️ Gerenciar acesso\" você marca um novo colega ou tira o acesso de "
+        "alguém, sem precisar recriar nada — a chave continua criptografada e "
+        "intacta. Só quem criou o segredo gerencia o acesso.",
+    ),
     "c42a5dc": (
         "🔒",
         "Compartilhe um curl com a chave — sem deixar a chave à mostra",
