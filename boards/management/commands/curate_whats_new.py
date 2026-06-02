@@ -23,6 +23,13 @@ from boards.models import WhatsNewItem
 # Textos pensados no USUÁRIO: o que ele ganha, não o que foi feito.
 # -------------------------------------------------------------
 CURATED = {
+    # --- 2026-06 ---
+    "bbfa426": (
+        "🔒",
+        "Você decide o que do Tarefas vai pra rede social",
+        "Nas configurações da sua conta tem agora a opção \"Compartilhar na rede social quadros do Tarefas\". Marcada (padrão), curtir um card ou compartilhar um quadro aparece no reel como sempre. Desmarcada, nada do Tarefas vai mais pro Espaço Social — e os \"curtiu um card\" e convites de quadro que você já tinha publicado somem do feed na hora.",
+    ),
+
     # --- 2026-05 ---
     "643c38a": (
         "🛡️",
