@@ -776,3 +776,83 @@ def _card_modal_context(card: Card) -> dict:
         "board_due_colors": colors,
     }
 
+
+def _user_secret_label(u) -> str:
+    """Rótulo amigável p/ a lista de 'quem pode ver': @handle > nome > email."""
+    if not u:
+        return ""
+    prof = getattr(u, "profile", None)
+    handle = (getattr(prof, "handle", "") or "").strip()
+    if handle:
+        return "@" + handle
+    display = (getattr(prof, "display_name", "") or "").strip()
+    if display:
+        return display
+    full = (u.get_full_name() or "").strip() if hasattr(u, "get_full_name") else ""
+    if full:
+        return full
+    return (getattr(u, "email", "") or getattr(u, "username", "") or "").strip()
+
+
+def _board_member_users(board) -> list:
+    """
+    Usuários candidatos a viewer de um segredo: membros do board (ou o criador,
+    nos boards legados sem memberships). Ordenados por rótulo.
+    """
+    User = get_user_model()
+    users = []
+
+    memberships = (
+        board.memberships.select_related("user").all() if board else []
+    )
+    if memberships:
+        users = [m.user for m in memberships if m.user]
+    elif board and board.created_by_id:
+        u = User.objects.filter(id=board.created_by_id).first()
+        if u:
+            users.append(u)
+
+    seen, out = set(), []
+    for u in users:
+        if u.id in seen:
+            continue
+        seen.add(u.id)
+        out.append(u)
+
+    out.sort(key=lambda u: (_user_secret_label(u) or "").lower())
+    return out
+
+
+def _card_secret_context(card, user) -> dict:
+    """
+    Monta o contexto da seção 'Códigos compartilhados' do modal:
+    - card_secrets: segredos ativos, anotados com _can_reveal/_viewer_count.
+    - secret_candidates: membros do board (menos o próprio user) p/ os checkboxes.
+    """
+    secrets = (
+        card.secrets.filter(is_active=True)
+        .select_related("author", "author__profile")
+        .prefetch_related("viewers")
+        .order_by("-created_at")
+    )
+
+    decorated = []
+    for s in secrets:
+        # nomes sem underscore inicial — templates Django não acessam _attr
+        s.cm_can_reveal = s.can_reveal(user)
+        s.cm_viewer_count = s.viewers.count()
+        decorated.append(s)
+
+    board = card.column.board if card.column_id else None
+    uid = getattr(user, "id", None)
+    candidates = [
+        {"id": u.id, "label": _user_secret_label(u)}
+        for u in _board_member_users(board)
+        if u.id != uid
+    ]
+
+    return {
+        "card_secrets": decorated,
+        "secret_candidates": candidates,
+    }
+

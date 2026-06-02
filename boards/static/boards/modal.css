@@ -3484,3 +3484,74 @@ html.dark #modal #modal-breadcrumb{
   border-color: rgba(255, 59, 59, 0.35);
   color: #a23232;
 }
+
+/* ============================================================
+   🔒 CÓDIGOS COMPARTILHADOS (CardSecret)
+   ============================================================ */
+.cm-secrets{
+  margin: 8px 0 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--cm-border);
+  border-radius: var(--cm-radius-sm);
+  background: var(--cm-surface-2);
+}
+.cm-secrets-header{
+  display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;
+  margin-bottom: 8px;
+}
+.cm-secrets-title{ font-weight:600; color: var(--cm-text); }
+.cm-secrets-hint{ font-size: 11px; }
+
+.cm-secret-new-summary{
+  cursor:pointer; font-size: 13px; color: var(--cm-link);
+  padding: 4px 0; user-select:none;
+}
+.cm-secret-new[open] .cm-secret-new-summary{ color: var(--cm-text); }
+
+.cm-secret-form{ display:flex; flex-direction:column; gap:8px; margin-top:8px; }
+.cm-secret-input{
+  width:100%; padding:7px 10px; border:1px solid var(--cm-border);
+  border-radius:8px; background:var(--cm-bg); color:var(--cm-text); font-size:13px;
+}
+.cm-secret-textarea{
+  width:100%; padding:8px 10px; border:1px solid var(--cm-border);
+  border-radius:8px; background:var(--cm-bg); color:var(--cm-text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size:12.5px; line-height:1.45; resize:vertical;
+}
+.cm-secret-viewers-label{ font-size:12px; color:var(--cm-muted); margin-bottom:4px; }
+.cm-secret-viewers-list{ display:flex; flex-wrap:wrap; gap:6px 12px; }
+.cm-secret-viewer{
+  display:inline-flex; align-items:center; gap:5px; font-size:12.5px;
+  color:var(--cm-text); cursor:pointer;
+}
+.cm-secret-actions{ margin-top:2px; }
+
+.cm-secret-items{ display:flex; flex-direction:column; gap:8px; margin-top:10px; }
+.cm-secret-item{
+  border:1px solid var(--cm-border-2); border-radius:10px;
+  background:var(--cm-bg); padding:9px 11px;
+}
+.cm-secret-head{ display:flex; align-items:center; gap:7px; }
+.cm-secret-name{ font-weight:600; color:var(--cm-text); font-size:13.5px; }
+.cm-secret-lang{
+  font-size:11px; padding:1px 7px; border-radius:999px;
+  background:var(--cm-accent-2); color:var(--cm-accent);
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+}
+.cm-secret-meta{ font-size:11.5px; margin:3px 0 8px; }
+.cm-secret-locked{ font-size:12.5px; }
+
+.cm-secret-pre{
+  margin:8px 0 0; padding:10px 12px; border-radius:8px;
+  background: rgba(2,6,23,0.06); border:1px solid var(--cm-border-2);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size:12.5px; line-height:1.5; color:var(--cm-text);
+  white-space:pre-wrap; word-break:break-word; overflow-x:auto;
+}
+.cm-secret-revealed-actions{ display:flex; gap:8px; margin-top:8px; }
+.cm-secret-del{
+  margin-top:8px; background:none; border:none; cursor:pointer;
+  color:var(--cm-danger); font-size:12px; padding:0;
+}
+.cm-secret-del:hover{ text-decoration:underline; }

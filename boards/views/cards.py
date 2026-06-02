@@ -23,6 +23,7 @@ from django.views.decorators.http import require_POST, require_http_methods
 from .helpers import (
     _actor_label,
     _card_modal_context,
+    _card_secret_context,
     _ensure_attachments_and_activity_for_images,
     _extract_media_image_paths,
     _log_card,
@@ -1240,6 +1241,9 @@ def _render_card_modal(request, card, context=None):
 
     # ✅ CHECKLISTS
     ctx["checklists"] = card.checklists.all()
+
+    # ✅ SEGREDOS/SNIPPETS (curl com chave etc.) — só no modal split
+    ctx.update(_card_secret_context(card, request.user))
 
     # hardening: chaves usadas nos templates
     ctx.setdefault("card", card)

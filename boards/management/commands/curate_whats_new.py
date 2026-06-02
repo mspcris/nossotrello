@@ -24,6 +24,18 @@ from boards.models import WhatsNewItem
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-06 ---
+    # TODO: trocar a chave abaixo pelo hash real do commit de "códigos
+    # compartilhados" depois de commitar (hoje é placeholder e não casa com nada).
+    "__PENDING_card_secret__": (
+        "🔒",
+        "Compartilhe um curl com a chave — sem deixar a chave à mostra",
+        "No acompanhamento do card agora tem \"Códigos compartilhados\": cole um "
+        "comando completo (um curl com a chave de API, por exemplo) e escolha "
+        "exatamente quem pode abrir. O conteúdo é criptografado antes de salvar — "
+        "ninguém além de você e dos colegas marcados consegue revelar, e cada "
+        "abertura fica registrada. Quem não foi marcado vê só um cadeado. Assim o "
+        "outro dev testa igualzinho ao que você fez, sem a chave virar texto solto.",
+    ),
     "bbfa426": (
         "🔒",
         "Você decide o que do Tarefas vai pra rede social",

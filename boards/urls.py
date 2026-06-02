@@ -35,6 +35,12 @@ from .views.activity import (
     set_activity_filter,
 )
 
+from .views.secrets import (
+    add_secret,
+    reveal_secret,
+    delete_secret,
+)
+
 from boards.views.account import (
 public_profile,
 )
@@ -590,6 +596,11 @@ urlpatterns = [
     # Atividade (painel / add / quill upload) — ajuste conforme seu projeto real
     path("card/<int:card_id>/activity/panel/", activity_panel, name="activity_panel"),
     path("card/<int:card_id>/activity/add/", add_activity, name="add_activity"),
+
+    # snippets/segredos de card (curl com chave etc.)
+    path("card/<int:card_id>/secret/add/", add_secret, name="add_secret"),
+    path("card/<int:card_id>/secret/<int:secret_id>/reveal/", reveal_secret, name="reveal_secret"),
+    path("card/<int:card_id>/secret/<int:secret_id>/delete/", delete_secret, name="delete_secret"),
     path("activity/filter/set/", set_activity_filter, name="set_activity_filter"),
     path("quill/upload/", quill_upload, name="quill_upload"),
 

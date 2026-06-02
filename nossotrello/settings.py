@@ -36,6 +36,12 @@ SECRET_KEY = (os.getenv("DJANGO_SECRET_KEY") or "").strip()
 if not SECRET_KEY:
     raise RuntimeError("DJANGO_SECRET_KEY não configurada")
 
+# Chave(s) Fernet para criptografar snippets/segredos de card (curl com chave
+# de API etc.). Opcional: se ausente, deriva de DJANGO_SECRET_KEY — ver
+# boards/services/secret_crypto.py. Aceita várias chaves separadas por vírgula
+# (rotação). Gerar: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+CARD_SECRET_KEY = (os.getenv("CARD_SECRET_KEY") or "").strip()
+
 DEBUG = _env_bool("DEBUG", default=False)
 
 ALLOWED_HOSTS = _env_csv(

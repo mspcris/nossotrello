@@ -333,6 +333,89 @@ class CardLog(models.Model):
 
 
 # ============================================================
+# CARD SECRET (snippet/segredo criptografado)
+# ============================================================
+class CardSecret(models.Model):
+    """
+    Snippet/segredo de card (ex.: um `curl` com chave de API) criptografado em
+    repouso com Fernet — ver boards/services/secret_crypto.py.
+
+    Política de acesso ESTRITA: só o autor e os `viewers` marcados podem
+    revelar o conteúdo. A validação é sempre feita no servidor; o template
+    nunca recebe o plaintext de quem não pode ver.
+
+    Soft-delete via `is_active` (regra do projeto — nunca delete físico).
+    """
+    card = models.ForeignKey(Card, related_name="secrets", on_delete=models.CASCADE)
+
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="authored_card_secrets",
+    )
+
+    title = models.CharField(max_length=200, blank=True, default="")
+
+    # ciphertext Fernet (bytes). NUNCA gravar plaintext aqui.
+    ciphertext = models.BinaryField()
+
+    # dica de linguagem só pra rótulo/realce (curl, bash, json, ...). Cosmético.
+    lang = models.CharField(max_length=20, blank=True, default="curl")
+
+    # quem você marcou como autorizado a revelar
+    viewers = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name="visible_card_secrets",
+        blank=True,
+    )
+
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(
+                fields=["card", "is_active", "created_at"],
+                name="cardsecret_card_idx",
+            ),
+        ]
+
+    def __str__(self):
+        return f"Segredo #{self.pk} de {self.card_id}"
+
+    def can_reveal(self, user) -> bool:
+        """Regra estrita: superuser, autor ou viewer marcado."""
+        if not user or not getattr(user, "is_authenticated", False):
+            return False
+        if getattr(user, "is_superuser", False):
+            return True
+        if self.author_id and self.author_id == user.id:
+            return True
+        return self.viewers.filter(id=user.id).exists()
+
+
+class CardSecretReveal(models.Model):
+    """Auditoria: quem revelou qual segredo e quando (accountability)."""
+    secret = models.ForeignKey(
+        CardSecret, related_name="reveals", on_delete=models.CASCADE
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL
+    )
+    revealed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(
+                fields=["secret", "revealed_at"], name="cardsecretreveal_idx"
+            ),
+        ]
+
+
+# ============================================================
 # CARD BADGED
 # ============================================================
 class CardSeen(models.Model):
