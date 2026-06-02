@@ -39,6 +39,7 @@ from .views.secrets import (
     add_secret,
     reveal_secret,
     delete_secret,
+    edit_secret_viewers,
 )
 
 from boards.views.account import (
@@ -600,6 +601,7 @@ urlpatterns = [
     # snippets/segredos de card (curl com chave etc.)
     path("card/<int:card_id>/secret/add/", add_secret, name="add_secret"),
     path("card/<int:card_id>/secret/<int:secret_id>/reveal/", reveal_secret, name="reveal_secret"),
+    path("card/<int:card_id>/secret/<int:secret_id>/viewers/", edit_secret_viewers, name="edit_secret_viewers"),
     path("card/<int:card_id>/secret/<int:secret_id>/delete/", delete_secret, name="delete_secret"),
     path("activity/filter/set/", set_activity_filter, name="set_activity_filter"),
     path("quill/upload/", quill_upload, name="quill_upload"),

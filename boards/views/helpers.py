@@ -840,7 +840,11 @@ def _card_secret_context(card, user) -> dict:
     for s in secrets:
         # nomes sem underscore inicial — templates Django não acessam _attr
         s.cm_can_reveal = s.can_reveal(user)
-        s.cm_viewer_count = s.viewers.count()
+        viewers = list(s.viewers.all())
+        s.cm_viewer_count = len(viewers)
+        s.cm_viewer_ids = {u.id for u in viewers}
+        s.cm_viewer_labels = [_user_secret_label(u) for u in viewers]
+        s.cm_is_author = bool(s.author_id and s.author_id == getattr(user, "id", None))
         decorated.append(s)
 
     board = card.column.board if card.column_id else None

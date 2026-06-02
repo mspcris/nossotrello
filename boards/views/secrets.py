@@ -128,6 +128,36 @@ def reveal_secret(request, card_id, secret_id):
 
 @login_required
 @require_POST
+def edit_secret_viewers(request, card_id, secret_id):
+    """Atualiza quem pode revelar (só o autor). Mantém o ciphertext intacto."""
+    card = get_object_or_404(
+        Card.objects.select_related("column__board"), id=card_id
+    )
+    if not _user_can_access_card(request.user, card):
+        return HttpResponseForbidden("Sem acesso a este card.")
+
+    secret = get_object_or_404(
+        CardSecret, id=secret_id, card=card, is_active=True
+    )
+    if not (secret.author_id == request.user.id or request.user.is_superuser):
+        return HttpResponseForbidden("Só o autor pode gerenciar o acesso.")
+
+    allowed_ids = {u.id for u in _board_member_users(card.column.board)}
+    viewer_ids = []
+    for raw in request.POST.getlist("viewers"):
+        try:
+            i = int(raw)
+        except (TypeError, ValueError):
+            continue
+        if i in allowed_ids and i != secret.author_id:
+            viewer_ids.append(i)
+
+    secret.viewers.set(viewer_ids)
+    return _render_secrets_panel(request, card)
+
+
+@login_required
+@require_POST
 def delete_secret(request, card_id, secret_id):
     card = get_object_or_404(
         Card.objects.select_related("column__board"), id=card_id
