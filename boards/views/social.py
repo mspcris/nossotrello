@@ -434,6 +434,14 @@ def _build_social_context(request, target_user, extra=None):
 
     # Posts + prefetch reactions/comments
     posts_qs = SocialPost.objects.filter(user=target_user, is_active=True).order_by("-created_at")
+    # Bit de privacidade: se o autor desmarcou o compartilhamento do Tarefas,
+    # os "curtiu um card" dele somem também do próprio perfil.
+    tp_prof = getattr(target_user, "profile", None)
+    if tp_prof and not tp_prof.share_tarefas_to_social:
+        posts_qs = posts_qs.exclude(
+            models.Q(text__startswith="__card_like__:")
+            | models.Q(text__startswith="__board_invite__:")
+        )
     if not is_me:
         # Visitor: hide "friends only" posts unless they are an accepted friend
         is_friend = SocialFriendship.objects.filter(
@@ -905,6 +913,16 @@ def social_friends_feed(request):
                 user__is_active=True, moderation_status=SocialPost.MOD_CLEAN
             )
         )
+
+    # Retroativo: atividades do Tarefas ("curtiu um card" / convite de quadro)
+    # de quem desmarcou o bit somem do reel — inclusive os posts antigos.
+    qs = qs.exclude(
+        (
+            models.Q(text__startswith="__card_like__:")
+            | models.Q(text__startswith="__board_invite__:")
+        )
+        & models.Q(user__profile__share_tarefas_to_social=False)
+    )
 
     if before_id:
         qs = qs.filter(id__lt=before_id)
@@ -1872,6 +1890,12 @@ def card_like_social(request, card_id: int):
     """Curte um card e publica automaticamente no feed social."""
     card = get_object_or_404(Card, id=card_id)
     board = card.column.board
+
+    # Bit de privacidade na conta: se o usuário desmarcou "compartilhar
+    # quadros do Tarefas na rede social", não publica nada no reel.
+    prof = getattr(request.user, "profile", None)
+    if prof and not prof.share_tarefas_to_social:
+        return JsonResponse({"ok": True, "published": False})
 
     # Marca especial igual ao padrão já usado em __friendship__:<id> — no
     # render, o front detecta e monta um cartão bonito em vez de tratar

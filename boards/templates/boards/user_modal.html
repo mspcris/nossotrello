@@ -266,6 +266,16 @@
                 <span>Receber notificações sociais (balão e badge)</span>
               </label>
 
+              <label class="flex items-center gap-2">
+                <input type="checkbox" name="share_tarefas_to_social" value="1" id="um-share-tarefas-social" {% if profile.share_tarefas_to_social %}checked{% endif %}>
+                <span>Compartilhar na rede social quadros do Tarefas</span>
+              </label>
+              <p class="text-xs text-gray-500 -mt-1 ml-6">
+                Marcado: curtir um card ou compartilhar um quadro é publicado no
+                reel. Desmarcado: nada do Tarefas vai para a rede social e essas
+                atividades já publicadas por você somem do reel.
+              </p>
+
               <!-- ── Agenda de notificações ── -->
               <div id="um-schedule-block" class="mt-3 border-t pt-3">
                 <div class="text-sm font-semibold mb-2">Horário para receber notificações</div>

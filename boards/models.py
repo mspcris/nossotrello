@@ -447,6 +447,12 @@ class UserProfile(models.Model):
     notify_email = models.BooleanField(default=True)
     notify_social = models.BooleanField(default=True)
 
+    # Bit de privacidade: publicar no feed social o que é feito no Tarefas
+    # (curtir card / compartilhar quadro). Marcado = continua publicando;
+    # desmarcado = nada do Tarefas vai pra rede social e os "curtiu um card"
+    # já existentes deste usuário somem do reel. Todos nascem marcados.
+    share_tarefas_to_social = models.BooleanField(default=True)
+
     notify_only_owned_or_mentioned = models.BooleanField(default=False)
 
     unidade = models.CharField(

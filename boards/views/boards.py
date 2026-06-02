@@ -1305,7 +1305,12 @@ def board_share(request, board_id):
     # ==========================================================
     # POST NO SOCIAL (atividade de convite)
     # ==========================================================
-    if created_membership:
+    # Bit de privacidade na conta: só publica a atividade de convite no reel
+    # se o usuário mantém marcado "compartilhar quadros do Tarefas". O convite
+    # em si (membership + email) acontece de qualquer forma.
+    inviter_prof = getattr(request.user, "profile", None)
+    share_to_reel = not (inviter_prof and not inviter_prof.share_tarefas_to_social)
+    if created_membership and share_to_reel:
         try:
             SocialPost.objects.create(
                 user=request.user,

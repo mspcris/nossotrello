@@ -223,6 +223,10 @@ def account_profile_update(request):
         prof.notify_social = False
         update_fields.append("notify_social")
 
+    # Bit: publicar quadros/cards do Tarefas na rede social
+    prof.share_tarefas_to_social = ("share_tarefas_to_social" in request.POST)
+    update_fields.append("share_tarefas_to_social")
+
     # ── Agenda de notificações ──
     raw_start = (request.POST.get("notify_start_time") or "").strip()
     raw_end = (request.POST.get("notify_end_time") or "").strip()
