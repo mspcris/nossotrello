@@ -129,7 +129,7 @@
 
 
 
-      <div class="tt-row" style="justify-content:flex-end;">
+      <div class="tt-row" style="justify-content:flex-end; gap:.5rem;">
 <a
   class="tt-btn"
   href="{% url 'tracktime:portal' %}"
@@ -138,6 +138,17 @@
 >
   Cadastrar projeto/atividade
 </a>
+
+<button
+  type="button"
+  class="tt-btn"
+  hx-get="{% url 'tracktime:card_panel' card.id %}"
+  hx-target="#cm-tracktime-panel"
+  hx-swap="innerHTML"
+  title="Recarregar listas de projetos e atividades"
+>
+  🔄 Atualizar listas
+</button>
 
 </div>
 

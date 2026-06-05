@@ -1233,13 +1233,13 @@
 (function () {
   function getRoot() { return document.getElementById("cm-root"); }
 
-  function loadTrack(root) {
+  function loadTrack(root, force) {
     if (!root) return;
 
     const panel = root.querySelector("#cm-tracktime-panel");
     if (!panel) return;
 
-    if (panel.getAttribute("data-track-loaded") === "1") return;
+    if (!force && panel.getAttribute("data-track-loaded") === "1") return;
 
     const url = (panel.getAttribute("data-track-url") || "").trim();
     if (!url) return;
@@ -1292,6 +1292,34 @@
     const active = (root.getAttribute("data-cm-active") || root.dataset.cmActive || "desc").trim();
     if (active === "track" || active === "tracktime") loadTrack(root);
   });
+
+  // Auto-atualiza projetos/atividades ao voltar para a aba do card
+  // (ex.: depois de cadastrar no portal aberto em outra aba). Só recarrega
+  // se nada foi selecionado/digitado, pra não apagar o que o usuário começou.
+  function refreshTrackOnReturn() {
+    if (document.visibilityState !== "visible") return;
+    const root = getRoot();
+    if (!root) return;
+    const active = (root.getAttribute("data-cm-active") || root.dataset.cmActive || "desc").trim();
+    if (active !== "track" && active !== "tracktime") return;
+
+    const panel = root.querySelector("#cm-tracktime-panel");
+    if (!panel || panel.getAttribute("data-track-loaded") !== "1") return;
+
+    // Não mexer se um timer estiver rodando (sem selects neste estado).
+    const proj = panel.querySelector("#tt-project");
+    const act = panel.querySelector("#tt-activity");
+    if (!proj || !act) return;
+
+    // Não recarregar se já há seleção ou minutos digitados.
+    const minutes = panel.querySelector('input[name="minutes"]');
+    if (proj.value || act.value || (minutes && minutes.value.trim())) return;
+
+    loadTrack(root, true);
+  }
+
+  document.addEventListener("visibilitychange", refreshTrackOnReturn);
+  window.addEventListener("focus", refreshTrackOnReturn);
 })();
 </script>
 
