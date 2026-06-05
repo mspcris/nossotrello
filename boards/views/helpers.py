@@ -855,8 +855,14 @@ def _card_secret_context(card, user) -> dict:
         if u.id != uid
     ]
 
+    # O autor SEMPRE pode revelar (ver CardSecret.can_reveal). Expomos ele como
+    # uma entrada fixa/marcada na UI pra deixar claro que dá pra guardar um
+    # segredo só pra si mesmo (ex.: senha pessoal) — não precisa marcar ninguém.
+    secret_self = {"id": uid, "label": _user_secret_label(user)} if uid else None
+
     return {
         "card_secrets": decorated,
         "secret_candidates": candidates,
+        "secret_self": secret_self,
     }
 
