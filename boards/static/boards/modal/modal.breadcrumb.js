@@ -15,8 +15,14 @@
       const board    = root?.dataset.board        || "";
       const column   = root?.dataset.column       || "";
       const position = root?.dataset.cardPosition || "";
+      const title    = (root?.dataset.cardTitle   || "").trim();
 
-      const parts = [board, column, position ? `#${position}` : ""].filter(Boolean);
+      const parts = [
+        board,
+        column,
+        position ? `#${position}` : "",
+        title,
+      ].filter(Boolean);
       host.textContent = parts.join("  ›  ");
     },
 

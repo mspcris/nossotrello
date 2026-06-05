@@ -76,7 +76,8 @@
      data-term-notify="{% if card.due_notify %}1{% else %}0{% endif %}"
      data-board="{{ board.name|default:'' }}"
      data-column="{{ card.column.name|default:'' }}"
-     data-card-position="{{ card.position|add:1 }}">
+     data-card-position="{{ card.position|add:1 }}"
+     data-card-title="{{ card.title|default:'' }}">
 
 
 
