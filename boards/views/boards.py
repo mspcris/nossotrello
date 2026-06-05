@@ -1250,9 +1250,8 @@ def board_share(request, board_id):
     # Política de domínio:
     # - Interno (domínio permitido): pode criar user automaticamente (mesmo que nunca tenha logado)
     # - Externo (fora do domínio): só pode compartilhar se o user já existir (criado manualmente pela Direção)
-    domain = identifier.split("@", 1)[1].strip().lower()
-    allowed_domains = [d.strip().lower() for d in getattr(settings, "INSTITUTIONAL_EMAIL_DOMAINS", []) if d]
-    is_internal = (not allowed_domains) or (domain in allowed_domains)
+    from boards.services.email_domains import is_allowed_email
+    is_internal = is_allowed_email(identifier)
 
     # Usuário (por e-mail)
     User = get_user_model()

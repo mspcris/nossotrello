@@ -43,9 +43,9 @@ def _is_allowed_institutional_email(email: str) -> bool:
     if "@" not in email:
         return False
     domain = email.split("@", 1)[1]
-    allowed = getattr(settings, "INSTITUTIONAL_EMAIL_DOMAINS", [])
-    allowed = [d.strip().lower() for d in allowed if d and d.strip()]
-    return domain in allowed
+    # UNION de settings.INSTITUTIONAL_EMAIL_DOMAINS + AllowedEmailDomain (admin).
+    from boards.services.email_domains import allowed_email_domains
+    return domain in allowed_email_domains()
 
 
 def _rate_limit_hit(email: str, ip: str) -> None:
@@ -75,8 +75,9 @@ def first_login(request):
     Mensagem sempre neutra (anti-enumeração).
     """
     if request.method == "GET":
+        from boards.services.email_domains import allowed_email_domains
         return render(request, "registration/first_login.html", {
-            "allowed_domains": getattr(settings, "INSTITUTIONAL_EMAIL_DOMAINS", []),
+            "allowed_domains": sorted(allowed_email_domains()),
         })
 
     email = (request.POST.get("email") or "").strip().lower()

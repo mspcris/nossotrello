@@ -5,8 +5,10 @@ from django.contrib.auth import get_user_model
 from .models import (
     Board, Column, Card, CardLog, UserProfile, WhatsNewItem,
     BannedTerm, ModerationCase, BanLog, TermsAcceptanceLog,
+    AllowedEmailDomain,
 )
 from .services.moderation.blocklist import invalidate_cache as _invalidate_blocklist_cache
+from .services.email_domains import invalidate_cache as _invalidate_email_domains_cache
 
 User = get_user_model()
 
@@ -113,6 +115,31 @@ class BanLogAdmin(admin.ModelAdmin):
         "user", "action", "case", "reason", "terms_clause",
         "applied_by", "applied_at", "effective_until", "email_sent_at",
     )
+
+
+@admin.register(AllowedEmailDomain)
+class AllowedEmailDomainAdmin(admin.ModelAdmin):
+    list_display = ("domain", "active", "notes", "created_by", "created_at")
+    list_filter = ("active",)
+    search_fields = ("domain", "notes")
+    list_editable = ("active",)
+    ordering = ("domain",)
+    fields = ("domain", "active", "notes", "created_by", "created_at")
+    readonly_fields = ("created_by", "created_at")
+
+    def save_model(self, request, obj, form, change):
+        if not change and not obj.created_by_id:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+        _invalidate_email_domains_cache()
+
+    def delete_model(self, request, obj):
+        super().delete_model(request, obj)
+        _invalidate_email_domains_cache()
+
+    def delete_queryset(self, request, queryset):
+        super().delete_queryset(request, queryset)
+        _invalidate_email_domains_cache()
 
 
 @admin.register(TermsAcceptanceLog)

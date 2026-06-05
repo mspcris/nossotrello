@@ -1967,4 +1967,48 @@ class BanLog(models.Model):
         return f"{self.user} → {self.action} @ {self.applied_at:%Y-%m-%d %H:%M}"
 
 
+class AllowedEmailDomain(models.Model):
+    """Domínios de e-mail habilitados a criar login / receber convite automático.
+
+    Complementa (faz UNION com) `settings.INSTITUTIONAL_EMAIL_DOMAINS`. A lista
+    do settings continua valendo como base fixa; esta tabela permite a Direção
+    liberar novos domínios pelo admin sem deploy. Ex.: gp5partners.com.br.
+
+    O domínio é guardado normalizado: minúsculas, sem espaços e sem o '@'.
+    """
+    domain = models.CharField(
+        max_length=255, unique=True,
+        help_text="Apenas o domínio, sem '@'. Ex.: gp5partners.com.br",
+    )
+    active = models.BooleanField(default=True, db_index=True)
+    notes = models.CharField(
+        max_length=255, blank=True, default="",
+        help_text="Motivo / quem pediu (opcional).",
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="+",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["domain"]
+        verbose_name = "Domínio de e-mail permitido"
+        verbose_name_plural = "Domínios de e-mail permitidos"
+
+    def __str__(self):
+        return self.domain + ("" if self.active else " (inativo)")
+
+    @staticmethod
+    def normalize_domain(value: str) -> str:
+        value = (value or "").strip().lower()
+        if "@" in value:
+            value = value.rsplit("@", 1)[-1]
+        return value.strip().strip(".")
+
+    def save(self, *args, **kwargs):
+        self.domain = self.normalize_domain(self.domain)
+        super().save(*args, **kwargs)
+
+
 # END boards/models.py
