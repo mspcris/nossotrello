@@ -139,7 +139,8 @@ def edit_secret_viewers(request, card_id, secret_id):
     secret = get_object_or_404(
         CardSecret, id=secret_id, card=card, is_active=True
     )
-    if not (secret.author_id == request.user.id or request.user.is_superuser):
+    # nem superuser: senão ele se auto-adiciona como viewer e revela
+    if secret.author_id != request.user.id:
         return HttpResponseForbidden("Só o autor pode gerenciar o acesso.")
 
     allowed_ids = {u.id for u in _board_member_users(card.column.board)}

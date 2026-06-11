@@ -387,11 +387,9 @@ class CardSecret(models.Model):
         return f"Segredo #{self.pk} de {self.card_id}"
 
     def can_reveal(self, user) -> bool:
-        """Regra estrita: superuser, autor ou viewer marcado."""
+        """Regra estrita: SÓ autor ou viewer marcado — nem superuser revela."""
         if not user or not getattr(user, "is_authenticated", False):
             return False
-        if getattr(user, "is_superuser", False):
-            return True
         if self.author_id and self.author_id == user.id:
             return True
         return self.viewers.filter(id=user.id).exists()
