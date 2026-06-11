@@ -724,7 +724,8 @@
        ============================================================ -->
   <script>
     function enhanceCodeBlocks() {
-      document.querySelectorAll("pre:not(.enhanced)").forEach(pre => {
+      // .cm-secret-pre fica de fora: o reveal do segredo já tem botão Copiar próprio
+      document.querySelectorAll("pre:not(.enhanced):not(.cm-secret-pre)").forEach(pre => {
         pre.classList.add("enhanced");
 
         const wrapper = document.createElement("div");
