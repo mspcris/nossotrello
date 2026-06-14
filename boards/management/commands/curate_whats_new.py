@@ -79,6 +79,78 @@ CURATED = {
         "Nas configurações da sua conta tem agora a opção \"Compartilhar na rede social quadros do Tarefas\". Marcada (padrão), curtir um card ou compartilhar um quadro aparece no reel como sempre. Desmarcada, nada do Tarefas vai mais pro Espaço Social — e os \"curtiu um card\" e convites de quadro que você já tinha publicado somem do feed na hora.",
     ),
 
+    "8b8b92c": (
+        "⚡",
+        "Automação da coluna com mais ações",
+        "A automação da coluna ganhou ações novas: além de disparar e-mail, mover "
+        "o card e definir a data de entrega, agora dá pra copiar o card para outra "
+        "lista, definir a data de início (+N dias) e marcar uma pessoa do quadro "
+        "(cria o acompanhamento automaticamente). E as regras já criadas aparecem "
+        "listadas, com o gatilho e a ação visíveis.",
+    ),
+    "419a677": (
+        "🔗",
+        "Automação fica visual, estilo fluxo",
+        "Cada regra da coluna agora aparece como um fluxo: a caixa do gatilho, uma "
+        "seta e a caixa da ação — fácil de bater o olho e entender o que acontece. "
+        "Dá pra ter várias regras na mesma lista e o botão de adicionar mais ficou "
+        "bem claro.",
+    ),
+    "8c08804": (
+        "🔢",
+        "Automação por quantidade de cards na lista",
+        "Nova regra na automação da coluna: \"quando a lista ficar com MENOS de X "
+        "cards\" ou \"com MAIS de X cards\", faça algo (avisar por e-mail, por "
+        "exemplo). Perfeito pra colunas que agrupam tarefas — você é avisado quando "
+        "a fila enche ou esvazia. Dispara só na virada, sem ficar repetindo.",
+    ),
+    "c74bf01": (
+        "💬",
+        "Automação que manda WhatsApp + a sua mensagem",
+        "Agora a automação da coluna também pode enviar uma mensagem no WhatsApp, e "
+        "você escreve o texto que quiser (vale pro e-mail também). Deixou em branco? "
+        "Ele usa um texto padrão explicando o que aconteceu. O envio do WhatsApp "
+        "depende da integração estar ligada — a regra já fica salva esperando.",
+    ),
+    "9bec57a": (
+        "⏰",
+        "Automação: card parado tempo demais",
+        "Mais um gatilho na automação da coluna: \"quando um card ficar parado X "
+        "dias nesta lista\". Aí ele pode ser movido pra outra coluna, gerar um "
+        "aviso, ganhar uma etiqueta — o que você definir. A verificação roda uma "
+        "vez por dia.",
+    ),
+    "d5c7f37": (
+        "🏷️",
+        "Etiquetas como no Trello",
+        "As etiquetas do card ficaram do jeito que você já conhece do Trello: um "
+        "catálogo de etiquetas coloridas que você marca pra aplicar e desmarca pra "
+        "tirar, com um clique. Dá pra editar a cor e o nome de cada uma, e a mudança "
+        "vale pra todo o quadro.",
+    ),
+    "24cdd9c": (
+        "🖼️",
+        "Papel de parede com cor sólida",
+        "No menu do quadro, ao trocar o papel de parede, agora dá pra escolher uma "
+        "cor sólida — vários tons prontos ou a cor exata que você quiser — em vez de "
+        "uma imagem. Rápido, leve e do seu gosto.",
+    ),
+    "47d37e2": (
+        "🎨",
+        "Capa do card por cor",
+        "Além de imagem, a capa do card agora pode ser uma cor sólida: clica na cor "
+        "ao lado de escolher imagem e pronto. Ótimo pra dar um destaque rápido sem "
+        "precisar subir foto nenhuma.",
+    ),
+    "285aefe": (
+        "📋",
+        "Importar do Trello colando o link de um card",
+        "Na importação do Trello, se você colar o link de um card (…/c/…) em vez do "
+        "link do quadro, agora ele tenta descobrir sozinho o quadro dono e importa "
+        "tudo. Se o quadro for privado, aparece um aviso claro explicando que é só "
+        "colar a URL do quadro inteiro.",
+    ),
+
     # --- 2026-05 ---
     "643c38a": (
         "🛡️",
