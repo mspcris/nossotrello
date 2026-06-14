@@ -79,6 +79,10 @@
       </div>
     </div>
 
+    <!-- Cards entrando ao vivo -->
+    <div id="import-trello-live"
+         class="hidden mb-4 max-h-40 overflow-y-auto rounded-lg bg-black/30 border border-white/10 p-2 text-xs text-white/70 space-y-0.5"></div>
+
     <div id="import-trello-error" class="hidden text-red-400 text-sm mb-3"></div>
 
     <div class="flex justify-end gap-3">
@@ -197,6 +201,37 @@
     reader.readAsText(f.slice(0, 4096));
   };
 
+  function _readFileText(f){
+    return new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(String(r.result || ''));
+      r.onerror = () => rej(new Error('read'));
+      r.readAsText(f);
+    });
+  }
+
+  async function _postJson(url, body){
+    const r = await fetch(url, {
+      method:'POST',
+      headers: {'Content-Type':'application/json', 'X-CSRFToken': _csrf()},
+      body: JSON.stringify(body),
+    });
+    let data = null;
+    try { data = await r.json(); } catch(_) {}
+    return { ok: r.ok, status: r.status, data };
+  }
+
+  function _liveLog(html){
+    const live = document.getElementById('import-trello-live');
+    live.classList.remove('hidden');
+    const row = document.createElement('div');
+    row.innerHTML = html;
+    live.appendChild(row);
+    live.scrollTop = live.scrollHeight;
+  }
+
+  // IMPORTANTE: quadros gigantes (dezenas de MB) sao processados AQUI no navegador
+  // e enviados em lotes pequenos -> sem upload gigante, sem timeout no servidor.
   window.__importTrelloSubmit = async function() {
     if (!_file) return;
     const btn = document.getElementById('import-trello-btn');
@@ -204,42 +239,81 @@
     const bar = document.getElementById('import-trello-bar');
     const status = document.getElementById('import-trello-status');
     const errEl = document.getElementById('import-trello-error');
+    const live = document.getElementById('import-trello-live');
 
     btn.disabled = true; prog.classList.remove('hidden'); errEl.classList.add('hidden');
-    let pct = 5; bar.style.width = pct + '%';
-    const timer = setInterval(() => { if (pct < 85) { pct += Math.random()*6; bar.style.width = Math.min(pct,85)+'%'; } }, 250);
+    live.innerHTML = ''; live.classList.add('hidden');
+    bar.style.width = '2%'; status.textContent = 'Lendo o arquivo…';
+
+    const fail = (msg) => {
+      bar.style.width = '0%'; prog.classList.add('hidden');
+      errEl.innerHTML = msg; errEl.classList.remove('hidden'); btn.disabled = false;
+    };
 
     try {
-      const fd = new FormData();
-      fd.append('file', _file);
-      fd.append('csrfmiddlewaretoken', _csrf());
-      const r = await fetch('/import/trello/execute/', { method:'POST', body: fd });
-      let data = null;
-      try { data = await r.json(); } catch(_) { data = null; }
-      clearInterval(timer);
-      if (!r.ok || !data || data.error) {
-        bar.style.width = '0%'; prog.classList.add('hidden');
-        if (data && data.error) {
-          errEl.textContent = data.error;
-        } else if (r.status === 413) {
-          errEl.innerHTML = 'O arquivo é grande demais para o servidor (limite ~50MB). ' +
-            'Esse quadro provavelmente excede o limite.';
-        } else {
-          errEl.innerHTML = 'O servidor demorou ou recusou (quadro muito grande). ' +
-            'Tente de novo; se persistir, me avise que esse quadro precisa de import em lote maior.';
-        }
-        errEl.classList.remove('hidden'); btn.disabled = false;
-        return;
+      const text = await _readFileText(_file);
+      let data;
+      try { data = JSON.parse(text); }
+      catch(_) { return fail('Arquivo não é um JSON válido (começa com <code>{</code>?). Refaça o "Abrir JSON".'); }
+
+      const lists = (data.lists || []).filter(l => !l.closed);
+      const cards = (data.cards || []).filter(c => !c.closed);
+      if (!lists.length || !Array.isArray(data.cards)) return fail('Não parece um export do Trello (faltam listas/cards).');
+
+      // mapa de checklists do board
+      const clMap = {};
+      (data.checklists || []).forEach(cl => { clMap[cl.id] = cl; });
+
+      // 1) cria o board + colunas
+      status.textContent = 'Criando o quadro e as listas…';
+      const start = await _postJson('/import/trello/start/', {
+        name: data.name || 'Importado do Trello',
+        lists: lists.map(l => ({ id: l.id, name: l.name, pos: l.pos })),
+      });
+      if (!start.ok || !start.data || start.data.error) return fail((start.data && start.data.error) || 'Falha ao criar o quadro.');
+      const boardUrl = start.data.board_url;
+      const colMap = start.data.columns || {};
+      _liveLog('🗂️ <strong>' + lists.length + '</strong> lista(s) criada(s).');
+
+      // 2) prepara os cards (com checklists embutidas) e envia em lotes
+      const payloadCards = [];
+      lists.forEach(l => {
+        const colId = colMap[String(l.id)];
+        if (!colId) return;
+        const lcards = cards.filter(c => c.idList === l.id).sort((a,b)=>(a.pos||0)-(b.pos||0));
+        lcards.forEach((c, i) => {
+          const checklists = (c.idChecklists || []).map(id => clMap[id]).filter(Boolean).map(cl => ({
+            name: cl.name,
+            items: (cl.checkItems || []).sort((a,b)=>(a.pos||0)-(b.pos||0)).map(it => ({ name: it.name, done: it.state === 'complete' })),
+          }));
+          payloadCards.push({
+            column_id: colId,
+            name: c.name, desc: c.desc || '',
+            labels: (c.labels || []).map(x => x.name).filter(Boolean),
+            due: c.due || null, pos: i, checklists,
+          });
+        });
+      });
+
+      const total = payloadCards.length;
+      const BATCH = 120;
+      let done = 0;
+      for (let i = 0; i < total; i += BATCH) {
+        const slice = payloadCards.slice(i, i + BATCH);
+        const res = await _postJson('/import/trello/batch/', { board_id: start.data.board_id, cards: slice });
+        if (!res.ok || !res.data || res.data.error) return fail((res.data && res.data.error) || 'Falha ao gravar um lote. Recarregue e tente de novo.');
+        done += (res.data.created || slice.length);
+        const pct = total ? Math.round(done / total * 100) : 100;
+        bar.style.width = Math.max(5, pct) + '%';
+        status.textContent = `Importando cards… ${done}/${total}`;
+        slice.forEach(c => _liveLog('• ' + (c.name ? c.name.slice(0,80) : '(sem título)')));
       }
+
       bar.style.width = '100%';
-      status.textContent = `✅ ${data.colunas} coluna(s), ${data.cards} card(s) importados! Abrindo…`;
-      setTimeout(() => { window.location.href = data.board_url; }, 1500);
+      status.textContent = `✅ ${lists.length} lista(s), ${total} card(s) importados! Abrindo…`;
+      setTimeout(() => { window.location.href = boardUrl; }, 1200);
     } catch(e) {
-      clearInterval(timer);
-      errEl.innerHTML = 'Conexão interrompida (provável timeout num quadro grande). ' +
-        'Tente novamente.';
-      errEl.classList.remove('hidden');
-      prog.classList.add('hidden'); btn.disabled = false;
+      fail('Algo falhou durante a importação. Tente novamente.');
     }
   };
 })();

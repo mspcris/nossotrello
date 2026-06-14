@@ -628,3 +628,129 @@ def _build_board_from_trello(data, user):
         "colunas": len(lists_raw),
         "cards": len(cards_raw),
     }
+
+
+# ============================================================
+# IMPORT TRELLO EM LOTES (quadros gigantes)
+# ------------------------------------------------------------
+# O navegador faz o parse do JSON grande e envia em pedaços:
+#   1) /import/trello/start/  -> cria board + colunas, devolve o mapa de colunas
+#   2) /import/trello/batch/  -> grava um lote de cards (+checklists) via bulk_create
+# Assim não há upload gigante, nem json.loads de 48MB no servidor, nem timeout.
+# ============================================================
+@login_required
+@require_POST
+def import_trello_start(request):
+    try:
+        payload = _json.loads(request.body.decode("utf-8"))
+    except Exception:
+        return JsonResponse({"error": "Payload inválido."}, status=400)
+
+    name = (payload.get("name") or "Importado do Trello").strip()
+    lists = payload.get("lists") or []
+    if not isinstance(lists, list) or not lists:
+        return JsonResponse({"error": "Sem listas para importar."}, status=400)
+
+    now_str = timezone.now().strftime("%d/%m/%Y %H:%M")
+    new_board_name = f"IMPORTANDO DO TRELLO EM {now_str}: {name}"[:200]
+
+    with transaction.atomic():
+        board = Board.objects.create(name=new_board_name, created_by=request.user)
+        BoardMembership.objects.get_or_create(
+            board=board, user=request.user,
+            defaults={"role": BoardMembership.Role.OWNER},
+        )
+        col_objs = [
+            Column(board=board, name=(l.get("name") or "Lista")[:255], position=i)
+            for i, l in enumerate(lists)
+        ]
+        Column.objects.bulk_create(col_objs)
+        columns = {str(l.get("id")): col.id for l, col in zip(lists, col_objs)}
+
+    return JsonResponse({
+        "board_id": board.id,
+        "board_url": f"/board/{board.id}/",
+        "board_name": new_board_name,
+        "columns": columns,
+    })
+
+
+@login_required
+@require_POST
+def import_trello_batch(request):
+    try:
+        payload = _json.loads(request.body.decode("utf-8"))
+    except Exception:
+        return JsonResponse({"error": "Payload inválido."}, status=400)
+
+    board_id = payload.get("board_id")
+    board = get_object_or_404(Board, id=board_id, created_by=request.user)
+    cards_in = payload.get("cards") or []
+    if not isinstance(cards_in, list):
+        return JsonResponse({"error": "Lote inválido."}, status=400)
+
+    # só colunas deste board (anti-adulteração de column_id)
+    valid_cols = set(Column.objects.filter(board=board).values_list("id", flat=True))
+
+    from datetime import datetime as _dt
+
+    def _due(v):
+        if not v:
+            return None
+        try:
+            return _dt.fromisoformat(str(v).replace("Z", "+00:00")).date()
+        except Exception:
+            return None
+
+    card_objs, card_meta = [], []
+    for c in cards_in:
+        try:
+            col_id = int(c.get("column_id"))
+        except Exception:
+            continue
+        if col_id not in valid_cols:
+            continue
+        labels = c.get("labels") or []
+        tags = ", ".join(str(x) for x in labels if x)[:255]
+        card_objs.append(Card(
+            column_id=col_id,
+            created_by=request.user,
+            title=((c.get("name") or "").strip() or "Card")[:255],
+            description=c.get("desc") or "",
+            tags=tags,
+            due_date=_due(c.get("due")),
+            position=int(c.get("pos") or 0),
+        ))
+        card_meta.append(c)
+
+    if card_objs:
+        Card.all_objects.bulk_create(card_objs, batch_size=500)
+
+        # checklists + itens
+        cl_objs, cl_card, cl_items = [], [], []
+        for card, meta in zip(card_objs, card_meta):
+            for cl in (meta.get("checklists") or []):
+                cl_objs.append(Checklist(card=card, title=(cl.get("name") or "Checklist")[:255], position=0))
+                cl_card.append(card)
+                cl_items.append(cl.get("items") or [])
+        if cl_objs:
+            Checklist.objects.bulk_create(cl_objs, batch_size=500)
+            item_objs = []
+            for cl, items in zip(cl_objs, cl_items):
+                for j, it in enumerate(items):
+                    item_objs.append(ChecklistItem(
+                        card=cl.card, checklist=cl,
+                        text=(it.get("name") or "")[:1000] if isinstance(it, dict) else str(it)[:1000],
+                        is_done=bool(it.get("done")) if isinstance(it, dict) else False,
+                        position=j,
+                    ))
+            if item_objs:
+                ChecklistItem.objects.bulk_create(item_objs, batch_size=1000)
+
+    try:
+        board.version = (board.version or 0) + 1
+        board.save(update_fields=["version"])
+    except Exception:
+        pass
+
+    return JsonResponse({"created": len(card_objs)})

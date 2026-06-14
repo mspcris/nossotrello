@@ -564,6 +564,8 @@ urlpatterns = [
     path("import/trello/", columns_views.import_trello_form, name="import_trello_form"),
     path("import/trello/execute/", columns_views.import_trello_execute, name="import_trello_execute"),
     path("import/trello/from-url/", columns_views.import_trello_from_url, name="import_trello_from_url"),
+    path("import/trello/start/", columns_views.import_trello_start, name="import_trello_start"),
+    path("import/trello/batch/", columns_views.import_trello_batch, name="import_trello_batch"),
 
     # ============================================================
     # CARDS (modal / CRUD / mover / anexos / atividade)
