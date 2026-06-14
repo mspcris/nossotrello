@@ -885,25 +885,46 @@ def update_board_image(request, board_id):
         return render(request, "boards/partials/board_image_form.html", {"board": board})
 
     if request.method == "POST":
+        changed = False
+
+        # NOME (renomear no mesmo modal)
+        new_name = (request.POST.get("name") or "").strip()
+        if new_name and new_name != board.name:
+            old_name = board.name
+            board.name = new_name[:255]
+            board.save(update_fields=["name"])
+            _log_board(
+                board, request,
+                f"<p><strong>{actor}</strong> renomeou o quadro de "
+                f"<strong>{escape(old_name)}</strong> para <strong>{escape(board.name)}</strong>.</p>",
+            )
+            changed = True
+
+        # IMAGEM por arquivo
         if "image" in request.FILES and request.FILES["image"]:
             board.image = request.FILES["image"]
             board.save(update_fields=["image"])
             _log_board(board, request, f"<p><strong>{actor}</strong> atualizou a imagem principal do quadro.</p>")
+            changed = True
+        else:
+            # IMAGEM por URL
+            url = (request.POST.get("image_url") or "").strip()
+            if url:
+                try:
+                    r = requests.get(url, timeout=5)
+                    if r.status_code == 200:
+                        filename = url.split("/")[-1] or "board.jpg"
+                        board.image.save(filename, ContentFile(r.content))
+                        _log_board(board, request, f"<p><strong>{actor}</strong> atualizou a imagem principal do quadro via URL.</p>")
+                        changed = True
+                    else:
+                        return HttpResponse("<div class='text-red-600'>Erro ao carregar imagem.</div>", status=400)
+                except Exception:
+                    return HttpResponse("<div class='text-red-600'>Erro ao carregar imagem.</div>", status=400)
+
+        if changed:
             return HttpResponse('<script>location.reload()</script>')
-
-        url = (request.POST.get("image_url") or "").strip()
-        if url:
-            try:
-                r = requests.get(url, timeout=5)
-                if r.status_code == 200:
-                    filename = url.split("/")[-1] or "board.jpg"
-                    board.image.save(filename, ContentFile(r.content))
-                    _log_board(board, request, f"<p><strong>{actor}</strong> atualizou a imagem principal do quadro via URL.</p>")
-                    return HttpResponse('<script>location.reload()</script>')
-            except Exception:
-                pass
-
-        return HttpResponse("<div class='text-red-600'>Erro ao carregar imagem.</div>", status=400)
+        return HttpResponse("<div class='text-red-600'>Nada para salvar.</div>", status=400)
 
     return HttpResponseBadRequest("Método inválido.")
 

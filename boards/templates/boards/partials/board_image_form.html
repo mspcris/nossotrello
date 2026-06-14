@@ -2,7 +2,7 @@
 
     <div class="bg-white rounded-xl p-6 shadow-xl w-96 relative">
 
-        <h2 class="text-xl font-semibold mb-4">Imagem do Quadro</h2>
+        <h2 class="text-xl font-semibold mb-4">Editar Quadro</h2>
 
         <!-- AQUI APARECERÁ O ERRO -->
         <div id="image-error" class="text-red-600 text-sm font-semibold mb-3" style="display:none;">
@@ -12,6 +12,10 @@
             hx-target="#modal-bg" hx-swap="outerHTML">
 
             {% csrf_token %}
+
+            <label class="font-medium text-sm">Nome do quadro:</label>
+            <input type="text" name="name" value="{{ board.name }}" maxlength="255"
+                   class="w-full border rounded px-3 py-2 mb-4" placeholder="Nome do quadro">
 
             <label class="font-medium text-sm">Enviar imagem:</label>
             <input type="file" name="image" class="w-full border rounded px-3 py-2 mb-4">
