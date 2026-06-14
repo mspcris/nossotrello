@@ -367,9 +367,20 @@
   <!-- ===================== LISTA DE CARDS (SCROLL AQUI) ===================== -->
   <ul id="cards-col-{{ column.id }}"
       class="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
-    {% for card in column.cards.all %}
-      {% include "boards/partials/card_item.html" %}
-    {% endfor %}
+    {% with lazytotal=column.card_count|default:column.cards.count %}
+      {% for card in column.cards.all|slice:":20" %}
+        {% include "boards/partials/card_item.html" %}
+      {% endfor %}
+      {% if lazytotal > 20 %}
+        <li id="more-col-{{ column.id }}"
+            class="cm-more-sentinel text-center text-xs text-white/50 py-2 select-none"
+            hx-get="{% url 'boards:column_cards_more' column.id %}?offset=20"
+            hx-trigger="revealed"
+            hx-swap="outerHTML">
+          ⏳ carregando mais {{ lazytotal|add:"-20" }}…
+        </li>
+      {% endif %}
+    {% endwith %}
   </ul>
 
   <!-- + Card (fim) -->

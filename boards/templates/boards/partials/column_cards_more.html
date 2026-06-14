@@ -1,0 +1,10 @@
+{% for card in cards %}{% include "boards/partials/card_item.html" %}{% endfor %}
+{% if has_more %}
+  <li id="more-col-{{ column.id }}"
+      class="cm-more-sentinel text-center text-xs text-white/50 py-2 select-none"
+      hx-get="{% url 'boards:column_cards_more' column.id %}?offset={{ next_offset }}"
+      hx-trigger="revealed"
+      hx-swap="outerHTML">
+    ⏳ carregando mais…
+  </li>
+{% endif %}

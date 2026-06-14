@@ -834,3 +834,41 @@ def import_trello_actions(request):
 
     logger.info("import.actions board=%s logs=%s", board.id, len(log_objs))
     return JsonResponse({"created": len(log_objs)})
+
+
+# ============================================================
+# LAZY-LOAD de cards (boards grandes): carrega +N cards da coluna sob demanda
+# (htmx hx-trigger="revealed"). Mantém o board leve no load inicial.
+# ============================================================
+@login_required
+def column_cards_more(request, column_id):
+    from django.template.loader import render_to_string
+
+    column = get_object_or_404(Column, id=column_id, is_deleted=False)
+    board = column.board
+    allowed = (
+        board.created_by_id == request.user.id
+        or BoardMembership.objects.filter(board=board, user=request.user).exists()
+    )
+    if not allowed:
+        return HttpResponse("", status=403)
+
+    try:
+        offset = max(0, int(request.GET.get("offset") or 0))
+    except Exception:
+        offset = 0
+    PAGE = 20
+
+    cards = list(
+        Card.objects.filter(column=column, is_archived=False)
+        .order_by("position", "id")[offset:offset + PAGE + 1]
+    )
+    has_more = len(cards) > PAGE
+    cards = cards[:PAGE]
+
+    html = render_to_string(
+        "boards/partials/column_cards_more.html",
+        {"cards": cards, "column": column, "next_offset": offset + PAGE, "has_more": has_more},
+        request=request,
+    )
+    return HttpResponse(html)
