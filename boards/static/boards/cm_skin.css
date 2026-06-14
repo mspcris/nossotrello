@@ -196,13 +196,15 @@ body.cm-skin .aggregator-name {
 
 /* menu próprio da coluna de totais (cor da coluna + cor da fonte) */
 body.cm-skin .agg-menu-btn {
-  pointer-events: auto; cursor: pointer;
-  background: transparent; border: none; padding: 0 4px;
-  color: var(--agg-fg, #fff); font-size: 1.25rem; line-height: 1;
+  pointer-events: auto !important; cursor: pointer;
+  background: transparent; border: none; padding: 2px 8px;
+  color: var(--agg-fg, #fff); font-size: 1.4rem; line-height: 1;
+  touch-action: manipulation;
 }
+body.cm-skin .agg-menu,
+body.cm-skin .agg-menu * { pointer-events: auto !important; }
 body.cm-skin .agg-menu {
   position: absolute; top: calc(100% + 4px); right: 0; z-index: 60;
-  pointer-events: auto;
   width: 210px; padding: 10px;
   background: rgba(28, 28, 38, 0.97);
   backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);

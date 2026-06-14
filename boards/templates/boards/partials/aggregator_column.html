@@ -121,6 +121,13 @@
       if (!btn || !menu || btn.dataset.aggBound) return;
       btn.dataset.aggBound = "1";
 
+      // impedir que o sortable da coluna inicie o arraste ao tocar no menu
+      btn.draggable = false;
+      ["pointerdown", "mousedown", "touchstart", "dragstart"].forEach(function (evt) {
+        btn.addEventListener(evt, function (e) { e.stopPropagation(); });
+        menu.addEventListener(evt, function (e) { e.stopPropagation(); });
+      });
+
       var bg = col.querySelector("#agg-color-bg");
       var fg = col.querySelector("#agg-color-fg");
       var reset = col.querySelector("#agg-color-reset");
