@@ -2023,6 +2023,9 @@ class BoardEmailIngest(models.Model):
         null=True, blank=True,
     )
 
+    PROTOCOL_CHOICES = [("imap", "IMAP"), ("pop", "POP3")]
+    protocol = models.CharField(max_length=8, choices=PROTOCOL_CHOICES, default="imap")
+
     imap_host = models.CharField(max_length=255)
     imap_port = models.PositiveIntegerField(default=993)
     use_ssl = models.BooleanField(default=True)
@@ -2035,7 +2038,8 @@ class BoardEmailIngest(models.Model):
 
     # controle de sync / dedup
     last_sync_at = models.DateTimeField(null=True, blank=True)
-    last_uid = models.CharField(max_length=64, blank=True, default="")
+    last_uid = models.CharField(max_length=64, blank=True, default="")  # IMAP (UID numérico)
+    seen_uids = models.JSONField(default=list, blank=True)              # POP3 (UIDLs já vistos)
     last_error = models.TextField(blank=True, default="")
 
     created_by = models.ForeignKey(

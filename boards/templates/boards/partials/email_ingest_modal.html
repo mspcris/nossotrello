@@ -41,15 +41,27 @@
           </select>
         </label>
 
-        <label class="block">
-          <span class="text-sm font-semibold">Provedor (preenche o servidor)</span>
-          <select id="ei-provider" class="mt-1 w-full border rounded-lg px-3 py-2">
-            <option value="">— escolher —</option>
-            <option value="gmail">Gmail (imap.gmail.com)</option>
-            <option value="kinghost">KingHost / clinicacamim (imap.kinghost.net)</option>
-            <option value="custom">Outro (manual)</option>
-          </select>
-        </label>
+        <div class="grid grid-cols-2 gap-3">
+          <label class="block">
+            <span class="text-sm font-semibold">Provedor</span>
+            <select id="ei-provider" class="mt-1 w-full border rounded-lg px-3 py-2">
+              <option value="">— escolher —</option>
+              <option value="kinghost_imap">KingHost IMAP</option>
+              <option value="kinghost_pop">KingHost POP</option>
+              <option value="gmail_imap">Gmail IMAP</option>
+              <option value="gmail_pop">Gmail POP</option>
+              <option value="outro">Outro (manual)</option>
+            </select>
+            <span class="text-xs text-gray-500">Preenche servidor/porta/SSL.</span>
+          </label>
+          <label class="block">
+            <span class="text-sm font-semibold">Protocolo</span>
+            <select name="protocol" id="ei-protocol" class="mt-1 w-full border rounded-lg px-3 py-2">
+              <option value="imap" {% if not config or config.protocol == 'imap' %}selected{% endif %}>IMAP</option>
+              <option value="pop" {% if config.protocol == 'pop' %}selected{% endif %}>POP3</option>
+            </select>
+          </label>
+        </div>
 
         <label class="block">
           <span class="text-sm font-semibold">E-mail (login)</span>
@@ -68,7 +80,7 @@
 
         <div class="grid grid-cols-2 gap-3">
           <label class="block">
-            <span class="text-sm font-semibold">Servidor IMAP</span>
+            <span class="text-sm font-semibold">Servidor</span>
             <input type="text" name="imap_host" id="ei-host" required value="{{ config.imap_host|default:'' }}"
                    class="mt-1 w-full border rounded-lg px-3 py-2" placeholder="imap.gmail.com">
           </label>
@@ -81,7 +93,7 @@
 
         <div class="flex items-center gap-4 flex-wrap">
           <label class="flex items-center gap-2 text-sm font-semibold">
-            <input type="checkbox" name="use_ssl"
+            <input type="checkbox" name="use_ssl" id="ei-ssl"
               {% if config %}{% if config.use_ssl %}checked{% endif %}{% else %}checked{% endif %}> SSL
           </label>
           <label class="flex items-center gap-2 text-sm font-semibold">
@@ -127,10 +139,22 @@
           var prov = document.getElementById("ei-provider");
           var host = document.getElementById("ei-host");
           var port = document.getElementById("ei-port");
+          var ssl = document.getElementById("ei-ssl");
+          var proto = document.getElementById("ei-protocol");
           if (!prov || !host || !port) return;
+          var P = {
+            kinghost_imap: { host: "imap.kinghost.net", port: 993, ssl: true, proto: "imap" },
+            kinghost_pop:  { host: "pop.kinghost.net",  port: 995, ssl: true, proto: "pop"  },
+            gmail_imap:    { host: "imap.gmail.com",    port: 993, ssl: true, proto: "imap" },
+            gmail_pop:     { host: "pop.gmail.com",     port: 995, ssl: true, proto: "pop"  }
+          };
           prov.addEventListener("change", function () {
-            if (prov.value === "gmail") { host.value = "imap.gmail.com"; port.value = 993; }
-            else if (prov.value === "kinghost") { host.value = "imap.kinghost.net"; port.value = 993; }
+            var c = P[prov.value];
+            if (!c) return; /* "outro"/vazio -> deixa manual */
+            host.value = c.host;
+            port.value = c.port;
+            if (ssl) ssl.checked = c.ssl;
+            if (proto) proto.value = c.proto;
           });
         })();
       </script>

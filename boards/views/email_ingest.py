@@ -43,6 +43,7 @@ def email_ingest_config(request, board_id):
             config = BoardEmailIngest(board=board, created_by=request.user)
 
         config.target_column = column
+        config.protocol = "pop" if request.POST.get("protocol") == "pop" else "imap"
         config.imap_host = (request.POST.get("imap_host") or "").strip()
         config.imap_port = int(request.POST.get("imap_port") or 993)
         config.use_ssl = request.POST.get("use_ssl") == "on"
