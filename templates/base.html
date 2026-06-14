@@ -485,7 +485,12 @@
           <li>
             <button type="button" class="nt-link"
                     onclick="document.getElementById('open-user-settings')?.click();">
-              Minha conta
+              <span class="nt-social-chip">
+                <img class="nt-social-chip-img" width="22" height="22" alt=""
+                     style="border-radius:50%;object-fit:cover;"
+                     src="{% if user_avatar_url %}{{ user_avatar_url }}{% else %}{% static brand_logo %}{% endif %}">
+                Minha conta
+              </span>
             </button>
           </li>
 
@@ -500,7 +505,13 @@
 
           <li>
             <a class="nt-link" href="https://intranet.camim.com.br/" target="_blank" rel="noopener noreferrer">
-            Intranet CAMIM
+            <span class="nt-social-chip">
+              <img class="nt-social-chip-img" width="22" height="22" alt=""
+                   style="border-radius:5px;object-fit:cover;"
+                   src="https://intranet.camim.com.br/favicon.ico"
+                   onerror="this.style.display='none'">
+              Intranet CAMIM
+            </span>
           </a>
 
           </li>
