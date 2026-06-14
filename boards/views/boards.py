@@ -1775,9 +1775,12 @@ def board_poll(request, board_id):
     except Exception:
         pass
 
+    # board.ws.js troca #columns-list via outerHTML -> render o mesmo partial do
+    # board_detail (columns_list.html monta exatamente <div id="columns-list">).
+    # (Antes apontava p/ columns_block.html, que não existe -> poll dava 500.)
     html = render_to_string(
-        "boards/partials/columns_block.html",
-        {"columns": columns},
+        "boards/partials/columns_list.html",
+        {"board": board, "columns": columns},
         request=request,
     )
 
