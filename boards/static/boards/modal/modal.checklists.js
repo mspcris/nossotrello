@@ -157,15 +157,11 @@
     document.querySelector("[data-reorder-checklists-url]") ||
     document.querySelector("[data-reorder-items-url]");
 
-  if (!container) {
-    console.warn("[checklists] container not found");
-    return;
-  }
+  // Normal: na tela do board (sem card aberto) não existe container de checklist.
+  // Retorna quieto — não é erro.
+  if (!container) return;
 
-  if (!window.Sortable) {
-    console.warn("[checklists] Sortable not loaded");
-    return;
-  }
+  if (!window.Sortable) return;
 
   // Se o HTMX re-render trocou o DOM, esse dataset é novo.
   // Mesmo assim, não trave o init se algo falhou antes.
@@ -180,13 +176,6 @@
 
   const blocks = container.querySelectorAll(checklistBlockSel);
   const lists = container.querySelectorAll(checklistListSel);
-
-  console.log("[checklists] initDnD", {
-    blocks: blocks.length,
-    lists: lists.length,
-    hasReorderChecklistsUrl: !!container.getAttribute("data-reorder-checklists-url"),
-    hasReorderItemsUrl: !!container.getAttribute("data-reorder-items-url"),
-  });
 
   // Não marque applied antes de terminar com sucesso.
   try {
