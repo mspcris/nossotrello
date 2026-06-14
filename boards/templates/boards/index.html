@@ -294,7 +294,7 @@
   </style>
 
   {# IMPORTANT: defer evita o crash "document.body is null" dentro do home_groups.js #}
-  <script src="{% static 'boards/home_groups.js' %}" defer></script>
+  <script src="{% static 'boards/home_groups.js' %}?v=20260616-editboard" defer></script>
   <script src="{% static 'boards/home_board_search.js' %}" defer></script>
 {% endblock %}
 

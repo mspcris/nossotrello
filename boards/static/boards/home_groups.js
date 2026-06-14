@@ -320,6 +320,30 @@
     },
 
     // ========= renomear quadro (htmx) =========
+    // Caneta: pergunta se é NOME ou IMAGEM e segue o fluxo certo.
+    editBoard: function (boardId, btn, ev) {
+      ev?.preventDefault?.();
+      ev?.stopPropagation?.();
+      const imageUrl = btn?.dataset?.imageUrl;
+      // sem opção de imagem (quadro compartilhado) -> vai direto pro renomear
+      if (!imageUrl) {
+        window.HomeGroups.renameBoard(boardId, btn, ev);
+        return;
+      }
+      const wantImage = confirm(
+        "O que você quer trocar neste quadro?\n\n" +
+        "OK = IMAGEM\n" +
+        "Cancelar = NOME"
+      );
+      if (wantImage) {
+        if (window.htmx) {
+          window.htmx.ajax("GET", imageUrl, { target: "body", swap: "beforeend" });
+        }
+      } else {
+        window.HomeGroups.renameBoard(boardId, btn, ev);
+      }
+    },
+
     renameBoard: function (boardId, btn, ev) {
       try {
         ev?.preventDefault?.();
