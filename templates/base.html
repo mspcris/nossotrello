@@ -5,6 +5,17 @@
 <html lang="pt-br" class="{% if request.COOKIES.theme == 'dark' %}dark{% endif %}">
 <head>
   <meta charset="UTF-8">
+  {# Console limpo em produção: nada de debug/erros vazando (segurança). #}
+  {# Para depurar: localStorage.setItem('NT_DEBUG','1') e recarregar. #}
+  <script>
+    (function () {
+      try { if (localStorage.getItem('NT_DEBUG') === '1') return; } catch (e) {}
+      var noop = function () {};
+      ['log','debug','info','warn','error','trace','table','group','groupCollapsed',
+       'groupEnd','dir','dirxml','count','countReset','time','timeEnd','timeLog','assert','profile','profileEnd']
+        .forEach(function (m) { try { console[m] = noop; } catch (e) {} });
+    })();
+  </script>
   <title>{% block title %}NossoTrello{% endblock %}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
