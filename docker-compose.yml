@@ -90,6 +90,47 @@ services:
       - .:/app
       - ./logs:/app/logs
 
+  # ============================================================
+  # SCHEDULER — roda os jobs recorrentes a cada 10 minutos
+  # ------------------------------------------------------------
+  # Loop simples (não precisa de cron na VM): a cada 600s dispara
+  #   - sync_email_cards      (e-mail -> card; respeita o intervalo de cada caixa)
+  #   - run_column_autosort   (auto-ordenação; respeita a frequência de cada coluna)
+  #   - run_stale_automations (automação "card parado X dias")
+  # Cada comando é tolerante a falha (|| true) pra não derrubar o loop.
+  # notify_cards_due NÃO entra aqui (é diário às 08:00, com --kind próprio).
+  # ============================================================
+  scheduler:
+    build: .
+    restart: always
+    command: >
+      sh -lc "while true; do
+        echo '[scheduler] tick';
+        python manage.py sync_email_cards || true;
+        python manage.py run_column_autosort || true;
+        python manage.py run_stale_automations || true;
+        sleep 600;
+      done"
+    depends_on:
+      - db
+      - redis
+    env_file:
+      - .env
+    environment:
+      DJANGO_SETTINGS_MODULE: nossotrello.settings
+      REDIS_URL: redis://redis:6379/1
+      DB_ENGINE: postgresql
+      DB_NAME: nossotrello
+      DB_USER: nossotrello
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-nossotrello_secret}
+      DB_HOST: db
+      DB_PORT: "5432"
+    volumes:
+      - .:/app
+      - ${SQLITE_DIR:-./data/sqlite}:/app/db
+      - ./media:/app/media
+      - ./logs:/app/logs
+
   db:
     image: postgres:16-alpine
     restart: always
