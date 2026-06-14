@@ -69,6 +69,27 @@
       font-weight: 700;
     }
 
+    /* "+ Criar novo quadro" com o formato/tamanho de um card de quadro */
+    body.is-home .new-board-button {
+      width: var(--board-width);
+      min-height: var(--board-min-height);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.28);
+      border: 2px dashed rgba(255, 255, 255, 0.55);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+      color: #fff;
+      font-size: 1.05rem;
+      text-align: center;
+      transition: transform 0.25s ease, background 0.2s ease;
+    }
+    body.is-home .new-board-button:hover {
+      background: rgba(255, 255, 255, 0.45);
+      transform: scale(1.04);
+    }
+    @media (max-width: 767px) {
+      body.is-home .new-board-button { width: 100%; }
+    }
+
     /* ============================================================
        CABEÇALHO DA HOME — replica do modelo
        Cabeçalho: #FFFFFF a 30%, altura 125, full width, drop shadow.
@@ -498,7 +519,7 @@
         hx-get="{% url 'boards:add_board' %}"
         hx-target="body"
         hx-swap="beforeend"
-        class="new-board-button cursor-pointer p-6 rounded-lg w-64 flex items-center justify-center font-semibold"
+        class="new-board-button cursor-pointer p-6 flex items-center justify-center font-semibold"
       >
         + Criar novo quadro
       </div>
