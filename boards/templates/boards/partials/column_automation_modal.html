@@ -15,23 +15,42 @@
       Quando um card <strong>entra</strong> ou <strong>sai</strong> desta lista, executa uma ação.
     </p>
 
+    <style>
+      .n8n-flow { display:flex; align-items:center; gap:8px; flex-wrap:wrap; flex:1 1 auto; min-width:0; }
+      .n8n-box { display:inline-flex; align-items:center; gap:6px; padding:7px 11px; border-radius:10px;
+                 font-size:0.8rem; font-weight:600; border:1px solid rgba(255,255,255,.18); }
+      .n8n-box--trigger { background:rgba(16,185,129,.18); color:#a7f3d0; }
+      .n8n-box--action  { background:rgba(59,130,246,.18); color:#bfdbfe; }
+      .n8n-arrow { color:rgba(255,255,255,.45); font-weight:700; }
+      .n8n-rule { display:flex; align-items:center; gap:10px; padding:8px; border-radius:12px;
+                  background:rgba(0,0,0,.22); border:1px solid rgba(255,255,255,.08); }
+    </style>
+
     {% if rules %}
-      <div class="space-y-2 mb-4">
+      <p class="text-[11px] font-bold uppercase tracking-widest text-white/45 mb-1">
+        Automações desta lista ({{ rules|length }})
+      </p>
+      <div class="space-y-2 mb-3">
         {% for r in rules %}
-          <div class="flex items-center justify-between gap-2 bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm">
-            <span>
-              <strong>{{ r.get_trigger_display }}</strong> → {{ r.get_action_display }}{% if r.params.email %} <span class="text-white/50">({{ r.params.email }})</span>{% elif r.params.days %} <span class="text-white/50">(+{{ r.params.days }}d)</span>{% elif r.params.label %} <span class="text-white/50">({{ r.params.label }})</span>{% endif %}
-            </span>
-            <button type="button" class="shrink-0 text-red-400 hover:text-red-300 text-xs"
+          <div class="n8n-rule">
+            <div class="n8n-flow">
+              <span class="n8n-box n8n-box--trigger">⚡ {{ r.get_trigger_display }}</span>
+              <span class="n8n-arrow">→</span>
+              <span class="n8n-box n8n-box--action">{{ r.get_action_display }}{% if r.params.email %} ({{ r.params.email }}){% elif r.params.days %} (+{{ r.params.days }}d){% elif r.params.label %} ({{ r.params.label }}){% endif %}</span>
+            </div>
+            <button type="button" class="shrink-0 text-red-400 hover:text-red-300 text-lg leading-none"
+                    title="Remover automação"
                     hx-post="{% url 'boards:column_automation_delete' r.id %}"
                     hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
-                    hx-target="#col-automation-modal" hx-swap="outerHTML">Remover</button>
+                    hx-target="#col-automation-modal" hx-swap="outerHTML">×</button>
           </div>
         {% endfor %}
       </div>
     {% else %}
-      <p class="text-white/40 text-sm mb-4">Nenhuma automação ainda.</p>
+      <p class="text-white/40 text-sm mb-3">Nenhuma automação ainda. Crie a primeira abaixo. 👇</p>
     {% endif %}
+
+    <p class="text-[11px] font-bold uppercase tracking-widest text-white/45 mb-1 mt-1">➕ Adicionar automação</p>
 
     <form hx-post="{% url 'boards:column_automation_modal' column.id %}"
           hx-target="#col-automation-modal" hx-swap="outerHTML"
