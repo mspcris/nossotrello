@@ -135,7 +135,12 @@
       if (fg && s.fg) fg.value = s.fg;
 
       btn.addEventListener("click", function (ev) { ev.stopPropagation(); menu.hidden = !menu.hidden; });
-      if (bg) bg.addEventListener("input", function () { s.bg = bg.value; apply(s); save(s); });
+      if (bg) bg.addEventListener("input", function () {
+        s.bg = bg.value;
+        // auto-contraste: a fonte acompanha a cor escolhida (override manual no fg abaixo)
+        if (window.cmTextColorFor) { s.fg = window.cmTextColorFor(bg.value); if (fg) fg.value = s.fg; }
+        apply(s); save(s);
+      });
       if (fg) fg.addEventListener("input", function () { s.fg = fg.value; apply(s); save(s); });
       if (reset) reset.addEventListener("click", function () { s = {}; apply(s); save(s); menu.hidden = true; });
 
