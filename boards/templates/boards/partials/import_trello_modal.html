@@ -1,48 +1,54 @@
-{# import_trello_modal.html — importar board do Trello (JSON export) #}
+{# import_trello_modal.html — importar board do Trello (direto por URL ou arquivo JSON) #}
 <div id="import-trello-modal"
      class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm"
      onclick="if(event.target===this)this.remove()">
-  <div class="bg-[#1a2035] text-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6 relative" onclick="event.stopPropagation()">
+  <div class="bg-[#1a2035] text-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6 relative max-h-[92vh] overflow-y-auto" onclick="event.stopPropagation()">
+    {% csrf_token %}
 
     <button class="absolute top-4 right-4 text-white/50 hover:text-white text-xl leading-none"
             onclick="document.getElementById('import-trello-modal').remove()">✕</button>
 
-    <div class="flex items-center gap-3 mb-1">
+    <div class="flex items-center gap-3 mb-3">
       <span class="text-2xl">🔀</span>
       <h2 class="text-lg font-bold">Importar do Trello</h2>
     </div>
-    <!-- ── OPÇÃO 1 — por URL do quadro ───────────────────────── -->
+
+    <!-- ── CAMINHO RÁPIDO: importar direto pela URL ──────────── -->
     <label for="trello-url" class="block text-base font-extrabold tracking-wide mb-1">
       📋 COLE A URL DO QUADRO AQUI
     </label>
     <p class="text-xs text-white/60 mb-2">
-      Cole o link do board do Trello e tecle <strong>Enter</strong>. Abrimos o arquivo
-      <code>.json</code> usando a sua sessão logada do Trello (funciona em board privado) —
-      salve o arquivo e envie na 2ª opção abaixo.
+      Cole o link e clique <strong>Importar direto</strong>. Em board <strong>público</strong>,
+      o servidor baixa e importa na hora. Em board <strong>privado</strong>, o Trello exige a
+      <em>sua</em> sessão — então siga o passo manual abaixo.
     </p>
     <div class="flex gap-2 mb-1">
       <input id="trello-url" type="text"
              placeholder="https://trello.com/b/xxxxxxx/seu-quadro"
              class="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm placeholder-white/30 focus:outline-none focus:border-blue-400"
-             onkeydown="if(event.key==='Enter'){event.preventDefault();window.__trelloOpenJson();}">
-      <button type="button" onclick="window.__trelloOpenJson()"
-              class="px-4 py-2 rounded-lg bg-[#0052CC] hover:bg-blue-500 text-sm font-semibold transition whitespace-nowrap">
-        Baixar JSON
+             onkeydown="if(event.key==='Enter'){event.preventDefault();window.__trelloImportDirect();}">
+      <button type="button" onclick="window.__trelloImportDirect()"
+              class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-sm font-semibold transition whitespace-nowrap">
+        Importar direto
       </button>
     </div>
     <p id="trello-url-err" class="hidden text-red-400 text-xs mb-2"></p>
 
     <div class="border-t border-white/10 my-4"></div>
 
-    <!-- ── OPÇÃO 2 — enviar o arquivo ────────────────────────── -->
-    <p class="text-sm font-bold text-white/80 mb-1">2ª opção — enviar o arquivo JSON</p>
-    <p class="text-sm text-white/60 mb-2">
-      Exporte no Trello em <em>Menu → Imprimir, exportar e compartilhar → Exportar como JSON</em> e envie aqui.
-    </p>
+    <!-- ── PASSO MANUAL (board privado) ──────────────────────── -->
+    <p class="text-sm font-bold text-white/80 mb-1">Board privado? Faça em 2 passos:</p>
+    <ol class="text-sm text-white/70 space-y-1 mb-2 list-none">
+      <li><strong>1.</strong> Cole a URL acima e clique
+        <button type="button" onclick="window.__trelloOpenJson()"
+                class="inline px-2 py-0.5 rounded bg-[#0052CC] hover:bg-blue-500 text-xs font-semibold">Abrir JSON</button>
+        — eu abro o JSON do quadro pra você (usa a sua sessão do Trello). <strong>Salve</strong> o arquivo (Ctrl+S).</li>
+      <li><strong>2.</strong> Envie o arquivo salvo no campo abaixo.</li>
+    </ol>
     <div class="bg-amber-900/30 border border-amber-500/30 rounded-lg px-3 py-2 text-xs text-amber-300 mb-3">
-      ⚠️ O Trello costuma <strong>falhar nesse processo</strong>, entregando uma <strong>página HTML</strong>
-      em vez do JSON (o arquivo começa com <code>&lt;!doctype html&gt;</code>). Se isso acontecer, use a
-      <strong>opção 1</strong> acima. O JSON válido começa com <code>{</code>.
+      ⚠️ O Trello às vezes entrega uma <strong>página HTML</strong> em vez do JSON
+      (começa com <code>&lt;!doctype html&gt;</code>). O JSON válido começa com <code>{</code>.
+      Se vier HTML, refaça o "Abrir JSON".
     </div>
     <div class="bg-blue-900/30 border border-blue-500/30 rounded-lg px-3 py-2 text-xs text-blue-300 mb-4">
       💡 O quadro importado terá o nome <strong>"IMPORTANDO DO TRELLO EM [data]: [nome original]"</strong>.
@@ -92,25 +98,57 @@
 (function(){
   let _file = null;
 
-  // OPÇÃO 1: cola a URL do board -> acrescenta .json -> abre (sessão logada do Trello)
-  window.__trelloOpenJson = function() {
-    const el = document.getElementById('trello-url');
+  function _csrf(){ return document.querySelector('#import-trello-modal [name=csrfmiddlewaretoken]')?.value
+                        || document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''; }
+  function _normUrl(u){
+    u = (u || '').trim();
+    if (!/trello\.com\/b\//i.test(u)) return null;
+    return u;
+  }
+
+  // CAMINHO RÁPIDO: servidor baixa o .json e importa (board público)
+  window.__trelloImportDirect = async function(){
     const err = document.getElementById('trello-url-err');
-    let u = (el && el.value || '').trim();
     err.classList.add('hidden');
-    if (!u) {
-      err.textContent = 'Cole a URL do quadro do Trello.';
+    const u = _normUrl(document.getElementById('trello-url')?.value);
+    if (!u) { err.textContent = 'Cole um link de board do Trello (…/b/…).'; err.classList.remove('hidden'); return; }
+
+    const prog = document.getElementById('import-trello-progress');
+    const bar = document.getElementById('import-trello-bar');
+    const status = document.getElementById('import-trello-status');
+    prog.classList.remove('hidden'); bar.style.width = '25%'; status.textContent = 'Baixando do Trello…';
+
+    try {
+      const fd = new FormData();
+      fd.append('url', u);
+      fd.append('csrfmiddlewaretoken', _csrf());
+      const r = await fetch('/import/trello/from-url/', { method:'POST', body: fd });
+      const data = await r.json();
+      if (!r.ok || data.error) {
+        prog.classList.add('hidden');
+        err.innerHTML = data.error || 'Erro ao importar.';
+        err.classList.remove('hidden');
+        return;
+      }
+      bar.style.width = '100%';
+      status.textContent = `✅ ${data.colunas} coluna(s), ${data.cards} card(s)! Abrindo…`;
+      setTimeout(() => { window.location.href = data.board_url; }, 1200);
+    } catch (e) {
+      prog.classList.add('hidden');
+      err.textContent = 'Erro de conexão.';
       err.classList.remove('hidden');
-      return;
     }
-    if (!/trello\.com\/b\//i.test(u)) {
-      err.textContent = 'Isso não parece um link de board do Trello (…/b/…).';
-      err.classList.remove('hidden');
-      return;
-    }
+  };
+
+  // PASSO MANUAL: abre o .json na sessão do usuário (board privado)
+  window.__trelloOpenJson = function() {
+    const err = document.getElementById('trello-url-err');
+    err.classList.add('hidden');
+    let u = _normUrl(document.getElementById('trello-url')?.value);
+    if (!u) { err.textContent = 'Cole a URL do quadro do Trello primeiro.'; err.classList.remove('hidden'); return; }
     u = u.split('#')[0].split('?')[0].replace(/\/+$/, '');
     if (!/\.json$/i.test(u)) u += '.json';
-    window.open(u, '_blank');  // abre/baixa o JSON usando a sessão do usuário
+    window.open(u, '_blank');
   };
 
   window.__importTrelloHandleFile = function(f) {
@@ -121,13 +159,12 @@
       errEl.classList.remove('hidden');
       return;
     }
-    // detecta o erro comum: arquivo é HTML (página salva) e não o JSON
     const reader = new FileReader();
     reader.onload = function() {
       const head = String(reader.result || '').trim().slice(0, 40).toLowerCase();
       if (head.startsWith('<')) {
         errEl.innerHTML = 'Esse arquivo é uma <strong>página HTML</strong>, não o JSON do Trello. '
-          + 'Use a <strong>opção 1</strong> (URL) acima, ou exporte o JSON correto (começa com <code>{</code>).';
+          + 'Refaça o <strong>"Abrir JSON"</strong> ou exporte o JSON correto (começa com <code>{</code>).';
         errEl.classList.remove('hidden');
         _file = null;
         document.getElementById('import-trello-btn').disabled = true;
@@ -143,52 +180,36 @@
 
   window.__importTrelloSubmit = async function() {
     if (!_file) return;
-
     const btn = document.getElementById('import-trello-btn');
     const prog = document.getElementById('import-trello-progress');
     const bar = document.getElementById('import-trello-bar');
     const status = document.getElementById('import-trello-status');
     const errEl = document.getElementById('import-trello-error');
 
-    btn.disabled = true;
-    prog.classList.remove('hidden');
-    errEl.classList.add('hidden');
-
-    let pct = 5;
-    bar.style.width = pct + '%';
-    const timer = setInterval(() => {
-      if (pct < 85) { pct += Math.random() * 6; bar.style.width = Math.min(pct, 85) + '%'; }
-    }, 250);
+    btn.disabled = true; prog.classList.remove('hidden'); errEl.classList.add('hidden');
+    let pct = 5; bar.style.width = pct + '%';
+    const timer = setInterval(() => { if (pct < 85) { pct += Math.random()*6; bar.style.width = Math.min(pct,85)+'%'; } }, 250);
 
     try {
       const fd = new FormData();
       fd.append('file', _file);
-      fd.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]')?.value || '');
-
-      const r = await fetch('/import/trello/execute/', { method: 'POST', body: fd });
+      fd.append('csrfmiddlewaretoken', _csrf());
+      const r = await fetch('/import/trello/execute/', { method:'POST', body: fd });
       const data = await r.json();
-
       clearInterval(timer);
-
       if (!r.ok || data.error) {
-        bar.style.width = '0%';
-        prog.classList.add('hidden');
+        bar.style.width = '0%'; prog.classList.add('hidden');
         errEl.textContent = data.error || 'Erro ao importar.';
-        errEl.classList.remove('hidden');
-        btn.disabled = false;
+        errEl.classList.remove('hidden'); btn.disabled = false;
         return;
       }
-
       bar.style.width = '100%';
-      status.textContent = `✅ ${data.colunas} coluna(s), ${data.cards} card(s) importados! Abrindo quadro…`;
+      status.textContent = `✅ ${data.colunas} coluna(s), ${data.cards} card(s) importados! Abrindo…`;
       setTimeout(() => { window.location.href = data.board_url; }, 1500);
-
     } catch(e) {
       clearInterval(timer);
-      errEl.textContent = 'Erro de conexão.';
-      errEl.classList.remove('hidden');
-      prog.classList.add('hidden');
-      btn.disabled = false;
+      errEl.textContent = 'Erro de conexão.'; errEl.classList.remove('hidden');
+      prog.classList.add('hidden'); btn.disabled = false;
     }
   };
 })();

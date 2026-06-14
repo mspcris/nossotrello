@@ -1,6 +1,8 @@
 # boards/views/columns.py
 
 import json
+import re
+import requests
 
 from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest
 from django.shortcuts import render, get_object_or_404
@@ -445,9 +447,55 @@ def import_trello_execute(request):
     except Exception:
         return JsonResponse({"error": "Arquivo JSON inválido."}, status=400)
 
-    # Valida estrutura mínima do Trello
+    try:
+        result = _build_board_from_trello(data, request.user)
+    except ValueError as e:
+        return JsonResponse({"error": str(e)}, status=400)
+    return JsonResponse({"ok": True, **result})
+
+
+@login_required
+@require_POST
+def import_trello_from_url(request):
+    """
+    Baixa o JSON do board DIRETO pela URL (server-side) e importa, sem o usuário
+    salvar/enviar arquivo. Funciona em board PÚBLICO. Em board PRIVADO o Trello
+    responde 401/HTML (o servidor não tem a sessão do usuário) -> instrui a 2ª opção.
+    """
+    url = (request.POST.get("url") or "").strip()
+    m = re.search(r"trello\.com/b/([A-Za-z0-9]+)", url)
+    if not m:
+        return JsonResponse({"error": "Cole uma URL de board do Trello (…/b/…)."}, status=400)
+
+    json_url = f"https://trello.com/b/{m.group(1)}.json"
+    try:
+        r = requests.get(json_url, timeout=20, headers={"User-Agent": "Mozilla/5.0 (NossoTrello)"})
+    except Exception:
+        return JsonResponse({"error": "Não consegui acessar o Trello agora. Tente de novo."}, status=502)
+
+    head = (r.text or "")[:80].strip().lower()
+    if r.status_code in (401, 403) or "unauthorized" in head or head.startswith("<"):
+        return JsonResponse({
+            "error": "Board PRIVADO: o servidor não consegue baixar sozinho (o Trello exige a sua "
+                     "sessão). Use a 2ª opção: clique em \"Abrir JSON\", salve o arquivo e envie aqui."
+        }, status=400)
+
+    try:
+        data = r.json()
+    except Exception:
+        return JsonResponse({"error": "O Trello não devolveu um JSON válido. Use a 2ª opção."}, status=400)
+
+    try:
+        result = _build_board_from_trello(data, request.user)
+    except ValueError as e:
+        return JsonResponse({"error": str(e)}, status=400)
+    return JsonResponse({"ok": True, **result})
+
+
+def _build_board_from_trello(data, user):
+    """Cria um novo board a partir do dict de export do Trello. Levanta ValueError se inválido."""
     if not isinstance(data.get("lists"), list) or not isinstance(data.get("cards"), list):
-        return JsonResponse({"error": "Não parece ser um export válido do Trello."}, status=400)
+        raise ValueError("Não parece ser um export válido do Trello (faltam lists/cards).")
 
     board_name = data.get("name") or "Importado do Trello"
     now_str = timezone.now().strftime("%d/%m/%Y %H:%M")
@@ -459,22 +507,20 @@ def import_trello_execute(request):
     )
     cards_raw = [c for c in data["cards"] if not c.get("closed")]
 
-    # Mapa idList -> cards
     cards_by_list = defaultdict(list)
     for c in cards_raw:
         cards_by_list[c["idList"]].append(c)
 
-    # Mapa idChecklist -> checklist data
     checklists_map = {cl["id"]: cl for cl in (data.get("checklists") or [])}
 
     with transaction.atomic():
         new_board = Board.objects.create(
             name=new_board_name,
-            created_by=request.user,
+            created_by=user,
         )
         BoardMembership.objects.get_or_create(
             board=new_board,
-            user=request.user,
+            user=user,
             defaults={"role": BoardMembership.Role.OWNER},
         )
 
@@ -538,11 +584,9 @@ def import_trello_execute(request):
                             position=j,
                         )
 
-    board_url = f"/board/{new_board.id}/"
-    return JsonResponse({
-        "ok": True,
-        "board_url": board_url,
+    return {
+        "board_url": f"/board/{new_board.id}/",
         "board_name": new_board_name,
         "colunas": len(lists_raw),
         "cards": len(cards_raw),
-    })
+    }
