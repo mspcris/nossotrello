@@ -35,7 +35,7 @@
         {% for r in rules %}
           <div class="n8n-rule">
             <div class="n8n-flow">
-              <span class="n8n-box n8n-box--trigger">⚡ {{ r.get_trigger_display }}{% if r.params.count %} ({{ r.params.count }}){% endif %}</span>
+              <span class="n8n-box n8n-box--trigger">⚡ {{ r.get_trigger_display }}{% if r.params.count %} ({{ r.params.count }}){% elif r.trigger == 'stale' and r.params.days %} ({{ r.params.days }}d){% endif %}</span>
               <span class="n8n-arrow">→</span>
               <span class="n8n-box n8n-box--action">{{ r.get_action_display }}{% if r.params.email %} ({{ r.params.email }}){% elif r.params.phone %} ({{ r.params.phone }}){% elif r.params.days %} (+{{ r.params.days }}d){% elif r.params.label %} ({{ r.params.label }}){% endif %}</span>
             </div>
@@ -71,6 +71,12 @@
           <input type="number" name="count" value="5" min="0"
                  class="w-24 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm">
           <span class="text-xs text-white/50">cards</span>
+        </div>
+        <div id="ca-p-staledays" class="mt-2 hidden flex items-center gap-2">
+          <span class="text-xs text-white/50">parado há</span>
+          <input type="number" name="stale_days" value="7" min="1"
+                 class="w-24 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm">
+          <span class="text-xs text-white/50">dias (verificado 1x/dia)</span>
         </div>
       </div>
 
@@ -125,9 +131,12 @@
     <script>
       window.__caTrigger = function () {
         var sel = document.querySelector('#col-automation-modal input[name=trigger]:checked');
-        var isCount = sel && (sel.value === 'count_below' || sel.value === 'count_above');
-        var el = document.getElementById('ca-p-count');
-        if (el) el.classList.toggle('hidden', !isCount);
+        var v = sel ? sel.value : '';
+        var isCount = (v === 'count_below' || v === 'count_above');
+        var c = document.getElementById('ca-p-count');
+        if (c) c.classList.toggle('hidden', !isCount);
+        var s = document.getElementById('ca-p-staledays');
+        if (s) s.classList.toggle('hidden', v !== 'stale');
       };
       window.__caAction = function () {
         var sel = document.querySelector('#col-automation-modal input[name=action]:checked');

@@ -166,6 +166,56 @@ def _send_whatsapp(rule, card, column, p):
         logger.exception("WhatsApp: falha ao enviar para %s", phone)
 
 
+def run_stale_triggers(now=None):
+    """Gatilho 'card parado X dias': aplica a ação a cards que estão há >= X dias
+    na lista. Chamado por cron (management command). Retorna nº de cards afetados.
+    """
+    from boards.models import Card, ColumnAutomation
+
+    now = now or timezone.now()
+    rules = (
+        ColumnAutomation.objects.filter(trigger="stale", is_active=True)
+        .select_related("column", "column__board")
+    )
+    affected = 0
+    boards_touched = set()
+    for rule in rules:
+        try:
+            days = int((rule.params or {}).get("days") or 0)
+        except Exception:
+            days = 0
+        if days <= 0:
+            continue
+        cutoff = now - timedelta(days=days)
+        cards = Card.objects.filter(
+            column=rule.column, is_archived=False,
+            column_since__isnull=False, column_since__lte=cutoff,
+        )
+        for card in cards:
+            try:
+                _apply(rule, card, rule.column, actor=None)
+                affected += 1
+                boards_touched.add(rule.column.board_id)
+                # re-arma o cronômetro se o card continua na mesma lista
+                card.refresh_from_db(fields=["column", "column_since"])
+                if card.column_id == rule.column_id:
+                    card.column_since = now
+                    card.save(update_fields=["column_since"])
+            except Exception:
+                logger.exception("stale: falha rule=%s card=%s", rule.id, card.id)
+
+    if boards_touched:
+        from boards.models import Board
+        for bid in boards_touched:
+            try:
+                b = Board.objects.get(id=bid)
+                b.version = (b.version or 0) + 1
+                b.save(update_fields=["version"])
+            except Exception:
+                pass
+    return affected
+
+
 def run_count_triggers(column, actor=None):
     """Gatilhos de contagem (lista com MENOS/MAIS de X cards).
 
@@ -229,7 +279,8 @@ def _move_to(card, p):
     last = Card.objects.filter(column=target).count()
     card.column = target
     card.position = last
-    card.save(update_fields=["column", "position"])
+    card.column_since = timezone.now()
+    card.save(update_fields=["column", "position", "column_since"])
 
 
 def _copy_to(card, p):

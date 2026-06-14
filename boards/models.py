@@ -283,6 +283,8 @@ class Card(models.Model):
 
     column = models.ForeignKey(Column, related_name="cards", on_delete=models.CASCADE)
     position = models.PositiveIntegerField(default=0)
+    # quando o card entrou na coluna atual (p/ automação "parado X dias")
+    column_since = models.DateTimeField(null=True, blank=True)
 
     is_deleted = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(blank=True, null=True)
@@ -2094,6 +2096,7 @@ class ColumnAutomation(models.Model):
         ("leave", "Quando um card sai da lista"),
         ("count_below", "Quando a lista fica com MENOS de X cards"),
         ("count_above", "Quando a lista fica com MAIS de X cards"),
+        ("stale", "Quando um card fica parado X dias nesta lista"),
     ]
     ACTION_CHOICES = [
         ("send_email", "Disparar e-mail avisando alguém"),

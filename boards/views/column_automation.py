@@ -42,6 +42,12 @@ def column_automation_modal(request, column_id):
                     params["count"] = int(request.POST.get("count") or 0)
                 except Exception:
                     params["count"] = 0
+            # dias parado (gatilho stale) — nome próprio p/ não colidir com 'days' da ação
+            if trigger == "stale":
+                try:
+                    params["days"] = int(request.POST.get("stale_days") or 0)
+                except Exception:
+                    params["days"] = 0
             if action == "send_email":
                 params["email"] = (request.POST.get("email") or "").strip()
                 msg = (request.POST.get("message") or "").strip()

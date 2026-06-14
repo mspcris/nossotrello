@@ -107,6 +107,7 @@ def add_card(request, column_id):
             desc_html, saved_paths = _save_base64_images_to_media(raw_desc, folder="quill")
             card.description = desc_html
             card.column = column
+            card.column_since = timezone.now()
 
             if where == "top":
                 Card.objects.filter(column=column).update(position=F("position") + 1)
@@ -1012,9 +1013,13 @@ def move_card(request):
             c.position = index
         c.save(update_fields=["position"])
 
-    # posiciona o card
+    # posiciona o card; se trocou de coluna, zera o cronômetro "parado"
     card.position = new_position
-    card.save(update_fields=["position"])
+    if old_column.id != new_column.id:
+        card.column_since = timezone.now()
+        card.save(update_fields=["position", "column_since"])
+    else:
+        card.save(update_fields=["position"])
 
     # versão do board destino
     new_board.version += 1
