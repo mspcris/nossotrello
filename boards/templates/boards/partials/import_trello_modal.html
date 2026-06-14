@@ -214,11 +214,20 @@
       fd.append('file', _file);
       fd.append('csrfmiddlewaretoken', _csrf());
       const r = await fetch('/import/trello/execute/', { method:'POST', body: fd });
-      const data = await r.json();
+      let data = null;
+      try { data = await r.json(); } catch(_) { data = null; }
       clearInterval(timer);
-      if (!r.ok || data.error) {
+      if (!r.ok || !data || data.error) {
         bar.style.width = '0%'; prog.classList.add('hidden');
-        errEl.textContent = data.error || 'Erro ao importar.';
+        if (data && data.error) {
+          errEl.textContent = data.error;
+        } else if (r.status === 413) {
+          errEl.innerHTML = 'O arquivo é grande demais para o servidor (limite ~50MB). ' +
+            'Esse quadro provavelmente excede o limite.';
+        } else {
+          errEl.innerHTML = 'O servidor demorou ou recusou (quadro muito grande). ' +
+            'Tente de novo; se persistir, me avise que esse quadro precisa de import em lote maior.';
+        }
         errEl.classList.remove('hidden'); btn.disabled = false;
         return;
       }
@@ -227,7 +236,9 @@
       setTimeout(() => { window.location.href = data.board_url; }, 1500);
     } catch(e) {
       clearInterval(timer);
-      errEl.textContent = 'Erro de conexão.'; errEl.classList.remove('hidden');
+      errEl.innerHTML = 'Conexão interrompida (provável timeout num quadro grande). ' +
+        'Tente novamente.';
+      errEl.classList.remove('hidden');
       prog.classList.add('hidden'); btn.disabled = false;
     }
   };

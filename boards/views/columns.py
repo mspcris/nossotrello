@@ -547,76 +547,80 @@ def _build_board_from_trello(data, user):
 
     checklists_map = {cl["id"]: cl for cl in (data.get("checklists") or [])}
 
+    from datetime import datetime as _dt
+
+    def _parse_due(tc):
+        v = tc.get("due")
+        if not v:
+            return None
+        try:
+            return _dt.fromisoformat(v.replace("Z", "+00:00")).date()
+        except Exception:
+            return None
+
+    # IMPORTANTE: quadros do Trello podem ter MILHARES de cards. Fazer um INSERT
+    # por linha contra o RDS (us-east-1) estoura o timeout do gunicorn. Por isso
+    # tudo aqui é montado em memória e gravado com bulk_create (poucos round-trips).
     with transaction.atomic():
-        new_board = Board.objects.create(
-            name=new_board_name,
-            created_by=user,
-        )
+        new_board = Board.objects.create(name=new_board_name, created_by=user)
         BoardMembership.objects.get_or_create(
-            board=new_board,
-            user=user,
+            board=new_board, user=user,
             defaults={"role": BoardMembership.Role.OWNER},
         )
 
-        for col_pos, lst in enumerate(lists_raw):
-            column = Column.objects.create(
-                board=new_board,
-                name=lst["name"],
-                position=col_pos,
-            )
+        # 1) Colunas
+        col_objs = [
+            Column(board=new_board, name=lst["name"], position=i)
+            for i, lst in enumerate(lists_raw)
+        ]
+        Column.objects.bulk_create(col_objs)
+        columns_by_list = {lst["id"]: col for lst, col in zip(lists_raw, col_objs)}
 
-            col_cards = sorted(
-                cards_by_list.get(lst["id"], []),
-                key=lambda x: x.get("pos", 0),
-            )
-
+        # 2) Cards (paralelo a card_tc p/ ligar checklists depois)
+        card_objs, card_tc = [], []
+        for lst in lists_raw:
+            col = columns_by_list[lst["id"]]
+            col_cards = sorted(cards_by_list.get(lst["id"], []), key=lambda x: x.get("pos", 0))
             for card_pos, tc in enumerate(col_cards):
-                # Labels → tags (nomes separados por vírgula)
                 labels = tc.get("labels") or []
-                tag_names = ", ".join(
-                    lbl["name"] for lbl in labels if lbl.get("name")
-                )
-
-                # Due date
-                due_date = None
-                if tc.get("due"):
-                    try:
-                        from datetime import datetime as _dt
-                        due_date = _dt.fromisoformat(
-                            tc["due"].replace("Z", "+00:00")
-                        ).date()
-                    except Exception:
-                        pass
-
-                card = Card.all_objects.create(
-                    column=column,
+                tag_names = ", ".join(lbl["name"] for lbl in labels if lbl.get("name"))
+                card_objs.append(Card(
+                    column=col,
+                    created_by=user,
                     title=(tc.get("name") or "").strip() or f"Card {card_pos+1}",
                     description=tc.get("desc") or "",
                     tags=tag_names,
-                    due_date=due_date,
+                    due_date=_parse_due(tc),
                     position=card_pos,
-                )
+                ))
+                card_tc.append(tc)
+        Card.all_objects.bulk_create(card_objs, batch_size=500)
 
-                # Checklists
-                for cl_id in (tc.get("idChecklists") or []):
-                    cl_data = checklists_map.get(cl_id)
-                    if not cl_data:
-                        continue
-                    cl = Checklist.objects.create(
-                        card=card,
-                        title=cl_data.get("name") or "Checklist",
-                        position=0,
-                    )
-                    for j, item in enumerate(
-                        sorted(cl_data.get("checkItems") or [], key=lambda x: x.get("pos", 0))
-                    ):
-                        ChecklistItem.objects.create(
-                            card=card,
-                            checklist=cl,
-                            text=item.get("name") or "",
-                            is_done=(item.get("state") == "complete"),
-                            position=j,
-                        )
+        # 3) Checklists (paralelo a card/cl_data p/ ligar itens depois)
+        cl_objs, cl_card, cl_data_ref = [], [], []
+        for card, tc in zip(card_objs, card_tc):
+            for cl_id in (tc.get("idChecklists") or []):
+                cl_data = checklists_map.get(cl_id)
+                if not cl_data:
+                    continue
+                cl_objs.append(Checklist(card=card, title=cl_data.get("name") or "Checklist", position=0))
+                cl_card.append(card)
+                cl_data_ref.append(cl_data)
+        if cl_objs:
+            Checklist.objects.bulk_create(cl_objs, batch_size=500)
+
+        # 4) Itens de checklist
+        item_objs = []
+        for cl, card, cl_data in zip(cl_objs, cl_card, cl_data_ref):
+            for j, item in enumerate(sorted(cl_data.get("checkItems") or [], key=lambda x: x.get("pos", 0))):
+                item_objs.append(ChecklistItem(
+                    card=card, checklist=cl,
+                    text=item.get("name") or "",
+                    is_done=(item.get("state") == "complete"),
+                    position=j,
+                ))
+        if item_objs:
+            ChecklistItem.objects.bulk_create(item_objs, batch_size=1000)
 
     return {
         "board_url": f"/board/{new_board.id}/",
