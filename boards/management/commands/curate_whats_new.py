@@ -79,6 +79,16 @@ CURATED = {
         "Nas configurações da sua conta tem agora a opção \"Compartilhar na rede social quadros do Tarefas\". Marcada (padrão), curtir um card ou compartilhar um quadro aparece no reel como sempre. Desmarcada, nada do Tarefas vai mais pro Espaço Social — e os \"curtiu um card\" e convites de quadro que você já tinha publicado somem do feed na hora.",
     ),
 
+    "932dd67": (
+        "🔢",
+        "Cards contadores: números que se atualizam sozinhos",
+        "No menu (⋮) da coluna agora tem \"Card contador\": ele cria um card fixo no "
+        "topo da lista mostrando um número grande que se atualiza sozinho. Dá pra "
+        "contar o total de cards, os entregues (no total ou nos últimos X dias), os "
+        "não entregues, os com prazo vencido ou os parados há X+ dias. Ótimo pra ter "
+        "o pulso da lista batendo o olho — e ele não atrapalha a contagem nem a "
+        "auto-ordenação dos cards de verdade.",
+    ),
     "8b8b92c": (
         "⚡",
         "Automação da coluna com mais ações",
