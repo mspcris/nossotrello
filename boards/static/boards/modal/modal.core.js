@@ -294,23 +294,18 @@
 
     // ✅ CHECKLIST DnD / UX
     try { Modal.checklists?.init?.(); } catch {}
+  }
 
-    // Bind HTMX (uma vez) — sem forçar aba aqui (evita quebrar DnD)
-    if (!window.__cmModalContentInitBound) {
-      window.__cmModalContentInitBound = true;
-
-      document.body.addEventListener("htmx:afterSwap", (evt) => {
-        if (evt.target && evt.target.id === "modal-body") {
-          initCardModalContent();
-        }
-      });
-
-      document.body.addEventListener("htmx:afterSettle", (evt) => {
-        if (evt.target && evt.target.id === "modal-body") {
-          initCardModalContent();
-        }
-      });
-    }
+  // Bind HTMX uma única vez, no carregamento. SÓ afterSwap — afterSettle dispara
+  // no mesmo swap e fazia o conteúdo do card inicializar 2x (initDnD duplicado +
+  // erro insertBefore do htmx).
+  if (!window.__cmModalContentInitBound) {
+    window.__cmModalContentInitBound = true;
+    document.body.addEventListener("htmx:afterSwap", (evt) => {
+      if (evt.target && evt.target.id === "modal-body") {
+        initCardModalContent();
+      }
+    });
   }
 
 
@@ -378,11 +373,7 @@
     state.isOpen = true;
     state.lastOpenedAt = Date.now();
 
-    // IMPORTANTE: conteúdo pode entrar via HTMX; roda init "logo depois"
-    setTimeout(() => {
-      try { initCardModalContent(); } catch {}
-    }, 0);
-
+    // o init do conteúdo roda no htmx:afterSwap de #modal-body (uma vez só).
     log("open()");
     return true;
   };

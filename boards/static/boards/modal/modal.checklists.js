@@ -307,16 +307,15 @@
   };
 
 
-  // Rebind em swaps HTMX (checklist-list e modal-body)
+  // Rebind em swaps HTMX PARCIAIS (checklist-list). O swap do #modal-body inteiro
+  // é tratado pelo core (initCardModalContent -> Modal.checklists.init), então NÃO
+  // reagimos a modal-body aqui — senão o init dos checklists rodava 2x.
   document.body.addEventListener("htmx:afterSwap", (evt) => {
     const t = evt.target;
     if (!t) return;
+    if (t.id === "modal-body") return;  // já tratado pelo core
 
-    if (
-      t.id === "checklist-list" ||
-      t.id === "modal-body" ||
-      t.closest?.("#modal-body")
-    ) {
+    if (t.id === "checklist-list" || t.closest?.("#checklist-list")) {
       initChecklistUX(t);
       initChecklistCreateFormReset();
       initChecklistCreateEnterSubmit();
