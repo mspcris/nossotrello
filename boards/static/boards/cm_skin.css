@@ -174,21 +174,24 @@ body.cm-skin .aggregator-column .column-header h3 {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 body.cm-skin .aggregator-card {
-  display: flex; align-items: center; gap: 12px;
+  /* vertical e centralizado (igual ao modelo): número grande em cima, nome embaixo */
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; text-align: center;
   background: rgba(255, 255, 255, 0.10);
   border: 1px solid rgba(255, 255, 255, 0.20);
-  border-radius: 12px;
-  padding: 10px 12px;
+  border-radius: 14px;
+  padding: 14px 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   transition: background .15s ease;
 }
 body.cm-skin .aggregator-card:hover { background: rgba(255, 255, 255, 0.16); }
 body.cm-skin .aggregator-count {
-  font-weight: 800; font-size: 1.15rem; color: var(--agg-fg, #fff);
-  min-width: 2.4ch; text-align: center;
+  font-weight: 800; font-size: 1.9rem; line-height: 1.05;
+  color: var(--agg-fg, #fff);
 }
 body.cm-skin .aggregator-name {
-  color: var(--agg-fg, #fff); opacity: 0.85; font-weight: 600; font-size: 0.85rem; line-height: 1.2;
+  color: var(--agg-fg, #fff); opacity: 0.9; font-weight: 600;
+  font-size: 0.85rem; line-height: 1.2;
 }
 
 /* menu próprio da coluna de totais (cor da coluna + cor da fonte) */
