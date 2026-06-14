@@ -139,6 +139,28 @@
     await refreshBoardCardSnippet(cardId);
   }
 
+  // Capa por COR estática (sem upload)
+  window.Modal.cover.setColor = async function (color) {
+    const root = getRoot();
+    if (!root) return;
+    const form = root.querySelector("#cm-cover-form");
+    const action = form?.getAttribute("action");
+    if (!action) { showErr("Form de capa não encontrado."); return; }
+    const cardId = root.getAttribute("data-card-id");
+    hideErr();
+    const fd = new FormData();
+    fd.append("cover_color", color);
+    const csrftoken = getCookie("csrftoken");
+    const r = await fetch(action, {
+      method: "POST", body: fd,
+      headers: csrftoken ? { "X-CSRFToken": csrftoken } : {},
+      credentials: "same-origin",
+    });
+    if (!r.ok) { showErr(`Falha ao aplicar cor. HTTP ${r.status}`); return; }
+    await refreshModalBody(cardId);
+    await refreshBoardCardSnippet(cardId);
+  };
+
   function isPastingInsideQuill(e) {
     const path = e.composedPath?.() || [];
     return path.some((el) => el?.classList?.contains?.("ql-editor"));

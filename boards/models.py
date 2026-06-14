@@ -279,6 +279,7 @@ class Card(models.Model):
     due_notify = models.BooleanField(default=True)
 
     cover_image = models.ImageField(upload_to="card_covers/", null=True, blank=True)
+    cover_color = models.CharField(max_length=9, blank=True, default="")  # cor estática de capa (hex)
 
     column = models.ForeignKey(Column, related_name="cards", on_delete=models.CASCADE)
     position = models.PositiveIntegerField(default=0)

@@ -1633,6 +1633,22 @@ def set_card_cover(request, card_id):
     if not _user_can_edit_board(request.user, card.column.board):
         return _deny_read_only(request)
 
+    # Cor estática de capa (sem upload): aplica e re-renderiza o modal
+    cover_color = (request.POST.get("cover_color") or "").strip()
+    if cover_color and not request.FILES.get("cover"):
+        card.cover_color = cover_color
+        if getattr(card, "cover_image", None):
+            card.cover_image = None
+        card.save(update_fields=["cover_color", "cover_image"])
+        try:
+            b = card.column.board
+            b.version = (b.version or 0) + 1
+            b.save(update_fields=["version"])
+        except Exception:
+            pass
+        _log_card(card, request, f"<p><strong>{actor}</strong> definiu uma cor de capa no card.</p>")
+        return _render_card_modal(request, card)
+
     f: UploadedFile | None = request.FILES.get("cover")
     if not f:
         return HttpResponseBadRequest("Envie uma imagem no campo 'cover'.")
@@ -1689,7 +1705,8 @@ def set_card_cover(request, card_id):
     # 2) Atualiza a capa (isso pode disparar cleanup do arquivo antigo)
     # ============================================================
     card.cover_image = f
-    card.save(update_fields=["cover_image"])
+    card.cover_color = ""
+    card.save(update_fields=["cover_image", "cover_color"])
     board = card.column.board
     board.version += 1
     board.save(update_fields=["version"])
@@ -1788,7 +1805,8 @@ def remove_card_cover(request, card_id):
 
     # só zera o campo (sem deletar arquivo)
     card.cover_image = None
-    card.save(update_fields=["cover_image"])
+    card.cover_color = ""
+    card.save(update_fields=["cover_image", "cover_color"])
     board = card.column.board
     board.version += 1
     board.save(update_fields=["version"])

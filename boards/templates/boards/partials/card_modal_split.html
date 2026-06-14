@@ -326,6 +326,19 @@
                 </div>
               </div>
 
+              <div class="flex flex-wrap items-center gap-1.5 mt-2">
+                <span class="cm-muted" style="margin-right:4px;">Ou cor:</span>
+                <button type="button" onclick="window.Modal.cover.setColor('#16a34a')" title="Verde" style="height:24px;width:24px;border-radius:6px;border:1px solid rgba(0,0,0,.15);background:#16a34a;cursor:pointer;"></button>
+                <button type="button" onclick="window.Modal.cover.setColor('#a16207')" title="Mostarda" style="height:24px;width:24px;border-radius:6px;border:1px solid rgba(0,0,0,.15);background:#a16207;cursor:pointer;"></button>
+                <button type="button" onclick="window.Modal.cover.setColor('#c2410c')" title="Laranja" style="height:24px;width:24px;border-radius:6px;border:1px solid rgba(0,0,0,.15);background:#c2410c;cursor:pointer;"></button>
+                <button type="button" onclick="window.Modal.cover.setColor('#dc2626')" title="Vermelho" style="height:24px;width:24px;border-radius:6px;border:1px solid rgba(0,0,0,.15);background:#dc2626;cursor:pointer;"></button>
+                <button type="button" onclick="window.Modal.cover.setColor('#9333ea')" title="Roxo" style="height:24px;width:24px;border-radius:6px;border:1px solid rgba(0,0,0,.15);background:#9333ea;cursor:pointer;"></button>
+                <button type="button" onclick="window.Modal.cover.setColor('#2563eb')" title="Azul" style="height:24px;width:24px;border-radius:6px;border:1px solid rgba(0,0,0,.15);background:#2563eb;cursor:pointer;"></button>
+                <button type="button" onclick="window.Modal.cover.setColor('#0d9488')" title="Teal" style="height:24px;width:24px;border-radius:6px;border:1px solid rgba(0,0,0,.15);background:#0d9488;cursor:pointer;"></button>
+                <button type="button" onclick="window.Modal.cover.setColor('#475569')" title="Cinza" style="height:24px;width:24px;border-radius:6px;border:1px solid rgba(0,0,0,.15);background:#475569;cursor:pointer;"></button>
+                <input type="color" onchange="window.Modal.cover.setColor(this.value)" title="Cor personalizada" style="height:26px;width:34px;padding:0;border:none;cursor:pointer;">
+              </div>
+
               <div id="cm-cover-error"
                    class="hidden mt-2 px-3 py-2 rounded-md text-sm border border-red-500/30 bg-red-500/10 text-red-200"></div>
             </div>

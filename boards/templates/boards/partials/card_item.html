@@ -55,6 +55,8 @@
         class="card-cover-img"
         loading="lazy">
     </div>
+  {% elif card.cover_color %}
+    <div class="mb-2" style="height:36px;border-radius:8px;background:{{ card.cover_color }};"></div>
   {% endif %}
 
 
