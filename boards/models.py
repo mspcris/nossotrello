@@ -2097,6 +2097,7 @@ class ColumnAutomation(models.Model):
     ]
     ACTION_CHOICES = [
         ("send_email", "Disparar e-mail avisando alguém"),
+        ("send_whatsapp", "Enviar mensagem no WhatsApp"),
         ("assign_user", "Marcar uma pessoa (cria acompanhamento)"),
         ("move_to", "Mover o card para outra coluna"),
         ("copy_to", "Copiar o card para outra coluna"),

@@ -37,7 +37,7 @@
             <div class="n8n-flow">
               <span class="n8n-box n8n-box--trigger">⚡ {{ r.get_trigger_display }}{% if r.params.count %} ({{ r.params.count }}){% endif %}</span>
               <span class="n8n-arrow">→</span>
-              <span class="n8n-box n8n-box--action">{{ r.get_action_display }}{% if r.params.email %} ({{ r.params.email }}){% elif r.params.days %} (+{{ r.params.days }}d){% elif r.params.label %} ({{ r.params.label }}){% endif %}</span>
+              <span class="n8n-box n8n-box--action">{{ r.get_action_display }}{% if r.params.email %} ({{ r.params.email }}){% elif r.params.phone %} ({{ r.params.phone }}){% elif r.params.days %} (+{{ r.params.days }}d){% elif r.params.label %} ({{ r.params.label }}){% endif %}</span>
             </div>
             <button type="button" class="shrink-0 text-red-400 hover:text-red-300 text-lg leading-none"
                     title="Remover automação"
@@ -89,6 +89,14 @@
         <input type="email" name="email" placeholder="email@destino.com.br"
                class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm">
       </div>
+      <div id="ca-p-whatsapp" class="ca-param hidden">
+        <input type="text" name="phone" placeholder="WhatsApp com DDI/DDD — ex: 5599999999999"
+               class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm">
+      </div>
+      <div id="ca-p-message" class="ca-param hidden">
+        <textarea name="message" rows="3" placeholder="Mensagem (opcional). Deixe em branco para usar o texto padrão."
+                  class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm"></textarea>
+      </div>
       <div id="ca-p-member" class="ca-param hidden">
         <select name="user_id" class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm">
           {% for m in members %}<option value="{{ m.user_id }}">{{ m.user.get_full_name|default:m.user.email|default:m.user.username }}</option>{% endfor %}
@@ -123,11 +131,12 @@
       };
       window.__caAction = function () {
         var sel = document.querySelector('#col-automation-modal input[name=action]:checked');
-        var map = { send_email:'ca-p-email', assign_user:'ca-p-member', move_to:'ca-p-column',
-                    copy_to:'ca-p-column', set_due:'ca-p-days', set_start:'ca-p-days', add_label:'ca-p-label' };
+        var map = { send_email:['ca-p-email','ca-p-message'], send_whatsapp:['ca-p-whatsapp','ca-p-message'],
+                    assign_user:['ca-p-member'], move_to:['ca-p-column'], copy_to:['ca-p-column'],
+                    set_due:['ca-p-days'], set_start:['ca-p-days'], add_label:['ca-p-label'] };
         document.querySelectorAll('#col-automation-modal .ca-param').forEach(function (el) { el.classList.add('hidden'); });
-        var id = sel ? map[sel.value] : null;
-        if (id) { var el = document.getElementById(id); if (el) el.classList.remove('hidden'); }
+        var ids = sel ? (map[sel.value] || []) : [];
+        ids.forEach(function (id) { var el = document.getElementById(id); if (el) el.classList.remove('hidden'); });
       };
       window.__caAction();
       window.__caTrigger();

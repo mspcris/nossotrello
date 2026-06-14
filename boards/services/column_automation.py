@@ -60,6 +60,9 @@ def _apply(rule, card, column, actor):
     if a == "send_email":
         _send_email(rule, card, column, p)
         return
+    if a == "send_whatsapp":
+        _send_whatsapp(rule, card, column, p)
+        return
     # demais ações operam sobre um card específico (gatilhos de contagem não têm)
     if card is None:
         return
@@ -110,6 +113,57 @@ def _send_email(rule, card, column, p):
         settings, "EMAIL_HOST_USER", None
     )
     send_mail(subject, body, from_email, [to], fail_silently=True)
+
+
+def _whatsapp_context(rule, card, column):
+    """Texto-base da notificação (sem a mensagem custom)."""
+    from boards.models import Card
+
+    if rule.trigger in ("count_below", "count_above"):
+        count = Card.objects.filter(column=column, is_archived=False).count()
+        return (
+            f'Lista "{column.name}" ({column.board.name}) está com {count} card(s).'
+        )
+    if card:
+        trig = "entrou em" if rule.trigger == "enter" else "saiu de"
+        return f'Card "{card.title}" {trig} "{column.name}" ({column.board.name}).'
+    return f'Atualização na lista "{column.name}".'
+
+
+def _send_whatsapp(rule, card, column, p):
+    """Envia WhatsApp via webhook/provider configurado.
+
+    Requer settings.WHATSAPP_API_URL (POST JSON {phone, message}) e, opcional,
+    settings.WHATSAPP_API_TOKEN (Bearer). Sem provider, registra warning e segue
+    (a UI/regra fica salva; é só plugar a integração quando houver API).
+    """
+    phone = (p.get("phone") or "").strip()
+    if not phone:
+        return
+    custom = (p.get("message") or "").strip()
+    base = _whatsapp_context(rule, card, column)
+    message = (custom + "\n\n" + base).strip() if custom else base
+
+    url = getattr(settings, "WHATSAPP_API_URL", None)
+    if not url:
+        logger.warning(
+            "WhatsApp não enviado (WHATSAPP_API_URL ausente). phone=%s msg=%r",
+            phone, message[:120],
+        )
+        return
+    try:
+        import requests
+
+        headers = {"Content-Type": "application/json"}
+        token = getattr(settings, "WHATSAPP_API_TOKEN", None)
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        requests.post(
+            url, json={"phone": phone, "message": message},
+            headers=headers, timeout=10,
+        )
+    except Exception:
+        logger.exception("WhatsApp: falha ao enviar para %s", phone)
 
 
 def run_count_triggers(column, actor=None):
