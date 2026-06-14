@@ -75,8 +75,7 @@
       width: 100%;
       display: flex;
       align-items: center;
-      padding-top: 0;
-      padding-bottom: 0;
+      padding: 0 36px;       /* conteúdo encosta perto das bordas (igual exemplo) */
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18); /* drop shadow */
     }
     body.is-home .cm-header-bar {
@@ -85,32 +84,38 @@
       box-shadow: none;
       backdrop-filter: none;
       -webkit-backdrop-filter: none;
-      grid-template-columns: auto 1fr auto; /* colunas auto p/ caber a identidade */
-      max-width: 1500px;
+      grid-template-columns: auto 1fr auto; /* colunas auto: ☰ na esquerda, identidade na direita */
+      max-width: none;       /* ocupa a largura toda, sem centralizar num box estreito */
+      margin: 0;
+      padding-left: 0;
+      padding-right: 0;
     }
     body.is-home .cm-header-center { padding: 0 12px; }
 
+    /* respiro entre o cabeçalho e o primeiro painel (Favoritos) */
+    body.is-home #home-groups-area { margin-top: 38px; }
+
     /* botões de ícone do header (☰ 🏠 🎨 🎁 ⏻) */
     body.is-home .cm-icon-btn {
-      height: 40px; width: 40px; padding: 0;
+      height: 42px; width: 42px; padding: 0;
       display: flex; align-items: center; justify-content: center;
       border-radius: 12px;
       background: rgba(255, 255, 255, 0.70);
       border: 1px solid rgba(0, 0, 0, 0.08);
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
-      font-size: 1.05rem; line-height: 1; cursor: pointer;
+      font-size: 1.1rem; line-height: 1; cursor: pointer;
       color: #0b0b0b; text-decoration: none;
       transition: background .15s, transform .1s;
     }
     body.is-home .cm-icon-btn:hover { background: #fff; }
     body.is-home .cm-icon-btn:active { transform: scale(0.95); }
-    body.is-home .cm-icon-btn--sm { height: 30px; width: 30px; border-radius: 9999px; font-size: 0.9rem; }
+    body.is-home .cm-icon-btn--sm { height: 38px; width: 38px; border-radius: 9999px; font-size: 1rem; }
     body.is-home .cm-icon-btn--palette {
       background: conic-gradient(from 0deg,#ef4444,#f59e0b,#10b981,#3b82f6,#8b5cf6,#ef4444);
       border: none; color: #fff;
     }
     body.is-home #menuToggle {
-      height: 40px; width: 40px; padding: 0; border-radius: 12px;
+      height: 42px; width: 42px; padding: 0; border-radius: 12px;
       display: flex; align-items: center; justify-content: center;
     }
 
@@ -158,8 +163,8 @@
     }
     body.is-home .cm-home-avatar-wrap { position: relative; display: inline-block; }
     body.is-home .cm-home-avatar {
-      height: 60px; width: 60px; border-radius: 9999px; object-fit: cover;
-      border: 2px solid rgba(255, 255, 255, 0.8); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
+      height: 84px; width: 84px; border-radius: 9999px; object-fit: cover;
+      border: 3px solid rgba(255, 255, 255, 0.85); box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
     }
 
     /* popover de aparência (🎨) — cor / transparência / fosco */
