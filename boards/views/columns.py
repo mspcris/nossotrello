@@ -465,7 +465,20 @@ def import_trello_from_url(request):
     url = (request.POST.get("url") or "").strip()
     m = re.search(r"trello\.com/b/([A-Za-z0-9]+)", url)
     if not m:
-        return JsonResponse({"error": "Cole uma URL de board do Trello (…/b/…)."}, status=400)
+        # Link de CARD (…/c/…): tenta descobrir o quadro dono do card.
+        mc = re.search(r"trello\.com/c/([A-Za-z0-9]+)", url)
+        if mc:
+            short = _resolve_board_from_card(mc.group(1))
+            if short:
+                m = re.match(r"([A-Za-z0-9]+)", short)
+            else:
+                return JsonResponse({
+                    "error": "Isso é um link de CARD (…/c/…). Para importar eu preciso do link do "
+                             "QUADRO inteiro (…/b/…). Abra o quadro no Trello e copie a URL da barra "
+                             "de endereço — ou use a 2ª opção (Abrir JSON → salvar → enviar).",
+                }, status=400)
+        if not m:
+            return JsonResponse({"error": "Cole uma URL de board do Trello (…/b/…)."}, status=400)
 
     json_url = f"https://trello.com/b/{m.group(1)}.json"
     try:
@@ -490,6 +503,27 @@ def import_trello_from_url(request):
     except ValueError as e:
         return JsonResponse({"error": str(e)}, status=400)
     return JsonResponse({"ok": True, **result})
+
+
+def _resolve_board_from_card(card_short):
+    """A partir do shortLink de um card público, descobre o shortLink do quadro.
+
+    Em card privado o Trello responde 401/HTML -> retorna None (cai na mensagem
+    que orienta a colar o link do quadro).
+    """
+    try:
+        r = requests.get(
+            f"https://trello.com/c/{card_short}.json",
+            timeout=15, headers={"User-Agent": "Mozilla/5.0 (NossoTrello)"},
+        )
+        head = (r.text or "")[:80].strip().lower()
+        if r.status_code != 200 or head.startswith("<"):
+            return None
+        data = r.json()
+    except Exception:
+        return None
+    board = data.get("board") or {}
+    return board.get("shortLink") or data.get("idBoard") or None
 
 
 def _build_board_from_trello(data, user):
