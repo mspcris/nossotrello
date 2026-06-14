@@ -9,8 +9,8 @@ from django.views.decorators.http import require_http_methods
 
 from ..models import Board, BoardEmailIngest
 from ..permissions import can_edit_board
-from ..services.email_ingest import sync_one
-from ..services.secret_crypto import encrypt_secret
+from ..services.email_ingest import sync_one, test_connection
+from ..services.secret_crypto import decrypt_secret, encrypt_secret
 
 
 def _active_columns(board):
@@ -105,4 +105,43 @@ def email_ingest_sync_now(request, board_id):
         )
     return HttpResponse(
         f'<div class="ei-result ei-result--ok">{created} card(s) criado(s). ✅</div>'
+    )
+
+
+@login_required
+@require_http_methods(["POST"])
+def email_ingest_test(request, board_id):
+    """Testa o login IMAP/POP com os dados do formulário, sem criar cards."""
+    board = get_object_or_404(Board, id=board_id)
+    if not can_edit_board(request.user, board):
+        return HttpResponse("Sem permissão.", status=403)
+
+    protocol = "pop" if request.POST.get("protocol") == "pop" else "imap"
+    host = (request.POST.get("imap_host") or "").strip()
+    port = int(request.POST.get("imap_port") or (995 if protocol == "pop" else 993))
+    use_ssl = request.POST.get("use_ssl") == "on"
+    user = (request.POST.get("email_user") or "").strip()
+    password = request.POST.get("password") or ""
+
+    # senha em branco -> usa a salva (se houver)
+    if not password:
+        config = BoardEmailIngest.objects.filter(board=board).first()
+        if config and config.password_encrypted:
+            try:
+                password = decrypt_secret(bytes(config.password_encrypted))
+            except Exception:
+                password = ""
+
+    if not (host and user and password):
+        return HttpResponse(
+            '<div class="ei-result ei-result--warn">Preencha servidor, e-mail e senha para testar.</div>'
+        )
+
+    ok, err = test_connection(protocol, host, port, use_ssl, user, password)
+    if ok:
+        return HttpResponse(
+            '<div class="ei-result ei-result--ok">Conexão OK! Login bem-sucedido. ✅</div>'
+        )
+    return HttpResponse(
+        f'<div class="ei-result ei-result--err">Falhou: {err}</div>'
     )

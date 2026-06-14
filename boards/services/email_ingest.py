@@ -60,8 +60,48 @@ def _extract_body(msg):
     return ""
 
 
+MAX_ATTACH = 10                       # anexos por e-mail
+MAX_ATTACH_BYTES = 25 * 1024 * 1024   # 25 MB por anexo
+
+
+def _save_attachments(card, msg, config):
+    """Salva os anexos do e-mail como CardAttachment do card."""
+    if not msg.is_multipart():
+        return
+    from django.core.files.base import ContentFile
+    from boards.models import CardAttachment
+
+    saved = 0
+    for part in msg.walk():
+        if saved >= MAX_ATTACH:
+            break
+        if part.get_content_maintype() == "multipart":
+            continue
+        filename = part.get_filename()
+        disp = str(part.get("Content-Disposition") or "").lower()
+        if not filename and "attachment" not in disp:
+            continue
+        try:
+            data = part.get_payload(decode=True)
+        except Exception:
+            data = None
+        if not data or len(data) > MAX_ATTACH_BYTES:
+            continue
+        name = (_decode(filename) or "anexo")[:200]
+        try:
+            CardAttachment.objects.create(
+                card=card,
+                file=ContentFile(data, name=name),
+                description="(anexo de e-mail)",
+                created_by=config.created_by,
+            )
+            saved += 1
+        except Exception:
+            logger.debug("falha ao salvar anexo de e-mail", exc_info=True)
+
+
 def _card_from_msg(config, msg):
-    """Cria um Card a partir de uma mensagem de e-mail."""
+    """Cria um Card (e seus anexos) a partir de uma mensagem de e-mail."""
     from boards.models import Card  # evita import circular
 
     subject = _decode(msg.get("Subject")) or "(sem assunto)"
@@ -70,13 +110,14 @@ def _card_from_msg(config, msg):
     body = _extract_body(msg)
 
     desc = f"De: {from_name} <{from_addr}>\nData: {date_str}\n\n{body}".strip()
-    Card.objects.create(
+    card = Card.objects.create(
         column=config.target_column,
         title=subject[:255],
         description=desc,
         tags=(from_addr or from_name or "email")[:255],
         created_by=config.created_by,
     )
+    _save_attachments(card, msg, config)
 
 
 def _touch(config, **fields):
@@ -225,3 +266,36 @@ def sync_one(config):
             logger.debug("bump board version (email ingest) falhou", exc_info=True)
 
     return created, err
+
+
+def test_connection(protocol, host, port, use_ssl, user, password):
+    """Tenta logar (IMAP/POP) sem criar nada. Retorna (ok:bool, error:str|None)."""
+    if not (host and user and password):
+        return False, "Preencha servidor, e-mail e senha."
+    try:
+        if protocol == "pop":
+            conn = (poplib.POP3_SSL(host, port, timeout=20) if use_ssl
+                    else poplib.POP3(host, port, timeout=20))
+            try:
+                conn.user(user)
+                conn.pass_(password)
+                conn.stat()
+            finally:
+                try:
+                    conn.quit()
+                except Exception:
+                    pass
+        else:
+            conn = (imaplib.IMAP4_SSL(host, port, timeout=20) if use_ssl
+                    else imaplib.IMAP4(host, port, timeout=20))
+            try:
+                conn.login(user, password)
+                conn.select("INBOX")
+            finally:
+                try:
+                    conn.logout()
+                except Exception:
+                    pass
+        return True, None
+    except Exception as e:
+        return False, str(e)

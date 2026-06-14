@@ -117,6 +117,11 @@
 
         <div class="flex flex-wrap gap-2 pt-2">
           <button type="submit" class="px-4 py-2 rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-700">Salvar</button>
+          <button type="button" class="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700"
+                  hx-post="{% url 'boards:email_ingest_test' board.id %}"
+                  hx-include="closest form"
+                  hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                  hx-target="#ei-sync-result" hx-swap="innerHTML">Testar conexão</button>
           {% if config %}
           <button type="button" class="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700"
                   hx-post="{% url 'boards:email_ingest_sync_now' board.id %}"
