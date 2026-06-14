@@ -33,6 +33,8 @@
   window.__USER_WS_INSTALLED__ = true;
 
   const RECONNECT_DELAYS_MS = [1000, 2000, 4000, 8000, 16000, 30000];
+  // Limite de tentativas: se o WS não sobe, para de tentar (não inunda o console).
+  const MAX_RECONNECT_ATTEMPTS = 3;
 
   let ws = null;
   let reconnectAttempt = 0;
@@ -67,6 +69,10 @@
 
   function scheduleReconnect() {
     if (closedByClient) return;
+    if (reconnectAttempt >= MAX_RECONNECT_ATTEMPTS) {
+      log("reconnect: limite atingido — desisto do WS");
+      return;
+    }
     const idx = Math.min(reconnectAttempt, RECONNECT_DELAYS_MS.length - 1);
     const delay = RECONNECT_DELAYS_MS[idx];
     reconnectAttempt++;

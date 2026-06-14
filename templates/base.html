@@ -147,11 +147,11 @@
 
   <!-- BOARD WEBSOCKET — realtime sync (Phase 1 pub/sub) -->
   <!-- Substitui o polling central. Fallback lento (5min) se WS cair. -->
-  <script defer src="{% static 'boards/modal/board.ws.js' %}"></script>
+  <script defer src="{% static 'boards/modal/board.ws.js' %}?v=20260616-wscap"></script>
 
   <!-- USER WEBSOCKET — canal pessoal (/ws/me/) -->
   <!-- Recebe chat, notificações, track-time, pills (Phase 3 pub/sub) -->
-  <script defer src="{% static 'boards/modal/user.ws.js' %}"></script>
+  <script defer src="{% static 'boards/modal/user.ws.js' %}?v=20260616-wscap"></script>
 
 <!-- MODAL dock -->
   <script defer src="{% static 'boards/modal/modal.dock.js' %}?v=20260424a"></script>
