@@ -135,18 +135,20 @@ def _send_whatsapp(rule, card, column, p):
     via boards.services.notifications.send_whatsapp. Config em settings
     (EVOLUTION_BASE_URL/API_KEY/INSTANCE) — já usada nas notificações de card.
     """
-    phone = "".join(ch for ch in (p.get("phone") or "") if ch.isdigit())
-    if not phone:
-        return
     custom = (p.get("message") or "").strip()
     base = _whatsapp_context(rule, card, column)
     message = (custom + "\n\n" + base).strip() if custom else base
 
     try:
-        from boards.services.notifications import send_whatsapp
+        from boards.services.notifications import send_whatsapp, _safe_digits_phone
+        # normaliza p/ 55 + DDD + número (Evolution exige o código do país)
+        phone = _safe_digits_phone(p.get("phone") or "")
+        if not phone:
+            logger.warning("WhatsApp (automação): número inválido %r", p.get("phone"))
+            return
         send_whatsapp(user=None, phone_digits=phone, body=message, sync=True)
     except Exception:
-        logger.exception("WhatsApp (automação): falha ao enviar para %s", phone)
+        logger.exception("WhatsApp (automação): falha ao enviar para %r", p.get("phone"))
 
 
 def run_stale_triggers(now=None):
