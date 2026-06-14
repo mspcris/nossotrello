@@ -255,15 +255,8 @@
 
       /* esconder chrome mobile do base que duplica/não serve na home */
       body.is-home .cm-header-mobile-id { display: none !important; }
-      /* "1 2 3 Auto" volta como pílula FLUTUANTE (canto inferior): existe sem
-         empurrar o conteúdo entre o header e o primeiro grupo. */
-      body.is-home div:has(> .boards-cols-switch) { margin: 0 !important; min-height: 0 !important; }
-      body.is-home .boards-cols-switch {
-        position: fixed !important;
-        right: 14px !important; bottom: 14px !important;
-        top: auto !important; left: auto !important;
-        z-index: 1300 !important;
-      }
+      /* "1 2 3 Auto": padrão do base — estático e centralizado, abaixo da
+         barra e acima do primeiro grupo (como era antes). Sem override aqui. */
 
       /* popover de aparência cabendo na tela */
       .cm-appearance-pop { left: 12px; right: 12px; width: auto; top: 92px; }

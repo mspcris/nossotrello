@@ -319,37 +319,7 @@
 
   <!-- IMAGEM DO QUADRO NO CENTRO D HEADER -->
 {% block header_center %}
-  {# ============================================================
-     CAPA DO QUADRO no header — DESATIVADA a pedido (jun/2026).
-     Mantida comentada porque pode voltar no futuro. A gestão da
-     imagem do quadro continua disponível pelo thumb da busca
-     (block header_right_under_logo). NÃO apagar.
-     ============================================================ #}
-  {% comment %}
-  <div class="relative group">
-    {% if board and board.image %}
-      <div class="cm-cover cm-cover--header"
-           style="--cm-cover-url: url('{{ board.image.url }}'); cursor:pointer;"
-           onclick="openBoardImageModal('{{ board.image.url }}')"
-           title="Ver imagem em tamanho completo">
-        <img src="{{ board.image.url }}" alt="{{ board.name }}" class="cm-cover__img" loading="lazy" style="pointer-events:none;">
-      </div>
-      <button type="button"
-        class="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/60 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
-        hx-post="{% url 'boards:remove_board_image' board.id %}" hx-target="body" hx-swap="beforeend"
-        aria-label="Remover imagem do quadro" title="Remover imagem">✖</button>
-    {% else %}
-      <div class="cm-cover cm-cover--header" style="--cm-cover-url: none;">
-        <div style="position:relative; z-index:1; padding:0 14px; display:flex; align-items:center; height:100%; font-weight:700;">{{ board.name }}</div>
-      </div>
-      <button type="button"
-        class="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/60 text-white text-xl leading-none flex items-center justify-center opacity-90 hover:opacity-100 transition-opacity z-10"
-        {% if board %}hx-get="{% url 'boards:update_board_image' board.id %}"{% endif %} hx-target="body" hx-swap="beforeend"
-        aria-label="Adicionar imagem do quadro" title="Adicionar imagem">+</button>
-    {% endif %}
-  </div>
-  {% endcomment %}
-
+  {# Capa do quadro removida do header (jun/2026). Para reativar, recuperar de commit antigo. #}
   {# Busca central, igual à home: pílula que abre a busca do quadro #}
   <button type="button" id="header-search-toggle"
           class="home-global-search cm-search-trigger"
