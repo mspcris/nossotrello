@@ -135,56 +135,88 @@
     chip.style.color = luminance < 0.55 ? "#fff" : "#111";
   }
 
+  function _currentTags(root) {
+    const input = root?.querySelector("#cm-tags-input");
+    return String(input && input.value || "")
+      .split(",").map((t) => t.trim()).filter(Boolean);
+  }
+  function _setTags(root, arr) {
+    const input = root?.querySelector("#cm-tags-input");
+    if (!input) return;
+    input.value = arr.join(", ");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+  function _toggleTag(root, tag, on) {
+    let cur = _currentTags(root);
+    const has = cur.includes(tag);
+    if (on && !has) cur.push(tag);
+    else if (!on && has) cur = cur.filter((t) => t !== tag);
+    _setTags(root, cur);
+  }
+
+  // Etiquetas estilo Trello: cada uma é uma linha com checkbox (aplica/remove),
+  // barra colorida com o nome, lápis (editar cor/nome) e × (excluir do catálogo).
   async function renderTags(root) {
     const list = root?.querySelector("#cm-tag-list");
     if (!list) return;
 
     const tags = await apiGetCatalog(root);
+    const applied = _currentTags(root);
 
     list.innerHTML = "";
 
     tags.forEach((tagObj) => {
-      const tagName = tagObj.name;
-      const tagColor = tagObj.color || "#888888";
+      const name = tagObj.name;
+      const color = tagObj.color || "#888888";
 
-      const chip = document.createElement("div");
-      chip.className = "cm-tag-chip";
-      chip.textContent = safeText(tagName);
+      const row = document.createElement("label");
+      row.className = "cm-tag-row";
 
-      // aplica cor (chip + contraste)
-      setChipColor(chip, tagColor);
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.className = "cm-tag-check";
+      cb.checked = applied.includes(name);
+      cb.onchange = () => _toggleTag(root, name, cb.checked);
 
-      const remove = document.createElement("span");
+      const bar = document.createElement("span");
+      bar.className = "cm-tag-bar";
+      bar.textContent = safeText(name);
+      setChipColor(bar, color);
+
+      const edit = document.createElement("button");
+      edit.type = "button";
+      edit.className = "cm-tag-edit";
+      edit.textContent = "✏️";
+      edit.title = "Editar cor/nome";
+      edit.onclick = (e) => {
+        e.preventDefault(); e.stopPropagation();
+        const ni = root.querySelector("#cm-tag-new");
+        const ci = root.querySelector("#cm-tag-new-color");
+        if (ni) { ni.value = name; ni.focus(); }
+        if (ci) ci.value = /^#[0-9a-fA-F]{6}$/.test(color) ? color : "#888888";
+      };
+
+      const remove = document.createElement("button");
+      remove.type = "button";
       remove.className = "cm-tag-remove";
       remove.textContent = "×";
-
+      remove.title = "Excluir etiqueta";
       remove.onclick = async (e) => {
-        e.stopPropagation();
-        await apiDeleteTag(root, tagName);
+        e.preventDefault(); e.stopPropagation();
+        await apiDeleteTag(root, name);
         await renderTags(root);
       };
 
-      chip.onclick = () => addTagToInput(root, tagName);
-
-      chip.appendChild(remove);
-      list.appendChild(chip);
+      row.appendChild(cb);
+      row.appendChild(bar);
+      row.appendChild(edit);
+      row.appendChild(remove);
+      list.appendChild(row);
     });
   }
 
   function addTagToInput(root, tag) {
-    const input = root?.querySelector("#cm-tags-input");
-    if (!input) return;
-
-    const current = String(input.value || "")
-      .split(",")
-      .map((t) => t.trim())
-      .filter(Boolean);
-
-    if (current.includes(tag)) return;
-
-    current.push(tag);
-    input.value = current.join(", ");
-    input.dispatchEvent(new Event("input", { bubbles: true }));
+    _toggleTag(root, tag, true);
   }
 
   function init() {
