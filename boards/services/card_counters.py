@@ -30,6 +30,9 @@ def compute_counter_value(card):
     except Exception:
         days = 0
 
+    if mode == "entered_recent":
+        cutoff = timezone.now() - timedelta(days=days)
+        return base.filter(column_since__isnull=False, column_since__gte=cutoff).count()
     if mode == "total":
         return base.count()
     if mode == "delivered":
@@ -50,6 +53,7 @@ def compute_counter_value(card):
 
 def default_title_for(mode, days):
     labels = {
+        "entered_recent": f"Entraram ({days} dias)",
         "total": "Total",
         "done_recent": f"Entregues ({days} dias)",
         "delivered": "Entregues",

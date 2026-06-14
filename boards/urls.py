@@ -61,6 +61,7 @@ from boards.views.boards import (
     board_share_remove,
     board_share_role_update,
     toggle_aggregator_column,
+    board_counters,
     # access request
     request_board_access,
     approve_board_access,
@@ -467,6 +468,7 @@ urlpatterns = [
     # BOARDS — POLLING (sincronização leve)
     # ============================================================
     path("board/<int:board_id>/poll/", board_poll, name="board_poll"),
+    path("board/<int:board_id>/counters/", board_counters, name="board_counters"),
 
     # ============================================================
     # BOARDS — PRAZOS (term due + cores do board)

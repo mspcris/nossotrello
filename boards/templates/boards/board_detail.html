@@ -1230,8 +1230,43 @@
       if (!resp.ok) {
         const txt = await resp.text().catch(() => "");
         console.error("move-card falhou:", resp.status, txt);
+      } else {
+        // contadores (Total / últimos X dias / etc.) são calculados no servidor:
+        // recalcula na hora pra não precisar de F5 após mover.
+        window.NT_refreshCardCounters?.();
       }
     }
+
+    // Atualiza os "cards contadores" buscando os valores no servidor.
+    let __ntCounterTimer = null;
+    window.NT_refreshCardCounters = function () {
+      clearTimeout(__ntCounterTimer);
+      __ntCounterTimer = setTimeout(async () => {
+        try {
+          const bid = window.BOARD_ID;
+          if (!bid) return;
+          const r = await fetch(`/board/${bid}/counters/`, { headers: { "X-Requested-With": "XMLHttpRequest" } });
+          if (!r.ok) return;
+          const d = await r.json();
+          Object.entries(d.counters || {}).forEach(([id, val]) => {
+            const el = document.querySelector(`#card-${id} .cc-counter-num`);
+            if (el) el.textContent = val;
+          });
+        } catch (_e) {}
+      }, 200);
+    };
+
+    // refaz a contagem após operações htmx que mexem nos cards (add/excluir/arquivar/entregar)
+    document.body.addEventListener("htmx:afterRequest", (e) => {
+      try {
+        const cfg = e.detail?.requestConfig || {};
+        const path = String(cfg.path || e.detail?.pathInfo?.requestPath || "");
+        if ((cfg.verb || "").toLowerCase() === "get") return;
+        if (/(add-card|add_card|delete|archive|deliver|cover|counter)/i.test(path)) {
+          window.NT_refreshCardCounters?.();
+        }
+      } catch (_e) {}
+    });
 
     function afterLocalMoveUpdateUI() {
       try {

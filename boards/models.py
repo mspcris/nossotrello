@@ -285,6 +285,7 @@ class Card(models.Model):
 
     # ---- Card contador (mostra um número grande, atualizado sozinho) ----
     COUNTER_MODE_CHOICES = [
+        ("entered_recent", "Entraram na lista nos últimos X dias"),
         ("total", "Total de cards na lista"),
         ("done_recent", "Entregues nos últimos X dias"),
         ("delivered", "Entregues (total)"),

@@ -56,7 +56,7 @@
         var m = document.getElementById('cc-mode');
         var d = document.getElementById('cc-days');
         if (!m || !d) return;
-        d.classList.toggle('hidden', !(m.value === 'done_recent' || m.value === 'stale'));
+        d.classList.toggle('hidden', !(m.value === 'done_recent' || m.value === 'stale' || m.value === 'entered_recent'));
       };
       window.__ccMode();
     </script>

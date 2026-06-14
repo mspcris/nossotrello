@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import F
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
+from django.template.loader import render_to_string
 from django.views.decorators.http import require_http_methods
 
 from ..models import Card, Column
@@ -36,7 +37,7 @@ def card_counter_modal(request, column_id):
             color = (request.POST.get("cover_color") or "").strip()
             # empurra os demais cards p/ baixo e fixa o contador no topo
             Card.objects.filter(column=column).update(position=F("position") + 1)
-            Card.all_objects.create(
+            card = Card.all_objects.create(
                 column=column,
                 created_by=request.user,
                 title=title[:255],
@@ -48,6 +49,13 @@ def card_counter_modal(request, column_id):
             board = column.board
             board.version = (board.version or 0) + 1
             board.save(update_fields=["version"])
-            return _render(request, column, msg="Card contador criado no topo da lista. ✅")
+
+            # insere o card na coluna NA HORA (OOB) — o realtime fica pausado com
+            # o modal aberto, então sem isso o número só aparecia após F5.
+            resp = _render(request, column, msg="Card contador criado no topo da lista. ✅")
+            card_html = render_to_string("boards/partials/card_item.html", {"card": card}, request=request)
+            oob = f'<div hx-swap-oob="afterbegin:#cards-col-{column.id}">{card_html}</div>'
+            resp.content = resp.content + oob.encode("utf-8")
+            return resp
 
     return _render(request, column)

@@ -1790,7 +1790,37 @@ def board_poll(request, board_id):
         "html": html,
     })
 
-    
+
+@login_required
+def board_counters(request, board_id):
+    """Valores ao vivo dos cards contadores do board (recalculados no servidor).
+
+    Chamado pelo cliente após mover/adicionar/excluir card, p/ atualizar os
+    números sem F5 (os contadores são calculados no servidor — total, entregues,
+    prazo vencido, etc.)."""
+    board = get_object_or_404(Board, is_deleted=False, id=board_id)
+    allowed = (
+        board.created_by_id == request.user.id
+        or BoardMembership.objects.filter(board=board, user=request.user).exists()
+    )
+    if not allowed:
+        return JsonResponse({"counters": {}}, status=403)
+
+    from boards.services.card_counters import compute_counter_value
+
+    out = {}
+    counters = (
+        Card.objects.filter(column__board=board, is_archived=False)
+        .exclude(counter_mode="")
+        .select_related("column")
+    )
+    for c in counters:
+        try:
+            out[c.id] = compute_counter_value(c)
+        except Exception:
+            pass
+    return JsonResponse({"counters": out})
+
 
 @login_required
 def toggle_aggregator_column(request, board_id):
