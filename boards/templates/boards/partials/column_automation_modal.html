@@ -36,10 +36,23 @@
       <div class="space-y-2 mb-3">
         {% for r in rules %}
           <div class="n8n-rule">
-            <div class="n8n-flow">
+            <div class="n8n-flow ca-edit" role="button" tabindex="0" title="Clique para editar esta automação"
+                 style="cursor:pointer;"
+                 onclick="window.__caEdit(this)"
+                 data-rule-id="{{ r.id }}"
+                 data-trigger="{{ r.trigger }}"
+                 data-action="{{ r.action }}"
+                 data-email="{{ r.params.email|default:'' }}"
+                 data-phone="{{ r.params.phone|default:'' }}"
+                 data-message="{{ r.params.message|default:'' }}"
+                 data-count="{{ r.params.count|default:'' }}"
+                 data-days="{{ r.params.days|default:'' }}"
+                 data-label="{{ r.params.label|default:'' }}"
+                 data-user-id="{{ r.params.user_id|default:'' }}"
+                 data-target-column-id="{{ r.params.target_column_id|default:'' }}">
               <span class="n8n-box n8n-box--trigger">⚡ {{ r.get_trigger_display }}{% if r.params.count %} ({{ r.params.count }}){% elif r.trigger == 'stale' and r.params.days %} ({{ r.params.days }}d){% endif %}</span>
               <span class="n8n-arrow">→</span>
-              <span class="n8n-box n8n-box--action">{{ r.get_action_display }}{% if r.params.email %} ({{ r.params.email }}){% elif r.params.phone %} ({{ r.params.phone }}){% elif r.params.days %} (+{{ r.params.days }}d){% elif r.params.label %} ({{ r.params.label }}){% endif %}</span>
+              <span class="n8n-box n8n-box--action">{{ r.get_action_display }}{% if r.params.email %} ({{ r.params.email }}){% elif r.params.phone %} ({{ r.params.phone }}){% elif r.params.days %} (+{{ r.params.days }}d){% elif r.params.label %} ({{ r.params.label }}){% endif %} ✏️</span>
             </div>
             <button type="button" class="shrink-0 text-red-400 hover:text-red-300 text-lg leading-none"
                     title="Remover automação"
@@ -53,12 +66,13 @@
       <p class="text-white/40 text-sm mb-3">Nenhuma automação ainda. Crie a primeira abaixo. 👇</p>
     {% endif %}
 
-    <p class="text-[11px] font-bold uppercase tracking-widest text-white/45 mb-1 mt-1">➕ Adicionar automação</p>
+    <p id="ca-form-title" class="text-[11px] font-bold uppercase tracking-widest text-white/45 mb-1 mt-1">➕ Adicionar automação</p>
 
     <form hx-post="{% url 'boards:column_automation_modal' column.id %}"
           hx-target="#col-automation-modal" hx-swap="outerHTML"
           class="space-y-3 border-t border-white/10 pt-4">
       {% csrf_token %}
+      <input type="hidden" name="rule_id" id="ca-rule-id" value="">
       <div>
         <p class="text-[11px] font-bold uppercase tracking-widest text-white/45 mb-1">Quando</p>
         <div class="flex flex-col gap-1">
@@ -125,12 +139,49 @@
                class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm">
       </div>
 
-      <button type="submit" class="px-4 py-2 rounded-lg bg-[#0052CC] hover:bg-blue-500 text-sm font-semibold transition">
-        Adicionar automação
-      </button>
+      <div class="flex items-center gap-2">
+        <button type="submit" id="ca-submit-btn" class="px-4 py-2 rounded-lg bg-[#0052CC] hover:bg-blue-500 text-sm font-semibold transition">
+          Adicionar automação
+        </button>
+        <button type="button" id="ca-cancel-edit" class="hidden px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-sm"
+                onclick="window.__caEditCancel()">Cancelar edição</button>
+      </div>
     </form>
 
     <script>
+      function __caSet(name, val) {
+        var el = document.querySelector('#col-automation-modal [name="' + name + '"]');
+        if (el) el.value = (val == null ? '' : val);
+      }
+      // Clicar numa regra -> carrega os valores no formulário p/ editar
+      window.__caEdit = function (el) {
+        var d = el.dataset;
+        var tr = document.querySelector('#col-automation-modal input[name=trigger][value="' + d.trigger + '"]');
+        if (tr) tr.checked = true;
+        var ac = document.querySelector('#col-automation-modal input[name=action][value="' + d.action + '"]');
+        if (ac) ac.checked = true;
+        window.__caTrigger(); window.__caAction();
+        __caSet('email', d.email);
+        __caSet('phone', d.phone);
+        __caSet('message', d.message);
+        __caSet('label', d.label);
+        __caSet('count', d.count);
+        __caSet('days', d.days);          // ações set_due/set_start
+        __caSet('stale_days', d.days);    // gatilho stale usa params.days
+        if (d.userId) __caSet('user_id', d.userId);
+        if (d.targetColumnId) __caSet('target_column_id', d.targetColumnId);
+        document.getElementById('ca-rule-id').value = d.ruleId || '';
+        document.getElementById('ca-form-title').textContent = '✏️ Editar automação';
+        document.getElementById('ca-submit-btn').textContent = 'Salvar alteração';
+        document.getElementById('ca-cancel-edit').classList.remove('hidden');
+        document.getElementById('ca-submit-btn').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      };
+      window.__caEditCancel = function () {
+        document.getElementById('ca-rule-id').value = '';
+        document.getElementById('ca-form-title').textContent = '➕ Adicionar automação';
+        document.getElementById('ca-submit-btn').textContent = 'Adicionar automação';
+        document.getElementById('ca-cancel-edit').classList.add('hidden');
+      };
       window.__caTrigger = function () {
         var sel = document.querySelector('#col-automation-modal input[name=trigger]:checked');
         var v = sel ? sel.value : '';

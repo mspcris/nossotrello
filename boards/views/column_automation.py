@@ -69,10 +69,21 @@ def column_automation_modal(request, column_id):
                     params["days"] = 0
             elif action == "add_label":
                 params["label"] = (request.POST.get("label") or "").strip()
-            ColumnAutomation.objects.create(
-                column=column, trigger=trigger, action=action,
-                params=params, created_by=request.user,
-            )
+            # edição: se veio rule_id desta coluna, atualiza em vez de criar
+            rule_id = request.POST.get("rule_id")
+            rule = None
+            if rule_id:
+                rule = ColumnAutomation.objects.filter(id=rule_id, column=column).first()
+            if rule:
+                rule.trigger = trigger
+                rule.action = action
+                rule.params = params
+                rule.save(update_fields=["trigger", "action", "params"])
+            else:
+                ColumnAutomation.objects.create(
+                    column=column, trigger=trigger, action=action,
+                    params=params, created_by=request.user,
+                )
 
     return _render_modal(request, column)
 
