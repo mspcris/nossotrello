@@ -2092,6 +2092,8 @@ class ColumnAutomation(models.Model):
     TRIGGER_CHOICES = [
         ("enter", "Quando um card entra na lista"),
         ("leave", "Quando um card sai da lista"),
+        ("count_below", "Quando a lista fica com MENOS de X cards"),
+        ("count_above", "Quando a lista fica com MAIS de X cards"),
     ]
     ACTION_CHOICES = [
         ("send_email", "Disparar e-mail avisando alguém"),
@@ -2107,11 +2109,13 @@ class ColumnAutomation(models.Model):
     column = models.ForeignKey(
         Column, related_name="automations", on_delete=models.CASCADE
     )
-    trigger = models.CharField(max_length=10, choices=TRIGGER_CHOICES)
+    trigger = models.CharField(max_length=16, choices=TRIGGER_CHOICES)
     action = models.CharField(max_length=20, choices=ACTION_CHOICES)
-    # parâmetros por ação: {email} | {target_column_id} | {days} | {label}
+    # parâmetros por ação: {email} | {target_column_id} | {days} | {label} | {user_id} | {count} | {message}
     params = models.JSONField(default=dict, blank=True)
     is_active = models.BooleanField(default=True)
+    # histerese p/ gatilhos de contagem: só dispara na transição (não repete)
+    armed = models.BooleanField(default=True)
 
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,

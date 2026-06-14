@@ -18,10 +18,27 @@ Edge cases:
     critério que a lógica anterior usava).
 """
 
+import logging
+from urllib.parse import urlparse
+
+import requests
 from django.contrib.auth import get_user_model
+from django.core.files.base import ContentFile
 from django.db import transaction
 
+logger = logging.getLogger(__name__)
+
 User = get_user_model()
+
+# Extensões derivadas do content-type ao importar a foto do IDCamim
+_IMAGE_EXT = {
+    "image/jpeg": "jpg",
+    "image/jpg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/gif": "gif",
+}
+_MAX_AVATAR_BYTES = 5 * 1024 * 1024  # mesmo limite do upload manual (account.py)
 
 
 def resolve_or_create_camim_user(*, sub: str, email: str,
@@ -65,6 +82,92 @@ def resolve_or_create_camim_user(*, sub: str, email: str,
     return _create_user_with_sub(
         sub=sub, email=email, first_name=first_name, last_name=last_name
     )
+
+
+def maybe_import_camim_avatar(user, picture_url: str, access_token: str = "") -> bool:
+    """
+    Puxa a foto do IDCamim (`picture` do /me) para o perfil local — só leitura,
+    nunca escreve de volta no IDCamim.
+
+    Regra (decidida com o Cristiano): só importa quando o usuário NÃO tem uma
+    foto que ele mesmo colocou, ou seja, sem upload (`avatar`) E sem preset
+    (`avatar_choice`). Preset escolhido conta como "foto que ele colocou".
+
+    Qualquer falha (download, content-type, tamanho) é engolida e logada — nunca
+    pode quebrar o login.
+
+    Retorna True se importou a foto.
+    """
+    from boards.models import UserProfile
+
+    picture_url = (picture_url or "").strip()
+    if not picture_url:
+        return False
+
+    # IDCamim pode devolver caminho relativo ("/uploads/x.png") em vez de URL absoluta
+    if picture_url.startswith("/"):
+        picture_url = "https://auth.camim.com.br" + picture_url
+
+    profile, _ = UserProfile.objects.get_or_create(user=user)
+
+    # Já tem foto que ele colocou (upload ou preset) → não mexe
+    if profile.avatar or profile.avatar_choice:
+        return False
+
+    try:
+        # Só manda o Bearer se a foto está no próprio domínio do Camim
+        # (evita vazar o token para um CDN/terceiro).
+        headers = {}
+        if access_token and urlparse(picture_url).netloc.endswith("camim.com.br"):
+            headers["Authorization"] = f"Bearer {access_token}"
+
+        resp = requests.get(picture_url, headers=headers, timeout=10, verify=False)
+        resp.raise_for_status()
+
+        ctype = (resp.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+        if not ctype.startswith("image/"):
+            logger.warning("IDCamim picture não é imagem (content-type=%s) para %s", ctype, user.pk)
+            return False
+
+        content = resp.content
+        if len(content) > _MAX_AVATAR_BYTES:
+            logger.warning("IDCamim picture maior que 5MB (%s bytes) para %s", len(content), user.pk)
+            return False
+    except Exception as exc:
+        logger.warning("Falha ao importar foto do IDCamim para %s: %s", user.pk, exc)
+        return False
+
+    ext = _IMAGE_EXT.get(ctype, "jpg")
+    profile.avatar.save(f"camim_{user.pk}.{ext}", ContentFile(content), save=False)
+    profile.save(update_fields=["avatar"])
+    return True
+
+
+def maybe_import_camim_phone(user, phone_number: str) -> bool:
+    """
+    Puxa o telefone do IDCamim (`phone_number` do /me, scope `phone`) para o
+    perfil local — só leitura, nunca escreve de volta no IDCamim.
+
+    Mesma regra da foto: só preenche quando o usuário ainda NÃO colocou um
+    telefone próprio. Não mexe na flag `share_telefone` (preferência do user).
+
+    Retorna True se importou o telefone.
+    """
+    from boards.models import UserProfile
+
+    phone_number = (phone_number or "").strip()
+    if not phone_number:
+        return False
+
+    profile, _ = UserProfile.objects.get_or_create(user=user)
+
+    # Já tem telefone que ele colocou → não sobrescreve
+    if (profile.telefone or "").strip():
+        return False
+
+    profile.telefone = phone_number[:30]  # max_length do campo
+    profile.save(update_fields=["telefone"])
+    return True
 
 
 def _sync_user_fields(user, *, email, first_name, last_name):

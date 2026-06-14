@@ -59,7 +59,11 @@ def _apply(rule, card, column, actor):
     a = rule.action
     if a == "send_email":
         _send_email(rule, card, column, p)
-    elif a == "assign_user":
+        return
+    # demais ações operam sobre um card específico (gatilhos de contagem não têm)
+    if card is None:
+        return
+    if a == "assign_user":
         _assign_user(card, p)
     elif a == "move_to":
         _move_to(card, p)
@@ -79,17 +83,84 @@ def _send_email(rule, card, column, p):
     to = (p.get("email") or "").strip()
     if not to:
         return
-    trig = "entrou na" if rule.trigger == "enter" else "saiu da"
-    subject = f"[NossoTrello] {card.title}"[:200]
-    body = (
-        f'O card "{card.title}" {trig} coluna "{column.name}" '
-        f'do quadro "{column.board.name}".\n\n'
-        f"{(card.description or '')[:1000]}"
-    )
+    from boards.models import Card
+
+    custom = (p.get("message") or "").strip()
+    if rule.trigger in ("count_below", "count_above"):
+        count = Card.objects.filter(column=column, is_archived=False).count()
+        subject = f"[NossoTrello] Lista \"{column.name}\" com {count} card(s)"[:200]
+        base = (
+            f'A lista "{column.name}" do quadro "{column.board.name}" '
+            f"está com {count} card(s)."
+        )
+    else:
+        trig = "entrou na" if rule.trigger == "enter" else "saiu da"
+        title = card.title if card else column.name
+        subject = f"[NossoTrello] {title}"[:200]
+        if card:
+            base = (
+                f'O card "{card.title}" {trig} coluna "{column.name}" '
+                f'do quadro "{column.board.name}".\n\n'
+                f"{(card.description or '')[:1000]}"
+            )
+        else:
+            base = f'Atualização na coluna "{column.name}".'
+    body = (custom + "\n\n" + base).strip() if custom else base
     from_email = getattr(settings, "DEFAULT_FROM_EMAIL", None) or getattr(
         settings, "EMAIL_HOST_USER", None
     )
     send_mail(subject, body, from_email, [to], fail_silently=True)
+
+
+def run_count_triggers(column, actor=None):
+    """Gatilhos de contagem (lista com MENOS/MAIS de X cards).
+
+    Dispara só na transição (histerese via ColumnAutomation.armed) para não
+    repetir a ação a cada card. Re-arma quando a condição deixa de valer.
+    """
+    from boards.models import ColumnAutomation, Card
+
+    try:
+        rules = list(
+            ColumnAutomation.objects.filter(
+                column=column,
+                is_active=True,
+                trigger__in=["count_below", "count_above"],
+            )
+        )
+    except Exception:
+        logger.exception("count trigger: falha ao buscar regras col=%s", getattr(column, "id", None))
+        return
+    if not rules:
+        return
+
+    count = Card.objects.filter(column=column, is_archived=False).count()
+    ran = False
+    for rule in rules:
+        try:
+            x = int((rule.params or {}).get("count") or 0)
+        except Exception:
+            x = 0
+        cond = (count < x) if rule.trigger == "count_below" else (count > x)
+        if cond and rule.armed:
+            try:
+                _apply(rule, None, column, actor)
+            except Exception:
+                logger.exception("count trigger: falha rule=%s", rule.id)
+            rule.armed = False
+            rule.save(update_fields=["armed"])
+            ran = True
+        elif not cond and not rule.armed:
+            rule.armed = True
+            rule.save(update_fields=["armed"])
+
+    if ran:
+        try:
+            board = column.board
+            board.version = (board.version or 0) + 1
+            board.save(update_fields=["version"])
+        except Exception:
+            logger.debug("count trigger: bump board falhou", exc_info=True)
 
 
 def _move_to(card, p):

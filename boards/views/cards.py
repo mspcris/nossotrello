@@ -140,8 +140,9 @@ def add_card(request, column_id):
 
             # AUTOMAÇÃO: card entrou na coluna (criação)
             try:
-                from boards.services.column_automation import run_for
+                from boards.services.column_automation import run_for, run_count_triggers
                 run_for(card, "enter", column, actor=request.user)
+                run_count_triggers(column, actor=request.user)
             except Exception:
                 pass
 
@@ -753,6 +754,11 @@ def delete_card(request, card_id):
         board = card.column.board
         board.version += 1
         board.save(update_fields=["version"])
+        try:
+            from boards.services.column_automation import run_count_triggers
+            run_count_triggers(card.column, actor=request.user)
+        except Exception:
+            pass
     return HttpResponse("", status=200)
 
 
@@ -774,6 +780,11 @@ def archive_card(request, card_id):
         board = card.column.board
         board.version += 1
         board.save(update_fields=["version"])
+        try:
+            from boards.services.column_automation import run_count_triggers
+            run_count_triggers(card.column, actor=request.user)
+        except Exception:
+            pass
 
     return HttpResponse("", status=200)
 
@@ -796,6 +807,11 @@ def unarchive_card(request, card_id):
         board = card.column.board
         board.version += 1
         board.save(update_fields=["version"])
+        try:
+            from boards.services.column_automation import run_count_triggers
+            run_count_triggers(card.column, actor=request.user)
+        except Exception:
+            pass
 
     return HttpResponse("", status=200)
 
@@ -1006,9 +1022,11 @@ def move_card(request):
 
     # AUTOMAÇÃO: card saiu da coluna antiga / entrou na nova
     try:
-        from boards.services.column_automation import run_for
+        from boards.services.column_automation import run_for, run_count_triggers
         run_for(card, "leave", old_column, actor=request.user)
         run_for(card, "enter", new_column, actor=request.user)
+        run_count_triggers(old_column, actor=request.user)
+        run_count_triggers(new_column, actor=request.user)
     except Exception:
         pass
 

@@ -15,7 +15,11 @@ from django.contrib.auth import get_user_model, login
 from django.shortcuts import redirect
 from django.views.decorators.http import require_GET
 
-from boards.services.camim_identity import resolve_or_create_camim_user
+from boards.services.camim_identity import (
+    maybe_import_camim_avatar,
+    maybe_import_camim_phone,
+    resolve_or_create_camim_user,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +65,7 @@ def camim_login(request):
         "client_id":     client_id,
         "redirect_uri":  _redirect_uri(),
         "response_type": "code",
-        "scope":         "openid profile email",
+        "scope":         "openid profile email phone",
         "state":         state,
     })
     return redirect(f"{AUTHORIZE_URL}?{params}")
@@ -151,6 +155,11 @@ def camim_callback(request):
     if not user.is_active:
         messages.error(request, "Sua conta está inativa. Fale com o administrador.")
         return redirect("boards:login")
+
+    # ── Puxa foto e telefone do IDCamim quando o usuário ainda não tem os
+    #    seus. Só leitura — nunca escreve de volta no IDCamim. ──────────
+    maybe_import_camim_avatar(user, userinfo.get("picture") or "", access_token)
+    maybe_import_camim_phone(user, userinfo.get("phone_number") or "")
 
     # ── Loga o usuário ────────────────────────────────────────────
     login(request, user, backend="boards.auth_backends.UsernameOrEmailBackend")

@@ -36,8 +36,17 @@ def column_automation_modal(request, column_id):
         action = request.POST.get("action")
         if trigger in dict(ColumnAutomation.TRIGGER_CHOICES) and action in dict(ColumnAutomation.ACTION_CHOICES):
             params = {}
+            # limiar de contagem (gatilhos count_below / count_above)
+            if trigger in ("count_below", "count_above"):
+                try:
+                    params["count"] = int(request.POST.get("count") or 0)
+                except Exception:
+                    params["count"] = 0
             if action == "send_email":
                 params["email"] = (request.POST.get("email") or "").strip()
+                msg = (request.POST.get("message") or "").strip()
+                if msg:
+                    params["message"] = msg[:2000]
             elif action == "assign_user":
                 params["user_id"] = request.POST.get("user_id")
             elif action in ("move_to", "copy_to"):
