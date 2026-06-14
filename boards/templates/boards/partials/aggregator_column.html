@@ -5,9 +5,13 @@
 >
   <!-- HEADER -->
   <div class="column-header px-3 py-2">
-    <h3 class="font-semibold text-sm">
-      Totais de Cards
-    </h3>
+    <h3 class="font-semibold text-sm">Totais de Cards</h3>
+    <button type="button" class="agg-menu-btn" aria-label="Opções da coluna" title="Cores da coluna">⋮</button>
+    <div class="agg-menu" hidden>
+      <label class="agg-menu-row">🎨 Cor da coluna<input type="color" id="agg-color-bg"></label>
+      <label class="agg-menu-row">🔤 Cor da fonte<input type="color" id="agg-color-fg"></label>
+      <button type="button" class="agg-menu-reset" id="agg-color-reset">Restaurar padrão</button>
+    </div>
   </div>
 
   <!-- BODY (scroll aqui, compatível com o CSS mobile .aggregator-body) -->
@@ -89,4 +93,56 @@
   document.addEventListener("DOMContentLoaded", window.updateAggregatorCounts);
   document.body.addEventListener("htmx:afterSwap", window.updateAggregatorCounts);
   document.body.addEventListener("htmx:afterSettle", window.updateAggregatorCounts);
+</script>
+
+
+<script>
+  // ============================================================
+  // Coluna de Totais — menu próprio: cor da coluna + cor da fonte
+  // (persistido em localStorage, aplicado via CSS vars --agg-bg/--agg-fg)
+  // ============================================================
+  (function () {
+    var KEY = "cm_agg_skin";
+    function load() { try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { return {}; } }
+    function save(s) { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} }
+    function apply(s) {
+      var col = document.querySelector(".aggregator-column");
+      if (!col) return;
+      if (s.bg) col.style.setProperty("--agg-bg", s.bg); else col.style.removeProperty("--agg-bg");
+      if (s.fg) col.style.setProperty("--agg-fg", s.fg); else col.style.removeProperty("--agg-fg");
+    }
+    function init() {
+      var col = document.querySelector(".aggregator-column");
+      if (!col) return;
+      var s = load();
+      apply(s);
+      var btn = col.querySelector(".agg-menu-btn");
+      var menu = col.querySelector(".agg-menu");
+      if (!btn || !menu || btn.dataset.aggBound) return;
+      btn.dataset.aggBound = "1";
+
+      var bg = col.querySelector("#agg-color-bg");
+      var fg = col.querySelector("#agg-color-fg");
+      var reset = col.querySelector("#agg-color-reset");
+      if (bg && s.bg) bg.value = s.bg;
+      if (fg && s.fg) fg.value = s.fg;
+
+      btn.addEventListener("click", function (ev) { ev.stopPropagation(); menu.hidden = !menu.hidden; });
+      if (bg) bg.addEventListener("input", function () { s.bg = bg.value; apply(s); save(s); });
+      if (fg) fg.addEventListener("input", function () { s.fg = fg.value; apply(s); save(s); });
+      if (reset) reset.addEventListener("click", function () { s = {}; apply(s); save(s); menu.hidden = true; });
+
+      if (!window.__aggMenuDocClick) {
+        window.__aggMenuDocClick = true;
+        document.addEventListener("click", function (ev) {
+          var m = document.querySelector(".aggregator-column .agg-menu");
+          var b = document.querySelector(".aggregator-column .agg-menu-btn");
+          if (m && !m.hidden && !m.contains(ev.target) && ev.target !== b) m.hidden = true;
+        });
+      }
+    }
+    document.addEventListener("DOMContentLoaded", init);
+    document.body.addEventListener("htmx:afterSwap", init);
+    if (document.readyState !== "loading") init();
+  })();
 </script>
