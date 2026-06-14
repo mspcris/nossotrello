@@ -221,6 +221,45 @@
     return { ok: r.ok, status: r.status, data };
   }
 
+  function _esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+  function _fmtDate(v){
+    try { const d = new Date(v); if (isNaN(d)) return '?';
+      const p = n => String(n).padStart(2,'0');
+      return `${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+    } catch(_) { return '?'; }
+  }
+  function _describeAction(a){
+    const t = a.type, d = a.data || {};
+    const who = (a.memberCreator||{}).fullName || (a.memberCreator||{}).username || 'Alguém';
+    const when = _fmtDate(a.date);
+    let desc = '', isComment = false;
+    if (t === 'commentCard') { desc = d.text || ''; isComment = true; }
+    else if (t === 'createCard') desc = 'criou este card';
+    else if (t === 'copyCard') desc = 'copiou este card';
+    else if (t === 'addAttachmentToCard') desc = 'anexou: ' + ((d.attachment||{}).name || 'arquivo');
+    else if (t === 'addChecklistToCard') desc = 'adicionou checklist: ' + ((d.checklist||{}).name || '');
+    else if (t === 'updateCheckItemStateOnCard') desc = "item '" + ((d.checkItem||{}).name||'') + "' -> " + ((d.checkItem||{}).state||'');
+    else if (t === 'addMemberToCard') desc = 'entrou no card';
+    else if (t === 'updateCard') {
+      if (d.listBefore && d.listAfter) desc = `moveu de "${d.listBefore.name}" para "${d.listAfter.name}"`;
+      else { const o = d.old || {};
+        if ('due' in o) desc = 'alterou a data de entrega';
+        else if ('name' in o) desc = 'renomeou o card';
+        else if ('closed' in o) desc = ((d.card||{}).closed ? 'arquivou' : 'desarquivou') + ' o card';
+        else if ('desc' in o) desc = 'editou a descrição';
+        else desc = 'atualizou o card';
+      }
+    } else desc = 'ação: ' + t;
+    if (isComment) return {
+      html: `<p>💬 <strong>${_esc(who)}</strong> <span style="opacity:.6">(Trello, ${when})</span>:</p><p>${_esc(desc)}</p>`,
+      text: `${who} (Trello, ${when}): ${desc}`,
+    };
+    return {
+      html: `<p><em>📋 Trello, ${when} — <strong>${_esc(who)}</strong> ${_esc(desc)}</em></p>`,
+      text: `Trello, ${when} — ${who} ${desc}`,
+    };
+  }
+
   function _liveLog(html){
     const live = document.getElementById('import-trello-live');
     live.classList.remove('hidden');
@@ -287,7 +326,7 @@
             items: (cl.checkItems || []).sort((a,b)=>(a.pos||0)-(b.pos||0)).map(it => ({ name: it.name, done: it.state === 'complete' })),
           }));
           payloadCards.push({
-            column_id: colId,
+            column_id: colId, tcid: c.id,
             name: c.name, desc: c.desc || '',
             labels: (c.labels || []).map(x => x.name).filter(Boolean),
             due: c.due || null, pos: i, checklists,
@@ -298,20 +337,40 @@
       const total = payloadCards.length;
       const BATCH = 120;
       let done = 0;
+      const idMap = {};   // trello card id -> nosso id
       for (let i = 0; i < total; i += BATCH) {
         const slice = payloadCards.slice(i, i + BATCH);
         const res = await _postJson('/import/trello/batch/', { board_id: start.data.board_id, cards: slice });
         if (!res.ok || !res.data || res.data.error) return fail((res.data && res.data.error) || 'Falha ao gravar um lote. Recarregue e tente de novo.');
+        Object.assign(idMap, res.data.id_map || {});
         done += (res.data.created || slice.length);
-        const pct = total ? Math.round(done / total * 100) : 100;
+        const pct = total ? Math.round(done / total * 90) : 90;
         bar.style.width = Math.max(5, pct) + '%';
         status.textContent = `Importando cards… ${done}/${total}`;
         slice.forEach(c => _liveLog('• ' + (c.name ? c.name.slice(0,80) : '(sem título)')));
       }
 
+      // ACTIONS -> acompanhamento (histórico/comentários do Trello)
+      const actions = (data.actions || []).filter(a => idMap[((a.data||{}).card||{}).id]);
+      if (actions.length) {
+        actions.sort((a,b) => String(a.date||'').localeCompare(String(b.date||'')));
+        const logs = actions.map(a => {
+          const card_id = idMap[a.data.card.id];
+          const d = _describeAction(a);
+          return { card_id, html: d.html, text: d.text, date: a.date || null };
+        });
+        status.textContent = `Importando histórico… 0/${logs.length}`;
+        for (let i = 0; i < logs.length; i += 300) {
+          const slc = logs.slice(i, i + 300);
+          const res = await _postJson('/import/trello/actions/', { board_id: start.data.board_id, logs: slc });
+          if (res.ok) _liveLog('🕓 ' + Math.min(i+300, logs.length) + '/' + logs.length + ' do histórico');
+          status.textContent = `Importando histórico… ${Math.min(i+300, logs.length)}/${logs.length}`;
+        }
+      }
+
       bar.style.width = '100%';
-      status.textContent = `✅ ${lists.length} lista(s), ${total} card(s) importados! Abrindo…`;
-      setTimeout(() => { window.location.href = boardUrl; }, 1200);
+      status.textContent = `✅ ${lists.length} lista(s), ${total} card(s)` + (actions.length ? `, ${actions.length} do histórico` : '') + ' importados! Abrindo…';
+      setTimeout(() => { window.location.href = boardUrl; }, 1400);
     } catch(e) {
       fail('Algo falhou durante a importação. Tente novamente.');
     }

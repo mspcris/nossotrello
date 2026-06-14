@@ -1,8 +1,11 @@
 # boards/views/columns.py
 
 import json
+import logging
 import re
 import requests
+
+logger = logging.getLogger("boards.import_trello")
 
 from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest
 from django.shortcuts import render, get_object_or_404
@@ -667,6 +670,8 @@ def import_trello_start(request):
         Column.objects.bulk_create(col_objs)
         columns = {str(l.get("id")): col.id for l, col in zip(lists, col_objs)}
 
+    logger.info("import.start user=%s board=%s '%s' colunas=%s",
+                request.user.id, board.id, new_board_name, len(col_objs))
     return JsonResponse({
         "board_id": board.id,
         "board_url": f"/board/{board.id}/",
@@ -723,34 +728,109 @@ def import_trello_batch(request):
         ))
         card_meta.append(c)
 
-    if card_objs:
-        Card.all_objects.bulk_create(card_objs, batch_size=500)
+    n_cl = n_items = 0
+    try:
+        with transaction.atomic():
+            if card_objs:
+                Card.all_objects.bulk_create(card_objs, batch_size=500)
 
-        # checklists + itens
-        cl_objs, cl_card, cl_items = [], [], []
-        for card, meta in zip(card_objs, card_meta):
-            for cl in (meta.get("checklists") or []):
-                cl_objs.append(Checklist(card=card, title=(cl.get("name") or "Checklist")[:255], position=0))
-                cl_card.append(card)
-                cl_items.append(cl.get("items") or [])
-        if cl_objs:
-            Checklist.objects.bulk_create(cl_objs, batch_size=500)
-            item_objs = []
-            for cl, items in zip(cl_objs, cl_items):
-                for j, it in enumerate(items):
-                    item_objs.append(ChecklistItem(
-                        card=cl.card, checklist=cl,
-                        text=(it.get("name") or "")[:1000] if isinstance(it, dict) else str(it)[:1000],
-                        is_done=bool(it.get("done")) if isinstance(it, dict) else False,
-                        position=j,
-                    ))
-            if item_objs:
-                ChecklistItem.objects.bulk_create(item_objs, batch_size=1000)
+                # checklists + itens
+                cl_objs, cl_items = [], []
+                for card, meta in zip(card_objs, card_meta):
+                    for cl in (meta.get("checklists") or []):
+                        cl_objs.append(Checklist(card=card, title=(cl.get("name") or "Checklist")[:255], position=0))
+                        cl_items.append(cl.get("items") or [])
+                if cl_objs:
+                    Checklist.objects.bulk_create(cl_objs, batch_size=500)
+                    n_cl = len(cl_objs)
+                    item_objs = []
+                    for cl, items in zip(cl_objs, cl_items):
+                        for j, it in enumerate(items):
+                            item_objs.append(ChecklistItem(
+                                card=cl.card, checklist=cl,
+                                text=((it.get("name") or "") if isinstance(it, dict) else str(it))[:255],
+                                is_done=bool(it.get("done")) if isinstance(it, dict) else False,
+                                position=j,
+                            ))
+                    if item_objs:
+                        ChecklistItem.objects.bulk_create(item_objs, batch_size=1000)
+                        n_items = len(item_objs)
+
+                board.version = (board.version or 0) + 1
+                board.save(update_fields=["version"])
+    except Exception:
+        logger.exception("import.batch FALHOU board=%s cards_no_lote=%s", board.id, len(card_objs))
+        return JsonResponse(
+            {"error": "Falha ao gravar este lote no servidor (veja os logs). Tente de novo."},
+            status=500,
+        )
+
+    logger.info("import.batch board=%s cards=%s checklists=%s itens=%s",
+                board.id, len(card_objs), n_cl, n_items)
+    # devolve tcid -> nosso id, p/ o cliente ligar as actions depois
+    id_map = {c.get("tcid"): card.id for c, card in zip(card_meta, card_objs) if c.get("tcid")}
+    return JsonResponse({"created": len(card_objs), "id_map": id_map})
+
+
+@login_required
+@require_POST
+def import_trello_actions(request):
+    """Grava um lote de actions do Trello como acompanhamento (CardLog).
+
+    Cada item: {card_id, html, text, date(iso)}. Preserva a data original.
+    """
+    from .helpers import Card  # noqa
+    from ..models import CardLog
 
     try:
-        board.version = (board.version or 0) + 1
-        board.save(update_fields=["version"])
+        payload = _json.loads(request.body.decode("utf-8"))
     except Exception:
-        pass
+        return JsonResponse({"error": "Payload inválido."}, status=400)
 
-    return JsonResponse({"created": len(card_objs)})
+    board_id = payload.get("board_id")
+    board = get_object_or_404(Board, id=board_id, created_by=request.user)
+    logs_in = payload.get("logs") or []
+    valid_cards = set(
+        Card.all_objects.filter(column__board=board).values_list("id", flat=True)
+    )
+
+    from datetime import datetime as _dt
+
+    def _dt_parse(v):
+        try:
+            d = _dt.fromisoformat(str(v).replace("Z", "+00:00"))
+            if timezone.is_naive(d):
+                d = timezone.make_aware(d, timezone.utc)
+            return d
+        except Exception:
+            return None
+
+    try:
+        log_objs, dates = [], []
+        for it in logs_in:
+            try:
+                cid = int(it.get("card_id"))
+            except Exception:
+                continue
+            if cid not in valid_cards:
+                continue
+            log_objs.append(CardLog(
+                card_id=cid, actor=None,
+                content=it.get("html") or "",
+                content_text=(it.get("text") or "")[:5000],
+            ))
+            dates.append(_dt_parse(it.get("date")))
+        if log_objs:
+            CardLog.objects.bulk_create(log_objs, batch_size=1000)
+            to_fix = [lo for lo, d in zip(log_objs, dates) if d]
+            for lo, d in zip(log_objs, dates):
+                if d:
+                    lo.created_at = d
+            if to_fix:
+                CardLog.objects.bulk_update(to_fix, ["created_at"], batch_size=1000)
+    except Exception:
+        logger.exception("import.actions FALHOU board=%s", board.id)
+        return JsonResponse({"error": "Falha ao gravar acompanhamentos."}, status=500)
+
+    logger.info("import.actions board=%s logs=%s", board.id, len(log_objs))
+    return JsonResponse({"created": len(log_objs)})
