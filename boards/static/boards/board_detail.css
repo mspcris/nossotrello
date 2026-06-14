@@ -405,9 +405,18 @@ header{ position: relative; z-index: 50; }
 
 /* Largura da coluna var */
 #columns-wrapper{
-  --col-base: 240px; /* default */
+  --col-base: 272px; /* default mais largo (Trello-like); quem ajustar a largura sobrescreve */
   --col-min: 200px;
   --col-max: 520px;
+}
+
+/* Legibilidade PADRÃO do card: superfície mais opaca + texto escuro (Trello-like).
+   Cards com cor escolhida pelo usuário (style inline) ganham por especificidade
+   -> a escolha do usuário é respeitada. */
+#columns-wrapper .card-item{
+  background: rgba(255, 255, 255, 0.96);
+  color: #1f2937;
+  line-height: 1.4;
 }
 
 .column-item.col-belly{
