@@ -986,7 +986,8 @@ def update_board_wallpaper(request, board_id):
         if "image" in request.FILES and request.FILES["image"]:
             board.background_image = request.FILES["image"]
             board.background_url = ""
-            board.save(update_fields=["background_image", "background_url"])
+            board.background_color = ""
+            board.save(update_fields=["background_image", "background_url", "background_color"])
             _log_board(board, request, f"<p><strong>{actor}</strong> atualizou o wallpaper do quadro (upload).</p>")
             return HttpResponse('<script>location.reload()</script>')
 
@@ -994,8 +995,18 @@ def update_board_wallpaper(request, board_id):
         if url:
             board.background_url = url
             board.background_image = None
-            board.save(update_fields=["background_image", "background_url"])
+            board.background_color = ""
+            board.save(update_fields=["background_image", "background_url", "background_color"])
             _log_board(board, request, f"<p><strong>{actor}</strong> atualizou o wallpaper do quadro (URL).</p>")
+            return HttpResponse('<script>location.reload()</script>')
+
+        color = (request.POST.get("bg_color") or "").strip()
+        if color:
+            board.background_color = color
+            board.background_image = None
+            board.background_url = ""
+            board.save(update_fields=["background_image", "background_url", "background_color"])
+            _log_board(board, request, f"<p><strong>{actor}</strong> definiu uma cor de fundo no quadro.</p>")
             return HttpResponse('<script>location.reload()</script>')
 
         return HttpResponse("Erro", status=400)
@@ -1006,10 +1017,23 @@ def update_board_wallpaper(request, board_id):
 def board_wallpaper_css(request, board_id):
     board = get_object_or_404(Board, id=board_id, is_deleted=False)
 
+    color = (getattr(board, "background_color", "") or "").strip()
+
     if getattr(board, "background_image", None):
         img_url = board.background_image.url
     elif (getattr(board, "background_url", "") or "").strip():
         img_url = escape((getattr(board, "background_url", "") or "").strip())
+    elif color and color.startswith("#") and len(color) <= 9:
+        # cor estática: sem imagem
+        css = f"""
+        body {{
+            background-image: none !important;
+            background-color: {color} !important;
+        }}
+        """
+        resp = HttpResponse(css, content_type="text/css")
+        resp["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        return resp
     else:
         img_url = _default_wallpaper_url()
 

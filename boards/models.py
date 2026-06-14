@@ -128,6 +128,7 @@ class Board(models.Model):
         blank=True,
     )
     background_url = models.URLField(null=True, blank=True)
+    background_color = models.CharField(max_length=9, blank=True, default="")  # cor estática de fundo (hex)
 
     created_at = models.DateTimeField(auto_now_add=True)
 

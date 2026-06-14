@@ -17,6 +17,23 @@
             <label class="font-medium text-sm">Ou usar URL:</label>
             <input type="text" name="image_url" placeholder="https://..." class="w-full border rounded px-3 py-2 mb-4">
 
+            <label class="font-medium text-sm">Ou cor estática:</label>
+            <input type="hidden" name="bg_color" id="wp-bg-color" value="">
+            <div class="flex flex-wrap items-center gap-2 mt-2 mb-4">
+              <button type="button" onclick="window.__wpColor('#0f172a')" title="#0f172a" style="height:30px;width:30px;border-radius:8px;border:1px solid rgba(0,0,0,.15);background:#0f172a;cursor:pointer;"></button>
+              <button type="button" onclick="window.__wpColor('#334155')" title="#334155" style="height:30px;width:30px;border-radius:8px;border:1px solid rgba(0,0,0,.15);background:#334155;cursor:pointer;"></button>
+              <button type="button" onclick="window.__wpColor('#7f1d1d')" title="#7f1d1d" style="height:30px;width:30px;border-radius:8px;border:1px solid rgba(0,0,0,.15);background:#7f1d1d;cursor:pointer;"></button>
+              <button type="button" onclick="window.__wpColor('#14532d')" title="#14532d" style="height:30px;width:30px;border-radius:8px;border:1px solid rgba(0,0,0,.15);background:#14532d;cursor:pointer;"></button>
+              <button type="button" onclick="window.__wpColor('#1e3a8a')" title="#1e3a8a" style="height:30px;width:30px;border-radius:8px;border:1px solid rgba(0,0,0,.15);background:#1e3a8a;cursor:pointer;"></button>
+              <button type="button" onclick="window.__wpColor('#581c87')" title="#581c87" style="height:30px;width:30px;border-radius:8px;border:1px solid rgba(0,0,0,.15);background:#581c87;cursor:pointer;"></button>
+              <button type="button" onclick="window.__wpColor('#9d174d')" title="#9d174d" style="height:30px;width:30px;border-radius:8px;border:1px solid rgba(0,0,0,.15);background:#9d174d;cursor:pointer;"></button>
+              <button type="button" onclick="window.__wpColor('#92400e')" title="#92400e" style="height:30px;width:30px;border-radius:8px;border:1px solid rgba(0,0,0,.15);background:#92400e;cursor:pointer;"></button>
+              <button type="button" onclick="window.__wpColor('#3f3f46')" title="#3f3f46" style="height:30px;width:30px;border-radius:8px;border:1px solid rgba(0,0,0,.15);background:#3f3f46;cursor:pointer;"></button>
+              <input type="color" id="wp-color-free" value="{{ board.background_color|default:'#0f172a' }}"
+                     onchange="window.__wpColor(this.value)" title="Cor personalizada"
+                     style="height:32px;width:40px;padding:0;border:none;cursor:pointer;">
+            </div>
+
             <div class="flex gap-3 justify-end">
                 <button type="submit" class="bg-blue-600 text-white rounded px-4 py-2">
                     Salvar
@@ -31,6 +48,12 @@
 </div>
 
 <script>
+    window.__wpColor = function (c) {
+        var h = document.getElementById("wp-bg-color");
+        if (h) h.value = c;
+        var form = document.querySelector("#modal-bg form");
+        if (form) { form.requestSubmit ? form.requestSubmit() : form.submit(); }
+    };
     document.body.addEventListener("htmx:responseError", function () {
         const target = document.querySelector("#image-error");
         if (target) {
