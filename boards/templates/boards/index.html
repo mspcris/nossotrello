@@ -84,7 +84,8 @@
       min-height: 125px;
       width: 100%;
       display: flex;
-      align-items: center;
+      flex-direction: column;   /* irmãos da barra (mobile) empilham, não enfileiram */
+      justify-content: center;
       padding: 0 36px;       /* conteúdo encosta perto das bordas (igual exemplo) */
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18); /* drop shadow */
     }
@@ -254,7 +255,9 @@
 
       /* esconder chrome mobile do base que duplica/não serve na home */
       body.is-home .cm-header-mobile-id { display: none !important; }
-      body.is-home .boards-cols-switch { display: none; }
+      /* remove o seletor "1 2 3 Auto" (e o wrapper) — libera espaço no mobile */
+      body.is-home div:has(> .boards-cols-switch),
+      body.is-home .boards-cols-switch { display: none !important; }
 
       /* popover de aparência cabendo na tela */
       .cm-appearance-pop { left: 12px; right: 12px; width: auto; top: 92px; }
