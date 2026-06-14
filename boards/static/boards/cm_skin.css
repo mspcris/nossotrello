@@ -261,10 +261,12 @@ body.cm-skin .agg-menu-reset:hover { background: rgba(255, 255, 255, 0.2); }
 
   body.cm-skin .cm-icon-btn { height: 36px; width: 36px; border-radius: 10px; font-size: 1rem; }
   body.cm-skin #menuToggle { height: 36px; width: 36px; border-radius: 10px; }
-  body.cm-skin .cm-icon-btn--sm { height: 30px; width: 30px; }
+  body.cm-skin .cm-icon-btn--sm { height: 34px; width: 34px; border-radius: 9999px; }
 
   body.cm-skin .cm-home-right { gap: 7px; }
-  body.cm-skin .cm-home-avatar { height: 46px; width: 46px; border-width: 2px; }
+  body.cm-skin .cm-home-avatar { height: 80px; width: 80px; border-width: 3px; }
+  /* mobile: sem espaço para nome/handle -> esconder (só avatar + ações) */
+  body.cm-skin .cm-home-id { display: none; }
   body.cm-skin .cm-home-name { font-size: 0.78rem; padding: 2px 6px; }
   body.cm-skin .cm-home-handle { font-size: 0.7rem; margin-top: 2px; }
   body.cm-skin .cm-home-actions { gap: 5px; }

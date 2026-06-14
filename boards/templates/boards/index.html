@@ -253,12 +253,12 @@
 
       body.is-home .cm-icon-btn { height: 36px; width: 36px; border-radius: 10px; font-size: 1rem; }
       body.is-home #menuToggle { height: 36px; width: 36px; border-radius: 10px; }
-      body.is-home .cm-icon-btn--sm { height: 30px; width: 30px; }
+      body.is-home .cm-icon-btn--sm { height: 34px; width: 34px; border-radius: 9999px; }
 
       body.is-home .cm-home-right { gap: 7px; }
-      body.is-home .cm-home-avatar { height: 46px; width: 46px; border-width: 2px; }
-      body.is-home .cm-home-name { font-size: 0.78rem; padding: 2px 6px; }
-      body.is-home .cm-home-handle { font-size: 0.7rem; margin-top: 2px; }
+      body.is-home .cm-home-avatar { height: 80px; width: 80px; border-width: 3px; }
+      /* mobile: sem espaço para nome/handle -> esconder (só avatar + ações) */
+      body.is-home .cm-home-id { display: none; }
       body.is-home .cm-home-actions { gap: 5px; }
 
       /* esconder chrome mobile do base que duplica/não serve na home */
@@ -270,10 +270,6 @@
       .cm-appearance-pop { left: 12px; right: 12px; width: auto; top: 92px; }
     }
 
-    /* telas bem estreitas: o nome/handle some pra não espremer o avatar */
-    @media (max-width: 430px) {
-      body.is-home .cm-home-id { display: none; }
-    }
   </style>
 
   {# IMPORTANT: defer evita o crash "document.body is null" dentro do home_groups.js #}
