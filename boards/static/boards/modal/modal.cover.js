@@ -157,7 +157,23 @@
       credentials: "same-origin",
     });
     if (!r.ok) { showErr(`Falha ao aplicar cor. HTTP ${r.status}`); return; }
-    await refreshModalBody(cardId);
+    // aplica no preview do modal SEM recarregar o card inteiro
+    const prev = document.getElementById("cm-cover-preview");
+    if (prev) {
+      prev.style.display = "";
+      const wrap = prev.querySelector(".group") || prev;
+      const imgA = document.getElementById("cm-cover-preview-img")?.closest("a");
+      if (imgA) imgA.remove();
+      let colorEl = document.getElementById("cm-cover-preview-color");
+      if (!colorEl) {
+        colorEl = document.createElement("div");
+        colorEl.id = "cm-cover-preview-color";
+        colorEl.style.height = "120px";
+        wrap.prepend(colorEl);
+      }
+      colorEl.style.background = color;
+    }
+    // atualiza o card no board (coluna)
     await refreshBoardCardSnippet(cardId);
   };
 

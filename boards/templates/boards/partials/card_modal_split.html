@@ -91,31 +91,27 @@
     <!-- COLUNA ESQUERDA -->
     <div class="cm-main">
 
-      {% if card.cover_image %}
-  <div class="px-4 pt-4">
-    <div class="group relative rounded-xl overflow-hidden border border-white/20">
-      <a href="{{ card.cover_image.url }}" target="_blank" rel="noopener" class="block">
-        <img
-          src="{{ card.cover_image.url }}"
-          alt="Capa do card"
-          class="w-full object-cover"
-          style="height: 220px; max-height: 220px;"
-        >
-      </a>
-
-      <button type="button"
-              class="absolute top-2 right-2 px-2 py-1 rounded text-xs bg-black/60 text-white
-                     opacity-0 group-hover:opacity-100 transition"
-              hx-post="{% url 'boards:remove_card_cover' card.id %}"
-              hx-target="#modal-body"
-              hx-swap="innerHTML"
-              aria-label="Remover capa"
-              title="Remover capa">
-        ✕
-      </button>
-    </div>
-  </div>
-{% endif %}
+      {# preview da capa: imagem OU cor. id fixo p/ atualizar in-place sem reload #}
+      <div id="cm-cover-preview" class="px-4 pt-4" {% if not card.cover_image and not card.cover_color %}style="display:none;"{% endif %}>
+        <div class="group relative rounded-xl overflow-hidden border border-white/20">
+          {% if card.cover_image %}
+            <a href="{{ card.cover_image.url }}" target="_blank" rel="noopener" class="block">
+              <img id="cm-cover-preview-img" src="{{ card.cover_image.url }}" alt="Capa do card"
+                   class="w-full object-cover" style="height: 220px; max-height: 220px;">
+            </a>
+          {% else %}
+            <div id="cm-cover-preview-color" style="height:120px;background:{{ card.cover_color|default:'transparent' }};"></div>
+          {% endif %}
+          <button type="button"
+                  class="absolute top-2 right-2 px-2 py-1 rounded text-xs bg-black/60 text-white
+                         opacity-0 group-hover:opacity-100 transition"
+                  hx-post="{% url 'boards:remove_card_cover' card.id %}"
+                  hx-target="#modal-body" hx-swap="innerHTML"
+                  aria-label="Remover capa" title="Remover capa">
+            ✕
+          </button>
+        </div>
+      </div>
 
 
       <div class="cm-topbar">
