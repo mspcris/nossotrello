@@ -24,6 +24,16 @@ from boards.models import WhatsNewItem
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-06 ---
+    "1fb2a11": (
+        "⚡",
+        "Automação na coluna: card entra ou sai → faz algo",
+        "No menu (⋮) de cada coluna agora tem \"Automação\". Você cria regras do "
+        "tipo \"quando um card entra nesta lista\" ou \"quando um card sai\" e "
+        "escolhe o que fazer: disparar um e-mail avisando alguém, mover o card "
+        "para outra coluna, definir a data de entrega (+N dias), adicionar uma "
+        "etiqueta ou marcar como entregue. Sem configuração complicada — escolhe "
+        "o gatilho, a ação e pronto.",
+    ),
     "e7790b4": (
         "📧",
         "Criar card a partir de e-mail",
