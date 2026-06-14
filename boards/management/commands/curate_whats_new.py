@@ -24,6 +24,17 @@ from boards.models import WhatsNewItem
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-06 ---
+    "e7790b4": (
+        "📧",
+        "Criar card a partir de e-mail",
+        "No menu (☰) do quadro agora tem \"Criar Card From Email\": você configura "
+        "uma caixa de e-mail (Gmail, KingHost...) e escolhe uma coluna. Todo e-mail "
+        "novo que chegar vira um card nessa coluna — o assunto vira o título, o "
+        "corpo vira a descrição e o remetente fica numa etiqueta. Dá pra definir de "
+        "quanto em quanto tempo sincroniza. A senha é guardada criptografada e só "
+        "serve pra ler a caixa. Sem nenhuma coluna no quadro, ele avisa que é "
+        "preciso criar uma antes.",
+    ),
     "77fc7ce": (
         "🎨",
         "Deixe a home com a sua cara",
