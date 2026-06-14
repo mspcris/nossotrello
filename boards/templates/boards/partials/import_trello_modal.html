@@ -125,10 +125,18 @@
       fd.append('url', u);
       fd.append('csrfmiddlewaretoken', _csrf());
       const r = await fetch('/import/trello/from-url/', { method:'POST', body: fd });
-      const data = await r.json();
-      if (!r.ok || data.error) {
+      let data = null;
+      try { data = await r.json(); } catch (_) { data = null; }
+      if (!r.ok || !data || data.error) {
         prog.classList.add('hidden');
-        err.innerHTML = data.error || 'Erro ao importar.';
+        if (data && data.error) {
+          err.innerHTML = data.error;
+        } else {
+          // resposta não-JSON (502/timeout): o servidor não alcançou o Trello.
+          err.innerHTML = 'O servidor não conseguiu baixar do Trello (provável board privado ou ' +
+            'a rede da VM não alcança o trello.com). <strong>Use o passo manual abaixo</strong>: ' +
+            'clique em “Abrir JSON”, salve o arquivo e envie aqui.';
+        }
         err.classList.remove('hidden');
         return;
       }
@@ -137,7 +145,8 @@
       setTimeout(() => { window.location.href = data.board_url; }, 1200);
     } catch (e) {
       prog.classList.add('hidden');
-      err.textContent = 'Erro de conexão.';
+      err.innerHTML = 'Não foi possível falar com o servidor. <strong>Use o passo manual abaixo</strong> ' +
+        '(Abrir JSON → salvar → enviar).';
       err.classList.remove('hidden');
     }
   };
@@ -148,6 +157,14 @@
     err.classList.add('hidden');
     let u = _normUrl(document.getElementById('trello-url')?.value);
     if (!u) { err.textContent = 'Cole a URL do quadro do Trello primeiro.'; err.classList.remove('hidden'); return; }
+    // Link de CARD não serve para o passo manual: precisamos do JSON do QUADRO.
+    if (/trello\.com\/c\//i.test(u)) {
+      err.innerHTML = 'Esse é um link de <strong>card</strong> (…/c/…). Para o passo manual eu preciso do ' +
+        'link do <strong>quadro</strong> (…/b/…): no Trello, clique no <strong>nome do quadro</strong> ' +
+        '(acima do card) pra abrir o board, copie a URL da barra de endereço e cole aqui.';
+      err.classList.remove('hidden');
+      return;
+    }
     u = u.split('#')[0].split('?')[0].replace(/\/+$/, '');
     if (!/\.json$/i.test(u)) u += '.json';
     window.open(u, '_blank');
