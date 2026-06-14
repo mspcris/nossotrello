@@ -205,9 +205,23 @@ def sync_one(config):
 
     try:
         if config.protocol == "pop":
-            return _sync_pop(config, password)
-        return _sync_imap(config, password)
+            created, err = _sync_pop(config, password)
+        else:
+            created, err = _sync_imap(config, password)
     except Exception as e:
         logger.exception("email ingest sync failed board=%s", config.board_id)
         _touch(config, last_error=str(e))
         return 0, str(e)
+
+    # Criou cards? Bump na versão do board -> dispara o signal board.invalidated
+    # (post_save de Board) -> a página aberta re-renderiza as colunas via poll,
+    # sem F5. Mesmo mecanismo das operações de card pela UI.
+    if created and not err:
+        try:
+            board = config.board
+            board.version = (board.version or 0) + 1
+            board.save(update_fields=["version"])
+        except Exception:
+            logger.debug("bump board version (email ingest) falhou", exc_info=True)
+
+    return created, err
