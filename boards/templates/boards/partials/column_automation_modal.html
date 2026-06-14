@@ -25,6 +25,8 @@
       .n8n-arrow { color:rgba(255,255,255,.45); font-weight:700; }
       .n8n-rule { display:flex; align-items:center; gap:10px; padding:8px; border-radius:12px;
                   background:rgba(0,0,0,.22); border:1px solid rgba(255,255,255,.08); }
+      /* dropdown nativo legível no tema escuro (senão abre branco com texto branco) */
+      #col-automation-modal select, #col-automation-modal option { background:#1a2035; color:#fff; }
     </style>
 
     {% if rules %}

@@ -1,4 +1,8 @@
 {# Auto-ordenação agendada da coluna (Trello-like). #}
+<style>
+  /* dropdown nativo legível no tema escuro (senão abre branco com texto branco) */
+  #col-autosort-modal select, #col-autosort-modal option { background:#1a2035; color:#fff; }
+</style>
 <div id="col-autosort-modal"
      class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm"
      onclick="if(event.target===this)this.remove()">
