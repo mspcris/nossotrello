@@ -1491,42 +1491,60 @@ def transfer_owner_start(request, board_id):
         "attempts": 0,
         "created_at": timezone.now().isoformat(),
     }
-    cache.set(key, payload, timeout=10 * 60)
+    # Guardar na SESSÃO (compartilhada entre workers) — o LocMemCache é por
+    # processo e fazia a confirmação cair em outro worker e falhar.
+    request.session[key] = payload
+    request.session.modified = True
 
-    try:
-        subject = f"Código para transferir titularidade — {board.name}"
-        body = (
-            f"Seu código para confirmar a transferência de titularidade do quadro \"{board.name}\" é: {code}\n\n"
-            f"Esse código expira em 10 minutos."
-        )
+    body = (
+        f"Seu código para confirmar a transferência de titularidade do quadro "
+        f"\"{board.name}\" é: {code}\n\nEsse código expira em 10 minutos."
+    )
+    sender_email = (request.user.email or "").strip() or (request.user.get_username() or "").strip()
+    sent = []
 
-        sender_email = (request.user.email or "").strip()
-        if not sender_email:
-            sender_email = (request.user.get_username() or "").strip()
-
-        if not sender_email or "@" not in sender_email:
-            cache.delete(key)
-            context["msg_error"] = (
-                "Seu usuário não possui e-mail válido cadastrado para receber o código. "
-                "Atualize seu e-mail no perfil (ou peça ao admin)."
+    # 1) e-mail
+    if sender_email and "@" in sender_email:
+        try:
+            send_mail(
+                subject=f"Código para transferir titularidade — {board.name}",
+                message=body,
+                from_email=getattr(settings, "DEFAULT_FROM_EMAIL", None),
+                recipient_list=[sender_email],
+                fail_silently=True,
             )
-            return render(request, "boards/partials/transfer_owner_modal.html", context, status=400)
+            sent.append(f"e-mail ({sender_email})")
+        except Exception:
+            pass
 
-        send_mail(
-            subject=subject,
-            message=body,
-            from_email=getattr(settings, "DEFAULT_FROM_EMAIL", None),
-            recipient_list=[sender_email],
-            fail_silently=False,
-        )
-
+    # 2) WhatsApp (telefone do perfil) — mesma integração do resto do sistema
+    try:
+        from boards.services.notifications import send_whatsapp, _safe_digits_phone
+        from boards.models import UserProfile
+        prof = UserProfile.objects.filter(user=request.user).first()
+        phone = _safe_digits_phone(getattr(prof, "telefone", "") if prof else "")
+        if phone:
+            send_whatsapp(
+                user=request.user, phone_digits=phone,
+                body=f"NossoTrello: código para transferir a titularidade do quadro "
+                     f"\"{board.name}\" é {code}. Expira em 10 minutos.",
+                sync=True,
+            )
+            sent.append("WhatsApp")
     except Exception:
-        cache.delete(key)
-        context["msg_error"] = "Não foi possível enviar o email com o código. Tente novamente."
-        return render(request, "boards/partials/transfer_owner_modal.html", context, status=500)
+        pass
+
+    if not sent:
+        request.session.pop(key, None)
+        request.session.modified = True
+        context["msg_error"] = (
+            "Não foi possível enviar o código: seu perfil não tem e-mail nem "
+            "telefone (WhatsApp) válidos. Atualize no seu perfil."
+        )
+        return render(request, "boards/partials/transfer_owner_modal.html", context, status=400)
 
     context["step"] = 2
-    context["msg_success"] = f"Código enviado para {sender_email}."
+    context["msg_success"] = "Código enviado por " + " e ".join(sent) + "."
     return render(request, "boards/partials/transfer_owner_modal.html", context, status=200)
 
 
@@ -1545,21 +1563,34 @@ def transfer_owner_confirm(request, board_id):
         return render(request, "boards/partials/transfer_owner_modal.html", context, status=400)
 
     key = _transfer_cache_key(board.id, request.user.id)
-    payload = cache.get(key)
+    payload = request.session.get(key)
+    # expiração de 10 min (a sessão não expira a chave sozinha)
+    if payload:
+        try:
+            from django.utils.dateparse import parse_datetime
+            created = parse_datetime(payload.get("created_at") or "")
+            if created and (timezone.now() - created).total_seconds() > 600:
+                request.session.pop(key, None)
+                request.session.modified = True
+                payload = None
+        except Exception:
+            pass
     if not payload:
         context = {"board": board, "step": 1, "msg_error": "Solicitação expirada. Inicie novamente."}
         return render(request, "boards/partials/transfer_owner_modal.html", context, status=400)
 
     attempts = int(payload.get("attempts") or 0)
     if attempts >= 6:
-        cache.delete(key)
+        request.session.pop(key, None)
+        request.session.modified = True
         context = {"board": board, "step": 1, "msg_error": "Muitas tentativas. Inicie novamente."}
         return render(request, "boards/partials/transfer_owner_modal.html", context, status=429)
 
     expected = payload.get("code_hash") or ""
     if _hash_transfer_code(code) != expected:
         payload["attempts"] = attempts + 1
-        cache.set(key, payload, timeout=10 * 60)
+        request.session[key] = payload
+        request.session.modified = True
         context = {"board": board, "step": 2, "msg_error": "Código incorreto."}
         return render(request, "boards/partials/transfer_owner_modal.html", context, status=400)
 
@@ -1567,7 +1598,8 @@ def transfer_owner_confirm(request, board_id):
     to_user_id = int(payload.get("to_user_id") or 0)
     to_user = User.objects.filter(id=to_user_id).first()
     if not to_user:
-        cache.delete(key)
+        request.session.pop(key, None)
+        request.session.modified = True
         context = {"board": board, "step": 1, "msg_error": "Usuário destino inválido. Inicie novamente."}
         return render(request, "boards/partials/transfer_owner_modal.html", context, status=400)
 
@@ -1576,7 +1608,8 @@ def transfer_owner_confirm(request, board_id):
     with transaction.atomic():
         my2 = BoardMembership.objects.select_for_update().filter(board=board, user=request.user).first()
         if not my2 or my2.role != BoardMembership.Role.OWNER:
-            cache.delete(key)
+            request.session.pop(key, None)
+            request.session.modified = True
             return HttpResponse("Sua permissão mudou. Operação cancelada.", status=403)
 
         to_membership, created = BoardMembership.objects.get_or_create(
@@ -1610,7 +1643,8 @@ def transfer_owner_confirm(request, board_id):
             ),
         )
 
-    cache.delete(key)
+    request.session.pop(key, None)
+    request.session.modified = True
 
     return HttpResponse(
         "<script>"
