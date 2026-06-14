@@ -36,8 +36,13 @@
   🗃️
 </button>
 
-  {# CAPA #}
-  {% if card.cover_image %}
+  {# CARD CONTADOR: número grande #}
+  {% if card.counter_mode %}
+    {% counter_value card as cv %}
+    <div class="mb-2 cc-counter" style="{% if card.cover_color %}background:{{ card.cover_color }};{% endif %}">
+      <span class="cc-counter-num">{{ cv }}</span>
+    </div>
+  {% elif card.cover_image %}{# CAPA #}
     <div class="mb-2 card-cover-wrap">
 
       <!-- Fundo espelhado (blur) -->

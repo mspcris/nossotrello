@@ -1,0 +1,64 @@
+<div id="card-counter-modal"
+     class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+     onclick="if(event.target===this)this.remove()">
+  <div class="bg-[#1a2035] text-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6 relative" onclick="event.stopPropagation()">
+
+    <button class="absolute top-4 right-4 text-white/50 hover:text-white text-xl leading-none"
+            onclick="document.getElementById('card-counter-modal').remove()">✕</button>
+
+    <div class="flex items-center gap-2 mb-1">
+      <span class="text-2xl">🔢</span>
+      <h2 class="text-lg font-bold">Card contador — {{ column.name }}</h2>
+    </div>
+    <p class="text-sm text-white/60 mb-4">
+      Cria um card no topo da lista com um <strong>número grande</strong> que se atualiza sozinho.
+    </p>
+
+    {% if msg %}<div class="ei-result ei-result--ok mb-3">{{ msg }}</div>{% endif %}
+
+    <form hx-post="{% url 'boards:card_counter_modal' column.id %}"
+          hx-target="#card-counter-modal" hx-swap="outerHTML" class="space-y-3">
+      {% csrf_token %}
+
+      <label class="block text-sm">O que contar
+        <select name="mode" id="cc-mode" onchange="window.__ccMode()"
+                class="mt-1 w-full bg-white/10 border border-white/20 rounded-lg px-2 py-2 text-sm">
+          {% for v, l in mode_choices %}<option value="{{ v }}">{{ l }}</option>{% endfor %}
+        </select>
+      </label>
+
+      <div id="cc-days" class="hidden flex items-center gap-2">
+        <span class="text-xs text-white/50">X =</span>
+        <input type="number" name="days" value="15" min="1"
+               class="w-24 bg-white/10 border border-white/20 rounded-lg px-2 py-2 text-sm">
+        <span class="text-xs text-white/50">dias</span>
+      </div>
+
+      <label class="block text-sm">Título (opcional)
+        <input type="text" name="title" placeholder="ex: DONE +15 dias"
+               class="mt-1 w-full bg-white/10 border border-white/20 rounded-lg px-2 py-2 text-sm">
+      </label>
+
+      <label class="block text-sm">Cor de fundo (opcional)
+        <input type="color" name="cover_color" value="#0f172a"
+               class="mt-1 h-9 w-16 bg-white/10 border border-white/20 rounded-lg">
+      </label>
+
+      <div class="flex flex-wrap gap-2 pt-1">
+        <button type="submit" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-sm font-semibold">Criar contador</button>
+        <button type="button" class="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-sm ml-auto"
+                onclick="document.getElementById('card-counter-modal').remove()">Fechar</button>
+      </div>
+    </form>
+
+    <script>
+      window.__ccMode = function () {
+        var m = document.getElementById('cc-mode');
+        var d = document.getElementById('cc-days');
+        if (!m || !d) return;
+        d.classList.toggle('hidden', !(m.value === 'done_recent' || m.value === 'stale'));
+      };
+      window.__ccMode();
+    </script>
+  </div>
+</div>

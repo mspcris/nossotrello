@@ -90,7 +90,7 @@ def _send_email(rule, card, column, p):
 
     custom = (p.get("message") or "").strip()
     if rule.trigger in ("count_below", "count_above"):
-        count = Card.objects.filter(column=column, is_archived=False).count()
+        count = Card.objects.filter(column=column, is_archived=False, counter_mode="").count()
         subject = f"[NossoTrello] Lista \"{column.name}\" com {count} card(s)"[:200]
         base = (
             f'A lista "{column.name}" do quadro "{column.board.name}" '
@@ -120,7 +120,7 @@ def _whatsapp_context(rule, card, column):
     from boards.models import Card
 
     if rule.trigger in ("count_below", "count_above"):
-        count = Card.objects.filter(column=column, is_archived=False).count()
+        count = Card.objects.filter(column=column, is_archived=False, counter_mode="").count()
         return (
             f'Lista "{column.name}" ({column.board.name}) está com {count} card(s).'
         )
@@ -188,7 +188,7 @@ def run_stale_triggers(now=None):
             continue
         cutoff = now - timedelta(days=days)
         cards = Card.objects.filter(
-            column=rule.column, is_archived=False,
+            column=rule.column, is_archived=False, counter_mode="",
             column_since__isnull=False, column_since__lte=cutoff,
         )
         for card in cards:
@@ -238,7 +238,7 @@ def run_count_triggers(column, actor=None):
     if not rules:
         return
 
-    count = Card.objects.filter(column=column, is_archived=False).count()
+    count = Card.objects.filter(column=column, is_archived=False, counter_mode="").count()
     ran = False
     for rule in rules:
         try:

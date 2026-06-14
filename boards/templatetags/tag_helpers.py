@@ -4,6 +4,16 @@ from django import template
 register = template.Library()
 
 
+@register.simple_tag
+def counter_value(card):
+    """Valor ao vivo de um card contador (None se não for contador)."""
+    try:
+        from boards.services.card_counters import compute_counter_value
+        return compute_counter_value(card)
+    except Exception:
+        return None
+
+
 @register.filter
 def split_tags(value):
     """

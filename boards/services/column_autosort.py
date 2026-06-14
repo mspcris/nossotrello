@@ -26,10 +26,14 @@ def apply_autosort(column):
     if not cards:
         return 0
 
-    cards.sort(key=_key_func(column.autosort_field), reverse=(column.autosort_dir == "desc"))
+    # cards contadores ficam fixos no topo (preservam a ordem atual); só os reais são ordenados
+    counters = sorted([c for c in cards if c.counter_mode], key=lambda c: int(c.position or 0))
+    reais = [c for c in cards if not c.counter_mode]
+    reais.sort(key=_key_func(column.autosort_field), reverse=(column.autosort_dir == "desc"))
+    ordered = counters + reais
 
     changed = 0
-    for i, c in enumerate(cards):
+    for i, c in enumerate(ordered):
         if int(c.position or 0) != i:
             c.position = i
             c.save(update_fields=["position"])

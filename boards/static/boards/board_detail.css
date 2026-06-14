@@ -1513,3 +1513,13 @@ li[data-card-id][data-term-status="ok"] .term-badge{ color: #16a34a; }
 
 
 
+
+/* ===== Card contador (número grande) ===== */
+.cc-counter{
+  height:120px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#0f172a,#1e293b);overflow:hidden;
+}
+.cc-counter-num{
+  font-weight:800;font-size:56px;line-height:1;color:#fff;
+  text-shadow:0 2px 8px rgba(0,0,0,.45);letter-spacing:-1px;
+}

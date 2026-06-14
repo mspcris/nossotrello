@@ -283,6 +283,18 @@ class Card(models.Model):
     cover_image = models.ImageField(upload_to="card_covers/", null=True, blank=True)
     cover_color = models.CharField(max_length=9, blank=True, default="")  # cor estática de capa (hex)
 
+    # ---- Card contador (mostra um número grande, atualizado sozinho) ----
+    COUNTER_MODE_CHOICES = [
+        ("total", "Total de cards na lista"),
+        ("done_recent", "Entregues nos últimos X dias"),
+        ("delivered", "Entregues (total)"),
+        ("not_delivered", "Não entregues"),
+        ("overdue", "Com prazo vencido"),
+        ("stale", "Parados há X+ dias"),
+    ]
+    counter_mode = models.CharField(max_length=20, blank=True, default="")  # "" = card normal
+    counter_days = models.PositiveSmallIntegerField(default=15)
+
     column = models.ForeignKey(Column, related_name="cards", on_delete=models.CASCADE)
     position = models.PositiveIntegerField(default=0)
     # quando o card entrou na coluna atual (p/ automação "parado X dias")
