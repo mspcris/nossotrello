@@ -174,9 +174,14 @@ body.cm-skin .aggregator-column .column-header h3 {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 body.cm-skin .aggregator-card {
-  /* vertical e centralizado (igual ao modelo): número grande em cima, nome embaixo */
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 2px; text-align: center;
+  /* vertical e centralizado (igual ao modelo): número grande em cima, nome embaixo.
+     !important para vencer .aggregator-card do board_detail.css */
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  gap: 4px !important;
   background: rgba(255, 255, 255, 0.10);
   border: 1px solid rgba(255, 255, 255, 0.20);
   border-radius: 14px;
@@ -186,12 +191,14 @@ body.cm-skin .aggregator-card {
 }
 body.cm-skin .aggregator-card:hover { background: rgba(255, 255, 255, 0.16); }
 body.cm-skin .aggregator-count {
-  font-weight: 800; font-size: 1.9rem; line-height: 1.05;
-  color: var(--agg-fg, #fff);
+  font-weight: 800 !important; font-size: 1.9rem !important; line-height: 1.05 !important;
+  color: var(--agg-fg, #fff) !important;
+  width: 100% !important; min-width: 0 !important; text-align: center !important;
 }
 body.cm-skin .aggregator-name {
-  color: var(--agg-fg, #fff); opacity: 0.9; font-weight: 600;
-  font-size: 0.85rem; line-height: 1.2;
+  color: var(--agg-fg, #fff) !important; opacity: 0.9; font-weight: 600;
+  font-size: 0.85rem !important; line-height: 1.2;
+  width: 100% !important; text-align: center !important;
 }
 
 /* menu próprio da coluna de totais (cor da coluna + cor da fonte) */
