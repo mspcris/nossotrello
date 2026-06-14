@@ -131,39 +131,22 @@ def _whatsapp_context(rule, card, column):
 
 
 def _send_whatsapp(rule, card, column, p):
-    """Envia WhatsApp via webhook/provider configurado.
-
-    Requer settings.WHATSAPP_API_URL (POST JSON {phone, message}) e, opcional,
-    settings.WHATSAPP_API_TOKEN (Bearer). Sem provider, registra warning e segue
-    (a UI/regra fica salva; é só plugar a integração quando houver API).
+    """Envia WhatsApp pela MESMA integração do resto do sistema (Evolution API),
+    via boards.services.notifications.send_whatsapp. Config em settings
+    (EVOLUTION_BASE_URL/API_KEY/INSTANCE) — já usada nas notificações de card.
     """
-    phone = (p.get("phone") or "").strip()
+    phone = "".join(ch for ch in (p.get("phone") or "") if ch.isdigit())
     if not phone:
         return
     custom = (p.get("message") or "").strip()
     base = _whatsapp_context(rule, card, column)
     message = (custom + "\n\n" + base).strip() if custom else base
 
-    url = getattr(settings, "WHATSAPP_API_URL", None)
-    if not url:
-        logger.warning(
-            "WhatsApp não enviado (WHATSAPP_API_URL ausente). phone=%s msg=%r",
-            phone, message[:120],
-        )
-        return
     try:
-        import requests
-
-        headers = {"Content-Type": "application/json"}
-        token = getattr(settings, "WHATSAPP_API_TOKEN", None)
-        if token:
-            headers["Authorization"] = f"Bearer {token}"
-        requests.post(
-            url, json={"phone": phone, "message": message},
-            headers=headers, timeout=10,
-        )
+        from boards.services.notifications import send_whatsapp
+        send_whatsapp(user=None, phone_digits=phone, body=message, sync=True)
     except Exception:
-        logger.exception("WhatsApp: falha ao enviar para %s", phone)
+        logger.exception("WhatsApp (automação): falha ao enviar para %s", phone)
 
 
 def run_stale_triggers(now=None):
