@@ -4,7 +4,7 @@
 (function () {
   "use strict";
   var KEY = "cm_home_appearance";
-  var DEFAULTS = { color: "#0f172a", alpha: 32, blur: 14, headerTint: false };
+  var DEFAULTS = { color: "#0f172a", alpha: 32, blur: 14, headerTint: false, cards: "light" };
 
   function hexToRgb(hex) {
     var h = (hex || "").replace("#", "");
@@ -26,6 +26,7 @@
     b.style.setProperty("--home-alpha", (s.alpha / 100).toFixed(2));
     b.style.setProperty("--home-blur", s.blur + "px");
     b.classList.toggle("home-header-tinted", !!s.headerTint);
+    b.classList.toggle("cards-dark", s.cards === "dark");
   }
 
   function init() {
@@ -42,6 +43,7 @@
     var blurVal = document.getElementById("ap-blur-val");
     var reset = document.getElementById("ap-reset");
     var header = document.getElementById("ap-header");
+    var cards = document.getElementById("ap-cards");
     if (!toggle || !pop || !color || !alpha || !blur) return;
 
     function syncInputs() {
@@ -49,6 +51,7 @@
       alpha.value = state.alpha; if (alphaVal) alphaVal.textContent = state.alpha;
       blur.value = state.blur;   if (blurVal) blurVal.textContent = state.blur;
       if (header) header.checked = !!state.headerTint;
+      if (cards) cards.value = state.cards || "light";
     }
     syncInputs();
 
@@ -57,6 +60,7 @@
       state.alpha = parseInt(alpha.value, 10);
       state.blur = parseInt(blur.value, 10);
       if (header) state.headerTint = header.checked;
+      if (cards) state.cards = cards.value;
       if (alphaVal) alphaVal.textContent = state.alpha;
       if (blurVal) blurVal.textContent = state.blur;
       apply(state); save(state);
@@ -65,6 +69,7 @@
     alpha.addEventListener("input", onChange);
     blur.addEventListener("input", onChange);
     if (header) header.addEventListener("change", onChange);
+    if (cards) cards.addEventListener("change", onChange);
     if (reset) reset.addEventListener("click", function () {
       state = Object.assign({}, DEFAULTS); syncInputs(); apply(state); save(state);
     });

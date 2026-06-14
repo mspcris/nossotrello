@@ -300,3 +300,29 @@ body.cm-skin .red-column-bg    { background: rgba(254, 202, 202, var(--home-alph
 body.cm-skin .pink-column-bg   { background: rgba(251, 207, 232, var(--home-alpha)) !important; }
 body.cm-skin .teal-column-bg   { background: rgba(204, 251, 241, var(--home-alpha)) !important; }
 body.cm-skin .slate-column-bg  { background: rgba(203, 213, 225, var(--home-alpha)) !important; }
+
+/* ===========================================================
+   MODO TRELLO (escuro) — escolhido no 🎨 (Estilo dos cards = cinza/letra branca).
+   Cards cinza + texto branco; e as COLUNAS ficam escuras (sobrepõe a cor do
+   tema SÓ neste modo) para máxima legibilidade.
+   =========================================================== */
+body.cm-skin.cards-dark #columns-wrapper .card-item {
+  background: rgba(45, 52, 64, 0.96) !important;
+  color: #f3f4f6 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+body.cm-skin.cards-dark #columns-wrapper [class*="-column-bg"] {
+  background: rgba(22, 26, 34, var(--home-alpha)) !important;
+}
+body.cm-skin.cards-dark .column-header,
+body.cm-skin.cards-dark .column-header h3,
+body.cm-skin.cards-dark [data-column-counter] {
+  color: #e5e7eb !important;
+}
+
+/* select do popover de aparência */
+.cm-appearance-row select {
+  width: 100%; padding: 6px 8px; border-radius: 8px;
+  border: 1px solid #d1d5db; background: #fff; color: #111;
+  font-size: 0.82rem; cursor: pointer;
+}
