@@ -8,12 +8,15 @@
   {{ block.super }}
 {% endblock %}
 
-{% block body_class %}is-board has-header-search{% endblock %}
+{% block body_class %}is-board has-header-search cm-skin{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% url 'boards:board_wallpaper_css' board.id %}">
 <link rel="stylesheet" href="{% static 'boards/board_detail.css' %}?v=20260413">
 <link rel="stylesheet" href="{% static 'boards/calendar.css' %}">
+{# skin do cabeçalho compartilhado com a home (body.cm-skin) #}
+<link rel="stylesheet" href="{% static 'boards/cm_skin.css' %}?v=20260614">
+<script src="{% static 'boards/appearance.js' %}" defer></script>
 {% endblock %}
 
 
@@ -316,53 +319,100 @@
 
   <!-- IMAGEM DO QUADRO NO CENTRO D HEADER -->
 {% block header_center %}
+  {# ============================================================
+     CAPA DO QUADRO no header — DESATIVADA a pedido (jun/2026).
+     Mantida comentada porque pode voltar no futuro. A gestão da
+     imagem do quadro continua disponível pelo thumb da busca
+     (block header_right_under_logo). NÃO apagar.
+     ============================================================ #}
+  {% comment %}
   <div class="relative group">
     {% if board and board.image %}
       <div class="cm-cover cm-cover--header"
            style="--cm-cover-url: url('{{ board.image.url }}'); cursor:pointer;"
            onclick="openBoardImageModal('{{ board.image.url }}')"
            title="Ver imagem em tamanho completo">
-        <img
-          src="{{ board.image.url }}"
-          alt="{{ board.name }}"
-          class="cm-cover__img"
-          loading="lazy"
-          style="pointer-events:none;"
-        >
+        <img src="{{ board.image.url }}" alt="{{ board.name }}" class="cm-cover__img" loading="lazy" style="pointer-events:none;">
       </div>
-
-      {# X remover (igual ao thumb) #}
-      <button
-        type="button"
-        class="absolute top-2 right-2 h-7 w-7 rounded-full
-               bg-black/60 text-white text-xs flex items-center justify-center
-               opacity-0 group-hover:opacity-100 transition-opacity z-10"
-        hx-post="{% url 'boards:remove_board_image' board.id %}"
-        hx-target="body" hx-swap="beforeend"
-        aria-label="Remover imagem do quadro"
-        title="Remover imagem"
-      >✖</button>
-
+      <button type="button"
+        class="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/60 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+        hx-post="{% url 'boards:remove_board_image' board.id %}" hx-target="body" hx-swap="beforeend"
+        aria-label="Remover imagem do quadro" title="Remover imagem">✖</button>
     {% else %}
       <div class="cm-cover cm-cover--header" style="--cm-cover-url: none;">
-        <div style="position:relative; z-index:1; padding:0 14px; display:flex; align-items:center; height:100%; font-weight:700;">
-          {{ board.name }}
-        </div>
+        <div style="position:relative; z-index:1; padding:0 14px; display:flex; align-items:center; height:100%; font-weight:700;">{{ board.name }}</div>
       </div>
-
-      {# + adicionar (igual ao thumb) #}
-      <button
-        type="button"
-        class="absolute top-2 right-2 h-7 w-7 rounded-full
-               bg-black/60 text-white text-xl leading-none flex items-center justify-center
-               opacity-90 hover:opacity-100 transition-opacity z-10"
-        {% if board %}hx-get="{% url 'boards:update_board_image' board.id %}"{% endif %}
-        hx-target="body" hx-swap="beforeend"
-        aria-label="Adicionar imagem do quadro"
-        title="Adicionar imagem"
-      >+</button>
+      <button type="button"
+        class="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/60 text-white text-xl leading-none flex items-center justify-center opacity-90 hover:opacity-100 transition-opacity z-10"
+        {% if board %}hx-get="{% url 'boards:update_board_image' board.id %}"{% endif %} hx-target="body" hx-swap="beforeend"
+        aria-label="Adicionar imagem do quadro" title="Adicionar imagem">+</button>
     {% endif %}
   </div>
+  {% endcomment %}
+
+  {# Busca central, igual à home: pílula que abre a busca do quadro #}
+  <button type="button" id="header-search-toggle"
+          class="home-global-search cm-search-trigger"
+          aria-label="Pesquisar" title="Pesquisar">
+    <span class="hgs-icon" aria-hidden="true">🔍</span>
+    <span class="cm-search-ph">Pesquise em todos os quadros</span>
+  </button>
+{% endblock %}
+
+{# ESQUERDA — casinha (Início) + paleta de aparência (igual à home) #}
+{% block header_brand %}
+  <div class="cm-home-brand flex items-center gap-2">
+    <a href="{% url 'boards:boards_index' %}" class="cm-icon-btn" title="Início" aria-label="Início">🏠</a>
+    <button type="button" id="cm-appearance-toggle" class="cm-icon-btn cm-icon-btn--palette"
+            title="Aparência da página" aria-label="Aparência da página" aria-expanded="false">🎨</button>
+  </div>
+{% endblock %}
+
+{# DIREITA — nome + @handle, avatar grande, 🎁 + Sair (igual à home) #}
+{% block header_right %}
+  {% if request.user.is_authenticated %}
+  {% with prof=request.user.profile %}
+  <div class="cm-home-right flex items-center gap-3">
+    <div class="cm-home-id">
+      <div class="cm-home-name">{{ prof.display_name|default:request.user.email }}</div>
+      {% if prof.handle %}<div class="cm-home-handle">@{{ prof.handle }}</div>{% endif %}
+    </div>
+
+    <div id="my-avatar-wrap" class="cm-home-avatar-wrap">
+      <a href="#" id="open-user-settings" class="block">
+        <img src="{% if user_avatar_url %}{{ user_avatar_url }}{% else %}{% static brand_logo %}{% endif %}"
+             alt="Perfil" class="cm-home-avatar">
+      </a>
+      <span id="my-social-badge"
+            style="display:none;position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;
+                   border-radius:9px;background:#ef4444;color:#fff;font-size:0.625rem;font-weight:700;
+                   align-items:center;justify-content:center;padding:0 4px;
+                   box-shadow:0 1px 4px rgba(0,0,0,.25);z-index:10;pointer-events:none;"></span>
+    </div>
+
+    <div class="cm-home-actions flex flex-col gap-2">
+      <button type="button" id="wn-toggle" class="cm-icon-btn cm-icon-btn--sm relative"
+              title="Novidades" aria-label="Novidades" data-loaded="0">
+        🎁
+        <span id="wn-badge"
+              class="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1
+                     rounded-full text-[11px] leading-[18px] text-white bg-red-600 text-center font-bold
+                     {% if not whats_new_unseen %}hidden{% endif %}">{{ whats_new_unseen|default:0 }}</span>
+      </button>
+      <form method="post" action="{% url 'boards:logout' %}">
+        {% csrf_token %}
+        <button type="submit" class="cm-icon-btn cm-icon-btn--sm" title="Sair" aria-label="Sair">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 2v10"></path>
+            <path d="M5.5 6.5a8 8 0 1 0 13 0"></path>
+          </svg>
+        </button>
+      </form>
+    </div>
+  </div>
+  {% endwith %}
+  {% endif %}
 {% endblock %}
 
 
@@ -377,6 +427,10 @@
 
 
 {% block content %}
+
+{# Popover da paleta de aparência (🎨) — compartilhado com a home #}
+{% include "boards/partials/appearance_popover.html" %}
+
 <div class="mt-2 mb-4">
 
 <!-- DESKTOP / PAISAGEM (>= 768px) — breadcrumb + membros na MESMA LINHA -->

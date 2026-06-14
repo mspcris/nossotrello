@@ -1,0 +1,21 @@
+{# Popover da paleta de aparência (🎨) — cor / transparência / fosco da página.
+   Compartilhado entre a home e a página de quadro. #}
+<div id="cm-appearance-pop" class="cm-appearance-pop" role="dialog" aria-label="Aparência da página">
+  <h4>🎨 Aparência</h4>
+  <div class="cm-appearance-row">
+    <label for="ap-color">Cor da transparência</label>
+    <input type="color" id="ap-color" value="#0f172a">
+  </div>
+  <div class="cm-appearance-row">
+    <label for="ap-alpha">Transparência (<span id="ap-alpha-val">32</span>%)</label>
+    <input type="range" id="ap-alpha" min="0" max="80" step="1" value="32">
+  </div>
+  <div class="cm-appearance-row">
+    <label for="ap-blur">Fosco (<span id="ap-blur-val">14</span>px)</label>
+    <input type="range" id="ap-blur" min="0" max="30" step="1" value="14">
+  </div>
+  <div class="cm-appearance-row cm-appearance-check">
+    <label for="ap-header"><input type="checkbox" id="ap-header"> Barra de título da mesma cor</label>
+  </div>
+  <button type="button" class="cm-appearance-reset" id="ap-reset">Restaurar padrão</button>
+</div>

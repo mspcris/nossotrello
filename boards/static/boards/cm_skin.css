@@ -1,0 +1,234 @@
+/* ============================================================
+   cm_skin.css — SKIN COMPARTILHADO DO CABEÇALHO
+   Aplicado em body.cm-skin (home e página de quadro).
+   Cor/transparência/fosco via variáveis controladas pelo botão 🎨
+   (appearance.js), persistidas em localStorage.
+   ============================================================ */
+
+body.cm-skin {
+  --home-tint: 15, 23, 42;  /* rgb do overlay */
+  --home-alpha: 0.32;       /* transparência */
+  --home-blur: 14px;        /* fosco */
+}
+
+/* ===================== CABEÇALHO ===================== */
+body.cm-skin .cm-header {
+  /* padrão: fosco transparente (branco). Só ganha a cor se o usuário marcar
+     "Barra de título da mesma cor" na paleta 🎨. */
+  background: rgba(255, 255, 255, 0.30);
+  backdrop-filter: blur(14px) saturate(1.1);
+  -webkit-backdrop-filter: blur(14px) saturate(1.1);
+  min-height: 125px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;   /* irmãos da barra (mobile) empilham, não enfileiram */
+  justify-content: center;
+  padding: 0 36px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+}
+body.cm-skin.home-header-tinted .cm-header {
+  background: rgba(var(--home-tint), var(--home-alpha));
+  backdrop-filter: blur(var(--home-blur)) saturate(1.1);
+  -webkit-backdrop-filter: blur(var(--home-blur)) saturate(1.1);
+}
+body.cm-skin .cm-header-bar {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  grid-template-columns: 1fr minmax(0, 680px) 1fr; /* laterais iguais -> busca central centrada */
+  max-width: none;
+  margin: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+body.cm-skin .cm-header-center { padding: 0 12px; }
+
+/* botões de ícone do header (☰ 🏠 🎨 🎁 Sair) */
+body.cm-skin .cm-icon-btn {
+  height: 42px; width: 42px; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.70);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  font-size: 1.1rem; line-height: 1; cursor: pointer;
+  color: #0b0b0b; text-decoration: none;
+  transition: background .15s, transform .1s;
+}
+body.cm-skin .cm-icon-btn:hover { background: #fff; }
+body.cm-skin .cm-icon-btn:active { transform: scale(0.95); }
+body.cm-skin .cm-icon-btn--sm { height: 38px; width: 38px; border-radius: 9999px; font-size: 1rem; }
+body.cm-skin .cm-icon-btn--palette {
+  background: conic-gradient(from 0deg,#ef4444,#f59e0b,#10b981,#3b82f6,#8b5cf6,#ef4444);
+  border: none; color: #fff;
+}
+body.cm-skin #menuToggle {
+  height: 42px; width: 42px; padding: 0; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* busca central — pílula (input na home, botão-gatilho no quadro) */
+body.cm-skin .home-global-search {
+  position: relative;
+  width: 100%;
+  max-width: 680px;
+  margin: 0 auto;
+  display: block;
+  padding: 13px 24px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.70);
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+  cursor: text;
+}
+body.cm-skin .home-global-search .hgs-icon {
+  position: absolute; left: 26px; top: 50%; transform: translateY(-50%);
+  font-size: 1.2rem; line-height: 1; filter: grayscale(1) opacity(0.45);
+  pointer-events: none;
+}
+body.cm-skin #home-board-search {
+  display: block; width: 100%;
+  border: none; outline: none; background: transparent;
+  font-size: 1.25rem; font-weight: 600;
+  color: #0B0B0B; text-align: center;
+}
+body.cm-skin #home-board-search::placeholder {
+  color: rgba(11, 11, 11, 0.30); font-weight: 600;
+}
+/* variante "gatilho" (página de quadro): a pílula é um botão que abre a busca */
+body.cm-skin .cm-search-trigger {
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+body.cm-skin .cm-search-trigger .cm-search-ph {
+  font-size: 1.25rem; font-weight: 600; color: rgba(11, 11, 11, 0.30);
+}
+
+/* lado direito — identidade + avatar grande + ações empilhadas */
+body.cm-skin .cm-home-id { text-align: right; line-height: 1.15; flex: 0 0 auto; white-space: nowrap; }
+body.cm-skin .cm-home-name {
+  display: inline-block; white-space: nowrap;
+  font-weight: 700; font-size: 1rem; color: #0b0b0b;
+  background: rgba(255, 255, 255, 0.85); padding: 3px 10px; border-radius: 8px;
+}
+body.cm-skin .cm-home-handle {
+  font-size: 0.95rem; color: rgba(255, 255, 255, 0.92); margin-top: 4px;
+  white-space: nowrap; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+body.cm-skin .cm-home-avatar-wrap { position: relative; display: inline-block; }
+body.cm-skin .cm-home-avatar {
+  height: 84px; width: 84px; border-radius: 9999px; object-fit: cover;
+  border: 3px solid rgba(255, 255, 255, 0.85); box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+}
+body.cm-skin .cm-header-right {
+  width: auto; max-width: none; flex-wrap: nowrap; justify-self: end;
+}
+body.cm-skin .cm-home-right { flex-wrap: nowrap; }
+body.cm-skin .cm-home-avatar-wrap,
+body.cm-skin .cm-home-actions { flex: 0 0 auto; }
+
+/* ===================== POPOVER 🎨 ===================== */
+.cm-appearance-pop {
+  position: fixed; top: 100px; left: 16px; z-index: 1600;
+  width: 260px; padding: 16px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 0, 0, 0.10); border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+  display: none;
+}
+.cm-appearance-pop.open { display: block; }
+.cm-appearance-pop h4 { font-size: 0.95rem; font-weight: 700; color: #0b0b0b; margin: 0 0 12px; }
+.cm-appearance-row { margin-bottom: 12px; }
+.cm-appearance-row label { display: block; font-size: 0.78rem; font-weight: 600; color: #374151; margin-bottom: 5px; }
+.cm-appearance-row input[type=range] { width: 100%; }
+.cm-appearance-row input[type=color] { width: 100%; height: 34px; border: none; background: none; cursor: pointer; }
+.cm-appearance-check label { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 0.82rem; font-weight: 600; color: #374151; cursor: pointer; }
+.cm-appearance-check input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; }
+.cm-appearance-reset {
+  width: 100%; margin-top: 4px; padding: 7px; border-radius: 9px;
+  background: #f3f4f6; border: 1px solid #e5e7eb;
+  font-size: 0.8rem; font-weight: 600; cursor: pointer;
+}
+.cm-appearance-reset:hover { background: #e5e7eb; }
+
+/* =========== COLUNA AGRUPADORA DE TOTAIS (repaginada) =========== */
+body.cm-skin .aggregator-column {
+  background: rgba(var(--home-tint), var(--home-alpha));
+  backdrop-filter: blur(var(--home-blur)) saturate(1.1);
+  -webkit-backdrop-filter: blur(var(--home-blur)) saturate(1.1);
+  border: 1px solid rgba(255, 255, 255, 0.20);
+  border-radius: 18px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  padding-top: 4px;
+}
+body.cm-skin .aggregator-column .column-header h3 {
+  color: #fff; font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+body.cm-skin .aggregator-card {
+  display: flex; align-items: center; gap: 12px;
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.20);
+  border-radius: 12px;
+  padding: 10px 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: background .15s ease;
+}
+body.cm-skin .aggregator-card:hover { background: rgba(255, 255, 255, 0.16); }
+body.cm-skin .aggregator-count {
+  font-weight: 800; font-size: 1.15rem; color: #fff;
+  min-width: 2.4ch; text-align: center;
+}
+body.cm-skin .aggregator-name {
+  color: rgba(255, 255, 255, 0.85); font-weight: 600; font-size: 0.85rem; line-height: 1.2;
+}
+
+/* ===================== MOBILE (< 768px) ===================== */
+@media (max-width: 767px) {
+  body.cm-skin .cm-header {
+    min-height: 0;
+    padding: 10px 12px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
+  }
+  body.cm-skin .cm-header-bar {
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+      "left  right"
+      "search search";
+    align-items: center;
+    row-gap: 10px;
+    column-gap: 8px;
+  }
+  body.cm-skin .cm-header-bar > div:first-child { grid-area: left; }
+  body.cm-skin .cm-header-center { grid-area: search; padding: 0; }
+  body.cm-skin .cm-header-right { grid-area: right; justify-self: end; }
+
+  body.cm-skin .home-global-search { max-width: none; padding: 10px 18px; }
+  body.cm-skin .home-global-search .hgs-icon { left: 18px; }
+  body.cm-skin #home-board-search,
+  body.cm-skin .cm-search-trigger .cm-search-ph { font-size: 1.05rem; }
+
+  body.cm-skin .cm-icon-btn { height: 36px; width: 36px; border-radius: 10px; font-size: 1rem; }
+  body.cm-skin #menuToggle { height: 36px; width: 36px; border-radius: 10px; }
+  body.cm-skin .cm-icon-btn--sm { height: 30px; width: 30px; }
+
+  body.cm-skin .cm-home-right { gap: 7px; }
+  body.cm-skin .cm-home-avatar { height: 46px; width: 46px; border-width: 2px; }
+  body.cm-skin .cm-home-name { font-size: 0.78rem; padding: 2px 6px; }
+  body.cm-skin .cm-home-handle { font-size: 0.7rem; margin-top: 2px; }
+  body.cm-skin .cm-home-actions { gap: 5px; }
+
+  /* a 2a linha de identidade do base duplica a do skin -> esconder */
+  body.cm-skin .cm-header-mobile-id { display: none !important; }
+
+  /* popover cabendo na tela */
+  .cm-appearance-pop { left: 12px; right: 12px; width: auto; top: 92px; }
+}
+
+/* telas bem estreitas: nome/handle some pra não espremer o avatar */
+@media (max-width: 430px) {
+  body.cm-skin .cm-home-id { display: none; }
+}
