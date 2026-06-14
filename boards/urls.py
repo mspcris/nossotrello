@@ -106,6 +106,7 @@ from .views.search import board_search, home_search
 
 # Colunas (assumindo boards/views/columns.py)
 from .views import columns as columns_views
+from .views.email_ingest import email_ingest_config, email_ingest_sync_now
 
 # Attachments / Quill (assumindo boards/views/attachments.py e boards/views/activity.py ou afins)
 from .views import attachments as attachments_views
@@ -371,6 +372,10 @@ urlpatterns = [
     path("board/<int:board_id>/rename/", rename_board, name="rename_board"),
     path("board/<int:board_id>/delete/", delete_board, name="delete_board"),
     path("board/<int:board_id>/leave/", board_leave, name="board_leave"),
+
+    # Criar Card From Email (ingestão IMAP -> cards)
+    path("board/<int:board_id>/email-ingest/", email_ingest_config, name="email_ingest_config"),
+    path("board/<int:board_id>/email-ingest/sync/", email_ingest_sync_now, name="email_ingest_sync_now"),
 
 
 

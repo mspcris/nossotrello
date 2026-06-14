@@ -2009,4 +2009,53 @@ class AllowedEmailDomain(models.Model):
         super().save(*args, **kwargs)
 
 
+# ============================================================
+# EMAIL INGEST — "Criar Card From Email"
+# Caixa de entrada IMAP -> cards numa coluna do quadro.
+# Senha guardada criptografada (boards/services/secret_crypto.py).
+# ============================================================
+class BoardEmailIngest(models.Model):
+    board = models.OneToOneField(
+        Board, related_name="email_ingest", on_delete=models.CASCADE
+    )
+    target_column = models.ForeignKey(
+        Column, related_name="email_ingests", on_delete=models.SET_NULL,
+        null=True, blank=True,
+    )
+
+    imap_host = models.CharField(max_length=255)
+    imap_port = models.PositiveIntegerField(default=993)
+    use_ssl = models.BooleanField(default=True)
+    email_user = models.CharField(max_length=255)
+    # token Fernet (bytes) da senha — nunca em texto puro
+    password_encrypted = models.BinaryField(null=True, blank=True)
+
+    sync_interval_minutes = models.PositiveIntegerField(default=15)
+    is_active = models.BooleanField(default=True)
+
+    # controle de sync / dedup
+    last_sync_at = models.DateTimeField(null=True, blank=True)
+    last_uid = models.CharField(max_length=64, blank=True, default="")
+    last_error = models.TextField(blank=True, default="")
+
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="email_ingests_created",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"EmailIngest[{self.board.name} <- {self.email_user}]"
+
+    def is_due(self):
+        """True se já passou o intervalo desde o último sync."""
+        if not self.is_active:
+            return False
+        if not self.last_sync_at:
+            return True
+        delta = timezone.now() - self.last_sync_at
+        return delta.total_seconds() >= self.sync_interval_minutes * 60
+
+
 # END boards/models.py

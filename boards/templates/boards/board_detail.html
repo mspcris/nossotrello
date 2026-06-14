@@ -142,6 +142,19 @@
   </button>
 </li>
 
+<li>
+  <button class="nt-link flex items-center gap-2" type="button"
+          hx-get="{% url 'boards:email_ingest_config' board.id %}"
+          hx-target="body" hx-swap="beforeend">
+    <!-- mail -->
+    <svg class="h-5 w-5 opacity-90" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="2"/>
+      <path d="M4 7l8 6 8-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span>Criar Card From Email</span>
+  </button>
+</li>
+
 {% if can_share_board %}
 <li>
   <button class="nt-link flex items-center gap-2" type="button"
