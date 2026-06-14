@@ -255,9 +255,15 @@
 
       /* esconder chrome mobile do base que duplica/não serve na home */
       body.is-home .cm-header-mobile-id { display: none !important; }
-      /* remove o seletor "1 2 3 Auto" (e o wrapper) — libera espaço no mobile */
-      body.is-home div:has(> .boards-cols-switch),
-      body.is-home .boards-cols-switch { display: none !important; }
+      /* "1 2 3 Auto" volta como pílula FLUTUANTE (canto inferior): existe sem
+         empurrar o conteúdo entre o header e o primeiro grupo. */
+      body.is-home div:has(> .boards-cols-switch) { margin: 0 !important; min-height: 0 !important; }
+      body.is-home .boards-cols-switch {
+        position: fixed !important;
+        right: 14px !important; bottom: 14px !important;
+        top: auto !important; left: auto !important;
+        z-index: 1300 !important;
+      }
 
       /* popover de aparência cabendo na tela */
       .cm-appearance-pop { left: 12px; right: 12px; width: auto; top: 92px; }
@@ -333,7 +339,13 @@
       </button>
       <form method="post" action="{% url 'boards:logout' %}">
         {% csrf_token %}
-        <button type="submit" class="cm-icon-btn cm-icon-btn--sm" title="Sair" aria-label="Sair">⏻</button>
+        <button type="submit" class="cm-icon-btn cm-icon-btn--sm" title="Sair" aria-label="Sair">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 2v10"></path>
+            <path d="M5.5 6.5a8 8 0 1 0 13 0"></path>
+          </svg>
+        </button>
       </form>
     </div>
   </div>
