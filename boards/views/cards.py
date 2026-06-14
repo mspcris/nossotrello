@@ -138,6 +138,13 @@ def add_card(request, column_id):
             board.version += 1
             board.save(update_fields=["version"])
 
+            # AUTOMAÇÃO: card entrou na coluna (criação)
+            try:
+                from boards.services.column_automation import run_for
+                run_for(card, "enter", column, actor=request.user)
+            except Exception:
+                pass
+
             try:
                 _add_card_notify_plans = process_mentions_and_notify(
                     request=request,
@@ -996,6 +1003,14 @@ def move_card(request):
     # versão do board destino
     new_board.version += 1
     new_board.save(update_fields=["version"])
+
+    # AUTOMAÇÃO: card saiu da coluna antiga / entrou na nova
+    try:
+        from boards.services.column_automation import run_for
+        run_for(card, "leave", old_column, actor=request.user)
+        run_for(card, "enter", new_column, actor=request.user)
+    except Exception:
+        pass
 
     # Registra histórico de movimentação para sugestões personalizadas
     try:

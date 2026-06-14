@@ -2062,4 +2062,43 @@ class BoardEmailIngest(models.Model):
         return delta.total_seconds() >= self.sync_interval_minutes * 60
 
 
+# ============================================================
+# AUTOMAÇÃO DA COLUNA (estilo Trello, sem o construtor de regras)
+# Gatilho: card ENTRA / SAI da lista -> executa uma ação.
+# ============================================================
+class ColumnAutomation(models.Model):
+    TRIGGER_CHOICES = [
+        ("enter", "Quando um card entra na lista"),
+        ("leave", "Quando um card sai da lista"),
+    ]
+    ACTION_CHOICES = [
+        ("send_email", "Disparar e-mail avisando alguém"),
+        ("move_to", "Mover o card para outra coluna"),
+        ("set_due", "Definir data de entrega (+N dias)"),
+        ("add_label", "Adicionar etiqueta"),
+        ("mark_delivered", "Marcar como entregue"),
+    ]
+
+    column = models.ForeignKey(
+        Column, related_name="automations", on_delete=models.CASCADE
+    )
+    trigger = models.CharField(max_length=10, choices=TRIGGER_CHOICES)
+    action = models.CharField(max_length=20, choices=ACTION_CHOICES)
+    # parâmetros por ação: {email} | {target_column_id} | {days} | {label}
+    params = models.JSONField(default=dict, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="column_automations_created",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["id"]
+
+    def __str__(self):
+        return f"{self.column.name}: {self.trigger} -> {self.action}"
+
+
 # END boards/models.py

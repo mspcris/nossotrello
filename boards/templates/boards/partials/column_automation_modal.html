@@ -1,0 +1,90 @@
+{# Automação da coluna — gatilho (entra/sai) -> ação. Sem construtor de regras. #}
+<div id="col-automation-modal"
+     class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+     onclick="if(event.target===this)this.remove()">
+  <div class="bg-[#1a2035] text-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-6 relative" onclick="event.stopPropagation()">
+
+    <button class="absolute top-4 right-4 text-white/50 hover:text-white text-xl leading-none"
+            onclick="document.getElementById('col-automation-modal').remove()">✕</button>
+
+    <div class="flex items-center gap-2 mb-1">
+      <span class="text-2xl">⚡</span>
+      <h2 class="text-lg font-bold">Automação — {{ column.name }}</h2>
+    </div>
+    <p class="text-sm text-white/60 mb-4">
+      Quando um card <strong>entra</strong> ou <strong>sai</strong> desta lista, executa uma ação.
+    </p>
+
+    {% if rules %}
+      <div class="space-y-2 mb-4">
+        {% for r in rules %}
+          <div class="flex items-center justify-between gap-2 bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm">
+            <span>
+              <strong>{{ r.get_trigger_display }}</strong> → {{ r.get_action_display }}{% if r.params.email %} <span class="text-white/50">({{ r.params.email }})</span>{% elif r.params.days %} <span class="text-white/50">(+{{ r.params.days }}d)</span>{% elif r.params.label %} <span class="text-white/50">({{ r.params.label }})</span>{% endif %}
+            </span>
+            <button type="button" class="shrink-0 text-red-400 hover:text-red-300 text-xs"
+                    hx-post="{% url 'boards:column_automation_delete' r.id %}"
+                    hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                    hx-target="#col-automation-modal" hx-swap="outerHTML">Remover</button>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="text-white/40 text-sm mb-4">Nenhuma automação ainda.</p>
+    {% endif %}
+
+    <form hx-post="{% url 'boards:column_automation_modal' column.id %}"
+          hx-target="#col-automation-modal" hx-swap="outerHTML"
+          class="space-y-3 border-t border-white/10 pt-4">
+      {% csrf_token %}
+      <div class="grid grid-cols-2 gap-2">
+        <label class="block text-sm">Quando
+          <select name="trigger" class="mt-1 w-full bg-white/10 border border-white/20 rounded-lg px-2 py-2 text-sm">
+            {% for v, l in trigger_choices %}<option value="{{ v }}">{{ l }}</option>{% endfor %}
+          </select>
+        </label>
+        <label class="block text-sm">Fazer
+          <select name="action" id="ca-action" onchange="window.__caAction()"
+                  class="mt-1 w-full bg-white/10 border border-white/20 rounded-lg px-2 py-2 text-sm">
+            {% for v, l in action_choices %}<option value="{{ v }}">{{ l }}</option>{% endfor %}
+          </select>
+        </label>
+      </div>
+
+      <div id="ca-p-email" class="ca-param">
+        <input type="email" name="email" placeholder="email@destino.com.br"
+               class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm">
+      </div>
+      <div id="ca-p-move" class="ca-param hidden">
+        <select name="target_column_id" class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm">
+          {% for c in other_columns %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div id="ca-p-due" class="ca-param hidden">
+        <input type="number" name="days" value="3" min="0"
+               class="w-32 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm">
+        <span class="text-xs text-white/50">dias a partir de hoje</span>
+      </div>
+      <div id="ca-p-label" class="ca-param hidden">
+        <input type="text" name="label" placeholder="etiqueta"
+               class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm">
+      </div>
+
+      <button type="submit" class="px-4 py-2 rounded-lg bg-[#0052CC] hover:bg-blue-500 text-sm font-semibold transition">
+        Adicionar automação
+      </button>
+    </form>
+
+    <script>
+      window.__caAction = function () {
+        var sel = document.getElementById('ca-action');
+        if (!sel) return;
+        var map = { send_email: 'ca-p-email', move_to: 'ca-p-move', set_due: 'ca-p-due', add_label: 'ca-p-label' };
+        document.querySelectorAll('#col-automation-modal .ca-param').forEach(function (el) { el.classList.add('hidden'); });
+        var id = map[sel.value];
+        if (id) { var el = document.getElementById(id); if (el) el.classList.remove('hidden'); }
+      };
+      window.__caAction();
+    </script>
+  </div>
+</div>
