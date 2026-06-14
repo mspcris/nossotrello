@@ -24,6 +24,15 @@ from boards.models import WhatsNewItem
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-06 ---
+    "77fc7ce": (
+        "🎨",
+        "Deixe a home com a sua cara",
+        "Na home agora tem um botão de paleta (🎨) ao lado do menu. Abra e ajuste "
+        "três coisas da página de uma vez: a cor do fundo dos painéis e do "
+        "cabeçalho, o quanto ela fica transparente e o quanto fica fosca "
+        "(desfoque). Mexa nos controles e a home muda na hora — a sua escolha "
+        "fica salva neste navegador pra quando você voltar.",
+    ),
     "3ce9d49": (
         "👥",
         "Mude quem vê o código compartilhado quando quiser",
