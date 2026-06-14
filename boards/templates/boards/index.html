@@ -207,6 +207,57 @@
       font-size: 0.8rem; font-weight: 600; cursor: pointer;
     }
     .cm-appearance-reset:hover { background: #e5e7eb; }
+
+    /* ============================================================
+       MOBILE (< 768px) — header da home empilhado e compacto
+       Linha 1: [☰ 🏠 🎨]  ........  [avatar 🎁/⏻]
+       Linha 2: busca ocupando a largura toda.
+       ============================================================ */
+    @media (max-width: 767px) {
+      body.is-home .cm-header {
+        min-height: 0;
+        padding: 10px 12px;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
+      }
+      body.is-home .cm-header-bar {
+        grid-template-columns: auto 1fr;
+        grid-template-areas:
+          "left  right"
+          "search search";
+        align-items: center;
+        row-gap: 10px;
+        column-gap: 8px;
+      }
+      body.is-home .cm-header-bar > div:first-child { grid-area: left; }
+      body.is-home .cm-header-center { grid-area: search; padding: 0; }
+      body.is-home .cm-header-right { grid-area: right; justify-self: end; }
+
+      body.is-home .home-global-search { max-width: none; padding: 10px 18px; }
+      body.is-home .home-global-search .hgs-icon { left: 18px; }
+      body.is-home #home-board-search { font-size: 1.05rem; }
+
+      body.is-home .cm-icon-btn { height: 36px; width: 36px; border-radius: 10px; font-size: 1rem; }
+      body.is-home #menuToggle { height: 36px; width: 36px; border-radius: 10px; }
+      body.is-home .cm-icon-btn--sm { height: 30px; width: 30px; }
+
+      body.is-home .cm-home-right { gap: 7px; }
+      body.is-home .cm-home-avatar { height: 46px; width: 46px; border-width: 2px; }
+      body.is-home .cm-home-name { font-size: 0.78rem; padding: 2px 6px; }
+      body.is-home .cm-home-handle { font-size: 0.7rem; margin-top: 2px; }
+      body.is-home .cm-home-actions { gap: 5px; }
+
+      /* esconder chrome mobile do base que duplica/não serve na home */
+      body.is-home .cm-header-mobile-id { display: none !important; }
+      body.is-home .boards-cols-switch { display: none; }
+
+      /* popover de aparência cabendo na tela */
+      .cm-appearance-pop { left: 12px; right: 12px; width: auto; top: 92px; }
+    }
+
+    /* telas bem estreitas: o nome/handle some pra não espremer o avatar */
+    @media (max-width: 430px) {
+      body.is-home .cm-home-id { display: none; }
+    }
   </style>
 
   {# IMPORTANT: defer evita o crash "document.body is null" dentro do home_groups.js #}
