@@ -37,36 +37,49 @@
           hx-target="#col-automation-modal" hx-swap="outerHTML"
           class="space-y-3 border-t border-white/10 pt-4">
       {% csrf_token %}
-      <div class="grid grid-cols-2 gap-2">
-        <label class="block text-sm">Quando
-          <select name="trigger" class="mt-1 w-full bg-white/10 border border-white/20 rounded-lg px-2 py-2 text-sm">
-            {% for v, l in trigger_choices %}<option value="{{ v }}">{{ l }}</option>{% endfor %}
-          </select>
-        </label>
-        <label class="block text-sm">Fazer
-          <select name="action" id="ca-action" onchange="window.__caAction()"
-                  class="mt-1 w-full bg-white/10 border border-white/20 rounded-lg px-2 py-2 text-sm">
-            {% for v, l in action_choices %}<option value="{{ v }}">{{ l }}</option>{% endfor %}
-          </select>
-        </label>
+      <div>
+        <p class="text-[11px] font-bold uppercase tracking-widest text-white/45 mb-1">Quando</p>
+        <div class="flex flex-col gap-1">
+          {% for v, l in trigger_choices %}
+            <label class="flex items-center gap-2 text-sm px-2 py-1.5 rounded-lg hover:bg-white/5 cursor-pointer">
+              <input type="radio" name="trigger" value="{{ v }}" {% if forloop.first %}checked{% endif %}> {{ l }}
+            </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div>
+        <p class="text-[11px] font-bold uppercase tracking-widest text-white/45 mb-1">Fazer</p>
+        <div class="flex flex-col gap-1">
+          {% for v, l in action_choices %}
+            <label class="flex items-center gap-2 text-sm px-2 py-1.5 rounded-lg hover:bg-white/5 cursor-pointer">
+              <input type="radio" name="action" value="{{ v }}" onchange="window.__caAction()" {% if forloop.first %}checked{% endif %}> {{ l }}
+            </label>
+          {% endfor %}
+        </div>
       </div>
 
       <div id="ca-p-email" class="ca-param">
         <input type="email" name="email" placeholder="email@destino.com.br"
                class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm">
       </div>
-      <div id="ca-p-move" class="ca-param hidden">
+      <div id="ca-p-member" class="ca-param hidden">
+        <select name="user_id" class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm">
+          {% for m in members %}<option value="{{ m.user_id }}">{{ m.user.get_full_name|default:m.user.email|default:m.user.username }}</option>{% endfor %}
+        </select>
+      </div>
+      <div id="ca-p-column" class="ca-param hidden">
         <select name="target_column_id" class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm">
           {% for c in other_columns %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
         </select>
       </div>
-      <div id="ca-p-due" class="ca-param hidden">
+      <div id="ca-p-days" class="ca-param hidden">
         <input type="number" name="days" value="3" min="0"
                class="w-32 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm">
         <span class="text-xs text-white/50">dias a partir de hoje</span>
       </div>
       <div id="ca-p-label" class="ca-param hidden">
-        <input type="text" name="label" placeholder="etiqueta"
+        <input type="text" name="label" placeholder="nome da etiqueta"
                class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm">
       </div>
 
@@ -77,11 +90,11 @@
 
     <script>
       window.__caAction = function () {
-        var sel = document.getElementById('ca-action');
-        if (!sel) return;
-        var map = { send_email: 'ca-p-email', move_to: 'ca-p-move', set_due: 'ca-p-due', add_label: 'ca-p-label' };
+        var sel = document.querySelector('#col-automation-modal input[name=action]:checked');
+        var map = { send_email:'ca-p-email', assign_user:'ca-p-member', move_to:'ca-p-column',
+                    copy_to:'ca-p-column', set_due:'ca-p-days', set_start:'ca-p-days', add_label:'ca-p-label' };
         document.querySelectorAll('#col-automation-modal .ca-param').forEach(function (el) { el.classList.add('hidden'); });
-        var id = map[sel.value];
+        var id = sel ? map[sel.value] : null;
         if (id) { var el = document.getElementById(id); if (el) el.classList.remove('hidden'); }
       };
       window.__caAction();

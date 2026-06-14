@@ -5,16 +5,21 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_http_methods
 
-from ..models import Column, ColumnAutomation
+from ..models import BoardMembership, Column, ColumnAutomation
 from ..permissions import can_edit_board
 
 
 def _render_modal(request, column):
+    members = (
+        BoardMembership.objects.filter(board=column.board)
+        .select_related("user").order_by("user__email")
+    )
     return render(request, "boards/partials/column_automation_modal.html", {
         "column": column,
         "rules": column.automations.all(),
         "other_columns": column.board.columns.filter(is_deleted=False)
                                .exclude(id=column.id).order_by("position"),
+        "members": members,
         "trigger_choices": ColumnAutomation.TRIGGER_CHOICES,
         "action_choices": ColumnAutomation.ACTION_CHOICES,
     })
@@ -33,9 +38,11 @@ def column_automation_modal(request, column_id):
             params = {}
             if action == "send_email":
                 params["email"] = (request.POST.get("email") or "").strip()
-            elif action == "move_to":
+            elif action == "assign_user":
+                params["user_id"] = request.POST.get("user_id")
+            elif action in ("move_to", "copy_to"):
                 params["target_column_id"] = request.POST.get("target_column_id")
-            elif action == "set_due":
+            elif action in ("set_due", "set_start"):
                 try:
                     params["days"] = int(request.POST.get("days") or 0)
                 except Exception:

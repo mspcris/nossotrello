@@ -59,10 +59,16 @@ def _apply(rule, card, column, actor):
     a = rule.action
     if a == "send_email":
         _send_email(rule, card, column, p)
+    elif a == "assign_user":
+        _assign_user(card, p)
     elif a == "move_to":
         _move_to(card, p)
+    elif a == "copy_to":
+        _copy_to(card, p)
     elif a == "set_due":
         _set_due(card, p)
+    elif a == "set_start":
+        _set_start(card, p)
     elif a == "add_label":
         _add_label(card, p)
     elif a == "mark_delivered":
@@ -101,6 +107,26 @@ def _move_to(card, p):
     card.save(update_fields=["column", "position"])
 
 
+def _copy_to(card, p):
+    from boards.models import Card, Column
+
+    tid = p.get("target_column_id")
+    target = Column.objects.filter(id=tid, is_deleted=False).first()
+    if not target:
+        return
+    last = Card.objects.filter(column=target).count()
+    Card.all_objects.create(
+        column=target,
+        title=card.title,
+        description=card.description or "",
+        tags=card.tags or "",
+        due_date=card.due_date,
+        start_date=card.start_date,
+        position=last,
+        created_by=card.created_by,
+    )
+
+
 def _set_due(card, p):
     try:
         days = int(p.get("days") or 0)
@@ -108,6 +134,28 @@ def _set_due(card, p):
         days = 0
     card.due_date = (timezone.now() + timedelta(days=days)).date()
     card.save(update_fields=["due_date"])
+
+
+def _set_start(card, p):
+    try:
+        days = int(p.get("days") or 0)
+    except Exception:
+        days = 0
+    card.start_date = (timezone.now() + timedelta(days=days)).date()
+    card.save(update_fields=["start_date"])
+
+
+def _assign_user(card, p):
+    """Marca uma pessoa criando um acompanhamento (CardFollow)."""
+    from boards.models import CardFollow
+
+    uid = p.get("user_id")
+    if not uid:
+        return
+    try:
+        CardFollow.objects.get_or_create(card_id=card.id, user_id=uid)
+    except Exception:
+        logger.debug("assign_user: CardFollow falhou", exc_info=True)
 
 
 def _add_label(card, p):

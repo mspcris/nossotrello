@@ -2073,8 +2073,11 @@ class ColumnAutomation(models.Model):
     ]
     ACTION_CHOICES = [
         ("send_email", "Disparar e-mail avisando alguém"),
+        ("assign_user", "Marcar uma pessoa (cria acompanhamento)"),
         ("move_to", "Mover o card para outra coluna"),
+        ("copy_to", "Copiar o card para outra coluna"),
         ("set_due", "Definir data de entrega (+N dias)"),
+        ("set_start", "Definir data de início (+N dias)"),
         ("add_label", "Adicionar etiqueta"),
         ("mark_delivered", "Marcar como entregue"),
     ]
