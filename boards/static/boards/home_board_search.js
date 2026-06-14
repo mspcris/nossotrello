@@ -57,7 +57,7 @@
     box.className = [
       // FIXO (não empurra o layout)
       "fixed left-1/2 -translate-x-1/2",
-      "top-[88px]", // ajuste fino se seu header for maior/menor
+      "top-[135px]", // abaixo do cabeçalho da home (altura ~125px)
       "w-[min(980px,calc(100vw-2rem))]",
       "max-h-[calc(100vh-120px)]",
       "overflow-auto",

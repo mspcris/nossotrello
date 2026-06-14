@@ -54,6 +54,68 @@
       color: rgba(255, 255, 255, 0.7);
       text-align: right;
     }
+
+    /* ============================================================
+       CABEÇALHO DA HOME — replica do modelo
+       Cabeçalho: #FFFFFF a 30%, altura 125, full width, drop shadow.
+       Barra de pesquisa: #FFFFFF a 70%, borda #000000 a 10%,
+       fonte #0B0B0B a 30%, drop shadow.
+       Escopado em body.is-home para não afetar páginas de quadro.
+       ============================================================ */
+    body.is-home .cm-header {
+      background: rgba(255, 255, 255, 0.30);
+      min-height: 125px;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      padding-top: 0;
+      padding-bottom: 0;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18); /* drop shadow */
+    }
+
+    /* a barra interna deixa de ser a "caixa verde": vira só o layout */
+    body.is-home .cm-header-bar {
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+
+    /* barra de pesquisa central */
+    body.is-home .home-global-search {
+      width: 100%;
+      max-width: 680px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 13px 24px;
+      border-radius: 9999px;
+      background: rgba(255, 255, 255, 0.70);
+      border: 1px solid rgba(0, 0, 0, 0.10);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15); /* drop shadow */
+    }
+    body.is-home .home-global-search .hgs-icon {
+      font-size: 1.25rem;
+      line-height: 1;
+      color: rgba(11, 11, 11, 0.30);
+      filter: grayscale(1) opacity(0.5);
+    }
+    body.is-home #home-board-search {
+      flex: 1;
+      min-width: 0;
+      border: none;
+      outline: none;
+      background: transparent;
+      font-size: 1.35rem;
+      font-weight: 600;
+      color: #0B0B0B; /* texto digitado, legível */
+    }
+    body.is-home #home-board-search::placeholder {
+      color: rgba(11, 11, 11, 0.30); /* fonte #0B0B0B a 30% */
+      font-weight: 600;
+    }
   </style>
 
   {# IMPORTANT: defer evita o crash "document.body is null" dentro do home_groups.js #}
@@ -66,11 +128,14 @@
 
 
 {% block header_center %}
-  <div class="cm-header-board-cover" style="width: 260px; height: 72px;">
-    <img
-      src="{% static 'images/multi_tarefas.gif' %}"
-      class="cm-header-board-cover-img"
-      style="width: 100%; height: 100%; object-fit: cover; object-position: center;"
+  <div class="home-global-search cm-search-panel">
+    <span class="hgs-icon" aria-hidden="true">🔍</span>
+    <input
+      id="home-board-search"
+      type="text"
+      placeholder="Pesquise em todos os quadros"
+      autocomplete="off"
+      aria-label="Pesquise em todos os quadros"
     >
   </div>
 {% endblock %}
@@ -82,29 +147,7 @@
 
 
 
-{% block header_right_under_logo %}
-  <div class="w-full flex justify-center">
-    <div class="w-full max-w-[980px]">
-      <div class="cm-search-panel w-full rounded-xl bg-emerald-200/70 backdrop-blur-md border border-white/30 shadow px-3 py-2">
-        <div class="flex items-center gap-3">
-          <div class="flex-1 min-w-0">
-            <input
-              id="home-board-search"
-              type="text"
-              placeholder="Pesquisar quadros…"
-              class="w-full h-10 rounded-lg px-3 text-sm bg-white/80 border border-gray-300"
-              autocomplete="off"
-            >
-          </div>
-
-          <div class="shrink-0 text-xs font-semibold text-gray-700 bg-white/70 border border-gray-300 rounded-lg px-3 h-10 flex items-center">
-            🔍
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-{% endblock %}
+{% block header_right_under_logo %}{% endblock %}
 
 {% block drawer_items %}
   <li>
