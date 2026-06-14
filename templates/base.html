@@ -261,10 +261,12 @@
       </button>
 
       <div class="flex-1 flex justify-center">
+        {% block header_brand %}
         <a href="{% url 'boards:boards_index' %}" class="select-none">
           <img src="{% static brand_logo %}" alt="LOGOMARCA"
                class="h-14 w-14 rounded-full object-cover border border-white/40 shadow">
         </a>
+        {% endblock %}
       </div>
     </div>
 
@@ -296,6 +298,7 @@
 
     <!-- DIREITA (volta pra dentro da barra verde) -->
     <div class="cm-header-right flex items-center justify-end gap-2 md:gap-3 w-auto md:w-[260px] flex-wrap">
+      {% block header_right %}
       {% if request.user.is_authenticated %}
         {# Inline no desktop; no mobile escondemos e mostramos numa segunda linha do header #}
         <div class="cm-header-identity-group hidden md:flex items-center gap-2">
@@ -373,6 +376,7 @@
         >{{ whats_new_unseen|default:0 }}</span>
       </button>
       {% endif %}
+      {% endblock %}
 
     </div>
   </div>

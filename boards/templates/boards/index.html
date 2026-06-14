@@ -14,10 +14,18 @@
        (Favoritos / Agrupamentos / Meus quadros / Compartilhados)
        Fundo translúcido + blur para dar corpo sem esconder o wallpaper.
        ============================================================ */
+    /* variáveis de aparência da página — controladas pelo botão 🎨
+       (cor do overlay, transparência e fosco), persistidas em localStorage */
+    body.is-home {
+      --home-tint: 15, 23, 42;  /* rgb do overlay dos painéis */
+      --home-alpha: 0.32;       /* transparência */
+      --home-blur: 14px;        /* fosco */
+    }
+
     .home-panel {
-      background: rgba(15, 23, 42, 0.32);
-      backdrop-filter: blur(14px) saturate(1.1);
-      -webkit-backdrop-filter: blur(14px) saturate(1.1);
+      background: rgba(var(--home-tint), var(--home-alpha));
+      backdrop-filter: blur(var(--home-blur)) saturate(1.1);
+      -webkit-backdrop-filter: blur(var(--home-blur)) saturate(1.1);
       border: 1px solid rgba(255, 255, 255, 0.14);
       border-radius: 18px;
       padding: 22px 24px;
@@ -27,7 +35,7 @@
       transition: background 0.25s ease;
     }
     .home-panel:hover {
-      background: rgba(15, 23, 42, 0.38);
+      background: rgba(var(--home-tint), calc(var(--home-alpha) + 0.06));
     }
     .home-panel--compact { padding: 18px 24px; }
 
@@ -37,8 +45,8 @@
       justify-content: space-between;
       gap: 14px;
       flex-wrap: wrap;
-      margin-bottom: 14px;
-      padding-bottom: 10px;
+      margin-bottom: 24px;   /* respiro título -> conteúdo (igual ao exemplo) */
+      padding-bottom: 14px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.12);
     }
     .home-panel-title {
@@ -58,8 +66,7 @@
     /* ============================================================
        CABEÇALHO DA HOME — replica do modelo
        Cabeçalho: #FFFFFF a 30%, altura 125, full width, drop shadow.
-       Barra de pesquisa: #FFFFFF a 70%, borda #000000 a 10%,
-       fonte #0B0B0B a 30%, drop shadow.
+       Busca: #FFFFFF a 70%, borda #000000 a 10%, fonte #0B0B0B a 30%.
        Escopado em body.is-home para não afetar páginas de quadro.
        ============================================================ */
     body.is-home .cm-header {
@@ -72,50 +79,111 @@
       padding-bottom: 0;
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18); /* drop shadow */
     }
-
-    /* a barra interna deixa de ser a "caixa verde": vira só o layout */
     body.is-home .cm-header-bar {
       background: transparent;
       border: none;
       box-shadow: none;
       backdrop-filter: none;
       -webkit-backdrop-filter: none;
+      grid-template-columns: auto 1fr auto; /* colunas auto p/ caber a identidade */
+      max-width: 1500px;
+    }
+    body.is-home .cm-header-center { padding: 0 12px; }
+
+    /* botões de ícone do header (☰ 🏠 🎨 🎁 ⏻) */
+    body.is-home .cm-icon-btn {
+      height: 40px; width: 40px; padding: 0;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.70);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+      font-size: 1.05rem; line-height: 1; cursor: pointer;
+      color: #0b0b0b; text-decoration: none;
+      transition: background .15s, transform .1s;
+    }
+    body.is-home .cm-icon-btn:hover { background: #fff; }
+    body.is-home .cm-icon-btn:active { transform: scale(0.95); }
+    body.is-home .cm-icon-btn--sm { height: 30px; width: 30px; border-radius: 9999px; font-size: 0.9rem; }
+    body.is-home .cm-icon-btn--palette {
+      background: conic-gradient(from 0deg,#ef4444,#f59e0b,#10b981,#3b82f6,#8b5cf6,#ef4444);
+      border: none; color: #fff;
+    }
+    body.is-home #menuToggle {
+      height: 40px; width: 40px; padding: 0; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
     }
 
-    /* barra de pesquisa central */
+    /* busca central — grupo ícone+texto centralizado */
     body.is-home .home-global-search {
       width: 100%;
       max-width: 680px;
       margin: 0 auto;
       display: flex;
       align-items: center;
-      gap: 12px;
+      justify-content: center;
       padding: 13px 24px;
       border-radius: 9999px;
       background: rgba(255, 255, 255, 0.70);
       border: 1px solid rgba(0, 0, 0, 0.10);
       box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15); /* drop shadow */
+      cursor: text;
+    }
+    body.is-home .home-global-search .hgs-inner {
+      display: inline-flex; align-items: center; gap: 10px; max-width: 100%;
     }
     body.is-home .home-global-search .hgs-icon {
-      font-size: 1.25rem;
-      line-height: 1;
-      color: rgba(11, 11, 11, 0.30);
-      filter: grayscale(1) opacity(0.5);
+      font-size: 1.2rem; line-height: 1; filter: grayscale(1) opacity(0.45);
     }
     body.is-home #home-board-search {
-      flex: 1;
-      min-width: 0;
-      border: none;
-      outline: none;
-      background: transparent;
-      font-size: 1.35rem;
-      font-weight: 600;
-      color: #0B0B0B; /* texto digitado, legível */
+      flex: 0 1 auto; width: auto; min-width: 0;
+      border: none; outline: none; background: transparent;
+      font-size: 1.25rem; font-weight: 600;
+      color: #0B0B0B; text-align: left;
     }
     body.is-home #home-board-search::placeholder {
       color: rgba(11, 11, 11, 0.30); /* fonte #0B0B0B a 30% */
       font-weight: 600;
     }
+
+    /* lado direito — identidade + avatar grande + ações empilhadas */
+    body.is-home .cm-home-id { text-align: right; line-height: 1.15; }
+    body.is-home .cm-home-name {
+      display: inline-block;
+      font-weight: 700; font-size: 0.9rem; color: #0b0b0b;
+      background: rgba(255, 255, 255, 0.78); padding: 2px 8px; border-radius: 7px;
+    }
+    body.is-home .cm-home-handle {
+      font-size: 0.78rem; color: rgba(11, 11, 11, 0.55); margin-top: 2px;
+    }
+    body.is-home .cm-home-avatar-wrap { position: relative; display: inline-block; }
+    body.is-home .cm-home-avatar {
+      height: 60px; width: 60px; border-radius: 9999px; object-fit: cover;
+      border: 2px solid rgba(255, 255, 255, 0.8); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
+    }
+
+    /* popover de aparência (🎨) — cor / transparência / fosco */
+    .cm-appearance-pop {
+      position: fixed; top: 100px; left: 16px; z-index: 1600;
+      width: 260px; padding: 16px;
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(0, 0, 0, 0.10); border-radius: 16px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+      display: none;
+    }
+    .cm-appearance-pop.open { display: block; }
+    .cm-appearance-pop h4 { font-size: 0.95rem; font-weight: 700; color: #0b0b0b; margin: 0 0 12px; }
+    .cm-appearance-row { margin-bottom: 12px; }
+    .cm-appearance-row label { display: block; font-size: 0.78rem; font-weight: 600; color: #374151; margin-bottom: 5px; }
+    .cm-appearance-row input[type=range] { width: 100%; }
+    .cm-appearance-row input[type=color] { width: 100%; height: 34px; border: none; background: none; cursor: pointer; }
+    .cm-appearance-reset {
+      width: 100%; margin-top: 4px; padding: 7px; border-radius: 9px;
+      background: #f3f4f6; border: 1px solid #e5e7eb;
+      font-size: 0.8rem; font-weight: 600; cursor: pointer;
+    }
+    .cm-appearance-reset:hover { background: #e5e7eb; }
   </style>
 
   {# IMPORTANT: defer evita o crash "document.body is null" dentro do home_groups.js #}
@@ -128,16 +196,69 @@
 
 
 {% block header_center %}
-  <div class="home-global-search cm-search-panel">
-    <span class="hgs-icon" aria-hidden="true">🔍</span>
-    <input
-      id="home-board-search"
-      type="text"
-      placeholder="Pesquise em todos os quadros"
-      autocomplete="off"
-      aria-label="Pesquise em todos os quadros"
-    >
+  <label class="home-global-search cm-search-panel" for="home-board-search">
+    <span class="hgs-inner">
+      <span class="hgs-icon" aria-hidden="true">🔍</span>
+      <input
+        id="home-board-search"
+        type="text"
+        size="26"
+        placeholder="Pesquise em todos os quadros"
+        autocomplete="off"
+        aria-label="Pesquise em todos os quadros"
+      >
+    </span>
+  </label>
+{% endblock %}
+
+{# ESQUERDA — casinha (no lugar do logo) + paleta de aparência #}
+{% block header_brand %}
+  <div class="cm-home-brand flex items-center gap-2">
+    <a href="{% url 'boards:boards_index' %}" class="cm-icon-btn" title="Início" aria-label="Início">🏠</a>
+    <button type="button" id="cm-appearance-toggle" class="cm-icon-btn cm-icon-btn--palette"
+            title="Aparência da página" aria-label="Aparência da página" aria-expanded="false">🎨</button>
   </div>
+{% endblock %}
+
+{# DIREITA — nome + @handle, avatar grande, 🎁 + ⏻ empilhados #}
+{% block header_right %}
+  {% if request.user.is_authenticated %}
+  {% with prof=request.user.profile %}
+  <div class="cm-home-right flex items-center gap-3">
+    <div class="cm-home-id">
+      <div class="cm-home-name">{{ prof.display_name|default:request.user.email }}</div>
+      {% if prof.handle %}<div class="cm-home-handle">@{{ prof.handle }}</div>{% endif %}
+    </div>
+
+    <div id="my-avatar-wrap" class="cm-home-avatar-wrap">
+      <a href="#" id="open-user-settings" class="block">
+        <img src="{% if user_avatar_url %}{{ user_avatar_url }}{% else %}{% static brand_logo %}{% endif %}"
+             alt="Perfil" class="cm-home-avatar">
+      </a>
+      <span id="my-social-badge"
+            style="display:none;position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;
+                   border-radius:9px;background:#ef4444;color:#fff;font-size:0.625rem;font-weight:700;
+                   align-items:center;justify-content:center;padding:0 4px;
+                   box-shadow:0 1px 4px rgba(0,0,0,.25);z-index:10;pointer-events:none;"></span>
+    </div>
+
+    <div class="cm-home-actions flex flex-col gap-2">
+      <button type="button" id="wn-toggle" class="cm-icon-btn cm-icon-btn--sm relative"
+              title="Novidades" aria-label="Novidades" data-loaded="0">
+        🎁
+        <span id="wn-badge"
+              class="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1
+                     rounded-full text-[11px] leading-[18px] text-white bg-red-600 text-center font-bold
+                     {% if not whats_new_unseen %}hidden{% endif %}">{{ whats_new_unseen|default:0 }}</span>
+      </button>
+      <form method="post" action="{% url 'boards:logout' %}">
+        {% csrf_token %}
+        <button type="submit" class="cm-icon-btn cm-icon-btn--sm" title="Sair" aria-label="Sair">⏻</button>
+      </form>
+    </div>
+  </div>
+  {% endwith %}
+  {% endif %}
 {% endblock %}
 
 
@@ -188,6 +309,24 @@
 {% endblock %}
 
 {% block content %}
+
+  {# POPOVER DE APARÊNCIA (🎨) — cor / transparência / fosco da página #}
+  <div id="cm-appearance-pop" class="cm-appearance-pop" role="dialog" aria-label="Aparência da página">
+    <h4>🎨 Aparência</h4>
+    <div class="cm-appearance-row">
+      <label for="ap-color">Cor da transparência</label>
+      <input type="color" id="ap-color" value="#0f172a">
+    </div>
+    <div class="cm-appearance-row">
+      <label for="ap-alpha">Transparência (<span id="ap-alpha-val">32</span>%)</label>
+      <input type="range" id="ap-alpha" min="0" max="80" step="1" value="32">
+    </div>
+    <div class="cm-appearance-row">
+      <label for="ap-blur">Fosco (<span id="ap-blur-val">14</span>px)</label>
+      <input type="range" id="ap-blur" min="0" max="30" step="1" value="14">
+    </div>
+    <button type="button" class="cm-appearance-reset" id="ap-reset">Restaurar padrão</button>
+  </div>
 
   <div id="home-groups-area" class="mb-8">
 
@@ -355,4 +494,88 @@
     {% include "boards/partials/boards_onboarding_modal.html" %}
   {% endif %}
 
+{% endblock %}
+
+{% block extra_js %}
+<script>
+/* Aparência da página (🎨): cor do overlay, transparência e fosco.
+   Persistido em localStorage — sem backend nesta versão. */
+(function () {
+  "use strict";
+  var KEY = "cm_home_appearance";
+  var DEFAULTS = { color: "#0f172a", alpha: 32, blur: 14 };
+
+  function hexToRgb(hex) {
+    var h = (hex || "").replace("#", "");
+    if (h.length === 3) h = h.split("").map(function (c) { return c + c; }).join("");
+    var n = parseInt(h, 16);
+    if (isNaN(n)) return "15, 23, 42";
+    return ((n >> 16) & 255) + ", " + ((n >> 8) & 255) + ", " + (n & 255);
+  }
+
+  function load() {
+    try { return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(KEY) || "{}")); }
+    catch (e) { return Object.assign({}, DEFAULTS); }
+  }
+  function save(s) { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} }
+
+  function apply(s) {
+    var b = document.body;
+    b.style.setProperty("--home-tint", hexToRgb(s.color));
+    b.style.setProperty("--home-alpha", (s.alpha / 100).toFixed(2));
+    b.style.setProperty("--home-blur", s.blur + "px");
+  }
+
+  function init() {
+    var toggle = document.getElementById("cm-appearance-toggle");
+    var pop = document.getElementById("cm-appearance-pop");
+    var color = document.getElementById("ap-color");
+    var alpha = document.getElementById("ap-alpha");
+    var blur = document.getElementById("ap-blur");
+    var alphaVal = document.getElementById("ap-alpha-val");
+    var blurVal = document.getElementById("ap-blur-val");
+    var reset = document.getElementById("ap-reset");
+    if (!toggle || !pop || !color || !alpha || !blur) return;
+
+    var state = load();
+    function syncInputs() {
+      color.value = state.color;
+      alpha.value = state.alpha; if (alphaVal) alphaVal.textContent = state.alpha;
+      blur.value = state.blur;   if (blurVal) blurVal.textContent = state.blur;
+    }
+    syncInputs();
+    apply(state);
+
+    function onChange() {
+      state.color = color.value;
+      state.alpha = parseInt(alpha.value, 10);
+      state.blur = parseInt(blur.value, 10);
+      if (alphaVal) alphaVal.textContent = state.alpha;
+      if (blurVal) blurVal.textContent = state.blur;
+      apply(state); save(state);
+    }
+    color.addEventListener("input", onChange);
+    alpha.addEventListener("input", onChange);
+    blur.addEventListener("input", onChange);
+    if (reset) reset.addEventListener("click", function () {
+      state = Object.assign({}, DEFAULTS); syncInputs(); apply(state); save(state);
+    });
+
+    toggle.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      var open = pop.classList.toggle("open");
+      toggle.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+    document.addEventListener("click", function (ev) {
+      if (pop.classList.contains("open") && !pop.contains(ev.target) && ev.target !== toggle) {
+        pop.classList.remove("open");
+        toggle.setAttribute("aria-expanded", "false");
+      }
+    });
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+  else init();
+})();
+</script>
 {% endblock %}
