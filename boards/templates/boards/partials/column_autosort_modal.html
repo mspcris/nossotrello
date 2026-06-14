@@ -11,7 +11,10 @@
       <span class="text-2xl">⏰</span>
       <h2 class="text-lg font-bold">Auto-ordenar — {{ column.name }}</h2>
     </div>
-    <p class="text-sm text-white/60 mb-4">Ordena os cards desta lista automaticamente.</p>
+    <p class="text-sm text-white/60 mb-4">
+      Ordena os cards desta lista no dia e horário escolhidos. A verificação roda a cada 10 min,
+      então o disparo acontece logo após o horário definido.
+    </p>
 
     {% if msg %}<div class="ei-result ei-result--ok mb-3">{{ msg }}</div>{% endif %}
 
@@ -26,27 +29,28 @@
         </select>
       </label>
 
-      <div id="as-weekday" class="{% if column.autosort_freq != 'weekly' %}hidden{% endif %}">
-        <label class="block text-sm">Dia da semana
-          <select name="autosort_weekday" class="mt-1 w-full bg-white/10 border border-white/20 rounded-lg px-2 py-2 text-sm">
-            {% for v, l in weekdays %}<option value="{{ v }}" {% if column.autosort_weekday == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
-          </select>
+      <div class="grid grid-cols-2 gap-2">
+        <div id="as-weekday" class="{% if column.autosort_freq != 'weekly' %}hidden{% endif %}">
+          <label class="block text-sm">Dia da semana
+            <select name="autosort_weekday" class="mt-1 w-full bg-white/10 border border-white/20 rounded-lg px-2 py-2 text-sm">
+              {% for v, l in weekdays %}<option value="{{ v }}" {% if column.autosort_weekday == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+            </select>
+          </label>
+        </div>
+        <label class="block text-sm">Horário
+          <input type="time" name="autosort_time" value="{{ autosort_time }}"
+                 class="mt-1 w-full bg-white/10 border border-white/20 rounded-lg px-2 py-2 text-sm">
         </label>
       </div>
 
-      <div class="grid grid-cols-2 gap-2">
-        <label class="block text-sm">Ordenar por
-          <select name="autosort_field" class="mt-1 w-full bg-white/10 border border-white/20 rounded-lg px-2 py-2 text-sm">
-            {% for v, l in field_choices %}<option value="{{ v }}" {% if column.autosort_field == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
-          </select>
-        </label>
-        <label class="block text-sm">Direção
-          <select name="autosort_dir" class="mt-1 w-full bg-white/10 border border-white/20 rounded-lg px-2 py-2 text-sm">
-            <option value="asc" {% if column.autosort_dir == 'asc' %}selected{% endif %}>Crescente</option>
-            <option value="desc" {% if column.autosort_dir == 'desc' %}selected{% endif %}>Decrescente</option>
-          </select>
-        </label>
-      </div>
+      <label class="block text-sm">Ordenar por
+        <select name="autosort_criteria" class="mt-1 w-full bg-white/10 border border-white/20 rounded-lg px-2 py-2 text-sm">
+          <option value="start_desc" {% if autosort_criteria == 'start_desc' %}selected{% endif %}>Decrescente por data de início (mais nova → mais antiga)</option>
+          <option value="start_asc"  {% if autosort_criteria == 'start_asc' %}selected{% endif %}>Crescente por data de início (mais antiga → mais nova)</option>
+          <option value="due_asc"    {% if autosort_criteria == 'due_asc' %}selected{% endif %}>Crescente por data de prazo (vence antes → vence depois)</option>
+          <option value="due_desc"   {% if autosort_criteria == 'due_desc' %}selected{% endif %}>Decrescente por data de prazo (vence depois → vence antes)</option>
+        </select>
+      </label>
 
       {% if column.autosort_last_run %}
         <p class="text-xs text-white/40">Última auto-ordenação: {{ column.autosort_last_run }}</p>

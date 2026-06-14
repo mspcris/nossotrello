@@ -22,14 +22,15 @@ class Command(BaseCommand):
         parser.add_argument("--force", action="store_true", help="Ignora a frequência/dia.")
 
     def handle(self, *args, **opts):
-        today = timezone.localdate()
+        now = timezone.localtime()
+        today = now.date()
         qs = Column.objects.filter(is_deleted=False).exclude(autosort_freq="none")
         if opts["column"]:
             qs = qs.filter(id=opts["column"])
 
         total = 0
         for col in qs.select_related("board"):
-            if not opts["force"] and not is_due(col, today):
+            if not opts["force"] and not is_due(col, now):
                 continue
             changed = apply_autosort(col)
             col.autosort_last_run = today

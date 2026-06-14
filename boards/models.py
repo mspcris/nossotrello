@@ -232,6 +232,8 @@ class Column(models.Model):
         max_length=4, choices=[("asc", "Crescente"), ("desc", "Decrescente")], default="asc"
     )
     autosort_weekday = models.PositiveSmallIntegerField(default=0)  # 0=segunda (p/ weekly)
+    autosort_hour = models.PositiveSmallIntegerField(default=6)     # horário do disparo (hora local)
+    autosort_minute = models.PositiveSmallIntegerField(default=0)
     autosort_last_run = models.DateField(null=True, blank=True)
 
     class Meta:

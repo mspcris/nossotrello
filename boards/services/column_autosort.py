@@ -45,11 +45,22 @@ def apply_autosort(column):
     return changed
 
 
-def is_due(column, today):
-    """True se a coluna deve ser auto-ordenada hoje."""
+def is_due(column, now):
+    """True se a coluna deve ser auto-ordenada agora.
+
+    `now` é um datetime local (timezone.localtime()). Respeita o horário
+    configurado (autosort_hour:autosort_minute) e roda só 1x por dia.
+    """
     freq = column.autosort_freq
-    if freq == "daily":
-        return column.autosort_last_run != today
-    if freq == "weekly":
-        return today.weekday() == int(column.autosort_weekday or 0) and column.autosort_last_run != today
-    return False
+    if freq not in ("daily", "weekly"):
+        return False
+    today = now.date()
+    if column.autosort_last_run == today:
+        return False
+    # o horário agendado já chegou hoje?
+    sched = (int(column.autosort_hour or 0), int(column.autosort_minute or 0))
+    if (now.hour, now.minute) < sched:
+        return False
+    if freq == "weekly" and today.weekday() != int(column.autosort_weekday or 0):
+        return False
+    return True
