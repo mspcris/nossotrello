@@ -70,16 +70,22 @@
        Escopado em body.is-home para não afetar páginas de quadro.
        ============================================================ */
     body.is-home .cm-header {
-      /* mesma cor/transparência/fosco dos painéis (controlado pelo 🎨) */
-      background: rgba(var(--home-tint), var(--home-alpha));
-      backdrop-filter: blur(var(--home-blur)) saturate(1.1);
-      -webkit-backdrop-filter: blur(var(--home-blur)) saturate(1.1);
+      /* padrão: fosco transparente (branco). Só ganha a cor dos painéis se o
+         usuário marcar "Barra de título da mesma cor" na paleta 🎨. */
+      background: rgba(255, 255, 255, 0.30);
+      backdrop-filter: blur(14px) saturate(1.1);
+      -webkit-backdrop-filter: blur(14px) saturate(1.1);
       min-height: 125px;
       width: 100%;
       display: flex;
       align-items: center;
       padding: 0 36px;       /* conteúdo encosta perto das bordas (igual exemplo) */
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18); /* drop shadow */
+    }
+    body.is-home.home-header-tinted .cm-header {
+      background: rgba(var(--home-tint), var(--home-alpha));
+      backdrop-filter: blur(var(--home-blur)) saturate(1.1);
+      -webkit-backdrop-filter: blur(var(--home-blur)) saturate(1.1);
     }
     body.is-home .cm-header-bar {
       background: transparent;
@@ -185,6 +191,8 @@
     .cm-appearance-row label { display: block; font-size: 0.78rem; font-weight: 600; color: #374151; margin-bottom: 5px; }
     .cm-appearance-row input[type=range] { width: 100%; }
     .cm-appearance-row input[type=color] { width: 100%; height: 34px; border: none; background: none; cursor: pointer; }
+    .cm-appearance-check label { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 0.82rem; font-weight: 600; color: #374151; cursor: pointer; }
+    .cm-appearance-check input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; }
     .cm-appearance-reset {
       width: 100%; margin-top: 4px; padding: 7px; border-radius: 9px;
       background: #f3f4f6; border: 1px solid #e5e7eb;
@@ -328,6 +336,9 @@
     <div class="cm-appearance-row">
       <label for="ap-blur">Fosco (<span id="ap-blur-val">14</span>px)</label>
       <input type="range" id="ap-blur" min="0" max="30" step="1" value="14">
+    </div>
+    <div class="cm-appearance-row cm-appearance-check">
+      <label for="ap-header"><input type="checkbox" id="ap-header"> Barra de título da mesma cor</label>
     </div>
     <button type="button" class="cm-appearance-reset" id="ap-reset">Restaurar padrão</button>
   </div>
@@ -507,7 +518,7 @@
 (function () {
   "use strict";
   var KEY = "cm_home_appearance";
-  var DEFAULTS = { color: "#0f172a", alpha: 32, blur: 14 };
+  var DEFAULTS = { color: "#0f172a", alpha: 32, blur: 14, headerTint: false };
 
   function hexToRgb(hex) {
     var h = (hex || "").replace("#", "");
@@ -528,6 +539,7 @@
     b.style.setProperty("--home-tint", hexToRgb(s.color));
     b.style.setProperty("--home-alpha", (s.alpha / 100).toFixed(2));
     b.style.setProperty("--home-blur", s.blur + "px");
+    b.classList.toggle("home-header-tinted", !!s.headerTint);
   }
 
   function init() {
@@ -539,6 +551,7 @@
     var alphaVal = document.getElementById("ap-alpha-val");
     var blurVal = document.getElementById("ap-blur-val");
     var reset = document.getElementById("ap-reset");
+    var header = document.getElementById("ap-header");
     if (!toggle || !pop || !color || !alpha || !blur) return;
 
     var state = load();
@@ -546,6 +559,7 @@
       color.value = state.color;
       alpha.value = state.alpha; if (alphaVal) alphaVal.textContent = state.alpha;
       blur.value = state.blur;   if (blurVal) blurVal.textContent = state.blur;
+      if (header) header.checked = !!state.headerTint;
     }
     syncInputs();
     apply(state);
@@ -554,6 +568,7 @@
       state.color = color.value;
       state.alpha = parseInt(alpha.value, 10);
       state.blur = parseInt(blur.value, 10);
+      if (header) state.headerTint = header.checked;
       if (alphaVal) alphaVal.textContent = state.alpha;
       if (blurVal) blurVal.textContent = state.blur;
       apply(state); save(state);
@@ -561,6 +576,7 @@
     color.addEventListener("input", onChange);
     alpha.addEventListener("input", onChange);
     blur.addEventListener("input", onChange);
+    if (header) header.addEventListener("change", onChange);
     if (reset) reset.addEventListener("click", function () {
       state = Object.assign({}, DEFAULTS); syncInputs(); apply(state); save(state);
     });
