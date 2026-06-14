@@ -282,3 +282,21 @@ body.cm-skin .agg-menu-reset:hover { background: rgba(255, 255, 255, 0.2); }
 @media (max-width: 430px) {
   body.cm-skin .cm-home-id { display: none; }
 }
+
+/* ===========================================================
+   COLUNAS — cor do tema é soberana, mas TRANSPARÊNCIA e FOSCO
+   vêm da paleta 🎨 (--home-alpha / --home-blur). Escopo: board.
+   =========================================================== */
+body.cm-skin .column-glass {
+  backdrop-filter: blur(var(--home-blur)) !important;
+  -webkit-backdrop-filter: blur(var(--home-blur)) !important;
+}
+body.cm-skin .gray-column-bg   { background: rgba(229, 231, 235, var(--home-alpha)) !important; }
+body.cm-skin .blue-column-bg   { background: rgba(191, 219, 254, var(--home-alpha)) !important; }
+body.cm-skin .green-column-bg  { background: rgba(187, 247, 208, var(--home-alpha)) !important; }
+body.cm-skin .purple-column-bg { background: rgba(233, 213, 255, var(--home-alpha)) !important; }
+body.cm-skin .amber-column-bg  { background: rgba(253, 230, 138, var(--home-alpha)) !important; }
+body.cm-skin .red-column-bg    { background: rgba(254, 202, 202, var(--home-alpha)) !important; }
+body.cm-skin .pink-column-bg   { background: rgba(251, 207, 232, var(--home-alpha)) !important; }
+body.cm-skin .teal-column-bg   { background: rgba(204, 251, 241, var(--home-alpha)) !important; }
+body.cm-skin .slate-column-bg  { background: rgba(203, 213, 225, var(--home-alpha)) !important; }
