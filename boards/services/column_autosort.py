@@ -1,0 +1,55 @@
+# boards/services/column_autosort.py
+"""Auto-ordenação agendada da coluna (Trello-like: todo dia / toda semana)."""
+import logging
+from datetime import date as _date
+
+logger = logging.getLogger(__name__)
+
+
+def _key_func(field):
+    if field == "due":
+        return lambda c: (c.due_date is None, c.due_date or _date.max)
+    if field == "start":
+        return lambda c: (c.start_date is None, c.start_date or _date.max)
+    if field == "title":
+        return lambda c: (c.title or "").strip().lower()
+    # created -> sem created_at no Card; usa o id como ordem de criação
+    return lambda c: c.id
+
+
+def apply_autosort(column):
+    """Reordena os cards ativos da coluna conforme o critério e grava position.
+    Retorna o nº de cards reordenados."""
+    from boards.models import Card
+
+    cards = list(Card.objects.filter(column=column))  # manager ativo (sem deleted/archived)
+    if not cards:
+        return 0
+
+    cards.sort(key=_key_func(column.autosort_field), reverse=(column.autosort_dir == "desc"))
+
+    changed = 0
+    for i, c in enumerate(cards):
+        if int(c.position or 0) != i:
+            c.position = i
+            c.save(update_fields=["position"])
+            changed += 1
+
+    # bump na versão do board -> realtime
+    try:
+        b = column.board
+        b.version = (b.version or 0) + 1
+        b.save(update_fields=["version"])
+    except Exception:
+        logger.debug("autosort: bump board falhou", exc_info=True)
+    return changed
+
+
+def is_due(column, today):
+    """True se a coluna deve ser auto-ordenada hoje."""
+    freq = column.autosort_freq
+    if freq == "daily":
+        return column.autosort_last_run != today
+    if freq == "weekly":
+        return today.weekday() == int(column.autosort_weekday or 0) and column.autosort_last_run != today
+    return False

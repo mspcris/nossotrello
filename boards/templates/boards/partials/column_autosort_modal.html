@@ -1,0 +1,78 @@
+{# Auto-ordenação agendada da coluna (Trello-like). #}
+<div id="col-autosort-modal"
+     class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+     onclick="if(event.target===this)this.remove()">
+  <div class="bg-[#1a2035] text-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6 relative" onclick="event.stopPropagation()">
+
+    <button class="absolute top-4 right-4 text-white/50 hover:text-white text-xl leading-none"
+            onclick="document.getElementById('col-autosort-modal').remove()">✕</button>
+
+    <div class="flex items-center gap-2 mb-1">
+      <span class="text-2xl">⏰</span>
+      <h2 class="text-lg font-bold">Auto-ordenar — {{ column.name }}</h2>
+    </div>
+    <p class="text-sm text-white/60 mb-4">Ordena os cards desta lista automaticamente.</p>
+
+    {% if msg %}<div class="ei-result ei-result--ok mb-3">{{ msg }}</div>{% endif %}
+
+    <form hx-post="{% url 'boards:column_autosort_config' column.id %}"
+          hx-target="#col-autosort-modal" hx-swap="outerHTML" class="space-y-3">
+      {% csrf_token %}
+
+      <label class="block text-sm">Frequência
+        <select name="autosort_freq" id="as-freq" onchange="window.__asFreq()"
+                class="mt-1 w-full bg-white/10 border border-white/20 rounded-lg px-2 py-2 text-sm">
+          {% for v, l in freq_choices %}<option value="{{ v }}" {% if column.autosort_freq == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+        </select>
+      </label>
+
+      <div id="as-weekday" class="{% if column.autosort_freq != 'weekly' %}hidden{% endif %}">
+        <label class="block text-sm">Dia da semana
+          <select name="autosort_weekday" class="mt-1 w-full bg-white/10 border border-white/20 rounded-lg px-2 py-2 text-sm">
+            {% for v, l in weekdays %}<option value="{{ v }}" {% if column.autosort_weekday == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+          </select>
+        </label>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2">
+        <label class="block text-sm">Ordenar por
+          <select name="autosort_field" class="mt-1 w-full bg-white/10 border border-white/20 rounded-lg px-2 py-2 text-sm">
+            {% for v, l in field_choices %}<option value="{{ v }}" {% if column.autosort_field == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+          </select>
+        </label>
+        <label class="block text-sm">Direção
+          <select name="autosort_dir" class="mt-1 w-full bg-white/10 border border-white/20 rounded-lg px-2 py-2 text-sm">
+            <option value="asc" {% if column.autosort_dir == 'asc' %}selected{% endif %}>Crescente</option>
+            <option value="desc" {% if column.autosort_dir == 'desc' %}selected{% endif %}>Decrescente</option>
+          </select>
+        </label>
+      </div>
+
+      {% if column.autosort_last_run %}
+        <p class="text-xs text-white/40">Última auto-ordenação: {{ column.autosort_last_run }}</p>
+      {% endif %}
+
+      <div id="as-result"></div>
+
+      <div class="flex flex-wrap gap-2 pt-1">
+        <button type="submit" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-sm font-semibold">Salvar</button>
+        <button type="button" class="px-4 py-2 rounded-lg bg-[#0052CC] hover:bg-blue-500 text-sm font-semibold"
+                hx-post="{% url 'boards:column_autosort_now' column.id %}"
+                hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                hx-target="#as-result" hx-swap="innerHTML">Ordenar agora</button>
+        <button type="button" class="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-sm ml-auto"
+                onclick="document.getElementById('col-autosort-modal').remove()">Fechar</button>
+      </div>
+    </form>
+
+    <script>
+      window.__asFreq = function () {
+        var f = document.getElementById('as-freq');
+        var wd = document.getElementById('as-weekday');
+        if (!f || !wd) return;
+        wd.classList.toggle('hidden', f.value !== 'weekly');
+      };
+      window.__asFreq();
+    </script>
+  </div>
+</div>

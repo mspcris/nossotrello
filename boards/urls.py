@@ -108,6 +108,7 @@ from .views.search import board_search, home_search
 from .views import columns as columns_views
 from .views.email_ingest import email_ingest_config, email_ingest_sync_now, email_ingest_test
 from .views.column_automation import column_automation_modal, column_automation_delete
+from .views.column_autosort import column_autosort_config, column_autosort_now
 
 # Attachments / Quill (assumindo boards/views/attachments.py e boards/views/activity.py ou afins)
 from .views import attachments as attachments_views
@@ -549,6 +550,10 @@ urlpatterns = [
     # Automação da coluna (gatilho card entra/sai -> ação)
     path("column/<int:column_id>/automation/", column_automation_modal, name="column_automation_modal"),
     path("column-automation/<int:automation_id>/delete/", column_automation_delete, name="column_automation_delete"),
+
+    # Auto-ordenação agendada da coluna
+    path("column/<int:column_id>/autosort/", column_autosort_config, name="column_autosort_config"),
+    path("column/<int:column_id>/autosort/now/", column_autosort_now, name="column_autosort_now"),
     path("column/<int:column_id>/export/", columns_views.export_column, name="export_column"),
     path("column-import/<int:board_id>/", columns_views.import_column_form, name="import_column_form"),
     path("column-import/<int:board_id>/execute/", columns_views.import_column_execute, name="import_column_execute"),

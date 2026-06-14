@@ -213,6 +213,26 @@ class Column(models.Model):
         default="gray",
     )
 
+    # ---- Auto-ordenação agendada (Trello-like) ----
+    AUTOSORT_FREQ_CHOICES = [
+        ("none", "Não ordenar automaticamente"),
+        ("daily", "Todo dia"),
+        ("weekly", "Toda semana"),
+    ]
+    AUTOSORT_FIELD_CHOICES = [
+        ("due", "Data de entrega"),
+        ("start", "Data de início"),
+        ("created", "Data de criação"),
+        ("title", "Nome (A→Z)"),
+    ]
+    autosort_freq = models.CharField(max_length=10, choices=AUTOSORT_FREQ_CHOICES, default="none")
+    autosort_field = models.CharField(max_length=10, choices=AUTOSORT_FIELD_CHOICES, default="due")
+    autosort_dir = models.CharField(
+        max_length=4, choices=[("asc", "Crescente"), ("desc", "Decrescente")], default="asc"
+    )
+    autosort_weekday = models.PositiveSmallIntegerField(default=0)  # 0=segunda (p/ weekly)
+    autosort_last_run = models.DateField(null=True, blank=True)
+
     class Meta:
         ordering = ["position"]
         indexes = [
