@@ -30,6 +30,7 @@ from .helpers import (
     _save_base64_images_to_media,
     process_mentions_and_notify,
     build_notify_toast_html,
+    sanitize_quill_html,
 )
 
 # Mantido por compatibilidade com o projeto
@@ -105,7 +106,7 @@ def add_card(request, column_id):
             raw_desc = (request.POST.get("description") or card.description or "").strip()
 
             desc_html, saved_paths = _save_base64_images_to_media(raw_desc, folder="quill")
-            card.description = desc_html
+            card.description = sanitize_quill_html(desc_html)
             card.column = column
             card.column_since = timezone.now()
 
@@ -330,7 +331,7 @@ def update_card(request, card_id):
 
     raw_desc = _norm(request.POST.get("description", card.description or ""))
     new_desc_html, saved_paths = _save_base64_images_to_media(raw_desc, folder="quill")
-    card.description = _norm(new_desc_html)
+    card.description = _norm(sanitize_quill_html(new_desc_html))
 
     new_tags_raw = request.POST.get("tags", old_tags_raw) or ""
 

@@ -30,6 +30,7 @@ from .helpers import (
     _extract_media_image_paths,
     process_mentions_and_notify,
     build_notify_toast_html,
+    sanitize_quill_html,
 )
 
 from boards.services.notifications import (
@@ -297,7 +298,7 @@ def add_activity(request, card_id):
     clean_html = ""
     if raw_html:
         html, saved_paths = _save_base64_images_to_media(raw_html, folder="quill")
-        clean_html = _compact_quill_html(html)
+        clean_html = sanitize_quill_html(_compact_quill_html(html))
 
     # parse delta
     delta_obj = _parse_delta(delta_raw)

@@ -830,6 +830,7 @@
           [{ header: [1, 2, 3, false] }],
           ["bold", "italic", "underline", "strike"],
           [{ list: "ordered" }, { list: "bullet" }],
+          ["code", "code-block"],
           ["link", "image", "audio"],
           ["clean"],
         ],

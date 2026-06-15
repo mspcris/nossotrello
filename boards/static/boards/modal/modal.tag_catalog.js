@@ -140,6 +140,14 @@
     return String(input && input.value || "")
       .split(",").map((t) => t.trim()).filter(Boolean);
   }
+  // mapa nome->cor salvo NA card (independe do catálogo pessoal do usuário)
+  function _cardTagColors(root) {
+    try {
+      return JSON.parse(root?.getAttribute("data-tag-colors") || "{}") || {};
+    } catch (_e) {
+      return {};
+    }
+  }
   function _setTags(root, arr) {
     const input = root?.querySelector("#cm-tags-input");
     if (!input) return;
@@ -162,6 +170,18 @@
 
     const tags = await apiGetCatalog(root);
     const applied = _currentTags(root);
+
+    // As etiquetas JÁ aplicadas na card precisam aparecer na lista mesmo que
+    // não estejam no catálogo PESSOAL deste usuário (o catálogo é por-perfil).
+    // Sem isso, abrir uma card etiquetada por outra pessoa mostra a lista vazia.
+    const colorMap = _cardTagColors(root);
+    const seen = new Set(tags.map((t) => t.name));
+    applied.forEach((name) => {
+      if (seen.has(name)) return;
+      seen.add(name);
+      const c = colorMap[name];
+      tags.push({ name, color: /^#[0-9a-fA-F]{6}$/.test(c || "") ? c : "#888888" });
+    });
 
     list.innerHTML = "";
 

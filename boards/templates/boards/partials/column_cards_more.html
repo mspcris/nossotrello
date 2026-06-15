@@ -3,7 +3,7 @@
   <li id="more-col-{{ column.id }}"
       class="cm-more-sentinel text-center text-xs text-white/50 py-2 select-none"
       hx-get="{% url 'boards:column_cards_more' column.id %}?offset={{ next_offset }}"
-      hx-trigger="revealed"
+      hx-trigger="intersect once"
       hx-swap="outerHTML">
     ⏳ carregando mais…
   </li>

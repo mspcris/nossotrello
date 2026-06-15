@@ -7,6 +7,8 @@ import re
 import requests
 import threading
 import uuid
+
+import bleach
 from collections import Counter
 from typing import List
 
@@ -55,6 +57,53 @@ from ..models import (
 )
 
 
+
+
+# ======================================================================
+# Sanitização do HTML do Quill (anti-XSS armazenado)
+# ----------------------------------------------------------------------
+# O front salva `quill.root.innerHTML`. Como esse HTML é renderizado com
+# |safe pra OUTROS usuários (feed de atividade, descrição do card), um POST
+# forjado fora do Quill (com <script>, <img onerror>, href="javascript:")
+# viraria XSS armazenado. Aqui só sobrevivem as tags/atributos que o próprio
+# Quill 1.3.7 produz; o resto é descartado mantendo o texto.
+# ======================================================================
+
+_QUILL_ALLOWED_TAGS = [
+    "p", "br", "span",
+    "strong", "b", "em", "i", "u", "s", "del", "ins",
+    "blockquote", "pre", "code",
+    "ol", "ul", "li",
+    "h1", "h2", "h3",
+    "a", "img",
+]
+
+_QUILL_ALLOWED_ATTRS = {
+    "*": ["class"],
+    "a": ["href", "title", "target", "rel"],
+    "img": ["src", "alt", "width", "height"],
+    # tokens de @menção do quill-mention
+    "span": ["class", "data-id", "data-value", "data-denotation-char", "data-index", "data-title"],
+    "li": ["class", "data-list"],
+    "pre": ["class", "spellcheck"],
+}
+
+# javascript:, data: (exceto imagem já convertida), vbscript: ficam de fora
+_QUILL_ALLOWED_PROTOCOLS = ["http", "https", "mailto", "tel"]
+
+
+def sanitize_quill_html(html: str) -> str:
+    """Remove qualquer tag/atributo/protocolo fora do allowlist do Quill."""
+    if not html:
+        return ""
+    return bleach.clean(
+        html,
+        tags=_QUILL_ALLOWED_TAGS,
+        attributes=_QUILL_ALLOWED_ATTRS,
+        protocols=_QUILL_ALLOWED_PROTOCOLS,
+        strip=True,
+        strip_comments=True,
+    )
 
 
 # ======================================================================

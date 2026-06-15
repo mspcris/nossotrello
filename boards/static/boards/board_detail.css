@@ -614,8 +614,10 @@ li[data-card-id][data-term-status="ok"] .term-badge{ color: #16a34a; }
 #columns-wrapper li[data-card-id] .card-cover-blur{
   position: absolute;
   inset: -18px;
-  background-size: cover;
-  background-position: center;
+
+  /* agora é <img>: preenche a área sangrando 18px e corta o excesso */
+  object-fit: cover;
+  object-position: center;
 
   background-color: var(--card-cover-bg, rgba(0,0,0,0.10));
   opacity: 1;
@@ -1525,97 +1527,37 @@ li[data-card-id][data-term-status="ok"] .term-badge{ color: #16a34a; }
 }
 
 /* ============================================================
-   KEBAB (⋮) do card na board + menu rápido (board_card_menu.js)
+   KEBAB (⋮) do card na board. O MENU em si (.bcm-*) vive em modal.css
+   (global), pois é o mesmo menu do FAB do modal (card_action_menu.js).
    ============================================================ */
 .card-kebab-btn{
   position:absolute;
-  top:6px;
-  right:6px;
+  bottom:8px;
+  right:8px;
   z-index:15;
-  width:28px;
-  height:28px;
+  width:30px;
+  height:30px;
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  border:0;
-  border-radius:8px;
-  background:rgba(255,255,255,.72);
-  color:rgba(15,23,42,.78);
+  border:1px solid rgba(255,255,255,.18);
+  border-radius:9px;
+  /* fundo fosco (frosted) p/ destacar sobre qualquer card/capa */
+  background:rgba(15,23,42,.55);
+  -webkit-backdrop-filter:blur(6px);
+  backdrop-filter:blur(6px);
+  color:#fff;
   font-size:18px;
   line-height:1;
   cursor:pointer;
-  opacity:0;
-  transition:opacity .15s ease, background .15s ease;
-  box-shadow:0 1px 4px rgba(2,6,23,.12);
+  opacity:.92;
+  transition:opacity .15s ease, background .15s ease, transform .1s ease;
+  box-shadow:0 2px 8px rgba(2,6,23,.28);
 }
 .card-item:hover .card-kebab-btn{ opacity:1; }
-.card-kebab-btn:hover{ background:#fff; }
-/* touch (sem hover): sempre visível para não “sumir” */
-@media (hover: none){
-  .card-kebab-btn{ opacity:1; }
-}
+.card-kebab-btn:hover{ background:rgba(15,23,42,.72); }
+.card-kebab-btn:active{ transform:scale(.94); }
 /* nos modos de exclusão/arquivar em lote, o botão da vez aparece no mesmo
    canto — esconde o kebab para não sobrepor o X/🗃️ */
 .card-item:has(.delete-card-btn:not(.hidden)) .card-kebab-btn,
 .card-item:has(.archive-card-btn:not(.hidden)) .card-kebab-btn{ display:none; }
-
-.bcm-menu{
-  position:fixed;
-  z-index:2147483646;
-  min-width:210px;
-  max-width:320px;
-  padding:8px;
-  border-radius:14px;
-  border:1px solid rgba(15,23,42,.12);
-  background:rgba(255,255,255,.98);
-  box-shadow:0 10px 30px rgba(2,6,23,.18);
-}
-.bcm-menu[hidden]{ display:none; }
-.bcm-action{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  width:100%;
-  text-align:left;
-  border:0;
-  background:transparent;
-  cursor:pointer;
-  border-radius:8px;
-  padding:9px 10px;
-  font-size:13px;
-  color:rgba(15,23,42,.9);
-}
-.bcm-action:hover{ background:rgba(15,23,42,.06); }
-.bcm-action.danger{ color:rgba(153,27,27,.95); }
-.bcm-action.danger:hover{ background:rgba(220,38,38,.08); }
-.bcm-sep{ height:1px; background:rgba(15,23,42,.08); margin:4px 2px; }
-.bcm-suggestions{
-  display:flex;
-  flex-direction:column;
-  gap:2px;
-  padding-bottom:4px;
-  margin-bottom:4px;
-  border-bottom:1px solid rgba(15,23,42,.08);
-}
-.bcm-sug-title{
-  font-size:10px;font-weight:700;color:rgba(15,23,42,.45);
-  padding:4px 10px 2px;text-transform:uppercase;letter-spacing:.5px;
-}
-.bcm-empty{ padding:8px 10px;font-size:11px;color:rgba(15,23,42,.45); }
-.bcm-label{ font-size:12px;font-weight:700;margin:2px 0 6px;color:rgba(15,23,42,.72); }
-.bcm-select{
-  width:100%;padding:9px 11px;margin-bottom:8px;border-radius:10px;
-  border:1px solid rgba(15,23,42,.12);background:#fff;font-size:13px;
-}
-.bcm-btns{ display:flex;gap:8px;justify-content:flex-end;margin-top:4px; }
-.bcm-btn{
-  padding:8px 12px;border-radius:10px;cursor:pointer;font-size:13px;
-  border:1px solid rgba(15,23,42,.12);background:#fff;
-}
-.bcm-btn.primary{
-  font-weight:800;border-color:rgba(37,99,235,.25);background:rgba(37,99,235,.10);
-}
-.bcm-err{
-  display:none;margin-top:8px;padding:8px 10px;border-radius:10px;font-size:12px;
-  border:1px solid rgba(220,38,38,.25);background:rgba(220,38,38,.08);color:rgba(153,27,27,.95);
-}

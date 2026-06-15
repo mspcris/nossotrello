@@ -70,3 +70,51 @@
 #card-activity-panel .activity-content {
   line-height: 1.35 !important;
 }
+
+/* ============================================================
+   Conteúdo do Quill EXIBIDO no feed (.cm-feed-body)
+   O Tailwind Preflight zera `list-style` de ol/ul, então a lista
+   salva aparece sem número/bolinha. Aqui restauramos os marcadores
+   e estilizamos blocos de código (```), só na exibição.
+   ============================================================ */
+#card-activity-panel .cm-feed-body ol {
+  list-style: decimal;
+  padding-left: 1.5em;
+  margin: 0;
+}
+#card-activity-panel .cm-feed-body ul {
+  list-style: disc;
+  padding-left: 1.5em;
+  margin: 0;
+}
+#card-activity-panel .cm-feed-body li {
+  margin: 0;
+}
+
+/* bloco de código (Quill: <pre class="ql-syntax">) */
+#card-activity-panel .cm-feed-body pre,
+#card-activity-panel .cm-feed-body pre.ql-syntax {
+  background: #23241f;
+  color: #f8f8f2;
+  overflow: auto;
+  padding: 8px 10px;
+  border-radius: 6px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* código inline */
+#card-activity-panel .cm-feed-body code {
+  background: rgba(0, 0, 0, 0.08);
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9em;
+}
+#card-activity-panel .cm-feed-body pre code {
+  background: transparent;
+  padding: 0;
+}
