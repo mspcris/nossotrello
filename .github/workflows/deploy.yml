@@ -72,6 +72,15 @@ jobs:
             docker exec nossotrello-web-1 python manage.py sync_whats_new --limit 300 || true
             docker exec nossotrello-web-1 python manage.py curate_whats_new || true
 
+            # ── Limpeza leve (sempre): evita encher o disco com deploys seguidos ──
+            # Imagens dangling: o rebuild deixa a imagem antiga sem tag (orfa).
+            # Mantemos só a mais recente (rollback rapido) e apagamos as anteriores.
+            # NAO mexe em volumes (Postgres/media) — isso so o modo full faz.
+            echo "==> prune: imagens orfas antigas (mantem 1)"
+            docker images -f "dangling=true" -q | tail -n +2 | xargs -r docker rmi -f || true
+            echo "==> prune: build cache com mais de 7 dias"
+            docker builder prune -f --filter "until=168h" || true
+
             echo "==> done"
         env:
           DEPLOY_MODE: ${{ inputs.mode || 'fast' }}
