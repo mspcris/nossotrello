@@ -119,6 +119,16 @@ def _card_from_msg(config, msg):
     )
     _save_attachments(card, msg, config)
 
+    # AUTOMAÇÃO: card entrou na coluna (criação) — mesmo gatilho do +Card e do
+    # arrastar. Sem isso, cards criados por e-mail não disparavam as regras da
+    # coluna. Encapsulado p/ nunca quebrar o sync.
+    try:
+        from boards.services.column_automation import run_for, run_count_triggers
+        run_for(card, "enter", config.target_column, actor=config.created_by)
+        run_count_triggers(config.target_column, actor=config.created_by)
+    except Exception:
+        logger.debug("automação no card de e-mail falhou", exc_info=True)
+
 
 def _touch(config, **fields):
     config.last_sync_at = timezone.now()
