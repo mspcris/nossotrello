@@ -359,6 +359,7 @@ document.addEventListener("visibilitychange", () => {
 
 
   async function syncUnreadBadge(boardId) {
+  if (!boardId) return;
   const now = Date.now();
   if (now - __lastUnreadFetchMs < UNREAD_FETCH_EVERY_MS) return;
   __lastUnreadFetchMs = now;

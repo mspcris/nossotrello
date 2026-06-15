@@ -24,6 +24,21 @@ from boards.models import WhatsNewItem
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-06 ---
+    "fcf52ee": (
+        "🖼️",
+        "Editar quadro: nome e imagem na mesma janela",
+        "Na home, o lápis (✏️) do quadro agora abre uma janelinha única onde você "
+        "muda o nome e a imagem de capa de uma vez — pode trocar só o nome, só a "
+        "imagem ou os dois. E o botão de trocar imagem fica sempre à mão, mesmo "
+        "quando a capa atual deu algum problema.",
+    ),
+    "1200f63": (
+        "✏️",
+        "Edite uma automação já criada",
+        "Agora é só clicar numa regra de automação da coluna para editá-la: o "
+        "gatilho, a ação e os campos carregam no formulário e você salva por cima — "
+        "sem precisar apagar e recriar a regra.",
+    ),
     "1fb2a11": (
         "⚡",
         "Automação na coluna: card entra ou sai → faz algo",
@@ -403,6 +418,7 @@ HIDE = {
     "52cd00a",  # Chat button visible + migration fixes
     "9ca5cc4",  # Apply text_style in Novidades reel (detalhe interno)
     "46e3cd9",  # Post board invite activity to feed (detalhe interno)
+    "c1c0942",  # iteração intermediária do "Editar Quadro" (final é fcf52ee)
 }
 
 

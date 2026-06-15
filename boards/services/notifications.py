@@ -284,6 +284,10 @@ def _user_was_mentioned_in_card(*, card: Card, user: User) -> bool:
 def _safe_digits_phone(phone_raw: str) -> str:
     phone_digits = re.sub(r"\D+", "", (phone_raw or "").strip())
 
+    # Sem DDD (só o número local: 8 fixo / 9 celular) → assume DDD 21 (Rio) + BR
+    if len(phone_digits) in (8, 9):
+        phone_digits = "5521" + phone_digits
+
     # Se não tiver DDI, assume BR
     if len(phone_digits) in (10, 11):
         phone_digits = "55" + phone_digits

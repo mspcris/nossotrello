@@ -9,7 +9,7 @@
   {# Para depurar: localStorage.setItem('NT_DEBUG','1') e recarregar. #}
   <script>
     (function () {
-      try { if (localStorage.getItem('NT_DEBUG') === '1') return; } catch (e) {}
+      try { if (localStorage.getItem('NT_DEBUG') === '1') { window.__NT_DEBUG = true; return; } } catch (e) {}
       var noop = function () {};
       ['log','debug','info','warn','error','trace','table','group','groupCollapsed',
        'groupEnd','dir','dirxml','count','countReset','time','timeEnd','timeLog','assert','profile','profileEnd']
@@ -143,15 +143,15 @@
   <script defer src="{% static 'boards/modal/modal.index.js' %}"></script>
 
   <!-- BOARD POLLING sync cols (legado, POLL_ENABLED=false, mantido só pelos helpers) -->
-  <script defer src="{% static 'boards/modal/board.poll.js' %}"></script>
+  <script defer src="{% static 'boards/modal/board.poll.js' %}?v=20260615-nullguard"></script>
 
   <!-- BOARD WEBSOCKET — realtime sync (Phase 1 pub/sub) -->
   <!-- Substitui o polling central. Fallback lento (5min) se WS cair. -->
-  <script defer src="{% static 'boards/modal/board.ws.js' %}?v=20260616-wscap"></script>
+  <script defer src="{% static 'boards/modal/board.ws.js' %}?v=20260615-wsstable"></script>
 
   <!-- USER WEBSOCKET — canal pessoal (/ws/me/) -->
   <!-- Recebe chat, notificações, track-time, pills (Phase 3 pub/sub) -->
-  <script defer src="{% static 'boards/modal/user.ws.js' %}?v=20260616-wscap"></script>
+  <script defer src="{% static 'boards/modal/user.ws.js' %}?v=20260615-wsstable"></script>
 
 <!-- MODAL dock -->
   <script defer src="{% static 'boards/modal/modal.dock.js' %}?v=20260424a"></script>

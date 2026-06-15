@@ -39,6 +39,10 @@
   // Limite de tentativas: se o WS não sobe (ex.: close 1006), para de tentar
   // p/ não inundar o console com erros nativos do navegador. O polling assume.
   const MAX_RECONNECT_ATTEMPTS = 3;
+  // Só considera a conexão "boa" (e zera o contador) depois de ficar aberta
+  // por este tempo. Sem isso, um WS que sobe (101) e cai logo — flapping do
+  // proxy/Daphne — zeraria o contador a cada ciclo e reconectaria pra sempre.
+  const STABLE_MS = 10000;
 
   // ============================================================
   // Estado
@@ -47,6 +51,7 @@
   let reconnectAttempt = 0;
   let fallbackTimer = null;
   let pingTimer = null;
+  let stableTimer = null;
   let lastMessageAt = 0;
   let boardVersion = 0;
   let boardId = null;
@@ -64,7 +69,7 @@
   }
 
   function log(...args) {
-    if (window.DEBUG_BOARD_WS) console.log("[board.ws]", ...args);
+    if (window.DEBUG_BOARD_WS || window.__NT_DEBUG) console.log("[board.ws]", ...args);
   }
 
   // ============================================================
@@ -242,10 +247,16 @@
 
     ws.addEventListener("open", () => {
       log("open");
-      reconnectAttempt = 0;
       lastMessageAt = Date.now();
       stopFallbackPolling();
       startPing();
+      // Zera o contador SÓ se a conexão se sustentar STABLE_MS. Se cair antes
+      // (flapping), o contador NÃO zera e o cap engata após MAX_RECONNECT_ATTEMPTS.
+      clearTimeout(stableTimer);
+      stableTimer = setTimeout(() => {
+        reconnectAttempt = 0;
+        log("conexão estável — contador de reconexão zerado");
+      }, STABLE_MS);
     });
 
     ws.addEventListener("message", (ev) => {
@@ -259,6 +270,7 @@
 
     ws.addEventListener("close", (ev) => {
       log("close", ev.code, ev.reason);
+      clearTimeout(stableTimer);
       stopPing();
       ws = null;
       // 4401/4403: auth/permission — não adianta reconectar
@@ -278,6 +290,7 @@
 
   function disconnect() {
     closedByClient = true;
+    clearTimeout(stableTimer);
     stopPing();
     stopFallbackPolling();
     try { ws && ws.close(); } catch (_) {}

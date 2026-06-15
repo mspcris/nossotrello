@@ -35,14 +35,18 @@
   const RECONNECT_DELAYS_MS = [1000, 2000, 4000, 8000, 16000, 30000];
   // Limite de tentativas: se o WS não sobe, para de tentar (não inunda o console).
   const MAX_RECONNECT_ATTEMPTS = 3;
+  // Só zera o contador depois da conexão se sustentar por este tempo — senão
+  // um WS que sobe (101) e cai logo (flapping) reconectaria pra sempre.
+  const STABLE_MS = 10000;
 
   let ws = null;
   let reconnectAttempt = 0;
   let pingTimer = null;
+  let stableTimer = null;
   let closedByClient = false;
 
   function log(...args) {
-    if (window.DEBUG_USER_WS) console.log("[user.ws]", ...args);
+    if (window.DEBUG_USER_WS || window.__NT_DEBUG) console.log("[user.ws]", ...args);
   }
 
   function wsUrl() {
@@ -96,8 +100,13 @@
 
     ws.addEventListener("open", () => {
       log("open");
-      reconnectAttempt = 0;
       startPing();
+      // Zera o contador SÓ após STABLE_MS de conexão estável (anti-flapping).
+      clearTimeout(stableTimer);
+      stableTimer = setTimeout(() => {
+        reconnectAttempt = 0;
+        log("conexão estável — contador de reconexão zerado");
+      }, STABLE_MS);
     });
 
     ws.addEventListener("message", (ev) => {
@@ -111,6 +120,7 @@
 
     ws.addEventListener("close", (ev) => {
       log("close", ev.code, ev.reason);
+      clearTimeout(stableTimer);
       stopPing();
       ws = null;
       if (ev.code === 4401 || ev.code === 4403 || ev.code === 4400) return;

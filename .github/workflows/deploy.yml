@@ -68,6 +68,10 @@ jobs:
             echo "==> collectstatic"
             docker exec nossotrello-web-1 sh -lc "python manage.py collectstatic --noinput --clear"
 
+            echo "==> novidades (import + curadoria)"
+            docker exec nossotrello-web-1 python manage.py sync_whats_new --limit 300 || true
+            docker exec nossotrello-web-1 python manage.py curate_whats_new || true
+
             echo "==> done"
         env:
           DEPLOY_MODE: ${{ inputs.mode || 'fast' }}
