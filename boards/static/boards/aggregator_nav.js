@@ -19,15 +19,38 @@
     } catch (_e) {}
   }
 
+  // acha o ancestral que REALMENTE rola na horizontal (não assume #columns-wrapper)
+  function horizontalScroller(el) {
+    var n = el && el.parentElement;
+    while (n && n !== document.documentElement) {
+      if (n.scrollWidth > n.clientWidth + 4) {
+        var ov = getComputedStyle(n).overflowX;
+        if (ov === "auto" || ov === "scroll") return n;
+      }
+      n = n.parentElement;
+    }
+    return document.getElementById("columns-wrapper") ||
+      document.scrollingElement || document.documentElement;
+  }
+
   function goToColumn(colId) {
     if (colId == null) return;
-    var wrap = document.getElementById("columns-wrapper");
-    var col = (wrap || document).querySelector('.column-item[data-column-id="' + colId + '"]');
-    if (!col || !wrap) return;
-    var left = col.offsetLeft - Math.max(0, (wrap.clientWidth - col.offsetWidth) / 2);
-    try { wrap.scrollTo({ left: Math.max(0, left), behavior: "smooth" }); }
-    catch (_e) { wrap.scrollLeft = Math.max(0, left); }
-    setTimeout(function () { flash(col); }, 320);
+    var col = document.querySelector('#columns-wrapper .column-item[data-column-id="' + colId + '"]') ||
+      document.querySelector('.column-item[data-column-id="' + colId + '"]');
+    if (!col) return;
+
+    var s = horizontalScroller(col);
+    // posição do col relativa ao scroller, via coordenadas reais (robusto a
+    // offsetParent / mudanças de layout).
+    var cr = col.getBoundingClientRect();
+    var sr = s.getBoundingClientRect ? s.getBoundingClientRect() : { left: 0, width: window.innerWidth };
+    var target = s.scrollLeft + (cr.left - sr.left) - Math.max(0, (s.clientWidth - cr.width) / 2);
+    target = Math.max(0, target);
+    // scroll INSTANTÂNEO (foi o que funcionou no teste manual; smooth era suspeito)
+    s.scrollLeft = target;
+    // tenta suavizar também (se o browser respeitar, melhora; se não, já rolou)
+    try { s.scrollTo({ left: target, behavior: "smooth" }); } catch (_e) {}
+    setTimeout(function () { flash(col); }, 60);
   }
 
   // chamada pelo onclick inline da pílula (ex.: onclick="window.__aggNavGo(this)")
