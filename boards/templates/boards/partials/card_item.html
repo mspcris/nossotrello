@@ -36,18 +36,9 @@
   🗃️
 </button>
 
-<!-- KEBAB (⋮): mesmo menu rápido do modal, direto no card da board.
-     Sem stopPropagation no clique: o handler que abre o modal já ignora
-     cliques em <button>; e o clique precisa borbulhar até o card_action_menu.js -->
-<button type="button"
-        class="card-kebab-btn"
-        aria-label="Ações do card"
-        aria-haspopup="menu"
-        title="Ações do card"
-        onpointerdown="event.stopPropagation();"
-        ontouchstart="event.stopPropagation();">
-  ⋮
-</button>
+<!-- KEBAB (⋮) fica no FIM do card (ver final do <li>): assim a CAPA sempre
+     ocupa o topo. O botão é posicionado em baixo-à-direita via CSS (absolute);
+     estando por último no DOM, mesmo sem o absolute ele nunca empurra a capa. -->
 
   {# CARD CONTADOR: número grande #}
   {% if card.counter_mode %}
@@ -219,5 +210,17 @@
 
     <div class="tt-slot"></div>
   </div>
+
+  {# KEBAB (⋮): por ÚLTIMO no DOM -> a capa fica no topo. CSS o joga p/ o canto
+     inferior direito (position:absolute). Clique borbulha p/ card_action_menu.js. #}
+  <button type="button"
+          class="card-kebab-btn"
+          aria-label="Ações do card"
+          aria-haspopup="menu"
+          title="Ações do card"
+          onpointerdown="event.stopPropagation();"
+          ontouchstart="event.stopPropagation();">
+    ⋮
+  </button>
 
 </li>
