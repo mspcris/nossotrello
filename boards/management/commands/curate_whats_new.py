@@ -24,6 +24,13 @@ from boards.models import WhatsNewItem
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-06 ---
+    "de6c16b": (
+        "🏷️",
+        "Escolha a cor da etiqueta na automação",
+        "Na automação da coluna, quando a ação é \"Adicionar etiqueta\", agora tem "
+        "um seletor de cor ao lado do nome. A etiqueta criada pela automação já "
+        "nasce com a cor que você escolheu.",
+    ),
     "9e7ee7b": (
         "✅",
         "Automação \"Marcar como Entregue\" agora entrega de verdade",
