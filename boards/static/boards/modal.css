@@ -3683,12 +3683,24 @@ html.dark #modal #card-modal-root:not(.theme-dark):not(.card-theme-dark) pre.ql-
   display:inline-flex; align-items:center; gap:5px;
   font-size:11px; font-weight:700; line-height:1;
   padding:4px 9px; border-radius:6px;
-  border:1px solid rgba(148,163,184,.35);
-  background:rgba(15,23,42,.65); color:#e2e8f0;
-  cursor:pointer; opacity:.85; transition:opacity .12s ease, background .12s ease;
+  border:1px solid rgba(148,163,184,.45);
+  background:#1e293b; color:#e2e8f0;
+  cursor:pointer; opacity:.92; transition:opacity .12s ease, background .12s ease;
 }
-.code-copy-btn:hover{ opacity:1; background:rgba(15,23,42,.92); }
+.code-copy-btn:hover{ opacity:1; background:#334155; }
 .code-copy-ic{
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-weight:800; opacity:.8; letter-spacing:-.5px;
+  font-weight:800; letter-spacing:-.5px; color:#ffce3a;
+}
+
+/* O fix de contraste do modal força a cor dos <span> pra #111 com !important e
+   specificidade (2,4,1), sumindo o ícone </> e a label no botão escuro. Estes
+   seletores batem o mesmo prefixo e vencem: label clara, ícone amarelo-ovo. */
+html:not(.dark) #modal #card-modal-root:not(.theme-dark):not(.card-theme-dark) .code-copy-btn .code-copy-lbl,
+html.dark #modal #card-modal-root:not(.theme-dark):not(.card-theme-dark) .code-copy-btn .code-copy-lbl{
+  color:#e2e8f0 !important;
+}
+html:not(.dark) #modal #card-modal-root:not(.theme-dark):not(.card-theme-dark) .code-copy-btn .code-copy-ic,
+html.dark #modal #card-modal-root:not(.theme-dark):not(.card-theme-dark) .code-copy-btn .code-copy-ic{
+  color:#ffce3a !important;
 }

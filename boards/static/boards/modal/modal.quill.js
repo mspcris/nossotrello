@@ -111,27 +111,31 @@
           lbl.textContent = "Copiado!";
           setTimeout(() => (lbl.textContent = "Copiar"), 1500);
         };
+        // 1) execCommand SÍNCRONO dentro do gesto do clique (mais confiável; o
+        //    fallback async perdia o gesto e o clipboard mantinha o conteúdo antigo).
+        if (legacyCopy(code)) { done(); return; }
+        // 2) Clipboard API (async) como reforço.
         if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(code).then(done).catch(() => fallbackCopy(code, done));
-        } else {
-          fallbackCopy(code, done);
+          navigator.clipboard.writeText(code).then(done).catch(() => {});
         }
       });
       wrap.appendChild(btn);
     });
   }
-  function fallbackCopy(text, done) {
+  function legacyCopy(text) {
     try {
       const ta = document.createElement("textarea");
       ta.value = text;
       ta.style.position = "fixed";
+      ta.style.top = "-1000px";
       ta.style.opacity = "0";
       document.body.appendChild(ta);
+      ta.focus();
       ta.select();
-      document.execCommand("copy");
+      const ok = document.execCommand("copy");
       ta.remove();
-      done && done();
-    } catch (_e) {}
+      return ok;
+    } catch (_e) { return false; }
   }
   window.Modal.quill.decorateCodeBlocks = decorateCodeBlocks;
 
