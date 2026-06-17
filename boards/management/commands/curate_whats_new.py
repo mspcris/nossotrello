@@ -24,6 +24,15 @@ from boards.models import WhatsNewItem
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-06 ---
+    "9e7ee7b": (
+        "✅",
+        "Automação \"Marcar como Entregue\" agora entrega de verdade",
+        "Quando uma automação da coluna marca o card como Entregue, agora ela faz "
+        "tudo o que acontece quando você clica no botão \"Entregue\" do card: marca "
+        "como entregue (com o ícone), desliga o aviso de prazo, registra no "
+        "histórico e avisa os seguidores por e-mail e WhatsApp. Antes ela só mudava "
+        "o status, sem avisar ninguém.",
+    ),
     "f29b684": (
         "🎨",
         "Escolha a cor do seu bloco de código",
