@@ -34,7 +34,8 @@
    * pra digitar o conteúdo normalmente entre as cercas.
    */
   // abre+fecha na mesma linha, com o mesmo tipo de cerca (\1), conteúdo no meio.
-  const _CODE_FENCE_RE = /^(```|'''|""")([\s\S]*)\1$/;
+  // inclui ´´´ (acento agudo): no teclado ABNT a tecla da crase produz ´, não `.
+  const _CODE_FENCE_RE = /^(```|'''|"""|´´´)([\s\S]*)\1$/;
   function bindCodeFenceAutoformat(quill) {
     if (!quill || quill.__codeFenceBound) return;
     quill.__codeFenceBound = true;
