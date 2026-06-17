@@ -95,14 +95,21 @@
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "code-copy-btn";
-      btn.textContent = "Copiar";
+      // ícone </> à esquerda deixa claro que é código
+      const ic = document.createElement("span");
+      ic.className = "code-copy-ic";
+      ic.textContent = "</>";
+      const lbl = document.createElement("span");
+      lbl.className = "code-copy-lbl";
+      lbl.textContent = "Copiar";
+      btn.append(ic, lbl);
       btn.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
         const code = pre.innerText;
         const done = () => {
-          btn.textContent = "Copiado!";
-          setTimeout(() => (btn.textContent = "Copiar"), 1500);
+          lbl.textContent = "Copiado!";
+          setTimeout(() => (lbl.textContent = "Copiar"), 1500);
         };
         if (navigator.clipboard && navigator.clipboard.writeText) {
           navigator.clipboard.writeText(code).then(done).catch(() => fallbackCopy(code, done));
@@ -128,11 +135,36 @@
   }
   window.Modal.quill.decorateCodeBlocks = decorateCodeBlocks;
 
-  // decora o que já existe e o que vier via htmx (feed, troca de aba, etc.)
-  document.addEventListener("DOMContentLoaded", () => decorateCodeBlocks(document));
-  document.body.addEventListener("htmx:afterSwap", (evt) => {
-    try { decorateCodeBlocks(evt.detail?.target || evt.target || document); } catch (_e) {}
+  // Decora o que já existe e tudo que aparecer depois. A atividade nova entra no
+  // feed por WebSocket/JS (não dispara htmx:afterSwap), então um MutationObserver
+  // garante o botão na hora do "Incluir", sem precisar de F5.
+  let _decorScheduled = false;
+  function scheduleDecorate() {
+    if (_decorScheduled) return;
+    _decorScheduled = true;
+    requestAnimationFrame(() => {
+      _decorScheduled = false;
+      try { decorateCodeBlocks(document); } catch (_e) {}
+    });
+  }
+  const _codeObserver = new MutationObserver((muts) => {
+    for (const mu of muts) {
+      for (const n of mu.addedNodes) {
+        if (n.nodeType === 1 && (n.matches?.("pre") || n.querySelector?.("pre"))) {
+          scheduleDecorate();
+          return;
+        }
+      }
+    }
   });
+  function startCodeDecoration() {
+    try { decorateCodeBlocks(document); } catch (_e) {}
+    try { _codeObserver.observe(document.body, { childList: true, subtree: true }); } catch (_e) {}
+  }
+  if (document.body) startCodeDecoration();
+  else document.addEventListener("DOMContentLoaded", startCodeDecoration);
+  // mantém o hook htmx por garantia (troca de aba/feed render server-side)
+  document.body?.addEventListener("htmx:afterSwap", () => scheduleDecorate());
 
     function pruneQuillOrphans(scope) {
     const root = scope || document;

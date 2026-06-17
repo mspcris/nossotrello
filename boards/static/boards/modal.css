@@ -3666,6 +3666,7 @@ html.dark #modal #modal-breadcrumb{
 }
 .code-copy-btn{
   position:absolute; top:6px; right:6px;
+  display:inline-flex; align-items:center; gap:5px;
   font-size:11px; font-weight:700; line-height:1;
   padding:4px 9px; border-radius:6px;
   border:1px solid rgba(148,163,184,.35);
@@ -3673,3 +3674,7 @@ html.dark #modal #modal-breadcrumb{
   cursor:pointer; opacity:.85; transition:opacity .12s ease, background .12s ease;
 }
 .code-copy-btn:hover{ opacity:1; background:rgba(15,23,42,.92); }
+.code-copy-ic{
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-weight:800; opacity:.8; letter-spacing:-.5px;
+}
