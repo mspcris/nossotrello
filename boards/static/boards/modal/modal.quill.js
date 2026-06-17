@@ -26,6 +26,46 @@
     requestAnimationFrame(() => _orig("spellcheck", "true"));
   }
 
+  /**
+   * Autoformat estilo markdown: uma linha contendo só a "cerca" de código
+   * (``` , """ ou ''') vira um bloco de código. Útil no teclado ABNT, onde a
+   * crase é tecla morta e digitar ``` é incômodo.
+   */
+  const _CODE_FENCES = ["```", "'''", '"""'];
+  function bindCodeFenceAutoformat(quill) {
+    if (!quill || quill.__codeFenceBound) return;
+    quill.__codeFenceBound = true;
+
+    quill.on("text-change", (delta, _oldDelta, source) => {
+      if (source !== "user" || quill.__codeFenceBusy) return;
+      // só reage a inserção de texto (ignora pastes de imagem, deletes, etc.)
+      const inserted = (delta.ops || []).some(
+        (op) => typeof op.insert === "string" && op.insert && op.insert !== "\n"
+      );
+      if (!inserted) return;
+
+      const sel = quill.getSelection();
+      if (!sel) return;
+      const [line] = quill.getLine(sel.index);
+      if (!line) return;
+      if (quill.getFormat(sel.index)["code-block"]) return; // já é bloco
+
+      const start = quill.getIndex(line);
+      const text = quill.getText(start, line.length()).replace(/\n+$/, "");
+      if (!_CODE_FENCES.includes(text)) return;
+
+      quill.__codeFenceBusy = true;
+      try {
+        quill.deleteText(start, text.length, "user");
+        quill.formatLine(start, 1, "code-block", true, "user");
+        quill.setSelection(start, 0, "silent");
+      } finally {
+        quill.__codeFenceBusy = false;
+      }
+    });
+  }
+  window.Modal.quill.bindCodeFenceAutoformat = bindCodeFenceAutoformat;
+
     function pruneQuillOrphans(scope) {
     const root = scope || document;
 
@@ -375,6 +415,7 @@ function bindQuillToTextarea(textarea, boardId) {
 
   const quill = new Quill(host, quillOptions);
   _enableSpellcheck(quill.root);
+  bindCodeFenceAutoformat(quill);
   quill.__cmModalScroll = modalScroll || null;
   window.Modal.quill._descQuill = quill;
 
@@ -493,6 +534,7 @@ function bindQuillToDiv(div, hiddenInput, boardId) {
 
   const quill = new Quill(div, quillOptions);
   _enableSpellcheck(quill.root);
+  bindCodeFenceAutoformat(quill);
   quill.__cmModalScroll = modalScroll || null;
   window.Modal.quill._descQuill = quill;
 

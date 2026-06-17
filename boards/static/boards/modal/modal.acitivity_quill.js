@@ -842,6 +842,7 @@
 
     const quill = new Quill(el, quillOptions);
     _enableSpellcheck(quill.root);
+    window.Modal?.quill?.bindCodeFenceAutoformat?.(quill);
 
     // ============================================================
     // ✅ IMAGEM: toolbar + paste => /quill/upload/ + embed (miniatura no texto)
