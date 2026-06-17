@@ -479,20 +479,9 @@
       return;
     }
 
-    // gatilho 2: FAB ⋮ do card modal
-    const fab = e.target.closest && e.target.closest("#cm-dock-toggle");
-    if (fab) {
-      e.preventDefault();
-      e.stopPropagation();
-      const cardId = modalCardId();
-      if (!cardId) return;
-      if (menuEl && !menuEl.hidden && openedFromModal) {
-        closeMenu();
-        return;
-      }
-      openMenu(fab, cardId, true);
-      return;
-    }
+    // (gatilho 2: FAB ⋮ do modal é tratado em CAPTURE, mais abaixo — o
+    //  #card-modal-root tem onclick="stopPropagation()" e mataria o clique
+    //  antes de chegar a este listener de bubble.)
 
     // clique num item do menu
     const action = e.target.closest && e.target.closest(".bcm-menu [data-bcm]");
@@ -524,6 +513,23 @@
       closeMenu();
     }
   });
+
+  // gatilho 2: FAB ⋮ do card modal — em CAPTURE porque o #card-modal-root
+  // tem onclick="event.stopPropagation()" (não fechar no backdrop), o que
+  // impediria o clique de borbulhar até o listener acima.
+  document.addEventListener("click", function (e) {
+    const fab = e.target.closest && e.target.closest("#cm-dock-toggle");
+    if (!fab) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const cardId = modalCardId();
+    if (!cardId) return;
+    if (menuEl && !menuEl.hidden && openedFromModal) {
+      closeMenu();
+      return;
+    }
+    openMenu(fab, cardId, true);
+  }, true);
 
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeMenu(); });
   window.addEventListener("resize", closeMenu);
