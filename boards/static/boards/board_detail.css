@@ -407,13 +407,15 @@ header{ position: relative; z-index: 50; }
   position: relative;
 }
 
-/* flash forte ao clicar na pílula da agregadora (foco na coluna alvo) */
+/* flash forte ao clicar na pílula da agregadora (foco na coluna alvo).
+   INSET (por dentro da coluna): o #columns-wrapper tem overflow-y:hidden e
+   recortaria um glow externo (box-shadow pra fora). Inset não é recortado. */
 @keyframes colFlash{
-  0%   { box-shadow: 0 0 0 0 rgba(96,165,250,0); }
-  12%  { box-shadow: 0 0 0 5px rgba(96,165,250,.95), 0 0 38px rgba(96,165,250,.85); }
-  38%  { box-shadow: 0 0 0 2px rgba(96,165,250,.45), 0 0 14px rgba(96,165,250,.35); }
-  60%  { box-shadow: 0 0 0 5px rgba(96,165,250,.95), 0 0 38px rgba(96,165,250,.85); }
-  100% { box-shadow: 0 0 0 0 rgba(96,165,250,0); }
+  0%   { box-shadow: inset 0 0 0 0 rgba(96,165,250,0); background-color: rgba(96,165,250,0); }
+  15%  { box-shadow: inset 0 0 0 4px rgba(96,165,250,.98), inset 0 0 34px rgba(96,165,250,.6); background-color: rgba(96,165,250,.18); }
+  40%  { box-shadow: inset 0 0 0 2px rgba(96,165,250,.5); background-color: rgba(96,165,250,.06); }
+  60%  { box-shadow: inset 0 0 0 4px rgba(96,165,250,.98), inset 0 0 34px rgba(96,165,250,.6); background-color: rgba(96,165,250,.18); }
+  100% { box-shadow: inset 0 0 0 0 rgba(96,165,250,0); background-color: rgba(96,165,250,0); }
 }
 #columns-wrapper .column-item.col-flash{
   animation: colFlash 1.3s ease;
