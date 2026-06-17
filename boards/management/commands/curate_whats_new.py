@@ -24,6 +24,14 @@ from boards.models import WhatsNewItem
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-06 ---
+    "b6d4c94": (
+        "🔒",
+        "Só o dono compartilha o quadro",
+        "Agora apenas o dono do quadro pode adicionar pessoas a ele — tanto pelo "
+        "botão \"Compartilhar quadro\" quanto pelo painel social. Quem é editor ou "
+        "visualizador não compartilha mais o quadro de outra pessoa. Isso evita "
+        "convites indevidos e conflitos de acesso.",
+    ),
     "de6c16b": (
         "🏷️",
         "Escolha a cor da etiqueta na automação",
