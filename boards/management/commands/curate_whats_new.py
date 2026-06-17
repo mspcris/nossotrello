@@ -24,6 +24,15 @@ from boards.models import WhatsNewItem
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-06 ---
+    "bede5a8": (
+        "💻",
+        "Bloco de código na descrição e na atividade",
+        "Nos editores do card (descrição e \"Nova Atividade\"), comece uma linha "
+        "com a cerca de código — três aspas (\"\"\" ou ''') ou três crases — e ela "
+        "vira um bloco de código na hora, com a fonte monoespaçada. Útil pra colar "
+        "um SQL, um curl ou um trecho de código sem ele virar texto solto. (As três "
+        "aspas funcionam bem no teclado ABNT, onde a crase é tecla morta.)",
+    ),
     "fcf52ee": (
         "🖼️",
         "Editar quadro: nome e imagem na mesma janela",
