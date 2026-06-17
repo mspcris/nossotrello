@@ -79,7 +79,7 @@ def _apply(rule, card, column, actor):
     elif a == "add_label":
         _add_label(card, p)
     elif a == "mark_delivered":
-        _mark_delivered(card)
+        _mark_delivered(card, actor)
 
 
 def _send_email(rule, card, column, p):
@@ -330,7 +330,43 @@ def _add_label(card, p):
     card.save(update_fields=["tags"])
 
 
-def _mark_delivered(card):
-    card.is_delivered = True
-    card.delivered_at = timezone.now()
-    card.save(update_fields=["is_delivered", "delivered_at"])
+def _mark_delivered(card, actor=None):
+    """Entrega COMPLETA — paridade com o botão "Entregue" manual.
+
+    Em vez de só setar o campo, faz tudo o que a entrega manual faz:
+      - marca entregue (delivered_at/delivered_by) e desliga a notificação por
+        prazo/cores (due_notify=False), via mark_card_delivered;
+      - registra no histórico do card (atividade do sistema);
+      - notifica os seguidores por e-mail/WhatsApp (notify_delivery).
+    O ícone "Entregue" aparece sozinho (é dirigido por is_delivered + o bump de
+    versão do board já feito em run_for).
+    """
+    from boards.services.notifications import mark_card_delivered, notify_delivery
+    from boards.models import CardLog
+
+    if getattr(card, "is_delivered", False):
+        return  # já entregue: não duplica log/notificação
+
+    # 1) persiste a entrega (campos + due_notify=False + delivered_by)
+    mark_card_delivered(card=card, actor=actor)
+
+    # 2) histórico (atividade do sistema)
+    try:
+        who = ""
+        if actor and getattr(actor, "id", None):
+            prof = getattr(actor, "profile", None)
+            who = (getattr(prof, "display_name", "") or "").strip() or actor.get_username()
+        prefix = f"<strong>{who}</strong> " if who else ""
+        CardLog.objects.create(
+            card=card,
+            actor=actor if (actor and getattr(actor, "id", None)) else None,
+            content=f"<p>{prefix}marcou este card como <strong>Entregue</strong> (automação).</p>",
+        )
+    except Exception:
+        logger.debug("automation: log de entrega falhou", exc_info=True)
+
+    # 3) notifica seguidores (e-mail/WhatsApp/social), igual à entrega manual
+    try:
+        notify_delivery(card=card, actor=actor)
+    except Exception:
+        logger.debug("automation: notify_delivery falhou", exc_info=True)
