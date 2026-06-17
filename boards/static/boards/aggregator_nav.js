@@ -35,18 +35,23 @@
     if (!pill) return;
 
     var colId = pill.getAttribute("data-column-id");
-    var col = document.querySelector('.column-item[data-column-id="' + colId + '"]');
+    var wrap = document.getElementById("columns-wrapper");
+    // escopa no wrapper visível (evita pegar .column-item de fora) — foi o que
+    // funcionou no console.
+    var col = (wrap || document).querySelector('.column-item[data-column-id="' + colId + '"]');
     if (!col) return;
 
     e.preventDefault();
     e.stopPropagation();
 
-    var wrap = document.getElementById("columns-wrapper");
-    try {
-      col.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
-    } catch (_e) {
-      // fallback p/ browsers sem options object
-      if (wrap) wrap.scrollLeft = col.offsetLeft - (wrap.clientWidth - col.offsetWidth) / 2;
+    // rola o wrapper horizontalmente até a coluna (scrollTo por offsetLeft
+    // funcionou no teste; scrollIntoView nem sempre rolava o wrapper).
+    if (wrap) {
+      var left = col.offsetLeft - Math.max(0, (wrap.clientWidth - col.offsetWidth) / 2);
+      try { wrap.scrollTo({ left: Math.max(0, left), behavior: "smooth" }); }
+      catch (_e) { wrap.scrollLeft = Math.max(0, left); }
+    } else {
+      try { col.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" }); } catch (_e) {}
     }
 
     var done = false;
