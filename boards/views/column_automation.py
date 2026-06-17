@@ -1,5 +1,7 @@
 # boards/views/column_automation.py
 """Automação da coluna: modal (listar + adicionar) e remover regra."""
+import re
+
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
@@ -69,6 +71,8 @@ def column_automation_modal(request, column_id):
                     params["days"] = 0
             elif action == "add_label":
                 params["label"] = (request.POST.get("label") or "").strip()
+                color = (request.POST.get("label_color") or "").strip()
+                params["label_color"] = color if re.match(r"^#[0-9a-fA-F]{6}$", color) else "#888888"
             # edição: se veio rule_id desta coluna, atualiza em vez de criar
             rule_id = request.POST.get("rule_id")
             rule = None

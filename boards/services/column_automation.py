@@ -327,7 +327,17 @@ def _add_label(card, p):
     if label not in parts:
         parts.append(label)
     card.tags = ", ".join(parts)[:255]
-    card.save(update_fields=["tags"])
+
+    update_fields = ["tags"]
+    # cor escolhida na automação -> grava no tag_colors do card
+    color = (p.get("label_color") or "").strip()
+    if color:
+        colors = card.tag_colors or {}
+        colors[label] = color
+        card.tag_colors = colors
+        update_fields.append("tag_colors")
+
+    card.save(update_fields=update_fields)
 
 
 def _mark_delivered(card, actor=None):

@@ -48,6 +48,7 @@
                  data-count="{{ r.params.count|default:'' }}"
                  data-days="{{ r.params.days|default:'' }}"
                  data-label="{{ r.params.label|default:'' }}"
+                 data-label-color="{{ r.params.label_color|default:'#888888' }}"
                  data-user-id="{{ r.params.user_id|default:'' }}"
                  data-target-column-id="{{ r.params.target_column_id|default:'' }}">
               <span class="n8n-box n8n-box--trigger">⚡ {{ r.get_trigger_display }}{% if r.params.count %} ({{ r.params.count }}){% elif r.trigger == 'stale' and r.params.days %} ({{ r.params.days }}d){% endif %}</span>
@@ -135,8 +136,12 @@
         <span class="text-xs text-white/50">dias a partir de hoje</span>
       </div>
       <div id="ca-p-label" class="ca-param hidden">
-        <input type="text" name="label" placeholder="nome da etiqueta"
-               class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm">
+        <div class="flex items-center gap-2">
+          <input type="text" name="label" placeholder="nome da etiqueta"
+                 class="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm">
+          <input type="color" name="label_color" value="#888888" title="Cor da etiqueta"
+                 class="w-10 h-9 p-0 rounded-lg border border-white/20 bg-transparent cursor-pointer shrink-0">
+        </div>
       </div>
 
       <div class="flex items-center gap-2">
@@ -165,6 +170,7 @@
         __caSet('phone', d.phone);
         __caSet('message', d.message);
         __caSet('label', d.label);
+        __caSet('label_color', d.labelColor || '#888888');
         __caSet('count', d.count);
         __caSet('days', d.days);          // ações set_due/set_start
         __caSet('stale_days', d.days);    // gatilho stale usa params.days
