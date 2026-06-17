@@ -719,7 +719,9 @@ li[data-card-id][data-term-status="ok"] .term-badge{ color: #16a34a; }
   display: flex;
   flex-wrap: nowrap;          /* CRÍTICO */
   gap: 16px;
-  align-items: flex-start;
+  align-items: stretch;       /* colunas preenchem a altura (scroll fica na coluna) */
+  height: 100%;               /* herda a altura definida no #columns-wrapper (JS) */
+  min-height: 0;              /* CRÍTICO em flex p/ o overflow interno funcionar */
 }
 
 /* garante que o box NÃO está fixo/absoluto */

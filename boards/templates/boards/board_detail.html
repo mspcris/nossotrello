@@ -12,7 +12,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% url 'boards:board_wallpaper_css' board.id %}">
-<link rel="stylesheet" href="{% static 'boards/board_detail.css' %}?v=20260617-kebab5">
+<link rel="stylesheet" href="{% static 'boards/board_detail.css' %}?v=20260617-fitcols">
 <link rel="stylesheet" href="{% static 'boards/calendar.css' %}">
 {# skin do cabeçalho compartilhado com a home (body.cm-skin) #}
 <link rel="stylesheet" href="{% static 'boards/cm_skin.css' %}?v=20260615-09">
@@ -700,6 +700,28 @@
 
 <script defer src="{% static 'boards/calendar.js' %}"></script>
 <script defer src="{% static 'boards/card_paste_create.js' %}?v=20260617-01"></script>
+
+<!-- Altura das colunas = preenche a viewport (Trello): sem barra de rolagem na
+     PÁGINA; o scroll fica DENTRO de cada coluna. Robusto a header/banner/OS
+     porque mede o topo real do wrapper e o innerHeight. -->
+<script>
+  (function () {
+    function fitColumns() {
+      var w = document.getElementById("columns-wrapper");
+      if (!w) return;
+      var top = w.getBoundingClientRect().top;
+      var h = Math.max(240, Math.round((window.innerHeight || 0) - top - 12));
+      w.style.height = h + "px";
+    }
+    window.__fitBoardColumns = fitColumns;
+    window.addEventListener("resize", fitColumns, { passive: true });
+    window.addEventListener("orientationchange", fitColumns);
+    document.addEventListener("DOMContentLoaded", fitColumns);
+    try { document.body.addEventListener("htmx:afterSettle", fitColumns); } catch (e) {}
+    fitColumns();
+    requestAnimationFrame(function () { requestAnimationFrame(fitColumns); });
+  })();
+</script>
 
 
 
