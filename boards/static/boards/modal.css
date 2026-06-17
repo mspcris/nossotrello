@@ -696,12 +696,25 @@ html.dark #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-
   gap: 8px;
   margin-bottom: 8px;
 }
-#card-modal-root .cm-tag-create input{ flex: 1; }
+/* só o campo de texto cresce; o seletor de cor mantém o tamanho fixo (44x44) */
+#card-modal-root .cm-tag-create input[type="text"]{ flex: 1; }
 
+/* catálogo Trello-like: uma etiqueta por linha (check + barra colorida + ações) */
 #card-modal-root .cm-tag-list{
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* o checkbox da etiqueta não pode esticar: a regra global
+   `#card-modal-root #cm-root input{ width:100% }` (specificidade 2,0,1)
+   sobrepõe o `.cm-tag-check{width:16px}` inline, então fixamos com mais peso. */
+#card-modal-root #cm-root input.cm-tag-check,
+#card-modal-root input.cm-tag-check{
+  width: 16px;
+  min-width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
 }
 
 #card-modal-root .cm-tag-chip{
