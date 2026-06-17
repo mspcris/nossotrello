@@ -1,67 +1,52 @@
 // boards/static/boards/aggregator_nav.js
 //
-// Clicar numa pílula da coluna agregadora ("Controle de Colunas") -> rola a
-// board horizontalmente até a coluna correspondente e dá um flash forte nela.
+// Clicar numa pílula da coluna agregadora -> rola a board horizontalmente até
+// a coluna correspondente e dá um flash forte nela.
 //
-// Robusto de propósito:
-//  - delegação no document (funciona mesmo que a agregadora venha por htmx);
-//  - o flash é aplicado por estilo INLINE (não depende do CSS em cache);
-//  - as pílulas recebem pointer-events/cursor inline no template (server-fresh).
+// A função é exposta como window.__aggNavGo e chamada por um onclick INLINE na
+// própria pílula (dispara no alvo, antes de qualquer handler/Sortable engolir o
+// clique no caminho). Também há uma delegação no document como reforço.
 (function () {
-  if (window.__aggNavBound === true) return;
-  window.__aggNavBound = true;
-
-  function flashColumn(col) {
+  function flash(col) {
     try {
-      var ring = "inset 0 0 0 4px rgba(96,165,250,.98), inset 0 0 34px rgba(96,165,250,.6)";
       col.style.transition = "box-shadow .12s ease, background-color .12s ease";
-      // pulso 1
-      col.style.boxShadow = ring;
-      col.style.backgroundColor = "rgba(96,165,250,.18)";
-      setTimeout(function () { col.style.boxShadow = ""; col.style.backgroundColor = ""; }, 220);
-      // pulso 2
-      setTimeout(function () { col.style.boxShadow = ring; col.style.backgroundColor = "rgba(96,165,250,.18)"; }, 380);
+      col.style.boxShadow = "inset 0 0 0 4px #60a5fa, inset 0 0 30px rgba(96,165,250,.5)";
+      col.style.backgroundColor = "rgba(96,165,250,.16)";
       setTimeout(function () {
         col.style.boxShadow = "";
         col.style.backgroundColor = "";
-        col.style.transition = "";
-      }, 1000);
+      }, 1100);
     } catch (_e) {}
   }
 
-  document.addEventListener("click", function (e) {
-    var pill = e.target && e.target.closest &&
-      e.target.closest(".aggregator-column .aggregator-card[data-column-id]");
-    if (!pill) return;
-
-    var colId = pill.getAttribute("data-column-id");
+  function goToColumn(colId) {
+    if (colId == null) return;
     var wrap = document.getElementById("columns-wrapper");
-    // escopa no wrapper visível (evita pegar .column-item de fora) — foi o que
-    // funcionou no console.
     var col = (wrap || document).querySelector('.column-item[data-column-id="' + colId + '"]');
-    if (!col) return;
+    if (!col || !wrap) return;
+    var left = col.offsetLeft - Math.max(0, (wrap.clientWidth - col.offsetWidth) / 2);
+    try { wrap.scrollTo({ left: Math.max(0, left), behavior: "smooth" }); }
+    catch (_e) { wrap.scrollLeft = Math.max(0, left); }
+    setTimeout(function () { flash(col); }, 320);
+  }
 
-    e.preventDefault();
-    e.stopPropagation();
+  // chamada pelo onclick inline da pílula (ex.: onclick="window.__aggNavGo(this)")
+  window.__aggNavGo = function (pillOrId) {
+    try {
+      if (pillOrId && pillOrId.getAttribute) {
+        goToColumn(pillOrId.getAttribute("data-column-id"));
+      } else {
+        goToColumn(pillOrId);
+      }
+    } catch (_e) {}
+  };
 
-    // rola o wrapper horizontalmente até a coluna (scrollTo por offsetLeft
-    // funcionou no teste; scrollIntoView nem sempre rolava o wrapper).
-    if (wrap) {
-      var left = col.offsetLeft - Math.max(0, (wrap.clientWidth - col.offsetWidth) / 2);
-      try { wrap.scrollTo({ left: Math.max(0, left), behavior: "smooth" }); }
-      catch (_e) { wrap.scrollLeft = Math.max(0, left); }
-    } else {
-      try { col.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" }); } catch (_e) {}
-    }
-
-    var done = false;
-    function fire() {
-      if (done) return;
-      done = true;
-      if (wrap) wrap.removeEventListener("scrollend", fire);
-      flashColumn(col);
-    }
-    if (wrap) wrap.addEventListener("scrollend", fire, { once: true });
-    setTimeout(fire, 600);
-  }, true);
+  // reforço: delegação no document (caso o inline não exista por algum motivo)
+  if (!window.__aggNavDelegated) {
+    window.__aggNavDelegated = true;
+    document.addEventListener("click", function (e) {
+      var pill = e.target && e.target.closest && e.target.closest(".aggregator-card[data-column-id]");
+      if (pill) window.__aggNavGo(pill);
+    });
+  }
 })();

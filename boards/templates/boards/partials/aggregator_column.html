@@ -22,6 +22,7 @@
           class="aggregator-card select-none"
           data-column-id="{{ col.id }}"
           style="pointer-events:auto; cursor:pointer;"
+          onclick="if(window.__aggNavGo) window.__aggNavGo(this)"
         >
           <span class="aggregator-count">
             {{ col.cards.count|stringformat:"02d" }}
