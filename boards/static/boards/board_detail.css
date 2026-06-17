@@ -407,6 +407,20 @@ header{ position: relative; z-index: 50; }
   position: relative;
 }
 
+/* flash forte ao clicar na pílula da agregadora (foco na coluna alvo) */
+@keyframes colFlash{
+  0%   { box-shadow: 0 0 0 0 rgba(96,165,250,0); }
+  12%  { box-shadow: 0 0 0 5px rgba(96,165,250,.95), 0 0 38px rgba(96,165,250,.85); }
+  38%  { box-shadow: 0 0 0 2px rgba(96,165,250,.45), 0 0 14px rgba(96,165,250,.35); }
+  60%  { box-shadow: 0 0 0 5px rgba(96,165,250,.95), 0 0 38px rgba(96,165,250,.85); }
+  100% { box-shadow: 0 0 0 0 rgba(96,165,250,0); }
+}
+#columns-wrapper .column-item.col-flash{
+  animation: colFlash 1.3s ease;
+  border-radius: 14px;
+  z-index: 5;
+}
+
 /* Largura da coluna var */
 #columns-wrapper{
   --col-base: 272px; /* default mais largo (Trello-like); quem ajustar a largura sobrescreve */

@@ -158,3 +158,52 @@
     if (document.readyState !== "loading") init();
   })();
 </script>
+
+
+<script>
+  // ============================================================
+  // Clicar numa pílula da agregadora -> rola até a coluna (horizontal) e
+  // pisca forte a coluna quando a rolagem termina. Foco sempre na coluna clicada.
+  // ============================================================
+  (function () {
+    if (window.__aggPillNavBound) return;
+    window.__aggPillNavBound = true;
+
+    function flashColumn(col) {
+      col.classList.remove("col-flash");
+      void col.offsetWidth;          // reinicia a animação
+      col.classList.add("col-flash");
+      setTimeout(function () { col.classList.remove("col-flash"); }, 1400);
+    }
+
+    document.addEventListener("click", function (e) {
+      var pill = e.target.closest && e.target.closest(
+        ".aggregator-column .aggregator-card[data-column-id]"
+      );
+      if (!pill) return;
+
+      var colId = pill.getAttribute("data-column-id");
+      var col = document.querySelector('.column-item[data-column-id="' + colId + '"]');
+      if (!col) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      var wrap = document.getElementById("columns-wrapper");
+      // a página não rola (overflow hidden); o scroll horizontal é do wrapper
+      col.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+
+      // pisca quando a rolagem terminar (scrollend), com fallback p/ quando a
+      // coluna já está visível (não há rolagem) ou o browser não dispara scrollend.
+      var done = false;
+      function fire() {
+        if (done) return;
+        done = true;
+        if (wrap) wrap.removeEventListener("scrollend", fire);
+        flashColumn(col);
+      }
+      if (wrap) wrap.addEventListener("scrollend", fire, { once: true });
+      setTimeout(fire, 650);
+    }, true);
+  })();
+</script>
