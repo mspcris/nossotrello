@@ -12,7 +12,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% url 'boards:board_wallpaper_css' board.id %}">
-<link rel="stylesheet" href="{% static 'boards/board_detail.css' %}?v=20260617-fitcols">
+<link rel="stylesheet" href="{% static 'boards/board_detail.css' %}?v=20260617-fitcols2">
 <link rel="stylesheet" href="{% static 'boards/calendar.css' %}">
 {# skin do cabeçalho compartilhado com a home (body.cm-skin) #}
 <link rel="stylesheet" href="{% static 'boards/cm_skin.css' %}?v=20260615-09">
@@ -706,20 +706,29 @@
      porque mede o topo real do wrapper e o innerHeight. -->
 <script>
   (function () {
+    var html = document.documentElement;
     function fitColumns() {
       var w = document.getElementById("columns-wrapper");
       if (!w) return;
-      var top = w.getBoundingClientRect().top;
-      var h = Math.max(240, Math.round((window.innerHeight || 0) - top - 12));
+      var top = w.getBoundingClientRect().top;          // topo real (header/banner já contam)
+      var h = Math.max(240, Math.round((window.innerHeight || 0) - top - 8));
       w.style.height = h + "px";
+      // trava o scroll vertical da PÁGINA — o scroll fica DENTRO de cada coluna.
+      // (horizontal das colunas continua no próprio #columns-wrapper)
+      html.style.overflowY = "hidden";
+      document.body.style.overflowY = "hidden";
     }
     window.__fitBoardColumns = fitColumns;
-    window.addEventListener("resize", fitColumns, { passive: true });
-    window.addEventListener("orientationchange", fitColumns);
+    ["resize", "orientationchange", "load"].forEach(function (ev) {
+      window.addEventListener(ev, fitColumns, { passive: true });
+    });
     document.addEventListener("DOMContentLoaded", fitColumns);
     try { document.body.addEventListener("htmx:afterSettle", fitColumns); } catch (e) {}
     fitColumns();
     requestAnimationFrame(function () { requestAnimationFrame(fitColumns); });
+    // o header pode crescer depois (avatares/fontes) -> remede algumas vezes
+    setTimeout(fitColumns, 200);
+    setTimeout(fitColumns, 600);
   })();
 </script>
 

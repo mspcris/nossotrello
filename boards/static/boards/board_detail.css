@@ -203,6 +203,10 @@ header{ position: relative; z-index: 50; }
 }
 
 .aggregator-column *{ pointer-events: none; }
+/* ...mas o CORPO rolável precisa receber roda/scrollbar (senão a agregadora,
+   sendo coluna dinâmica, não rola quando as pílulas passam da altura). */
+.aggregator-column .aggregator-body,
+.aggregator-column .aggregator-body *{ pointer-events: auto; }
 
 .aggregator-column{
   position: relative;
