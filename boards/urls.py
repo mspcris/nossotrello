@@ -33,6 +33,7 @@ from .views.activity import (
     cards_unread_activity,
     quill_upload,
     set_activity_filter,
+    set_code_block_color,
 )
 
 from .views.secrets import (
@@ -634,6 +635,7 @@ urlpatterns = [
     path("card/<int:card_id>/secret/<int:secret_id>/viewers/", edit_secret_viewers, name="edit_secret_viewers"),
     path("card/<int:card_id>/secret/<int:secret_id>/delete/", delete_secret, name="delete_secret"),
     path("activity/filter/set/", set_activity_filter, name="set_activity_filter"),
+    path("activity/<int:log_id>/code-block-color/", set_code_block_color, name="set_code_block_color"),
     path("quill/upload/", quill_upload, name="quill_upload"),
 
     path(

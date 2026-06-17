@@ -137,7 +137,7 @@
       paint.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        openStylePopover(paint);
+        openStylePopover(paint, pre);
       });
 
       // botão copiar (ícone </> + label)
@@ -247,9 +247,35 @@
     return null;
   }
 
-  // popover de escolha de cor (fundo + fonte) — salva no usuário p/ os próximos blocos.
+  // grava a cor do bloco escolhido na atividade (top-level) — persiste no servidor.
+  function persistBlockColor(pre, bg, fg) {
+    try {
+      if (pre.closest(".cm-reply-row")) return; // reply não tem id próprio: só visual
+      const wrap = pre.closest("[data-activity-id]");
+      const logId = wrap && wrap.getAttribute("data-activity-id");
+      if (!logId) return;
+      const pres = Array.prototype.filter.call(
+        wrap.querySelectorAll("pre"), (p) => !p.closest(".cm-reply-row")
+      );
+      const index = pres.indexOf(pre);
+      if (index < 0) return;
+      fetch(`/activity/${logId}/code-block-color/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": _getCookie("csrftoken"),
+          "X-Requested-With": "XMLHttpRequest",
+        },
+        credentials: "same-origin",
+        body: JSON.stringify({ index, bg, fg }),
+      }).catch(() => {});
+    } catch (_e) {}
+  }
+
+  // popover de escolha de cor (fundo + fonte): muda o bloco atual, persiste, e
+  // salva como preferência para os próximos blocos.
   let _stylePop = null;
-  function openStylePopover(anchor) {
+  function openStylePopover(anchor, pre) {
     if (!_stylePop) {
       _stylePop = document.createElement("div");
       _stylePop.className = "code-style-pop";
@@ -279,7 +305,16 @@
       });
       _stylePop.querySelector(".csp-save").addEventListener("click", (e) => {
         e.preventDefault(); e.stopPropagation();
-        saveCodeStyle(bgI.value, fgI.value).finally(() => { _stylePop.hidden = true; });
+        const bg = bgI.value, fg = fgI.value;
+        saveCodeStyle(bg, fg);            // preferência p/ os próximos blocos
+        const pre = _stylePop.__pre;
+        if (pre) {
+          pre.setAttribute("data-cbg", bg);
+          pre.setAttribute("data-cfg", fg);
+          applyBlockColor(pre);           // muda já na tela o bloco escolhido
+          persistBlockColor(pre, bg, fg); // grava no servidor (atividade)
+        }
+        _stylePop.hidden = true;
       });
       document.addEventListener("click", (e) => {
         if (_stylePop.hidden) return;
@@ -288,10 +323,14 @@
       });
     }
 
+    _stylePop.__pre = pre || null;
     const bgI = _stylePop.querySelector("[data-csp-bg]");
     const fgI = _stylePop.querySelector("[data-csp-fg]");
-    bgI.value = (_codeStyle && _codeStyle.bg) || "#0b1220";
-    fgI.value = (_codeStyle && _codeStyle.fg) || "#e2e8f0";
+    // pré-preenche com a cor do bloco clicado (se tiver), senão a preferência.
+    const cbg = pre && pre.getAttribute("data-cbg");
+    const cfg = pre && pre.getAttribute("data-cfg");
+    bgI.value = cbg || (_codeStyle && _codeStyle.bg) || "#0b1220";
+    fgI.value = cfg || (_codeStyle && _codeStyle.fg) || "#e2e8f0";
     const prev = _stylePop.querySelector("[data-csp-prev]");
     prev.style.backgroundColor = bgI.value;
     prev.style.color = fgI.value;

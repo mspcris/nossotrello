@@ -826,3 +826,52 @@ def set_activity_filter(request):
     pref.save()
 
     return JsonResponse({"ok": True})
+
+
+_HEX_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
+_PRE_OPEN_RE = re.compile(r"<pre\b[^>]*>", re.IGNORECASE)
+
+
+def _set_nth_pre_color(html, index, bg, fg):
+    """Grava data-cbg/data-cfg no N-ésimo <pre> do HTML. Retorna (html, ok)."""
+    opens = list(_PRE_OPEN_RE.finditer(html or ""))
+    if index < 0 or index >= len(opens):
+        return html, False
+    m = opens[index]
+    tag = m.group(0)
+    # remove data-cbg/data-cfg antigos e injeta os novos antes do '>'
+    tag = re.sub(r'\s+data-c[bf]g="[^"]*"', "", tag)
+    tag = tag[:-1] + f' data-cbg="{bg}" data-cfg="{fg}">'
+    return html[:m.start()] + tag + html[m.end():], True
+
+
+@login_required
+@require_POST
+def set_code_block_color(request, log_id):
+    """Grava a cor (bg/fg) no N-ésimo bloco de código de uma atividade.
+
+    Persiste no HTML salvo (content) — assim o bloco escolhido fica colorido
+    mesmo após recarregar. Só o autor ou quem edita o board pode.
+    """
+    log = get_object_or_404(CardLog, id=log_id)
+    if log.actor_id != request.user.id and not can_edit_board(request.user, log.card.board):
+        return JsonResponse({"ok": False}, status=403)
+
+    try:
+        payload = json.loads(request.body or "{}")
+    except (ValueError, TypeError):
+        payload = {}
+
+    bg = (payload.get("bg") or "").strip()
+    fg = (payload.get("fg") or "").strip()
+    index = payload.get("index")
+    if not _HEX_RE.match(bg) or not _HEX_RE.match(fg) or not isinstance(index, int):
+        return JsonResponse({"ok": False, "error": "params"}, status=400)
+
+    new_html, ok = _set_nth_pre_color(log.content or "", index, bg, fg)
+    if not ok:
+        return JsonResponse({"ok": False, "error": "block"}, status=404)
+
+    log.content = sanitize_quill_html(new_html)
+    log.save(update_fields=["content"])
+    return JsonResponse({"ok": True})
