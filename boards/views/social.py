@@ -543,11 +543,12 @@ def _build_social_context(request, target_user, extra=None):
                 .select_related("profile")
                 .order_by("profile__display_name")
             )
-        # Quadros que o usuário pode compartilhar (owner ou editor)
+        # Quadros que o usuário pode compartilhar: SÓ os que ele é DONO.
+        # (Regra normalizada: editor não compartilha quadro — igual ao modal do quadro.)
         my_boards = list(
             Board.objects.filter(
                 memberships__user=target_user,
-                memberships__role__in=["owner", "editor"],
+                memberships__role="owner",
                 is_deleted=False,
                 is_archived=False,
             ).values("id", "name").distinct().order_by("name")
@@ -2522,7 +2523,11 @@ def social_friend_remove(request, user_id: int):
 @login_required
 @require_POST
 def social_board_share(request):
-    """Adiciona um usuário a um quadro do qual o solicitante é owner/editor."""
+    """Adiciona um usuário a um quadro do qual o solicitante é DONO.
+
+    Regra normalizada: SÓ o dono (owner) compartilha/convida — em qualquer
+    caminho (modal do quadro e social). Editor e viewer não compartilham.
+    """
     board_id = (request.POST.get("board_id") or "").strip()
     target_id = (request.POST.get("user_id") or "").strip()
     if not board_id or not target_id:
@@ -2531,9 +2536,11 @@ def social_board_share(request):
     board = get_object_or_404(Board, id=board_id)
     target = get_object_or_404(User, id=target_id)
 
-    my_mem = BoardMembership.objects.filter(board=board, user=request.user).first()
-    if not my_mem or my_mem.role == BoardMembership.Role.VIEWER:
-        return JsonResponse({"error": "Sem permissão."}, status=403)
+    my_mem = BoardMembership.objects.filter(
+        board=board, user=request.user, role=BoardMembership.Role.OWNER,
+    ).first()
+    if not my_mem:
+        return JsonResponse({"error": "Sem permissão. Só o dono do quadro pode compartilhar."}, status=403)
 
     _, created = BoardMembership.objects.get_or_create(
         board=board, user=target,
