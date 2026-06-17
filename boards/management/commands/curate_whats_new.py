@@ -24,6 +24,14 @@ from boards.models import WhatsNewItem
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-06 ---
+    "04cc0a3": (
+        "📋",
+        "Cole uma imagem e já vira um card com capa",
+        "No \"+ Card\", agora você pode colar (Ctrl+V) uma imagem direto: ela vira "
+        "a capa do card, o card é criado na hora e já abre pra você preencher o "
+        "nome e a descrição. Se você não digitar um nome, ele entra como \"Card "
+        "criado por <você>\".",
+    ),
     "b6d4c94": (
         "🔒",
         "Só o dono compartilha o quadro",
