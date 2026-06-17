@@ -1,20 +1,22 @@
-// boards/static/boards/board_card_menu.js
+// boards/static/boards/card_action_menu.js
 //
-// Menu de ações (⋮) direto no card da board — sem precisar abrir o modal.
-// Reaproveita exatamente os mesmos endpoints do dock do modal:
-//   GET  /card/<id>/move/suggestions/   -> { suggestions: [...] }   (mover rápido)
-//   POST /move-card/                    -> { column_id, snippet }   (aplicar mover)
-//   POST /card/<id>/duplicate/          -> { snippet, column_id }   (duplicar)
+// FONTE ÚNICA do menu de ações do card. Um único menu (montado aqui em JS)
+// é compartilhado por DOIS gatilhos:
+//   1) o kebab ⋮ de cada card na board  (.card-kebab-btn)  -> popover ancorado no card
+//   2) o FAB ⋮ do card modal            (#cm-dock-toggle)  -> popover ancorado no FAB
+//
+// Mexeu aqui, mudou nos dois lugares. Substitui o antigo modal.dock.js.
+//
+// Endpoints reusados (nenhuma view nova):
+//   GET  /card/<id>/move/suggestions/   -> { suggestions: [...] }
+//   POST /move-card/                    -> { column_id, snippet }
+//   POST /card/<id>/duplicate/          -> { snippet, column_id }
 //   GET  /card/<id>/move/options/       -> { boards, columns_by_board, current }
-//   POST /card/<id>/archive/            -> 302 redirect (ignoramos o body)
-//   POST /card/<id>/trash/              -> 302 redirect (ignoramos o body)
-//
-// Um único menu é criado e reaproveitado (append no body), posicionado fixo
-// junto ao kebab clicado. Delegação global -> funciona mesmo com os cards
-// re-renderizados pelo poll/WS.
+//   POST /card/<id>/archive/            -> 204 (HX-Redirect, ignorado)
+//   POST /card/<id>/trash/              -> 204 (HX-Redirect, ignorado)
 (function () {
-  if (window.__boardCardMenuBound === true) return;
-  window.__boardCardMenuBound = true;
+  if (window.__cardActionMenuBound === true) return;
+  window.__cardActionMenuBound = true;
 
   // ---------------------------------------------------------------- helpers
   function getCookie(name) {
@@ -60,9 +62,9 @@
     return { ok: res.ok, status: res.status, text };
   }
 
-  // POST simples (arquivar/excluir). Mandamos HX-Request p/ a view responder
-  // 204 leve (HX-Redirect) em vez de baixar a board inteira via redirect 302.
-  // Como usamos fetch cru, o HX-Redirect é ignorado e removemos o card no DOM.
+  // POST simples (arquivar/excluir). HX-Request faz a view responder 204 leve
+  // (HX-Redirect) em vez de baixar a board inteira. Usamos fetch cru -> o
+  // HX-Redirect é ignorado e atualizamos o DOM nós mesmos.
   async function postPlain(url) {
     const res = await fetch(url, {
       method: "POST",
@@ -74,6 +76,17 @@
       credentials: "same-origin",
     });
     return res.ok;
+  }
+
+  function modalCardId() {
+    const root = document.getElementById("cm-root");
+    return root ? String(root.getAttribute("data-card-id") || root.dataset.cardId || "").trim() : "";
+  }
+
+  function closeModalIfOpen() {
+    try {
+      if (window.Modal && typeof window.Modal.close === "function") window.Modal.close();
+    } catch (_e) {}
   }
 
   function bumpDestColumn(destList) {
@@ -114,9 +127,17 @@
     return true;
   }
 
+  function removeCardFromDom(cardId) {
+    const li = document.querySelector(`li[data-card-id="${cardId}"]`);
+    if (li) li.remove();
+    afterDomMutation();
+  }
+
   // ---------------------------------------------------------------- menu DOM
   let menuEl = null;
   let currentCardId = null;
+  let openedFromModal = false;
+  let currentAnchor = null;
 
   function buildMenu() {
     const el = document.createElement("div");
@@ -152,17 +173,18 @@
   }
 
   function positionMenu(menu, anchorBtn) {
+    if (!anchorBtn) return;
     menu.hidden = false; // precisa estar visível p/ medir
     const r = anchorBtn.getBoundingClientRect();
     const mw = menu.offsetWidth;
     const mh = menu.offsetHeight;
     const pad = 8;
 
-    let left = r.right - mw; // alinha à direita do botão
+    let left = r.right - mw; // alinha à direita do gatilho
     if (left < pad) left = pad;
     if (left + mw > window.innerWidth - pad) left = window.innerWidth - mw - pad;
 
-    let top = r.bottom + 6; // abaixo do botão
+    let top = r.bottom + 6; // abaixo do gatilho
     if (top + mh > window.innerHeight - pad) {
       top = r.top - mh - 6; // não cabe embaixo -> abre pra cima
       if (top < pad) top = pad;
@@ -174,15 +196,29 @@
   function closeMenu() {
     if (menuEl) menuEl.hidden = true;
     currentCardId = null;
+    currentAnchor = null;
+    openedFromModal = false;
+    const fab = document.getElementById("cm-dock-toggle");
+    if (fab) fab.setAttribute("aria-expanded", "false");
   }
 
-  async function openMenu(anchorBtn, cardId) {
+  function renderDefaultMenu(menu) {
+    const panel = menu.querySelector("[data-bcm-panel]");
+    if (panel) panel.remove();
+    menu.querySelectorAll("[data-bcm], .bcm-sep, .bcm-suggestions").forEach((n) => (n.style.display = ""));
+  }
+
+  async function openMenu(anchorBtn, cardId, fromModal) {
     const menu = ensureMenu();
     currentCardId = cardId;
+    currentAnchor = anchorBtn;
+    openedFromModal = !!fromModal;
 
-    // reset (caso tenha ficado no painel de mover)
     renderDefaultMenu(menu);
     positionMenu(menu, anchorBtn);
+
+    const fab = document.getElementById("cm-dock-toggle");
+    if (fab) fab.setAttribute("aria-expanded", fromModal ? "true" : "false");
 
     // sugestões de mover rápido (async)
     const sug = menu.querySelector("[data-bcm-suggestions]");
@@ -199,14 +235,6 @@
         positionMenu(menu, anchorBtn); // altura mudou
       }
     } catch (_e) {}
-  }
-
-  function renderDefaultMenu(menu) {
-    // remove o painel de "Mover" se estiver montado
-    const panel = menu.querySelector("[data-bcm-panel]");
-    if (panel) panel.remove();
-    // restaura visibilidade dos itens padrão
-    menu.querySelectorAll("[data-bcm], .bcm-sep, .bcm-suggestions").forEach((n) => (n.style.display = ""));
   }
 
   function injectSuggestions(container, suggestions) {
@@ -235,7 +263,7 @@
   }
 
   // ---------------------------------------------------------------- ações
-  async function doQuickMove(cardId, toColId) {
+  async function doQuickMove(cardId, toColId, fromModal) {
     closeMenu();
     if (!toColId) return;
     const res = await postJson("/move-card/", {
@@ -246,8 +274,11 @@
     if (!res.ok) return;
     try {
       const data = JSON.parse(res.text || "{}");
-      replaceCardWithSnippet(cardId, data.snippet, data.column_id, { prepend: true });
+      if (!replaceCardWithSnippet(cardId, data.snippet, data.column_id, { prepend: true })) {
+        removeCardFromDom(cardId);
+      }
     } catch (_e) {}
+    if (fromModal) closeModalIfOpen();
   }
 
   async function doDuplicate(cardId) {
@@ -272,6 +303,7 @@
         }
       }
     } catch (_e) {}
+    // duplicar não mexe no card aberto -> mantém o modal como está
   }
 
   function doCopyLink(cardId) {
@@ -292,24 +324,20 @@
     }
   }
 
-  async function doArchive(cardId) {
+  async function doArchive(cardId, fromModal) {
     closeMenu();
     if (!confirm("Arquivar este card? Ele vai sair do quadro e ir para Arquivados.")) return;
     const ok = await postPlain(`/card/${cardId}/archive/`);
     if (ok) removeCardFromDom(cardId);
+    if (fromModal) closeModalIfOpen();
   }
 
-  async function doTrash(cardId) {
+  async function doTrash(cardId, fromModal) {
     closeMenu();
     if (!confirm("Enviar este card para a Lixeira?")) return;
     const ok = await postPlain(`/card/${cardId}/trash/`);
     if (ok) removeCardFromDom(cardId);
-  }
-
-  function removeCardFromDom(cardId) {
-    const li = document.querySelector(`li[data-card-id="${cardId}"]`);
-    if (li) li.remove();
-    afterDomMutation();
+    if (fromModal) closeModalIfOpen();
   }
 
   // --------------------------------------------------- painel "Mover" (full)
@@ -345,14 +373,6 @@
     const colSel = panel.querySelector("[data-bcm-col]");
     const posSel = panel.querySelector("[data-bcm-pos]");
 
-    function refreshCols(boardId, keepSel) {
-      const cols = (payload.columns_by_board || {})[boardId] || [];
-      colSel.innerHTML =
-        cols.map((c) => `<option value="${c.id}">${escapeHtml(c.name || "Coluna " + c.id)}</option>`).join("") ||
-        `<option value="">(sem colunas)</option>`;
-      if (keepSel) colSel.value = keepSel;
-      refreshPos(boardId, String(colSel.value || ""), 1);
-    }
     function refreshPos(boardId, colId, sel) {
       const cols = (payload.columns_by_board || {})[boardId] || [];
       const col = cols.find((c) => String(c.id) === String(colId));
@@ -361,6 +381,14 @@
       let out = "";
       for (let i = 1; i <= max; i++) out += `<option value="${i}"${i === s ? " selected" : ""}>${i}</option>`;
       posSel.innerHTML = out;
+    }
+    function refreshCols(boardId, keepSel) {
+      const cols = (payload.columns_by_board || {})[boardId] || [];
+      colSel.innerHTML =
+        cols.map((c) => `<option value="${c.id}">${escapeHtml(c.name || "Coluna " + c.id)}</option>`).join("") ||
+        `<option value="">(sem colunas)</option>`;
+      if (keepSel) colSel.value = keepSel;
+      refreshPos(boardId, String(colSel.value || ""), 1);
     }
 
     const cur = payload.current || {};
@@ -402,7 +430,7 @@
       </div>`;
   }
 
-  async function applyMove(menu, cardId) {
+  async function applyMove(menu, cardId, fromModal) {
     const panel = menu.querySelector("[data-bcm-panel]");
     const colId = panel?.querySelector("[data-bcm-col]")?.value;
     const posUi = panel?.querySelector("[data-bcm-pos]")?.value;
@@ -425,16 +453,17 @@
     try {
       const data = JSON.parse(res.text || "{}");
       if (!replaceCardWithSnippet(cardId, data.snippet, data.column_id, { prepend: false })) {
-        // fallback: card pode ter ido para outro board (some da view atual)
-        removeCardFromDom(cardId);
+        removeCardFromDom(cardId); // foi pra outro board -> some da view atual
       }
     } catch (_e) {
       removeCardFromDom(cardId);
     }
+    if (fromModal) closeModalIfOpen();
   }
 
   // ---------------------------------------------------------------- eventos
   document.addEventListener("click", function (e) {
+    // gatilho 1: kebab do card na board
     const kebab = e.target.closest && e.target.closest(".card-kebab-btn");
     if (kebab) {
       e.preventDefault();
@@ -442,38 +471,55 @@
       const li = kebab.closest("li[data-card-id]");
       const cardId = li && li.getAttribute("data-card-id");
       if (!cardId) return;
-      // toggle: se já estava aberto para este card, fecha
-      if (menuEl && !menuEl.hidden && currentCardId === cardId) {
+      if (menuEl && !menuEl.hidden && currentCardId === cardId && !openedFromModal) {
         closeMenu();
         return;
       }
-      openMenu(kebab, cardId);
+      openMenu(kebab, cardId, false);
       return;
     }
 
+    // gatilho 2: FAB ⋮ do card modal
+    const fab = e.target.closest && e.target.closest("#cm-dock-toggle");
+    if (fab) {
+      e.preventDefault();
+      e.stopPropagation();
+      const cardId = modalCardId();
+      if (!cardId) return;
+      if (menuEl && !menuEl.hidden && openedFromModal) {
+        closeMenu();
+        return;
+      }
+      openMenu(fab, cardId, true);
+      return;
+    }
+
+    // clique num item do menu
     const action = e.target.closest && e.target.closest(".bcm-menu [data-bcm]");
     if (action) {
       e.preventDefault();
       e.stopPropagation();
       const menu = ensureMenu();
       const cardId = currentCardId;
+      const fromModal = openedFromModal;
+      const anchor = currentAnchor;
       if (!cardId) { closeMenu(); return; }
       const kind = action.getAttribute("data-bcm");
 
       switch (kind) {
-        case "quickmove": doQuickMove(cardId, action.getAttribute("data-to-col")); break;
+        case "quickmove": doQuickMove(cardId, action.getAttribute("data-to-col"), fromModal); break;
         case "duplicate": doDuplicate(cardId); break;
         case "copylink": doCopyLink(cardId); break;
-        case "archive": doArchive(cardId); break;
-        case "trash": doTrash(cardId); break;
-        case "move": openMovePanel(menu, cardId, document.querySelector(`li[data-card-id="${cardId}"] .card-kebab-btn`)); break;
-        case "move-cancel": renderDefaultMenu(menu); openMenu(document.querySelector(`li[data-card-id="${cardId}"] .card-kebab-btn`), cardId); break;
-        case "move-apply": applyMove(menu, cardId); break;
+        case "archive": doArchive(cardId, fromModal); break;
+        case "trash": doTrash(cardId, fromModal); break;
+        case "move": openMovePanel(menu, cardId, anchor); break;
+        case "move-cancel": renderDefaultMenu(menu); openMenu(anchor, cardId, fromModal); break;
+        case "move-apply": applyMove(menu, cardId, fromModal); break;
       }
       return;
     }
 
-    // clique fora -> fecha
+    // clique fora -> fecha (mas não se for no FAB, já tratado acima)
     if (menuEl && !menuEl.hidden && !(e.target.closest && e.target.closest(".bcm-menu"))) {
       closeMenu();
     }
@@ -482,4 +528,24 @@
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeMenu(); });
   window.addEventListener("resize", closeMenu);
   document.addEventListener("scroll", closeMenu, true);
+
+  // ------------------------------------------------ ciclo de vida do FAB/modal
+  function showFab() {
+    const dock = document.getElementById("cm-action-dock");
+    if (dock) dock.hidden = false;
+  }
+  function hideFab() {
+    const dock = document.getElementById("cm-action-dock");
+    if (dock) dock.hidden = true;
+    closeMenu();
+  }
+
+  document.body.addEventListener("htmx:afterSwap", (evt) => {
+    const t = evt.detail?.target || evt.target;
+    if (t && (t.id === "modal-body" || (t.closest && t.closest("#modal-body")))) {
+      if (document.getElementById("cm-root")) showFab();
+    }
+  });
+  document.addEventListener("modal:closed", hideFab);
+  document.addEventListener("modal:close", hideFab);
 })();
