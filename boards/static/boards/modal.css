@@ -3663,6 +3663,20 @@ html.dark #modal #modal-breadcrumb{
   white-space:pre-wrap !important;
   word-break:break-word !important;
   overflow-x:auto;
+  max-height:420px;
+  overflow-y:auto;
+}
+
+/* O "fix de contraste" (html:not(.dark) ... :where(pre)) força a cor do texto
+   pra #111 com !important e specificidade alta (2,4,1), o que sumia o código no
+   fundo escuro. Estes seletores batem o mesmo prefixo + pre.ql-syntax => vencem
+   e mantêm o texto claro em qualquer tema. */
+html:not(.dark) #modal #card-modal-root:not(.theme-dark):not(.card-theme-dark) pre.ql-syntax,
+html.dark #modal #card-modal-root:not(.theme-dark):not(.card-theme-dark) pre.ql-syntax,
+#card-modal-root.theme-dark pre.ql-syntax,
+#card-modal-root.card-theme-dark pre.ql-syntax,
+.code-copy-wrap > pre.ql-syntax{
+  color:#e2e8f0 !important;
 }
 .code-copy-btn{
   position:absolute; top:6px; right:6px;
