@@ -27,15 +27,15 @@
   }
 
   /**
-   * Autoformat de código: uma linha "embrulhada" numa cerca — '''conteúdo''',
-   * """conteúdo""" ou ```conteúdo``` — vira um bloco de código com o conteúdo
-   * dentro. As aspas triplas atendem o teclado ABNT, onde a crase é tecla morta.
-   * Só converte quando a cerca de FECHAMENTO é digitada (par completo), então dá
-   * pra digitar o conteúdo normalmente entre as cercas.
+   * Autoformat de código: trecho "embrulhado" numa cerca — '''conteúdo''',
+   * """conteúdo""", ```conteúdo``` ou ´´´conteúdo´´´ — vira um bloco de código
+   * com o conteúdo dentro. As cercas PODEM estar em linhas diferentes (abre em
+   * cima, cola o código, fecha embaixo): varremos o CAMPO INTEIRO, não só a linha
+   * atual. Converte quando a cerca de fechamento completa o par. O ´´´ atende o
+   * teclado ABNT, onde a tecla da crase produz ´ (acento agudo), não ` (backtick).
    */
-  // abre+fecha na mesma linha, com o mesmo tipo de cerca (\1), conteúdo no meio.
-  // inclui ´´´ (acento agudo): no teclado ABNT a tecla da crase produz ´, não `.
-  const _CODE_FENCE_RE = /^(```|'''|"""|´´´)([\s\S]*)\1$/;
+  // par fechado em qualquer lugar do texto (multi-linha), mesmo tipo de cerca (\1).
+  const _CODE_FENCE_RE = /(```|'''|"""|´´´)([\s\S]+?)\1/;
   function bindCodeFenceAutoformat(quill) {
     if (!quill || quill.__codeFenceBound) return;
     quill.__codeFenceBound = true;
@@ -48,23 +48,26 @@
       );
       if (!inserted) return;
 
-      const sel = quill.getSelection();
-      if (!sel) return;
-      const [line] = quill.getLine(sel.index);
-      if (!line) return;
-      if (quill.getFormat(sel.index)["code-block"]) return; // já é bloco
-
-      const start = quill.getIndex(line);
-      const text = quill.getText(start, line.length()).replace(/\n+$/, "");
-      const m = text.match(_CODE_FENCE_RE);
+      const full = quill.getText();
+      const m = _CODE_FENCE_RE.exec(full);
       if (!m) return;
-      const inner = m[2].trim();
+
+      const start = m.index;
+      const whole = m[0];
+      // tira uma quebra de linha colada em cada ponta (caso `'''` em linha própria),
+      // mas mantém a indentação interna do código.
+      let inner = m[2];
+      if (inner.includes("\n")) {
+        inner = inner.replace(/^[ \t]*\r?\n/, "").replace(/\r?\n[ \t]*$/, "");
+      } else {
+        inner = inner.trim();
+      }
 
       quill.__codeFenceBusy = true;
       try {
-        quill.deleteText(start, text.length, "user");
+        quill.deleteText(start, whole.length, "user");
         if (inner) quill.insertText(start, inner, "user");
-        quill.formatLine(start, 1, "code-block", true, "user");
+        quill.formatLine(start, Math.max(1, inner.length), "code-block", true, "user");
         quill.setSelection(start + inner.length, 0, "silent");
       } finally {
         quill.__codeFenceBusy = false;
