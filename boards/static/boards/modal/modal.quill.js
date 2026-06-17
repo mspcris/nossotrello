@@ -27,11 +27,14 @@
   }
 
   /**
-   * Autoformat estilo markdown: uma linha contendo só a "cerca" de código
-   * (``` , """ ou ''') vira um bloco de código. Útil no teclado ABNT, onde a
-   * crase é tecla morta e digitar ``` é incômodo.
+   * Autoformat de código: uma linha "embrulhada" numa cerca — '''conteúdo''',
+   * """conteúdo""" ou ```conteúdo``` — vira um bloco de código com o conteúdo
+   * dentro. As aspas triplas atendem o teclado ABNT, onde a crase é tecla morta.
+   * Só converte quando a cerca de FECHAMENTO é digitada (par completo), então dá
+   * pra digitar o conteúdo normalmente entre as cercas.
    */
-  const _CODE_FENCES = ["```", "'''", '"""'];
+  // abre+fecha na mesma linha, com o mesmo tipo de cerca (\1), conteúdo no meio.
+  const _CODE_FENCE_RE = /^(```|'''|""")([\s\S]*)\1$/;
   function bindCodeFenceAutoformat(quill) {
     if (!quill || quill.__codeFenceBound) return;
     quill.__codeFenceBound = true;
@@ -52,19 +55,80 @@
 
       const start = quill.getIndex(line);
       const text = quill.getText(start, line.length()).replace(/\n+$/, "");
-      if (!_CODE_FENCES.includes(text)) return;
+      const m = text.match(_CODE_FENCE_RE);
+      if (!m) return;
+      const inner = m[2].trim();
 
       quill.__codeFenceBusy = true;
       try {
         quill.deleteText(start, text.length, "user");
+        if (inner) quill.insertText(start, inner, "user");
         quill.formatLine(start, 1, "code-block", true, "user");
-        quill.setSelection(start, 0, "silent");
+        quill.setSelection(start + inner.length, 0, "silent");
       } finally {
         quill.__codeFenceBusy = false;
       }
     });
   }
   window.Modal.quill.bindCodeFenceAutoformat = bindCodeFenceAutoformat;
+
+  /**
+   * Adiciona um botão "Copiar" no canto de cada bloco de código já renderizado
+   * (feed de atividade, etc.). Não mexe em blocos dentro de um editor (.ql-editor).
+   */
+  function decorateCodeBlocks(scope) {
+    const root = scope && scope.querySelectorAll ? scope : document;
+    const pres = root.querySelectorAll("pre:not([data-code-copy])");
+    pres.forEach((pre) => {
+      if (pre.closest(".ql-editor")) return; // bloco editável: não decora
+      pre.setAttribute("data-code-copy", "1");
+
+      const wrap = document.createElement("div");
+      wrap.className = "code-copy-wrap";
+      pre.parentNode.insertBefore(wrap, pre);
+      wrap.appendChild(pre);
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "code-copy-btn";
+      btn.textContent = "Copiar";
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const code = pre.innerText;
+        const done = () => {
+          btn.textContent = "Copiado!";
+          setTimeout(() => (btn.textContent = "Copiar"), 1500);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(code).then(done).catch(() => fallbackCopy(code, done));
+        } else {
+          fallbackCopy(code, done);
+        }
+      });
+      wrap.appendChild(btn);
+    });
+  }
+  function fallbackCopy(text, done) {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      ta.remove();
+      done && done();
+    } catch (_e) {}
+  }
+  window.Modal.quill.decorateCodeBlocks = decorateCodeBlocks;
+
+  // decora o que já existe e o que vier via htmx (feed, troca de aba, etc.)
+  document.addEventListener("DOMContentLoaded", () => decorateCodeBlocks(document));
+  document.body.addEventListener("htmx:afterSwap", (evt) => {
+    try { decorateCodeBlocks(evt.detail?.target || evt.target || document); } catch (_e) {}
+  });
 
     function pruneQuillOrphans(scope) {
     const root = scope || document;

@@ -3641,3 +3641,35 @@ html.dark #modal #modal-breadcrumb{
   display:none;margin-top:8px;padding:8px 10px;border-radius:10px;font-size:12px;
   border:1px solid rgba(220,38,38,.25);background:rgba(220,38,38,.08);color:rgba(153,27,27,.95);
 }
+
+/* ============================================================
+   BLOCO DE CÓDIGO (read-only) + botão Copiar (modal.quill.js)
+   O feed reseta `.activity-item pre` pra transparente; aqui o
+   pre.ql-syntax volta a parecer um bloco de código de verdade.
+   ============================================================ */
+.code-copy-wrap{ position: relative; }
+.activity-item pre.ql-syntax,
+.activity-content pre.ql-syntax,
+.code-copy-wrap > pre{
+  background:#0b1220 !important;
+  color:#e2e8f0 !important;
+  border:1px solid rgba(148,163,184,.25) !important;
+  border-radius:10px !important;
+  padding:12px 14px !important;
+  margin:6px 0 !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace !important;
+  font-size:0.82rem !important;
+  line-height:1.45 !important;
+  white-space:pre-wrap !important;
+  word-break:break-word !important;
+  overflow-x:auto;
+}
+.code-copy-btn{
+  position:absolute; top:6px; right:6px;
+  font-size:11px; font-weight:700; line-height:1;
+  padding:4px 9px; border-radius:6px;
+  border:1px solid rgba(148,163,184,.35);
+  background:rgba(15,23,42,.65); color:#e2e8f0;
+  cursor:pointer; opacity:.85; transition:opacity .12s ease, background .12s ease;
+}
+.code-copy-btn:hover{ opacity:1; background:rgba(15,23,42,.92); }

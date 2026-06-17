@@ -26,12 +26,13 @@ CURATED = {
     # --- 2026-06 ---
     "bede5a8": (
         "💻",
-        "Bloco de código na descrição e na atividade",
-        "Nos editores do card (descrição e \"Nova Atividade\"), comece uma linha "
-        "com a cerca de código — três aspas (\"\"\" ou ''') ou três crases — e ela "
-        "vira um bloco de código na hora, com a fonte monoespaçada. Útil pra colar "
-        "um SQL, um curl ou um trecho de código sem ele virar texto solto. (As três "
-        "aspas funcionam bem no teclado ABNT, onde a crase é tecla morta.)",
+        "Bloco de código com botão de copiar",
+        "Nos editores do card (descrição e \"Nova Atividade\"), embrulhe um trecho "
+        "entre três aspas (''' seu código ''' ou \"\"\" ... \"\"\") — ou três crases — "
+        "e ele vira um bloco de código com fonte monoespaçada. No acompanhamento, o "
+        "bloco aparece destacado e com um botão \"Copiar\" no canto. Útil pra colar "
+        "um SQL, um curl ou um trecho de código sem virar texto solto. (As aspas "
+        "triplas atendem o teclado ABNT, onde a crase é tecla morta.)",
     ),
     "fcf52ee": (
         "🖼️",
