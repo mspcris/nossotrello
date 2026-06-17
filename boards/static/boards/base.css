@@ -12,6 +12,17 @@
    ============================================================ */
 html { font-size: 85%; }
 
+/* Fonte legível e consistente (Inter), com suavização — igual à pegada do Trello.
+   Antes não havia font-family definida: caía na fonte do SO (variava e ficava
+   menos legível, sobretudo no Windows). Form controls não herdam fonte sozinhos. */
+html, body, button, input, textarea, select, optgroup {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
 body{
   font-size: 1rem;
   line-height: 1.35;

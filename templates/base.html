@@ -65,8 +65,13 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script>tailwind.config = { darkMode: 'class' }</script>
 
+  <!-- Fonte (Inter): legibilidade tipo Trello, consistente em Windows/Linux -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
   <!-- CSS Global -->
-  <link rel="stylesheet" href="{% static 'boards/base.css' %}?v=20260523a">
+  <link rel="stylesheet" href="{% static 'boards/base.css' %}?v=20260617-inter">
   <link rel="stylesheet" href="{% static 'boards/modal.css' %}?v=20260617-codecolor">
   <link rel="stylesheet" href="{% static 'boards/modal_user.css' %}?v=20260523j">
   <link rel="stylesheet" href="{% static 'boards/camilinho.css' %}?v=20260524a">
