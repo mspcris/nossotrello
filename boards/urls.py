@@ -609,6 +609,7 @@ urlpatterns = [
     path("board/<int:board_id>/tag-catalog/", cards_views.tag_catalog_get, name="tag_catalog_get"),
     path("board/<int:board_id>/tag-catalog/set/", cards_views.tag_catalog_set, name="tag_catalog_set"),
     path("board/<int:board_id>/tag-catalog/delete/", cards_views.tag_catalog_delete, name="tag_catalog_delete"),
+    path("me/code-block-style/", cards_views.code_block_style, name="code_block_style"),
 
 
     # Capa do card

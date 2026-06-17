@@ -1976,6 +1976,38 @@ def tag_catalog_delete(request, board_id):
     return JsonResponse({"ok": True})
 
 
+_HEX_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def code_block_style(request):
+    """Cor do bloco de código do usuário ({bg, fg}).
+
+    GET retorna a preferência atual; POST salva. A cor vale só para os blocos
+    criados a partir daqui — ela é gravada em cada bloco novo (data-attrs), os
+    antigos não mudam.
+    """
+    profile = request.user.profile
+
+    if request.method == "GET":
+        return JsonResponse({"ok": True, "style": profile.code_block_style or {}})
+
+    try:
+        payload = json.loads(request.body or "{}")
+    except (ValueError, TypeError):
+        payload = {}
+
+    bg = (payload.get("bg") or "").strip()
+    fg = (payload.get("fg") or "").strip()
+    if not _HEX_RE.match(bg) or not _HEX_RE.match(fg):
+        return JsonResponse({"ok": False, "error": "cores inválidas"}, status=400)
+
+    profile.code_block_style = {"bg": bg, "fg": fg}
+    profile.save(update_fields=["code_block_style"])
+    return JsonResponse({"ok": True, "style": profile.code_block_style})
+
+
 # ============================================================
 # AI: CARDS SIMILARES (embeddings + cosseno)
 # ============================================================

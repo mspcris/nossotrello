@@ -3678,8 +3678,22 @@ html.dark #modal #card-modal-root:not(.theme-dark):not(.card-theme-dark) pre.ql-
 .code-copy-wrap > pre.ql-syntax{
   color:#e2e8f0 !important;
 }
-.code-copy-btn{
+/* barra de ações do bloco (paleta + copiar), canto superior direito */
+.code-tools{
   position:absolute; top:6px; right:6px;
+  display:inline-flex; align-items:center; gap:6px;
+  z-index:2;
+}
+/* botão da paleta: gradiente arco-íris */
+.code-style-btn{
+  width:26px; height:26px; border-radius:6px; cursor:pointer;
+  border:1px solid rgba(148,163,184,.45);
+  background:linear-gradient(135deg,#ef4444,#f59e0b,#eab308,#22c55e,#3b82f6,#a855f7);
+  opacity:.92; transition:opacity .12s ease, transform .06s ease, box-shadow .12s ease;
+}
+.code-style-btn:hover{ opacity:1; }
+.code-style-btn:active{ transform:translateY(1px) scale(.94); box-shadow:inset 0 2px 4px rgba(0,0,0,.45); }
+.code-copy-btn{
   display:inline-flex; align-items:center; gap:7px;
   font-size:11px; font-weight:700; line-height:1;
   padding:5px 10px; border-radius:6px;
@@ -3700,6 +3714,27 @@ html.dark #modal #card-modal-root:not(.theme-dark):not(.card-theme-dark) pre.ql-
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-weight:800; letter-spacing:-.5px; color:#ffce3a;
 }
+
+/* popover de escolha de cor do bloco de código */
+.code-style-pop{
+  position:fixed; z-index:2147483647; min-width:200px;
+  background:#fff; border:1px solid rgba(15,23,42,.15); border-radius:12px;
+  box-shadow:0 12px 32px rgba(2,6,23,.22); padding:12px;
+  font-size:13px; color:#0f172a;
+}
+.code-style-pop[hidden]{ display:none; }
+.code-style-pop .csp-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; }
+.code-style-pop .csp-row input[type="color"]{ width:42px; height:28px; padding:0; border:1px solid rgba(15,23,42,.2); border-radius:6px; cursor:pointer; }
+.code-style-pop .csp-prev{
+  border-radius:8px; padding:8px 10px; margin:4px 0 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:12px;
+  background:#0b1220; color:#e2e8f0;
+}
+.code-style-pop .csp-hint{ font-size:11px; color:rgba(15,23,42,.55); margin-bottom:8px; }
+.code-style-pop .csp-btns{ display:flex; justify-content:flex-end; gap:8px; }
+.code-style-pop .csp-btns button{ padding:6px 12px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:700; }
+.code-style-pop .csp-cancel{ border:1px solid rgba(15,23,42,.2); background:#fff; color:#0f172a; }
+.code-style-pop .csp-save{ border:1px solid rgba(37,99,235,.3); background:rgba(37,99,235,.12); color:#1d4ed8; }
 
 /* O fix de contraste do modal força a cor dos <span> pra #111 com !important e
    specificidade (2,4,1), sumindo o ícone </> e a label no botão escuro. Estes

@@ -68,6 +68,21 @@
         quill.deleteText(start, whole.length, "user");
         if (inner) quill.insertText(start, inner, "user");
         quill.formatLine(start, Math.max(1, inner.length), "code-block", true, "user");
+
+        // carimba a cor escolhida pelo usuário SÓ neste bloco novo (data-attrs
+        // sobrevivem ao salvar). Os blocos antigos não têm e ficam no default.
+        if (_codeStyle && _codeStyle.bg && _codeStyle.fg) {
+          const pre = _preAt(quill, start);
+          if (pre) {
+            pre.setAttribute("data-cbg", _codeStyle.bg);
+            pre.setAttribute("data-cfg", _codeStyle.fg);
+            applyBlockColor(pre);
+            // força o sync (textarea/hidden) a capturar os data-attrs: um toque
+            // de conteúdo sem efeito reemite text-change p/ os listeners de sync.
+            quill.insertText(start, "​", "user");
+            quill.deleteText(start, 1, "user");
+          }
+        }
         quill.setSelection(start + inner.length, 0, "silent");
       } finally {
         quill.__codeFenceBusy = false;
@@ -103,16 +118,32 @@
         }
       }
       pre.setAttribute("data-code-copy", "1");
+      applyBlockColor(pre); // cor gravada no bloco (se houver)
 
       const wrap = document.createElement("div");
       wrap.className = "code-copy-wrap";
       pre.parentNode.insertBefore(wrap, pre);
       wrap.appendChild(pre);
 
+      const tools = document.createElement("div");
+      tools.className = "code-tools";
+
+      // botão da paleta (gradiente) — escolhe a cor dos PRÓXIMOS blocos
+      const paint = document.createElement("button");
+      paint.type = "button";
+      paint.className = "code-style-btn";
+      paint.title = "Cor dos próximos blocos de código";
+      paint.setAttribute("aria-label", "Cor do código");
+      paint.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openStylePopover(paint);
+      });
+
+      // botão copiar (ícone </> + label)
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "code-copy-btn";
-      // ícone </> à esquerda deixa claro que é código
       const ic = document.createElement("span");
       ic.className = "code-copy-ic";
       ic.textContent = "</>";
@@ -131,16 +162,16 @@
           lbl.textContent = "Copiado!";
           setTimeout(() => (lbl.textContent = "Copiar"), 1500);
         };
-        // execCommand SÍNCRONO dentro do gesto (não depende de permissão/foco)…
         const okLegacy = legacyCopy(code);
-        // …e a Clipboard API em paralelo (cobre quem faz execCommand virar no-op).
         if (navigator.clipboard && navigator.clipboard.writeText) {
           navigator.clipboard.writeText(code).then(done).catch(() => { if (okLegacy) done(); });
         } else if (okLegacy) {
           done();
         }
       });
-      wrap.appendChild(btn);
+
+      tools.append(paint, btn);
+      wrap.appendChild(tools);
     });
   }
   // Recipe robusto: textarea readonly fora da tela (left:-9999px, NÃO opacity:0,
@@ -163,7 +194,123 @@
     } catch (_e) { ok = false; }
     return ok;
   }
+
+  // ----------------------------------------------------------------- cor do bloco
+  function _getCookie(name) {
+    const v = document.cookie.split(";").map((c) => c.trim())
+      .find((c) => c.startsWith(name + "="));
+    return v ? decodeURIComponent(v.split("=").slice(1).join("=")) : "";
+  }
+
+  // preferência do usuário ({bg, fg}) — vale só para blocos NOVOS.
+  let _codeStyle = null;
+  function loadCodeStyle() {
+    fetch("/me/code-block-style/", {
+      headers: { "X-Requested-With": "XMLHttpRequest", Accept: "application/json" },
+      credentials: "same-origin",
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d && d.style && d.style.bg && d.style.fg) _codeStyle = d.style; })
+      .catch(() => {});
+  }
+  function saveCodeStyle(bg, fg) {
+    _codeStyle = { bg, fg };
+    return fetch("/me/code-block-style/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": _getCookie("csrftoken"),
+        "X-Requested-With": "XMLHttpRequest",
+      },
+      credentials: "same-origin",
+      body: JSON.stringify({ bg, fg }),
+    });
+  }
+  // aplica no <pre> a cor gravada nele (data-attrs); !important vence o reset do feed.
+  function applyBlockColor(pre) {
+    const bg = pre.getAttribute("data-cbg");
+    const fg = pre.getAttribute("data-cfg");
+    if (bg) pre.style.setProperty("background-color", bg, "important");
+    if (fg) pre.style.setProperty("color", fg, "important");
+  }
+  // localiza o <pre> do code-block no índice dado (Quill 1.x: blot do code-block é o <pre>).
+  function _preAt(quill, index) {
+    try {
+      const [blot] = quill.getLine(index);
+      let n = blot && blot.domNode;
+      if (n && n.nodeType === 1) {
+        if (n.tagName === "PRE") return n;
+        const p = (n.closest && n.closest("pre")) || (n.querySelector && n.querySelector("pre"));
+        if (p) return p;
+      }
+    } catch (_e) {}
+    return null;
+  }
+
+  // popover de escolha de cor (fundo + fonte) — salva no usuário p/ os próximos blocos.
+  let _stylePop = null;
+  function openStylePopover(anchor) {
+    if (!_stylePop) {
+      _stylePop = document.createElement("div");
+      _stylePop.className = "code-style-pop";
+      _stylePop.hidden = true;
+      _stylePop.innerHTML = `
+        <div class="csp-row"><span>Fundo</span><input type="color" data-csp-bg></div>
+        <div class="csp-row"><span>Fonte</span><input type="color" data-csp-fg></div>
+        <div class="csp-prev" data-csp-prev>código de exemplo</div>
+        <div class="csp-hint">Vale para os próximos blocos.</div>
+        <div class="csp-btns">
+          <button type="button" class="csp-cancel">Fechar</button>
+          <button type="button" class="csp-save">Salvar</button>
+        </div>`;
+      document.body.appendChild(_stylePop);
+
+      const bgI = _stylePop.querySelector("[data-csp-bg]");
+      const fgI = _stylePop.querySelector("[data-csp-fg]");
+      const prev = _stylePop.querySelector("[data-csp-prev]");
+      const sync = () => {
+        prev.style.backgroundColor = bgI.value;
+        prev.style.color = fgI.value;
+      };
+      bgI.addEventListener("input", sync);
+      fgI.addEventListener("input", sync);
+      _stylePop.querySelector(".csp-cancel").addEventListener("click", (e) => {
+        e.preventDefault(); e.stopPropagation(); _stylePop.hidden = true;
+      });
+      _stylePop.querySelector(".csp-save").addEventListener("click", (e) => {
+        e.preventDefault(); e.stopPropagation();
+        saveCodeStyle(bgI.value, fgI.value).finally(() => { _stylePop.hidden = true; });
+      });
+      document.addEventListener("click", (e) => {
+        if (_stylePop.hidden) return;
+        if (e.target.closest(".code-style-pop") || e.target.closest(".code-style-btn")) return;
+        _stylePop.hidden = true;
+      });
+    }
+
+    const bgI = _stylePop.querySelector("[data-csp-bg]");
+    const fgI = _stylePop.querySelector("[data-csp-fg]");
+    bgI.value = (_codeStyle && _codeStyle.bg) || "#0b1220";
+    fgI.value = (_codeStyle && _codeStyle.fg) || "#e2e8f0";
+    const prev = _stylePop.querySelector("[data-csp-prev]");
+    prev.style.backgroundColor = bgI.value;
+    prev.style.color = fgI.value;
+
+    _stylePop.hidden = false;
+    const r = anchor.getBoundingClientRect();
+    const pw = _stylePop.offsetWidth;
+    let left = r.right - pw;
+    if (left < 8) left = 8;
+    let top = r.bottom + 6;
+    if (top + _stylePop.offsetHeight > window.innerHeight - 8) {
+      top = r.top - _stylePop.offsetHeight - 6;
+    }
+    _stylePop.style.left = `${Math.round(left)}px`;
+    _stylePop.style.top = `${Math.round(Math.max(8, top))}px`;
+  }
+
   window.Modal.quill.decorateCodeBlocks = decorateCodeBlocks;
+  window.Modal.quill.loadCodeStyle = loadCodeStyle;
 
   // Decora o que já existe e tudo que aparecer depois. A atividade nova entra no
   // feed por WebSocket/JS (não dispara htmx:afterSwap), então um MutationObserver
@@ -188,6 +335,7 @@
     }
   });
   function startCodeDecoration() {
+    try { loadCodeStyle(); } catch (_e) {}
     try { decorateCodeBlocks(document); } catch (_e) {}
     try { _codeObserver.observe(document.body, { childList: true, subtree: true }); } catch (_e) {}
   }

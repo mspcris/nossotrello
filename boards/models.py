@@ -588,6 +588,14 @@ class UserProfile(models.Model):
         help_text="Catálogo de etiquetas do usuário, por board, com cor"
     )
 
+    code_block_style = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Cor do bloco de código do usuário: {bg, fg}. Vale só para "
+                  "blocos criados daqui pra frente (a cor é gravada em cada bloco "
+                  "novo); os antigos não mudam.",
+    )
+
 
 
     avatar_choice = models.CharField(max_length=60, blank=True, default="")

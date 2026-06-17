@@ -85,7 +85,9 @@ _QUILL_ALLOWED_ATTRS = {
     # tokens de @menção do quill-mention
     "span": ["class", "data-id", "data-value", "data-denotation-char", "data-index", "data-title"],
     "li": ["class", "data-list"],
-    "pre": ["class", "spellcheck"],
+    # data-cbg/data-cfg: cor de fundo/fonte do bloco de código (hex). data-attrs
+    # são inertes (não executam) — a cor visual é aplicada via JS no render.
+    "pre": ["class", "spellcheck", "data-cbg", "data-cfg"],
 }
 
 # javascript:, data: (exceto imagem já convertida), vbscript: ficam de fora
