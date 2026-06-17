@@ -126,7 +126,7 @@
 
   <!-- Modal features -->
   <script defer src="{% static 'boards/modal/modal.tabs.js' %}"></script>
-  <script defer src="{% static 'boards/modal/modal.quill.js' %}?v=20260617-copyfix3"></script>
+  <script defer src="{% static 'boards/modal/modal.quill.js' %}?v=20260617-copyfix4"></script>
   <script defer src="{% static 'boards/modal/modal.acitivity_quill.js' %}?v=20260617-codefence"></script>
   <script defer src="{% static 'boards/modal/modal.tags.js' %}"></script>
   <script defer src="{% static 'boards/modal/modal.tag_catalog.js' %}?v=20260615-applied"></script>
@@ -765,40 +765,13 @@
        Prism + botão copiar
        ============================================================ -->
   <script>
+    // Realce de sintaxe (Prism) p/ blocos <pre><code class="language-*"> quando existirem.
+    // O botão "Copiar" dos blocos é montado pelo modal.quill.js (decorateCodeBlocks) —
+    // FONTE ÚNICA. Não criar botão aqui senão duplica (o do Quill é <pre> sem <code>,
+    // o que quebrava a cópia deste sistema antigo).
     function enhanceCodeBlocks() {
-      // .cm-secret-pre fica de fora: o reveal do segredo já tem botão Copiar próprio
-      document.querySelectorAll("pre:not(.enhanced):not(.cm-secret-pre)").forEach(pre => {
-        pre.classList.add("enhanced");
-
-        const wrapper = document.createElement("div");
-        wrapper.className = "code-wrapper";
-
-        const button = document.createElement("button");
-        button.className = "copy-code-btn";
-        button.type = "button";
-        button.innerText = "Copiar";
-
-        const parent = pre.parentNode;
-        parent.insertBefore(wrapper, pre);
-        wrapper.appendChild(pre);
-        wrapper.appendChild(button);
-      });
-
-      if (window.Prism) Prism.highlightAll();
+      if (window.Prism) { try { Prism.highlightAll(); } catch (_e) {} }
     }
-
-    document.addEventListener("click", function (e) {
-      if (!e.target.matches(".copy-code-btn")) return;
-
-      const codeBlock = e.target.closest(".code-wrapper")?.querySelector("code");
-      if (!codeBlock) return;
-
-      navigator.clipboard.writeText(codeBlock.innerText);
-
-      e.target.innerText = "Copiado!";
-      setTimeout(() => e.target.innerText = "Copiar", 1300);
-    });
-
     document.addEventListener("DOMContentLoaded", enhanceCodeBlocks);
     document.addEventListener("htmx:afterSwap", enhanceCodeBlocks);
   </script>

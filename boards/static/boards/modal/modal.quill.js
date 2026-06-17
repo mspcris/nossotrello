@@ -82,9 +82,26 @@
    */
   function decorateCodeBlocks(scope) {
     const root = scope && scope.querySelectorAll ? scope : document;
+
+    // auto-cura: se um wrap acabou com mais de um botão (transição de versão/
+    // cache, re-render), mantém só o primeiro — evita botão fantasma por cima.
+    root.querySelectorAll(".code-copy-wrap").forEach((w) => {
+      const btns = w.querySelectorAll(":scope > .code-copy-btn");
+      for (let i = 1; i < btns.length; i++) btns[i].remove();
+    });
+
     const pres = root.querySelectorAll("pre:not([data-code-copy])");
     pres.forEach((pre) => {
       if (pre.closest(".ql-editor")) return; // bloco editável: não decora
+      // já embrulhado (por um render anterior)? só marca e garante 1 botão.
+      if (pre.parentElement && pre.parentElement.classList.contains("code-copy-wrap")) {
+        pre.setAttribute("data-code-copy", "1");
+        if (!pre.parentElement.querySelector(":scope > .code-copy-btn")) {
+          // wrap sem botão (estado estranho) -> deixa o fluxo abaixo recriar
+        } else {
+          return;
+        }
+      }
       pre.setAttribute("data-code-copy", "1");
 
       const wrap = document.createElement("div");
