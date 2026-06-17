@@ -106,36 +106,45 @@
       btn.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        const code = pre.innerText;
+        const code = pre.innerText.replace(/\n$/, ""); // tira o \n final do <pre>
+        let flashed = false;
         const done = () => {
+          if (flashed) return;
+          flashed = true;
           lbl.textContent = "Copiado!";
           setTimeout(() => (lbl.textContent = "Copiar"), 1500);
         };
-        // 1) execCommand SÍNCRONO dentro do gesto do clique (mais confiável; o
-        //    fallback async perdia o gesto e o clipboard mantinha o conteúdo antigo).
-        if (legacyCopy(code)) { done(); return; }
-        // 2) Clipboard API (async) como reforço.
+        // execCommand SÍNCRONO dentro do gesto (não depende de permissão/foco)…
+        const okLegacy = legacyCopy(code);
+        // …e a Clipboard API em paralelo (cobre quem faz execCommand virar no-op).
         if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(code).then(done).catch(() => {});
+          navigator.clipboard.writeText(code).then(done).catch(() => { if (okLegacy) done(); });
+        } else if (okLegacy) {
+          done();
         }
       });
       wrap.appendChild(btn);
     });
   }
+  // Recipe robusto: textarea readonly fora da tela (left:-9999px, NÃO opacity:0,
+  // que faz alguns browsers retornarem ok sem copiar nada), seleção explícita.
   function legacyCopy(text) {
+    let ok = false;
     try {
       const ta = document.createElement("textarea");
       ta.value = text;
+      ta.setAttribute("readonly", "");
       ta.style.position = "fixed";
-      ta.style.top = "-1000px";
-      ta.style.opacity = "0";
+      ta.style.left = "-9999px";
+      ta.style.top = "0";
       document.body.appendChild(ta);
       ta.focus();
       ta.select();
-      const ok = document.execCommand("copy");
+      try { ta.setSelectionRange(0, text.length); } catch (_e) {}
+      ok = document.execCommand("copy");
       ta.remove();
-      return ok;
-    } catch (_e) { return false; }
+    } catch (_e) { ok = false; }
+    return ok;
   }
   window.Modal.quill.decorateCodeBlocks = decorateCodeBlocks;
 
