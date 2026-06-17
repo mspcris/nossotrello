@@ -93,15 +93,31 @@ def add_card(request, column_id):
         where = "bottom"
 
     if request.method == "POST":
-        form = CardForm(request.POST)
+        actor = _actor_label(request)
+
+        # Título: se vier vazio (ex.: criação por COLAR imagem como capa), usa um
+        # padrão pra sempre haver texto no card ("Card criado por <nome>").
+        post = request.POST.copy()
+        if not (post.get("title") or "").strip():
+            post["title"] = f"Card criado por {actor}"
+
+        form = CardForm(post)
         if not form.is_valid():
             return HttpResponse("Erro ao criar card.", status=400)
-
-        actor = _actor_label(request)
 
         with transaction.atomic():
             card = form.save(commit=False)
             card.created_by = request.user
+
+            # Capa colada (Ctrl+V) no momento da criação do card.
+            cover_f = request.FILES.get("cover")
+            if cover_f and (getattr(cover_f, "content_type", "") or "").lower().startswith("image/"):
+                try:
+                    from boards.services.image_compress import compress_image
+                    cover_f = compress_image(cover_f)
+                except Exception:
+                    pass
+                card.cover_image = cover_f
 
             raw_desc = (request.POST.get("description") or card.description or "").strip()
 
