@@ -783,12 +783,29 @@
     document.body.addEventListener("htmx:responseError", function (evt) {
       const xhr = evt.detail.xhr;
       const target = evt.detail.target;
-      if (target && target.id === "modal-body") {
+      if (!target || target.id !== "modal-body") return;
+
+      const body = (xhr.responseText || "").trim();
+      // Sem corpo (ex.: erro de rede): mantém a mensagem simples.
+      if (!body) {
         target.innerHTML =
           "<div class='p-4 text-red-600 bg-white/80 rounded'>Erro ao carregar o card (" +
-          xhr.status +
-          "). Veja o log do servidor.</div>";
+          xhr.status + "). Veja o log do servidor.</div>";
+        return;
       }
+      // Com corpo (ex.: 502/500): mostra a PRÓPRIA página de erro do servidor
+      // aqui no modal, já que a navegação não vai pra página de erro. iframe com
+      // sandbox (sem scripts) = render fiel da página + seguro contra XSS.
+      target.innerHTML = "";
+      const bar = document.createElement("div");
+      bar.style.cssText = "padding:8px 12px;font-size:13px;font-weight:600;color:#b91c1c;background:rgba(255,255,255,.9);border-radius:8px 8px 0 0;";
+      bar.textContent = "Erro " + xhr.status + " ao carregar o card — página do servidor:";
+      const frame = document.createElement("iframe");
+      frame.setAttribute("sandbox", "");
+      frame.style.cssText = "width:100%;height:70vh;border:0;background:#fff;border-radius:0 0 8px 8px;";
+      frame.srcdoc = body;
+      target.appendChild(bar);
+      target.appendChild(frame);
     });
   </script>
 
