@@ -24,6 +24,15 @@ from boards.models import WhatsNewItem
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-06 ---
+    "f29b684": (
+        "🎨",
+        "Escolha a cor do seu bloco de código",
+        "No canto do bloco de código (descrição e \"Nova Atividade\") apareceu um "
+        "botãozinho colorido ao lado do \"Copiar\". Clique nele e escolha a cor do "
+        "fundo e da fonte do código do seu jeito — fica salvo no seu usuário. Daí "
+        "pra frente, todo bloco de código novo que você criar já nasce com essas "
+        "cores. Os blocos que você já tinha feito continuam como estavam.",
+    ),
     "bede5a8": (
         "💻",
         "Bloco de código com botão de copiar",
