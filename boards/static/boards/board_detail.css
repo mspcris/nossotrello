@@ -732,6 +732,10 @@ li[data-card-id][data-term-status="ok"] .term-badge{ color: #16a34a; }
   gap: 16px;
   overflow-x: auto;
   overflow-y: hidden;
+  /* confina o z-index da agregadora sticky DENTRO da board: ela fica acima das
+     colunas que rolam, mas o conjunto fica abaixo de header/popover/modal
+     (que vivem fora do wrapper). Sem isso, o z-index vaza e cobre os overlays. */
+  isolation: isolate;
 }
 
 /* o UL das colunas precisa ser “linha” também */
