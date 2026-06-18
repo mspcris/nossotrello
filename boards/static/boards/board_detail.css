@@ -874,10 +874,12 @@ li[data-card-id][data-term-status="ok"] .term-badge{ color: #16a34a; }
   position: sticky;
   left: 0;
   z-index: 10;
-  /* fundo glass p/ as colunas passarem desfocadas atrás (não vazarem nítidas) */
-  background: var(--agg-bg, rgba(255, 255, 255, 0.14));
-  -webkit-backdrop-filter: blur(8px) saturate(120%);
-  backdrop-filter: blur(8px) saturate(120%);
+  /* fundo glass ESCURO: as pílulas têm fundo claro translúcido + texto branco,
+     então precisam de backdrop escuro p/ ler. Também esconde (escurece+desfoca)
+     as colunas que passam atrás. --agg-bg (menu da coluna) sobrescreve. */
+  background: var(--agg-bg, rgba(15, 23, 42, 0.55));
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
+  backdrop-filter: blur(10px) saturate(120%);
   border-radius: 14px;
 }
 
