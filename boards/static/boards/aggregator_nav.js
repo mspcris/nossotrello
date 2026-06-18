@@ -64,9 +64,23 @@
     } catch (_e) {}
   };
 
-  // captura no WINDOW (fase capture) = roda ANTES de qualquer listener que
-  // pare a propagação do clique. Cobre tanto o clique do mouse quanto o
-  // disparado por código, mesmo que algo no caminho chame stopPropagation.
+  // ESTRATÉGIA PRINCIPAL: amarra o handler DIRETO em cada pílula, em
+  // pointerdown/click. Listener direto no elemento dispara na fase de alvo,
+  // antes de qualquer stopPropagation no caminho. pointerdown dispara já no
+  // pressionar (não depende do "click" ser gerado/entregue).
+  function bindPills(root) {
+    var scope = root && root.querySelectorAll ? root : document;
+    var pills = scope.querySelectorAll(".aggregator-card[data-column-id]");
+    pills.forEach(function (pill) {
+      if (pill.__aggNavBound) return;
+      pill.__aggNavBound = true;
+      var fire = function () { window.__aggNavGo(pill); };
+      pill.addEventListener("pointerdown", fire);
+      pill.addEventListener("click", fire);
+    });
+  }
+
+  // reforço global: captura no WINDOW (roda antes de qualquer stopPropagation)
   if (!window.__aggNavDelegated) {
     window.__aggNavDelegated = true;
     var handler = function (e) {
@@ -74,7 +88,18 @@
       var pill = t && t.closest && t.closest(".aggregator-card[data-column-id]");
       if (pill) window.__aggNavGo(pill);
     };
+    window.addEventListener("pointerdown", handler, true);
     window.addEventListener("click", handler, true);
-    window.addEventListener("pointerup", handler, true); // reforço (toque/caso click engolido)
   }
+
+  // amarra agora e a cada re-render (htmx) ou mutação da agregadora
+  function rebind() { try { bindPills(document); } catch (_e) {} }
+  rebind();
+  document.addEventListener("DOMContentLoaded", rebind);
+  document.body && document.body.addEventListener("htmx:afterSwap", rebind);
+  document.body && document.body.addEventListener("htmx:afterSettle", rebind);
+  try {
+    var obs = new MutationObserver(rebind);
+    obs.observe(document.documentElement, { childList: true, subtree: true });
+  } catch (_e) {}
 })();
