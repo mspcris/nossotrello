@@ -24,6 +24,21 @@ from boards.models import WhatsNewItem
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-06 ---
+    "409b83b": (
+        "📌",
+        "A coluna \"Controle de Colunas\" agora fica fixa",
+        "A coluna de totais (\"Controle de Colunas\") agora gruda na esquerda e "
+        "fica sempre visível enquanto você rola as outras colunas para o lado. "
+        "Assim você nunca perde de vista os contadores nem precisa voltar a "
+        "rolagem toda para clicar numa coluna.",
+    ),
+    "e8352da": (
+        "🎯",
+        "Clique no contador e a board pula para a coluna",
+        "Na coluna \"Controle de Colunas\", clique em qualquer pílula (ex.: "
+        "\"02 Bloqueado\") e a board rola na hora até aquela coluna e a destaca "
+        "com um flash. Ótimo para boards largas com muitas colunas.",
+    ),
     "04cc0a3": (
         "📋",
         "Cole uma imagem e já vira um card com capa",
