@@ -861,11 +861,12 @@ li[data-card-id][data-term-status="ok"] .term-badge{ color: #16a34a; }
 /* =========================
    Aggregator column (FIXA, ISOLADA)
 ========================= */
-.aggregator-column {
+/* SEMPRE VISÍVEL: fica fixa à esquerda enquanto as colunas normais rolam atrás
+   dela (o scroll horizontal é do #columns-wrapper). Seletor com #id p/ vencer
+   o `#columns-wrapper .column-item{ position:relative }` da linha ~402. */
+#columns-wrapper .column-item.aggregator-column {
   width: 220px;
   flex: 0 0 220px;
-  /* SEMPRE VISÍVEL: fica fixa à esquerda enquanto as colunas normais rolam
-     atrás dela (o scroll horizontal é do #columns-wrapper). */
   position: sticky;
   left: 0;
   z-index: 10;
