@@ -64,12 +64,17 @@
     } catch (_e) {}
   };
 
-  // reforço: delegação no document (caso o inline não exista por algum motivo)
+  // captura no WINDOW (fase capture) = roda ANTES de qualquer listener que
+  // pare a propagação do clique. Cobre tanto o clique do mouse quanto o
+  // disparado por código, mesmo que algo no caminho chame stopPropagation.
   if (!window.__aggNavDelegated) {
     window.__aggNavDelegated = true;
-    document.addEventListener("click", function (e) {
-      var pill = e.target && e.target.closest && e.target.closest(".aggregator-card[data-column-id]");
+    var handler = function (e) {
+      var t = e.target;
+      var pill = t && t.closest && t.closest(".aggregator-card[data-column-id]");
       if (pill) window.__aggNavGo(pill);
-    });
+    };
+    window.addEventListener("click", handler, true);
+    window.addEventListener("pointerup", handler, true); // reforço (toque/caso click engolido)
   }
 })();
