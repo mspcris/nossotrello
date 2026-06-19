@@ -16,11 +16,13 @@
 
     <label class="block text-xs text-white/45 font-bold uppercase tracking-widest mb-1.5">Quadro de destino</label>
     <select id="move-col-board"
+            style="color-scheme: dark;"
             class="w-full mb-4 rounded-lg bg-white/10 border border-white/15 px-3 py-2 text-sm
                    focus:outline-none focus:border-blue-400/60"></select>
 
     <label class="block text-xs text-white/45 font-bold uppercase tracking-widest mb-1.5">Posição</label>
     <select id="move-col-pos"
+            style="color-scheme: dark;"
             class="w-full mb-1 rounded-lg bg-white/10 border border-white/15 px-3 py-2 text-sm
                    focus:outline-none focus:border-blue-400/60"></select>
     <p class="text-xs text-white/40 mb-4">1 = primeira coluna (à esquerda).</p>
@@ -51,17 +53,18 @@
   const posSel   = document.getElementById('move-col-pos');
 
   // monta a lista de quadros (atual primeiro/selecionado)
+  const OPT_STYLE = 'background:#1a2035;color:#fff';
   boardSel.innerHTML = boards.map(function(b){
     const sel = b.id === currentBoardId ? ' selected' : '';
-    return '<option value="' + b.id + '"' + sel + '>' +
+    return '<option value="' + b.id + '"' + sel + ' style="' + OPT_STYLE + '">' +
            (b.name || ('Quadro ' + b.id)).replace(/</g,'&lt;') + '</option>';
-  }).join('') || '<option value="">(nenhum quadro disponível)</option>';
+  }).join('') || '<option value="" style="' + OPT_STYLE + '">(nenhum quadro disponível)</option>';
 
   function refreshPos() {
     const b = boards.find(function(x){ return String(x.id) === String(boardSel.value); });
     const slots = (b && b.slots) || 1;
     let out = '';
-    for (let i = 1; i <= slots; i++) out += '<option value="' + i + '">' + i + '</option>';
+    for (let i = 1; i <= slots; i++) out += '<option value="' + i + '" style="' + OPT_STYLE + '">' + i + '</option>';
     posSel.innerHTML = out;
     posSel.value = '1'; // padrão: primeira da esquerda
   }
