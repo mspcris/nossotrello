@@ -1,7 +1,21 @@
 import hashlib
 from django import template
+from django.utils.safestring import mark_safe
 
 register = template.Library()
+
+
+@register.filter
+def quill_safe(value):
+    """Sanitiza HTML (allowlist do Quill) e marca como safe pra render.
+
+    Idempotente: serve tanto pra conteúdo já sanitizado quanto pra linhas
+    legadas gravadas cruas — evita XSS armazenado ao usar |safe direto.
+    """
+    if not value:
+        return ""
+    from boards.views.helpers import sanitize_quill_html
+    return mark_safe(sanitize_quill_html(str(value)))
 
 
 @register.simple_tag

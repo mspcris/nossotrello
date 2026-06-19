@@ -1,4 +1,5 @@
 <!-- ATTACHMENT_ITEM.HTML -->
+{% load tag_helpers %}
 <div id="attachment-{{ attachment.id }}"
      class="p-3 rounded border bg-white/40 backdrop-blur-sm shadow-sm flex justify-between items-center">
 
@@ -18,8 +19,9 @@
     </a>
 
     {% if attachment.description %}
-      <div class="mt-1 text-xs text-gray-700 dark:text-slate-200 break-words">
-        {{ attachment.description }}
+      {# sanitiza no render (cobre linhas legadas cruas) e mostra formatado #}
+      <div class="cm-attach-desc mt-1 text-xs text-gray-700 dark:text-slate-200 break-words">
+        {{ attachment.description|quill_safe }}
       </div>
     {% endif %}
 

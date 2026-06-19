@@ -13,6 +13,7 @@ from ..models import Card, CardAttachment, CardLog
 from .helpers import (
     _actor_label,
     _log_card,
+    sanitize_quill_html,
 )
 
 
@@ -90,10 +91,17 @@ def add_attachment(request, card_id):
         return HttpResponse("Nenhum arquivo enviado", status=400)
 
     uploaded = request.FILES["file"]
-    # ✅ evita conflito com o name="description" do card (aba Descrição)
-    # prioridade: attachment_description (novo). fallback: description (legado).
-    desc = (request.POST.get("attachment_description") or request.POST.get("description") or "").strip()
-
+    # ✅ evita conflito com o name="description" do card (aba Descrição).
+    # O form posta o campo como `attachment_desc`; mantemos os fallbacks legados.
+    raw_desc = (
+        request.POST.get("attachment_desc")
+        or request.POST.get("attachment_description")
+        or request.POST.get("description")
+        or ""
+    ).strip()
+    # A descrição pode conter HTML (Quill / colagem). Sanitiza no MESMO allowlist
+    # da descrição do card, pra renderizar formatada com |safe sem risco de XSS.
+    desc = sanitize_quill_html(raw_desc)
 
     attachment = CardAttachment.objects.create(
         card=card,
@@ -107,10 +115,13 @@ def add_attachment(request, card_id):
 
     pretty_name = attachment.file.name.split("/")[-1]
     if desc:
+        # desc já vem sanitizado -> entra como HTML (bloco próprio, fora do <p>,
+        # pra não quebrar o layout quando tiver títulos/listas).
         _log_card(
             card,
             request,
-            f"<p><strong>{actor}</strong> adicionou um anexo: <strong>{escape(pretty_name)}</strong> — {escape(desc)}.</p>",
+            f"<p><strong>{actor}</strong> adicionou um anexo: <strong>{escape(pretty_name)}</strong>:</p>"
+            f"<div class=\"cm-attach-desc\">{desc}</div>",
             attachment=attachment.file,
         )
     else:
