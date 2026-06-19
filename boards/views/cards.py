@@ -125,6 +125,9 @@ def add_card(request, column_id):
             card.description = sanitize_quill_html(desc_html)
             card.column = column
             card.column_since = timezone.now()
+            # quem criou o card aqui = quem o "colocou" nesta lista
+            if getattr(request.user, "is_authenticated", False):
+                card.column_entered_by = request.user
 
             if where == "top":
                 Card.objects.filter(column=column).update(position=F("position") + 1)
@@ -1045,7 +1048,14 @@ def move_card(request):
     # AUTOMAÇÃO: card saiu da coluna antiga / entrou na nova
     try:
         from boards.services.column_automation import run_for, run_count_triggers
+        # 'leave' roda ANTES de atualizar column_entered_by: assim a ação
+        # "avisar quem colocou o card" usa quem o pôs na coluna ANTIGA, e
+        # card.column já aponta pro destino (pra montar "foi para X").
         run_for(card, "leave", old_column, actor=request.user)
+        # agora quem colocou o card na coluna NOVA é quem fez este move
+        if old_column.id != new_column.id:
+            card.column_entered_by = request.user
+            card.save(update_fields=["column_entered_by"])
         run_for(card, "enter", new_column, actor=request.user)
         run_count_triggers(old_column, actor=request.user)
         run_count_triggers(new_column, actor=request.user)

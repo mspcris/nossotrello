@@ -63,6 +63,9 @@ def _apply(rule, card, column, actor):
     if a == "send_whatsapp":
         _send_whatsapp(rule, card, column, p)
         return
+    if a == "notify_placer":
+        _notify_placer(rule, card, column, p, actor)
+        return
     # demais ações operam sobre um card específico (gatilhos de contagem não têm)
     if card is None:
         return
@@ -149,6 +152,70 @@ def _send_whatsapp(rule, card, column, p):
         send_whatsapp(user=None, phone_digits=phone, body=message, sync=True)
     except Exception:
         logger.exception("WhatsApp (automação): falha ao enviar para %r", p.get("phone"))
+
+
+def _notify_placer(rule, card, column, p, actor=None):
+    """Avisa quem COLOCOU o card nesta lista que ele saiu — e pra onde foi.
+
+    Destinatário = card.column_entered_by (último a mover/criar o card aqui).
+    Sem registro (cards legados / movidos por automação) -> não avisa ninguém.
+    Entrega por WhatsApp; se a pessoa não tiver zap, cai pra e-mail.
+    """
+    if card is None:
+        return
+    placer = getattr(card, "column_entered_by", None)
+    if not placer:
+        return
+    # não notifica a própria pessoa que acabou de mover o card pra fora
+    if actor is not None and getattr(actor, "id", None) == getattr(placer, "id", None):
+        return
+
+    # no gatilho 'leave', card.column já aponta pra coluna de DESTINO
+    dest = None
+    try:
+        if card.column_id and card.column_id != column.id:
+            dest = card.column
+    except Exception:
+        dest = None
+
+    if dest is not None:
+        base = (
+            f'O card "{card.title}" saiu de "{column.name}" e foi para '
+            f'"{dest.name}" ({column.board.name}).'
+        )
+    else:
+        base = f'O card "{card.title}" saiu de "{column.name}" ({column.board.name}).'
+
+    custom = (p.get("message") or "").strip()
+    message = (custom + "\n\n" + base).strip() if custom else base
+    subject = f"[NossoTrello] {card.title}"[:200]
+    _deliver_to_user(placer, subject, message)
+
+
+def _deliver_to_user(user, subject, message):
+    """WhatsApp (se tiver telefone e opt-in); senão, e-mail. Nunca quebra o fluxo."""
+    prof = getattr(user, "profile", None)
+    sent = False
+    try:
+        from boards.services.notifications import send_whatsapp, _safe_digits_phone
+        if prof is None or getattr(prof, "notify_whatsapp", True):
+            phone = _safe_digits_phone(getattr(prof, "telefone", "") or "")
+            if phone:
+                send_whatsapp(user=user, phone_digits=phone, body=message, sync=True)
+                sent = True
+    except Exception:
+        logger.exception("notify_placer: WhatsApp falhou (user=%s)", getattr(user, "id", None))
+
+    if not sent:
+        to = (getattr(user, "email", "") or "").strip()
+        if to:
+            from_email = getattr(settings, "DEFAULT_FROM_EMAIL", None) or getattr(
+                settings, "EMAIL_HOST_USER", None
+            )
+            try:
+                send_mail(subject, message, from_email, [to], fail_silently=True)
+            except Exception:
+                logger.debug("notify_placer: e-mail falhou", exc_info=True)
 
 
 def run_stale_triggers(now=None):

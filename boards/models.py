@@ -300,6 +300,12 @@ class Card(models.Model):
     position = models.PositiveIntegerField(default=0)
     # quando o card entrou na coluna atual (p/ automação "parado X dias")
     column_since = models.DateTimeField(null=True, blank=True)
+    # quem colocou o card na coluna ATUAL (último a mover/criar aqui).
+    # Usado pela automação "avisar quem colocou o card" quando ele sai da lista.
+    column_entered_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="+",
+    )
 
     is_deleted = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(blank=True, null=True)
@@ -2124,6 +2130,7 @@ class ColumnAutomation(models.Model):
     ACTION_CHOICES = [
         ("send_email", "Disparar e-mail avisando alguém"),
         ("send_whatsapp", "Enviar mensagem no WhatsApp"),
+        ("notify_placer", "Avisar quem colocou o card aqui (WhatsApp/e-mail)"),
         ("assign_user", "Marcar uma pessoa (cria acompanhamento)"),
         ("move_to", "Mover o card para outra coluna"),
         ("copy_to", "Copiar o card para outra coluna"),

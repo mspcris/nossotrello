@@ -200,6 +200,7 @@
       window.__caAction = function () {
         var sel = document.querySelector('#col-automation-modal input[name=action]:checked');
         var map = { send_email:['ca-p-email','ca-p-message'], send_whatsapp:['ca-p-whatsapp','ca-p-message'],
+                    notify_placer:['ca-p-message'],
                     assign_user:['ca-p-member'], move_to:['ca-p-column'], copy_to:['ca-p-column'],
                     set_due:['ca-p-days'], set_start:['ca-p-days'], add_label:['ca-p-label'] };
         document.querySelectorAll('#col-automation-modal .ca-param').forEach(function (el) { el.classList.add('hidden'); });

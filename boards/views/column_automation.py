@@ -60,6 +60,11 @@ def column_automation_modal(request, column_id):
                 msg = (request.POST.get("message") or "").strip()
                 if msg:
                     params["message"] = msg[:2000]
+            elif action == "notify_placer":
+                # destinatário é derivado (quem colocou o card); só mensagem opcional
+                msg = (request.POST.get("message") or "").strip()
+                if msg:
+                    params["message"] = msg[:2000]
             elif action == "assign_user":
                 params["user_id"] = request.POST.get("user_id")
             elif action in ("move_to", "copy_to"):
