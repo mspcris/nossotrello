@@ -579,6 +579,45 @@
   );
 
   // ============================================================
+  // INSERIR DESCRIÇÃO DO CARD (já formatada) no composer
+  // ------------------------------------------------------------
+  // Aditivo: lê o HTML da descrição (#cm-description, sincronizado pelo
+  // Quill da descrição) e cola formatado no Quill da atividade via
+  // dangerouslyPasteHTML — não mexe em paste normal, submit ou code-block.
+  // ============================================================
+  document.addEventListener(
+    "click",
+    function (e) {
+      const btn = e.target?.closest?.("#cm-activity-insert-desc");
+      if (!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      const ta = document.getElementById("cm-description");
+      const html = String((ta && ta.value) || "").trim();
+      if (!html) {
+        notifyActivityError("A descrição do card está vazia.");
+        return;
+      }
+
+      setActivityTab("new");
+      openComposer();
+
+      try {
+        ensureQuill();
+        const q = window[STATE_KEY];
+        if (q) {
+          const range = q.getSelection(true) || { index: q.getLength(), length: 0 };
+          q.clipboard.dangerouslyPasteHTML(range.index, html, "user");
+          try { q.__autoGrowApply?.(); } catch (_e) {}
+          if (typeof q.focus === "function") q.focus();
+        }
+      } catch (_e) {}
+    },
+    true
+  );
+
+  // ============================================================
   // FEED FILTER (Comentários / Arquivos / Sistema / Tudo)
   // ============================================================
   const VALID_FEED_FILTERS = new Set(["comments", "files", "system", "all"]);
