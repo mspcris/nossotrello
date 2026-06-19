@@ -125,16 +125,32 @@
                               <a class="cm-attach-file" href="{{ log.attachment.url }}" target="_blank" rel="noopener">
                                 {{ log.attachment.name|cut:"attachments/"|cut:"logs/" }}
                               </a>
-                              <a
-                                href="{{ log.attachment.url }}"
-                                target="_blank"
-                                rel="noopener"
-                                class="cm-attach-thumb"
-                                data-preview-src="{{ log.attachment.url }}"
-                              >
-                                <img src="{{ log.attachment.url }}" alt="">
-                                <span class="cm-attach-zoom" aria-hidden="true">🔍</span>
-                              </a>
+                              {% with aurl=log.attachment.url|lower %}
+                                {% if '.jpg' in aurl or '.jpeg' in aurl or '.png' in aurl or '.gif' in aurl or '.webp' in aurl or '.bmp' in aurl or '.svg' in aurl %}
+                                  <a
+                                    href="{{ log.attachment.url }}"
+                                    target="_blank"
+                                    rel="noopener"
+                                    class="cm-attach-thumb"
+                                    data-preview-src="{{ log.attachment.url }}"
+                                  >
+                                    <img src="{{ log.attachment.url }}" alt="">
+                                    <span class="cm-attach-zoom" aria-hidden="true">🔍</span>
+                                  </a>
+                                {% else %}
+                                  {# Não-imagem (PDF, doc, etc.): ícone em vez de <img> quebrado #}
+                                  <a
+                                    href="{{ log.attachment.url }}"
+                                    target="_blank"
+                                    rel="noopener"
+                                    class="cm-attach-thumb"
+                                    style="display:flex;align-items:center;justify-content:center;font-size:34px;text-decoration:none;"
+                                    title="Abrir arquivo"
+                                  >
+                                    <span aria-hidden="true">{% if '.pdf' in aurl %}📕{% else %}📄{% endif %}</span>
+                                  </a>
+                                {% endif %}
+                              {% endwith %}
                             {% endif %}
                           </div>
                         {% endif %}
