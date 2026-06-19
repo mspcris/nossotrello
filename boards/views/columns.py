@@ -9,9 +9,10 @@ logger = logging.getLogger("boards.import_trello")
 
 from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest
 from django.shortcuts import render, get_object_or_404
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_http_methods
 from django.contrib.auth.decorators import login_required
-from django.db import transaction
+from django.db import transaction, models
+from django.db.models import Count, Exists
 from django.utils import timezone
 from django.utils.html import escape
 
@@ -27,6 +28,7 @@ from .helpers import (
     Card,
     BoardMembership,
 )
+from .cards import _user_can_edit_board, _deny_read_only
 
 
 
@@ -199,6 +201,179 @@ def delete_column(request, column_id):
 
 # alias de compatibilidade
 column_delete = delete_column
+
+
+# ============================================================
+# MOVER COLUNA (entre quadros ou reordenando dentro do mesmo)
+# ------------------------------------------------------------
+# Move a coluna inteira — e, junto, todos os cards nela — para o quadro
+# escolhido, na posição escolhida (1 = primeira da esquerda). Só lista
+# quadros onde o usuário é dono (owner) ou editor.
+# ============================================================
+
+def _editable_boards_for(user):
+    """Quadros onde `user` pode editar (owner/editor), ordenados por mais recente.
+
+    Inclui quadros legados sem membership criados pelo próprio usuário (mesma
+    regra de _user_can_edit_board). Staff enxerga todos.
+    """
+    qs = Board.objects.filter(is_deleted=False)
+
+    if getattr(user, "is_staff", False):
+        return list(qs.order_by("-created_at"))
+
+    editable_ids = set(
+        BoardMembership.objects.filter(
+            user=user,
+            board__is_deleted=False,
+            role__in=[BoardMembership.Role.OWNER, BoardMembership.Role.EDITOR],
+        ).values_list("board_id", flat=True)
+    )
+
+    legacy_ids = set(
+        qs.filter(created_by_id=user.id)
+        .annotate(has_members=Exists(
+            BoardMembership.objects.filter(board=models.OuterRef("pk"))
+        ))
+        .filter(has_members=False)
+        .values_list("id", flat=True)
+    )
+
+    all_ids = editable_ids | legacy_ids
+    return list(qs.filter(id__in=all_ids).order_by("-created_at"))
+
+
+@login_required
+@require_http_methods(["GET"])
+def move_column_modal(request, column_id):
+    """Modal pequeno para escolher quadro de destino + posição da coluna."""
+    column = get_object_or_404(Column, id=column_id, is_deleted=False)
+
+    if not _user_can_edit_board(request.user, column.board):
+        return _deny_read_only(request)
+
+    boards = _editable_boards_for(request.user)
+
+    # nº de colunas por quadro (para montar o seletor de posição no front).
+    # Exclui a própria coluna que está sendo movida (não conta como "slot ocupado").
+    counts = {
+        row["board_id"]: row["n"]
+        for row in (
+            Column.objects.filter(
+                board_id__in=[b.id for b in boards],
+                is_deleted=False,
+            )
+            .exclude(id=column.id)
+            .values("board_id")
+            .annotate(n=Count("id"))
+        )
+    }
+
+    boards_payload = [
+        {"id": b.id, "name": b.name, "slots": counts.get(b.id, 0) + 1}
+        for b in boards
+    ]
+
+    return render(
+        request,
+        "boards/partials/move_column_modal.html",
+        {
+            "column": column,
+            "current_board_id": column.board_id,
+            "boards_json": json.dumps(boards_payload, ensure_ascii=False),
+        },
+    )
+
+
+@login_required
+@require_POST
+def move_column(request, column_id):
+    """Move a coluna (e todos os cards) para o quadro/posição escolhidos."""
+    column = get_object_or_404(Column, id=column_id, is_deleted=False)
+
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+        target_board_id = int(data.get("target_board_id"))
+        new_position = int(data.get("new_position", 1))  # 1-based vindo da UI
+    except Exception:
+        return JsonResponse({"ok": False, "error": "Payload inválido."}, status=400)
+
+    old_board = column.board
+    target_board = get_object_or_404(Board, id=target_board_id, is_deleted=False)
+
+    # permissão em origem E destino
+    if not _user_can_edit_board(request.user, old_board) or not _user_can_edit_board(request.user, target_board):
+        return _deny_read_only(request, as_json=True)
+
+    actor = _actor_label(request)
+    same_board = old_board.id == target_board.id
+
+    with transaction.atomic():
+        # colunas do destino (sem a que está sendo movida), em ordem
+        siblings = list(
+            Column.objects.filter(board=target_board, is_deleted=False)
+            .exclude(id=column.id)
+            .order_by("position")
+        )
+
+        # clamp do índice 0-based
+        idx = new_position - 1
+        if idx < 0:
+            idx = 0
+        if idx > len(siblings):
+            idx = len(siblings)
+
+        # reatribui o quadro (os cards seguem junto via FK column)
+        column.board = target_board
+
+        # reindexa o destino inserindo a coluna na posição escolhida
+        new_order = siblings[:idx] + [column] + siblings[idx:]
+        for i, c in enumerate(new_order):
+            if c.position != i or c.id == column.id:
+                c.position = i
+                c.save(update_fields=["position", "board"] if c.id == column.id else ["position"])
+
+        # se mudou de quadro, reindexa também o quadro de origem
+        if not same_board:
+            for i, c in enumerate(
+                Column.objects.filter(board=old_board, is_deleted=False).order_by("position")
+            ):
+                if c.position != i:
+                    c.position = i
+                    c.save(update_fields=["position"])
+
+        old_board.version += 1
+        old_board.save(update_fields=["version"])
+        if not same_board:
+            target_board.version += 1
+            target_board.save(update_fields=["version"])
+
+    if same_board:
+        _log_board(
+            target_board,
+            request,
+            f"<p><strong>{actor}</strong> moveu a coluna <strong>{escape(column.name)}</strong> "
+            f"para a posição {new_position}.</p>",
+        )
+    else:
+        _log_board(
+            old_board,
+            request,
+            f"<p><strong>{actor}</strong> moveu a coluna <strong>{escape(column.name)}</strong> "
+            f"(com todos os cards) para o quadro <strong>{escape(target_board.name)}</strong>.</p>",
+        )
+        _log_board(
+            target_board,
+            request,
+            f"<p><strong>{actor}</strong> recebeu a coluna <strong>{escape(column.name)}</strong> "
+            f"(com todos os cards) vinda do quadro <strong>{escape(old_board.name)}</strong>.</p>",
+        )
+
+    return JsonResponse({
+        "ok": True,
+        "board_url": f"/board/{target_board.id}/",
+        "same_board": same_board,
+    })
 
 
 import csv

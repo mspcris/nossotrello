@@ -1,0 +1,112 @@
+{# move_column_modal.html — mover coluna (com todos os cards) para outro quadro #}
+<div id="move-col-modal"
+     class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+     onclick="if(event.target===this)this.remove()">
+  <div class="bg-[#1a2035] text-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6 relative"
+       onclick="event.stopPropagation()">
+
+    <button class="absolute top-4 right-4 text-white/50 hover:text-white text-xl leading-none"
+            onclick="document.getElementById('move-col-modal').remove()">✕</button>
+
+    <h2 class="text-lg font-bold mb-1">Mover coluna</h2>
+    <p class="text-sm text-white/60 mb-5">
+      A coluna <strong>{{ column.name }}</strong> e <strong>todos os cards</strong> nela serão
+      movidos para o quadro escolhido.
+    </p>
+
+    <label class="block text-xs text-white/45 font-bold uppercase tracking-widest mb-1.5">Quadro de destino</label>
+    <select id="move-col-board"
+            class="w-full mb-4 rounded-lg bg-white/10 border border-white/15 px-3 py-2 text-sm
+                   focus:outline-none focus:border-blue-400/60"></select>
+
+    <label class="block text-xs text-white/45 font-bold uppercase tracking-widest mb-1.5">Posição</label>
+    <select id="move-col-pos"
+            class="w-full mb-1 rounded-lg bg-white/10 border border-white/15 px-3 py-2 text-sm
+                   focus:outline-none focus:border-blue-400/60"></select>
+    <p class="text-xs text-white/40 mb-4">1 = primeira coluna (à esquerda).</p>
+
+    <div id="move-col-error" class="hidden text-red-400 text-sm mb-3"></div>
+
+    <div class="flex justify-end gap-3">
+      <button id="move-col-btn" type="button"
+              class="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-sm font-semibold transition
+                     disabled:opacity-40 disabled:cursor-not-allowed"
+              onclick="window.__moveColSubmit('{{ column.id }}')">
+        Mover
+      </button>
+      <button type="button"
+              class="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-sm transition"
+              onclick="document.getElementById('move-col-modal').remove()">
+        Cancelar
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const boards = {{ boards_json|safe }};
+  const currentBoardId = {{ current_board_id }};
+  const boardSel = document.getElementById('move-col-board');
+  const posSel   = document.getElementById('move-col-pos');
+
+  // monta a lista de quadros (atual primeiro/selecionado)
+  boardSel.innerHTML = boards.map(function(b){
+    const sel = b.id === currentBoardId ? ' selected' : '';
+    return '<option value="' + b.id + '"' + sel + '>' +
+           (b.name || ('Quadro ' + b.id)).replace(/</g,'&lt;') + '</option>';
+  }).join('') || '<option value="">(nenhum quadro disponível)</option>';
+
+  function refreshPos() {
+    const b = boards.find(function(x){ return String(x.id) === String(boardSel.value); });
+    const slots = (b && b.slots) || 1;
+    let out = '';
+    for (let i = 1; i <= slots; i++) out += '<option value="' + i + '">' + i + '</option>';
+    posSel.innerHTML = out;
+    posSel.value = '1'; // padrão: primeira da esquerda
+  }
+  boardSel.addEventListener('change', refreshPos);
+  refreshPos();
+
+  window.__moveColSubmit = async function(columnId) {
+    const btn = document.getElementById('move-col-btn');
+    const errEl = document.getElementById('move-col-error');
+    const targetBoardId = parseInt(boardSel.value, 10);
+    const newPosition = parseInt(posSel.value, 10) || 1;
+
+    if (!targetBoardId) {
+      errEl.textContent = 'Selecione um quadro de destino.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    btn.disabled = true;
+    errEl.classList.add('hidden');
+
+    try {
+      const r = await fetch('/column/' + columnId + '/move/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '',
+        },
+        body: JSON.stringify({ target_board_id: targetBoardId, new_position: newPosition }),
+      });
+      const data = await r.json().catch(function(){ return {}; });
+
+      if (!r.ok || !data.ok) {
+        errEl.textContent = data.error || ('Falha ao mover (HTTP ' + r.status + ').');
+        errEl.classList.remove('hidden');
+        btn.disabled = false;
+        return;
+      }
+
+      window.location.href = data.board_url;
+    } catch (e) {
+      errEl.textContent = 'Erro de conexão.';
+      errEl.classList.remove('hidden');
+      btn.disabled = false;
+    }
+  };
+})();
+</script>

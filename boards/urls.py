@@ -565,6 +565,9 @@ urlpatterns = [
     # Lazy-load de cards (boards grandes)
     path("column/<int:column_id>/cards/more/", columns_views.column_cards_more, name="column_cards_more"),
     path("column/<int:column_id>/export/", columns_views.export_column, name="export_column"),
+    # Mover coluna (entre quadros / reordenar) — leva todos os cards junto
+    path("column/<int:column_id>/move/modal/", columns_views.move_column_modal, name="move_column_modal"),
+    path("column/<int:column_id>/move/", columns_views.move_column, name="move_column"),
     path("column-import/<int:board_id>/", columns_views.import_column_form, name="import_column_form"),
     path("column-import/<int:board_id>/execute/", columns_views.import_column_execute, name="import_column_execute"),
     path("import/trello/", columns_views.import_trello_form, name="import_trello_form"),
