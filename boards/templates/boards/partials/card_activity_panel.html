@@ -138,24 +138,33 @@
                                     <span class="cm-attach-zoom" aria-hidden="true">🔍</span>
                                   </a>
                                 {% elif kind == 'pdf' %}
-                                  {# PDF: miniatura real da 1ª página via iframe (servido inline); link por cima abre #}
-                                  <div class="cm-attach-thumb cm-attach-pdf" style="position:relative;overflow:hidden;">
-                                    <iframe
-                                      src="{{ log.attachment.url }}#toolbar=0&navpanes=0&scrollbar=0&view=FitH"
-                                      style="width:100%;height:100%;border:0;pointer-events:none;background:#fff;"
-                                      loading="lazy"
-                                      title="Pré-visualização do PDF"
-                                      aria-hidden="true"
-                                    ></iframe>
-                                    <a
-                                      href="{{ log.attachment.url }}"
-                                      target="_blank"
-                                      rel="noopener"
-                                      style="position:absolute;inset:0;"
-                                      title="Abrir PDF"
-                                      aria-label="Abrir PDF"
-                                    ></a>
-                                  </div>
+                                  {# PDF: miniatura PNG da 1ª página (gerada no servidor) -> funciona em qualquer navegador #}
+                                  {% with thumb=log.attachment|pdf_thumb_url %}
+                                    {% if thumb %}
+                                      <a
+                                        href="{{ log.attachment.url }}"
+                                        target="_blank"
+                                        rel="noopener"
+                                        class="cm-attach-thumb"
+                                        data-preview-src="{{ thumb }}"
+                                        title="Abrir PDF"
+                                      >
+                                        <img src="{{ thumb }}" alt="Pré-visualização do PDF">
+                                        <span class="cm-attach-zoom" aria-hidden="true">📄</span>
+                                      </a>
+                                    {% else %}
+                                      <a
+                                        href="{{ log.attachment.url }}"
+                                        target="_blank"
+                                        rel="noopener"
+                                        class="cm-attach-thumb"
+                                        style="display:flex;align-items:center;justify-content:center;font-size:34px;text-decoration:none;"
+                                        title="Abrir PDF"
+                                      >
+                                        <span aria-hidden="true">📕</span>
+                                      </a>
+                                    {% endif %}
+                                  {% endwith %}
                                 {% else %}
                                   {# Outro arquivo: ícone em vez de <img> quebrado #}
                                   <a

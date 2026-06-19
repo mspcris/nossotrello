@@ -113,6 +113,13 @@ def add_attachment(request, card_id):
     board.version += 1
     board.save(update_fields=["version"])
 
+    # miniatura de PDF (best-effort) — gera já no upload p/ o 1º render do feed
+    try:
+        from boards.services.pdf_thumbs import ensure_thumb_for_fieldfile
+        ensure_thumb_for_fieldfile(attachment.file)
+    except Exception:
+        pass
+
     pretty_name = attachment.file.name.split("/")[-1]
     if desc:
         # desc já vem sanitizado -> entra como HTML (bloco próprio, fora do <p>,

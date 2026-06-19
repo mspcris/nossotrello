@@ -53,6 +53,29 @@ def stored_file_kind(fieldfile):
 
 
 @register.filter
+def pdf_thumb_url(fieldfile):
+    """URL da miniatura PNG da 1ª página de um anexo PDF (ou '' se não houver).
+
+    Gera sob demanda na 1ª vez (cobre PDFs antigos) e memoiza no cache.
+    """
+    try:
+        name = getattr(fieldfile, "name", "") or ""
+    except Exception:
+        name = ""
+    if not name:
+        return ""
+    key = name.split("/")[-1]
+    try:
+        import uuid as _uuid
+        from boards.services.pdf_thumbs import thumb_url_for_source_id
+        return thumb_url_for_source_id(_uuid.UUID(key)) or ""
+    except (ValueError, TypeError):
+        return ""
+    except Exception:
+        return ""
+
+
+@register.filter
 def quill_safe(value):
     """Sanitiza HTML (allowlist do Quill) e marca como safe pra render.
 
