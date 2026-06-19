@@ -18,6 +18,7 @@ from django.conf import settings
 from django.core.exceptions import SuspiciousFileOperation
 from django.http import FileResponse, Http404, HttpResponse, StreamingHttpResponse
 from django.utils._os import safe_join
+from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.decorators.http import require_GET
 
 from boards.models import StoredFile
@@ -191,6 +192,7 @@ def _safe_legacy_path(file_ref: str) -> str:
 
 
 @require_GET
+@xframe_options_sameorigin  # permite <iframe> de mesma origem (preview de PDF no feed)
 def serve_stored_file(request, file_ref):
     """
     GET /media/serve/<uuid-ou-caminho-legado>/

@@ -661,12 +661,12 @@
 
               <button type="button" class="cm-btn" onclick="resetActivityQuill()">Limpar</button>
 
-              <button type="button"
-                      id="cm-activity-insert-desc"
-                      class="cm-btn"
-                      title="Inserir a descrição do card, já formatada">
-                Inserir descrição
-              </button>
+              <label id="cm-activity-as-html-label"
+                     class="flex items-center gap-1.5 text-sm cursor-pointer select-none"
+                     title="Tratar o conteúdo colado/digitado como HTML (renderiza formatado ao Incluir)">
+                <input type="checkbox" id="cm-activity-as-html" name="as_html" value="1">
+                <span>html?</span>
+              </label>
             </div>
           </form>
         </div>

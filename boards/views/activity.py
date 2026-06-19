@@ -11,7 +11,7 @@ from django.views.decorators.http import require_POST, require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.template.loader import render_to_string
 from django.db.models import Prefetch
-from django.utils.html import escape
+from django.utils.html import escape, strip_tags
 
 from django.core.files.storage import default_storage
 
@@ -281,6 +281,11 @@ def add_activity(request, card_id):
     delta_raw = (request.POST.get("delta") or "").strip()
     text_raw = (request.POST.get("text") or "").strip()
 
+    # opt-in "html?": o usuário colou/digitou CÓDIGO-FONTE HTML e quer que
+    # seja renderizado formatado (e não escapado). Nesse caso o texto puro
+    # do Quill É o HTML desejado.
+    as_html = (request.POST.get("as_html") or "").strip().lower() in ("1", "true", "on", "yes")
+
     # regra mínima: precisa ter delta OU html OU texto
     if not delta_raw and not raw_html and not text_raw:
         return HttpResponse("Conteúdo vazio", status=400)
@@ -305,6 +310,12 @@ def add_activity(request, card_id):
     delta_text = _extract_plain_text_from_delta(delta_obj)
     effective_text = (text_raw or "").strip() or (delta_text or "").strip()
 
+    # "html?": o texto puro é o código-fonte HTML -> sanitiza e usa como content.
+    # Não conflita com bloco de código ``` (só age quando o checkbox está marcado).
+    if as_html:
+        source_html = (text_raw or delta_text or "").strip()
+        clean_html = sanitize_quill_html(source_html)
+        effective_text = strip_tags(clean_html).strip()
 
     # validação final: se não tem texto, não tem html útil e delta vazio => vazio
     if not text_raw and not clean_html and not delta_obj:
