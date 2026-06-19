@@ -1036,6 +1036,9 @@ def move_card(request):
     # posiciona o card; se trocou de coluna, zera o cronômetro "parado"
     card.position = new_position
     if old_column.id != new_column.id:
+        # guarda quando o card entrou na coluna ANTIGA (a automação "avisar quem
+        # colocou o card" usa isso pra dizer "você o colocou aqui em tal dia/hora")
+        card._placed_at = card.column_since
         card.column_since = timezone.now()
         card.save(update_fields=["position", "column_since"])
     else:

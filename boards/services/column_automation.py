@@ -154,8 +154,25 @@ def _send_whatsapp(rule, card, column, p):
         logger.exception("WhatsApp (automação): falha ao enviar para %r", p.get("phone"))
 
 
+def _first_name(user):
+    """Primeiro nome amigável pra saudação (display_name > first_name > login)."""
+    try:
+        prof = getattr(user, "profile", None)
+        dn = (getattr(prof, "display_name", "") or "").strip()
+        if dn:
+            return dn.split()[0]
+        fn = (getattr(user, "first_name", "") or "").strip()
+        if fn:
+            return fn.split()[0]
+        un = (user.get_username() if hasattr(user, "get_username") else "") or ""
+        return un.split("@")[0] if un else ""
+    except Exception:
+        return ""
+
+
 def _notify_placer(rule, card, column, p, actor=None):
-    """Avisa quem COLOCOU o card nesta lista que ele saiu — e pra onde foi.
+    """Avisa, de forma humana, quem COLOCOU o card nesta lista que ele saiu —
+    explicando por que está recebendo, quando o colocou e pra onde o card foi.
 
     Destinatário = card.column_entered_by (último a mover/criar o card aqui).
     Sem registro (cards legados / movidos por automação) -> não avisa ninguém.
@@ -166,29 +183,65 @@ def _notify_placer(rule, card, column, p, actor=None):
     placer = getattr(card, "column_entered_by", None)
     if not placer:
         return
-    # não notifica a própria pessoa que acabou de mover o card pra fora
-    if actor is not None and getattr(actor, "id", None) == getattr(placer, "id", None):
-        return
 
-    # no gatilho 'leave', card.column já aponta pra coluna de DESTINO
+    # destino (no gatilho 'leave', card.column já aponta pra coluna de DESTINO)
     dest = None
+    same_board = True
     try:
         if card.column_id and card.column_id != column.id:
             dest = card.column
+            same_board = (dest.board_id == column.board_id)
     except Exception:
         dest = None
 
-    if dest is not None:
-        base = (
-            f'O card "{card.title}" saiu de "{column.name}" e foi para '
-            f'"{dest.name}" ({column.board.name}).'
+    # quando a pessoa colocou o card aqui (capturado antes do move sobrescrever)
+    quando = ""
+    placed_at = getattr(card, "_placed_at", None)
+    if placed_at:
+        try:
+            quando = timezone.localtime(placed_at).strftime("%d/%m às %H:%M")
+        except Exception:
+            quando = ""
+
+    # link direto pro card (card já vive na coluna de destino)
+    link = ""
+    try:
+        site = (getattr(settings, "SITE_URL", "") or "").rstrip("/")
+        bid = card.column.board_id
+        if site and bid and card.id:
+            link = f"{site}/board/{bid}/?card={card.id}"
+    except Exception:
+        link = ""
+
+    nome = _first_name(placer)
+    title = (card.title or "(sem título)").strip()
+
+    if dest is not None and same_board:
+        onde = f'foi parar em *{dest.name}* — ali mesmo, no quadro *{column.board.name}*'
+    elif dest is not None:
+        onde = f'pulou pro quadro *{dest.board.name}*, na lista *{dest.name}*'
+    else:
+        onde = f'saiu da lista *{column.name}*'
+
+    linhas = [f"Oi, {nome}! 👋" if nome else "Oi! 👋", ""]
+    if quando:
+        linhas.append(
+            f'Lembra daquele card que você colocou em *{column.name}* '
+            f'em {quando}? Pois é, ele andou:'
         )
     else:
-        base = f'O card "{card.title}" saiu de "{column.name}" ({column.board.name}).'
+        linhas.append(
+            f'Aquele card que você tinha colocado em *{column.name}* acabou de se mexer:'
+        )
+    linhas += ["", f'📌 *{title}*', f'➡️ {onde}.', ""]
+    linhas.append("Como foi você quem deixou ele lá, achei que ia querer saber 😉")
+    if link:
+        linhas += ["", f"👉 Dá uma olhada: {link}"]
+    base = "\n".join(linhas)
 
     custom = (p.get("message") or "").strip()
     message = (custom + "\n\n" + base).strip() if custom else base
-    subject = f"[NossoTrello] {card.title}"[:200]
+    subject = f'[NossoTrello] Seu card "{title}" mudou de lista'[:200]
     _deliver_to_user(placer, subject, message)
 
 
