@@ -6,6 +6,53 @@ register = template.Library()
 
 
 @register.filter
+def stored_file_kind(fieldfile):
+    """Classifica um anexo como 'image' | 'pdf' | 'file'.
+
+    Os arquivos ficam no DatabaseStorage (StoredFile) com chave UUID e a URL
+    NÃO tem extensão (/media/serve/<uuid>/). Então o tipo vem do content_type
+    do StoredFile; com fallback pela extensão do original_name.
+    """
+    try:
+        name = getattr(fieldfile, "name", "") or ""
+    except Exception:
+        name = ""
+    if not name:
+        return "file"
+
+    key = name.split("/")[-1]
+    ct = orig = ""
+    try:
+        import uuid as _uuid
+        from boards.models import StoredFile
+        sf = (
+            StoredFile.objects
+            .filter(id=_uuid.UUID(key))
+            .only("content_type", "original_name")
+            .first()
+        )
+        if sf:
+            ct = (sf.content_type or "").lower()
+            orig = (sf.original_name or "").lower()
+    except (ValueError, TypeError):
+        pass
+    except Exception:
+        pass
+
+    if ct.startswith("image/"):
+        return "image"
+    if ct == "application/pdf":
+        return "pdf"
+
+    ref = orig or key.lower()
+    if ref.endswith((".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg")):
+        return "image"
+    if ref.endswith(".pdf"):
+        return "pdf"
+    return "file"
+
+
+@register.filter
 def quill_safe(value):
     """Sanitiza HTML (allowlist do Quill) e marca como safe pra render.
 

@@ -125,8 +125,8 @@
                               <a class="cm-attach-file" href="{{ log.attachment.url }}" target="_blank" rel="noopener">
                                 {{ log.attachment.name|cut:"attachments/"|cut:"logs/" }}
                               </a>
-                              {% with aurl=log.attachment.url|lower %}
-                                {% if '.jpg' in aurl or '.jpeg' in aurl or '.png' in aurl or '.gif' in aurl or '.webp' in aurl or '.bmp' in aurl or '.svg' in aurl %}
+                              {% with kind=log.attachment|stored_file_kind %}
+                                {% if kind == 'image' %}
                                   <a
                                     href="{{ log.attachment.url }}"
                                     target="_blank"
@@ -137,8 +137,27 @@
                                     <img src="{{ log.attachment.url }}" alt="">
                                     <span class="cm-attach-zoom" aria-hidden="true">🔍</span>
                                   </a>
+                                {% elif kind == 'pdf' %}
+                                  {# PDF: miniatura real da 1ª página via iframe (servido inline); link por cima abre #}
+                                  <div class="cm-attach-thumb cm-attach-pdf" style="position:relative;overflow:hidden;">
+                                    <iframe
+                                      src="{{ log.attachment.url }}#toolbar=0&navpanes=0&scrollbar=0&view=FitH"
+                                      style="width:100%;height:100%;border:0;pointer-events:none;background:#fff;"
+                                      loading="lazy"
+                                      title="Pré-visualização do PDF"
+                                      aria-hidden="true"
+                                    ></iframe>
+                                    <a
+                                      href="{{ log.attachment.url }}"
+                                      target="_blank"
+                                      rel="noopener"
+                                      style="position:absolute;inset:0;"
+                                      title="Abrir PDF"
+                                      aria-label="Abrir PDF"
+                                    ></a>
+                                  </div>
                                 {% else %}
-                                  {# Não-imagem (PDF, doc, etc.): ícone em vez de <img> quebrado #}
+                                  {# Outro arquivo: ícone em vez de <img> quebrado #}
                                   <a
                                     href="{{ log.attachment.url }}"
                                     target="_blank"
@@ -147,7 +166,7 @@
                                     style="display:flex;align-items:center;justify-content:center;font-size:34px;text-decoration:none;"
                                     title="Abrir arquivo"
                                   >
-                                    <span aria-hidden="true">{% if '.pdf' in aurl %}📕{% else %}📄{% endif %}</span>
+                                    <span aria-hidden="true">📄</span>
                                   </a>
                                 {% endif %}
                               {% endwith %}
