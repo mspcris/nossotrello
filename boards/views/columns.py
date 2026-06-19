@@ -212,15 +212,15 @@ column_delete = delete_column
 # ============================================================
 
 def _editable_boards_for(user):
-    """Quadros onde `user` pode editar (owner/editor), ordenados por mais recente.
+    """Quadros onde `user` pode editar, ordenados por mais recente.
 
-    Inclui quadros legados sem membership criados pelo próprio usuário (mesma
-    regra de _user_can_edit_board). Staff enxerga todos.
+    SÓ retorna quadros ATIVOS (Board.objects já exclui arquivados/excluídos) em
+    que o usuário é DONO (owner) ou EDITOR — nunca apenas visualizador, e NUNCA
+    quadros de terceiros. Sem bypass de staff: mover coluna é ação de usuário,
+    não de admin, então mesmo staff só enxerga os próprios quadros aqui.
+    Inclui quadros legados sem membership criados pelo próprio usuário.
     """
-    qs = Board.objects.filter(is_deleted=False)
-
-    if getattr(user, "is_staff", False):
-        return list(qs.order_by("-created_at"))
+    qs = Board.objects.all()  # ActiveBoardManager: is_deleted=False, is_archived=False
 
     editable_ids = set(
         BoardMembership.objects.filter(
