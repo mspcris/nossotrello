@@ -24,6 +24,14 @@ from boards.models import WhatsNewItem
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-07 ---
+    "f0a6fe2": (
+        "🔗",
+        "Track-time com endereço próprio",
+        "O Track-time agora tem página própria: tarefas.camim.com.br/track-time/painel/. "
+        "O item do menu lateral leva direto pra lá, e a aba que você está vendo "
+        "fica na URL — aperte F5 à vontade que você continua no Track-time, na "
+        "mesma aba. Dá até pra favoritar a aba \"Hoje\" no navegador.",
+    ),
     "4b725ee": (
         "📅",
         "Track-time: aba \"Hoje\" + filtros e relatório",
