@@ -23,6 +23,16 @@ from boards.models import WhatsNewItem
 # Textos pensados no USUÁRIO: o que ele ganha, não o que foi feito.
 # -------------------------------------------------------------
 CURATED = {
+    # --- 2026-07 ---
+    "4b725ee": (
+        "📅",
+        "Track-time: aba \"Hoje\" + filtros e relatório",
+        "No Track-time agora tem a aba \"Hoje\": veja o que a galera fez no dia, "
+        "com gráfico por hora e navegação para dias anteriores. E nas abas Hoje, "
+        "Semana e Mês você pode filtrar por usuário ou por projeto, exportar o "
+        "resultado em CSV (abre direto no Excel) ou gerar uma versão para "
+        "imprimir — perfeito para fechar o relatório de alguém ou de um projeto.",
+    ),
     # --- 2026-06 ---
     "409b83b": (
         "📌",
