@@ -35,6 +35,7 @@ urlpatterns = [
 
     # Tabs (HTML)
     path("tabs/live/", views.tracktime_tab_live, name="tab_live"),
+    path("tabs/day/", views.tracktime_tab_day, name="tab_day"),
     path("tabs/portal/", views.tracktime_tab_portal, name="tab_portal"),
     path("tabs/week/", views.tracktime_tab_week, name="tab_week"),
     path("tabs/month/", views.tracktime_tab_month, name="tab_month"),

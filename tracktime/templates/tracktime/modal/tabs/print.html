@@ -1,0 +1,152 @@
+{# tracktime/templates/tracktime/modal/tabs/print.html — relatório imprimível (Hoje/Semana/Mês) #}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Track-time — {{ period_label }}</title>
+<style>
+  * { box-sizing:border-box; }
+  body {
+    font-family:-apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    color:#1a1a1a; margin:32px auto; max-width:960px; font-size:13px;
+    padding:0 16px;
+  }
+  h1 { font-size:20px; margin:0 0 4px; }
+  .sub { color:#666; font-size:12px; margin-bottom:6px; }
+  .filters { font-size:12px; color:#444; margin-bottom:20px; }
+  .filters b { color:#111; }
+  .kpis { display:flex; gap:12px; margin-bottom:24px; flex-wrap:wrap; }
+  .kpi { border:1px solid #ddd; border-radius:10px; padding:12px 16px; min-width:150px; }
+  .kpi-label { font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:#777; font-weight:700; }
+  .kpi-value { font-size:20px; font-weight:800; margin-top:2px; }
+  h2 { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:#555; margin:24px 0 8px; }
+  table { width:100%; border-collapse:collapse; font-size:12px; page-break-inside:auto; }
+  tr { page-break-inside:avoid; }
+  th {
+    text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:.05em;
+    color:#777; border-bottom:2px solid #ccc; padding:6px 8px; white-space:nowrap;
+  }
+  td { border-bottom:1px solid #e5e5e5; padding:6px 8px; vertical-align:top; }
+  .num { text-align:right; font-variant-numeric:tabular-nums; font-weight:700; white-space:nowrap; }
+  .deleted { color:#999; text-decoration:line-through; }
+  .empty { border:1px dashed #ccc; border-radius:10px; padding:36px; text-align:center; color:#777; }
+  .noprint { margin-bottom:20px; display:flex; gap:10px; }
+  .noprint button, .noprint a {
+    padding:8px 18px; font-size:13px; font-weight:700; border-radius:8px;
+    border:1px solid #bbb; background:#f3f3f3; cursor:pointer;
+    color:#1a1a1a; text-decoration:none; display:inline-block;
+  }
+  @media print { .noprint { display:none; } body { margin:0; max-width:none; } }
+</style>
+</head>
+<body>
+
+  <div class="noprint">
+    <button onclick="window.print()">🖨️ Imprimir</button>
+  </div>
+
+  <h1>Relatório Track-time</h1>
+  <div class="sub">{{ period_label }} · gerado em {% now "d/m/Y H:i" %}</div>
+  <div class="filters">
+    Usuário: <b>{{ sel_user_name|default:"Todos" }}</b>
+    &nbsp;·&nbsp;
+    Projeto: <b>{{ sel_project_name|default:"Todos" }}</b>
+  </div>
+
+  {% if not has_data %}
+  <div class="empty">Nenhum registro no período{% if sel_user or sel_project %} com os filtros aplicados{% endif %}.</div>
+  {% else %}
+
+  <div class="kpis">
+    <div class="kpi">
+      <div class="kpi-label">Total horas</div>
+      <div class="kpi-value">{{ total_hours_display }}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Usuários</div>
+      <div class="kpi-value">{{ num_users }}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Registros</div>
+      <div class="kpi-value">{{ num_entries }}</div>
+    </div>
+  </div>
+
+  <h2>Por usuário</h2>
+  <table>
+    <thead>
+      <tr><th>Usuário</th><th class="num">Horas</th><th class="num">Registros</th><th class="num">% Total</th></tr>
+    </thead>
+    <tbody>
+      {% for u in by_user %}
+      <tr>
+        <td><strong>{{ u.name }}</strong>{% if u.handle %} <span style="color:#999;">@{{ u.handle }}</span>{% endif %}</td>
+        <td class="num">{{ u.hours_display }}</td>
+        <td class="num">{{ u.count }}</td>
+        <td class="num">{{ u.pct }}%</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>Por projeto</h2>
+  <table>
+    <thead>
+      <tr><th>Projeto</th><th class="num">Horas</th><th class="num">% Total</th></tr>
+    </thead>
+    <tbody>
+      {% for p in by_project %}
+      <tr>
+        <td><strong>{{ p.name }}</strong></td>
+        <td class="num">{{ p.hours_display }}</td>
+        <td class="num">{{ p.pct }}%</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>Por quadro</h2>
+  <table>
+    <thead>
+      <tr><th>Quadro</th><th class="num">Horas</th><th class="num">% Total</th></tr>
+    </thead>
+    <tbody>
+      {% for b in by_board %}
+      <tr>
+        <td><strong>{{ b.name }}</strong></td>
+        <td class="num">{{ b.hours_display }}</td>
+        <td class="num">{{ b.pct }}%</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>Registros detalhados ({{ num_entries }})</h2>
+  <table>
+    <thead>
+      <tr><th>Data</th><th>Usuário</th><th>Quadro</th><th>Card</th><th>Projeto</th><th class="num">Horas</th></tr>
+    </thead>
+    <tbody>
+      {% for e in entries %}
+      <tr{% if e.deleted %} class="deleted"{% endif %}>
+        <td style="white-space:nowrap;">{{ e.date }}</td>
+        <td>{{ e.user_name }}</td>
+        <td>{{ e.board_name|default:"–" }}</td>
+        <td>{{ e.card_title|default:"–" }}</td>
+        <td>{{ e.project_name }}</td>
+        <td class="num">{{ e.hours_display }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% endif %}
+
+  <script>
+    window.addEventListener("load", function () {
+      setTimeout(function () { try { window.print(); } catch (e) {} }, 350);
+    });
+  </script>
+</body>
+</html>

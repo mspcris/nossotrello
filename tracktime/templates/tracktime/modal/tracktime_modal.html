@@ -23,6 +23,17 @@
     <button
       type="button"
       class="tt-tab tt-btn"
+      data-tt-tab="day"
+      hx-get="{% url 'tracktime:tab_day' %}"
+      hx-target="#tt-tab-body"
+      hx-swap="innerHTML"
+    >
+      Hoje
+    </button>
+
+    <button
+      type="button"
+      class="tt-tab tt-btn"
       data-tt-tab="week"
       hx-get="{% url 'tracktime:tab_week' %}"
       hx-target="#tt-tab-body"

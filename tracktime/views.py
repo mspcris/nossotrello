@@ -765,7 +765,7 @@ def board_running(request, board_id: int):
 @login_required
 def tracktime_modal(request):
     tab = (request.GET.get("tab") or "live").strip().lower()
-    if tab not in {"live", "portal", "week", "month"}:
+    if tab not in {"live", "day", "portal", "week", "month", "online"}:
         tab = "live"
     return render(request, "tracktime/modal/tracktime_modal.html", {"tab": tab})
 
@@ -977,6 +977,229 @@ def _fmt_min(m):
         return f"{rem}m"
 
 
+def _apply_report_filters(request, base_qs):
+    """
+    Filtros das abas de relatório (?u=<user_id> e ?p=<project_id>).
+    Retorna (qs_filtrado, filter_users, filter_projects, sel_user, sel_project, filter_qs).
+    As opções dos selects vêm do período SEM filtro, para permitir trocar de filtro.
+    """
+    u_param = (request.GET.get("u") or "").strip()
+    p_param = (request.GET.get("p") or "").strip()
+
+    filter_users = []
+    seen_u = set()
+    for row in base_qs.values(
+        "user_id", "user__first_name", "user__last_name",
+        "user__email", "user__profile__display_name",
+    ).distinct():
+        uid = row["user_id"]
+        if not uid or uid in seen_u:
+            continue
+        seen_u.add(uid)
+        full = f'{(row.get("user__first_name") or "").strip()} {(row.get("user__last_name") or "").strip()}'.strip()
+        name = ((row.get("user__profile__display_name") or "").strip()
+                or full
+                or (row.get("user__email") or "?"))
+        filter_users.append({"id": uid, "name": name})
+    filter_users.sort(key=lambda x: x["name"].lower())
+
+    filter_projects = []
+    seen_p = set()
+    for row in base_qs.values("project_id", "project__name").distinct():
+        pid = row["project_id"]
+        if not pid or pid in seen_p:
+            continue
+        seen_p.add(pid)
+        filter_projects.append({"id": pid, "name": (row.get("project__name") or "?")})
+    filter_projects.sort(key=lambda x: x["name"].lower())
+
+    sel_user = int(u_param) if u_param.isdigit() else None
+    sel_project = int(p_param) if p_param.isdigit() else None
+
+    qs = base_qs
+    if sel_user:
+        qs = qs.filter(user_id=sel_user)
+    if sel_project:
+        qs = qs.filter(project_id=sel_project)
+
+    filter_qs = ""
+    if sel_user:
+        filter_qs += f"&u={sel_user}"
+    if sel_project:
+        filter_qs += f"&p={sel_project}"
+
+    return qs, filter_users, filter_projects, sel_user, sel_project, filter_qs
+
+
+def _report_filter_labels(filter_users, filter_projects, sel_user, sel_project):
+    """Nomes amigáveis dos filtros selecionados (para título do relatório/CSV)."""
+    user_name = next((u["name"] for u in filter_users if u["id"] == sel_user), None) if sel_user else None
+    project_name = next((p["name"] for p in filter_projects if p["id"] == sel_project), None) if sel_project else None
+    return user_name, project_name
+
+
+def _report_csv_response(entries_list, filename):
+    import csv
+    resp = HttpResponse(content_type="text/csv; charset=utf-8")
+    resp["Content-Disposition"] = f'attachment; filename="{filename}"'
+    resp.write("\ufeff")  # BOM para o Excel abrir com acentos corretos
+    writer = csv.writer(resp, delimiter=";")
+    writer.writerow(["Data", "Usuário", "Quadro", "Card", "Projeto", "Minutos", "Horas"])
+    for e in entries_list:
+        writer.writerow([
+            e.get("date") or e.get("time") or "",
+            e.get("user_name", ""),
+            e.get("board_name", ""),
+            e.get("card_title", ""),
+            e.get("project_name", ""),
+            e.get("minutes", 0),
+            e.get("hours_display", ""),
+        ])
+    return resp
+
+
+@login_required
+def tracktime_tab_day(request):
+    import datetime
+    from collections import defaultdict
+
+    d_param = request.GET.get("d", "")
+    today = timezone.localdate()
+    try:
+        day = datetime.date.fromisoformat(d_param)
+    except Exception:
+        day = today
+
+    prev_day = (day - datetime.timedelta(days=1)).isoformat()
+    next_day_date = day + datetime.timedelta(days=1)
+    next_day = next_day_date.isoformat() if next_day_date <= today else None
+
+    PT_WEEKDAYS = [
+        "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira",
+        "Sexta-feira", "Sábado", "Domingo"
+    ]
+    weekday_label = PT_WEEKDAYS[day.weekday()]
+    is_today = (day == today)
+
+    base_qs = (
+        TimeEntry.objects
+        .filter(created_at__date=day, minutes__gt=0)
+        .select_related("user", "user__profile", "project")
+        .order_by("-created_at")
+    )
+    entries_qs, filter_users, filter_projects, sel_user, sel_project, filter_qs = \
+        _apply_report_filters(request, base_qs)
+    entries = list(entries_qs)
+    total_minutes = sum(e.minutes for e in entries)
+
+    board_ids = {e.board_id for e in entries if e.board_id}
+    from boards.models import Board
+    board_name_map = {b.id: b.name for b in Board.objects.filter(id__in=board_ids).only("id", "name")} if board_ids else {}
+
+    by_user = defaultdict(lambda: {"name": "", "handle": "", "minutes": 0, "count": 0})
+    by_project = defaultdict(lambda: {"name": "", "minutes": 0})
+    by_board = defaultdict(lambda: {"name": "", "minutes": 0})
+    hour_minutes = defaultdict(int)
+
+    entries_list = []
+    for e in entries:
+        u = e.user
+        prof = getattr(u, "profile", None)
+        name = ((getattr(prof, "display_name", "") or "").strip() or u.get_full_name() or u.get_username() or u.email or "?")
+        handle = (getattr(prof, "handle", "") or "").strip()
+        board_name = board_name_map.get(e.board_id, "") if e.board_id else ""
+        proj_name = e.project.name if e.project else "(sem projeto)"
+
+        uid = u.id
+        by_user[uid]["name"] = name
+        by_user[uid]["handle"] = handle
+        by_user[uid]["minutes"] += e.minutes
+        by_user[uid]["count"] += 1
+
+        pid = e.project_id or 0
+        by_project[pid]["name"] = proj_name
+        by_project[pid]["minutes"] += e.minutes
+
+        bid = e.board_id or 0
+        by_board[bid]["name"] = board_name or "(sem quadro)"
+        by_board[bid]["minutes"] += e.minutes
+
+        local_dt = timezone.localtime(e.created_at)
+        hour_minutes[local_dt.hour] += e.minutes
+
+        entries_list.append({
+            "date": f'{day.strftime("%d/%m/%Y")} {local_dt.strftime("%H:%M")}',
+            "time": local_dt.strftime("%H:%M"),
+            "user_name": name,
+            "project_name": proj_name,
+            "board_name": board_name,
+            "card_title": e.card_title_cache or "",
+            "card_url": e.card_url_cache or "",
+            "minutes": e.minutes,
+            "hours_display": _fmt_min(e.minutes),
+            "deleted": e.is_card_deleted_cache,
+        })
+
+    # eixo de horas: da primeira à última hora com registro (mínimo 8h–18h pra não ficar vazio)
+    if hour_minutes:
+        h_start = min(min(hour_minutes), 8)
+        h_end = max(max(hour_minutes), 18)
+    else:
+        h_start, h_end = 8, 18
+    by_hour = [
+        {"label": f"{h:02d}h", "minutes": hour_minutes.get(h, 0)}
+        for h in range(h_start, h_end + 1)
+    ]
+
+    by_user_list = sorted(by_user.values(), key=lambda x: -x["minutes"])
+    by_project_list = sorted(by_project.values(), key=lambda x: -x["minutes"])
+    by_board_list = sorted(by_board.values(), key=lambda x: -x["minutes"])
+
+    for item in by_user_list:
+        item["hours_display"] = _fmt_min(item["minutes"])
+        item["pct"] = round(item["minutes"] / total_minutes * 100) if total_minutes else 0
+    for item in by_project_list:
+        item["hours_display"] = _fmt_min(item["minutes"])
+        item["pct"] = round(item["minutes"] / total_minutes * 100) if total_minutes else 0
+    for item in by_board_list:
+        item["hours_display"] = _fmt_min(item["minutes"])
+        item["pct"] = round(item["minutes"] / total_minutes * 100) if total_minutes else 0
+
+    if request.GET.get("export") == "csv":
+        return _report_csv_response(entries_list, f"tracktime_{day.isoformat()}.csv")
+
+    sel_user_name, sel_project_name = _report_filter_labels(
+        filter_users, filter_projects, sel_user, sel_project
+    )
+    period_label = ("Hoje — " if is_today else "") + f"{weekday_label}, {day.strftime('%d/%m/%Y')}"
+
+    ctx = {
+        "day": day,
+        "is_today": is_today,
+        "weekday_label": weekday_label,
+        "prev_day": prev_day, "next_day": next_day,
+        "total_minutes": total_minutes,
+        "total_hours_display": _fmt_min(total_minutes),
+        "num_users": len(by_user),
+        "num_entries": len(entries_list),
+        "by_user": by_user_list,
+        "by_project": by_project_list,
+        "by_board": by_board_list,
+        "by_hour": by_hour,
+        "entries": entries_list,
+        "has_data": total_minutes > 0,
+        "filter_users": filter_users, "filter_projects": filter_projects,
+        "sel_user": sel_user, "sel_project": sel_project,
+        "sel_user_name": sel_user_name, "sel_project_name": sel_project_name,
+        "filter_qs": filter_qs,
+        "period_label": period_label,
+        "period_param": f"d={day.isoformat()}",
+    }
+    if request.GET.get("print") == "1":
+        return render(request, "tracktime/modal/tabs/print.html", ctx)
+    return render(request, "tracktime/modal/tabs/day.html", ctx)
+
+
 @login_required
 def tracktime_tab_week(request):
     import datetime
@@ -997,12 +1220,14 @@ def tracktime_tab_week(request):
     next_week_start = week_start + datetime.timedelta(days=7)
     next_week = next_week_start.isoformat() if next_week_start <= today else None
 
-    entries_qs = (
+    base_qs = (
         TimeEntry.objects
         .filter(created_at__date__gte=week_start, created_at__date__lte=week_end, minutes__gt=0)
         .select_related("user", "user__profile", "project")
         .order_by("-created_at")
     )
+    entries_qs, filter_users, filter_projects, sel_user, sel_project, filter_qs = \
+        _apply_report_filters(request, base_qs)
     entries = list(entries_qs)
     total_minutes = sum(e.minutes for e in entries)
 
@@ -1077,6 +1302,13 @@ def tracktime_tab_week(request):
         item["hours_display"] = _fmt_min(item["minutes"])
         item["pct"] = round(item["minutes"] / total_minutes * 100) if total_minutes else 0
 
+    if request.GET.get("export") == "csv":
+        return _report_csv_response(entries_list, f"tracktime_semana_{week_start.isoformat()}.csv")
+
+    sel_user_name, sel_project_name = _report_filter_labels(
+        filter_users, filter_projects, sel_user, sel_project
+    )
+
     ctx = {
         "week_start": week_start, "week_end": week_end,
         "prev_week": prev_week, "next_week": next_week,
@@ -1089,7 +1321,15 @@ def tracktime_tab_week(request):
         "by_board": by_board_list,
         "by_day": by_day, "entries": entries_list,
         "has_data": total_minutes > 0,
+        "filter_users": filter_users, "filter_projects": filter_projects,
+        "sel_user": sel_user, "sel_project": sel_project,
+        "sel_user_name": sel_user_name, "sel_project_name": sel_project_name,
+        "filter_qs": filter_qs,
+        "period_label": f"Semana {week_start.strftime('%d/%m')} – {week_end.strftime('%d/%m/%Y')}",
+        "period_param": f"w={week_start.isoformat()}",
     }
+    if request.GET.get("print") == "1":
+        return render(request, "tracktime/modal/tabs/print.html", ctx)
     return render(request, "tracktime/modal/tabs/week.html", ctx)
 
 
@@ -1123,12 +1363,14 @@ def tracktime_tab_month(request):
     ]
     month_label = f"{PT_MONTHS[month_start.month - 1]} {month_start.year}"
 
-    entries_qs = (
+    base_qs = (
         TimeEntry.objects
         .filter(created_at__date__gte=month_start, created_at__date__lte=month_end, minutes__gt=0)
         .select_related("user", "user__profile", "project")
         .order_by("-created_at")
     )
+    entries_qs, filter_users, filter_projects, sel_user, sel_project, filter_qs = \
+        _apply_report_filters(request, base_qs)
     entries = list(entries_qs)
     total_minutes = sum(e.minutes for e in entries)
 
@@ -1203,6 +1445,13 @@ def tracktime_tab_month(request):
     for item in by_week_list:
         item["hours_display"] = _fmt_min(item["minutes"])
 
+    if request.GET.get("export") == "csv":
+        return _report_csv_response(entries_list, f"tracktime_{month_start.strftime('%Y-%m')}.csv")
+
+    sel_user_name, sel_project_name = _report_filter_labels(
+        filter_users, filter_projects, sel_user, sel_project
+    )
+
     ctx = {
         "month_start": month_start, "month_end": month_end,
         "prev_month": prev_month, "next_month": next_month,
@@ -1217,7 +1466,15 @@ def tracktime_tab_month(request):
         "by_week": by_week_list,
         "entries": entries_list,
         "has_data": total_minutes > 0,
+        "filter_users": filter_users, "filter_projects": filter_projects,
+        "sel_user": sel_user, "sel_project": sel_project,
+        "sel_user_name": sel_user_name, "sel_project_name": sel_project_name,
+        "filter_qs": filter_qs,
+        "period_label": month_label,
+        "period_param": f"m={month_start.strftime('%Y-%m')}",
     }
+    if request.GET.get("print") == "1":
+        return render(request, "tracktime/modal/tabs/print.html", ctx)
     return render(request, "tracktime/modal/tabs/month.html", ctx)
 
 

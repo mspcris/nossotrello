@@ -32,6 +32,21 @@
   opacity:.35; cursor:not-allowed; pointer-events:none;
 }
 
+/* ── Filter bar ───────────────────────────────────────────── */
+.ttw-filters {
+  display:flex; gap:8px; align-items:center; flex-wrap:wrap;
+  margin-bottom:18px;
+}
+.ttw-filter-select {
+  padding:6px 12px; border-radius:999px;
+  border:1px solid rgba(255,255,255,.15);
+  background:rgba(255,255,255,.07);
+  color:inherit; font-size:12px; font-weight:700;
+  cursor:pointer; max-width:220px;
+}
+.ttw-filter-select option { color:#222; background:#fff; }
+.ttw-filters-spacer { flex:1; }
+
 /* ── KPI strip ────────────────────────────────────────────── */
 .ttw-kpis {
   display:grid;
@@ -148,7 +163,7 @@
   {# ── Navigation header ───────────────────────────────────── #}
   <div class="ttw-nav">
     <button class="ttw-btn"
-            hx-get="{% url 'tracktime:tab_week' %}?w={{ prev_week }}"
+            hx-get="{% url 'tracktime:tab_week' %}?w={{ prev_week }}{{ filter_qs }}"
             hx-target="#tt-tab-body"
             hx-swap="innerHTML">
       ← Anterior
@@ -163,7 +178,7 @@
 
     {% if next_week %}
     <button class="ttw-btn"
-            hx-get="{% url 'tracktime:tab_week' %}?w={{ next_week }}"
+            hx-get="{% url 'tracktime:tab_week' %}?w={{ next_week }}{{ filter_qs }}"
             hx-target="#tt-tab-body"
             hx-swap="innerHTML">
       Próxima →
@@ -171,6 +186,43 @@
     {% else %}
     <button class="ttw-btn disabled" disabled>Próxima →</button>
     {% endif %}
+  </div>
+
+  {# ── Filtros / exportação ────────────────────────────────── #}
+  <div class="ttw-filters">
+    <select name="u" class="ttw-filter-select"
+            hx-get="{% url 'tracktime:tab_week' %}?{{ period_param }}"
+            hx-include="closest .ttw-filters"
+            hx-target="#tt-tab-body" hx-swap="innerHTML" hx-trigger="change">
+      <option value="">👤 Todos os usuários</option>
+      {% for fu in filter_users %}
+      <option value="{{ fu.id }}" {% if fu.id == sel_user %}selected{% endif %}>{{ fu.name }}</option>
+      {% endfor %}
+    </select>
+
+    <select name="p" class="ttw-filter-select"
+            hx-get="{% url 'tracktime:tab_week' %}?{{ period_param }}"
+            hx-include="closest .ttw-filters"
+            hx-target="#tt-tab-body" hx-swap="innerHTML" hx-trigger="change">
+      <option value="">📁 Todos os projetos</option>
+      {% for fp in filter_projects %}
+      <option value="{{ fp.id }}" {% if fp.id == sel_project %}selected{% endif %}>{{ fp.name }}</option>
+      {% endfor %}
+    </select>
+
+    {% if sel_user or sel_project %}
+    <button class="ttw-btn"
+            hx-get="{% url 'tracktime:tab_week' %}?{{ period_param }}"
+            hx-target="#tt-tab-body" hx-swap="innerHTML">
+      ✕ Limpar
+    </button>
+    {% endif %}
+
+    <div class="ttw-filters-spacer"></div>
+
+    <a class="ttw-btn" href="{% url 'tracktime:tab_week' %}?{{ period_param }}{{ filter_qs }}&export=csv">⬇️ CSV</a>
+    <a class="ttw-btn" target="_blank" rel="noopener"
+       href="{% url 'tracktime:tab_week' %}?{{ period_param }}{{ filter_qs }}&print=1">🖨️ Imprimir</a>
   </div>
 
   {% if not has_data %}
