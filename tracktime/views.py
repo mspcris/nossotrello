@@ -762,12 +762,38 @@ def board_running(request, board_id: int):
 # Modal Tracktime (abas)
 # ============================================================
 
-@login_required
-def tracktime_modal(request):
+def _resolve_tracktime_tab(request):
+    """Retorna (tab, url_do_conteudo_da_tab) a partir de ?tab=."""
     tab = (request.GET.get("tab") or "live").strip().lower()
     if tab not in {"live", "day", "portal", "week", "month", "online"}:
         tab = "live"
-    return render(request, "tracktime/modal/tracktime_modal.html", {"tab": tab})
+    return tab, reverse(f"tracktime:tab_{tab}")
+
+
+@login_required
+def tracktime_modal(request):
+    tab, tab_url = _resolve_tracktime_tab(request)
+
+    # Acesso direto pela URL (sem HTMX) → página completa, com layout
+    if not request.headers.get("HX-Request"):
+        return redirect(f'{reverse("tracktime:page")}?tab={tab}')
+
+    return render(
+        request,
+        "tracktime/modal/tracktime_modal.html",
+        {"tab": tab, "initial_tab_url": tab_url},
+    )
+
+
+@login_required
+def tracktime_page(request):
+    """Página do Track-time com URL própria — F5 mantém você aqui (?tab=...)."""
+    tab, tab_url = _resolve_tracktime_tab(request)
+    return render(
+        request,
+        "tracktime/page.html",
+        {"tab": tab, "initial_tab_url": tab_url, "page_mode": True},
+    )
 
 
 

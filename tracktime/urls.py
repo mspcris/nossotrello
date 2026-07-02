@@ -26,6 +26,7 @@ urlpatterns = [
 
     # Modal Track-time
     path("modal/", views.tracktime_modal, name="modal"),
+    path("painel/", views.tracktime_page, name="page"),
     path("cards/<int:card_id>/track-time/running-slot/", views.card_tracktime_panel_running_slot, name="card_panel_running_slot"),
     path("cards/<int:card_id>/track-time/elapsed.json", views.card_elapsed_json, name="card_elapsed_json"),
 

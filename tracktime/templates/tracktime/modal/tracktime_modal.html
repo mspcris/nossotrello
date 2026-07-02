@@ -1,7 +1,7 @@
 {# tracktime/templates/tracktime/modal/tracktime_modal.html #}
 {% load static %}
 
-<div id="cm-root" class="cm-modal-root">
+<div id="cm-root" class="cm-modal-root"{% if page_mode %} data-tt-page-mode="1"{% endif %}>
   <!-- HEADER -->
   <div class="cm-modal-header">
     <div class="cm-modal-title">Track-time</div>
@@ -82,9 +82,9 @@
 
   <!-- BODY -->
   <div id="tt-tab-body" class="cm-modal-body" style="padding: 12px;">
-    {# default = Ao vivo #}
+    {# tab inicial vem de ?tab= (default: Ao vivo) #}
     <div
-      hx-get="{% url 'tracktime:tab_live' %}"
+      hx-get="{% if initial_tab_url %}{{ initial_tab_url }}{% else %}{% url 'tracktime:tab_live' %}{% endif %}"
       hx-trigger="load"
       hx-target="#tt-tab-body"
       hx-swap="innerHTML"
@@ -97,6 +97,8 @@
   const root = document.getElementById("cm-root");
   if (!root) return;
 
+  const pageMode = root.dataset.ttPageMode === "1";
+
   function setActive(tabName) {
     root.querySelectorAll(".tt-tab").forEach((btn) => {
       const isActive = (btn.dataset.ttTab === tabName);
@@ -104,6 +106,10 @@
       btn.classList.toggle("tt-btn", true);
     });
     try { root.dataset.ttActiveTab = tabName; } catch(e) {}
+    // na página com URL própria, grava a tab na URL → F5 volta na mesma tab
+    if (pageMode) {
+      try { history.replaceState(null, "", "?tab=" + encodeURIComponent(tabName)); } catch(e) {}
+    }
   }
 
   // click -> já marca visualmente antes do HTMX terminar
@@ -131,6 +137,6 @@
   });
 
   // init
-  setActive("live");
+  setActive("{{ tab|default:'live' }}");
 })();
 </script>

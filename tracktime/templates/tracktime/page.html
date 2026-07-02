@@ -1,0 +1,11 @@
+{# tracktime/templates/tracktime/page.html — Track-time com URL própria (?tab=) #}
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Track-time{% endblock %}
+
+{% block content %}
+<div style="max-width:1280px; margin:0 auto; padding:16px;">
+  {% include "tracktime/modal/tracktime_modal.html" %}
+</div>
+{% endblock %}

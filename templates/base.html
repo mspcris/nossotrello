@@ -535,14 +535,7 @@
           </li>
 
 <li>
-  <a
-    class="nt-link"
-    href="{% url 'tracktime:modal' %}"
-    hx-get="{% url 'tracktime:modal' %}"
-    hx-target="#modal-body"
-    hx-swap="innerHTML"
-    hx-on:htmx:afterSwap="window.Modal?.open?.()"
-  >
+  <a class="nt-link" href="{% url 'tracktime:page' %}">
     ⏱ Track-time
   </a>
 </li>
