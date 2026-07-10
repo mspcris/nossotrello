@@ -1067,6 +1067,12 @@ if (!window.__colorPopoverOutsideInstalled) {
             newCard.classList.add("card-new-pulse");
             setTimeout(() => newCard.classList.remove("card-new-pulse"), 700);
           });
+
+          // abre o card recém-criado pra continuar preenchendo (mesma UX do paste-create)
+          const newCardId = newCard.getAttribute("data-card-id");
+          if (newCardId && window.Modal && typeof window.Modal.openCard === "function") {
+            window.Modal.openCard(newCardId, false, newCard);
+          }
         }
       }
 
