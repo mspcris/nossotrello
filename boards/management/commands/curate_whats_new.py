@@ -24,6 +24,14 @@ from boards.models import WhatsNewItem
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-07 ---
+    "ec61ac6": (
+        "⏰",
+        "\"Avisar em\" certo mesmo digitando a data à mão",
+        "Ao digitar o Vencimento manualmente (sem usar o calendário), o campo "
+        "\"Avisar em\" às vezes travava numa data maluca tipo 25/01/1902. "
+        "Corrigido: agora ele acompanha o vencimento e sugere 5 dias antes, "
+        "certinho — e se você escolher outra data de aviso, ela é respeitada.",
+    ),
     "2655ea0": (
         "👁️",
         "Card mais organizado: olho à esquerda, contador à direita",
