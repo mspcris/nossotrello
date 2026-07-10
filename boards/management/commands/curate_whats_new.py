@@ -24,6 +24,16 @@ from boards.models import WhatsNewItem
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-07 ---
+    "c4b20b9": (
+        "📌",
+        "Escolha se o \"Controle de Colunas\" fica fixo ou rola junto",
+        "O menu ⋮ da coluna \"Controle de Colunas\" voltou a abrir (ele abria "
+        "escondido) e ganhou a opção \"📌 Travar coluna\": marcada, a coluna fica "
+        "fixa à esquerda e as outras passam por trás (como era); desmarcada, ela "
+        "rola junto com as demais — ótimo no celular, onde a coluna fixa tomava "
+        "quase a tela toda. A escolha fica salva no aparelho: dá pra soltar no "
+        "celular e manter travada no computador.",
+    ),
     "ec61ac6": (
         "⏰",
         "\"Avisar em\" certo mesmo digitando a data à mão",
