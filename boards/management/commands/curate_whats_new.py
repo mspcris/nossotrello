@@ -24,6 +24,30 @@ from boards.models import WhatsNewItem
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-07 ---
+    "2655ea0": (
+        "👁️",
+        "Card mais organizado: olho à esquerda, contador à direita",
+        "No card, o olho de seguir agora mora sempre no canto esquerdo, e o "
+        "contador vermelho de novidades aparece no direito — cada um no seu "
+        "lugar, sem trocarem de posição. E no modo \"Arquivar Cards\" o botão "
+        "de arquivar voltou pro canto superior direito do card: é nele que você "
+        "clica pra arquivar cada card (com confirmação).",
+    ),
+    "f8d12f2": (
+        "📝",
+        "Criou o card? Ele já abre pra você continuar",
+        "Ao criar um card pelo \"+ Card\" — digitou o título e deu Enter (ou "
+        "clicou em Adicionar Card) — o card novo já abre na hora, pronto pra "
+        "você preencher descrição, prazo, etiquetas e o que mais precisar. "
+        "Menos cliques entre criar e escrever.",
+    ),
+    "d7af5ad": (
+        "👓",
+        "Textos legíveis em qualquer papel de parede",
+        "O seu @usuário no topo e o caminho \"Todos os Quadros → nome do "
+        "quadro\" ganharam um contorno escuro suave. Agora dá pra ler numa boa "
+        "mesmo quando o papel de parede do quadro é claro ou branco.",
+    ),
     "f0a6fe2": (
         "🔗",
         "Track-time com endereço próprio",
