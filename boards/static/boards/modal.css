@@ -1681,9 +1681,16 @@ html.dark #modal #modal-breadcrumb{
   pointer-events: none;
 }
 
-#columns-wrapper li[data-card-id] > *:not(.card-unread-badge) {
+/* botões dos modos excluir/arquivar ficam de fora: precisam manter o
+   position:absolute (top-right) do template — senão viram "selo" em fluxo */
+#columns-wrapper li[data-card-id] > *:not(.card-unread-badge):not(.delete-card-btn):not(.archive-card-btn) {
   position: relative;
   z-index: 1;
+}
+
+#columns-wrapper li[data-card-id] > .delete-card-btn,
+#columns-wrapper li[data-card-id] > .archive-card-btn {
+  z-index: 60;
 }
 
 
