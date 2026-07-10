@@ -13,9 +13,25 @@ Uso:
 
 from __future__ import annotations
 
+import subprocess
+
 from django.core.management.base import BaseCommand
+from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 
 from boards.models import WhatsNewItem
+
+
+def _commit_datetime(commit_hash: str):
+    """Data do commit via git; None se o hash não existir no clone."""
+    try:
+        out = subprocess.run(
+            ["git", "show", "-s", "--format=%cI", commit_hash],
+            capture_output=True, text=True, check=True,
+        ).stdout.strip()
+        return parse_datetime(out.splitlines()[0]) if out else None
+    except Exception:
+        return None
 
 
 # -------------------------------------------------------------
@@ -592,6 +608,25 @@ class Command(BaseCommand):
                     item.save(update_fields=["emoji", "title", "description", "is_published"])
                     updated += 1
 
+        # Hashes curados que o sync não importou (ele só traz commits `feat:`):
+        # cria o item aqui — é assim que fixes visíveis entram nas Novidades.
+        created = 0
+        existing = {
+            h[:7] for h in WhatsNewItem.objects.values_list("commit_hash", flat=True)
+        }
+        for prefix, (emoji, title, description) in CURATED.items():
+            if prefix in existing:
+                continue
+            WhatsNewItem.objects.create(
+                commit_hash=prefix,
+                emoji=emoji,
+                title=title,
+                description=description,
+                published_at=_commit_datetime(prefix) or timezone.now(),
+                is_published=True,
+            )
+            created += 1
+
         self.stdout.write(self.style.SUCCESS(
-            f"Curadoria aplicada. Atualizados: {updated}. Escondidos: {hidden}."
+            f"Curadoria aplicada. Atualizados: {updated}. Criados: {created}. Escondidos: {hidden}."
         ))
