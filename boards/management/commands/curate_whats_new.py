@@ -24,6 +24,14 @@ from boards.models import WhatsNewItem
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-07 ---
+    "b7931fb": (
+        "⏳",
+        "Colou uma imagem? Agora tem bolinha girando",
+        "Ao colar (Ctrl+V) ou escolher uma imagem de capa no card, aparece na "
+        "hora uma bolinha girando com \"Enviando imagem…\" enquanto ela sobe. "
+        "Antes ficava uns segundos sem nenhum sinal e parecia que nada tinha "
+        "acontecido — agora você sabe que está vindo coisa boa.",
+    ),
     "c4b20b9": (
         "📌",
         "Escolha se o \"Controle de Colunas\" fica fixo ou rola junto",
