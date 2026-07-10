@@ -24,6 +24,23 @@
     box.textContent = "";
   }
 
+  // Overlay "bolinha girando" enquanto a imagem sobe e o modal recarrega
+  const SPIN_ID = "cm-cover-uploading";
+
+  function showSpinner() {
+    if (document.getElementById(SPIN_ID)) return;
+    const el = document.createElement("div");
+    el.id = SPIN_ID;
+    el.setAttribute("role", "status");
+    el.setAttribute("aria-label", "Enviando imagem…");
+    el.innerHTML = '<div class="cm-upload-spin"></div><span>Enviando imagem…</span>';
+    document.body.appendChild(el);
+  }
+
+  function hideSpinner() {
+    document.getElementById(SPIN_ID)?.remove();
+  }
+
   function getCookie(name) {
     const value = `; ${document.cookie}`;
     const parts = value.split(`; ${name}=`);
@@ -120,23 +137,29 @@
     // CSRF (Django)
     const csrftoken = getCookie("csrftoken");
 
-    const r = await fetch(action, {
-      method: "POST",
-      body: fd,
-      headers: csrftoken ? { "X-CSRFToken": csrftoken } : {},
-      credentials: "same-origin",
-    });
+    // feedback imediato: bolinha girando ANTES de começar o upload
+    showSpinner();
+    try {
+      const r = await fetch(action, {
+        method: "POST",
+        body: fd,
+        headers: csrftoken ? { "X-CSRFToken": csrftoken } : {},
+        credentials: "same-origin",
+      });
 
-    if (!r.ok) {
-      showErr(`Falha ao enviar capa. HTTP ${r.status}`);
-      return;
+      if (!r.ok) {
+        showErr(`Falha ao enviar capa. HTTP ${r.status}`);
+        return;
+      }
+
+      // 1) atualiza modal (capa/preview)
+      await refreshModalBody(cardId);
+
+      // 2) atualiza o card no board (thumbnail/cover)
+      await refreshBoardCardSnippet(cardId);
+    } finally {
+      hideSpinner();
     }
-
-    // 1) atualiza modal (capa/preview)
-    await refreshModalBody(cardId);
-
-    // 2) atualiza o card no board (thumbnail/cover)
-    await refreshBoardCardSnippet(cardId);
   }
 
   // Capa por COR estática (sem upload)

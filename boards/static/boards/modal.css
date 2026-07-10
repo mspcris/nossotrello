@@ -1640,6 +1640,38 @@ html.dark #modal #modal-breadcrumb{
   resize: vertical;          /* opcional, UX friendly */
 }
 
+/* ============================================================
+   UPLOAD DE CAPA — overlay com spinner (feedback do Ctrl+V)
+   ============================================================ */
+#cm-cover-uploading{
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(0, 0, 0, 0.35);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.95rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+.cm-upload-spin{
+  width: 40px;
+  height: 40px;
+  border-radius: 9999px;
+  border: 4px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  animation: cm-upload-rot 0.8s linear infinite;
+}
+@keyframes cm-upload-rot{
+  to{ transform: rotate(360deg); }
+}
+
 /* 🔒 A topbar NÃO deve capturar cliques fora dos botões */
 .cm-topbar {
   pointer-events: none;
