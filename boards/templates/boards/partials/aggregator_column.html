@@ -10,6 +10,7 @@
     <div class="agg-menu" hidden>
       <label class="agg-menu-row">🎨 Cor da coluna<input type="color" id="agg-color-bg"></label>
       <label class="agg-menu-row">🔤 Cor da fonte<input type="color" id="agg-color-fg"></label>
+      <label class="agg-menu-row">📌 Travar coluna<input type="checkbox" id="agg-pin-lock" checked></label>
       <button type="button" class="agg-menu-reset" id="agg-color-reset">Restaurar padrão</button>
     </div>
   </div>
@@ -112,6 +113,8 @@
       if (!col) return;
       if (s.bg) col.style.setProperty("--agg-bg", s.bg); else col.style.removeProperty("--agg-bg");
       if (s.fg) col.style.setProperty("--agg-fg", s.fg); else col.style.removeProperty("--agg-fg");
+      // travada (default) = sticky à esquerda; solta = rola junto com as demais
+      col.classList.toggle("agg-unlocked", s.pin === "off");
     }
     function init() {
       var col = document.querySelector(".aggregator-column");
@@ -132,9 +135,11 @@
 
       var bg = col.querySelector("#agg-color-bg");
       var fg = col.querySelector("#agg-color-fg");
+      var pin = col.querySelector("#agg-pin-lock");
       var reset = col.querySelector("#agg-color-reset");
       if (bg && s.bg) bg.value = s.bg;
       if (fg && s.fg) fg.value = s.fg;
+      if (pin) pin.checked = (s.pin !== "off");
 
       btn.addEventListener("click", function (ev) { ev.stopPropagation(); menu.hidden = !menu.hidden; });
       if (bg) bg.addEventListener("input", function () {
@@ -144,7 +149,8 @@
         apply(s); save(s);
       });
       if (fg) fg.addEventListener("input", function () { s.fg = fg.value; apply(s); save(s); });
-      if (reset) reset.addEventListener("click", function () { s = {}; apply(s); save(s); menu.hidden = true; });
+      if (pin) pin.addEventListener("change", function () { s.pin = pin.checked ? "on" : "off"; apply(s); save(s); });
+      if (reset) reset.addEventListener("click", function () { s = {}; apply(s); save(s); if (pin) pin.checked = true; menu.hidden = true; });
 
       if (!window.__aggMenuDocClick) {
         window.__aggMenuDocClick = true;

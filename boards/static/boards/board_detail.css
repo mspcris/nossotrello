@@ -207,6 +207,10 @@ header{ position: relative; z-index: 50; }
    sendo coluna dinâmica, não rola quando as pílulas passam da altura). */
 .aggregator-column .aggregator-body,
 .aggregator-column .aggregator-body *{ pointer-events: auto; }
+/* ...e o menu ⋮ do header também precisa de clique */
+.aggregator-column .agg-menu-btn,
+.aggregator-column .agg-menu,
+.aggregator-column .agg-menu *{ pointer-events: auto; }
 
 .aggregator-column{
   position: relative;
@@ -221,7 +225,9 @@ header{ position: relative; z-index: 50; }
   background: transparent;
   border: none;
   border-radius: 14px 14px 12px 12px;
-  overflow: hidden;
+  /* visible: o .agg-menu (dropdown do ⋮) abre abaixo do header e era
+     clipado pelo overflow:hidden — o menu abria invisível */
+  overflow: visible;
 }
 .aggregator-column .column-header *{ border-radius: inherit; }
 .aggregator-column .card-item{
@@ -881,6 +887,13 @@ li[data-card-id][data-term-status="ok"] .term-badge{ color: #16a34a; }
   -webkit-backdrop-filter: blur(10px) saturate(120%);
   backdrop-filter: blur(10px) saturate(120%);
   border-radius: 14px;
+}
+
+/* Coluna agregadora "solta" (opção 📌 do menu ⋮): rola junto com as demais */
+#columns-wrapper .column-item.aggregator-column.agg-unlocked {
+  position: relative;
+  left: auto;
+  z-index: 1;
 }
 
 @media (max-width: 767px) {
