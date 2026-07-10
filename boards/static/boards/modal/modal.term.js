@@ -13,6 +13,8 @@
     const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})$/);
     if (!m) return null;
     const y = Number(m[1]), mo = Number(m[2]) - 1, d = Number(m[3]);
+    // digitação manual do ano gera valores parciais ("0002", "0202") — ignora
+    if (y < 1900) return null;
     const dt = new Date(Date.UTC(y, mo, d, 0, 0, 0));
     return isNaN(dt.getTime()) ? null : dt;
   }
@@ -94,20 +96,22 @@
 
     // UX:
     // - sem due => warn disabled e vazio
-    // - com due e warn vazio => default due-5
+    // - com due e warn não editado pelo usuário => default due-5
+    //   (acompanha o vencimento enquanto o usuário digita, até ele mexer no warn)
     function syncWarnState() {
       const dueDt = parseYMD(due.value);
       if (!dueDt) {
         warn.value = "";
         warn.disabled = true;
         warn.required = false;
+        delete warn.dataset.userSet;
         return;
       }
 
       warn.disabled = false;
       warn.required = true;
 
-      if (!warn.value) {
+      if (!warn.value || warn.dataset.userSet !== "1") {
         const def = addDaysUTC(dueDt, -5);
         warn.value = fmtYMD(def);
       }
@@ -148,8 +152,12 @@
     due.addEventListener("change", refreshAll);
     due.addEventListener("input", refreshAll);
 
-    warn.addEventListener("change", updateModalTint);
-    warn.addEventListener("input", updateModalTint);
+    function onWarnUserEdit() {
+      warn.dataset.userSet = "1";
+      updateModalTint();
+    }
+    warn.addEventListener("change", onWarnUserEdit);
+    warn.addEventListener("input", onWarnUserEdit);
 
     notify.addEventListener("change", updateModalTint);
 
@@ -158,7 +166,8 @@
     if (cWarn) cWarn.addEventListener("input", updateModalTint);
     if (cOver) cOver.addEventListener("input", updateModalTint);
 
-    // init
+    // init — warn salvo no card conta como escolha do usuário
+    if (warn.value) warn.dataset.userSet = "1";
     refreshAll();
   };
 })();
