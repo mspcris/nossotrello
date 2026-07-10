@@ -15,7 +15,7 @@
 <link rel="stylesheet" href="{% static 'boards/board_detail.css' %}?v=20260617-stickyagg4">
 <link rel="stylesheet" href="{% static 'boards/calendar.css' %}">
 {# skin do cabeçalho compartilhado com a home (body.cm-skin) #}
-<link rel="stylesheet" href="{% static 'boards/cm_skin.css' %}?v=20260615-09">
+<link rel="stylesheet" href="{% static 'boards/cm_skin.css' %}?v=20260710-01">
 <script src="{% static 'boards/appearance.js' %}?v=20260615-09" defer></script>
 <script src="{% static 'boards/autocontrast.js' %}?v=20260615-01" defer></script>
 {% endblock %}
@@ -421,7 +421,7 @@
 <!-- DESKTOP / PAISAGEM (>= 768px) — breadcrumb + membros na MESMA LINHA -->
 <div class="hidden md:flex items-center justify-between gap-4">
   <!-- breadcrumb -->
-  <div class="text-sm font-semibold text-white/90 drop-shadow truncate min-w-0">
+  <div class="cm-text-halo text-sm font-semibold text-white/90 truncate min-w-0">
     <a href="{% url 'boards:boards_index' %}"
        class="underline underline-offset-2">
       Todos os Quadros
@@ -511,7 +511,7 @@
 
     <!-- breadcrumb -->
     <div id="cm-mobile-breadcrumb"
-         class="text-sm font-semibold text-white/90 drop-shadow truncate min-w-0">
+         class="cm-text-halo text-sm font-semibold text-white/90 truncate min-w-0">
       <a href="{% url 'boards:boards_index' %}" class="underline underline-offset-2">Todos os Quadros</a>
       <span class="opacity-70">→</span>
       <span class="board-breadcrumb-name">{{ board.name }}</span>
