@@ -127,7 +127,6 @@ def api_login_camim(request):
             "https://auth.camim.com.br/me",
             headers={"Authorization": f"Bearer {access_token}"},
             timeout=10,
-            verify=False,
         )
         resp.raise_for_status()
         userinfo = resp.json()

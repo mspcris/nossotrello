@@ -55,6 +55,7 @@ from .helpers import (
     _log_card,
     get_or_create_user_default_organization,
 )
+from .cards import _user_can_edit_board, _deny_read_only
 
 logger = logging.getLogger(__name__)
 
@@ -842,6 +843,7 @@ def add_board(request):
 # SOFT DELETE DE BOARD
 # ======================================================================
 
+@login_required
 def delete_board(request, board_id):
     if request.method != "POST":
         return HttpResponseBadRequest("Método inválido.")
@@ -850,6 +852,9 @@ def delete_board(request, board_id):
         board = Board.objects.get(id=board_id, is_deleted=False)
     except Board.DoesNotExist:
         return HttpResponseBadRequest("Quadro não encontrado.")
+
+    if not _user_can_edit_board(request.user, board):
+        return _deny_read_only(request)
 
     actor = _actor_label(request)
 
@@ -877,8 +882,11 @@ def delete_board(request, board_id):
 # IMAGEM PRINCIPAL DO BOARD
 # ======================================================================
 
+@login_required
 def update_board_image(request, board_id):
     board = get_object_or_404(Board, id=board_id)
+    if not _user_can_edit_board(request.user, board):
+        return _deny_read_only(request)
     actor = _actor_label(request)
 
     if request.method == "GET":
@@ -929,9 +937,12 @@ def update_board_image(request, board_id):
     return HttpResponseBadRequest("Método inválido.")
 
 
+@login_required
 @require_POST
 def remove_board_image(request, board_id):
     board = get_object_or_404(Board, id=board_id)
+    if not _user_can_edit_board(request.user, board):
+        return _deny_read_only(request)
     actor = _actor_label(request)
 
     if board.image:
@@ -947,9 +958,12 @@ def remove_board_image(request, board_id):
 # RENOMEAR BOARD
 # ======================================================================
 
+@login_required
 @require_POST
 def rename_board(request, board_id):
     board = get_object_or_404(Board, id=board_id)
+    if not _user_can_edit_board(request.user, board):
+        return _deny_read_only(request)
     actor = _actor_label(request)
 
     old_name = board.name
@@ -996,8 +1010,11 @@ def _default_wallpaper_url():
     return static_url(rel_static)
 
 
+@login_required
 def update_board_wallpaper(request, board_id):
     board = get_object_or_404(Board, id=board_id)
+    if not _user_can_edit_board(request.user, board):
+        return _deny_read_only(request)
     actor = _actor_label(request)
 
     if request.method == "GET":
@@ -1075,9 +1092,12 @@ def board_wallpaper_css(request, board_id):
     return resp
 
 
+@login_required
 @require_POST
 def remove_board_wallpaper(request, board_id):
     board = get_object_or_404(Board, id=board_id)
+    if not _user_can_edit_board(request.user, board):
+        return _deny_read_only(request)
     actor = _actor_label(request)
 
     if board.background_image:
@@ -1895,6 +1915,8 @@ def board_counters(request, board_id):
 @login_required
 def toggle_aggregator_column(request, board_id):
     board = get_object_or_404(Board, id=board_id, is_deleted=False)
+    if not _user_can_edit_board(request.user, board):
+        return _deny_read_only(request)
 
     board.show_aggregator_column = not board.show_aggregator_column
     board.save(update_fields=["show_aggregator_column"])

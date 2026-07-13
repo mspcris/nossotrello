@@ -122,9 +122,7 @@ def camim_callback(request):
             USERINFO_URL,
             headers={"Authorization": f"Bearer {access_token}"},
             timeout=10,
-            verify=False,
         )
-        logger.error("CAMIM /me status=%s body=%s", user_resp.status_code, user_resp.text[:500])
         user_resp.raise_for_status()
         userinfo = user_resp.json()
     except Exception as exc:

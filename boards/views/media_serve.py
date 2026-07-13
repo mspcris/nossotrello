@@ -15,6 +15,7 @@ import unicodedata
 import uuid
 
 from django.conf import settings
+from django.contrib.auth.decorators import login_required
 from django.core.exceptions import SuspiciousFileOperation
 from django.http import FileResponse, Http404, HttpResponse, StreamingHttpResponse
 from django.utils._os import safe_join
@@ -25,6 +26,18 @@ from boards.models import StoredFile
 
 
 INLINE_CONTENT_PREFIXES = ("image/", "video/", "audio/", "application/pdf")
+
+# Tipos que NUNCA podem ser servidos inline mesmo casando com um prefixo acima:
+# SVG é "image/" mas é um documento XML que executa <script> na nossa origem
+# (stored XSS). Forçamos download desses.
+_NEVER_INLINE_TYPES = frozenset({
+    "image/svg+xml",
+    "image/svg",
+    "text/html",
+    "application/xhtml+xml",
+    "text/xml",
+    "application/xml",
+})
 _RANGE_RE = re.compile(r"^bytes=(\d*)-(\d*)$")
 
 # Range 'bytes=N-' (open-ended) é capado a este tamanho. Sem isso, o browser
@@ -36,9 +49,11 @@ _MAX_OPEN_RANGE_BYTES = 2 * 1024 * 1024
 
 
 def _content_disposition(content_type: str, original_name: str) -> str:
-    disposition = "inline"
-    if content_type and not content_type.startswith(INLINE_CONTENT_PREFIXES):
+    ct = (content_type or "").split(";", 1)[0].strip().lower()
+    if ct in _NEVER_INLINE_TYPES or not ct.startswith(INLINE_CONTENT_PREFIXES):
         disposition = "attachment"
+    else:
+        disposition = "inline"
 
     safe_name = (original_name or "file").replace('"', '\\"')
     return f'{disposition}; filename="{safe_name}"'
@@ -120,7 +135,9 @@ def _stored_file_response(stored: StoredFile, request) -> HttpResponse:
 
     response["Accept-Ranges"] = "bytes"
     response["Content-Disposition"] = _content_disposition(content_type, stored.original_name)
-    response["Cache-Control"] = "public, max-age=604800, immutable"
+    response["X-Content-Type-Options"] = "nosniff"
+    # Mídia autenticada: cache só no browser do próprio usuário, não em CDN/proxy compartilhado.
+    response["Cache-Control"] = "private, max-age=604800, immutable"
     response["ETag"] = f'"{stored.checksum}"'
     return response
 
@@ -157,7 +174,8 @@ def _filesystem_file_response(file_path: str, file_ref: str, request) -> HttpRes
 
     response["Accept-Ranges"] = "bytes"
     response["Content-Disposition"] = _content_disposition(content_type, os.path.basename(file_ref))
-    response["Cache-Control"] = "public, max-age=604800"
+    response["X-Content-Type-Options"] = "nosniff"
+    response["Cache-Control"] = "private, max-age=604800"
     return response
 
 
@@ -191,11 +209,17 @@ def _safe_legacy_path(file_ref: str) -> str:
         raise Http404("Caminho de arquivo invalido") from exc
 
 
+@login_required
 @require_GET
 @xframe_options_sameorigin  # permite <iframe> de mesma origem (preview de PDF no feed)
 def serve_stored_file(request, file_ref):
     """
     GET /media/serve/<uuid-ou-caminho-legado>/
+
+    Exige login: mídia (anexos de cards, capas, avatares) só é servida a
+    usuários autenticados. Rende Cache-Control privado — o browser do próprio
+    usuário ainda cacheia, mas caches compartilhados/CDN não guardam mídia
+    autenticada.
 
     Ordem de resolucao:
     1. UUID valido em StoredFile.

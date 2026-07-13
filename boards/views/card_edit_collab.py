@@ -33,7 +33,7 @@ from boards.models import Card
 from boards.permissions import can_edit_board
 from boards.services import edit_locks
 from boards.services.pubsub_service import publish_event
-from boards.views.helpers import _save_base64_images_to_media
+from boards.views.helpers import _save_base64_images_to_media, sanitize_quill_html
 
 logger = logging.getLogger(__name__)
 
@@ -214,7 +214,7 @@ def card_field_release(request, card_id: int, field: str):
                     exc_info=True,
                 )
                 new_html = raw_value
-            card.description = (new_html or "").strip()
+            card.description = sanitize_quill_html((new_html or "").strip())
             card.save(update_fields=["description"])
             final_value = card.description
 

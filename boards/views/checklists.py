@@ -7,6 +7,7 @@ from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_POST, require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.utils.html import escape
 
 from .helpers import _actor_label, _log_card
 from ..permissions import can_edit_board
@@ -165,7 +166,7 @@ def checklist_add(request, card_id):
     board.save(update_fields=["version"])
 
 
-    _log_card(card, request, f"<p><strong>{actor}</strong> criou a checklist <strong>{checklist.title}</strong>.</p>")
+    _log_card(card, request, f"<p><strong>{actor}</strong> criou a checklist <strong>{escape(checklist.title)}</strong>.</p>")
     return render(request, "boards/partials/checklist_list.html", {
         "checklists": _card_checklists_qs(card),
         "card": card,
@@ -248,7 +249,7 @@ def checklist_add_item(request, checklist_id):
     board.save(update_fields=["version"])
 
 
-    _log_card(card, request, f"<p><strong>{actor}</strong> adicionou item na checklist <strong>{checklist.title}</strong>: {item.text}.</p>")
+    _log_card(card, request, f"<p><strong>{actor}</strong> adicionou item na checklist <strong>{escape(checklist.title)}</strong>: {escape(item.text)}.</p>")
     return render(request, "boards/partials/checklist_list.html", {
         "checklists": _card_checklists_qs(card),
         "card": card,
@@ -273,7 +274,7 @@ def checklist_toggle_item(request, item_id):
 
 
     status = "concluiu" if item.is_done else "reabriu"
-    _log_card(card, request, f"<p><strong>{actor}</strong> {status} um item da checklist: {item.text}.</p>")
+    _log_card(card, request, f"<p><strong>{actor}</strong> {status} um item da checklist: {escape(item.text)}.</p>")
 
     return render(request, "boards/partials/checklist_list.html", {
         "checklists": _card_checklists_qs(card),

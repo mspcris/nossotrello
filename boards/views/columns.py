@@ -32,8 +32,11 @@ from .cards import _user_can_edit_board, _deny_read_only
 
 
 
+@login_required
 def add_column(request, board_id):
     board = get_object_or_404(Board, id=board_id)
+    if not _user_can_edit_board(request.user, board):
+        return _deny_read_only(request)
 
     if request.method == "POST":
         form = ColumnForm(request.POST)
@@ -64,9 +67,12 @@ def add_column(request, board_id):
     )
 
 
+@login_required
 @require_POST
 def set_column_theme(request, column_id):
     column = get_object_or_404(Column, id=column_id)
+    if not _user_can_edit_board(request.user, column.board):
+        return _deny_read_only(request)
     theme = request.POST.get("theme")
 
     valid_themes = [t[0] for t in Column.THEME_CHOICES]
@@ -95,6 +101,8 @@ def set_column_theme(request, column_id):
 @require_POST
 def reorder_columns(request, board_id):
     board = get_object_or_404(Board, id=board_id, is_deleted=False)
+    if not _user_can_edit_board(request.user, board):
+        return _deny_read_only(request, as_json=True)
 
     try:
         payload = json.loads(request.body.decode("utf-8"))
@@ -128,10 +136,13 @@ def reorder_columns(request, board_id):
 
     return JsonResponse({"ok": True})
 
+@login_required
 @require_POST
 def rename_column(request, column_id):
     column = get_object_or_404(Column, id=column_id)
     board = column.board
+    if not _user_can_edit_board(request.user, board):
+        return _deny_read_only(request)
     actor = _actor_label(request)
 
     old_name = column.name
@@ -161,6 +172,7 @@ def rename_column(request, column_id):
     
 
 
+@login_required
 def delete_column(request, column_id):
     if request.method != "POST":
         return HttpResponseBadRequest("Método inválido.")
@@ -169,6 +181,9 @@ def delete_column(request, column_id):
         column = Column.objects.get(id=column_id, is_deleted=False)
     except Column.DoesNotExist:
         return HttpResponseBadRequest("Coluna não encontrada.")
+
+    if not _user_can_edit_board(request.user, column.board):
+        return _deny_read_only(request)
 
 
     board = column.board

@@ -16,6 +16,18 @@ def _user_can_access_board(user, board: Board) -> bool:
     return BoardMembership.objects.filter(user=user, board=board).exists()
 
 
+def _user_can_edit_board(user, board: Board) -> bool:
+    """Escrita (arquivar/lixeira/restaurar o quadro): owner/editor/staff; viewer não."""
+    if not getattr(user, "is_authenticated", False):
+        return False
+    if getattr(user, "is_staff", False):
+        return True
+    bm = BoardMembership.objects.filter(board=board, user=user).first()
+    if bm:
+        return bm.role in {BoardMembership.Role.OWNER, BoardMembership.Role.EDITOR}
+    return bool(getattr(board, "created_by_id", None) == getattr(user, "id", None))
+
+
 @login_required
 def boards_trash(request):
     boards = (
@@ -47,8 +59,8 @@ def boards_archived(request):
 @require_POST
 def archive_board(request, board_id: int):
     board = get_object_or_404(Board.all_objects, id=board_id)
-    if not _user_can_access_board(request.user, board):
-        return HttpResponseForbidden("Sem acesso.")
+    if not _user_can_edit_board(request.user, board):
+        return HttpResponseForbidden("Sem permissão de edição neste board.")
 
     res = svc_archive_board(board)
     if not res.ok:
@@ -62,8 +74,8 @@ def archive_board(request, board_id: int):
 @require_POST
 def unarchive_board(request, board_id: int):
     board = get_object_or_404(Board.all_objects, id=board_id)
-    if not _user_can_access_board(request.user, board):
-        return HttpResponseForbidden("Sem acesso.")
+    if not _user_can_edit_board(request.user, board):
+        return HttpResponseForbidden("Sem permissão de edição neste board.")
 
     res = svc_unarchive_board(board)
     if not res.ok:
@@ -76,8 +88,8 @@ def unarchive_board(request, board_id: int):
 @require_POST
 def trash_board(request, board_id: int):
     board = get_object_or_404(Board.all_objects, id=board_id)
-    if not _user_can_access_board(request.user, board):
-        return HttpResponseForbidden("Sem acesso.")
+    if not _user_can_edit_board(request.user, board):
+        return HttpResponseForbidden("Sem permissão de edição neste board.")
 
     res = svc_soft_delete_board(board)
     if not res.ok:
@@ -90,8 +102,8 @@ def trash_board(request, board_id: int):
 @require_POST
 def restore_board(request, board_id: int):
     board = get_object_or_404(Board.all_objects, id=board_id)
-    if not _user_can_access_board(request.user, board):
-        return HttpResponseForbidden("Sem acesso.")
+    if not _user_can_edit_board(request.user, board):
+        return HttpResponseForbidden("Sem permissão de edição neste board.")
 
     res = svc_restore_board(board)
     if not res.ok:

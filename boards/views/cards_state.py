@@ -29,6 +29,18 @@ def _can_access_board(user, board: Board) -> bool:
     return BoardMembership.objects.filter(board=board, user=user).exists()
 
 
+def _can_edit_board(user, board: Board) -> bool:
+    """Escrita (arquivar/lixeira/restaurar): owner/editor/staff; viewer não."""
+    if not getattr(user, "is_authenticated", False):
+        return False
+    if getattr(user, "is_staff", False):
+        return True
+    bm = BoardMembership.objects.filter(board=board, user=user).first()
+    if bm:
+        return bm.role in {BoardMembership.Role.OWNER, BoardMembership.Role.EDITOR}
+    return bool(getattr(board, "created_by_id", None) == getattr(user, "id", None))
+
+
 def _htmx_refresh_or_204(request):
     # Se for HTMX: manda refresh da página
     if request.headers.get("HX-Request"):
@@ -80,8 +92,8 @@ def archive_card(request, card_id: int):
     if board is None:
         return HttpResponseBadRequest("Não foi possível resolver o board do card para esta ação.")
 
-    if not _can_access_board(request.user, board):
-        return HttpResponseForbidden("Sem acesso a este board.")
+    if not _can_edit_board(request.user, board):
+        return HttpResponseForbidden("Sem permissão de edição neste board.")
 
     svc_archive_card(card)
     return _redirect_board_or_ok(request, board.id)
@@ -98,8 +110,8 @@ def unarchive_card(request, card_id: int):
     if board is None:
         return HttpResponseBadRequest("Não foi possível resolver o board do card para esta ação.")
 
-    if not _can_access_board(request.user, board):
-        return HttpResponseForbidden("Sem acesso a este board.")
+    if not _can_edit_board(request.user, board):
+        return HttpResponseForbidden("Sem permissão de edição neste board.")
 
     # service já deve garantir coluna visível (CARD RECUPERADO se necessário)
     svc_unarchive_card(card)
@@ -119,8 +131,8 @@ def trash_card(request, card_id: int):
     if board is None:
         return HttpResponseBadRequest("Não foi possível resolver o board do card para esta ação.")
 
-    if not _can_access_board(request.user, board):
-        return HttpResponseForbidden("Sem acesso a este board.")
+    if not _can_edit_board(request.user, board):
+        return HttpResponseForbidden("Sem permissão de edição neste board.")
 
     svc_soft_delete_card(card)
     return _redirect_board_or_ok(request, board.id)
@@ -137,8 +149,8 @@ def restore_card(request, card_id: int):
     if board is None:
         return HttpResponseBadRequest("Não foi possível resolver o board do card para esta ação.")
 
-    if not _can_access_board(request.user, board):
-        return HttpResponseForbidden("Sem acesso a este board.")
+    if not _can_edit_board(request.user, board):
+        return HttpResponseForbidden("Sem permissão de edição neste board.")
 
     # service já deve garantir coluna visível (CARD RECUPERADO se necessário)
     svc_restore_card(card)
