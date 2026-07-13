@@ -40,6 +40,14 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-07 ---
+    "87b88ff": (
+        "🤝",
+        "Compartilhe o quadro pelo @username",
+        "No \"Compartilhar quadro\" agora dá pra convidar digitando o @username "
+        "da pessoa (ex.: @leocarneiro) em vez do e-mail — igual aparece no perfil "
+        "dela. Funciona com ou sem o @ na frente; se não achar ninguém com aquele "
+        "username, o aviso diz isso claramente em vez de um erro genérico.",
+    ),
     "b7931fb": (
         "⏳",
         "Colou uma imagem? Agora tem bolinha girando",
