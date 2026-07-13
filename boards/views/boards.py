@@ -1284,30 +1284,45 @@ def board_share(request, board_id):
         return render_modal(status=403, msg_error="Sem permissão para compartilhar este quadro.")
 
     identifier = _normalize_email(request.POST.get("identifier"))
-    if not identifier or "@" not in identifier:
-        return render_modal(status=400, msg_error="E-mail inválido.")
+    if not identifier:
+        return render_modal(status=400, msg_error="E-mail ou username inválido.")
 
     # Role
     role = (request.POST.get("role") or "").strip().lower()
     if role not in {BoardMembership.Role.EDITOR, BoardMembership.Role.VIEWER, BoardMembership.Role.OWNER}:
         role = BoardMembership.Role.EDITOR
 
-    # Política de domínio:
-    # - Interno (domínio permitido): pode criar user automaticamente (mesmo que nunca tenha logado)
-    # - Externo (fora do domínio): só pode compartilhar se o user já existir (criado manualmente pela Direção)
-    from boards.services.email_domains import is_allowed_email
-    is_internal = is_allowed_email(identifier)
-
-    # Usuário (por e-mail)
     User = get_user_model()
-    user = User.objects.filter(email__iexact=identifier).first()
 
-    # Externo: não cria automaticamente; exige existir
-    if (not is_internal) and (not user):
-        return render_modal(
-            status=200,  # <- era 400
-            msg_error="Usuário não permitido para convite. Contate o adm.",
-        )
+    handle = identifier.lstrip("@")
+    if "@" not in handle:
+        # Username/handle ("@leocarneiro" ou "leocarneiro"): só resolve usuário existente
+        user = User.objects.filter(
+            Q(profile__handle__iexact=handle) | Q(username__iexact=handle),
+            is_active=True,
+        ).first()
+        if not user:
+            return render_modal(
+                status=200,
+                msg_error=f"Nenhum usuário encontrado com o username @{handle}.",
+            )
+        identifier = _normalize_email(user.email)
+    else:
+        # Política de domínio:
+        # - Interno (domínio permitido): pode criar user automaticamente (mesmo que nunca tenha logado)
+        # - Externo (fora do domínio): só pode compartilhar se o user já existir (criado manualmente pela Direção)
+        from boards.services.email_domains import is_allowed_email
+        is_internal = is_allowed_email(identifier)
+
+        # Usuário (por e-mail)
+        user = User.objects.filter(email__iexact=identifier).first()
+
+        # Externo: não cria automaticamente; exige existir
+        if (not is_internal) and (not user):
+            return render_modal(
+                status=200,  # <- era 400
+                msg_error="Usuário não permitido para convite. Contate o adm.",
+            )
 
 
     created_user = False
