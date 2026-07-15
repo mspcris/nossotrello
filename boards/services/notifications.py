@@ -28,6 +28,25 @@ from django.db import transaction
 
 
 logger = logging.getLogger(__name__)
+
+
+# Regex de e-mail sintaticamente válido com domínio ASCII (sem acento).
+# Domínios acentuados (ex.: "clínicacamim.com.br") não existem e todo envio
+# vira bounce no Gmail — melhor pular do que tentar entregar.
+_SENDABLE_EMAIL_RE = re.compile(r"^[^@\s]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
+
+
+def is_sendable_email(email: str) -> bool:
+    """True se o e-mail é entregável de forma plausível (sintaxe + domínio ASCII).
+
+    Não faz lookup de MX (envio roda em thread de fundo); é um filtro barato
+    que corta os casos observados de bounce: vazio, malformado e domínio com
+    acento/caractere não-ASCII.
+    """
+    email = (email or "").strip()
+    if not email or len(email) > 254:
+        return False
+    return bool(_SENDABLE_EMAIL_RE.match(email))
 User = get_user_model()
 
 # Cache-buster do og:image em links que vão pro WhatsApp/email.
@@ -393,6 +412,10 @@ def send_email_notification(
     cta_url/cta_label → quando informados, renderiza um botão CTA no HTML
                        e adiciona uma linha "Link: <url>" no fallback texto.
     """
+    if not is_sendable_email(to_email):
+        logger.info("email pulado: destinatário inválido/não-entregável (%r)", to_email)
+        return
+
     if use_social:
         social_conn = _build_social_email_connection()
         from_email = getattr(settings, "SOCIAL_DEFAULT_FROM_EMAIL", "") \

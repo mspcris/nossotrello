@@ -27,6 +27,34 @@ USERINFO_URL   = f"{CAMIM_BASE}/me"
 User = get_user_model()
 
 
+def _sync_camim_phone(user, *, sub: str, idcamim_phone: str) -> None:
+    """Sincroniza telefone entre IDCamim e o perfil local (best-effort).
+
+    - IDCamim tem telefone e local está vazio  → salva no perfil local.
+    - Local tem telefone e IDCamim está vazio   → empurra pro IDCamim (PATCH admin).
+    - Ambos preenchidos                          → IDCamim manda; atualiza local se diferiu.
+    Nunca quebra o login: qualquer erro é engolido com log.
+    """
+    try:
+        from boards.models import UserProfile
+        prof, _ = UserProfile.objects.get_or_create(user=user)
+        local_phone = (getattr(prof, "telefone", "") or "").strip()
+        idcamim_phone = (idcamim_phone or "").strip()
+
+        if idcamim_phone:
+            if local_phone != idcamim_phone:
+                prof.telefone = idcamim_phone[:30]
+                prof.save(update_fields=["telefone"])
+        elif local_phone and sub:
+            # IDCamim não tem; manda o daqui pra lá.
+            from boards.services.moderation.camim_admin import update_user_phone
+            res = update_user_phone(sub, local_phone)
+            if not res.ok:
+                logger.warning("push telefone->IDCamim falhou: %s", res.error)
+    except Exception:
+        logger.exception("sync de telefone IDCamim falhou (ignorado)")
+
+
 def _client_id():
     return (getattr(settings, "CAMIM_CLIENT_ID", "") or "").strip()
 
@@ -61,7 +89,7 @@ def camim_login(request):
         "client_id":     client_id,
         "redirect_uri":  _redirect_uri(),
         "response_type": "code",
-        "scope":         "openid profile email",
+        "scope":         "openid profile email phone",
         "state":         state,
     })
     return redirect(f"{AUTHORIZE_URL}?{params}")
@@ -145,6 +173,10 @@ def camim_callback(request):
     user = resolve_or_create_camim_user(
         sub=sub, email=email, first_name=first_name, last_name=last_name,
     )
+
+    # Telefone: IDCamim é a fonte da verdade. Se ele mandou telefone, salva aqui
+    # (quando local está vazio). Se local tem e o IDCamim não, empurra pro IDCamim.
+    _sync_camim_phone(user, sub=sub, idcamim_phone=(userinfo.get("phone_number") or "").strip())
 
     if not user.is_active:
         messages.error(request, "Sua conta está inativa. Fale com o administrador.")

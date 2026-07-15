@@ -62,3 +62,44 @@ def deactivate_user(camim_sub: str) -> CamimAdminResult:
     return CamimAdminResult(
         ok=False, status_code=resp.status_code, error=resp.text[:500],
     )
+
+
+def update_user_phone(camim_sub: str, phone_number: str) -> CamimAdminResult:
+    """Grava o telefone do usuário no IDCamim (PATCH /admin/users/:sub).
+
+    Usado quando o usuário tem telefone salvo aqui mas não no IDCamim, para
+    manter o IDCamim como fonte da verdade daqui pra frente.
+    """
+    if not camim_sub:
+        return CamimAdminResult(ok=False, status_code=0, error="camim_sub vazio")
+    phone_number = (phone_number or "").strip()
+    if not phone_number:
+        return CamimAdminResult(ok=False, status_code=0, error="phone vazio")
+    base = _base()
+    key = _key()
+    if not base or not key:
+        return CamimAdminResult(
+            ok=False, status_code=0,
+            error="CAMIM_ADMIN_API_BASE/CAMIM_ADMIN_API_KEY não configurados",
+        )
+    url = f"{base}/admin/users/{camim_sub}"
+    try:
+        resp = requests.patch(
+            url,
+            json={"phone_number": phone_number},
+            headers={
+                "x-admin-api-key": key,
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+            },
+            timeout=_TIMEOUT,
+        )
+    except requests.RequestException as e:
+        logger.exception("camim_admin.update_user_phone: requisição falhou")
+        return CamimAdminResult(ok=False, status_code=0, error=str(e))
+
+    if 200 <= resp.status_code < 300:
+        return CamimAdminResult(ok=True, status_code=resp.status_code)
+    return CamimAdminResult(
+        ok=False, status_code=resp.status_code, error=resp.text[:500],
+    )

@@ -18,10 +18,39 @@ Edge cases:
     critério que a lógica anterior usava).
 """
 
+import unicodedata
+
 from django.contrib.auth import get_user_model
 from django.db import transaction
 
 User = get_user_model()
+
+
+def _normalize_email_domain(email: str) -> str:
+    """Corrige domínio institucional digitado com acento.
+
+    O IDCamim às vezes tem o domínio com acento (ex.: "clínicacamim.com.br"),
+    que não existe → todo e-mail vira bounce. Se o domínio sem acento for um
+    domínio institucional conhecido, usa a versão sem acento. Fora disso, não
+    mexe (para não corromper eventuais domínios legitimamente não-ASCII).
+    """
+    email = (email or "").strip().lower()
+    if "@" not in email:
+        return email
+    local, domain = email.rsplit("@", 1)
+    deaccented = (
+        unicodedata.normalize("NFKD", domain)
+        .encode("ascii", "ignore")
+        .decode("ascii")
+    )
+    if deaccented and deaccented != domain:
+        try:
+            from boards.services.email_domains import allowed_email_domains
+            if deaccented in allowed_email_domains():
+                return f"{local}@{deaccented}"
+        except Exception:
+            pass
+    return email
 
 
 def resolve_or_create_camim_user(*, sub: str, email: str,
@@ -37,7 +66,7 @@ def resolve_or_create_camim_user(*, sub: str, email: str,
     from boards.models import UserProfile
 
     sub = (sub or "").strip()
-    email = (email or "").strip().lower()
+    email = _normalize_email_domain(email)
 
     # 1) Busca por sub
     if sub:
