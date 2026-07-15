@@ -289,3 +289,5 @@ pip-wheel-metadata/
 *.csr
 *.p12
 *.der
+# Relatórios (NÃO versionar — podem documentar falhas/dados sensíveis)
+/relatorios/
