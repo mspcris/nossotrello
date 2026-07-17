@@ -152,13 +152,17 @@
 
 </div>
 
-    {# Manual só quando NÃO está rodando #}
+    {# Manual só quando NÃO está rodando. Projeto/atividade vêm dos selects do
+       Start (que estão em outro form): injetados no request via config-request,
+       e barrados no before-request se estiverem vazios. #}
     <form
       method="post"
       hx-post="{% url 'tracktime:card_manual' card.id %}"
       hx-target="#cm-tracktime-panel"
       hx-swap="innerHTML"
       class="tt-grid"
+      hx-on::before-request="if(!document.getElementById('tt-project').value || !document.getElementById('tt-activity').value){ event.preventDefault(); alert('Selecione o projeto e a atividade acima antes de lançar o tempo manual.'); }"
+      hx-on::config-request="event.detail.parameters['project']=document.getElementById('tt-project').value; event.detail.parameters['activity']=document.getElementById('tt-activity').value;"
     >
       {% csrf_token %}
 
@@ -167,9 +171,6 @@
       </div>
 
       <div class="tt-right">
-        <input type="hidden" name="activity">
-        <input type="hidden" name="project">
-
         <button type="submit" class="tt-btn">Manual</button>
       </div>
     </form>
