@@ -40,6 +40,78 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-07 ---
+    "4d953e5": (
+        "🚧",
+        "Card em impedimento: marque quem está travando",
+        "Todo card agora tem o botão \"Impedimento\" ao lado de \"Entregue\". Ao "
+        "marcar, você escolhe (nas bolinhas grandes) quem está travando o card. O "
+        "card ganha uma tarja vermelha na capa e as fotos dos responsáveis pulsando "
+        "no board — dá pra ver de longe quem segura a tarefa. Cada responsável se "
+        "libera clicando na própria foto; o dono do quadro pode liberar qualquer "
+        "um. Quem é marcado recebe e-mail e WhatsApp avisando que o card depende "
+        "dele. Quando o último se libera, a tarja some e a imagem da capa volta.",
+    ),
+    "ce04da4": (
+        "⏳",
+        "Dá pra ver que o clique aconteceu (impedimento e track-time)",
+        "Ações que levavam alguns segundos pareciam não responder. Agora tem "
+        "feedback na hora: marcar impedimento vira \"Marcando…\" com uma bolinha "
+        "girando; ao liberar uma pendência a foto escurece com um spinner por cima; "
+        "e o \"Atualizar\" do Ao Vivo mostra \"Atualizando…\".",
+    ),
+    "46a7a09": (
+        "🖼️",
+        "Escolheu uma cor por engano? A imagem da capa volta",
+        "Antes, se você clicasse numa cor de capa, a imagem do card sumia pra "
+        "sempre. Agora aparece um quadradinho com a miniatura da imagem anterior "
+        "(com uma setinha ↺) na barra de cores — clicou, a imagem da capa volta.",
+    ),
+    "b428b1b": (
+        "⏱️",
+        "Track-time \"Ao vivo\" repaginado, com totais e encerrados do dia",
+        "A tela do track-time ao vivo ganhou fotos maiores e fontes mais legíveis. "
+        "Abaixo dela agora tem duas seções novas: \"Totais hoje\" (cada pessoa e "
+        "quanto trabalhou no dia) e \"Encerrados hoje\" (os tracks que fecharam "
+        "hoje, com o tempo total). Passe o mouse num card pra ver mais detalhes.",
+    ),
+    "0aa4fc3": (
+        "⏲️",
+        "Limite de tempo do track-time por pessoa (admin)",
+        "No painel do track-time há uma aba \"Limites\" (só para administradores): "
+        "dá pra ver e ajustar, por pessoa, quanto tempo o cronômetro roda antes de "
+        "pedir confirmação e encerrar sozinho. Assim quem não esquece o track ganha "
+        "mais folga, e quem esquece encerra mais cedo.",
+    ),
+    "b17d13a": (
+        "📱",
+        "No celular, mais espaço pros cards",
+        "Na tela do celular a barra roxa de cima encolheu pra só a linha de ícones "
+        "(a busca ficou na lupa do quadro) e a coluna de cards ficou larga, ocupando "
+        "quase a tela toda — bem mais confortável de ler. Otimizado até para telas "
+        "bem pequenas, como a de capa do Galaxy Z Flip.",
+    ),
+    "1b0ef9f": (
+        "🔤",
+        "Título do card sem negrito e mostrando por inteiro",
+        "O título no card do modal saiu do negrito (que ficava pesado) e agora "
+        "aparece inteiro, quebrando em quantas linhas precisar. No board ele corta "
+        "com \"…\" pra não virar um paredão — e o texto completo aparece ao passar "
+        "o mouse.",
+    ),
+    "1de4e2e": (
+        "🌗",
+        "Menções (@fulano) legíveis no modo escuro",
+        "No modo escuro, a marcação de uma pessoa (@fulano) ficava com fundo claro "
+        "e letra branca — quase invisível. Agora a menção tem contraste nos dois "
+        "temas.",
+    ),
+    "4718464": (
+        "🔠",
+        "Fonte da \"Nova Atividade\" igual à da descrição",
+        "O campo de escrever uma nova atividade no card usava uma letra menor que a "
+        "da descrição. Agora ficaram do mesmo tamanho, mais confortável de escrever "
+        "e ler.",
+    ),
     "243b4d8": (
         "⚡",
         "Pedir acesso a um quadro ficou quase automático",
@@ -625,6 +697,14 @@ CURATED = {
 # Commits que existem mas NÃO interessam ao usuário final.
 # Vão ficar como is_published=False (somem do painel).
 HIDE = {
+    # partes intermediárias de features de 17/07 já cobertas por 1 entrada só
+    "cd02aef",  # impedimento parte 1 -> coberto por 4d953e5
+    "6a5ce5c",  # seletor de impedimento (redesenho) -> 4d953e5
+    "a76acd7",  # impedimento 2a (responsáveis acima do feed) -> 4d953e5
+    "d86ef61",  # impedimento 2b (tarja na capa) -> 4d953e5
+    "2776ff1",  # track-time "Totais hoje" -> coberto por b428b1b
+    "47ab478",  # mobile coluna larga -> coberto por b17d13a
+    "6a821bc",  # mobile header compacto (parte) -> b17d13a
     "999b6c6",  # Phase 0+1 WebSocket/RabbitMQ
     "7098e5c",  # DatabaseStorage PostgreSQL
     "ccd079e",  # Custom 502 maintenance page
