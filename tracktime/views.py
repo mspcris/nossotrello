@@ -851,13 +851,16 @@ def tracktime_tab_limits(request):
     if not _is_tracktime_admin(request.user):
         return HttpResponseForbidden("Apenas o administrador pode ver os limites.")
 
-    # total trabalhado por usuário nos últimos 60 dias (para ordenar)
+    # total trabalhado por usuário nos últimos 60 dias (para ordenar).
+    # ATENÇÃO: usar created_at, NÃO started_at — o stop() zera started_at (=None)
+    # ao encerrar, então filtrar por started_at excluiria os tracks concluídos
+    # (justamente os que têm os minutos). created_at nunca é zerado.
     cutoff = timezone.now() - timedelta(days=60)
     totals_60d = {
         row["user_id"]: int(row["total"] or 0)
         for row in (
             TimeEntry.objects
-            .filter(started_at__gte=cutoff)
+            .filter(created_at__gte=cutoff)
             .values("user_id")
             .annotate(total=Sum("minutes"))
         )
