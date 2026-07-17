@@ -913,8 +913,10 @@ li[data-card-id][data-term-status="ok"] .term-badge{ color: #16a34a; }
     flex: 0 0 200px;
   }
 
+  /* Sem teto de 50vh: o corpo preenche a altura da coluna (flex-1), como no
+     desktop. Com o cap, a lista cortava na metade da tela deixando espaço vazio. */
   .aggregator-column .aggregator-body {
-    max-height: 50vh;
+    max-height: none;
     overflow-y: auto;
   }
 }
