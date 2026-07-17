@@ -76,7 +76,7 @@
       <span class="cc-counter-num">{{ cv }}</span>
     </div>
   {% elif card.cover_image %}{# CAPA #}
-    <div class="mb-2 card-cover-wrap">
+    <div class="mb-2 card-cover-wrap{% if card.is_impeded %} is-impeded{% endif %}">
 
       <!-- Fundo espelhado (blur) — img lazy: só busca o blob quando entra na viewport -->
       <img
@@ -92,9 +92,16 @@
         alt="Capa do card"
         class="card-cover-img"
         loading="lazy">
+
+      {% if card.is_impeded %}
+        <div class="card-cover-tarja-overlay" aria-hidden="true"></div>
+        <div class="card-cover-tarja">🚧 IMPEDIDO</div>
+      {% endif %}
     </div>
   {% elif card.cover_color %}
-    <div class="mb-2" style="height:36px;border-radius:8px;background:{{ card.cover_color }};"></div>
+    <div class="mb-2 card-color-cover{% if card.is_impeded %} is-impeded{% endif %}" style="height:36px;border-radius:8px;background:{{ card.cover_color }};">{% if card.is_impeded %}<span class="card-color-tarja">🚧 IMPEDIDO</span>{% endif %}</div>
+  {% elif card.is_impeded %}
+    <div class="mb-2 card-tarja-solid">🚧 IMPEDIDO</div>
   {% endif %}
 
 

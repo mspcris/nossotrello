@@ -1575,6 +1575,38 @@ li[data-card-id][data-term-status="ok"] .term-badge{ color: #16a34a; }
 /* card escuro: nome legível */
 body.cards-dark #columns-wrapper .card-imp-name{ color: rgba(241,245,249,.92); }
 
+/* Tarja vermelha na capa quando impedido: cobre a imagem (que volta ao resolver,
+   pois nada no cover_image é alterado — só o overlay CSS). Elemento filho (não
+   ::after) porque a wrap já tem um ::after de vinheta com id na frente. img é
+   z-index:2, o overlay fica em 3 e o selo em 4. */
+#columns-wrapper li[data-card-id] .card-cover-tarja-overlay{
+  position:absolute; inset:0; z-index:3;
+  background: repeating-linear-gradient(
+    -45deg,
+    #ef4444 0, #ef4444 16px,
+    #991b1b 16px, #991b1b 32px
+  );
+  pointer-events:none;
+}
+.card-cover-tarja{ z-index:4; }
+.card-cover-tarja, .card-color-tarja{
+  position:absolute; top:6px; left:6px;
+  background:#0b1220; color:#fff;
+  font-size:11px; font-weight:900; letter-spacing:.4px;
+  padding:3px 8px; border-radius:6px;
+  box-shadow:0 2px 6px rgba(0,0,0,.35);
+}
+.card-color-cover{ position:relative; }
+/* sem imagem nem cor: a tarja É a capa */
+.card-tarja-solid{
+  height:36px; border-radius:8px;
+  display:flex; align-items:center; justify-content:center;
+  color:#fff; font-size:12px; font-weight:900; letter-spacing:.5px;
+  background: repeating-linear-gradient(
+    -45deg, #ef4444 0, #ef4444 14px, #991b1b 14px, #991b1b 28px
+  );
+}
+
 
 
 /* ============================================================
