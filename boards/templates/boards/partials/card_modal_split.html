@@ -589,28 +589,24 @@
        data-clear-url="{% url 'boards:clear_card_impediment' card.id %}">
     <div class="cm-imp-panel-head">
       Quem está travando este card?
-      <small>Toque na pessoa para marcar. Cada uma se libera clicando na própria foto.</small>
+      <small>Toque na bolinha para marcar. Os marcados ficam na frente com o anel vermelho.</small>
     </div>
 
-    {# selecionados: sobem pro topo com foto grande #}
-    <div class="cm-imp-selected" id="cm-imp-selected" data-empty="Ninguém selecionado ainda"></div>
-
-    {# todos os participantes: clique pra alternar #}
-    <div class="cm-imp-picker" id="cm-imp-picker">
+    {# grade de bolinhas grandes; marcados vão pra frente (via JS) #}
+    <div class="cm-imp-grid" id="cm-imp-grid">
       {% for m in impediment_members %}
         <button type="button"
-                class="cm-imp-pick{% if m.is_responsible %} is-on{% endif %}"
+                class="cm-imp-tile{% if m.is_responsible %} is-on{% endif %}"
                 data-uid="{{ m.id }}"
                 data-name="{{ m.name }}"
-                data-avatar="{{ m.avatar_url }}"
-                data-initial="{{ m.name|slice:':1'|upper }}"
                 aria-pressed="{% if m.is_responsible %}true{% else %}false{% endif %}"
+                title="{{ m.name }}"
                 onclick="window.cmToggleImpPick && window.cmToggleImpPick(this);">
-          <span class="cm-imp-pick-av">
+          <span class="cm-imp-tile-av">
             {% if m.avatar_url %}<img src="{{ m.avatar_url }}" alt="">{% else %}{{ m.name|slice:":1"|upper }}{% endif %}
+            <span class="cm-imp-tile-check" aria-hidden="true">✓</span>
           </span>
-          <span class="cm-imp-pick-name">{{ m.name }}</span>
-          <span class="cm-imp-pick-check" aria-hidden="true">✓</span>
+          <span class="cm-imp-tile-name">{{ m.name }}</span>
         </button>
       {% endfor %}
     </div>

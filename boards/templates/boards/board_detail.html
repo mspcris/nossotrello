@@ -12,7 +12,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% url 'boards:board_wallpaper_css' board.id %}">
-<link rel="stylesheet" href="{% static 'boards/board_detail.css' %}?v=20260717-imped2">
+<link rel="stylesheet" href="{% static 'boards/board_detail.css' %}?v=20260717-imped3">
 <link rel="stylesheet" href="{% static 'boards/calendar.css' %}">
 {# skin do cabeçalho compartilhado com a home (body.cm-skin) #}
 <link rel="stylesheet" href="{% static 'boards/cm_skin.css' %}?v=20260710-01">
@@ -2861,38 +2861,28 @@ function _ntRefreshModal(cardId){
   } catch(_e){}
 }
 
-function _cmRenderImpSelected(){
-  var p = document.getElementById("cm-impediment-panel");
-  var zone = document.getElementById("cm-imp-selected");
-  if (!p || !zone) return;
-  var on = Array.prototype.slice.call(p.querySelectorAll(".cm-imp-pick.is-on"));
-  zone.classList.toggle("is-empty", on.length === 0);
-  zone.innerHTML = on.map(function(b){
-    var uid = b.dataset.uid, name = b.dataset.name || "", av = b.dataset.avatar || "", ini = b.dataset.initial || "?";
-    var avInner = av ? '<img src="'+av+'" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:999px;">' : ini;
-    return '<div class="cm-imp-chip">'
-      + '<span class="cm-imp-chip-av">' + avInner
-      + '<span class="cm-imp-chip-x" title="Remover" onclick="window.cmToggleImpPickById(\'' + uid + '\')">×</span>'
-      + '</span>'
-      + '<span class="cm-imp-chip-name" title="'+name+'">'+name+'</span>'
-      + '</div>';
-  }).join("");
+function _cmReorderImpTiles(){
+  // marcados vão pra frente da grade
+  var grid = document.getElementById("cm-imp-grid");
+  if (!grid) return;
+  var tiles = Array.prototype.slice.call(grid.querySelectorAll(".cm-imp-tile"));
+  tiles.sort(function(a, b){
+    var av = a.classList.contains("is-on") ? 0 : 1;
+    var bv = b.classList.contains("is-on") ? 0 : 1;
+    if (av !== bv) return av - bv;
+    return (a.dataset.name || "").localeCompare(b.dataset.name || "");
+  });
+  tiles.forEach(function(t){ grid.appendChild(t); });
 }
 window.cmToggleImpPick = function(btn){
   var on = btn.getAttribute("aria-pressed") === "true";
   btn.setAttribute("aria-pressed", on ? "false" : "true");
   btn.classList.toggle("is-on", !on);
-  _cmRenderImpSelected();
-};
-window.cmToggleImpPickById = function(uid){
-  var p = document.getElementById("cm-impediment-panel");
-  if (!p) return;
-  var btn = p.querySelector('.cm-imp-pick[data-uid="'+uid+'"]');
-  if (btn) window.cmToggleImpPick(btn);
+  _cmReorderImpTiles();
 };
 window.cmOpenImpediment = function(cardId){
   var p = document.getElementById("cm-impediment-panel");
-  if (p){ p.classList.remove("is-hidden"); _cmRenderImpSelected(); }
+  if (p){ p.classList.remove("is-hidden"); _cmReorderImpTiles(); }
 };
 window.cmCloseImpediment = function(){
   var p = document.getElementById("cm-impediment-panel");
@@ -2901,7 +2891,7 @@ window.cmCloseImpediment = function(){
 window.cmSaveImpediment = function(){
   var p = document.getElementById("cm-impediment-panel");
   if (!p) return;
-  var ids = Array.prototype.slice.call(p.querySelectorAll(".cm-imp-pick.is-on")).map(function(b){ return b.dataset.uid; });
+  var ids = Array.prototype.slice.call(p.querySelectorAll(".cm-imp-tile.is-on")).map(function(b){ return b.dataset.uid; });
   if (!ids.length){ alert("Escolha ao menos uma pessoa responsável pelo impedimento."); return; }
   var body = new URLSearchParams();
   ids.forEach(function(id){ body.append("responsibles", id); });
