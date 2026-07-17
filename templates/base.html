@@ -72,7 +72,7 @@
 
   <!-- CSS Global -->
   <link rel="stylesheet" href="{% static 'boards/base.css' %}?v=20260617-inter">
-  <link rel="stylesheet" href="{% static 'boards/modal.css' %}?v=20260717-imped1">
+  <link rel="stylesheet" href="{% static 'boards/modal.css' %}?v=20260717-imped2">
   <link rel="stylesheet" href="{% static 'boards/modal_user.css' %}?v=20260523j">
   <link rel="stylesheet" href="{% static 'boards/camilinho.css' %}?v=20260524a">
   <link rel="stylesheet" href="{% static 'boards/nossotrello_drawer.css' %}?v=20260413">
@@ -155,7 +155,7 @@
 
   <!-- BOARD WEBSOCKET — realtime sync (Phase 1 pub/sub) -->
   <!-- Substitui o polling central. Fallback lento (5min) se WS cair. -->
-  <script defer src="{% static 'boards/modal/board.ws.js' %}?v=20260615-wsstable"></script>
+  <script defer src="{% static 'boards/modal/board.ws.js' %}?v=20260717-modalclose"></script>
 
   <!-- USER WEBSOCKET — canal pessoal (/ws/me/) -->
   <!-- Recebe chat, notificações, track-time, pills (Phase 3 pub/sub) -->

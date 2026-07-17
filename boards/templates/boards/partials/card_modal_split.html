@@ -589,21 +589,32 @@
        data-clear-url="{% url 'boards:clear_card_impediment' card.id %}">
     <div class="cm-imp-panel-head">
       Quem está travando este card?
-      <small>Escolha ao menos uma pessoa. Cada uma se libera clicando na própria foto.</small>
+      <small>Toque na pessoa para marcar. Cada uma se libera clicando na própria foto.</small>
     </div>
-    <div class="cm-imp-members">
+
+    {# selecionados: sobem pro topo com foto grande #}
+    <div class="cm-imp-selected" id="cm-imp-selected" data-empty="Ninguém selecionado ainda"></div>
+
+    {# todos os participantes: clique pra alternar #}
+    <div class="cm-imp-picker" id="cm-imp-picker">
       {% for m in impediment_members %}
-        <label class="cm-imp-member{% if m.is_responsible %} is-on{% endif %}">
-          <input type="checkbox" name="responsibles" value="{{ m.id }}" {% if m.is_responsible %}checked{% endif %}>
-          {% if m.avatar_url %}
-            <img src="{{ m.avatar_url }}" alt="{{ m.name }}" class="cm-imp-member-av">
-          {% else %}
-            <span class="cm-imp-member-av cm-imp-member-av--i">{{ m.name|slice:":1"|upper }}</span>
-          {% endif %}
-          <span class="cm-imp-member-name">{{ m.name }}</span>
-        </label>
+        <button type="button"
+                class="cm-imp-pick{% if m.is_responsible %} is-on{% endif %}"
+                data-uid="{{ m.id }}"
+                data-name="{{ m.name }}"
+                data-avatar="{{ m.avatar_url }}"
+                data-initial="{{ m.name|slice:':1'|upper }}"
+                aria-pressed="{% if m.is_responsible %}true{% else %}false{% endif %}"
+                onclick="window.cmToggleImpPick && window.cmToggleImpPick(this);">
+          <span class="cm-imp-pick-av">
+            {% if m.avatar_url %}<img src="{{ m.avatar_url }}" alt="">{% else %}{{ m.name|slice:":1"|upper }}{% endif %}
+          </span>
+          <span class="cm-imp-pick-name">{{ m.name }}</span>
+          <span class="cm-imp-pick-check" aria-hidden="true">✓</span>
+        </button>
       {% endfor %}
     </div>
+
     <div class="cm-imp-panel-actions">
       <button type="button" class="cm-imp-cancel" onclick="window.cmCloseImpediment && window.cmCloseImpediment();">Cancelar</button>
       <button type="button" class="cm-imp-save" onclick="window.cmSaveImpediment && window.cmSaveImpediment();">Marcar impedimento</button>

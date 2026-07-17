@@ -3140,27 +3140,81 @@ html.dark #modal #modal-breadcrumb{
   background:rgba(239,68,68,.06);
 }
 #cm-root .cm-imp-panel.is-hidden{ display:none; }
-#cm-root .cm-imp-panel-head{ font-weight:700; margin-bottom:8px; }
+#cm-root .cm-imp-panel-head{ font-weight:700; margin-bottom:10px; }
 #cm-root .cm-imp-panel-head small{ display:block; font-weight:400; opacity:.75; margin-top:2px; }
-#cm-root .cm-imp-members{ display:flex; flex-direction:column; gap:6px; max-height:220px; overflow-y:auto; }
-#cm-root .cm-imp-member{
-  display:flex; align-items:center; gap:8px;
-  padding:6px 8px; border-radius:8px; cursor:pointer;
-  border:1px solid transparent;
+
+/* ── Selecionados (topo, foto grande estilo perfil) ── */
+#cm-root .cm-imp-selected{
+  display:flex; flex-wrap:wrap; gap:16px;
+  min-height:96px;
+  align-items:center; justify-content:flex-start;
+  padding:14px; margin-bottom:12px;
+  border-radius:12px;
+  background:rgba(239,68,68,.08);
+  border:1px dashed rgba(239,68,68,.45);
 }
-#cm-root .cm-imp-member:hover{ background:rgba(0,0,0,.04); }
-#cm-root .cm-imp-member.is-on{ border-color:rgba(239,68,68,.5); background:rgba(239,68,68,.08); }
-#cm-root .cm-imp-member-av{
-  width:30px; height:30px; border-radius:999px; object-fit:cover;
+#cm-root .cm-imp-selected:empty::before,
+#cm-root .cm-imp-selected.is-empty::before{
+  content: attr(data-empty);
+  opacity:.6; font-size:.9rem; margin:auto;
+}
+#cm-root .cm-imp-chip{
+  display:flex; flex-direction:column; align-items:center; gap:6px;
+  width:84px; text-align:center;
+}
+#cm-root .cm-imp-chip-av{
+  position:relative;
+  width:64px; height:64px; border-radius:999px; object-fit:cover;
   background:#334155; color:#fff; display:inline-flex; align-items:center;
-  justify-content:center; font-weight:700; font-size:13px; flex-shrink:0;
+  justify-content:center; font-weight:800; font-size:24px;
+  outline:3px solid #ef4444; outline-offset:2px;
 }
-#cm-root .cm-imp-member-name{ font-size:.9rem; }
-#cm-root .cm-imp-panel-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:10px; }
+#cm-root .cm-imp-chip-name{
+  font-size:12px; line-height:1.15; max-width:84px;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+/* X para remover do topo */
+#cm-root .cm-imp-chip-x{
+  position:absolute; top:-4px; right:-4px;
+  width:22px; height:22px; border-radius:999px;
+  background:#ef4444; color:#fff; border:2px solid var(--cm-surface,#fff);
+  display:flex; align-items:center; justify-content:center;
+  font-size:13px; line-height:1; cursor:pointer;
+}
+
+/* ── Lista de todos (clique pra alternar) ── */
+#cm-root .cm-imp-picker{
+  display:flex; flex-direction:column; gap:6px;
+  max-height:240px; overflow-y:auto;
+}
+#cm-root .cm-imp-pick{
+  display:flex; align-items:center; gap:10px;
+  padding:8px 10px; border-radius:10px; cursor:pointer;
+  border:1px solid rgba(127,127,127,.18);
+  background:transparent; width:100%; text-align:left;
+}
+#cm-root .cm-imp-pick:hover{ background:rgba(127,127,127,.10); }
+#cm-root .cm-imp-pick.is-on{ border-color:rgba(239,68,68,.55); background:rgba(239,68,68,.10); }
+#cm-root .cm-imp-pick-av{
+  width:34px; height:34px; border-radius:999px; overflow:hidden;
+  background:#334155; color:#fff; display:inline-flex; align-items:center;
+  justify-content:center; font-weight:700; font-size:14px; flex-shrink:0;
+}
+#cm-root .cm-imp-pick-av img{ width:100%; height:100%; object-fit:cover; }
+#cm-root .cm-imp-pick-name{ flex:1; font-size:.95rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#cm-root .cm-imp-pick-check{
+  width:22px; height:22px; border-radius:999px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  background:#ef4444; color:#fff; font-size:13px;
+  opacity:0; transform:scale(.6); transition:opacity .12s, transform .12s;
+}
+#cm-root .cm-imp-pick.is-on .cm-imp-pick-check{ opacity:1; transform:scale(1); }
+
+#cm-root .cm-imp-panel-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:12px; }
 #cm-root .cm-imp-cancel, #cm-root .cm-imp-save{
-  border-radius:8px; padding:6px 14px; font-weight:600; cursor:pointer; border:1px solid transparent;
+  border-radius:8px; padding:8px 16px; font-weight:600; cursor:pointer; border:1px solid transparent;
 }
-#cm-root .cm-imp-cancel{ background:transparent; border-color:rgba(0,0,0,.15); }
+#cm-root .cm-imp-cancel{ background:transparent; border-color:rgba(127,127,127,.3); }
 #cm-root .cm-imp-save{ background:#ef4444; color:#fff; }
 #cm-root .cm-imp-save:hover{ background:#dc2626; }
 

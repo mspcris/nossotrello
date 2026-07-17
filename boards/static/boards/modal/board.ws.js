@@ -364,6 +364,15 @@
 
   document.addEventListener("DOMContentLoaded", boot);
 
+  // Ao FECHAR o modal, o board pega o que mudou enquanto ele estava aberto.
+  // applyBoardInvalidation ignora eventos com modal aberto (linha ~89), então
+  // uma mudança feita dentro do modal (ex.: marcar impedimento) só aparecia no
+  // F5. Aqui forçamos o catch-up assim que o modal sai. Pequeno atraso para o
+  // Modal.state.isOpen já ter virado false.
+  document.addEventListener("modal:closed", () => {
+    setTimeout(() => applyBoardInvalidation(0), 60);
+  });
+
   // Quando aba volta a ficar visível: se WS caiu, força reconnect imediato
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) return;
