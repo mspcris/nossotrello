@@ -1138,6 +1138,87 @@ def tracktime_closed_today_json(request):
     return JsonResponse({"ts": now.isoformat(), "items": items})
 
 
+@login_required
+def tracktime_today_totals_json(request):
+    """Total de minutos trabalhados HOJE por usuário (soma de todos os tracks).
+
+    Conta os concluídos hoje (minutes) + o tempo corrido dos que ainda rodam
+    (começados hoje). Só boards que o usuário pode ver.
+    """
+    from django.templatetags.static import static as static_url
+
+    now = timezone.now()
+    today = timezone.localdate()
+
+    board_ok = {}
+    def _can(bid):
+        if bid not in board_ok:
+            b = Board.objects.filter(id=bid).first()
+            board_ok[bid] = bool(b and _can_view_board(request.user, b))
+        return board_ok[bid]
+
+    totals = {}   # user_id -> minutos
+    users = {}    # user_id -> User
+
+    # concluídos hoje: soma o minutes gravado
+    done = (
+        TimeEntry.objects
+        .filter(ended_at__date=today, board_id__isnull=False)
+        .select_related("user", "user__profile")
+    )
+    for e in done:
+        if not _can(e.board_id):
+            continue
+        totals[e.user_id] = totals.get(e.user_id, 0) + int(e.minutes or 0)
+        users[e.user_id] = e.user
+
+    # rodando (começados hoje): soma o tempo corrido até agora
+    running = (
+        TimeEntry.objects
+        .filter(ended_at__isnull=True, started_at__date=today, board_id__isnull=False)
+        .select_related("user", "user__profile")
+    )
+    for e in running:
+        if not _can(e.board_id) or not e.started_at:
+            continue
+        mins = max(0, int((now - e.started_at).total_seconds() // 60))
+        totals[e.user_id] = totals.get(e.user_id, 0) + mins
+        users[e.user_id] = e.user
+
+    items = []
+    for uid, mins in totals.items():
+        u = users.get(uid)
+        if not u:
+            continue
+        prof = getattr(u, "profile", None)
+        name = ""
+        if prof and getattr(prof, "display_name", ""):
+            name = (prof.display_name or "").strip()
+        if not name:
+            name = (getattr(u, "get_full_name", lambda: "")() or "").strip()
+        if not name:
+            name = (getattr(u, "email", "") or "Usuário").strip()
+
+        avatar = ""
+        if prof:
+            av = getattr(prof, "avatar", None)
+            if av and getattr(av, "url", None):
+                avatar = av.url
+            elif getattr(prof, "avatar_choice", ""):
+                avatar = static_url(f"images/avatar/{prof.avatar_choice}")
+
+        items.append({
+            "user_id": uid,
+            "user": name,
+            "user_handle": (getattr(prof, "handle", "") or "").strip() if prof else "",
+            "user_avatar_url": avatar,
+            "minutes": int(mins),
+        })
+
+    items.sort(key=lambda x: x["minutes"], reverse=True)
+    return JsonResponse({"ts": now.isoformat(), "items": items})
+
+
 def _fmt_min(m):
     """Format integer minutes as 'Xh Ym' string."""
     h, rem = divmod(int(m or 0), 60)

@@ -17,6 +17,14 @@
     <div class="tt-muted">Carregando...</div>
   </div>
 
+  {# ===== Totais hoje (minutos por usuário) ===== #}
+  <div id="tt-totals-section" class="tt-totals-section" hidden>
+    <div class="tt-sep">
+      <span class="tt-sep-label tt-sep-label--blue">Σ Totais hoje</span>
+    </div>
+    <div id="tt-totals-list" class="tt-totals-list"></div>
+  </div>
+
   {# ===== Encerrados hoje (track-time parado hoje) ===== #}
   <div id="tt-closed-section" class="tt-closed-section" hidden>
     <div class="tt-sep">
@@ -200,6 +208,32 @@
   .tt-sep-label {
     font-weight: 900; font-size: 13px; letter-spacing:.3px;
     color: #34d399; white-space: nowrap;
+  }
+  .tt-sep-label--blue { color:#60a5fa; }
+
+  /* ===== Totais hoje ===== */
+  .tt-totals-section { margin-top: 28px; }
+  .tt-totals-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 8px;
+  }
+  .tt-total-row {
+    display:flex; align-items:center; gap:10px;
+    border: 1px solid rgba(255,255,255,.10);
+    border-radius: 12px; padding: 8px 12px;
+    background: rgba(96,165,250,.06);
+  }
+  .tt-total-row .tt-avatar-img, .tt-total-row .tt-user-dot {
+    width: 34px; height: 34px; font-size: 14px;
+  }
+  .tt-total-name {
+    flex:1; min-width:0; font-weight:700; font-size:14px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .tt-total-min {
+    font-weight: 950; font-size: 15px; white-space:nowrap;
+    font-variant-numeric: tabular-nums; color:#60a5fa;
   }
   .tt-closed-list {
     display: grid;
@@ -454,6 +488,44 @@
     } catch (_) { return null; }
   }
 
+  async function fetchTotals() {
+    try {
+      const res = await fetch("{% url 'tracktime:today_totals_json' %}", {
+        method: "GET", credentials: "same-origin",
+        headers: { "Accept": "application/json", "X-Requested-With": "XMLHttpRequest" },
+        cache: "no-store",
+      });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (_) { return null; }
+  }
+
+  function totalRowHTML(it) {
+    const user = esc(it.user);
+    const initial = user ? esc(user[0].toUpperCase()) : "U";
+    const avatar = esc(it.user_avatar_url || "");
+    const avatarNode = avatar
+      ? `<img class="tt-avatar-img" src="${avatar}" alt="" />`
+      : `<div class="tt-user-dot">${initial}</div>`;
+    return `
+      <div class="tt-total-row">
+        ${avatarNode}
+        <div class="tt-total-name">${user}</div>
+        <div class="tt-total-min">${fmtDuration(it.minutes)}</div>
+      </div>
+    `;
+  }
+
+  function renderTotals(data) {
+    const section = document.getElementById("tt-totals-section");
+    const list = document.getElementById("tt-totals-list");
+    if (!section || !list) return;
+    const items = (data && data.items) || [];
+    if (!items.length) { section.hidden = true; return; }
+    section.hidden = false;
+    list.innerHTML = items.map(totalRowHTML).join("");
+  }
+
   function renderClosed(data) {
     const section = document.getElementById("tt-closed-section");
     const list = document.getElementById("tt-closed-list");
@@ -471,6 +543,8 @@
     } catch (_) {
       // silencioso (MVP)
     }
+    const totals = await fetchTotals();
+    renderTotals(totals);
     const closed = await fetchClosed();
     renderClosed(closed);
   }
