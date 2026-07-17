@@ -40,6 +40,48 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-07 ---
+    "cb26fd7": (
+        "👑",
+        "Ninguém mais te faz dono de um quadro sem avisar",
+        "Antes, se alguém transferisse a titularidade de um quadro pra você, o "
+        "quadro simplesmente mudava de mãos — você só descobria por acaso. Agora "
+        "chega um convite no topo do quadro pra você aceitar ou recusar, e o "
+        "quadro só é seu depois do aceite. Enquanto você não responder, ele "
+        "continua com quem convidou. Recusou? Nada muda. Você também recebe "
+        "e-mail e WhatsApp avisando, e quem convidou pode cancelar enquanto você "
+        "não respondeu.",
+    ),
+    "b7fcaa4": (
+        "🌓",
+        "Escolheu o card escuro? Agora todos abrem escuro",
+        "O tema claro/escuro do card virou uma escolha sua, não do card. Antes "
+        "ele voltava pro claro sempre que a página recarregava, e parecia que "
+        "cada card tinha o seu. Agora você escolhe uma vez e vale pra todos os "
+        "cards, sempre — até se você entrar de outro computador.",
+    ),
+    "e63f8da": (
+        "↩️",
+        "Automação: devolver o card do DONE limpa a entrega",
+        "Nova ação de automação: \"Marcar como NÃO entregue\". Use quando o card "
+        "volta do DONE pra fila de tarefas — ela tira o \"Entregue\" e apaga a "
+        "data de entrega, que não valia mais. O aviso de prazo por cores, que a "
+        "entrega desliga, também volta a funcionar.",
+    ),
+    "a725892": (
+        "👍",
+        "O curtir do card voltou a funcionar em card pequeno",
+        "Em card curto (só o título, sem capa nem etiqueta), o botão de curtir "
+        "ficava escondido embaixo do menu ⋮ e não dava pra clicar. Ele mudou de "
+        "lugar: agora fica no rodapé do card, ao lado do menu, sempre visível e "
+        "clicável — em card de qualquer tamanho.",
+    ),
+    "79be0ae": (
+        "🔤",
+        "A descrição do card ficou maior e mais fácil de ler",
+        "A letra da descrição era bem menor que a do título sem motivo. Agora ela "
+        "tem o mesmo tamanho que o título tinha, e o título subiu um degrau — a "
+        "hierarquia ficou clara e a leitura, bem mais confortável.",
+    ),
     "87b88ff": (
         "🤝",
         "Compartilhe o quadro pelo @username",
