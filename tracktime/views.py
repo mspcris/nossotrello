@@ -992,6 +992,79 @@ def tracktime_live_json(request):
     return JsonResponse({"ts": now.isoformat(), "boards": boards})
 
 
+@login_required
+def tracktime_closed_today_json(request):
+    """Track-times ENCERRADOS hoje (ended_at = hoje), para a seção abaixo do Ao Vivo.
+
+    Lista plana (o front já achata). Traz o tempo TOTAL trabalhado (minutes) em vez
+    do cronômetro correndo. Só boards que o usuário pode ver; teto de 120 itens.
+    """
+    from django.templatetags.static import static as static_url
+    from django.urls import reverse
+
+    now = timezone.now()
+    today = timezone.localdate()
+
+    qs = (
+        TimeEntry.objects
+        .filter(ended_at__date=today, board_id__isnull=False, card_id__isnull=False)
+        .select_related("user", "user__profile")
+        .order_by("-ended_at")[:400]
+    )
+
+    board_ok = {}
+    items = []
+    for e in qs:
+        bid = e.board_id
+        if bid not in board_ok:
+            b = Board.objects.filter(id=bid).first()
+            board_ok[bid] = b if (b and _can_view_board(request.user, b)) else None
+        board = board_ok.get(bid)
+        if not board:
+            continue
+
+        profile = getattr(e.user, "profile", None)
+        user_display = ""
+        if profile and getattr(profile, "display_name", ""):
+            user_display = (profile.display_name or "").strip()
+        if not user_display:
+            user_display = (getattr(e.user, "get_full_name", lambda: "")() or "").strip()
+        if not user_display:
+            user_display = (getattr(e.user, "email", "") or "Usuário").strip()
+
+        user_handle = (getattr(profile, "handle", "") or "").strip() if profile else ""
+
+        user_avatar_url = ""
+        if profile:
+            av = getattr(profile, "avatar", None)
+            if av and getattr(av, "url", None):
+                user_avatar_url = av.url
+            elif getattr(profile, "avatar_choice", ""):
+                user_avatar_url = static_url(f"images/avatar/{profile.avatar_choice}")
+
+        board_url = reverse("boards:board_detail", kwargs={"board_id": board.id})
+        card_url = f"{board_url}?card={e.card_id}" if e.card_id else ""
+
+        items.append({
+            "entry_id": e.id,
+            "card_id": e.card_id,
+            "card_title": e.card_title_cache or "(sem título)",
+            "card_url": card_url,
+            "board_name": board.name,
+            "user": user_display,
+            "user_handle": user_handle,
+            "user_avatar_url": user_avatar_url,
+            "minutes": int(e.minutes or 0),
+            "started_at": e.started_at.isoformat() if e.started_at else None,
+            "ended_at": e.ended_at.isoformat() if e.ended_at else None,
+        })
+
+        if len(items) >= 120:
+            break
+
+    return JsonResponse({"ts": now.isoformat(), "items": items})
+
+
 def _fmt_min(m):
     """Format integer minutes as 'Xh Ym' string."""
     h, rem = divmod(int(m or 0), 60)

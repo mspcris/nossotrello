@@ -16,6 +16,14 @@
   <div id="tt-live-list" class="tt-live-list">
     <div class="tt-muted">Carregando...</div>
   </div>
+
+  {# ===== Encerrados hoje (track-time parado hoje) ===== #}
+  <div id="tt-closed-section" class="tt-closed-section" hidden>
+    <div class="tt-sep">
+      <span class="tt-sep-label">✔ Encerrados hoje</span>
+    </div>
+    <div id="tt-closed-list" class="tt-closed-list"></div>
+  </div>
 </div>
 
 <style>
@@ -78,20 +86,23 @@
   .tt-left { min-width:0; }
 
   .tt-user {
-    display:flex; align-items:center; gap:8px; min-width:0;
+    display:flex; align-items:center; gap:10px; min-width:0;
   }
-  .tt-user-dot {
-    width: 22px; height: 22px; border-radius: 999px;
+  .tt-user-dot, .tt-avatar-img {
+    width: 44px; height: 44px; border-radius: 999px;
     background: rgba(255,255,255,.14);
     display:flex; align-items:center; justify-content:center;
-    font-size: 12px; font-weight: 900;
+    font-size: 18px; font-weight: 900;
     flex: 0 0 auto;
+    object-fit: cover;
   }
   .tt-user-name {
     font-weight: 800;
+    font-size: 15px;
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
     max-width: 100%;
   }
+  .tt-handle { font-size: 12px; line-height: 1.1; }
 
   .tt-times {
     text-align:right;
@@ -100,11 +111,11 @@
   }
   .tt-times .tt-mmss {
     font-weight: 950;
-    font-size: 14px;
+    font-size: 20px;
   }
   .tt-times .tt-start {
     opacity:.75;
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .tt-meta {
@@ -112,12 +123,13 @@
     min-width:0;
   }
   .tt-board {
-    font-size: 12px;
+    font-size: 13px;
     opacity: .85;
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   }
   .tt-title a, .tt-title span {
     font-weight: 900;
+    font-size: 15px;
     text-decoration: none;
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
     display:block;
@@ -125,7 +137,7 @@
 
   .tt-badges {
     display:flex; align-items:center; gap:8px; flex-wrap: wrap;
-    font-size: 12px;
+    font-size: 13px;
   }
   .tt-badge {
     display:inline-flex; align-items:center; gap:6px;
@@ -154,8 +166,8 @@
   .tt-desc-text {
     margin-top: 8px;
     opacity:.9;
-    font-size: 12px;
-    line-height: 1.35;
+    font-size: 13px;
+    line-height: 1.4;
     display: -webkit-box;
     -webkit-line-clamp: 6; /* preview */
     -webkit-box-orient: vertical;
@@ -173,6 +185,52 @@
     border: 1px dashed rgba(255,255,255,.14);
     border-radius: 12px;
     opacity: .8;
+  }
+
+  /* ===== Encerrados hoje ===== */
+  .tt-closed-section { margin-top: 28px; }
+  .tt-sep {
+    display:flex; align-items:center; gap:12px;
+    margin: 0 0 14px 0;
+  }
+  .tt-sep::before, .tt-sep::after {
+    content:""; height:1px; flex:1;
+    background: linear-gradient(to right, transparent, rgba(255,255,255,.22), transparent);
+  }
+  .tt-sep-label {
+    font-weight: 900; font-size: 13px; letter-spacing:.3px;
+    color: #34d399; white-space: nowrap;
+  }
+  .tt-closed-list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+  @media (max-width: 1000px){ .tt-closed-list { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+  @media (max-width: 620px){ .tt-closed-list { grid-template-columns: 1fr; } }
+  .tt-closed-card {
+    display:flex; align-items:center; gap:10px;
+    border: 1px solid rgba(255,255,255,.10);
+    border-radius: 12px;
+    padding: 10px 12px;
+    background: rgba(52,211,153,.06);
+  }
+  .tt-closed-card .tt-avatar-img, .tt-closed-card .tt-user-dot {
+    width: 36px; height: 36px; font-size: 15px;
+  }
+  .tt-closed-main { min-width:0; flex:1; }
+  .tt-closed-title {
+    font-weight: 800; font-size: 14px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .tt-closed-title a { text-decoration:none; color: inherit; }
+  .tt-closed-sub {
+    font-size: 12px; opacity:.8;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .tt-closed-time {
+    font-weight: 950; font-size: 15px; white-space:nowrap;
+    font-variant-numeric: tabular-nums; color:#34d399;
   }
 </style>
 
@@ -284,11 +342,11 @@
   const initial = user ? esc(user[0].toUpperCase()) : "U";
 
   const avatarNode = avatar
-    ? `<img src="${avatar}" alt="" style="width:22px;height:22px;border-radius:999px;object-fit:cover;" />`
+    ? `<img class="tt-avatar-img" src="${avatar}" alt="" />`
     : `<div class="tt-user-dot">${initial}</div>`;
 
   const handleNode = handle
-    ? `<div class="tt-muted" style="font-size:11px; line-height:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">@${handle}</div>`
+    ? `<div class="tt-muted tt-handle" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">@${handle}</div>`
     : ``;
 
   return `
@@ -354,6 +412,58 @@
     root.innerHTML = `<div class="tt-grid">${items.map(cardHTML).join("")}</div>`;
   }
 
+  function fmtDuration(minutes) {
+    const m = Math.max(0, Number(minutes || 0));
+    const h = Math.floor(m / 60);
+    const mm = m % 60;
+    return h > 0 ? `${h}h${pad2(mm)}` : `${mm}min`;
+  }
+
+  function closedCardHTML(it) {
+    const user = esc(it.user);
+    const initial = user ? esc(user[0].toUpperCase()) : "U";
+    const avatar = esc(it.user_avatar_url || "");
+    const avatarNode = avatar
+      ? `<img class="tt-avatar-img" src="${avatar}" alt="" />`
+      : `<div class="tt-user-dot">${initial}</div>`;
+    const title = esc(it.card_title || "(sem título)");
+    const url = it.card_url ? esc(it.card_url) : "";
+    const titleNode = url ? `<a href="${url}" target="_blank" rel="noopener">${title}</a>` : title;
+    const board = esc(it.board_name || "");
+    return `
+      <div class="tt-closed-card">
+        ${avatarNode}
+        <div class="tt-closed-main">
+          <div class="tt-closed-title">${titleNode}</div>
+          <div class="tt-closed-sub">${user}${board ? " · 📋 " + board : ""}</div>
+        </div>
+        <div class="tt-closed-time">${fmtDuration(it.minutes)}</div>
+      </div>
+    `;
+  }
+
+  async function fetchClosed() {
+    try {
+      const res = await fetch("{% url 'tracktime:closed_today_json' %}", {
+        method: "GET", credentials: "same-origin",
+        headers: { "Accept": "application/json", "X-Requested-With": "XMLHttpRequest" },
+        cache: "no-store",
+      });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (_) { return null; }
+  }
+
+  function renderClosed(data) {
+    const section = document.getElementById("tt-closed-section");
+    const list = document.getElementById("tt-closed-list");
+    if (!section || !list) return;
+    const items = (data && data.items) || [];
+    if (!items.length) { section.hidden = true; return; }
+    section.hidden = false;
+    list.innerHTML = items.map(closedCardHTML).join("");
+  }
+
   async function refresh() {
     try {
       const data = await fetchLive();
@@ -361,6 +471,8 @@
     } catch (_) {
       // silencioso (MVP)
     }
+    const closed = await fetchClosed();
+    renderClosed(closed);
   }
 
   // API pública
