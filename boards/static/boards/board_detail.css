@@ -1500,33 +1500,35 @@ li[data-card-id][data-term-status="ok"] .term-badge{ color: #16a34a; }
 /* ============================================================
    [IMPEDIMENTO] Fotos grandes dos responsáveis, pulso vermelho
    ============================================================ */
+/* Compacto: uma faixa fina com fotos pequenas em linha (a tarja da capa já
+   grita "IMPEDIDO"; aqui é só quem trava). */
 .card-impediment{
-  margin: 0 0 10px 0;
-  padding: 10px;
-  border-radius: 10px;
+  margin: 0 0 8px 0;
+  padding: 6px 8px;
+  border-radius: 8px;
   background: rgba(239,68,68,.12);
   border: 1px solid rgba(239,68,68,.45);
 }
 .card-imp-head{
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: .02em;
   color: #ef4444;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   text-transform: uppercase;
 }
 .card-imp-people{
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 6px 8px;
 }
 .card-imp-person{
   position: relative;
-  display: flex;
-  flex-direction: column;
+  display: inline-flex;
+  flex-direction: row;
   align-items: center;
-  gap: 4px;
-  width: 64px;
+  gap: 5px;
+  width: auto;
   background: none;
   border: none;
   padding: 0;
@@ -1534,8 +1536,8 @@ li[data-card-id][data-term-status="ok"] .term-badge{ color: #16a34a; }
 }
 .card-imp-person.is-me{ cursor: pointer; }
 .card-imp-avatar{
-  width: 52px;
-  height: 52px;
+  width: 28px;
+  height: 28px;
   border-radius: 999px;
   object-fit: cover;
   background: #334155;
@@ -1543,26 +1545,27 @@ li[data-card-id][data-term-status="ok"] .term-badge{ color: #16a34a; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  font-size: 13px;
   font-weight: 700;
+  flex: 0 0 auto;
   /* anel vermelho que pulsa a intensidade */
-  outline: 3px solid #ef4444;
-  outline-offset: 2px;
+  outline: 2px solid #ef4444;
+  outline-offset: 1px;
   animation: card-imp-pulse 1.6s ease-in-out infinite;
 }
 .card-imp-person.is-me .card-imp-avatar{ outline-color: #f97316; }
 .card-imp-person.is-me:hover .card-imp-avatar{ filter: brightness(1.08); }
 @keyframes card-imp-pulse{
   0%, 100%{ outline-color: rgba(239,68,68,1); box-shadow: 0 0 0 0 rgba(239,68,68,.5); }
-  50%     { outline-color: rgba(239,68,68,.35); box-shadow: 0 0 0 6px rgba(239,68,68,0); }
+  50%     { outline-color: rgba(239,68,68,.35); box-shadow: 0 0 0 5px rgba(239,68,68,0); }
 }
 /* bolinha vermelha no canto da foto */
 .card-imp-dot{
   position: absolute;
-  top: 0;
-  right: 8px;
-  width: 14px;
-  height: 14px;
+  top: -1px;
+  left: 20px;
+  width: 10px;
+  height: 10px;
   border-radius: 999px;
   background: #ef4444;
   border: 2px solid #fff;
@@ -1576,9 +1579,8 @@ li[data-card-id][data-term-status="ok"] .term-badge{ color: #16a34a; }
   font-size: 11px;
   font-weight: 600;
   color: #1f2937;
-  text-align: center;
   line-height: 1.15;
-  max-width: 64px;
+  max-width: 120px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
