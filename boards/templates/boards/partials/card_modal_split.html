@@ -634,15 +634,15 @@
       {% for m in impediment_members %}
         {% if m.is_responsible %}
           <button type="button"
-                  class="cm-imp-b-person{% if m.id == user.id %} is-me{% endif %}"
-                  title="{{ m.name }}{% if m.id == user.id %} — clique para se liberar{% endif %}"
-                  {% if m.id == user.id %}onclick="window.cmClearImpediment && window.cmClearImpediment({{ m.id }}, this);"{% endif %}>
+                  class="cm-imp-b-person{% if m.id == user.id or viewer_is_owner %} is-me{% endif %}"
+                  title="{{ m.name }}{% if m.id == user.id %} — clique para se liberar{% elif viewer_is_owner %} — clique para remover a pendência{% endif %}"
+                  {% if m.id == user.id or viewer_is_owner %}onclick="window.cmClearImpediment && window.cmClearImpediment({{ m.id }}, this);"{% endif %}>
             <span class="cm-imp-b-av">
               {% if m.avatar_url %}<img src="{{ m.avatar_url }}" alt="">{% else %}{{ m.name|slice:":1"|upper }}{% endif %}
               <span class="cm-imp-b-dot" aria-hidden="true"></span>
             </span>
             <span class="cm-imp-b-name">{{ m.name }}</span>
-            {% if m.id == user.id %}<span class="cm-imp-b-hint">clique para se liberar</span>{% endif %}
+            {% if m.id == user.id %}<span class="cm-imp-b-hint">clique para se liberar</span>{% elif viewer_is_owner %}<span class="cm-imp-b-hint">clique para remover</span>{% endif %}
           </button>
         {% endif %}
       {% endfor %}

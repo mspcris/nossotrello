@@ -807,8 +807,12 @@ def board_detail(request, board_id):
     # ============================================================
     try:
         from .helpers import build_impediment_previews
+        from .cards_state import _is_board_owner
         all_cards = [c for col in columns for c in col.cards.all()]
-        imp_previews = build_impediment_previews(all_cards, request_user_id=request.user.id)
+        imp_previews = build_impediment_previews(
+            all_cards, request_user_id=request.user.id,
+            user_is_owner=_is_board_owner(request.user, board),
+        )
         for c in all_cards:
             c.unread_count = int(unread_by_card.get(c.id, 0) or 0)
             c.is_following = (c.id in followed_ids)
@@ -2219,8 +2223,12 @@ def board_poll(request, board_id):
     # ============================================================
     try:
         from .helpers import build_impediment_previews
+        from .cards_state import _is_board_owner
         all_cards = [c for col in columns for c in col.cards.all()]
-        imp_previews = build_impediment_previews(all_cards, request_user_id=request.user.id)
+        imp_previews = build_impediment_previews(
+            all_cards, request_user_id=request.user.id,
+            user_is_owner=_is_board_owner(request.user, board),
+        )
         for c in all_cards:
             c.unread_count = int(unread_by_card.get(c.id, 0) or 0)
             c.is_following = (c.id in followed_ids)

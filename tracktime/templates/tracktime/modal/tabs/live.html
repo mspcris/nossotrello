@@ -464,8 +464,16 @@
     const url = it.card_url ? esc(it.card_url) : "";
     const titleNode = url ? `<a href="${url}" target="_blank" rel="noopener">${title}</a>` : title;
     const board = esc(it.board_name || "");
+    // item 26: hover mostra mais dados (título inteiro, quem, board, tempo, horários)
+    const s = formatStart(it.started_at), e = formatStart(it.ended_at);
+    const tip = esc([
+      (it.card_title || "(sem título)"),
+      user + (it.board_name ? " · " + it.board_name : ""),
+      "Trabalhado: " + fmtDuration(it.minutes),
+      (s && e) ? ("Início " + s + " → fim " + e) : ""
+    ].filter(Boolean).join("\n"));
     return `
-      <div class="tt-closed-card">
+      <div class="tt-closed-card" title="${tip}">
         ${avatarNode}
         <div class="tt-closed-main">
           <div class="tt-closed-title">${titleNode}</div>
@@ -507,8 +515,9 @@
     const avatarNode = avatar
       ? `<img class="tt-avatar-img" src="${avatar}" alt="" />`
       : `<div class="tt-user-dot">${initial}</div>`;
+    const tip = esc(user + "\nTotal trabalhado hoje: " + fmtDuration(it.minutes));
     return `
-      <div class="tt-total-row">
+      <div class="tt-total-row" title="${tip}">
         ${avatarNode}
         <div class="tt-total-name">${user}</div>
         <div class="tt-total-min">${fmtDuration(it.minutes)}</div>

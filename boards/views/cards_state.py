@@ -294,6 +294,7 @@ def set_card_impediment(request, card_id: int):
         return HttpResponseBadRequest("Só participantes do quadro podem ser responsáveis.")
 
     created_names = []
+    created_users = []
     for uid in valid_ids:
         obj, created = CardImpediment.objects.get_or_create(
             card_id=card.id,
@@ -303,6 +304,7 @@ def set_card_impediment(request, card_id: int):
         )
         if created:
             created_names.append(_person_display_name(obj.user))
+            created_users.append(obj.user)
 
     if not card.is_impeded:
         card.is_impeded = True
@@ -314,6 +316,38 @@ def set_card_impediment(request, card_id: int):
             card, request,
             f"<p>Card marcado como <strong>impedido</strong> — aguardando: <strong>{nomes}</strong>.</p>",
         )
+
+    # item 30: avisa quem foi marcado (zap+email, por preferência do usuário).
+    # Best-effort: falha de notificação não pode derrubar a marcação.
+    if created_users:
+        try:
+            from boards.services.notifications import (
+                build_card_snapshot,
+                format_card_message,
+                notify_users_for_card,
+            )
+            snap = build_card_snapshot(card=card)
+            msg = format_card_message(
+                title_prefix="🚧 Você é responsável por um impedimento",
+                snap=snap,
+                extra_lines=[
+                    f"Marcado por {_person_display_name(request.user)}.",
+                    "O card depende de você. Assim que resolver, clique na sua foto "
+                    "no card para liberá-lo.",
+                ],
+            )
+            notify_users_for_card(
+                card=card,
+                recipients=created_users,
+                subject=f"Impedimento — {snap.title}",
+                message=msg,
+                snap=snap,
+                include_link_as_second_whatsapp_message=True,
+                exclude_actor=True,  # não notifica quem marcou (se marcou a si mesmo)
+                actor=request.user,
+            )
+        except Exception:
+            pass
 
     _bump_board_version(board)
     is_impeded, ids = _impediment_state(card)

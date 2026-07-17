@@ -1280,6 +1280,13 @@ def card_move_suggestions(request, card_id):
 def _render_card_modal(request, card, context=None):
     ctx = context or _card_modal_context(card)
 
+    # dono do quadro pode liberar a pendência de qualquer responsável (item 29)
+    try:
+        from .cards_state import _is_board_owner
+        ctx["viewer_is_owner"] = _is_board_owner(request.user, card.column.board)
+    except Exception:
+        ctx["viewer_is_owner"] = False
+
     # ------------------------------------------------
     # Preferência do usuário para filtro de atividade
     # ------------------------------------------------

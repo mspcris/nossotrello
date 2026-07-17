@@ -201,13 +201,12 @@ def _person_display_name(user) -> str:
     )
 
 
-def build_impediment_previews(cards, request_user_id=None):
-    """{card_id: [ {id, name, avatar_url, is_me}, ... ]} para os cards dados.
+def build_impediment_previews(cards, request_user_id=None, user_is_owner=False):
+    """{card_id: [ {id, name, avatar_url, is_me, can_manage}, ... ]} para os cards.
 
-    is_me marca a pendência do próprio usuário — só ele pode remover a dele
-    clicando na própria foto no board. Uma query só (evita N+1). Usada no
-    board_detail e no board_poll — fonte única, para o render inicial e o
-    re-render via WS não divergirem.
+    is_me marca a pendência do próprio usuário. can_manage = is_me OU o usuário é
+    dono do quadro (item 29: dono libera a pendência de qualquer um). Uma query só
+    (evita N+1). Usada no board_detail e no board_poll — fonte única.
     """
     from boards.models import CardImpediment
 
@@ -222,12 +221,14 @@ def build_impediment_previews(cards, request_user_id=None):
         .order_by("created_at")
     )
     for imp in qs:
+        is_me = imp.user_id == request_user_id
         out.setdefault(imp.card_id, []).append(
             {
                 "id": imp.user_id,
                 "name": _person_display_name(imp.user),
                 "avatar_url": avatar_url_for(imp.user),
-                "is_me": imp.user_id == request_user_id,
+                "is_me": is_me,
+                "can_manage": is_me or bool(user_is_owner),
             }
         )
     return out
