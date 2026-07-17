@@ -53,6 +53,10 @@ urlpatterns = [
     # Tabs (HTML)
     path("tabs/online/", views.tracktime_tab_online, name="tab_online"),
 
+    # Limites de track-time (admin)
+    path("tabs/limits/", views.tracktime_tab_limits, name="tab_limits"),
+    path("limits/set/", views.tracktime_set_user_limit, name="set_user_limit"),
+
     
 
 

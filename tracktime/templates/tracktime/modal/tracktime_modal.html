@@ -76,6 +76,19 @@
   On-Line - Sem track-time
 </button>
 
+{% if user.is_superuser or user.is_staff or user.email == "cristiano@camim.com.br" %}
+    <button
+  type="button"
+  class="tt-tab tt-btn"
+  data-tt-tab="limits"
+  hx-get="{% url 'tracktime:tab_limits' %}"
+  hx-target="#tt-tab-body"
+  hx-swap="innerHTML"
+>
+  ⏱ Limites
+</button>
+{% endif %}
+
 
     
   </div>

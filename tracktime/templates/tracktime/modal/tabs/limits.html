@@ -1,0 +1,132 @@
+{# tracktime/modal/tabs/limits.html — admin: limite de auto-encerramento por usuário #}
+<div id="tt-limits-tab" class="tt-limits">
+  <div class="tt-limits-head">
+    <div>
+      <div class="tt-limits-title">⏱ Limites de track-time</div>
+      <div class="tt-limits-sub">
+        Tempo que cada pessoa tem antes do track-time pedir confirmação e encerrar sozinho.
+        Padrão do sistema: <strong>{{ system_default }} min</strong> — quem fica em 0 usa o padrão.
+      </div>
+    </div>
+    <input type="search" id="tt-limits-search" class="tt-limits-search" placeholder="Buscar pessoa…">
+  </div>
+
+  <div id="tt-limits-msg" class="tt-limits-msg" hidden></div>
+
+  <div class="tt-limits-list">
+    {% for r in rows %}
+      <div class="tt-limit-row" data-name="{{ r.name|lower }} {{ r.handle|lower }} {{ r.email|lower }}">
+        <div class="tt-limit-person">
+          <div class="tt-limit-name">{{ r.name }}</div>
+          <div class="tt-limit-meta">{% if r.handle %}@{{ r.handle }}{% else %}{{ r.email }}{% endif %}</div>
+        </div>
+
+        <div class="tt-limit-edit">
+          <input type="number" min="0" max="1440" step="5"
+                 class="tt-limit-input" value="{{ r.limit }}"
+                 data-user-id="{{ r.user_id }}"
+                 data-default="{{ system_default }}"
+                 aria-label="Limite em minutos para {{ r.name }}">
+          <span class="tt-limit-unit">min</span>
+          <span class="tt-limit-eff" data-eff-for="{{ r.user_id }}">
+            = {{ r.effective }} min
+          </span>
+        </div>
+      </div>
+    {% empty %}
+      <div class="tt-limits-empty">Nenhum usuário encontrado.</div>
+    {% endfor %}
+  </div>
+</div>
+
+<style>
+  .tt-limits-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:14px; flex-wrap:wrap; }
+  .tt-limits-title{ font-weight:900; font-size:16px; }
+  .tt-limits-sub{ font-size:12px; opacity:.8; margin-top:4px; max-width:560px; line-height:1.4; }
+  .tt-limits-search{
+    border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.06);
+    color:inherit; border-radius:10px; padding:8px 12px; font-size:14px; min-width:220px;
+  }
+  .tt-limits-msg{ margin-bottom:10px; padding:8px 12px; border-radius:8px; font-size:13px;
+    background:rgba(52,211,153,.15); border:1px solid rgba(52,211,153,.4); }
+  .tt-limits-list{ display:flex; flex-direction:column; gap:8px; }
+  .tt-limit-row{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    border:1px solid rgba(255,255,255,.10); border-radius:12px; padding:10px 14px;
+    background:rgba(0,0,0,.10);
+  }
+  .tt-limit-name{ font-weight:800; font-size:15px; }
+  .tt-limit-meta{ font-size:12px; opacity:.7; }
+  .tt-limit-edit{ display:flex; align-items:center; gap:8px; flex:0 0 auto; }
+  .tt-limit-input{
+    width:80px; text-align:right; border:1px solid rgba(255,255,255,.18);
+    background:rgba(255,255,255,.06); color:inherit; border-radius:8px; padding:6px 8px; font-size:15px;
+    font-variant-numeric:tabular-nums;
+  }
+  .tt-limit-input.saving{ opacity:.5; }
+  .tt-limit-input.saved{ border-color:#34d399; }
+  .tt-limit-unit{ opacity:.7; font-size:13px; }
+  .tt-limit-eff{ font-size:12px; opacity:.65; white-space:nowrap; min-width:70px; text-align:right; }
+  .tt-limits-empty{ opacity:.7; padding:12px; }
+</style>
+
+<script>
+(function(){
+  const root = document.getElementById("tt-limits-tab");
+  if (!root) return;
+  const SAVE_URL = "{% url 'tracktime:set_user_limit' %}";
+
+  function csrf(){ return document.querySelector("[name=csrfmiddlewaretoken]")?.value || ""; }
+
+  function msg(text, ok){
+    const el = document.getElementById("tt-limits-msg");
+    if (!el) return;
+    el.textContent = text;
+    el.hidden = false;
+    el.style.background = ok ? "rgba(52,211,153,.15)" : "rgba(239,68,68,.15)";
+    el.style.borderColor = ok ? "rgba(52,211,153,.4)" : "rgba(239,68,68,.5)";
+    clearTimeout(el.__t); el.__t = setTimeout(()=>{ el.hidden = true; }, 2500);
+  }
+
+  async function save(input){
+    const uid = input.dataset.userId;
+    let minutes = parseInt(input.value || "0", 10);
+    if (isNaN(minutes) || minutes < 0) minutes = 0;
+    if (minutes > 1440) minutes = 1440;
+    input.value = minutes;
+    input.classList.add("saving"); input.classList.remove("saved");
+
+    const body = new URLSearchParams();
+    body.append("user_id", uid); body.append("minutes", minutes);
+    try {
+      const r = await fetch(SAVE_URL, {
+        method:"POST",
+        headers:{ "X-CSRFToken": csrf(), "Content-Type":"application/x-www-form-urlencoded" },
+        body
+      });
+      if (!r.ok) throw new Error("falha");
+      const d = await r.json();
+      const eff = root.querySelector(`[data-eff-for="${uid}"]`);
+      if (eff) eff.textContent = "= " + d.effective + " min";
+      input.classList.remove("saving"); input.classList.add("saved");
+      msg("Limite salvo.", true);
+    } catch(_e){
+      input.classList.remove("saving");
+      msg("Não consegui salvar. Tente de novo.", false);
+    }
+  }
+
+  root.querySelectorAll(".tt-limit-input").forEach((inp)=>{
+    inp.addEventListener("change", ()=> save(inp));
+    inp.addEventListener("keydown", (e)=>{ if (e.key === "Enter"){ e.preventDefault(); inp.blur(); } });
+  });
+
+  const search = document.getElementById("tt-limits-search");
+  if (search) search.addEventListener("input", ()=>{
+    const q = search.value.trim().toLowerCase();
+    root.querySelectorAll(".tt-limit-row").forEach((row)=>{
+      row.style.display = (!q || (row.dataset.name || "").includes(q)) ? "" : "none";
+    });
+  });
+})();
+</script>

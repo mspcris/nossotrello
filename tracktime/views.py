@@ -830,6 +830,79 @@ def tracktime_tab_live(request):
     return render(request, "tracktime/modal/tabs/live.html", {})
 
 
+# ======================================================================
+# LIMITES DE TRACK-TIME (admin) — tempo até o auto-encerramento por usuário
+# ======================================================================
+
+TRACKTIME_SYSTEM_DEFAULT_MIN = 60  # espelha _user_limit_minutes() em models.py
+
+
+def _is_tracktime_admin(user):
+    """Só o Cristiano (ou superuser/staff) gere limites de track-time."""
+    if not getattr(user, "is_authenticated", False):
+        return False
+    if getattr(user, "is_superuser", False) or getattr(user, "is_staff", False):
+        return True
+    return (getattr(user, "email", "") or "").strip().lower() == "cristiano@camim.com.br"
+
+
+@login_required
+def tracktime_tab_limits(request):
+    if not _is_tracktime_admin(request.user):
+        return HttpResponseForbidden("Apenas o administrador pode ver os limites.")
+
+    profiles = (
+        UserProfile.objects.select_related("user")
+        .order_by("display_name", "user__email")
+    )
+    rows = []
+    for p in profiles:
+        u = p.user
+        if not u:
+            continue
+        name = (p.display_name or "").strip() or (u.get_full_name() or "").strip() or (u.email or u.get_username())
+        limit = int(getattr(p, "tracktime_limit_minutes", 0) or 0)
+        rows.append({
+            "user_id": u.id,
+            "name": name,
+            "email": u.email or "",
+            "handle": (getattr(p, "handle", "") or "").strip(),
+            "limit": limit,  # 0 = usa o padrão
+            "effective": limit if limit > 0 else TRACKTIME_SYSTEM_DEFAULT_MIN,
+        })
+
+    return render(request, "tracktime/modal/tabs/limits.html", {
+        "rows": rows,
+        "system_default": TRACKTIME_SYSTEM_DEFAULT_MIN,
+    })
+
+
+@login_required
+@require_http_methods(["POST"])
+def tracktime_set_user_limit(request):
+    if not _is_tracktime_admin(request.user):
+        return HttpResponseForbidden("Apenas o administrador pode alterar limites.")
+
+    try:
+        uid = int(request.POST.get("user_id") or 0)
+        minutes = int(request.POST.get("minutes") or 0)
+    except (TypeError, ValueError):
+        return HttpResponseBadRequest("Parâmetros inválidos.")
+
+    if minutes < 0 or minutes > 1440:
+        return HttpResponseBadRequest("Minutos fora do intervalo (0–1440).")
+
+    prof = UserProfile.objects.filter(user_id=uid).first()
+    if not prof:
+        return HttpResponseBadRequest("Usuário sem perfil.")
+
+    prof.tracktime_limit_minutes = minutes
+    prof.save(update_fields=["tracktime_limit_minutes"])
+
+    effective = minutes if minutes > 0 else TRACKTIME_SYSTEM_DEFAULT_MIN
+    return JsonResponse({"ok": True, "user_id": uid, "limit": minutes, "effective": effective})
+
+
 @login_required
 def tracktime_live_json(request):
     """
