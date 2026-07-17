@@ -219,9 +219,9 @@
     </div>
   {% endif %}
 
-  {# TÍTULO #}
-  <div class="text-[15px] leading-snug font-semibold">
-    <span>{{ card.title }}</span>
+  {# TÍTULO (cortado no board com … ; o modal mostra inteiro) #}
+  <div class="text-[15px] leading-snug font-semibold card-title-clamp" title="{{ card.title }}">
+    {{ card.title }}
   </div>
 
   {# META #}

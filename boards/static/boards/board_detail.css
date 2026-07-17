@@ -445,6 +445,17 @@ header{ position: relative; z-index: 50; }
   line-height: 1.4;
 }
 
+/* Título no board: corta em 4 linhas com … (o modal mostra inteiro). Sem isso,
+   título longo (agora TextField, sem limite) vira um paredão no card. */
+.card-title-clamp{
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
 .column-item.col-belly{
   animation: col-belly-width 320ms cubic-bezier(.22,.68,0,1.2);
   will-change: flex-basis;
