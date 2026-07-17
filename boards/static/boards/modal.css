@@ -3191,6 +3191,46 @@ html.dark #modal #modal-breadcrumb{
 #cm-root .cm-imp-save{ background:#ef4444; color:#fff; }
 #cm-root .cm-imp-save:hover{ background:#dc2626; }
 
+/* ── Banner de responsáveis acima do feed (quando impedido) ── */
+#cm-root .cm-imp-banner{
+  margin:0 0 12px 0; padding:12px 14px;
+  border-radius:12px;
+  background:rgba(239,68,68,.10);
+  border:1px solid rgba(239,68,68,.45);
+}
+#cm-root .cm-imp-banner-head{
+  font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.02em;
+  color:#ef4444; margin-bottom:10px;
+}
+#cm-root .cm-imp-banner-people{ display:flex; flex-wrap:wrap; gap:14px; }
+#cm-root .cm-imp-b-person{
+  display:flex; flex-direction:column; align-items:center; gap:5px;
+  background:none; border:none; padding:0; width:76px; cursor:default;
+}
+#cm-root .cm-imp-b-person.is-me{ cursor:pointer; }
+#cm-root .cm-imp-b-av{
+  position:relative;
+  width:56px; height:56px; border-radius:999px;
+  background:#334155; color:#fff; display:inline-flex; align-items:center;
+  justify-content:center; font-weight:800; font-size:22px;
+  outline:3px solid #ef4444; outline-offset:2px;
+  animation: card-imp-pulse 1.6s ease-in-out infinite;
+}
+#cm-root .cm-imp-b-av img{ width:56px; height:56px; border-radius:999px; object-fit:cover; display:block; }
+#cm-root .cm-imp-b-person.is-me .cm-imp-b-av{ outline-color:#f97316; }
+#cm-root .cm-imp-b-person.is-me:hover .cm-imp-b-av{ filter:brightness(1.08); }
+#cm-root .cm-imp-b-dot{
+  position:absolute; top:-2px; right:-2px;
+  width:14px; height:14px; border-radius:999px;
+  background:#ef4444; border:2px solid var(--cm-bg,#0b1220);
+  animation: card-imp-blink 1.6s ease-in-out infinite;
+}
+#cm-root .cm-imp-b-name{
+  font-size:12px; line-height:1.15; text-align:center; max-width:76px;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+#cm-root .cm-imp-b-hint{ font-size:10px; color:#f97316; }
+
 #cm-root .cm-delivered-toggle{
   display:inline-flex;
   align-items:center;
