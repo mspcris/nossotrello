@@ -900,6 +900,60 @@ class BoardAccessRequest(models.Model):
         return f"{self.user.email} pediu acesso ao board {self.board.name}"
 
 
+class BoardOwnershipTransfer(models.Model):
+    """Transferência de titularidade pendente de aceite do destinatário.
+
+    Enquanto status=PENDING nada muda: o from_user continua OWNER. A troca de
+    papéis só acontece no aceite. Diferente de BoardAccessRequest (que deleta a
+    linha ao resolver), aqui o histórico é preservado — quem passou a
+    titularidade de um quadro, pra quem e quando é dado de auditoria.
+    """
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pendente"
+        ACCEPTED = "accepted", "Aceita"
+        DECLINED = "declined", "Recusada"
+        CANCELLED = "cancelled", "Cancelada"
+
+    board = models.ForeignKey(
+        "Board",
+        on_delete=models.CASCADE,
+        related_name="ownership_transfers",
+    )
+    from_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="ownership_transfers_sent",
+    )
+    to_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="ownership_transfers_received",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["board"],
+                condition=models.Q(status="pending"),
+                name="uniq_pending_ownership_transfer_per_board",
+            ),
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.from_user} → {self.to_user} "
+            f"({self.board.name}, {self.get_status_display()})"
+        )
+
 
 class CardNotificationLog(models.Model):
     class Kind(models.TextChoices):

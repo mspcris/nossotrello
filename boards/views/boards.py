@@ -43,6 +43,7 @@ from ..models import (
     BoardGroup,
     BoardGroupItem,
     BoardAccessRequest,
+    BoardOwnershipTransfer,
     CardSeen,
     CardFollow,
     SocialPost,
@@ -619,6 +620,21 @@ def board_detail(request, board_id):
             .order_by("-created_at")
         )
 
+    # Convite de titularidade: "in" = esperando MINHA resposta; "out" = eu
+    # convidei e aguardo o outro. Sem gate de can_share_board — o destinatário
+    # pode nem ser membro ainda.
+    _pending_transfers = (
+        BoardOwnershipTransfer.objects
+        .filter(board=board, status=BoardOwnershipTransfer.Status.PENDING)
+        .select_related("from_user", "from_user__profile", "to_user", "to_user__profile")
+    )
+    pending_transfer_in = next(
+        (t for t in _pending_transfers if t.to_user_id == request.user.id), None
+    )
+    pending_transfer_out = next(
+        (t for t in _pending_transfers if t.from_user_id == request.user.id), None
+    )
+
     # ============================================================
     # UNREAD ACTIVITY COUNT (pré-carregamento da board)
     # ============================================================
@@ -753,6 +769,8 @@ def board_detail(request, board_id):
             "can_share_board": can_share_board,
             "can_edit": can_edit,
             "pending_access_requests": pending_access_requests,
+            "pending_transfer_in": pending_transfer_in,
+            "pending_transfer_out": pending_transfer_out,
             "unread_activity_count": unread_activity_count,
             "unread_by_card": unread_by_card,
         },
@@ -1661,6 +1679,12 @@ def transfer_owner_confirm(request, board_id):
 
     actor = _actor_label(request)
 
+    if to_user.id == request.user.id:
+        request.session.pop(key, None)
+        request.session.modified = True
+        context = {"board": board, "step": 1, "msg_error": "Você já é o titular deste quadro."}
+        return render(request, "boards/partials/transfer_owner_modal.html", context, status=400)
+
     with transaction.atomic():
         my2 = BoardMembership.objects.select_for_update().filter(board=board, user=request.user).first()
         if not my2 or my2.role != BoardMembership.Role.OWNER:
@@ -1668,21 +1692,35 @@ def transfer_owner_confirm(request, board_id):
             request.session.modified = True
             return HttpResponse("Sua permissão mudou. Operação cancelada.", status=403)
 
-        to_membership, created = BoardMembership.objects.get_or_create(
-            board=board,
-            user=to_user,
-            defaults={"role": BoardMembership.Role.OWNER},
+        # NÃO troca papéis aqui: a titularidade só muda quando o destinatário
+        # aceita (accept_ownership_transfer). Até lá o board continua sendo de
+        # quem iniciou.
+        transfer = (
+            BoardOwnershipTransfer.objects.select_for_update()
+            .filter(board=board, status=BoardOwnershipTransfer.Status.PENDING)
+            .first()
         )
-        if not created and to_membership.role != BoardMembership.Role.OWNER:
-            to_membership.role = BoardMembership.Role.OWNER
-            to_membership.save(update_fields=["role"])
+        if transfer:
+            if transfer.to_user_id == to_user.id:
+                request.session.pop(key, None)
+                request.session.modified = True
+                context = {
+                    "board": board,
+                    "step": 1,
+                    "msg_error": "Já existe um convite de titularidade pendente para esse usuário.",
+                }
+                return render(request, "boards/partials/transfer_owner_modal.html", context, status=400)
+            # troca de destinatário: cancela o anterior
+            transfer.status = BoardOwnershipTransfer.Status.CANCELLED
+            transfer.resolved_at = timezone.now()
+            transfer.save(update_fields=["status", "resolved_at"])
 
-        my2.role = BoardMembership.Role.EDITOR
-        my2.save(update_fields=["role"])
-
-        owners_count = BoardMembership.objects.filter(board=board, role=BoardMembership.Role.OWNER).count()
-        if owners_count <= 0:
-            raise ValueError("Board ficou sem OWNER (violação de regra).")
+        transfer = BoardOwnershipTransfer.objects.create(
+            board=board,
+            from_user=request.user,
+            to_user=to_user,
+            status=BoardOwnershipTransfer.Status.PENDING,
+        )
 
         try:
             board.version = int(getattr(board, "version", 0) or 0) + 1
@@ -1694,13 +1732,16 @@ def transfer_owner_confirm(request, board_id):
             board,
             request,
             (
-                f"<p><strong>{actor}</strong> transferiu a titularidade do quadro para "
-                f"<strong>{escape(to_user.email or to_user.get_username())}</strong>.</p>"
+                f"<p><strong>{actor}</strong> convidou "
+                f"<strong>{escape(to_user.email or to_user.get_username())}</strong> "
+                f"para assumir a titularidade do quadro (aguardando aceite).</p>"
             ),
         )
 
     request.session.pop(key, None)
     request.session.modified = True
+
+    _notify_ownership_transfer_invited(request, transfer)
 
     return HttpResponse(
         "<script>"
@@ -1708,6 +1749,266 @@ def transfer_owner_confirm(request, board_id):
         "try{ location.reload(); }catch(e){}"
         "</script>"
     )
+
+
+# ======================================================================
+# TRANSFERÊNCIA DE TITULARIDADE — ACEITE DO DESTINATÁRIO
+# ======================================================================
+
+def _board_abs_url(request, board):
+    base_url = getattr(settings, "SITE_URL", "").strip()
+    if not base_url:
+        scheme = "https" if request.is_secure() else "http"
+        base_url = f"{scheme}://{request.get_host()}"
+    return f"{base_url}{reverse('boards:board_detail', kwargs={'board_id': board.id})}"
+
+
+def _user_label(user):
+    return user.get_full_name() or user.get_username()
+
+
+def _send_transfer_whatsapp(user, lines):
+    """Best-effort: sem telefone no profile, simplesmente não envia."""
+    try:
+        import re
+
+        from boards.services.notifications import send_whatsapp
+
+        prof = getattr(user, "profile", None)
+        phone = re.sub(r"\D+", "", (getattr(prof, "telefone", "") if prof else "") or "")
+        if len(phone) in (10, 11):
+            phone = "55" + phone
+        if len(phone) not in (12, 13):
+            return
+        for line in lines:
+            send_whatsapp(user=user, phone_digits=phone, body=line)
+    except Exception:
+        pass
+
+
+def _send_transfer_mail(user, subject, body):
+    email = (getattr(user, "email", "") or "").strip()
+    if not email:
+        return
+    try:
+        send_mail(
+            subject=subject,
+            message=body,
+            from_email=getattr(settings, "DEFAULT_FROM_EMAIL", None),
+            recipient_list=[email],
+            fail_silently=False,
+        )
+    except Exception:
+        pass
+
+
+def _notify_ownership_transfer_invited(request, transfer):
+    """Avisa o DESTINATÁRIO que há um convite de titularidade esperando por ele.
+
+    Best-effort: o convite já está persistido, então falha de e-mail/WhatsApp
+    não pode derrubar a operação — o painel no quadro é a fonte de verdade.
+    """
+    board = transfer.board
+    from_label = _user_label(transfer.from_user)
+    board_url = _board_abs_url(request, board)
+
+    _send_transfer_mail(
+        transfer.to_user,
+        f"Convite de titularidade — {board.name}",
+        (
+            f"Olá,\n\n"
+            f'{from_label} quer transferir a titularidade do quadro "{board.name}" para você.\n\n'
+            f"Enquanto você não aceitar, o quadro continua com {from_label}.\n\n"
+            f"Abra o quadro para aceitar ou recusar:\n{board_url}\n"
+        ),
+    )
+    _send_transfer_whatsapp(
+        transfer.to_user,
+        [
+            f'{from_label} quer transferir a titularidade do quadro "{board.name}" para você.\n\n'
+            f"Abra o quadro para aceitar ou recusar.",
+            board_url,
+        ],
+    )
+
+
+def _notify_ownership_transfer_resolved(request, transfer, accepted):
+    """Avisa QUEM CONVIDOU do desfecho."""
+    board = transfer.board
+    to_label = _user_label(transfer.to_user)
+    board_url = _board_abs_url(request, board)
+    verbo = "aceitou" if accepted else "recusou"
+    desfecho = (
+        f"Você agora é editor do quadro."
+        if accepted
+        else f"Você continua sendo o titular do quadro."
+    )
+
+    _send_transfer_mail(
+        transfer.from_user,
+        f"Titularidade {verbo} — {board.name}",
+        (
+            f"Olá,\n\n"
+            f'{to_label} {verbo} a titularidade do quadro "{board.name}".\n\n'
+            f"{desfecho}\n\n"
+            f"{board_url}\n"
+        ),
+    )
+    _send_transfer_whatsapp(
+        transfer.from_user,
+        [f'{to_label} {verbo} a titularidade do quadro "{board.name}".\n\n{desfecho}'],
+    )
+
+
+@require_POST
+@login_required
+def accept_ownership_transfer(request, board_id):
+    board = get_object_or_404(Board, id=board_id)
+
+    with transaction.atomic():
+        transfer = (
+            BoardOwnershipTransfer.objects.select_for_update()
+            .filter(
+                board=board,
+                to_user=request.user,
+                status=BoardOwnershipTransfer.Status.PENDING,
+            )
+            .first()
+        )
+        if not transfer:
+            return HttpResponse("Convite não encontrado ou já resolvido.", status=404)
+
+        # Quem convidou pode ter perdido a titularidade nesse meio-tempo
+        # (outra transferência, remoção de acesso). O convite morre junto.
+        from_m = (
+            BoardMembership.objects.select_for_update()
+            .filter(board=board, user=transfer.from_user)
+            .first()
+        )
+        if not from_m or from_m.role != BoardMembership.Role.OWNER:
+            transfer.status = BoardOwnershipTransfer.Status.CANCELLED
+            transfer.resolved_at = timezone.now()
+            transfer.save(update_fields=["status", "resolved_at"])
+            return HttpResponse(
+                "Quem convidou não é mais o titular. Convite cancelado.", status=409
+            )
+
+        to_m, created = BoardMembership.objects.get_or_create(
+            board=board,
+            user=request.user,
+            defaults={
+                "role": BoardMembership.Role.OWNER,
+                "accepted_at": timezone.now(),
+            },
+        )
+        if not created and to_m.role != BoardMembership.Role.OWNER:
+            to_m.role = BoardMembership.Role.OWNER
+            to_m.save(update_fields=["role"])
+
+        from_m.role = BoardMembership.Role.EDITOR
+        from_m.save(update_fields=["role"])
+
+        owners_count = BoardMembership.objects.filter(
+            board=board, role=BoardMembership.Role.OWNER
+        ).count()
+        if owners_count <= 0:
+            raise ValueError("Board ficou sem OWNER (violação de regra).")
+
+        transfer.status = BoardOwnershipTransfer.Status.ACCEPTED
+        transfer.resolved_at = timezone.now()
+        transfer.save(update_fields=["status", "resolved_at"])
+
+        try:
+            board.version = int(getattr(board, "version", 0) or 0) + 1
+            board.save(update_fields=["version"])
+        except Exception:
+            pass
+
+        _log_board(
+            board,
+            request,
+            (
+                f"<p><strong>{escape(_actor_label(request))}</strong> aceitou a "
+                f"titularidade do quadro.</p>"
+            ),
+        )
+
+    _notify_ownership_transfer_resolved(request, transfer, accepted=True)
+    return redirect("boards:board_detail", board_id=board.id)
+
+
+@require_POST
+@login_required
+def decline_ownership_transfer(request, board_id):
+    board = get_object_or_404(Board, id=board_id)
+
+    with transaction.atomic():
+        transfer = (
+            BoardOwnershipTransfer.objects.select_for_update()
+            .filter(
+                board=board,
+                to_user=request.user,
+                status=BoardOwnershipTransfer.Status.PENDING,
+            )
+            .first()
+        )
+        if not transfer:
+            return HttpResponse("Convite não encontrado ou já resolvido.", status=404)
+
+        # Recusa não mexe em papel nenhum: o quadro nunca saiu de quem convidou.
+        transfer.status = BoardOwnershipTransfer.Status.DECLINED
+        transfer.resolved_at = timezone.now()
+        transfer.save(update_fields=["status", "resolved_at"])
+
+        try:
+            board.version = int(getattr(board, "version", 0) or 0) + 1
+            board.save(update_fields=["version"])
+        except Exception:
+            pass
+
+        _log_board(
+            board,
+            request,
+            (
+                f"<p><strong>{escape(_actor_label(request))}</strong> recusou a "
+                f"titularidade do quadro.</p>"
+            ),
+        )
+
+    _notify_ownership_transfer_resolved(request, transfer, accepted=False)
+    return redirect("boards:board_detail", board_id=board.id)
+
+
+@require_POST
+@login_required
+def cancel_ownership_transfer(request, board_id):
+    """Quem convidou desiste antes do destinatário responder."""
+    board = get_object_or_404(Board, id=board_id)
+
+    with transaction.atomic():
+        transfer = (
+            BoardOwnershipTransfer.objects.select_for_update()
+            .filter(
+                board=board,
+                from_user=request.user,
+                status=BoardOwnershipTransfer.Status.PENDING,
+            )
+            .first()
+        )
+        if not transfer:
+            return HttpResponse("Convite não encontrado ou já resolvido.", status=404)
+
+        transfer.status = BoardOwnershipTransfer.Status.CANCELLED
+        transfer.resolved_at = timezone.now()
+        transfer.save(update_fields=["status", "resolved_at"])
+
+        try:
+            board.version = int(getattr(board, "version", 0) or 0) + 1
+            board.save(update_fields=["version"])
+        except Exception:
+            pass
+
+    return redirect("boards:board_detail", board_id=board.id)
 
 
 # ======================================================================

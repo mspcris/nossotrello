@@ -70,6 +70,9 @@ from boards.views.boards import (
     # transfer ownership
     transfer_owner_start,
     transfer_owner_confirm,
+    accept_ownership_transfer,
+    decline_ownership_transfer,
+    cancel_ownership_transfer,
     # wallpaper / image
     update_board_wallpaper,
     remove_board_wallpaper,
@@ -506,6 +509,21 @@ urlpatterns = [
         "board/<int:board_id>/transfer_owner/confirm/",
         transfer_owner_confirm,
         name="transfer_owner_confirm",
+    ),
+    path(
+        "board/<int:board_id>/transfer_owner/accept/",
+        accept_ownership_transfer,
+        name="accept_ownership_transfer",
+    ),
+    path(
+        "board/<int:board_id>/transfer_owner/decline/",
+        decline_ownership_transfer,
+        name="decline_ownership_transfer",
+    ),
+    path(
+        "board/<int:board_id>/transfer_owner/cancel/",
+        cancel_ownership_transfer,
+        name="cancel_ownership_transfer",
     ),
 
     # ============================================================

@@ -1,0 +1,97 @@
+{# boards/templates/boards/partials/ownership_transfer_panel.html #}
+
+{% if pending_transfer_in %}
+  <section class="ar-wrap" aria-label="Convite de titularidade">
+    <header class="ar-head">
+      <div class="ar-title">
+        <span class="ar-dot"></span>
+        <h3>Convite de titularidade</h3>
+      </div>
+      <div class="ar-sub">O quadro só passa para você depois do seu aceite</div>
+    </header>
+
+    <div class="ar-list">
+      <article class="ar-card" id="ot-card-{{ pending_transfer_in.id }}">
+        <div class="ar-card-top">
+          <div class="ar-avatar">
+            {{ pending_transfer_in.from_user.email|default:pending_transfer_in.from_user.username|slice:":1"|upper }}
+          </div>
+
+          <div class="ar-main">
+            <div class="ar-name">
+              {{ pending_transfer_in.from_user.profile.display_name|default:pending_transfer_in.from_user.email|default:pending_transfer_in.from_user.username }}
+            </div>
+            <div class="ar-email">
+              quer transferir a titularidade deste quadro para você
+            </div>
+          </div>
+
+          <span class="ar-status">Pendente</span>
+        </div>
+
+        <div class="ar-grid">
+          <div class="ar-item">
+            <div class="ar-k">Se você aceitar</div>
+            <div class="ar-v">Você vira titular e quem convidou passa a editor</div>
+          </div>
+          <div class="ar-item">
+            <div class="ar-k">Se você recusar</div>
+            <div class="ar-v">Nada muda — o quadro continua com quem convidou</div>
+          </div>
+        </div>
+
+        <div class="ar-actions">
+          <form method="post" action="{% url 'boards:accept_ownership_transfer' pending_transfer_in.board_id %}">
+            {% csrf_token %}
+            <button type="submit" class="ar-btn ar-approve">Aceitar titularidade</button>
+          </form>
+
+          <form method="post" action="{% url 'boards:decline_ownership_transfer' pending_transfer_in.board_id %}">
+            {% csrf_token %}
+            <button type="submit" class="ar-btn ar-deny">Recusar</button>
+          </form>
+        </div>
+      </article>
+    </div>
+  </section>
+{% endif %}
+
+{% if pending_transfer_out %}
+  <section class="ar-wrap" aria-label="Transferência enviada">
+    <header class="ar-head">
+      <div class="ar-title">
+        <span class="ar-dot"></span>
+        <h3>Transferência aguardando aceite</h3>
+      </div>
+      <div class="ar-sub">Você continua titular até a outra pessoa aceitar</div>
+    </header>
+
+    <div class="ar-list">
+      <article class="ar-card" id="ot-out-{{ pending_transfer_out.id }}">
+        <div class="ar-card-top">
+          <div class="ar-avatar">
+            {{ pending_transfer_out.to_user.email|default:pending_transfer_out.to_user.username|slice:":1"|upper }}
+          </div>
+
+          <div class="ar-main">
+            <div class="ar-name">
+              {{ pending_transfer_out.to_user.profile.display_name|default:pending_transfer_out.to_user.email|default:pending_transfer_out.to_user.username }}
+            </div>
+            <div class="ar-email">
+              {{ pending_transfer_out.to_user.email|default:pending_transfer_out.to_user.username }}
+            </div>
+          </div>
+
+          <span class="ar-status">Aguardando</span>
+        </div>
+
+        <div class="ar-actions">
+          <form method="post" action="{% url 'boards:cancel_ownership_transfer' pending_transfer_out.board_id %}">
+            {% csrf_token %}
+            <button type="submit" class="ar-btn ar-deny">Cancelar convite</button>
+          </form>
+        </div>
+      </article>
+    </div>
+  </section>
+{% endif %}

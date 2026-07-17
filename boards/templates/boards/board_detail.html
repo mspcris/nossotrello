@@ -496,6 +496,13 @@
   </div>
 {% endif %}
 
+<!-- CONVITE DE TITULARIDADE (aguardando aceite) -->
+{% if pending_transfer_in or pending_transfer_out %}
+  <div id="cm-ownership-root" class="cm-accessreq-wrap mt-4">
+    {% include "boards/partials/ownership_transfer_panel.html" %}
+  </div>
+{% endif %}
+
 
 
 
