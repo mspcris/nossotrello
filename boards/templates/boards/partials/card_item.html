@@ -13,9 +13,6 @@
   class="card-item relative p-3 bg-white/80 rounded-xl shadow-sm mb-3 cursor-pointer overflow-hidden"
 >
 
-{# 🚧 IMPEDIMENTO: fotos GRANDES dos responsáveis, com pulso vermelho.
-   Fica no topo e cresce o card pra baixo. Só o próprio responsável clica na
-   própria foto pra se liberar (data-imp-me="1"). #}
 {% if card.is_impeded and card.impediment_previews %}
   <div class="card-impediment" data-card-impediment="{{ card.id }}" aria-label="Card em impedimento">
     <div class="card-imp-head">🚧 Impedido — aguardando</div>
