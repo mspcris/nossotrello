@@ -69,9 +69,7 @@
      ocupa o topo. O botão é posicionado em baixo-à-direita via CSS (absolute);
      estando por último no DOM, mesmo sem o absolute ele nunca empurra a capa. -->
 
-  {# CAPA — impedido SEMPRE mostra a mesma tarja fina (36px), tenha imagem/cor ou
-     não. A imagem/cor não é apagada, volta quando o impedimento é resolvido.
-     Assim todos os cards impedidos ficam do mesmo tamanho. #}
+  {# CAPA: impedido sempre mostra a tarja fina de 36px (imagem/cor volta ao resolver) #}
   {% if card.is_impeded %}
     <div class="mb-2 card-tarja-solid">🚧 IMPEDIDO</div>
   {% elif card.counter_mode %}{# CARD CONTADOR: número grande #}
