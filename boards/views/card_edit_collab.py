@@ -201,7 +201,7 @@ def card_field_release(request, card_id: int, field: str):
         if field == "title":
             cleaned = (raw_value or "").strip()
             if cleaned:
-                card.title = cleaned[:255]
+                card.title = cleaned[:2000]  # teto de sanidade (coluna é TextField)
                 card.save(update_fields=["title"])
                 final_value = card.title
         elif field == "description":

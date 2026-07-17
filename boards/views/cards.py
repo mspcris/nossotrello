@@ -344,7 +344,7 @@ def update_card(request, card_id):
     # ============================================================
     # pega TODOS os "title" enviados (evita ambiguidade com checklist)
     posted_title = _norm(request.POST.get("card_title") or "")
-    card.title = posted_title if posted_title else old_title
+    card.title = (posted_title if posted_title else old_title)[:2000]  # teto de sanidade
 
 
 

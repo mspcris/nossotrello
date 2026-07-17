@@ -267,7 +267,10 @@ class Card(models.Model):
         blank=True,
     )
 
-    title = models.CharField(max_length=255)
+    # TextField (sem limite de coluna): título longo não pode dar 500 em nenhum
+    # caminho de criação/edição (form, colab, e-mail, import). Teto de sanidade
+    # aplicado no app (2000 chars) nos pontos de edição.
+    title = models.TextField()
     description = models.TextField(blank=True, null=True)
     tags = models.CharField(max_length=255, blank=True, null=True)
     tag_colors = models.JSONField(default=dict, blank=True)
