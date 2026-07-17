@@ -13,6 +13,14 @@
   overflow-y: auto !important;
 }
 
+/* Descrição do card: o quill.snow.css do CDN fixa .ql-container em 13px,
+   descolado do título (que é rem). Escopo pelo data-for p/ não pegar o
+   editor de Atividade, que tem escala própria (--cm-aa-activity-font). */
+.cm-quill[data-for="cm-description"] .ql-container,
+.cm-quill[data-for="cm-description"] .ql-editor {
+  font-size: var(--cm-desc-font, 1rem) !important;
+}
+
 /* garante que o menu fique por cima do modal */
 .ql-mention-list-container,
 .mention-list-container {

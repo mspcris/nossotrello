@@ -761,6 +761,12 @@ html.dark #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-
   --cm-radius-sm: 10px;
   --cm-pad: 14px;
 
+  /* Título fica exatamente um degrau acima da descrição. Mexer nos dois
+     juntos aqui — a descrição (Quill) lê --cm-desc-font em quill.css, que
+     carrega depois do quill.snow.css do CDN (que fixa .ql-container em 13px). */
+  --cm-desc-font: 1rem;
+  --cm-title-font: 1.125rem;
+
   /* LIGHT */
   --cm-bg: rgba(255,255,255,0.58);
   --cm-surface: rgba(255,255,255,0.62);
@@ -958,6 +964,13 @@ html.dark #cm-root{
   padding: 10px 12px;
   outline: none;
 }
+/* !important + especificidade alta p/ vencer o COMPACT MODE [18], que zera
+   o font-size de todo input com !important */
+#card-modal-root #cm-root .cm-input[data-cm-edit-field="title"]{
+  font-size: var(--cm-title-font) !important;
+  font-weight: 600;
+}
+
 /* padrão mais compacto */
 #card-modal-root #cm-root .cm-textarea{ min-height: 120px; }
 
@@ -1205,6 +1218,12 @@ html.dark #modal .modal-content,
   #card-modal-root select{
     padding: 6px 10px !important;
     font-size: 0.90rem !important;
+  }
+
+  /* mantém a descrição alinhada aos demais inputs e o título um degrau acima */
+  #card-modal-root #cm-root{
+    --cm-desc-font: 0.90rem;
+    --cm-title-font: 1rem;
   }
 
   #card-modal-root .card-modal-scroll{ padding: 12px 14px; }
