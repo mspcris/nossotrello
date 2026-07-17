@@ -20,6 +20,7 @@ from .account import *  # noqa
 from .profiles import *  # noqa
 from .modal_card_term import *  # noqa
 from .account import account_identity_label_update
+from .account import account_card_modal_theme_update
 
 
 class FirstLoginPasswordResetForm(PasswordResetForm):

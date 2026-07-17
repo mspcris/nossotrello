@@ -569,6 +569,17 @@ class UserProfile(models.Model):
         help_text="Mostrar contadores de atividade (comentários/itens) no modal do card",
     )
 
+    class CardModalTheme(models.TextChoices):
+        GLASS = "glass", "Claro"
+        DARK = "dark", "Escuro"
+
+    card_modal_theme = models.CharField(
+        max_length=10,
+        choices=CardModalTheme.choices,
+        default=CardModalTheme.GLASS,
+        help_text="Tema do modal do card (claro/escuro). Vale para todos os cards do usuário.",
+    )
+
     notify_whatsapp = models.BooleanField(default=True)
     notify_email = models.BooleanField(default=True)
     notify_social = models.BooleanField(default=True)

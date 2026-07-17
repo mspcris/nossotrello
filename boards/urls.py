@@ -709,6 +709,7 @@ urlpatterns = [
     path("account/avatar/update/", views.account_avatar_update, name="account_avatar_update"),
     path("account/avatar/choose/", views.account_avatar_choice_update, name="account_avatar_choice_update"),
     path("account/identity-label/update/", views.account_identity_label_update, name="account_identity_label_update"),
+    path("account/card-modal-theme/update/", views.account_card_modal_theme_update, name="account_card_modal_theme_update"),
 
     # ============================================================
     # PERFIL READ-ONLY (modal ao clicar em avatar de outra pessoa)

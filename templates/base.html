@@ -135,7 +135,10 @@
   <script defer src="{% static 'boards/modal/modal.acitivity_quill.js' %}?v=20260619-ashtml"></script>
   <script defer src="{% static 'boards/modal/modal.tags.js' %}"></script>
   <script defer src="{% static 'boards/modal/modal.tag_catalog.js' %}?v=20260615-applied"></script>
-  <script defer src="{% static 'boards/modal/modal.theme.js' %}"></script>
+  {% if user.is_authenticated %}
+    <script>window.CM_THEME_SAVE_URL = "{% url 'boards:account_card_modal_theme_update' %}";</script>
+  {% endif %}
+  <script defer src="{% static 'boards/modal/modal.theme.js' %}?v=20260717-userpref1"></script>
   <script defer src="{% static 'boards/modal/modal.user.js' %}?v=5"></script>
   <script defer src="{% static 'boards/modal/modal.breadcrumb.js' %}"></script>
   <script defer src="{% static 'boards/modal/modal.cover.js' %}?v=20260710-spin"></script>
@@ -605,7 +608,7 @@
 
 
       <div id="card-modal-root"
-           class="card-modal modal-glass card-theme-aero rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+           class="card-modal modal-glass {% if user.is_authenticated and user.profile.card_modal_theme == 'dark' %}theme-dark{% else %}theme-glass{% endif %} rounded-2xl shadow-2xl flex flex-col overflow-hidden"
            onclick="event.stopPropagation();">
 
         <div class="flex items-center justify-between p-2 gap-3 border-b border-white/20">

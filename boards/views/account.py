@@ -464,3 +464,20 @@ def account_identity_label_update(request):
     return HttpResponse("", status=204)
 
 
+@require_POST
+@login_required
+def account_card_modal_theme_update(request):
+    """Tema do modal do card (claro/escuro) — preferência do usuário, não do card."""
+    prof = _get_or_create_profile(request.user)
+
+    val = (request.POST.get("card_modal_theme") or "").strip()
+
+    allowed = {c for c, _ in UserProfile.CardModalTheme.choices}
+    if val not in allowed:
+        return HttpResponseBadRequest("invalid card_modal_theme")
+
+    prof.card_modal_theme = val
+    prof.save(update_fields=["card_modal_theme"])
+    return HttpResponse("", status=204)
+
+
