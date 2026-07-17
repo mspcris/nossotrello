@@ -185,18 +185,9 @@
     </div>
   {% endif %}
 
-  {# TÍTULO + LIKE #}
-  <div class="text-[15px] leading-snug font-semibold flex items-center justify-between gap-1">
+  {# TÍTULO #}
+  <div class="text-[15px] leading-snug font-semibold">
     <span>{{ card.title }}</span>
-    <button type="button"
-            class="card-like-btn"
-            title="Curtir este card"
-            aria-label="Curtir card"
-            onpointerdown="event.stopPropagation();"
-            ontouchstart="event.stopPropagation();"
-            onclick="event.stopPropagation(); cardLikeSocial({{ card.id }}, this);">
-      👍
-    </button>
   </div>
 
   {# META #}
@@ -213,6 +204,16 @@
 
     <div class="tt-slot"></div>
   </div>
+
+  <button type="button"
+          class="card-like-btn"
+          title="Curtir este card"
+          aria-label="Curtir card"
+          onpointerdown="event.stopPropagation();"
+          ontouchstart="event.stopPropagation();"
+          onclick="event.stopPropagation(); cardLikeSocial({{ card.id }}, this);">
+    👍
+  </button>
 
   <button type="button"
           class="card-kebab-btn"
