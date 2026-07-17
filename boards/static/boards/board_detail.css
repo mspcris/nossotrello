@@ -1486,6 +1486,96 @@ li[data-card-id][data-term-status="ok"] .term-badge{ color: #16a34a; }
 }
 
 
+/* ============================================================
+   [IMPEDIMENTO] Fotos grandes dos responsáveis, pulso vermelho
+   ============================================================ */
+.card-impediment{
+  margin: 0 0 10px 0;
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(239,68,68,.12);
+  border: 1px solid rgba(239,68,68,.45);
+}
+.card-imp-head{
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .02em;
+  color: #ef4444;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+.card-imp-people{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.card-imp-person{
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 64px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: default;
+}
+.card-imp-person.is-me{ cursor: pointer; }
+.card-imp-avatar{
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  object-fit: cover;
+  background: #334155;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 700;
+  /* anel vermelho que pulsa a intensidade */
+  outline: 3px solid #ef4444;
+  outline-offset: 2px;
+  animation: card-imp-pulse 1.6s ease-in-out infinite;
+}
+.card-imp-person.is-me .card-imp-avatar{ outline-color: #f97316; }
+.card-imp-person.is-me:hover .card-imp-avatar{ filter: brightness(1.08); }
+@keyframes card-imp-pulse{
+  0%, 100%{ outline-color: rgba(239,68,68,1); box-shadow: 0 0 0 0 rgba(239,68,68,.5); }
+  50%     { outline-color: rgba(239,68,68,.35); box-shadow: 0 0 0 6px rgba(239,68,68,0); }
+}
+/* bolinha vermelha no canto da foto */
+.card-imp-dot{
+  position: absolute;
+  top: 0;
+  right: 8px;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: #ef4444;
+  border: 2px solid #fff;
+  animation: card-imp-blink 1.6s ease-in-out infinite;
+}
+@keyframes card-imp-blink{
+  0%, 100%{ opacity: 1; }
+  50%     { opacity: .3; }
+}
+.card-imp-name{
+  font-size: 11px;
+  font-weight: 600;
+  color: #1f2937;
+  text-align: center;
+  line-height: 1.15;
+  max-width: 64px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* card escuro: nome legível */
+body.cards-dark #columns-wrapper .card-imp-name{ color: rgba(241,245,249,.92); }
+
+
 
 /* ============================================================
    [FOLLOW] Olho “só no hover” quando NÃO está seguindo

@@ -22,6 +22,7 @@ from django.db import transaction
 from django.db.models import Count, Q
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.templatetags.static import static as static_url
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import escape
@@ -174,6 +175,62 @@ def _actor_html(request) -> str:
     return "Sistema"
 
 
+
+
+def avatar_url_for(user) -> str:
+    """Foto do usuário: upload > preset (avatar_choice) > "" (cai em iniciais)."""
+    prof = getattr(user, "profile", None)
+    if prof and getattr(prof, "avatar", None):
+        try:
+            return prof.avatar.url
+        except Exception:
+            pass
+    if prof and getattr(prof, "avatar_choice", ""):
+        return static_url(f"images/avatar/{prof.avatar_choice}")
+    return ""
+
+
+def _person_display_name(user) -> str:
+    prof = getattr(user, "profile", None)
+    return (
+        (getattr(prof, "display_name", "") or "").strip()
+        or (user.get_full_name() or "").strip()
+        or user.get_username()
+        or (user.email or "").strip()
+        or "Usuário"
+    )
+
+
+def build_impediment_previews(cards, request_user_id=None):
+    """{card_id: [ {id, name, avatar_url, is_me}, ... ]} para os cards dados.
+
+    is_me marca a pendência do próprio usuário — só ele pode remover a dele
+    clicando na própria foto no board. Uma query só (evita N+1). Usada no
+    board_detail e no board_poll — fonte única, para o render inicial e o
+    re-render via WS não divergirem.
+    """
+    from boards.models import CardImpediment
+
+    card_ids = [c.id for c in cards]
+    out = {cid: [] for cid in card_ids}
+    if not card_ids:
+        return out
+
+    qs = (
+        CardImpediment.objects.filter(card_id__in=card_ids, is_active=True)
+        .select_related("user", "user__profile")
+        .order_by("created_at")
+    )
+    for imp in qs:
+        out.setdefault(imp.card_id, []).append(
+            {
+                "id": imp.user_id,
+                "name": _person_display_name(imp.user),
+                "avatar_url": avatar_url_for(imp.user),
+                "is_me": imp.user_id == request_user_id,
+            }
+        )
+    return out
 
 
 def _log_card(card: Card, request, message_html: str, attachment=None):
@@ -821,10 +878,33 @@ def _card_modal_context(card: Card) -> dict:
     colors.setdefault("warn", "#f59e0b")     # amarelo
     colors.setdefault("overdue", "#dc2626")  # vermelho
 
+    # Impedimento: membros do board (candidatos a responsável) + quem já trava
+    imp_members = []
+    imp_active_ids = []
+    try:
+        from boards.models import CardImpediment
+
+        imp_active_ids = list(
+            CardImpediment.objects.filter(card=card, is_active=True).values_list("user_id", flat=True)
+        )
+        for u in _board_member_users(board):
+            imp_members.append(
+                {
+                    "id": u.id,
+                    "name": _person_display_name(u),
+                    "avatar_url": avatar_url_for(u),
+                    "is_responsible": u.id in imp_active_ids,
+                }
+            )
+    except Exception:
+        pass
+
     return {
         "card": card,
         "checklists": _card_checklists_qs(card),
         "board_due_colors": colors,
+        "impediment_members": imp_members,
+        "impediment_active_ids": imp_active_ids,
     }
 
 

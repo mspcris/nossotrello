@@ -3085,6 +3085,65 @@ html.dark #modal #modal-breadcrumb{
   margin-left:auto;
 }
 
+/* Botão de impedimento (ao lado de Entregue) */
+#cm-root .cm-impediment-toggle{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  cursor:pointer;
+  border:1px solid rgba(239,68,68,.5);
+  background:rgba(239,68,68,.10);
+  color:#ef4444;
+  border-radius:999px;
+  padding:4px 12px;
+  font-size:.85rem;
+  font-weight:600;
+  user-select:none;
+}
+#cm-root .cm-impediment-toggle:hover{ background:rgba(239,68,68,.18); }
+#cm-root .cm-impediment-toggle .cm-impediment-dot{
+  width:9px; height:9px; border-radius:999px; background:#ef4444;
+}
+#cm-root .cm-impediment-toggle.is-impeded{
+  background:#ef4444; color:#fff; border-color:#ef4444;
+}
+#cm-root .cm-impediment-toggle.is-impeded .cm-impediment-dot{
+  background:#fff; animation:card-imp-blink 1.6s ease-in-out infinite;
+}
+
+/* Painel de seleção de responsáveis */
+#cm-root .cm-imp-panel{
+  margin:10px 0;
+  padding:12px;
+  border-radius:12px;
+  border:1px solid rgba(239,68,68,.4);
+  background:rgba(239,68,68,.06);
+}
+#cm-root .cm-imp-panel.is-hidden{ display:none; }
+#cm-root .cm-imp-panel-head{ font-weight:700; margin-bottom:8px; }
+#cm-root .cm-imp-panel-head small{ display:block; font-weight:400; opacity:.75; margin-top:2px; }
+#cm-root .cm-imp-members{ display:flex; flex-direction:column; gap:6px; max-height:220px; overflow-y:auto; }
+#cm-root .cm-imp-member{
+  display:flex; align-items:center; gap:8px;
+  padding:6px 8px; border-radius:8px; cursor:pointer;
+  border:1px solid transparent;
+}
+#cm-root .cm-imp-member:hover{ background:rgba(0,0,0,.04); }
+#cm-root .cm-imp-member.is-on{ border-color:rgba(239,68,68,.5); background:rgba(239,68,68,.08); }
+#cm-root .cm-imp-member-av{
+  width:30px; height:30px; border-radius:999px; object-fit:cover;
+  background:#334155; color:#fff; display:inline-flex; align-items:center;
+  justify-content:center; font-weight:700; font-size:13px; flex-shrink:0;
+}
+#cm-root .cm-imp-member-name{ font-size:.9rem; }
+#cm-root .cm-imp-panel-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:10px; }
+#cm-root .cm-imp-cancel, #cm-root .cm-imp-save{
+  border-radius:8px; padding:6px 14px; font-weight:600; cursor:pointer; border:1px solid transparent;
+}
+#cm-root .cm-imp-cancel{ background:transparent; border-color:rgba(0,0,0,.15); }
+#cm-root .cm-imp-save{ background:#ef4444; color:#fff; }
+#cm-root .cm-imp-save:hover{ background:#dc2626; }
+
 #cm-root .cm-delivered-toggle{
   display:inline-flex;
   align-items:center;

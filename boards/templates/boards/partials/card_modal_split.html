@@ -539,6 +539,16 @@
     </div>
 
     <div class="cm-actions">
+      <button type="button"
+              class="cm-impediment-toggle{% if card.is_impeded %} is-impeded{% endif %}"
+              id="cm-impediment-btn"
+              title="Marcar/gerir impedimento deste card"
+              onpointerdown="event.stopPropagation();"
+              onclick="event.stopPropagation(); window.cmOpenImpediment && window.cmOpenImpediment({{ card.id }});">
+        <span class="cm-impediment-dot" aria-hidden="true"></span>
+        <span class="cm-impediment-text">{% if card.is_impeded %}Impedido{% else %}Impedimento{% endif %}</span>
+      </button>
+
       <form id="cm-delivered-form"
             method="post"
             hx-post="{% url 'boards:update_card' card.id %}"
@@ -567,6 +577,34 @@
           </span>
         </label>
       </form>
+    </div>
+  </div>
+
+  {# ── PAINEL DE IMPEDIMENTO (escondido; abre pelo botão) ── #}
+  <div id="cm-impediment-panel" class="cm-imp-panel is-hidden"
+       data-card-id="{{ card.id }}"
+       data-set-url="{% url 'boards:set_card_impediment' card.id %}"
+       data-clear-url="{% url 'boards:clear_card_impediment' card.id %}">
+    <div class="cm-imp-panel-head">
+      Quem está travando este card?
+      <small>Escolha ao menos uma pessoa. Cada uma se libera clicando na própria foto.</small>
+    </div>
+    <div class="cm-imp-members">
+      {% for m in impediment_members %}
+        <label class="cm-imp-member{% if m.is_responsible %} is-on{% endif %}">
+          <input type="checkbox" name="responsibles" value="{{ m.id }}" {% if m.is_responsible %}checked{% endif %}>
+          {% if m.avatar_url %}
+            <img src="{{ m.avatar_url }}" alt="{{ m.name }}" class="cm-imp-member-av">
+          {% else %}
+            <span class="cm-imp-member-av cm-imp-member-av--i">{{ m.name|slice:":1"|upper }}</span>
+          {% endif %}
+          <span class="cm-imp-member-name">{{ m.name }}</span>
+        </label>
+      {% endfor %}
+    </div>
+    <div class="cm-imp-panel-actions">
+      <button type="button" class="cm-imp-cancel" onclick="window.cmCloseImpediment && window.cmCloseImpediment();">Cancelar</button>
+      <button type="button" class="cm-imp-save" onclick="window.cmSaveImpediment && window.cmSaveImpediment();">Marcar impedimento</button>
     </div>
   </div>
 

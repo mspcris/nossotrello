@@ -806,14 +806,17 @@ def board_detail(request, board_id):
     # (assim o template do card já nasce com o número, sem esperar poll/js)
     # ============================================================
     try:
-        for col in columns:
-            for c in col.cards.all():
-                c.unread_count = int(unread_by_card.get(c.id, 0) or 0)
-                c.is_following = (c.id in followed_ids)
+        from .helpers import build_impediment_previews
+        all_cards = [c for col in columns for c in col.cards.all()]
+        imp_previews = build_impediment_previews(all_cards, request_user_id=request.user.id)
+        for c in all_cards:
+            c.unread_count = int(unread_by_card.get(c.id, 0) or 0)
+            c.is_following = (c.id in followed_ids)
 
-                preview = followers_by_card.get(c.id, []) or []
-                c.followers_preview = preview[:4]
-                c.followers_count = int(followers_count_by_card.get(c.id, 0) or 0)
+            preview = followers_by_card.get(c.id, []) or []
+            c.followers_preview = preview[:4]
+            c.followers_count = int(followers_count_by_card.get(c.id, 0) or 0)
+            c.impediment_previews = imp_previews.get(c.id, [])
     except Exception:
         pass
 
@@ -2215,14 +2218,17 @@ def board_poll(request, board_id):
     # INJEÇÃO NO OBJETO CARD ANTES DO RENDER DO PARTIAL
     # ============================================================
     try:
-        for col in columns:
-            for c in col.cards.all():
-                c.unread_count = int(unread_by_card.get(c.id, 0) or 0)
-                c.is_following = (c.id in followed_ids)
+        from .helpers import build_impediment_previews
+        all_cards = [c for col in columns for c in col.cards.all()]
+        imp_previews = build_impediment_previews(all_cards, request_user_id=request.user.id)
+        for c in all_cards:
+            c.unread_count = int(unread_by_card.get(c.id, 0) or 0)
+            c.is_following = (c.id in followed_ids)
 
-                preview = followers_by_card.get(c.id, []) or []
-                c.followers_preview = preview[:4]
-                c.followers_count = int(followers_count_by_card.get(c.id, 0) or 0)
+            preview = followers_by_card.get(c.id, []) or []
+            c.followers_preview = preview[:4]
+            c.followers_count = int(followers_count_by_card.get(c.id, 0) or 0)
+            c.impediment_previews = imp_previews.get(c.id, [])
     except Exception:
         pass
 

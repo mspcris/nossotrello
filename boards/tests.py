@@ -184,3 +184,143 @@ class RepairLegacyFileRefsTests(TestCase):
         stored = StoredFile.objects.get(id=attachment.file.name)
         self.assertEqual(stored.original_name, "new-file.txt")
         self.assertEqual(bytes(stored.data), b"new-file-data")
+
+
+
+from django.contrib.auth import get_user_model
+from django.test import TestCase
+from django.urls import reverse
+
+from boards.models import (
+    Board, BoardMembership, Card, CardImpediment, Column, Organization, UserProfile,
+)
+
+User = get_user_model()
+
+
+def _mk(username, email):
+    from boards.views.legal import CURRENT_TERMS_VERSION
+    u = User.objects.create_user(username=username, email=email, password="x")
+    p, _ = UserProfile.objects.get_or_create(user=u)
+    p.terms_accepted = True
+    p.terms_version = CURRENT_TERMS_VERSION
+    p.notify_email = True
+    p.save()
+    return u
+
+
+class ImpedimentTests(TestCase):
+    def setUp(self):
+        self.dono = _mk("dono", "dono@camim.com.br")
+        self.ricardo = _mk("ricardo", "ricardo@camim.com.br")
+        self.editor = _mk("editor", "editor@camim.com.br")
+        self.estranho = _mk("estranho", "estranho@x.com")
+        self.org = Organization.objects.create(name="C", owner=self.dono)
+        self.board = Board.objects.create(name="B", organization=self.org)
+        for u, role in [
+            (self.dono, BoardMembership.Role.OWNER),
+            (self.ricardo, BoardMembership.Role.VIEWER),
+            (self.editor, BoardMembership.Role.EDITOR),
+        ]:
+            BoardMembership.objects.create(board=self.board, user=u, role=role)
+        self.col = Column.objects.create(board=self.board, name="Tarefas", position=0)
+        self.card = Card.objects.create(column=self.col, title="T", position=0)
+        self.set_url = reverse("boards:set_card_impediment", kwargs={"card_id": self.card.id})
+        self.clear_url = reverse("boards:clear_card_impediment", kwargs={"card_id": self.card.id})
+
+    def _active(self):
+        return list(
+            CardImpediment.objects.filter(card=self.card, is_active=True)
+            .values_list("user_id", flat=True)
+        )
+
+    # -------- set --------
+
+    def test_marca_impedimento_com_responsavel(self):
+        self.client.force_login(self.dono)
+        r = self.client.post(self.set_url, {"responsibles": [self.ricardo.id]})
+        self.assertEqual(r.status_code, 200)
+        self.card.refresh_from_db()
+        self.assertTrue(self.card.is_impeded)
+        self.assertEqual(self._active(), [self.ricardo.id])
+
+    def test_sem_responsavel_recusa(self):
+        self.client.force_login(self.dono)
+        r = self.client.post(self.set_url, {})
+        self.assertEqual(r.status_code, 400)
+        self.card.refresh_from_db()
+        self.assertFalse(self.card.is_impeded)
+
+    def test_responsavel_precisa_ser_membro(self):
+        self.client.force_login(self.dono)
+        r = self.client.post(self.set_url, {"responsibles": [self.estranho.id]})
+        self.assertEqual(r.status_code, 400)
+        self.assertFalse(CardImpediment.objects.exists())
+
+    def test_viewer_nao_marca(self):
+        self.client.force_login(self.ricardo)  # viewer
+        r = self.client.post(self.set_url, {"responsibles": [self.ricardo.id]})
+        self.assertEqual(r.status_code, 403)
+
+    def test_marcar_de_novo_nao_duplica(self):
+        self.client.force_login(self.dono)
+        self.client.post(self.set_url, {"responsibles": [self.ricardo.id]})
+        self.client.post(self.set_url, {"responsibles": [self.ricardo.id]})
+        self.assertEqual(
+            CardImpediment.objects.filter(card=self.card, user=self.ricardo, is_active=True).count(), 1
+        )
+
+    def test_bump_de_versao(self):
+        self.board.refresh_from_db(); v0 = self.board.version
+        self.client.force_login(self.dono)
+        self.client.post(self.set_url, {"responsibles": [self.ricardo.id]})
+        self.board.refresh_from_db()
+        self.assertGreater(self.board.version, v0)
+
+    # -------- clear --------
+
+    def test_responsavel_limpa_a_propria(self):
+        self.client.force_login(self.dono)
+        self.client.post(self.set_url, {"responsibles": [self.ricardo.id, self.editor.id]})
+        self.client.force_login(self.ricardo)
+        r = self.client.post(self.clear_url, {})  # default: a propria
+        self.assertEqual(r.status_code, 200)
+        self.card.refresh_from_db()
+        self.assertTrue(self.card.is_impeded)  # editor ainda trava
+        self.assertEqual(self._active(), [self.editor.id])
+
+    def test_card_sai_quando_ultimo_resolve(self):
+        self.client.force_login(self.dono)
+        self.client.post(self.set_url, {"responsibles": [self.ricardo.id]})
+        self.client.force_login(self.ricardo)
+        self.client.post(self.clear_url, {})
+        self.card.refresh_from_db()
+        self.assertFalse(self.card.is_impeded)
+
+    def test_terceiro_nao_limpa_de_outro(self):
+        self.client.force_login(self.dono)
+        self.client.post(self.set_url, {"responsibles": [self.ricardo.id]})
+        # editor NÃO é dono; tentar limpar a pendência do ricardo
+        self.client.force_login(self.editor)
+        r = self.client.post(self.clear_url, {"user_id": self.ricardo.id})
+        self.assertEqual(r.status_code, 403)
+        self.assertEqual(self._active(), [self.ricardo.id])
+
+    def test_dono_limpa_de_qualquer_um(self):
+        self.client.force_login(self.dono)
+        self.client.post(self.set_url, {"responsibles": [self.ricardo.id]})
+        r = self.client.post(self.clear_url, {"user_id": self.ricardo.id})
+        self.assertEqual(r.status_code, 200)
+        self.card.refresh_from_db()
+        self.assertFalse(self.card.is_impeded)
+
+    def test_reativar_apos_resolver(self):
+        self.client.force_login(self.dono)
+        self.client.post(self.set_url, {"responsibles": [self.ricardo.id]})
+        self.client.post(self.clear_url, {"user_id": self.ricardo.id})
+        # marca de novo o mesmo: deve reativar, não estourar unique
+        r = self.client.post(self.set_url, {"responsibles": [self.ricardo.id]})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(self._active(), [self.ricardo.id])
+        # histórico preservado: 1 resolvido + 1 ativo
+        self.assertEqual(CardImpediment.objects.filter(card=self.card, user=self.ricardo).count(), 2)

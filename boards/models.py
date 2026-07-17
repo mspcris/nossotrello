@@ -322,6 +322,10 @@ class Card(models.Model):
         related_name="cards_delivered",
     )
 
+    # Impedimento: espelha is_delivered como flag rápida para o board. Os
+    # responsáveis (quem trava o card) ficam em CardImpediment — pode ter vários.
+    is_impeded = models.BooleanField(default=False)
+
     objects = ActiveCardManager()
     all_objects = models.Manager()
 
@@ -1007,6 +1011,58 @@ class CardFollow(models.Model):
 
     def __str__(self):
         return f"{self.user_id} follows {self.card_id}"
+
+
+class CardImpediment(models.Model):
+    """Uma pendência: o card está travado esperando `user` fazer algo.
+
+    Vários por card (o card pode depender de mais de uma pessoa). O card sai do
+    impedimento quando não sobra nenhuma pendência ativa — cada responsável
+    resolve a sua (ou o dono do quadro resolve por qualquer um). Soft-resolve
+    (is_active=False + resolved_at) preserva o histórico, como o resto do app.
+    """
+
+    card = models.ForeignKey("Card", on_delete=models.CASCADE, related_name="impediments")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="card_impediments",
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="card_impediments_created",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    resolved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="card_impediments_resolved",
+    )
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["created_at"]
+        indexes = [
+            models.Index(fields=["card", "is_active"]),
+        ]
+        constraints = [
+            # no máximo uma pendência ATIVA por (card, user) — reativar é permitido
+            models.UniqueConstraint(
+                fields=["card", "user"],
+                condition=models.Q(is_active=True),
+                name="uniq_active_impediment_per_card_user",
+            ),
+        ]
+
+    def __str__(self):
+        estado = "ativo" if self.is_active else "resolvido"
+        return f"{self.user_id} trava {self.card_id} ({estado})"
 
 
 class NotificationBuffer(models.Model):

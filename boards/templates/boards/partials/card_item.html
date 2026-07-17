@@ -4,6 +4,7 @@
   id="card-{{ card.id }}"
   data-card-id="{{ card.id }}"
   data-is-delivered="{{ card.is_delivered|yesno:'1,0' }}"
+  data-is-impeded="{{ card.is_impeded|yesno:'1,0' }}"
   data-tag-colors='{{ card.tag_colors|default:"{}"|escapejs }}'
   data-card-open-url="{% url 'boards:card_modal' card.id %}"
   data-term-due="{% if card.due_date %}{{ card.due_date|date:'Y-m-d' }}{% endif %}"
@@ -11,6 +12,35 @@
   data-term-notify="{{ card.due_notify|default_if_none:True|yesno:'1,0' }}"
   class="card-item relative p-3 bg-white/80 rounded-xl shadow-sm mb-3 cursor-pointer overflow-hidden"
 >
+
+{# 🚧 IMPEDIMENTO: fotos GRANDES dos responsáveis, com pulso vermelho.
+   Fica no topo e cresce o card pra baixo. Só o próprio responsável clica na
+   própria foto pra se liberar (data-imp-me="1"). #}
+{% if card.is_impeded and card.impediment_previews %}
+  <div class="card-impediment" data-card-impediment="{{ card.id }}" aria-label="Card em impedimento">
+    <div class="card-imp-head">🚧 Impedido — aguardando</div>
+    <div class="card-imp-people">
+      {% for r in card.impediment_previews %}
+        <button type="button"
+                class="card-imp-person{% if r.is_me %} is-me{% endif %}"
+                title="{{ r.name }}{% if r.is_me %} — clique para se liberar{% endif %}"
+                {% if r.is_me %}data-imp-me="1"{% endif %}
+                data-imp-user="{{ r.id }}"
+                onpointerdown="event.stopPropagation();"
+                ontouchstart="event.stopPropagation();"
+                onclick="event.stopPropagation(); {% if r.is_me %}window.cardClearImpediment && window.cardClearImpediment({{ card.id }}, {{ r.id }}, this);{% endif %}">
+          {% if r.avatar_url %}
+            <img class="card-imp-avatar" src="{{ r.avatar_url }}" alt="{{ r.name }}">
+          {% else %}
+            <span class="card-imp-avatar card-imp-avatar--initials">{{ r.name|slice:":1"|upper }}</span>
+          {% endif %}
+          <span class="card-imp-dot" aria-hidden="true"></span>
+          <span class="card-imp-name">{{ r.name }}</span>
+        </button>
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}
 
 <!-- BOTÃO DE EXCLUSÃO (aparece apenas no modo "Excluir cards") -->
 <button type="button"

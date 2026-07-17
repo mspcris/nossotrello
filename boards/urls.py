@@ -677,6 +677,8 @@ urlpatterns = [
     ),
 
     path("card/<int:card_id>/follow/", cards_state_views.toggle_card_follow, name="toggle_card_follow"),
+    path("card/<int:card_id>/impediment/set/", cards_state_views.set_card_impediment, name="set_card_impediment"),
+    path("card/<int:card_id>/impediment/clear/", cards_state_views.clear_card_impediment, name="clear_card_impediment"),
 
 
     # ============================================================
