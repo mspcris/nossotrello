@@ -69,14 +69,18 @@
      ocupa o topo. O botão é posicionado em baixo-à-direita via CSS (absolute);
      estando por último no DOM, mesmo sem o absolute ele nunca empurra a capa. -->
 
-  {# CARD CONTADOR: número grande #}
-  {% if card.counter_mode %}
+  {# CAPA — impedido SEMPRE mostra a mesma tarja fina (36px), tenha imagem/cor ou
+     não. A imagem/cor não é apagada, volta quando o impedimento é resolvido.
+     Assim todos os cards impedidos ficam do mesmo tamanho. #}
+  {% if card.is_impeded %}
+    <div class="mb-2 card-tarja-solid">🚧 IMPEDIDO</div>
+  {% elif card.counter_mode %}{# CARD CONTADOR: número grande #}
     {% counter_value card as cv %}
     <div class="mb-2 cc-counter" style="{% if card.cover_color %}background:{{ card.cover_color }};{% endif %}">
       <span class="cc-counter-num">{{ cv }}</span>
     </div>
   {% elif card.cover_image %}{# CAPA #}
-    <div class="mb-2 card-cover-wrap{% if card.is_impeded %} is-impeded{% endif %}">
+    <div class="mb-2 card-cover-wrap">
 
       <!-- Fundo espelhado (blur) — img lazy: só busca o blob quando entra na viewport -->
       <img
@@ -92,16 +96,9 @@
         alt="Capa do card"
         class="card-cover-img"
         loading="lazy">
-
-      {% if card.is_impeded %}
-        <div class="card-cover-tarja-overlay" aria-hidden="true"></div>
-        <div class="card-cover-tarja">🚧 IMPEDIDO</div>
-      {% endif %}
     </div>
   {% elif card.cover_color %}
-    <div class="mb-2 card-color-cover{% if card.is_impeded %} is-impeded{% endif %}" style="height:36px;border-radius:8px;background:{{ card.cover_color }};">{% if card.is_impeded %}<span class="card-color-tarja">🚧 IMPEDIDO</span>{% endif %}</div>
-  {% elif card.is_impeded %}
-    <div class="mb-2 card-tarja-solid">🚧 IMPEDIDO</div>
+    <div class="mb-2" style="height:36px;border-radius:8px;background:{{ card.cover_color }};"></div>
   {% endif %}
 
 
