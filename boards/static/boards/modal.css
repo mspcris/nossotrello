@@ -266,14 +266,22 @@
 #card-modal-root.theme-dark textarea,
 #card-modal-root.theme-dark select,
 #card-modal-root.theme-dark .ql-container,
-#card-modal-root.theme-dark .ql-editor,
 #card-modal-root.card-theme-dark input,
 #card-modal-root.card-theme-dark textarea,
 #card-modal-root.card-theme-dark select,
-#card-modal-root.card-theme-dark .ql-container,
-#card-modal-root.card-theme-dark .ql-editor{
+#card-modal-root.card-theme-dark .ql-container{
   background: rgba(20,20,20,0.55) !important;
   border: 1px solid rgba(255,255,255,0.14) !important;
+  color: rgba(241,245,249,0.95) !important;
+}
+
+/* O .ql-editor é o miolo DENTRO do .ql-container: a moldura é do container.
+   Dar borda/fundo próprios aqui desenhava uma segunda linha dentro do campo —
+   moldura dupla que só aparecia no dark (no claro não há regra equivalente). */
+#card-modal-root.theme-dark .ql-editor,
+#card-modal-root.card-theme-dark .ql-editor{
+  background: transparent !important;
+  border: none !important;
   color: rgba(241,245,249,0.95) !important;
 }
 
