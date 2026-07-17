@@ -1347,11 +1347,20 @@ html.dark #modal .modal-content,
   --cm-aa-activity-font-lg: 18px; /* AAA de verdade */
   --cm-aa-activity-line: 1.60;
 
-  --cm-aa-activity-font: var(--cm-aa-activity-font-sm);
+  /* Nova Atividade / feed no MESMO tamanho da descrição (--cm-desc-font = 1rem).
+     Não dá pra usar var(--cm-desc-font) aqui: ela vive em #cm-root (filho) e não
+     sobe até #card-modal-root. O modo compacto espelha o 0.90rem da descrição. */
+  --cm-aa-activity-font: 1rem;
 }
 
 #card-modal-root[data-font="md"]{ --cm-aa-activity-font: var(--cm-aa-activity-font-md); }
 #card-modal-root[data-font="lg"]{ --cm-aa-activity-font: var(--cm-aa-activity-font-lg); }
+
+/* Modo compacto: feed acompanha a descrição (0.90rem). Precisa vir DEPOIS da
+   base acima, senão a base (fonte 1rem) vence por ordem de fonte. */
+@media (max-width: 1366px) and (max-height: 768px){
+  #card-modal-root{ --cm-aa-activity-font: 0.90rem; }
+}
 
 /* 2) Aplica na Atividade (conteúdo + editor) */
 #card-modal-root .cm-activity,
