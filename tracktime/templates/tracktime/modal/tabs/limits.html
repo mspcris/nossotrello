@@ -20,6 +20,9 @@
           <div class="tt-limit-name">{{ r.name }}</div>
           <div class="tt-limit-meta">{% if r.handle %}@{{ r.handle }}{% else %}{{ r.email }}{% endif %}</div>
         </div>
+        <div class="tt-limit-60d" title="Total de track-time nos últimos 60 dias (critério de ordenação)">
+          {{ r.total_60d_fmt }}<br><small>60 dias</small>
+        </div>
 
         <div class="tt-limit-edit">
           <input type="number" min="0" max="1440" step="5"
@@ -42,6 +45,9 @@
 <style>
   .tt-limits-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:14px; flex-wrap:wrap; }
   .tt-limits-title{ font-weight:900; font-size:16px; }
+  .tt-limit-60d{ font-size:13px; font-weight:800; text-align:right; white-space:nowrap;
+    color:#60a5fa; min-width:70px; }
+  .tt-limit-60d small{ font-weight:600; opacity:.6; font-size:10px; }
   .tt-limits-sub{ font-size:12px; opacity:.8; margin-top:4px; max-width:560px; line-height:1.4; }
   .tt-limits-search{
     border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.06);

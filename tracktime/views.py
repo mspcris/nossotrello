@@ -851,10 +851,19 @@ def tracktime_tab_limits(request):
     if not _is_tracktime_admin(request.user):
         return HttpResponseForbidden("Apenas o administrador pode ver os limites.")
 
-    profiles = (
-        UserProfile.objects.select_related("user")
-        .order_by("display_name", "user__email")
-    )
+    # total trabalhado por usuário nos últimos 60 dias (para ordenar)
+    cutoff = timezone.now() - timedelta(days=60)
+    totals_60d = {
+        row["user_id"]: int(row["total"] or 0)
+        for row in (
+            TimeEntry.objects
+            .filter(started_at__gte=cutoff)
+            .values("user_id")
+            .annotate(total=Sum("minutes"))
+        )
+    }
+
+    profiles = UserProfile.objects.select_related("user")
     rows = []
     for p in profiles:
         u = p.user
@@ -869,7 +878,12 @@ def tracktime_tab_limits(request):
             "handle": (getattr(p, "handle", "") or "").strip(),
             "limit": limit,  # 0 = usa o padrão
             "effective": limit if limit > 0 else TRACKTIME_SYSTEM_DEFAULT_MIN,
+            "total_60d": totals_60d.get(u.id, 0),
+            "total_60d_fmt": _fmt_min(totals_60d.get(u.id, 0)),
         })
+
+    # 1º: mais tempo de track-time nos últimos 60 dias (desc); 2º: alfabética
+    rows.sort(key=lambda r: (-r["total_60d"], r["name"].lower()))
 
     return render(request, "tracktime/modal/tabs/limits.html", {
         "rows": rows,
