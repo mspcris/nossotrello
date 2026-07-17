@@ -2203,6 +2203,7 @@ class ColumnAutomation(models.Model):
         ("set_start", "Definir data de início (+N dias)"),
         ("add_label", "Adicionar etiqueta"),
         ("mark_delivered", "Marcar como entregue"),
+        ("mark_undelivered", "Marcar como NÃO entregue (limpa a data de entrega)"),
     ]
 
     column = models.ForeignKey(

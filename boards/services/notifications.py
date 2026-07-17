@@ -567,6 +567,37 @@ def mark_card_delivered(*, card: Card, actor: Optional[User]) -> Card:
     return card
 
 
+@transaction.atomic
+def mark_card_undelivered(*, card: Card, clear_due: bool = False) -> Card:
+    """
+    Inverso de mark_card_delivered: tira o card de "Entregue" e religa a
+    notificação por prazo/cores que a entrega tinha desligado.
+
+    clear_due=True também apaga a data de entrega (due_date) — para quando o
+    card volta do DONE pra fila e o prazo antigo não vale mais.
+    """
+    update_fields = []
+
+    if getattr(card, "is_delivered", False):
+        card.is_delivered = False
+        card.delivered_at = None
+        card.delivered_by = None
+        update_fields += ["is_delivered", "delivered_at", "delivered_by"]
+
+    # a entrega desliga due_notify; ao desentregar, religa
+    if hasattr(card, "due_notify") and not card.due_notify:
+        card.due_notify = True
+        update_fields.append("due_notify")
+
+    if clear_due and getattr(card, "due_date", None):
+        card.due_date = None
+        update_fields.append("due_date")
+
+    if update_fields:
+        card.save(update_fields=update_fields)
+    return card
+
+
 def notify_delivery(*, card: Card, actor: Optional[User] = None) -> None:
     """
     Envia a notificação de Entrega para seguidores do card (CardFollow),

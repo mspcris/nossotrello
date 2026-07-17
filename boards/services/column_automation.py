@@ -83,6 +83,8 @@ def _apply(rule, card, column, actor):
         _add_label(card, p)
     elif a == "mark_delivered":
         _mark_delivered(card, actor)
+    elif a == "mark_undelivered":
+        _mark_undelivered(card, actor)
 
 
 def _send_email(rule, card, column, p):
@@ -500,3 +502,41 @@ def _mark_delivered(card, actor=None):
         notify_delivery(card=card, actor=actor)
     except Exception:
         logger.debug("automation: notify_delivery falhou", exc_info=True)
+
+
+def _mark_undelivered(card, actor=None):
+    """Inverso de _mark_delivered — para o card que volta do DONE pra fila.
+
+    Além de tirar o "Entregue", limpa a data de entrega: o prazo que valia
+    quando o card foi dado como pronto não vale mais na volta. Não dispara
+    notify_* — "voltou pra fila" não é evento de entrega, e avisar seguidores
+    de uma des-entrega seria ruído.
+    """
+    from boards.services.notifications import mark_card_undelivered
+    from boards.models import CardLog
+
+    # nada a desfazer (nem entregue, nem data): evita log/versão à toa
+    if not getattr(card, "is_delivered", False) and not getattr(card, "due_date", None):
+        return
+
+    had_due = bool(getattr(card, "due_date", None))
+
+    mark_card_undelivered(card=card, clear_due=True)
+
+    try:
+        who = ""
+        if actor and getattr(actor, "id", None):
+            prof = getattr(actor, "profile", None)
+            who = (getattr(prof, "display_name", "") or "").strip() or actor.get_username()
+        prefix = f"<strong>{who}</strong> " if who else ""
+        extra = " e removeu a data de entrega" if had_due else ""
+        CardLog.objects.create(
+            card=card,
+            actor=actor if (actor and getattr(actor, "id", None)) else None,
+            content=(
+                f"<p>{prefix}marcou este card como <strong>NÃO entregue</strong>"
+                f"{extra} (automação).</p>"
+            ),
+        )
+    except Exception:
+        logger.debug("automation: log de des-entrega falhou", exc_info=True)
