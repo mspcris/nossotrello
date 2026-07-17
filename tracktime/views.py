@@ -335,7 +335,7 @@ def card_tracktime_start(request, card_id):
         activity_type_id=activity.id,
         card_id=card.id,
         board_id=card.column.board_id,
-        card_title_cache=card.title,
+        card_title_cache=(card.title or "")[:500],  # coluna é CharField(500); title é TextField
         card_url_cache=(
         settings.SITE_URL.rstrip("/")
         + reverse("boards:board_detail", kwargs={"board_id": card.column.board_id})
@@ -531,7 +531,7 @@ def card_tracktime_manual(request, card_id):
     ended_at=now,
     card_id=card.id,
     board_id=card.column.board_id,
-    card_title_cache=card.title,
+    card_title_cache=(card.title or "")[:500],  # coluna é CharField(500); title é TextField
     card_url_cache=(
         settings.SITE_URL.rstrip("/")
         + reverse("boards:board_detail", kwargs={"board_id": card.column.board_id})
