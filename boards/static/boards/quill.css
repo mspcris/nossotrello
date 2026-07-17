@@ -28,13 +28,28 @@
 }
 
 
-/* Mention token */
+/* Mention token. Cada tema força a cor do texto (claro→#111, escuro→branco) por
+   regra de alta especificidade que não dá pra vencer aqui. Então alinhamos o
+   FUNDO ao texto de cada tema, em vez de brigar pela cor:
+     - claro: fundo azul-claro  → o texto escuro forçado lê bem;
+     - escuro: fundo azul sólido → o texto branco forçado lê bem.
+   !important porque o quill.mention.min.css do CDN carrega depois e fixa
+   background-color:#d3e1eb + width:65px. */
 .mention {
-  background: rgba(59, 130, 246, 0.15);
-  border: 1px solid rgba(59, 130, 246, 0.35);
-  padding: 1px 6px;
+  background: #dbeafe !important;   /* blue-100 (tema claro) */
+  border: 1px solid #93c5fd;
+  padding: 1px 8px !important;
   border-radius: 999px;
   white-space: nowrap;
+  width: auto !important;
+  height: auto !important;
+}
+.mention > span { margin: 0 !important; }
+
+#card-modal-root.theme-dark .mention,
+#card-modal-root.card-theme-dark .mention {
+  background: #2563eb !important;   /* blue-600 (tema escuro) */
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 /* Mention dropdown (quill-mention) */
