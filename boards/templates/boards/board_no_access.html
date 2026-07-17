@@ -29,6 +29,39 @@
     line-height: 1.35;
   }
 
+  /* dados que já vieram do IDCamim — leitura, não formulário */
+  .ar-known{
+    border: 1px solid rgba(2,6,23,.12);
+    background: rgba(2,6,23,.03);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin: 0 0 16px 0;
+  }
+
+  .ar-known-head{
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: #64748b;
+    margin: 0 0 6px 0;
+  }
+
+  .ar-known-list{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    color: #0f172a;
+    font-size: 14px;
+    line-height: 1.4;
+  }
+
+  .ar-known-list span + span::before{
+    content: "·";
+    color: #94a3b8;
+    margin-right: 14px;
+  }
+
   .ar-grid{
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -159,42 +192,54 @@
     <form id="access-request-form" method="post" action="{% url 'boards:board_request_access' board.id %}">
       {% csrf_token %}
 
-      <div class="ar-grid">
-        <div class="ar-field">
-          <label>Nome *</label>
-          <input class="ar-input" name="nome" id="ar-nome" type="text" placeholder="Ex: João Silva">
-        </div>
-
-        <div class="ar-field">
-          <label>Email *</label>
-          <input class="ar-input" name="email" id="ar-email" type="email" value="{{ request.user.email }}" placeholder="seu@email.com">
-        </div>
-
-        <div class="ar-field">
-          <label>Telefone *</label>
-          <input class="ar-input" name="telefone" id="ar-telefone" type="text" placeholder="(11) 99999-9999">
-        </div>
-
-        <div class="ar-field">
-          <label>Ramal</label>
-          <input class="ar-input" name="ramal" id="ar-ramal" type="text" placeholder="Ex: 1234">
-        </div>
-
-        <div class="ar-field">
-          <label>Posto</label>
-          <input class="ar-input" name="posto" id="ar-posto" type="text" placeholder="Ex: Analista">
-        </div>
-
-        <div class="ar-field">
-          <label>Função</label>
-          <input class="ar-input" name="funcao" id="ar-funcao" type="text" placeholder="Ex: Financeiro">
+      <div class="ar-known">
+        <div class="ar-known-head">Seus dados, direto do IDCamim</div>
+        <div class="ar-known-list">
+          <span><strong>{{ known.nome }}</strong></span>
+          <span>{{ known.email }}</span>
+          {% if known.telefone %}<span>{{ known.telefone }}</span>{% endif %}
+          {% if known.posto %}<span>{{ known.posto }}</span>{% endif %}
+          {% if known.funcao %}<span>{{ known.funcao }}</span>{% endif %}
+          {% if known.ramal %}<span>Ramal {{ known.ramal }}</span>{% endif %}
         </div>
       </div>
 
+      {% if needs_form %}
+        <div class="ar-grid">
+          {% if "telefone" in missing_fields %}
+            <div class="ar-field">
+              <label>Telefone *</label>
+              <input class="ar-input" name="telefone" id="ar-telefone" type="text" placeholder="(11) 99999-9999">
+            </div>
+          {% endif %}
+
+          {% if "posto" in missing_fields %}
+            <div class="ar-field">
+              <label>Posto</label>
+              <input class="ar-input" name="posto" id="ar-posto" type="text" placeholder="Ex: Analista">
+            </div>
+          {% endif %}
+
+          {% if "funcao" in missing_fields %}
+            <div class="ar-field">
+              <label>Função</label>
+              <input class="ar-input" name="funcao" id="ar-funcao" type="text" placeholder="Ex: Financeiro">
+            </div>
+          {% endif %}
+
+          {% if "ramal" in missing_fields %}
+            <div class="ar-field">
+              <label>Ramal</label>
+              <input class="ar-input" name="ramal" id="ar-ramal" type="text" placeholder="Ex: 1234">
+            </div>
+          {% endif %}
+        </div>
+      {% endif %}
+
       <div class="ar-actions">
-        <button class="ar-btn" id="ar-submit" type="submit" disabled>
-        Clique aqui e peça autorização ao dono do quadro
-        
+        <button class="ar-btn" id="ar-submit" type="submit">
+          Clique aqui e peça autorização ao dono do quadro
+        </button>
       </div>
     </form>
     {% endif %}
@@ -204,21 +249,19 @@
 {% if not existing_request %}
 <script>
 (function(){
-  const nome = document.getElementById('ar-nome');
-  const tel = document.getElementById('ar-telefone');
-  const email = document.getElementById('ar-email');
   const btn = document.getElementById('ar-submit');
   const form = document.getElementById('access-request-form');
   const feedback = document.getElementById('access-request-feedback');
 
+  // nome/email vêm do IDCamim e não têm campo. O telefone só aparece quando o
+  // IDCamim não tinha nenhum — aí volta a ser obrigatório.
+  const tel = document.getElementById('ar-telefone');
+
   function sync(){
-    const ok = (nome.value.trim().length > 0) && (tel.value.trim().length > 0) && (email.value.trim().length > 0);
-    btn.disabled = !ok;
+    btn.disabled = !!tel && tel.value.trim().length === 0;
   }
 
-  nome.addEventListener('input', sync);
-  tel.addEventListener('input', sync);
-  email.addEventListener('input', sync);
+  if (tel) tel.addEventListener('input', sync);
   sync();
 
   form.addEventListener('submit', async function(e){

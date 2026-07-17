@@ -130,6 +130,59 @@ def _gen_6digit_code() -> str:
     return f"{random.randint(0, 999999):06d}"
 
 
+# Campos do pedido de acesso que o IDCamim NÃO tem (users: id, email, name,
+# given_name, family_name, picture, phone_number, ...). Só estes são perguntados,
+# e só quando ainda não estão no perfil. Nome/e-mail/telefone vêm do login.
+_ACCESS_ASKABLE = ("telefone", "posto", "funcao", "ramal")
+
+
+def _access_request_known_data(user):
+    """O que já sabemos do usuário sem perguntar nada.
+
+    nome/email/telefone chegam do IDCamim no login (scope "openid profile email
+    phone"); telefone é gravado no perfil por _sync_camim_phone. posto/funcao/ramal
+    não existem no IDCamim — só estão aqui se o próprio usuário já digitou antes.
+    """
+    from ..signals import _default_display_name_from_email
+
+    profile = getattr(user, "profile", None)
+    email = (user.email or "").strip()
+
+    # display_name nunca vem vazio: o signal de criação preenche com o prefixo do
+    # e-mail. Esse placeholder não vale mais que o nome real do IDCamim (que o
+    # login grava em User.first_name/last_name) — mas um nome que o usuário
+    # personalizou, sim.
+    display_name = (getattr(profile, "display_name", "") or "").strip()
+    is_placeholder = display_name == _default_display_name_from_email(email)
+
+    nome = "" if is_placeholder else display_name
+    if not nome:
+        nome = (user.get_full_name() or "").strip() or display_name or user.get_username()
+
+    return {
+        "nome": nome,
+        "email": (user.email or "").strip(),
+        "telefone": (getattr(profile, "telefone", "") or "").strip(),
+        "posto": (getattr(profile, "posto", "") or "").strip(),
+        "funcao": (getattr(profile, "setor", "") or "").strip(),  # "função" mora em setor
+        "ramal": (getattr(profile, "ramal", "") or "").strip(),
+    }
+
+
+def _access_request_gaps(known):
+    """(precisa de formulário?, quais campos perguntar).
+
+    Ramal é opcional: exigir que ele esteja preenchido faria o formulário
+    reaparecer pra sempre para quem nunca o preenche. O sinal de "já informou
+    seus dados" é ter QUALQUER um de posto/função/ramal.
+    """
+    has_org_info = any(known.get(f) for f in ("posto", "funcao", "ramal"))
+    needs_form = (not known.get("telefone")) or (not has_org_info)
+    if not needs_form:
+        return False, []
+    return True, [f for f in _ACCESS_ASKABLE if not known.get(f)]
+
+
 # ======================================================================
 # HOME (lista de boards)
 # ======================================================================
@@ -570,6 +623,9 @@ def board_detail(request, board_id):
 
         existing_request = BoardAccessRequest.objects.filter(board=board, user=request.user).first()
 
+        known = _access_request_known_data(request.user)
+        needs_form, missing_fields = _access_request_gaps(known)
+
         return render(
             request,
             "boards/board_no_access.html",
@@ -577,6 +633,10 @@ def board_detail(request, board_id):
                 "board": board,
                 "owner_user": owner_user,
                 "existing_request": existing_request,
+                # o que já sabemos (IDCamim/perfil) vs. o que ainda falta perguntar
+                "known": known,
+                "needs_form": needs_form,
+                "missing_fields": missing_fields,
             },
             status=403,
         )
@@ -2348,37 +2408,40 @@ def request_board_access(request, board_id):
     if BoardMembership.objects.filter(board=board, user=request.user).exists():
         return JsonResponse({"success": True, "already_has_access": True})
 
-    # Campos do formulário
-    nome = (request.POST.get("nome") or "").strip()
-    posto = (request.POST.get("posto") or "").strip()
-    funcao = (request.POST.get("funcao") or "").strip()
-    telefone = (request.POST.get("telefone") or "").strip()
-    ramal = (request.POST.get("ramal") or "").strip()
-    email = (request.POST.get("email") or "").strip().lower()
-
-    # Validação mínima (como você pediu)
-    if not nome or not telefone or not email:
-        return JsonResponse(
-            {"success": False, "error": "Preencha Nome, Telefone e Email para solicitar autorização."},
-            status=400,
-        )
-
-    # Segurança: email do formulário deve bater com o do usuário logado
-    user_email = (request.user.email or "").strip().lower()
-    if user_email and email != user_email:
-        return JsonResponse(
-            {"success": False, "error": "O e-mail informado precisa ser o mesmo do seu login."},
-            status=400,
-        )
-
-    # Atualiza/garante profile (sem mexer no modelo BoardAccessRequest)
+    # Garante profile antes de ler o que já sabemos
     try:
         profile = request.user.profile
     except Exception:
         from ..models import UserProfile
         profile = UserProfile.objects.create(user=request.user)
 
-    # Mapeamento
+    # nome/email vêm do IDCamim (login) — não são mais digitáveis. Isso também
+    # elimina a checagem de "email do form == email do login": não dá pra forjar
+    # o que não é enviado.
+    known = _access_request_known_data(request.user)
+    nome = known["nome"]
+    email = known["email"]
+
+    # posto/função/ramal não existem no IDCamim: só chegam pelo form, e só quando
+    # ainda não estavam no perfil. Telefone o IDCamim tem, mas pode vir vazio.
+    posto = (request.POST.get("posto") or "").strip() or known["posto"]
+    funcao = (request.POST.get("funcao") or "").strip() or known["funcao"]
+    ramal = (request.POST.get("ramal") or "").strip() or known["ramal"]
+    telefone = (request.POST.get("telefone") or "").strip() or known["telefone"]
+
+    if not email:
+        return JsonResponse(
+            {"success": False, "error": "Sua conta está sem e-mail. Faça login pelo IDCamim novamente."},
+            status=400,
+        )
+
+    if not telefone:
+        return JsonResponse(
+            {"success": False, "error": "Informe um telefone para o dono do quadro te encontrar."},
+            status=400,
+        )
+
+    # Mapeamento (só grava o que mudou de fato)
     profile.display_name = nome or profile.display_name
     profile.posto = posto or profile.posto
     profile.setor = funcao or profile.setor  # "função" mapeando para setor (ou crie campo depois no sprint 2)
