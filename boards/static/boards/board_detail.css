@@ -921,6 +921,39 @@ li[data-card-id][data-term-status="ok"] .term-badge{ color: #16a34a; }
   }
 }
 
+/* Telas estreitas (celular ~≤430px, inclui Z Flip 7): o problema é FALTA DE
+   ESPAÇO pra ler o card. Coluna de cards passa a ocupar quase a largura da tela
+   (uma por vez, com scroll horizontal entre colunas — padrão Kanban no celular),
+   pra o card ficar confortável. A agregadora fica mais estreita quando travada;
+   destravada (o usuário faz isso) ela rola junto e libera tudo. */
+@media (max-width: 430px) {
+  #columns-wrapper .column-item:not(.aggregator-column) {
+    --col-w: 88vw;
+    flex: 0 0 88vw;
+    width: 88vw;
+    max-width: 380px;
+  }
+  .aggregator-column {
+    width: 150px;
+    flex: 0 0 150px;
+  }
+  .aggregator-column .column-header { font-size: 13px; }
+}
+
+/* Z Flip 7 tela de capa (~340-360px): coluna de card ocupa ainda mais e a
+   agregadora travada fica bem enxuta. */
+@media (max-width: 360px) {
+  #columns-wrapper .column-item:not(.aggregator-column) {
+    --col-w: 90vw;
+    flex: 0 0 90vw;
+    width: 90vw;
+  }
+  .aggregator-column {
+    width: 124px;
+    flex: 0 0 124px;
+  }
+}
+
 
 
 
