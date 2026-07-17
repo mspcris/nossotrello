@@ -553,9 +553,21 @@
   window.TTLive = window.TTLive || {};
   window.TTLive.refresh = refresh;
 
-  // bind botão
+  // bind botão com feedback (item 25: mostrar que clicou)
   const btn = document.getElementById("tt-live-refresh-btn");
-  if (btn) btn.addEventListener("click", refresh);
+  if (btn) btn.addEventListener("click", async function(){
+    if (btn.dataset.busy === "1") return;
+    btn.dataset.busy = "1";
+    const orig = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Atualizando…";
+    try { await refresh(); }
+    finally {
+      btn.disabled = false;
+      btn.textContent = orig;
+      btn.dataset.busy = "0";
+    }
+  });
 
   // start
   refresh();

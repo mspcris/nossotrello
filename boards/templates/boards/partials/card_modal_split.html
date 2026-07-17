@@ -636,7 +636,7 @@
           <button type="button"
                   class="cm-imp-b-person{% if m.id == user.id %} is-me{% endif %}"
                   title="{{ m.name }}{% if m.id == user.id %} — clique para se liberar{% endif %}"
-                  {% if m.id == user.id %}onclick="window.cmClearImpediment && window.cmClearImpediment({{ m.id }});"{% endif %}>
+                  {% if m.id == user.id %}onclick="window.cmClearImpediment && window.cmClearImpediment({{ m.id }}, this);"{% endif %}>
             <span class="cm-imp-b-av">
               {% if m.avatar_url %}<img src="{{ m.avatar_url }}" alt="">{% else %}{{ m.name|slice:":1"|upper }}{% endif %}
               <span class="cm-imp-b-dot" aria-hidden="true"></span>

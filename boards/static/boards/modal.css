@@ -3190,6 +3190,28 @@ html.dark #modal #modal-breadcrumb{
 #cm-root .cm-imp-cancel{ background:transparent; border-color:rgba(127,127,127,.3); }
 #cm-root .cm-imp-save{ background:#ef4444; color:#fff; }
 #cm-root .cm-imp-save:hover{ background:#dc2626; }
+#cm-root .cm-imp-save.nt-btn-loading{ opacity:.85; cursor:progress; }
+
+/* spinner genérico de botão (marcar impedimento etc.) */
+.nt-spin{
+  display:inline-block; width:14px; height:14px; margin-right:7px; vertical-align:-2px;
+  border:2px solid rgba(255,255,255,.45); border-top-color:#fff; border-radius:50%;
+  animation: nt-spin-kf .6s linear infinite;
+}
+@keyframes nt-spin-kf{ to{ transform: rotate(360deg); } }
+
+/* foto em processo de "liberar pendência": notório que clicou */
+#cm-root .cm-imp-b-person.cm-imp-clearing .cm-imp-b-av,
+.card-imp-person.cm-imp-clearing .card-imp-avatar{
+  filter: brightness(.6);
+  position: relative;
+}
+#cm-root .cm-imp-b-person.cm-imp-clearing .cm-imp-b-av::after,
+.card-imp-person.cm-imp-clearing .card-imp-avatar::after{
+  content:""; position:absolute; inset:0; margin:auto; width:22px; height:22px;
+  border:3px solid rgba(255,255,255,.5); border-top-color:#fff; border-radius:50%;
+  animation: nt-spin-kf .6s linear infinite;
+}
 
 /* ── Banner de responsáveis acima do feed (quando impedido) ── */
 #cm-root .cm-imp-banner{

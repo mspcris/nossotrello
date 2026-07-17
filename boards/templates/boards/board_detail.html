@@ -2905,11 +2905,24 @@ window.cmCloseImpediment = function(){
   var p = document.getElementById("cm-impediment-panel");
   if (p) p.classList.add("is-hidden");
 };
+/* feedback de clique num botão: guarda o conteúdo, mostra "…", desabilita.
+   retorna função pra restaurar (usada só no erro; no sucesso o modal recarrega). */
+function _ntBtnLoading(btn, loadingText){
+  if (!btn) return function(){};
+  var orig = btn.innerHTML;
+  var disabled = btn.disabled;
+  btn.disabled = true;
+  btn.classList.add("nt-btn-loading");
+  btn.innerHTML = '<span class="nt-spin" aria-hidden="true"></span>' + (loadingText || "Aguarde…");
+  return function(){ btn.disabled = disabled; btn.classList.remove("nt-btn-loading"); btn.innerHTML = orig; };
+}
+
 window.cmSaveImpediment = function(){
   var p = document.getElementById("cm-impediment-panel");
   if (!p) return;
   var ids = Array.prototype.slice.call(p.querySelectorAll(".cm-imp-tile.is-on")).map(function(b){ return b.dataset.uid; });
   if (!ids.length){ alert("Escolha ao menos uma pessoa responsável pelo impedimento."); return; }
+  var restore = _ntBtnLoading(p.querySelector(".cm-imp-save"), "Marcando…");
   var body = new URLSearchParams();
   ids.forEach(function(id){ body.append("responsibles", id); });
   fetch(p.dataset.setUrl, {
@@ -2918,27 +2931,28 @@ window.cmSaveImpediment = function(){
     body: body
   }).then(function(r){ if(!r.ok) throw new Error("falha"); return r.json(); })
     .then(function(){ _ntRefreshModal(p.dataset.cardId); })
-    .catch(function(){ alert("Não consegui marcar o impedimento. Tente de novo."); });
+    .catch(function(){ restore(); alert("Não consegui marcar o impedimento. Tente de novo."); });
 };
 
 /* clique na própria foto no board → libera a própria pendência */
 window.cardClearImpediment = function(cardId, userId, el){
   var url = "/card/" + cardId + "/impediment/clear/";
   var body = new URLSearchParams(); body.append("user_id", userId);
-  if (el) el.style.opacity = ".4";
+  if (el){ el.classList.add("cm-imp-clearing"); el.style.pointerEvents = "none"; }
   fetch(url, {
     method: "POST",
     headers: {"X-CSRFToken": _ntCsrf(), "Content-Type": "application/x-www-form-urlencoded"},
     body: body
   }).then(function(r){ if(!r.ok) throw new Error("falha"); return r.json(); })
     .then(function(){ /* board atualiza sozinho via WS (bump de versão) */ })
-    .catch(function(){ if(el) el.style.opacity = ""; alert("Não consegui remover a pendência."); });
+    .catch(function(){ if(el){ el.classList.remove("cm-imp-clearing"); el.style.pointerEvents = ""; } alert("Não consegui remover a pendência."); });
 };
 
 /* botão no modal também some/aparece conforme estado (o clear vem do board) */
-window.cmClearImpediment = function(userId){
+window.cmClearImpediment = function(userId, el){
   var p = document.getElementById("cm-impediment-panel");
   if (!p) return;
+  if (el){ el.classList.add("cm-imp-clearing"); el.style.pointerEvents = "none"; }
   var body = new URLSearchParams(); if(userId) body.append("user_id", userId);
   fetch(p.dataset.clearUrl, {
     method: "POST",
@@ -2946,7 +2960,7 @@ window.cmClearImpediment = function(userId){
     body: body
   }).then(function(r){ if(!r.ok) throw new Error("falha"); return r.json(); })
     .then(function(){ _ntRefreshModal(p.dataset.cardId); })
-    .catch(function(){ alert("Não consegui remover a pendência."); });
+    .catch(function(){ if(el){ el.classList.remove("cm-imp-clearing"); el.style.pointerEvents = ""; } alert("Não consegui remover a pendência."); });
 };
 </script>
 
