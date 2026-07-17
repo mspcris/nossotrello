@@ -290,31 +290,32 @@ body.cm-skin .agg-menu-reset:hover { background: rgba(255, 255, 255, 0.2); }
   .cm-appearance-pop { left: 12px; right: 12px; width: auto; top: 92px; }
 }
 
-/* telas estreitas (celular): header encolhe ao máximo pra sobrar altura pros
-   cards. No QUADRO, a busca do header some (fica na lupa da barra do quadro),
-   então o header colapsa pra só a linha dos ícones — sem o paredão roxo vazio.
-   No home a busca continua (não escondemos lá). */
+/* home: telas bem estreitas escondem nome/handle pra não espremer o avatar */
 @media (max-width: 430px) {
   body.cm-skin .cm-home-id { display: none; }
-  body.cm-skin .cm-header { padding: 6px 10px; }
-  body.cm-skin .cm-header-bar { row-gap: 0; }
-  body.cm-skin .cm-home-avatar { height: 44px; width: 44px; border-width: 2px; }
-  body.cm-skin .cm-icon-btn,
-  body.cm-skin #menuToggle { height: 34px; width: 34px; }
-  body.cm-skin .cm-icon-btn--sm { height: 32px; width: 32px; }
-  body.cm-skin .cm-home-right { gap: 6px; }
+}
 
-  /* NO QUADRO: esconde a busca do header (redundante com a lupa da barra) e
-     colapsa a linha de busca, deixando o header do tamanho dos ícones. */
+/* QUADRO em QUALQUER celular (≤767px): o header roxo vira 1 linha de ícones,
+   sem o paredão vazio. IMPORTANTE: usar 767px, não 430px — a tela principal do
+   Z Flip é ~450px e o breakpoint de 430px nem pegava. Escopado em .is-board pra
+   não mexer no header do home. A busca do header some (fica na lupa da barra). */
+@media (max-width: 767px) {
+  body.is-board.cm-skin .cm-header { padding: 6px 10px; }
   body.is-board.cm-skin .cm-header-center { display: none; }
   body.is-board.cm-skin .cm-header-bar {
     grid-template-columns: 1fr auto;
     grid-template-areas: "left right";
+    row-gap: 0;
+    padding-top: 2px;
+    padding-bottom: 2px;
   }
-  /* gift + power lado a lado (não empilhados) → header do tamanho de 1 ícone.
-     .cm-home-actions é flex-col por padrão; vira row no quadro estreito. */
+  /* gift + power lado a lado (não empilhados) — .cm-home-actions é flex-col */
   body.is-board.cm-skin .cm-home-actions { flex-direction: row; }
-  body.is-board.cm-skin .cm-header-bar { padding-top: 2px; padding-bottom: 2px; }
+  body.is-board.cm-skin .cm-home-avatar { height: 44px; width: 44px; border-width: 2px; }
+  body.is-board.cm-skin .cm-icon-btn,
+  body.is-board.cm-skin #menuToggle { height: 34px; width: 34px; }
+  body.is-board.cm-skin .cm-icon-btn--sm { height: 32px; width: 32px; }
+  body.is-board.cm-skin .cm-home-right { gap: 6px; }
 }
 
 /* ===========================================================
