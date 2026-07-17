@@ -40,6 +40,22 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-07 ---
+    "243b4d8": (
+        "⚡",
+        "Pedir acesso a um quadro ficou quase automático",
+        "O formulário de pedido de acesso pedia nome, e-mail e telefone — que o "
+        "IDCamim já tinha e o sistema já sabia. Agora esses dados aparecem "
+        "prontos e você só informa posto, função e ramal, que o IDCamim não "
+        "guarda. E se você já pediu acesso a algum quadro antes, o formulário "
+        "some de vez: é só clicar no botão.",
+    ),
+    "22e88ca": (
+        "🌓",
+        "Sumiu a linha estranha na descrição do card no modo escuro",
+        "No modo escuro, o campo de descrição (e o de Nova Atividade) mostrava "
+        "uma moldura a mais por dentro, que não existia no modo claro. Agora o "
+        "campo tem uma borda só, igual nos dois temas.",
+    ),
     "cb26fd7": (
         "👑",
         "Ninguém mais te faz dono de um quadro sem avisar",
