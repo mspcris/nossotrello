@@ -71,6 +71,14 @@
     return await res.json();
   }
 
+  function renderError(){
+    if (!list) return;
+    list.innerHTML = `<div class="tt-empty">Não consegui carregar agora.
+      <button type="button" id="tt-online-retry" class="btn btn-sm" style="margin-left:8px;">Tentar de novo</button></div>`;
+    const rb = document.getElementById("tt-online-retry");
+    if (rb) rb.addEventListener("click", refresh);
+  }
+
   function render(data){
     const items = (data && data.items) || [];
     if(!items.length){
@@ -141,9 +149,14 @@
   }
 
   async function refresh(){
-    await ping();
-    const data = await fetchOnline();
-    if (data) render(data);
+    try {
+      await ping();
+      const data = await fetchOnline();
+      if (data) render(data);
+      else renderError();   // 500/rede: mostra erro em vez de travar em "Carregando..."
+    } catch(_e){
+      renderError();
+    }
   }
 
   const btn = document.getElementById("tt-online-refresh-btn");

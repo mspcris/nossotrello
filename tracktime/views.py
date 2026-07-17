@@ -1998,19 +1998,21 @@ def tracktime_online_json(request):
 
         activities = []
 
-        # timer rodando vira a primeira linha do histórico
+        # timer rodando vira a primeira linha do histórico.
+        # (BUG antigo: este bloco lia de `lg` — variável órfã do loop de logs.
+        # Quando não havia CardLog nos últimos 9 min mas o usuário tinha timer
+        # rodando, `lg` era indefinida -> NameError -> 500 -> aba travava em
+        # "Carregando...". Agora usa `run`, que é o dado do timer.)
         run = running_by_user.get(u.id)
         if run:
-            t = (run.get("card_title") or "Card").strip()
-            url = (run.get("card_url") or "").strip()
             activities.append({
-                "type": "cardlog",
-                "at": lg["at"],
-                "text": lg.get("text") or "",     # ✅
-                "content": lg.get("content") or "",  # opcional
-                "card_title": lg.get("card_title"),
-                "card_url": lg.get("card_url"),
-                "board_name": lg.get("board_name"),
+                "type": "tracktime",
+                "at": run.get("started_at") or now.isoformat(),
+                "text": "⏱ Track-time rodando",
+                "content": "",
+                "card_title": run.get("card_title") or None,
+                "card_url": run.get("card_url") or "",
+                "board_name": None,
             })
 
 
