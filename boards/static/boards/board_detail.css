@@ -1528,8 +1528,10 @@ li[data-card-id][data-term-status="ok"] .term-badge{ color: #16a34a; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  opacity: 0;
-  pointer-events: none;
+  /* sempre visível, igual ao kebab (que é .92 na base). Antes era opacity:0 até
+     o hover: só achava quem já sabia que existia. */
+  opacity: .92;
+  pointer-events: auto;
   transition: opacity .15s ease, transform .15s ease, filter .15s ease;
   /* mesmo fundo fosco do kebab: legível sobre qualquer card/capa */
   background: rgba(15,23,42,.55);
