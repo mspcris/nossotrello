@@ -1689,10 +1689,29 @@ def set_card_cover(request, card_id):
     # Cor estática de capa (sem upload): aplica e re-renderiza o modal
     cover_color = (request.POST.get("cover_color") or "").strip()
     if cover_color and not request.FILES.get("cover"):
+        # Preserva a imagem antes de nulificar — senão o django-cleanup apaga o
+        # arquivo e não dá pra restaurar. Copia pra attachments/cover_history/
+        # (fora do campo ImageField, o cleanup não mexe) e guarda o path.
+        update_fields = ["cover_color", "cover_image"]
+        try:
+            old_rel = ""
+            if getattr(card, "cover_image", None) and card.cover_image:
+                old_rel = (card.cover_image.name or "").strip()
+            if old_rel:
+                ext = os.path.splitext(old_rel)[1].lower() or ".png"
+                prev_rel = f"attachments/cover_history/{uuid.uuid4().hex}{ext}"
+                with default_storage.open(old_rel, "rb") as fp:
+                    data = fp.read()
+                if data:
+                    default_storage.save(prev_rel, ContentFile(data))
+                    card.cover_prev_path = prev_rel
+                    update_fields.append("cover_prev_path")
+        except Exception:
+            pass
         card.cover_color = cover_color
         if getattr(card, "cover_image", None):
             card.cover_image = None
-        card.save(update_fields=["cover_color", "cover_image"])
+        card.save(update_fields=update_fields)
         try:
             b = card.column.board
             b.version = (b.version or 0) + 1
@@ -1759,7 +1778,8 @@ def set_card_cover(request, card_id):
     # ============================================================
     card.cover_image = f
     card.cover_color = ""
-    card.save(update_fields=["cover_image", "cover_color"])
+    card.cover_prev_path = ""  # imagem nova substitui a opção de restaurar
+    card.save(update_fields=["cover_image", "cover_color", "cover_prev_path"])
     board = card.column.board
     board.version += 1
     board.save(update_fields=["version"])
@@ -1883,6 +1903,44 @@ def remove_card_cover(request, card_id):
             _log_card(card, request, f"<p><strong>{actor}</strong> removeu a capa do card.</p>")
     except Exception:
         pass
+
+    return _render_card_modal(request, card)
+
+
+@login_required
+@require_POST
+def restore_card_cover_image(request, card_id):
+    """Volta a imagem de capa preservada (depois que o usuário escolheu uma cor).
+
+    Copia a cópia guardada em cover_prev_path de volta para card_covers/ e limpa a
+    cor. Se não houver cópia, não faz nada.
+    """
+    card = get_object_or_404(Card, id=card_id, is_deleted=False)
+    actor = _actor_label(request)
+
+    if not _user_can_edit_board(request.user, card.column.board):
+        return _deny_read_only(request)
+
+    prev = (getattr(card, "cover_prev_path", "") or "").strip()
+    if not prev:
+        return HttpResponseBadRequest("Não há imagem de capa para restaurar.")
+
+    try:
+        with default_storage.open(prev, "rb") as fp:
+            data = fp.read()
+        if not data:
+            return HttpResponseBadRequest("A imagem preservada não está mais disponível.")
+        ext = os.path.splitext(prev)[1].lower() or ".png"
+        card.cover_image.save(f"{uuid.uuid4().hex}{ext}", ContentFile(data), save=False)
+        card.cover_color = ""
+        card.cover_prev_path = ""
+        card.save(update_fields=["cover_image", "cover_color", "cover_prev_path"])
+        board = card.column.board
+        board.version += 1
+        board.save(update_fields=["version"])
+        _log_card(card, request, f"<p><strong>{actor}</strong> restaurou a imagem de capa do card.</p>")
+    except Exception:
+        return HttpResponseBadRequest("Não consegui restaurar a imagem.")
 
     return _render_card_modal(request, card)
 

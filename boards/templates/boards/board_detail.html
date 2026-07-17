@@ -2853,6 +2853,23 @@ function cardLikeSocial(cardId, btn){
 /* ===== IMPEDIMENTO ===== */
 function _ntCsrf(){ return document.querySelector("[name=csrfmiddlewaretoken]")?.value || ""; }
 
+/* restaurar a imagem da capa depois de escolher uma cor */
+window.cmRestoreCoverImage = function(cardId){
+  var body = new URLSearchParams();
+  fetch("/card/" + cardId + "/cover/restore-image/", {
+    method: "POST",
+    headers: {"X-CSRFToken": _ntCsrf(), "Content-Type": "application/x-www-form-urlencoded"},
+    body: body
+  }).then(function(r){
+    if(!r.ok) throw new Error("falha");
+    return r.text();
+  }).then(function(html){
+    // a view devolve o modal re-renderizado
+    var target = document.getElementById("modal-body");
+    if (target && window.htmx) { window.htmx.ajax("GET", "/card/" + cardId + "/modal/", {target:"#modal-body", swap:"innerHTML"}); }
+  }).catch(function(){ alert("Não consegui restaurar a imagem."); });
+};
+
 function _ntRefreshModal(cardId){
   try {
     if (window.htmx && typeof window.htmx.ajax === "function") {

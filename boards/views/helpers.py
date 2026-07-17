@@ -899,12 +899,23 @@ def _card_modal_context(card: Card) -> dict:
     except Exception:
         pass
 
+    # imagem de capa preservada (para o swatch "restaurar imagem")
+    cover_prev_url = ""
+    prev = (getattr(card, "cover_prev_path", "") or "").strip()
+    if prev:
+        try:
+            from django.core.files.storage import default_storage
+            cover_prev_url = default_storage.url(prev)
+        except Exception:
+            cover_prev_url = ""
+
     return {
         "card": card,
         "checklists": _card_checklists_qs(card),
         "board_due_colors": colors,
         "impediment_members": imp_members,
         "impediment_active_ids": imp_active_ids,
+        "cover_prev_url": cover_prev_url,
     }
 
 

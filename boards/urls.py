@@ -637,6 +637,7 @@ urlpatterns = [
     # Capa do card
     path("card/<int:card_id>/cover/set/", cards_views.set_card_cover, name="set_card_cover"),
     path("card/<int:card_id>/cover/remove/", cards_views.remove_card_cover, name="remove_card_cover"),
+    path("card/<int:card_id>/cover/restore-image/", cards_views.restore_card_cover_image, name="restore_card_cover_image"),
 
     # Duplicar card
     path("card/<int:card_id>/duplicate/", cards_views.duplicate_card, name="duplicate_card"),

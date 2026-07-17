@@ -282,6 +282,10 @@ class Card(models.Model):
 
     cover_image = models.ImageField(upload_to="card_covers/", null=True, blank=True)
     cover_color = models.CharField(max_length=9, blank=True, default="")  # cor estática de capa (hex)
+    # cópia preservada da última imagem de capa, para "restaurar" depois de escolher
+    # uma cor (o django-cleanup apagaria o cover_image original). Guarda o path da
+    # cópia em attachments/cover_history/. Vazio = não há imagem a restaurar.
+    cover_prev_path = models.CharField(max_length=500, blank=True, default="")
 
     # ---- Card contador (mostra um número grande, atualizado sozinho) ----
     COUNTER_MODE_CHOICES = [
