@@ -206,7 +206,9 @@
               {% endif %}
               <div>
                 <label class="cm-label">Título</label>
-                <input type="text" name="card_title" form="cm-main-form" value="{{ card.title }}" class="cm-input" data-cm-edit-field="title">
+                <textarea name="card_title" form="cm-main-form" rows="1"
+                          class="cm-input cm-title-area" data-cm-edit-field="title"
+                          data-autogrow="1">{{ card.title }}</textarea>
               </div>
 
               <div>
@@ -756,6 +758,20 @@
 (function () {
   const root = document.getElementById("cm-root");
   if (!root) return;
+
+  // ── Título: textarea que cresce com o conteúdo (mostra o título inteiro) ──
+  (function titleAutogrow(){
+    const ta = root.querySelector('textarea[data-cm-edit-field="title"]');
+    if (!ta) return;
+    const grow = () => { ta.style.height = "auto"; ta.style.height = (ta.scrollHeight) + "px"; };
+    ta.addEventListener("input", grow);
+    // Enter não quebra linha no título (é um título, não um parágrafo)
+    ta.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); ta.blur(); }
+    });
+    grow();
+    requestAnimationFrame(grow);
+  })();
 
   const cardId = (root.getAttribute("data-card-id") || "").trim() || "x";
   const ALLOWED = ["desc", "tags", "check", "ativ", "files", "track"];

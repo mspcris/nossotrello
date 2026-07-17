@@ -976,7 +976,18 @@ html.dark #cm-root{
    o font-size de todo input com !important */
 #card-modal-root #cm-root .cm-input[data-cm-edit-field="title"]{
   font-size: var(--cm-title-font) !important;
-  font-weight: 600;
+}
+
+/* Título é <textarea> que cresce: mostra o título INTEIRO, quebrando em quantas
+   linhas precisar (sem negrito — peso normal, como o Cristiano pediu). */
+#card-modal-root #cm-root .cm-title-area{
+  min-height: 0;
+  height: auto;
+  resize: none;
+  overflow: hidden;      /* o autogrow ajusta a altura; sem barra de rolagem */
+  white-space: pre-wrap; /* quebra normal + respeita espaços */
+  line-height: 1.3;
+  font-weight: 400;      /* explicitamente sem negrito */
 }
 
 /* padrão mais compacto */

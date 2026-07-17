@@ -186,11 +186,13 @@
   //   description -> .ql-editor (contenteditable do Quill)
   // ============================================================
   function findTitleInput(root) {
+    // o título virou <textarea> (quebra em várias linhas); mantém compat com
+    // <input> antigo. .value funciona nos dois.
     return (
-      root.querySelector('input[name="title"][data-cm-edit-field]') ||
-      root.querySelector('input[name="card_title"][data-cm-edit-field]') ||
-      root.querySelector('input[name="title"]') ||
-      root.querySelector('input[name="card_title"]')
+      root.querySelector('[name="title"][data-cm-edit-field]') ||
+      root.querySelector('[name="card_title"][data-cm-edit-field]') ||
+      root.querySelector('input[name="title"], textarea[name="title"]') ||
+      root.querySelector('input[name="card_title"], textarea[name="card_title"]')
     );
   }
 
