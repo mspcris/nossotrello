@@ -70,9 +70,20 @@ def mover_e_entregar(*, card, coluna_destino, actor, request=None, entregar=True
         # No fim ele ficaria invisível: "Testado ok" é coluna de arquivo, com
         # centenas de cards acumulados. O que acabou de ser aprovado é
         # justamente o que alguém pode querer conferir.
-        Card.objects.filter(column=coluna_destino).exclude(id=card.id).update(
-            position=F("position") + 1)
-        card.position = 0
+        #
+        # Exceção: CARD CONTADOR (counter_mode <> "") mora no alto da coluna e não
+        # pode ser empurrado para baixo. O card entregue entra logo DEPOIS do
+        # último contador — nunca em primeiro. Usa a MAIOR posição de contador em
+        # vez de contar o bloco do topo porque nem sempre eles começam na posição
+        # 0: há coluna com o contador na 1, atrás de um card comum.
+        _pos_contadores = [
+            p for p, m in (coluna_destino.cards.exclude(id=card.id)
+                           .values_list("position", "counter_mode"))
+            if (m or "").strip()]
+        pos_destino = (max(_pos_contadores) + 1) if _pos_contadores else 0
+        Card.objects.filter(column=coluna_destino, position__gte=pos_destino).exclude(
+            id=card.id).update(position=F("position") + 1)
+        card.position = pos_destino
         card._placed_at = card.column_since   # a automação notify_placer lê isto
         card.column_since = timezone.now()
         card.save(update_fields=["position", "column_since"])
