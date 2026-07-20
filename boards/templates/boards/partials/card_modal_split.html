@@ -803,14 +803,37 @@
   (function titleAutogrow(){
     const ta = root.querySelector('textarea[data-cm-edit-field="title"]');
     if (!ta) return;
-    const grow = () => { ta.style.height = "auto"; ta.style.height = (ta.scrollHeight) + "px"; };
+
+    const grow = () => {
+      if (!ta.isConnected) return;
+      ta.style.height = "auto";
+      const h = ta.scrollHeight;
+      if (h > 0) ta.style.height = h + "px";
+    };
+
     ta.addEventListener("input", grow);
     // Enter não quebra linha no título (é um título, não um parágrafo)
     ta.addEventListener("keydown", (e) => {
       if (e.key === "Enter") { e.preventDefault(); ta.blur(); }
     });
-    grow();
-    requestAnimationFrame(grow);
+
+    // O modal pode estar OCULTO quando este script roda: aí scrollHeight vem 0,
+    // a altura fica de 1 linha e (com overflow:hidden) o título fica cortado.
+    // Insiste até o elemento estar visível e com altura real.
+    let tries = 0;
+    const tryGrow = () => {
+      grow();
+      const hidden = ta.offsetParent === null || ta.scrollHeight === 0;
+      if (hidden && tries++ < 60) requestAnimationFrame(tryGrow);
+    };
+    tryGrow();
+
+    // largura muda => quebra muda => altura muda
+    window.addEventListener("resize", grow);
+    // fonte carrega depois => métrica muda
+    try { if (document.fonts && document.fonts.ready) document.fonts.ready.then(grow); } catch (_e) {}
+    // reabrir modal / trocar de aba volta a exibir o campo
+    document.addEventListener("modal:opened", grow);
   })();
 
   const cardId = (root.getAttribute("data-card-id") || "").trim() || "x";
