@@ -24,6 +24,9 @@ urlpatterns = [
     path("cards/<int:card_id>/", views.api_card_detail, name="card_detail"),
     path("cards/<int:card_id>/update/", views.api_card_update, name="card_update"),
     path("cards/<int:card_id>/move/", views.api_card_move, name="card_move"),
+    # Move + entrega executando as automacoes e a notificacao (usado pelo HESK
+    # quando o chamado e resolvido) — ver api_card_deliver.
+    path("cards/<int:card_id>/deliver/", views.api_card_deliver, name="card_deliver"),
     path("cards/<int:card_id>/activity/", views.api_card_activity, name="card_activity"),
     path("cards/<int:card_id>/comment/", views.api_card_comment, name="card_comment"),
     path("columns/<int:column_id>/cards/", views.api_card_create, name="card_create"),

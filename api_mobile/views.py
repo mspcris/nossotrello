@@ -371,6 +371,63 @@ def api_card_move(request, card_id):
     return Response({"ok": True})
 
 
+@api_view(["POST"])
+def api_card_deliver(request, card_id):
+    """Move o card para uma coluna E marca como Entregue, executando TUDO o que a
+    interface executaria (automações da coluna, feed, seguidores, e-mail/WhatsApp
+    de entrega).
+
+    Existe porque o HESK precisa disso ao resolver um chamado, e os caminhos
+    atuais não servem: `api_card_move` não roda as automações e `api_card_update`
+    não aceita `is_delivered`. Escrever direto no Postgres também não resolveria —
+    a notificação de entrega é in-process.
+
+    Corpo: {"column_id": <int, opcional>, "deliver": <bool, default true>,
+            "actor_email": "<e-mail, opcional>"}
+
+    `actor_email` permite atribuir a ação à PESSOA que resolveu o chamado no
+    outro sistema, em vez de ao usuário do token. Só é aceito se essa pessoa
+    também tiver acesso de escrita ao quadro."""
+    from boards.services.card_delivery import mover_e_entregar
+
+    try:
+        card = Card.all_objects.select_related("column__board").get(id=card_id)
+    except Card.DoesNotExist:
+        return Response({"error": "Card não encontrado"}, status=status.HTTP_404_NOT_FOUND)
+
+    board = card.column.board
+    if not BoardMembership.objects.filter(
+            board=board, user=request.user, role__in=["owner", "editor"]).exists():
+        return Response({"error": "Sem permissão"}, status=status.HTTP_403_FORBIDDEN)
+
+    coluna = card.column
+    col_id = request.data.get("column_id")
+    if col_id:
+        try:
+            coluna = Column.objects.get(id=col_id, board=board, is_deleted=False)
+        except Column.DoesNotExist:
+            return Response({"error": "Coluna não encontrada neste quadro"},
+                            status=status.HTTP_404_NOT_FOUND)
+
+    # Autoria: por padrão o dono do token; se vier actor_email de alguém com
+    # acesso de escrita ao quadro, a ação sai no nome dessa pessoa.
+    actor = request.user
+    email = (request.data.get("actor_email") or "").strip().lower()
+    if email:
+        cand = User.objects.filter(email__iexact=email).first()
+        if cand and BoardMembership.objects.filter(
+                board=board, user=cand, role__in=["owner", "editor"]).exists():
+            actor = cand
+
+    deliver = request.data.get("deliver", True)
+    if isinstance(deliver, str):
+        deliver = deliver.strip().lower() in ("1", "true", "on", "yes")
+
+    r = mover_e_entregar(card=card, coluna_destino=coluna, actor=actor,
+                         request=request, entregar=bool(deliver))
+    return Response({"ok": True, "card_id": card.id, "actor": actor.get_username(), **r})
+
+
 # ════════════════════════════════════════════════════════════════
 # CARD ACTIVITY
 # ════════════════════════════════════════════════════════════════
