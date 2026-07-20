@@ -3,7 +3,7 @@
 from collections import defaultdict
 
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count, Prefetch
+from django.db.models import Count, Prefetch, Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
@@ -66,7 +66,8 @@ def board_poll(request, board_id):
     columns = (
         Column.objects
         .filter(board=board, is_deleted=False)
-        .annotate(card_count=Count("cards", distinct=True))
+        # NÃO conta card contador (é widget, não tarefa) — igual ao board_detail
+        .annotate(card_count=Count("cards", filter=Q(cards__counter_mode=""), distinct=True))
         .prefetch_related(Prefetch("cards", queryset=cards_qs))
         .order_by("position", "id")
     )

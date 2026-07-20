@@ -130,8 +130,14 @@ def add_card(request, column_id):
                 card.column_entered_by = request.user
 
             if where == "top":
-                Card.objects.filter(column=column).update(position=F("position") + 1)
-                card.position = 0
+                # card contador fica sempre em 1º: o novo entra em 2º
+                first = column.cards.order_by("position").first()
+                if first and getattr(first, "counter_mode", False):
+                    Card.objects.filter(column=column, position__gte=1).update(position=F("position") + 1)
+                    card.position = 1
+                else:
+                    Card.objects.filter(column=column).update(position=F("position") + 1)
+                    card.position = 0
             else:
                 card.position = column.cards.count()
 
@@ -1024,6 +1030,17 @@ def move_card(request):
         new_position = 0
     if new_position > len(new_cards):
         new_position = len(new_cards)
+
+    # EXCEÇÃO: card contador fica sempre no topo da coluna. Se o destino começa
+    # com um contador e o card iria pra 1ª posição, ele entra em 2º (o contador
+    # continua em 1º). Vale pro menu "Mover", pro painel completo e pra automação.
+    if (
+        new_position == 0
+        and new_cards
+        and getattr(new_cards[0], "counter_mode", False)
+        and not getattr(card, "counter_mode", False)
+    ):
+        new_position = 1
 
     # reindexa nova coluna
     for index, c in enumerate(new_cards):
