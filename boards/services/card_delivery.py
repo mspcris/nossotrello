@@ -15,6 +15,7 @@ helpers compartilhados, para não haver duas verdades sobre o que é "entregar".
 import logging
 
 from django.db import transaction
+from django.db.models import F
 from django.utils import timezone
 from django.utils.html import escape
 
@@ -33,7 +34,7 @@ def mover_e_entregar(*, card, coluna_destino, actor, request=None, entregar=True
     entregue não gera segundo log nem segunda notificação.
 
     Retorna um dict com o que de fato aconteceu."""
-    from boards.models import CardFollow, CardMoveHistory, ColumnFollow
+    from boards.models import Card, CardFollow, CardMoveHistory, ColumnFollow
     from boards.services.column_automation import run_count_triggers, run_for
     from boards.services.notifications import mark_card_delivered, notify_delivery
     from boards.views.helpers import _log_card
@@ -65,8 +66,13 @@ def mover_e_entregar(*, card, coluna_destino, actor, request=None, entregar=True
         except Exception:
             logger.debug("mover_e_entregar: auto-follow falhou", exc_info=True)
 
-        # --- posiciona no fim da coluna destino e zera o cronômetro de parada ---
-        card.position = coluna_destino.cards.exclude(id=card.id).count()
+        # --- posiciona no TOPO da coluna destino e zera o cronômetro de parada ---
+        # No fim ele ficaria invisível: "Testado ok" é coluna de arquivo, com
+        # centenas de cards acumulados. O que acabou de ser aprovado é
+        # justamente o que alguém pode querer conferir.
+        Card.objects.filter(column=coluna_destino).exclude(id=card.id).update(
+            position=F("position") + 1)
+        card.position = 0
         card._placed_at = card.column_since   # a automação notify_placer lê isto
         card.column_since = timezone.now()
         card.save(update_fields=["position", "column_since"])
