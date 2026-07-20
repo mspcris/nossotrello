@@ -27,6 +27,8 @@ urlpatterns = [
     # Move + entrega executando as automacoes e a notificacao (usado pelo HESK
     # quando o chamado e resolvido) — ver api_card_deliver.
     path("cards/<int:card_id>/deliver/", views.api_card_deliver, name="card_deliver"),
+    # Descricao COM registro de Antes/Depois no feed (o card_update grava calado).
+    path("cards/<int:card_id>/description/", views.api_card_description, name="card_description"),
     path("cards/<int:card_id>/activity/", views.api_card_activity, name="card_activity"),
     path("cards/<int:card_id>/comment/", views.api_card_comment, name="card_comment"),
     path("columns/<int:column_id>/cards/", views.api_card_create, name="card_create"),

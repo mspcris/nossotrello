@@ -428,6 +428,43 @@ def api_card_deliver(request, card_id):
     return Response({"ok": True, "card_id": card.id, "actor": actor.get_username(), **r})
 
 
+@api_view(["POST"])
+def api_card_description(request, card_id):
+    """Troca a descrição do card REGISTRANDO Antes/Depois no feed, igual à
+    interface. O `api_card_update` também aceita `description`, mas grava em
+    silêncio — e quem edita pelo HESK precisa aparecer no histórico do card.
+
+    Corpo: {"description": "<html>", "actor_email": "<e-mail, opcional>"}"""
+    from boards.services.card_description import atualizar_descricao
+
+    try:
+        card = Card.all_objects.select_related("column__board").get(id=card_id)
+    except Card.DoesNotExist:
+        return Response({"error": "Card não encontrado"}, status=status.HTTP_404_NOT_FOUND)
+
+    board = card.column.board
+    if not BoardMembership.objects.filter(
+            board=board, user=request.user, role__in=["owner", "editor"]).exists():
+        return Response({"error": "Sem permissão"}, status=status.HTTP_403_FORBIDDEN)
+
+    if "description" not in request.data:
+        return Response({"error": "description obrigatório"},
+                        status=status.HTTP_400_BAD_REQUEST)
+
+    actor = request.user
+    email = (request.data.get("actor_email") or "").strip().lower()
+    if email:
+        cand = User.objects.filter(email__iexact=email).first()
+        if cand and BoardMembership.objects.filter(
+                board=board, user=cand, role__in=["owner", "editor"]).exists():
+            actor = cand
+
+    mudou = atualizar_descricao(card=card, descricao=request.data.get("description") or "",
+                                actor=actor, request=request)
+    return Response({"ok": True, "card_id": card.id, "alterada": mudou,
+                     "actor": actor.get_username()})
+
+
 # ════════════════════════════════════════════════════════════════
 # CARD ACTIVITY
 # ════════════════════════════════════════════════════════════════
