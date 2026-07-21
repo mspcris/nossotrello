@@ -780,8 +780,9 @@
       const counter = col.querySelector("[data-column-counter]");
       if (!counter) return;
 
+      // card contador é widget, não tarefa: fora da contagem (header e agregadora)
       const n = col.querySelectorAll(
-        'li[data-card-id]:not([style*="display: none"]):not([hidden]):not(.hidden)'
+        'li[data-card-id]:not([data-counter="1"]):not([style*="display: none"]):not([hidden]):not(.hidden)'
       ).length;
 
       counter.textContent = `${n} card${n !== 1 ? "s" : ""}`;

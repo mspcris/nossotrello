@@ -26,7 +26,7 @@
           onclick="if(window.__aggNavGo) window.__aggNavGo(this)"
         >
           <span class="aggregator-count">
-            {{ col.card_count|default_if_none:0|stringformat:"02d" }}
+            {{ col.visible_cards_count|stringformat:"02d" }}
           </span>
           <span class="aggregator-name">
             {{ col.name }}
@@ -51,7 +51,7 @@
       const list = document.getElementById("cards-col-" + colId);
       if (!list) return;
 
-      const count = list.querySelectorAll("li[data-card-id]").length;
+      const count = list.querySelectorAll('li[data-card-id]:not([data-counter="1"])').length;
       const label = String(count).padStart(2, "0");
 
       const countEl = card.querySelector(".aggregator-count");

@@ -4,6 +4,7 @@
   id="card-{{ card.id }}"
   data-card-id="{{ card.id }}"
   data-is-delivered="{{ card.is_delivered|yesno:'1,0' }}"
+  {% if card.counter_mode %}data-counter="1"{% endif %}
   data-is-impeded="{{ card.is_impeded|yesno:'1,0' }}"
   data-tag-colors='{{ card.tag_colors|default:"{}"|escapejs }}'
   data-card-open-url="{% url 'boards:card_modal' card.id %}"

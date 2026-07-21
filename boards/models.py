@@ -246,6 +246,19 @@ class Column(models.Model):
     def __str__(self):
         return f"{self.board.name} - {self.name}"
 
+    @property
+    def visible_cards_count(self):
+        """Cards exibidos na coluna, SEM o card contador (é widget, não tarefa).
+
+        Usa o prefetch de `cards` quando existe (sem query extra) — bate com o que
+        o board realmente renderiza, diferente de um Count() no banco inteiro.
+        counter_mode é CharField: "" = card normal.
+        """
+        return sum(
+            1 for c in self.cards.all()
+            if not (getattr(c, "counter_mode", "") or "")
+        )
+
 
 # ============================================================
 # CARD MANAGER

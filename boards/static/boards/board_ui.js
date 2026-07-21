@@ -496,8 +496,16 @@ function startViewerPolling() {
 
   // conta apenas os visíveis (compatível com filtro via display:none e/ou .hidden)
   let n = 0;
+  const seen = new Set();
   for (const el of cards) {
     if (!el) continue;
+    if (seen.has(el)) continue;   // o seletor tem 4 alternativas: evita contar 2x
+    seen.add(el);
+
+    // card contador é widget, não tarefa: fora da contagem
+    if (el.dataset && el.dataset.counter === "1") continue;
+    if (el.querySelector && el.querySelector(".cc-counter")) continue;
+
     if (el.classList && el.classList.contains("hidden")) continue;
 
     const cs = window.getComputedStyle(el);

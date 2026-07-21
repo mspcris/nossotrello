@@ -67,7 +67,7 @@ def board_poll(request, board_id):
         Column.objects
         .filter(board=board, is_deleted=False)
         # NÃO conta card contador (é widget, não tarefa) — igual ao board_detail
-        .annotate(card_count=Count("cards", filter=Q(cards__counter_mode=""), distinct=True))
+        .annotate(card_count=Count("cards", distinct=True))
         .prefetch_related(Prefetch("cards", queryset=cards_qs))
         .order_by("position", "id")
     )

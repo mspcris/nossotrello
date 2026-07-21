@@ -568,14 +568,6 @@ def board_detail(request, board_id):
     columns = (
         board.columns
         .filter(is_deleted=False)
-        # contagem do header/agregadora NÃO conta card contador (é widget, não tarefa)
-        .annotate(
-            card_count=models.Count(
-                "cards",
-                filter=Q(cards__is_archived=False, cards__counter_mode=""),
-                distinct=True,
-            )
-        )
         .order_by("position")
         .prefetch_related(
             Prefetch(
@@ -2124,14 +2116,6 @@ def board_poll(request, board_id):
     columns = (
         board.columns
         .filter(is_deleted=False)
-        # contagem do header/agregadora NÃO conta card contador (é widget, não tarefa)
-        .annotate(
-            card_count=models.Count(
-                "cards",
-                filter=Q(cards__is_archived=False, cards__counter_mode=""),
-                distinct=True,
-            )
-        )
         .order_by("position")
         .prefetch_related(
             Prefetch(
