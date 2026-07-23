@@ -14,15 +14,9 @@ from ..models import Board, Column, Card, CardLog, CardSeen, CardFollow
 
 
 def _user_avatar_url(u) -> str:
+    # Ordem (upload > IDCamim > preset) em UserProfile.avatar_url.
     prof = getattr(u, "profile", None)
-    if prof and getattr(prof, "avatar", None):
-        try:
-            return prof.avatar.url
-        except Exception:
-            pass
-    if prof and getattr(prof, "avatar_choice", ""):
-        return static_url(f"images/avatar/{prof.avatar_choice}")
-    return ""
+    return getattr(prof, "avatar_url", "") if prof else ""
 
 
 @login_required

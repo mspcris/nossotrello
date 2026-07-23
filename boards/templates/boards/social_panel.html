@@ -55,6 +55,8 @@
       <div class="sp-avatar-tap" onclick="spToggleAvatarMenu()" title="Alterar foto">
         {% if profile.avatar %}
           <img src="{{ profile.avatar.url }}" alt="" class="sp-avatar" id="sp-avatar-img">
+        {% elif profile.camim_picture_url %}
+          <img src="{{ profile.camim_picture_url }}" alt="" class="sp-avatar" id="sp-avatar-img">
         {% elif profile.avatar_choice %}
           <img src="{% static 'images/avatar/' %}{{ profile.avatar_choice }}" alt="" class="sp-avatar" id="sp-avatar-img">
         {% else %}
@@ -73,10 +75,13 @@
       {% else %}
       <div class="sp-avatar-tap" style="cursor:pointer"
            {% if profile.avatar %}onclick="spShowProfilePhoto('{{ profile.avatar.url }}')"
+           {% elif profile.camim_picture_url %}onclick="spShowProfilePhoto('{{ profile.camim_picture_url }}')"
            {% elif profile.avatar_choice %}onclick="spShowProfilePhoto('{% static 'images/avatar/' %}{{ profile.avatar_choice }}')"
            {% endif %}>
         {% if profile.avatar %}
           <img src="{{ profile.avatar.url }}" alt="" class="sp-avatar">
+        {% elif profile.camim_picture_url %}
+          <img src="{{ profile.camim_picture_url }}" alt="" class="sp-avatar">
         {% elif profile.avatar_choice %}
           <img src="{% static 'images/avatar/' %}{{ profile.avatar_choice }}" alt="" class="sp-avatar">
         {% else %}
@@ -325,6 +330,8 @@
             <div class="sp-req-av-wrap">
               {% if fp and fp.avatar %}
                 <img src="{{ fp.avatar.url }}" alt="" class="sp-friend-av-img sp-req-av-received">
+              {% elif fp and fp.camim_picture_url %}
+                <img src="{{ fp.camim_picture_url }}" alt="" class="sp-friend-av-img sp-req-av-received">
               {% elif fp and fp.avatar_choice %}
                 <img src="{% static 'images/avatar/' %}{{ fp.avatar_choice }}" alt="" class="sp-friend-av-img sp-req-av-received">
               {% else %}
@@ -365,6 +372,8 @@
                   title="{{ fp.display_name|default:friend.email }}">
             {% if fp and fp.avatar %}
               <img src="{{ fp.avatar.url }}" alt="" class="sp-friend-av-img">
+            {% elif fp and fp.camim_picture_url %}
+              <img src="{{ fp.camim_picture_url }}" alt="" class="sp-friend-av-img">
             {% elif fp and fp.avatar_choice %}
               <img src="{% static 'images/avatar/' %}{{ fp.avatar_choice }}" alt="" class="sp-friend-av-img">
             {% else %}
@@ -405,6 +414,8 @@
             <div class="sp-req-av-wrap">
               {% if fp and fp.avatar %}
                 <img src="{{ fp.avatar.url }}" alt="" class="sp-friend-av-img sp-req-av-sent">
+              {% elif fp and fp.camim_picture_url %}
+                <img src="{{ fp.camim_picture_url }}" alt="" class="sp-friend-av-img sp-req-av-sent">
               {% elif fp and fp.avatar_choice %}
                 <img src="{% static 'images/avatar/' %}{{ fp.avatar_choice }}" alt="" class="sp-friend-av-img sp-req-av-sent">
               {% else %}
@@ -440,6 +451,8 @@
                   title="{{ sp.display_name|default:sug.email }}">
             {% if sp and sp.avatar %}
               <img src="{{ sp.avatar.url }}" alt="" class="sp-friend-av-img">
+            {% elif sp and sp.camim_picture_url %}
+              <img src="{{ sp.camim_picture_url }}" alt="" class="sp-friend-av-img">
             {% elif sp and sp.avatar_choice %}
               <img src="{% static 'images/avatar/' %}{{ sp.avatar_choice }}" alt="" class="sp-friend-av-img">
             {% else %}

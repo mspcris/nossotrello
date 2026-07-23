@@ -10,6 +10,11 @@
           src="{{ profile.avatar.url }}"
           alt="{{ display_name|default:user_obj.email }}"
           class="w-20 h-20 rounded-2xl object-cover border border-white/30 shadow-sm">
+      {% elif profile.camim_picture_url %}
+        <img
+          src="{{ profile.camim_picture_url }}"
+          alt="{{ display_name|default:user_obj.email }}"
+          class="w-20 h-20 rounded-2xl object-cover border border-white/30 shadow-sm">
       {% elif profile.avatar_choice %}
         <img
           src="{% static 'images/avatar/' %}{{ profile.avatar_choice }}"

@@ -1035,13 +1035,8 @@ def tracktime_live_json(request):
             user_handle = (profile.handle or "").strip()
 
         # avatar
-        user_avatar_url = ""
-        if profile:
-            av = getattr(profile, "avatar", None)
-            if av and getattr(av, "url", None):
-                user_avatar_url = av.url
-            elif getattr(profile, "avatar_choice", ""):
-                user_avatar_url = static_url(f"images/avatar/{profile.avatar_choice}")
+        # Ordem (upload > IDCamim > preset) em UserProfile.avatar_url.
+        user_avatar_url = getattr(profile, "avatar_url", "") if profile else ""
 
         # datas do card
         start_date = getattr(card, "start_date", None)
@@ -1124,13 +1119,8 @@ def tracktime_closed_today_json(request):
 
         user_handle = (getattr(profile, "handle", "") or "").strip() if profile else ""
 
-        user_avatar_url = ""
-        if profile:
-            av = getattr(profile, "avatar", None)
-            if av and getattr(av, "url", None):
-                user_avatar_url = av.url
-            elif getattr(profile, "avatar_choice", ""):
-                user_avatar_url = static_url(f"images/avatar/{profile.avatar_choice}")
+        # Ordem (upload > IDCamim > preset) em UserProfile.avatar_url.
+        user_avatar_url = getattr(profile, "avatar_url", "") if profile else ""
 
         board_url = reverse("boards:board_detail", kwargs={"board_id": board.id})
         card_url = f"{board_url}?card={e.card_id}" if e.card_id else ""
@@ -1216,13 +1206,8 @@ def tracktime_today_totals_json(request):
         if not name:
             name = (getattr(u, "email", "") or "Usuário").strip()
 
-        avatar = ""
-        if prof:
-            av = getattr(prof, "avatar", None)
-            if av and getattr(av, "url", None):
-                avatar = av.url
-            elif getattr(prof, "avatar_choice", ""):
-                avatar = static_url(f"images/avatar/{prof.avatar_choice}")
+        # Ordem (upload > IDCamim > preset) em UserProfile.avatar_url.
+        avatar = getattr(prof, "avatar_url", "") if prof else ""
 
         items.append({
             "user_id": uid,

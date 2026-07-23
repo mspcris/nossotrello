@@ -66,20 +66,9 @@ from django.templatetags.static import static as static_url
 
 
 def _user_avatar_url(u) -> str:
+    # Ordem (upload > IDCamim > preset) em UserProfile.avatar_url.
     prof = getattr(u, "profile", None)
-
-    # 1) avatar upload (ImageField)
-    if prof and getattr(prof, "avatar", None):
-        try:
-            return prof.avatar.url
-        except Exception:
-            pass
-
-    # 2) avatar preset (avatar_choice) -> /static/images/avatar/<arquivo>
-    if prof and getattr(prof, "avatar_choice", ""):
-        return static_url(f"images/avatar/{prof.avatar_choice}")
-
-    return ""
+    return getattr(prof, "avatar_url", "") if prof else ""
 
 
 

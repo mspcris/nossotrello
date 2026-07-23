@@ -55,6 +55,25 @@ def _sync_camim_phone(user, *, sub: str, idcamim_phone: str) -> None:
         logger.exception("sync de telefone IDCamim falhou (ignorado)")
 
 
+def _sync_camim_picture(user, *, picture: str) -> None:
+    """Sincroniza a foto de perfil do IDCamim (claim 'picture') no profile local.
+
+    O IDCamim é a fonte da verdade da própria foto: a cada login, sobrescreve
+    o valor local (inclusive limpa se o IDCamim deixou de ter foto). Nunca é
+    aplicada por cima de um avatar próprio — a prioridade é decidida em
+    UserProfile.avatar_url. Qualquer erro é engolido para não quebrar o login.
+    """
+    try:
+        from boards.models import UserProfile
+        prof, _ = UserProfile.objects.get_or_create(user=user)
+        picture = (picture or "").strip()[:500]
+        if (prof.camim_picture_url or "") != picture:
+            prof.camim_picture_url = picture
+            prof.save(update_fields=["camim_picture_url"])
+    except Exception:
+        logger.exception("sync de foto IDCamim falhou (ignorado)")
+
+
 def _client_id():
     return (getattr(settings, "CAMIM_CLIENT_ID", "") or "").strip()
 
@@ -177,6 +196,10 @@ def camim_callback(request):
     # Telefone: IDCamim é a fonte da verdade. Se ele mandou telefone, salva aqui
     # (quando local está vazio). Se local tem e o IDCamim não, empurra pro IDCamim.
     _sync_camim_phone(user, sub=sub, idcamim_phone=(userinfo.get("phone_number") or "").strip())
+
+    # Foto: IDCamim é a fonte da verdade. Guarda a URL (claim 'picture') para
+    # usar como avatar quando o usuário não subiu foto própria.
+    _sync_camim_picture(user, picture=(userinfo.get("picture") or "").strip())
 
     if not user.is_active:
         messages.error(request, "Sua conta está inativa. Fale com o administrador.")

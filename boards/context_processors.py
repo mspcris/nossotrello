@@ -8,18 +8,10 @@ def user_profile_context(request):
 
     if user and getattr(user, "is_authenticated", False):
         try:
+            # Ordem (upload > IDCamim > preset) em UserProfile.avatar_url.
             profile = getattr(user, "profile", None)
-
-            # 1) Upload tem prioridade
-            if profile and getattr(profile, "avatar", None):
-                avatar = profile.avatar
-                if getattr(avatar, "url", None):
-                    avatar_url = avatar.url
-
-            # 2) Se não tem upload, usa preset
-            if not avatar_url and profile and getattr(profile, "avatar_choice", ""):
-                avatar_url = static_url(f"images/avatar/{profile.avatar_choice}")
-
+            if profile:
+                avatar_url = profile.avatar_url or None
         except Exception:
             avatar_url = None
 

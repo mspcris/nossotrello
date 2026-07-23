@@ -28,6 +28,7 @@ def user_profile_readonly_modal(request, user_id: int):
     if not profile:
         profile = SimpleNamespace(
             avatar=None,
+            camim_picture_url="",
             avatar_choice=None,
             display_name="",
             handle="",

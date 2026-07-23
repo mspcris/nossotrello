@@ -657,6 +657,17 @@ class UserProfile(models.Model):
 
     avatar = models.ImageField(upload_to="avatars/", blank=True, null=True)
 
+    # Foto de perfil vinda do IDCamim (claim OIDC "picture"), sincronizada a
+    # cada login. Só é usada quando o usuário não subiu avatar próprio: entra
+    # ACIMA do preset (avatar_choice), que é atribuído aleatoriamente no cadastro.
+    camim_picture_url = models.URLField(
+        max_length=500,
+        blank=True,
+        default="",
+        help_text="Foto de perfil do IDCamim (claim 'picture'). Fallback quando "
+                  "não há avatar próprio, com prioridade sobre o preset.",
+    )
+
     posto = models.CharField(max_length=120, blank=True, default="")
     setor = models.CharField(max_length=120, blank=True, default="")
     ramal = models.CharField(max_length=20, blank=True, default="")
@@ -753,6 +764,29 @@ class UserProfile(models.Model):
 
     def __str__(self):
         return self.handle or self.display_name or str(self.user)
+
+    @property
+    def avatar_url(self) -> str:
+        """URL da foto do usuário, na ordem de prioridade:
+
+            1. avatar próprio (upload)
+            2. foto do IDCamim (claim 'picture')
+            3. preset (avatar_choice)
+            4. "" → o front cai em iniciais
+
+        Fonte única desta ordem — todos os resolvers/templates delegam aqui.
+        """
+        if self.avatar:
+            try:
+                return self.avatar.url
+            except Exception:
+                pass
+        if self.camim_picture_url:
+            return self.camim_picture_url
+        if self.avatar_choice:
+            from django.templatetags.static import static
+            return static(f"images/avatar/{self.avatar_choice}")
+        return ""
 
 
 # ============================================================

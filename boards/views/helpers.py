@@ -178,16 +178,12 @@ def _actor_html(request) -> str:
 
 
 def avatar_url_for(user) -> str:
-    """Foto do usuário: upload > preset (avatar_choice) > "" (cai em iniciais)."""
+    """Foto do usuário: upload > IDCamim > preset (avatar_choice) > "" (iniciais).
+
+    Ordem definida em UserProfile.avatar_url — não duplicar aqui.
+    """
     prof = getattr(user, "profile", None)
-    if prof and getattr(prof, "avatar", None):
-        try:
-            return prof.avatar.url
-        except Exception:
-            pass
-    if prof and getattr(prof, "avatar_choice", ""):
-        return static_url(f"images/avatar/{prof.avatar_choice}")
-    return ""
+    return getattr(prof, "avatar_url", "") if prof else ""
 
 
 def _person_display_name(user) -> str:

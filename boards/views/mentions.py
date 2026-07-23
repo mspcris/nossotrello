@@ -42,7 +42,7 @@ def board_mentions(request, board_id: int):
             "value": handle,
             "handle": handle,
             "display_name": display_name,
-            "avatar_url": (p.avatar.url if (p and getattr(p, "avatar", None)) else ""),
+            "avatar_url": (getattr(p, "avatar_url", "") if p else ""),
         })
 
     return JsonResponse(results, safe=False)

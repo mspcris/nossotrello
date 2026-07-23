@@ -34,11 +34,16 @@ User = get_user_model()
 
 # ── helpers ──────────────────────────────────────────────────────
 def _avatar_url(profile, request=None):
+    # Ordem: upload > IDCamim > preset > None. Espelha UserProfile.avatar_url,
+    # mas resolve URLs absolutas quando há request (upload/preset são relativas;
+    # a foto do IDCamim já é absoluta).
     if profile and profile.avatar:
         url = profile.avatar.url
         if request:
             return request.build_absolute_uri(url)
         return url
+    if profile and getattr(profile, "camim_picture_url", ""):
+        return profile.camim_picture_url
     if profile and profile.avatar_choice:
         url = f"/static/images/avatar/{profile.avatar_choice}"
         if request:

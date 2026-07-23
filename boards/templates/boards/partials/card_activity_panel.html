@@ -62,6 +62,10 @@
                             <img class="cm-avatar-img"
                                  src="{{ p.avatar.url }}"
                                  alt="{{ log.cm_actor_label|default:'(SISTEMA)' }}">
+                          {% elif p and p.camim_picture_url %}
+                            <img class="cm-avatar-img"
+                                 src="{{ p.camim_picture_url }}"
+                                 alt="{{ log.cm_actor_label|default:'(SISTEMA)' }}">
                           {% elif p and p.avatar_choice %}
                             {% load static %}
                             <img class="cm-avatar-img"
@@ -198,6 +202,10 @@
                                         {% if p and p.avatar %}
                                           <img class="cm-avatar-img"
                                                src="{{ p.avatar.url }}"
+                                               alt="{{ r.cm_actor_label|default:'(SISTEMA)' }}">
+                                        {% elif p and p.camim_picture_url %}
+                                          <img class="cm-avatar-img"
+                                               src="{{ p.camim_picture_url }}"
                                                alt="{{ r.cm_actor_label|default:'(SISTEMA)' }}">
                                         {% elif p and p.avatar_choice %}
                                           {% load static %}

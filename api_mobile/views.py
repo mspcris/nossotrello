@@ -103,7 +103,7 @@ def api_login(request):
             "first_name": user.first_name,
             "last_name": user.last_name,
             "display_name": profile.display_name if profile else "",
-            "avatar_url": request.build_absolute_uri(profile.avatar.url) if profile and profile.avatar else None,
+            "avatar_url": _avatar_url(profile, request),
         },
     })
 
@@ -163,7 +163,7 @@ def api_login_camim(request):
             "first_name": user.first_name,
             "last_name": user.last_name,
             "display_name": profile.display_name if profile else "",
-            "avatar_url": request.build_absolute_uri(profile.avatar.url) if profile and profile.avatar else None,
+            "avatar_url": _avatar_url(profile, request),
         },
     })
 

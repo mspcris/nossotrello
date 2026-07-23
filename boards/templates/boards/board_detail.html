@@ -458,12 +458,16 @@
           data-display-name="{{ p.display_name|default:member.get_full_name|default:member.email }}"
           data-handle="{{ p.handle|default:'' }}"
           data-email="{{ member.email|default:'' }}"
-          data-avatar-url="{% if p and p.avatar %}{{ p.avatar.url }}{% elif p and p.avatar_choice %}{% static 'images/avatar/' %}{{ p.avatar_choice }}{% endif %}"
+          data-avatar-url="{% if p and p.avatar %}{{ p.avatar.url }}{% elif p and p.camim_picture_url %}{{ p.camim_picture_url }}{% elif p and p.avatar_choice %}{% static 'images/avatar/' %}{{ p.avatar_choice }}{% endif %}"
           id="bma-btn-{{ member.id }}"
           onclick="bmaClick({{ member.id }}, this)">
 
           {% if p and p.avatar %}
             <img src="{{ p.avatar.url }}"
+                 alt="{{ p.display_name|default:member.get_full_name|default:member.email }}"
+                 loading="lazy">
+          {% elif p and p.camim_picture_url %}
+            <img src="{{ p.camim_picture_url }}"
                  alt="{{ p.display_name|default:member.get_full_name|default:member.email }}"
                  loading="lazy">
           {% elif p and p.avatar_choice %}
@@ -541,6 +545,8 @@
                       aria-label="Ver perfil">
                 {% if p and p.avatar %}
                   <img src="{{ p.avatar.url }}" alt="" loading="lazy">
+                {% elif p and p.camim_picture_url %}
+                  <img src="{{ p.camim_picture_url }}" alt="" loading="lazy">
                 {% elif p and p.avatar_choice %}
                   <img src="{% static 'images/avatar/' %}{{ p.avatar_choice }}" alt="" loading="lazy">
                 {% else %}

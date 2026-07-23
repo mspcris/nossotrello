@@ -155,16 +155,11 @@ def _get_today_tasks(user):
 
 
 def _avatar_url_from_profile(prof):
-    """URL do avatar do profile: upload > avatar_choice > vazio."""
-    if prof and getattr(prof, "avatar", None):
-        try:
-            return prof.avatar.url
-        except Exception:
-            pass
-    if prof and getattr(prof, "avatar_choice", ""):
-        from django.templatetags.static import static
-        return static(f"images/avatar/{prof.avatar_choice}")
-    return ""
+    """URL do avatar: upload > IDCamim > avatar_choice > vazio.
+
+    Ordem em UserProfile.avatar_url — não duplicar aqui.
+    """
+    return getattr(prof, "avatar_url", "") if prof else ""
 
 
 def _build_board_invite_data(post):
@@ -370,11 +365,11 @@ def _annotate_profile_posts(posts, viewer):
                 post_prof = getattr(post.user, "profile", None)
                 post.friendship_data = {
                     "friend_name": friend_prof.display_name if friend_prof else friend_user.get_full_name(),
-                    "friend_avatar": friend_prof.avatar.url if friend_prof and friend_prof.avatar else "",
+                    "friend_avatar": getattr(friend_prof, "avatar_url", "") if friend_prof else "",
                     "friend_avatar_choice": friend_prof.avatar_choice if friend_prof else "",
                     "friend_id": friend_uid,
                     "user_name": post_prof.display_name if post_prof else post.user.get_full_name(),
-                    "user_avatar": post_prof.avatar.url if post_prof and post_prof.avatar else "",
+                    "user_avatar": getattr(post_prof, "avatar_url", "") if post_prof else "",
                     "user_avatar_choice": post_prof.avatar_choice if post_prof else "",
                 }
             except Exception:
@@ -753,12 +748,7 @@ def social_post_full(request, post_id: int):
     comments = []
     for c in comments_qs:
         c_prof = getattr(c.user, "profile", None)
-        c_avatar = None
-        if c_prof and c_prof.avatar:
-            c_avatar = c_prof.avatar.url
-        elif c_prof and c_prof.avatar_choice:
-            from django.templatetags.static import static
-            c_avatar = static(f"images/avatar/{c_prof.avatar_choice}")
+        c_avatar = getattr(c_prof, "avatar_url", "") if c_prof else None
         comments.append({
             "id": c.id,
             "author": c_prof.display_name if c_prof else c.user.email,
@@ -847,12 +837,7 @@ def social_post_detail(request, post_id: int):
     for c in comments:
         prof = getattr(c.user, "profile", None)
         counts = dict(creact_map.get(c.id, {}))
-        avatar_url = ""
-        if prof and getattr(prof, "avatar", None):
-            try:
-                avatar_url = prof.avatar.url
-            except Exception:
-                pass
+        avatar_url = getattr(prof, "avatar_url", "") if prof else ""
         result.append({
             "id": c.id,
             "author": prof.display_name if prof else c.user.email,
@@ -996,16 +981,8 @@ def social_friends_feed(request):
             shared_posts[sp.id] = sp
 
     def _avatar_url(prof):
-        """Retorna URL do avatar: upload > avatar_choice > vazio."""
-        if prof and getattr(prof, "avatar", None):
-            try:
-                return prof.avatar.url
-            except Exception:
-                pass
-        if prof and getattr(prof, "avatar_choice", ""):
-            from django.templatetags.static import static
-            return static(f"images/avatar/{prof.avatar_choice}")
-        return ""
+        """URL do avatar: upload > IDCamim > avatar_choice > vazio."""
+        return getattr(prof, "avatar_url", "") if prof else ""
 
     result = []
     for p in posts:
@@ -2341,16 +2318,11 @@ def _friendship_status(me, other):
 
 def _user_card(user):
     """Dict resumido de um usuário para JSON."""
-    from django.templatetags.static import static
     try:
         prof = user.profile
     except Exception:
         prof = None
-    avatar = None
-    if prof and prof.avatar:
-        avatar = prof.avatar.url
-    elif prof and prof.avatar_choice:
-        avatar = static(f"images/avatar/{prof.avatar_choice}")
+    avatar = getattr(prof, "avatar_url", "") if prof else None
     return {
         "id": user.id,
         "name": (prof.display_name if prof else None) or user.get_full_name() or user.email,
@@ -2469,17 +2441,8 @@ def social_friend_accept(request, user_id: int):
         visibility="all",
     )
 
-    # Avatar URL: upload > avatar_choice estático > vazio (fallback iniciais no front).
-    avatar_url = ""
-    if friend_prof:
-        if getattr(friend_prof, "avatar", None):
-            try:
-                avatar_url = friend_prof.avatar.url
-            except Exception:
-                avatar_url = ""
-        if not avatar_url and getattr(friend_prof, "avatar_choice", ""):
-            from django.templatetags.static import static
-            avatar_url = static(f"images/avatar/{friend_prof.avatar_choice}")
+    # Avatar URL: upload > IDCamim > preset > vazio (fallback iniciais no front).
+    avatar_url = getattr(friend_prof, "avatar_url", "") if friend_prof else ""
 
     return JsonResponse({
         "action": "accepted",
@@ -3135,7 +3098,7 @@ def chat_list(request):
             "conversation_id": c.id,
             "other_user_id": other.id,
             "other_name": prof.display_name if prof else other.email,
-            "other_avatar": prof.avatar.url if prof and prof.avatar else "",
+            "other_avatar": getattr(prof, "avatar_url", "") if prof else "",
             "other_handle": prof.handle if prof else "",
             "last_message": last_msg.text[:60] if last_msg else "",
             "last_message_gif": bool(last_msg and last_msg.gif_url) if last_msg else False,
@@ -3177,7 +3140,7 @@ def chat_messages(request, user_id: int):
             "id": m.id,
             "sender_id": m.sender_id,
             "sender_name": prof.display_name if prof else m.sender.email,
-            "sender_avatar": prof.avatar.url if prof and prof.avatar else "",
+            "sender_avatar": getattr(prof, "avatar_url", "") if prof else "",
             "text": m.text,
             "gif_url": m.gif_url,
             "sticker_url": m.sticker_url,
@@ -3191,7 +3154,7 @@ def chat_messages(request, user_id: int):
         "messages": result,
         "conversation_id": conv.id,
         "other_name": other_prof.display_name if other_prof else other.email,
-        "other_avatar": other_prof.avatar.url if other_prof and other_prof.avatar else "",
+        "other_avatar": getattr(other_prof, "avatar_url", "") if other_prof else "",
     })
 
 
@@ -3336,7 +3299,7 @@ def chat_poll(request, user_id: int):
             "id": m.id,
             "sender_id": m.sender_id,
             "sender_name": prof.display_name if prof else m.sender.email,
-            "sender_avatar": prof.avatar.url if prof and prof.avatar else "",
+            "sender_avatar": getattr(prof, "avatar_url", "") if prof else "",
             "text": m.text,
             "gif_url": m.gif_url,
             "sticker_url": m.sticker_url,
@@ -3448,7 +3411,7 @@ def social_post_reactors(request, post_id: int):
         result.append({
             "user_id": r.user_id,
             "name": prof.display_name if prof else r.user.email,
-            "avatar": prof.avatar.url if prof and prof.avatar else "",
+            "avatar": getattr(prof, "avatar_url", "") if prof else "",
             "avatar_choice": prof.avatar_choice if prof else "",
             "reaction": r.reaction,
             "emoji": r.emoji,
@@ -3474,7 +3437,7 @@ def social_post_viewers(request, post_id: int):
         result.append({
             "user_id": v.viewer_id,
             "name": prof.display_name if prof else v.viewer.email,
-            "avatar": prof.avatar.url if prof and prof.avatar else "",
+            "avatar": getattr(prof, "avatar_url", "") if prof else "",
             "avatar_choice": prof.avatar_choice if prof else "",
         })
     return JsonResponse({"viewers": result})
@@ -3509,15 +3472,7 @@ def social_post_reach(request, post_id: int):
     result = []
     for v in views:
         prof = getattr(v.viewer, "profile", None)
-        av = ""
-        if prof and getattr(prof, "avatar", None):
-            try:
-                av = prof.avatar.url
-            except Exception:
-                pass
-        if not av and prof and getattr(prof, "avatar_choice", ""):
-            from django.templatetags.static import static
-            av = static(f"images/avatar/{prof.avatar_choice}")
+        av = getattr(prof, "avatar_url", "") if prof else ""
         result.append({
             "user_id": v.viewer_id,
             "name": prof.display_name if prof else v.viewer.email,
@@ -3548,7 +3503,7 @@ def chat_friends_list(request):
             friends.append({
                 "user_id": u.id,
                 "name": prof.display_name if prof else u.email,
-                "avatar": prof.avatar.url if prof and prof.avatar else "",
+                "avatar": getattr(prof, "avatar_url", "") if prof else "",
                 "handle": prof.handle if prof else "",
             })
     return JsonResponse({"friends": friends})
@@ -3692,15 +3647,7 @@ def social_user_search(request):
 
     def _card(u):
         p = getattr(u, "profile", None)
-        avatar = ""
-        if p and getattr(p, "avatar", None):
-            try:
-                avatar = p.avatar.url
-            except Exception:
-                avatar = ""
-        if not avatar and p and getattr(p, "avatar_choice", ""):
-            from django.templatetags.static import static
-            avatar = static(f"images/avatar/{p.avatar_choice}")
+        avatar = getattr(p, "avatar_url", "") if p else ""
         return {
             "id": u.id,
             "name": (p.display_name if p else None) or u.get_full_name() or u.email,
@@ -3764,7 +3711,7 @@ def social_mention_search(request):
             "id": u.id,
             "handle": handle,
             "display_name": display_name,
-            "avatar_url": p.avatar.url if (p and getattr(p, "avatar", None)) else "",
+            "avatar_url": getattr(p, "avatar_url", "") if p else "",
         })
 
     return JsonResponse(results, safe=False)
