@@ -40,6 +40,15 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-07 ---
+    "96f54bc": (
+        "📸",
+        "Sua foto do IDCamim aparece sozinha no Tarefas",
+        "Nunca subiu uma foto de perfil aqui? Agora o Tarefas usa a foto do seu "
+        "cadastro no IDCamim (Camim ID) no lugar do avatar genérico — ela aparece "
+        "no topo, nos cards, no chat, no track-time e no Espaço Social. Se você "
+        "subiu uma foto própria, ela continua valendo; só ficam as iniciais quando "
+        "não há foto em nenhum dos dois.",
+    ),
     "4d953e5": (
         "🚧",
         "Card em impedimento: marque quem está travando",
