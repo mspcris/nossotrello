@@ -40,6 +40,17 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-07 ---
+    "79235ff": (
+        "📎",
+        "Anexo agora mostra o nome do arquivo",
+        "Antes, ao anexar um arquivo no card, aparecia um código tipo "
+        "\"79739e52-1334-4788…\" e um quadrado cinza vazio — dava pra achar que "
+        "o anexo nem tinha subido. Agora aparece o NOME do arquivo, tanto na aba "
+        "Anexos quanto na Atividade, com um ícone de folha mostrando a extensão "
+        "(PDF, XLSX, DOCX, MP4…). A miniatura só aparece quando existe de "
+        "verdade: foto ou primeira página do PDF. Vale igual pra quem arrasta o "
+        "arquivo pro card e pra quem usa o botão de anexar.",
+    ),
     "96f54bc": (
         "📸",
         "Sua foto do IDCamim aparece sozinha no Tarefas",
