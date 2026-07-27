@@ -20,24 +20,15 @@ def file_meta(fieldfile):
 
 
 @register.filter
-def pdf_thumb_url(fieldfile):
-    """URL da miniatura PNG da 1ª página de um anexo PDF (ou '' se não houver).
+def preview_thumb_url(fieldfile):
+    """URL da miniatura de um anexo: 1ª página do PDF ou 1º frame do vídeo.
 
-    Gera sob demanda na 1ª vez (cobre PDFs antigos) e memoiza no cache.
+    Retorna '' quando não há como gerar — aí o template mostra a folha com a
+    extensão. Gera sob demanda na 1ª vez (cobre anexos antigos) e memoiza.
     """
+    from boards.services.attach_thumbs import thumb_url_for_fieldfile
     try:
-        name = getattr(fieldfile, "name", "") or ""
-    except Exception:
-        name = ""
-    if not name:
-        return ""
-    key = name.split("/")[-1]
-    try:
-        import uuid as _uuid
-        from boards.services.pdf_thumbs import thumb_url_for_source_id
-        return thumb_url_for_source_id(_uuid.UUID(key)) or ""
-    except (ValueError, TypeError):
-        return ""
+        return thumb_url_for_fieldfile(fieldfile)
     except Exception:
         return ""
 

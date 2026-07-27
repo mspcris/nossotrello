@@ -141,9 +141,9 @@
                                 <img src="{{ log.attachment.url }}" alt="{{ meta.name }}">
                                 <span class="cm-attach-zoom" aria-hidden="true">🔍</span>
                               </a>
-                            {% elif meta.kind == 'pdf' %}
-                              {# PDF: miniatura PNG da 1ª página (gerada no servidor) -> funciona em qualquer navegador #}
-                              {% with thumb=log.attachment|pdf_thumb_url %}
+                            {% elif meta.kind == 'pdf' or meta.kind == 'video' %}
+                              {# Miniatura gerada no servidor: 1ª página do PDF ou 1º frame do vídeo #}
+                              {% with thumb=log.attachment|preview_thumb_url %}
                                 {% if thumb %}
                                   <a class="cm-attach-file" href="{{ log.attachment.url }}" target="_blank" rel="noopener">
                                     {{ meta.name }}
@@ -157,7 +157,7 @@
                                     title="Abrir {{ meta.name }}"
                                   >
                                     <img src="{{ thumb }}" alt="Pré-visualização de {{ meta.name }}">
-                                    <span class="cm-attach-zoom" aria-hidden="true">📄</span>
+                                    <span class="cm-attach-zoom" aria-hidden="true">{% if meta.kind == 'video' %}▶{% else %}📄{% endif %}</span>
                                   </a>
                                 {% else %}
                                   {% include "boards/partials/attachment_card_link.html" with url=log.attachment.url meta=meta %}

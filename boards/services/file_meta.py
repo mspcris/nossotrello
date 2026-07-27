@@ -17,6 +17,7 @@ from django.core.cache import cache
 _CACHE_TTL = 7 * 24 * 3600
 
 _IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg", ".avif", ".heic")
+_VIDEO_EXTS = (".mp4", ".mov", ".webm", ".mkv", ".avi", ".m4v", ".3gp")
 
 # Sem StoredFile (linha apagada ou chave órfã) não dá pra recuperar o nome —
 # melhor um rótulo genérico do que despejar o UUID na tela.
@@ -76,7 +77,7 @@ def file_meta(fieldfile) -> dict:
 
     - `name`: nome original ("relatorio.pdf"), nunca o UUID de storage.
     - `ext`:  extensão em maiúsculas sem ponto ("PDF"), "" se indeterminada.
-    - `kind`: "image" | "pdf" | "file" — decide se dá pra pré-visualizar.
+    - `kind`: "image" | "pdf" | "video" | "file" — decide se dá pra pré-visualizar.
     """
     raw = _raw_name(fieldfile)
     if not raw:
@@ -103,6 +104,8 @@ def file_meta(fieldfile) -> dict:
         kind = "image"
     elif ct == "application/pdf" or lower.endswith(".pdf"):
         kind = "pdf"
+    elif ct.startswith("video/") or lower.endswith(_VIDEO_EXTS):
+        kind = "video"
     else:
         kind = "file"
 

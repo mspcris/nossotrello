@@ -1,6 +1,9 @@
 import tempfile
 import hashlib
+import shutil
+import subprocess
 import unicodedata
+import unittest
 from pathlib import Path
 
 from django.contrib.auth import get_user_model
@@ -423,3 +426,71 @@ class AttachmentSoftDeleteTests(TestCase):
         shared.refresh_from_db()
         self.assertTrue(StoredFile.objects.filter(id=shared.file.name).exists())
         self.assertEqual([a.id for a in other_card.attachments.all()], [shared.id])
+
+
+@unittest.skipUnless(shutil.which("ffmpeg"), "ffmpeg ausente")
+class VideoThumbTests(TestCase):
+    """Vídeo anexado ganha miniatura do 1º frame (ffmpeg)."""
+
+    def _make_video(self, duration="3", size="640x360"):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "v.mp4"
+            subprocess.run(
+                ["ffmpeg", "-y", "-f", "lavfi",
+                 "-i", f"testsrc=size={size}:rate=15:duration={duration}",
+                 "-c:v", "libx264", "-pix_fmt", "yuv420p", str(path)],
+                capture_output=True, timeout=60,
+            )
+            return path.read_bytes()
+
+    def _store(self, data, name="reuniao.mp4", content_type="video/mp4"):
+        return StoredFile.objects.create(
+            original_name=name, content_type=content_type,
+            data=data, size=len(data), checksum=hashlib.sha256(data).hexdigest(),
+        )
+
+    def test_extrai_frame_e_memoiza(self):
+        from boards.services.attach_thumbs import thumb_url_for_fieldfile
+
+        stored = self._store(self._make_video())
+
+        class FieldFile:
+            name = str(stored.id)
+
+        url = thumb_url_for_fieldfile(FieldFile())
+        thumb = StoredFile.objects.get(original_name=f"vidthumb::{stored.id}.jpg")
+        self.assertEqual(url, f"/media/serve/{thumb.id}/")
+        self.assertEqual(thumb.content_type, "image/jpeg")
+        self.assertGreater(thumb.size, 0)
+
+        # 2ª chamada não pode regerar
+        total = StoredFile.objects.count()
+        thumb_url_for_fieldfile(FieldFile())
+        self.assertEqual(StoredFile.objects.count(), total)
+
+    def test_video_mais_curto_que_o_seek_ainda_gera(self):
+        from boards.services.video_thumbs import _extract_frame_jpeg
+        # 0.2s: o seek de 0.5s passa do fim, tem que cair no frame 0
+        self.assertTrue(_extract_frame_jpeg(self._make_video(duration="0.2")))
+
+    def test_arquivo_invalido_nao_gera_miniatura(self):
+        from boards.services.attach_thumbs import thumb_url_for_fieldfile
+
+        stored = self._store(b"isso nao e um video", name="quebrado.mp4")
+
+        class FieldFile:
+            name = str(stored.id)
+
+        self.assertEqual(thumb_url_for_fieldfile(FieldFile()), "")
+
+    def test_kind_video_reconhecido_por_extensao_e_content_type(self):
+        from boards.services.file_meta import file_meta
+
+        stored = self._store(b"x", name="sem-content-type.mov", content_type="")
+
+        class FieldFile:
+            name = str(stored.id)
+
+        meta = file_meta(FieldFile())
+        self.assertEqual(meta["kind"], "video")
+        self.assertEqual(meta["ext"], "MOV")
