@@ -30,6 +30,12 @@ from ..models import (
     HealthChatMessage, CamilaNews, CamilaChatMessage, ModerationCase,
 )
 from ..services.moderation import ContentBlocked, check_or_block, schedule_layer2
+from ..services.social_activity import (
+    active_ids,
+    filter_active_users,
+    is_socially_active,
+    social_active_cutoff,
+)
 
 User = get_user_model()
 
@@ -245,9 +251,10 @@ def _build_board_invite_data(post):
 def _annotate_profile_posts(posts, viewer):
     """Anexa atributos de UI a cada SocialPost (reactions, comments, repost
     info, friendship/card_like flags etc.) usados pelo partial
-    boards/_social_post_item.html. Mutates `posts` in place."""
+    boards/_social_post_item.html. Muta `posts` in place e RETORNA a lista
+    visível (sem os posts "agora são amigos" de quem sumiu socialmente)."""
     if not posts:
-        return
+        return posts
 
     post_ids = [p.id for p in posts]
     # Inclui IDs dos originais — reações/comentários ficam SEMPRE na raiz e
@@ -356,11 +363,15 @@ def _annotate_profile_posts(posts, viewer):
 
         post.is_friendship = False
         post.friendship_data = None
+        post._hide_inactive = False
         if post.text.startswith("__friendship__:"):
             post.is_friendship = True
             try:
                 friend_uid = int(post.text.split(":")[1])
                 friend_user = User.objects.select_related("profile").get(id=friend_uid)
+                # Some se um dos dois sumiu socialmente (sem login há +30d).
+                if not is_socially_active(friend_user) or not is_socially_active(post.user):
+                    post._hide_inactive = True
                 friend_prof = getattr(friend_user, "profile", None)
                 post_prof = getattr(post.user, "profile", None)
                 post.friendship_data = {
@@ -408,6 +419,9 @@ def _annotate_profile_posts(posts, viewer):
                     "user_name": post.user.get_full_name() or post.user.username,
                 }
 
+    # Remove posts "agora são amigos" onde um dos dois sumiu socialmente.
+    return [p for p in posts if not getattr(p, "_hide_inactive", False)]
+
 
 def _build_social_context(request, target_user, extra=None):
     is_me = request.user.id == target_user.id
@@ -452,7 +466,7 @@ def _build_social_context(request, target_user, extra=None):
     feed_has_more = len(posts_plus_one) > PAGE_SIZE
     posts = posts_plus_one[:PAGE_SIZE]
 
-    _annotate_profile_posts(posts, request.user)
+    posts = _annotate_profile_posts(posts, request.user)
 
     # Marca visto
     if not is_me and posts:
@@ -511,9 +525,10 @@ def _build_social_context(request, target_user, extra=None):
 
         exclude_ids = my_friend_ids | pending_out | pending_in | {target_user.id}
 
-        # Sugestões = TODOS os usuários ativos (exceto eu e amigos/pendentes)
+        # Sugestões = usuários ativos e que logaram nos últimos 30d
+        # (exceto eu e amigos/pendentes) — não sugere quem sumiu socialmente.
         unit_suggestions = list(
-            User.objects.filter(is_active=True)
+            filter_active_users(User.objects.filter(is_active=True))
             .exclude(id__in=exclude_ids)
             .select_related("profile")
             .order_by("profile__display_name")[:40]
@@ -534,7 +549,7 @@ def _build_social_context(request, target_user, extra=None):
         real_friend_ids = accepted_out | accepted_in
         if real_friend_ids:
             real_friends = list(
-                User.objects.filter(id__in=real_friend_ids)
+                filter_active_users(User.objects.filter(id__in=real_friend_ids))
                 .select_related("profile")
                 .order_by("profile__display_name")
             )
@@ -591,15 +606,19 @@ def _build_social_context(request, target_user, extra=None):
     # Convites que EU enviei (pendentes)
     sent_friend_requests = []
     if is_me:
+        # Oculta pedidos de/para quem não loga há +30d (some socialmente).
+        cutoff = social_active_cutoff()
         pending_friend_requests = list(
             SocialFriendship.objects.filter(
-                receiver=target_user, status="pending"
+                receiver=target_user, status="pending",
+                requester__last_login__gte=cutoff,
             ).select_related("requester", "requester__profile")
             .order_by("-created_at")
         )
         sent_friend_requests = list(
             SocialFriendship.objects.filter(
-                requester=target_user, status="pending"
+                requester=target_user, status="pending",
+                receiver__last_login__gte=cutoff,
             ).select_related("receiver", "receiver__profile")
             .order_by("-created_at")
         )
@@ -1007,16 +1026,18 @@ def social_friends_feed(request):
                 "original_user_avatar": _avatar_url(orig_prof),
             }
 
-        # Detectar post de amizade. Se o "outro" da amizade está banido
-        # (is_active=False), o post inteiro é escondido — não faz sentido
-        # mostrar "X e [banido] são amigos!" no feed.
+        # Detectar post de amizade. Escondido por inteiro quando um dos dois
+        # está banido (is_active=False) OU socialmente inativo (sem login há
+        # +30d) — não faz sentido mostrar "X e [sumiu] são amigos!" no feed.
         friendship_data = None
         _skip_due_to_banned = False
         if display_post.text.startswith("__friendship__:"):
             try:
                 friend_uid = int(display_post.text.split(":")[1])
                 friend_user = User.objects.select_related("profile").get(id=friend_uid)
-                if not friend_user.is_active:
+                if (not friend_user.is_active
+                        or not is_socially_active(friend_user)
+                        or not is_socially_active(p.user)):
                     _skip_due_to_banned = True
                 else:
                     friend_prof = getattr(friend_user, "profile", None)
@@ -2241,7 +2262,8 @@ def social_pills_poll(request):
     # Convites de amizade pendentes
     friend_pills = []
     for fs in SocialFriendship.objects.filter(
-        receiver=request.user, status="pending"
+        receiver=request.user, status="pending",
+        requester__last_login__gte=social_active_cutoff(),
     ).select_related("requester", "requester__profile").order_by("-created_at"):
         prof = _get_or_create_profile(fs.requester)
         friend_pills.append({
@@ -2343,6 +2365,11 @@ def _accepted_friend_ids(user):
             receiver=user, status=SocialFriendship.STATUS_ACCEPTED,
         ).values_list("requester_id", flat=True)
     )
+    # Vínculo REAL, sem filtro de inatividade: é isto que decide se alguém já é
+    # amigo. Filtrar aqui faria o amigo inativo ser classificado como "sugestão"
+    # na busca, e o botão Adicionar cai no social_friend_request, que APAGA a
+    # amizade aceita existente. Quem quer só esconder das listas aplica
+    # active_ids() no ponto de exibição.
     return from_req | from_rec
 
 
@@ -2355,7 +2382,9 @@ def social_user_network(request, user_id: int):
     saber se já existe convite pendente.
     """
     target = get_object_or_404(User, id=user_id)
-    target_friend_ids = _accepted_friend_ids(target)
+    # A rede exibida some quem não loga há +30d; `my_friend_ids` fica com o
+    # vínculo real, senão um amigo em comum inativo cairia em "outros".
+    target_friend_ids = active_ids(_accepted_friend_ids(target))
     my_friend_ids     = _accepted_friend_ids(request.user)
 
     common = []
@@ -3498,7 +3527,7 @@ def chat_friends_list(request):
 
     friends = []
     if friend_ids:
-        for u in User.objects.filter(id__in=friend_ids).select_related("profile"):
+        for u in filter_active_users(User.objects.filter(id__in=friend_ids)).select_related("profile"):
             prof = getattr(u, "profile", None)
             friends.append({
                 "user_id": u.id,
@@ -3590,7 +3619,7 @@ def social_posts_more(request, user_id: int):
     feed_has_more = len(posts_plus_one) > PAGE_SIZE
     posts = posts_plus_one[:PAGE_SIZE]
 
-    _annotate_profile_posts(posts, request.user)
+    posts = _annotate_profile_posts(posts, request.user)
 
     html = render(
         request,

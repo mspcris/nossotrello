@@ -48,6 +48,7 @@ from boards.views.social import (
     _health_history_summary,
     _get_or_create_profile,
 )
+from boards.services.social_activity import is_socially_active
 
 from .serializers import (
     UserProfileSerializer,
@@ -548,6 +549,7 @@ def api_social_feed(request):
 
     # Annotate friendship posts
     User = get_user_model()
+    hidden_ids = set()
     for item in serialized:
         text = item.get("text") or ""
         if text.startswith("__friendship__:"):
@@ -555,9 +557,14 @@ def api_social_feed(request):
             try:
                 friend_uid = int(text.split(":")[1])
                 friend_user = User.objects.select_related("profile").get(id=friend_uid)
-                friend_prof = getattr(friend_user, "profile", None)
                 # Find the post author profile
                 post_obj = next((p for p in posts if p.id == item["id"]), None)
+                # Some se um dos dois não loga há +30d (some socialmente).
+                if (not is_socially_active(friend_user)
+                        or (post_obj and not is_socially_active(post_obj.user))):
+                    hidden_ids.add(item["id"])
+                    continue
+                friend_prof = getattr(friend_user, "profile", None)
                 post_prof = getattr(post_obj.user, "profile", None) if post_obj else None
                 item["friendship"] = {
                     "friend_name": friend_prof.display_name if friend_prof and friend_prof.display_name else friend_user.get_full_name(),
@@ -573,6 +580,8 @@ def api_social_feed(request):
             item["is_friendship"] = False
             item["friendship"] = None
 
+    if hidden_ids:
+        serialized = [i for i in serialized if i["id"] not in hidden_ids]
     return Response(serialized)
 
 
