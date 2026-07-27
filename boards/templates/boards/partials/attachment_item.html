@@ -1,33 +1,40 @@
 <!-- ATTACHMENT_ITEM.HTML -->
 {% load tag_helpers %}
+{% with meta=attachment.file|file_meta %}
 <div id="attachment-{{ attachment.id }}"
      class="p-3 rounded border bg-white/40 backdrop-blur-sm shadow-sm flex justify-between items-center">
 
-  <div class="flex flex-col min-w-0">
-    {% if attachment.created_by %}
-      <span class="text-xs text-gray-500 dark:text-slate-400 mb-0.5">
-        {% with p=attachment.created_by.profile %}
-          {% if p and p.handle %}@{{ p.handle }}{% else %}{{ attachment.created_by.email }}{% endif %}
-        {% endwith %}
-      </span>
-    {% endif %}
-
-    <a href="{{ attachment.file.url }}"
-       target="_blank"
-       class="text-blue-600 font-medium hover:underline text-sm break-words">
-      {{ attachment.file.name|cut:"attachments/"|cut:"quill/" }}
-    </a>
-
-    {% if attachment.description %}
-      {# sanitiza no render (cobre linhas legadas cruas) e mostra formatado #}
-      <div class="cm-attach-desc mt-1 text-xs text-gray-700 dark:text-slate-200 break-words">
-        {{ attachment.description|quill_safe }}
-      </div>
-    {% endif %}
-
-    <span class="mt-1 text-xs text-gray-500 dark:text-slate-400">
-      {{ attachment.created_at|date:"d/m/Y H:i" }}
+  <div class="flex items-center gap-3 min-w-0">
+    <span class="cm-attach-icon shrink-0" aria-hidden="true">
+      {% include "boards/partials/file_icon.html" with ext=meta.ext %}
     </span>
+
+    <div class="flex flex-col min-w-0">
+      {% if attachment.created_by %}
+        <span class="text-xs text-gray-500 dark:text-slate-400 mb-0.5">
+          {% with p=attachment.created_by.profile %}
+            {% if p and p.handle %}@{{ p.handle }}{% else %}{{ attachment.created_by.email }}{% endif %}
+          {% endwith %}
+        </span>
+      {% endif %}
+
+      <a href="{{ attachment.file.url }}"
+         target="_blank"
+         class="text-blue-600 font-medium hover:underline text-sm break-words">
+        {{ meta.name }}
+      </a>
+
+      {% if attachment.description %}
+        {# sanitiza no render (cobre linhas legadas cruas) e mostra formatado #}
+        <div class="cm-attach-desc mt-1 text-xs text-gray-700 dark:text-slate-200 break-words">
+          {{ attachment.description|quill_safe }}
+        </div>
+      {% endif %}
+
+      <span class="mt-1 text-xs text-gray-500 dark:text-slate-400">
+        {{ attachment.created_at|date:"d/m/Y H:i" }}
+      </span>
+    </div>
   </div>
 
   <div class="flex items-center gap-2 ml-3 shrink-0">
@@ -35,7 +42,7 @@
             class="cm-attachment-reply-btn text-gray-400 hover:text-blue-500 transition-colors"
             title="Responder este anexo"
             data-attachment-url="{{ attachment.file.url }}"
-            data-attachment-name="{{ attachment.file.name|cut:'attachments/'|cut:'quill/' }}">
+            data-attachment-name="{{ meta.name }}">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
            class="w-4 h-4">
@@ -55,3 +62,4 @@
   </div>
 
 </div>
+{% endwith %}

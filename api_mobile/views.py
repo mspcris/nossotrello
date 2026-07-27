@@ -254,7 +254,8 @@ def api_board_detail(request, board_id):
             _checklist_total=Count("checklist_items"),
             _checklist_done=Count("checklist_items", filter=Q(checklist_items__is_done=True)),
             _comments_count=Count("logs"),
-            _attachments_count=Count("attachments"),
+            # annotate ignora o manager: filtrar o soft-delete na mão
+            _attachments_count=Count("attachments", filter=Q(attachments__is_active=True)),
         )
         .order_by("position")
     )
@@ -292,7 +293,8 @@ def api_card_detail(request, card_id):
                 _checklist_total=Count("checklist_items"),
                 _checklist_done=Count("checklist_items", filter=Q(checklist_items__is_done=True)),
                 _comments_count=Count("logs"),
-                _attachments_count=Count("attachments"),
+                # annotate ignora o manager: filtrar o soft-delete na mão
+                _attachments_count=Count("attachments", filter=Q(attachments__is_active=True)),
             )
             .get(id=card_id)
         )

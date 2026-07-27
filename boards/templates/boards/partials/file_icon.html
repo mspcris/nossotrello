@@ -1,0 +1,10 @@
+<svg class="cm-fileicon" viewBox="0 0 48 60" role="img"
+     aria-label="{% if ext %}Arquivo {{ ext }}{% else %}Arquivo{% endif %}">
+  <path class="cm-fileicon-sheet"
+        d="M8 2h22l12 12v42a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/>
+  <path class="cm-fileicon-fold" d="M30 2l12 12H32a2 2 0 0 1-2-2V2z"/>
+  {% if ext %}
+    <text class="cm-fileicon-ext" x="24" y="43" text-anchor="middle"
+          {% if ext|length > 2 %}textLength="30" lengthAdjust="spacingAndGlyphs"{% endif %}>{{ ext|slice:":5" }}</text>
+  {% endif %}
+</svg>

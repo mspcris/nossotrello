@@ -10,6 +10,7 @@ from urllib3 import request
 
 from ..permissions import can_edit_board
 from ..models import Card, CardAttachment, CardLog
+from ..services.file_meta import display_name
 from .helpers import (
     _actor_label,
     _log_card,
@@ -31,31 +32,31 @@ def delete_attachment(request, card_id, attachment_id):
     actor = _actor_label(request)
 
     file_name = (attachment.file.name or "")
-    pretty_name = file_name.split("/")[-1] if file_name else "arquivo"
+    pretty_name = display_name(attachment.file) if file_name else "arquivo"
     desc = strip_tags((attachment.description or "")).strip()
 
-    should_delete_file = file_name.startswith("attachments/")
+    # Soft-delete: some do card, mas a linha e os bytes ficam. O StoredFile é
+    # deduplicado por checksum — outro card pode apontar pro mesmo blob — e o
+    # histórico do card precisa continuar auditável.
+    attachment.soft_delete()
 
-    if should_delete_file:
+    # Marca os logs do card que citam esse arquivo como removidos, a menos que
+    # outro anexo VIVO do mesmo card ainda aponte pro mesmo arquivo.
+    if file_name:
         try:
-            if CardAttachment.objects.filter(file=file_name).exclude(id=attachment.id).exists():
-                should_delete_file = False
+            still_used = (
+                CardAttachment.objects
+                .filter(card=card, file=file_name)
+                .exclude(id=attachment.id)
+                .exists()
+            )
+            if not still_used:
+                CardLog.objects.filter(
+                    card=card,
+                    attachment=file_name,
+                ).update(attachment_deleted=True)
         except Exception:
             pass
-
-    if should_delete_file:
-        try:
-            attachment.file.delete(save=False)
-        except Exception:
-            pass
-
-        # Marca todos os logs do card que referenciam esse arquivo como deletados
-        CardLog.objects.filter(
-            card=card,
-            attachment=file_name,
-        ).update(attachment_deleted=True)
-
-    attachment.delete()
 
     board.version += 1
     board.save(update_fields=["version"])
@@ -120,7 +121,10 @@ def add_attachment(request, card_id):
     except Exception:
         pass
 
-    pretty_name = attachment.file.name.split("/")[-1]
+    # NÃO usar attachment.file.name: no DatabaseStorage ele é a chave UUID do
+    # StoredFile. Resolve o nome real — o mesmo que aparece na lista de anexos
+    # e no Content-Disposition do download, pra não divergir do que o usuário vê.
+    pretty_name = display_name(attachment.file) or (uploaded.name or "").split("/")[-1]
     if desc:
         # desc já vem sanitizado -> entra como HTML (bloco próprio, fora do <p>,
         # pra não quebrar o layout quando tiver títulos/listas).

@@ -497,7 +497,20 @@ class CardSeen(models.Model):
 # ============================================================
 # CARD ATTACHMENT
 # ============================================================
+class ActiveAttachmentManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(is_active=True)
+
+
 class CardAttachment(models.Model):
+    """Anexo de um card.
+
+    Soft-delete via `is_active` (regra do projeto — nunca delete físico). O
+    filtro é o manager padrão, então `card.attachments.all()` já ignora os
+    removidos em qualquer template/view sem precisar repetir o filtro.
+    Os bytes no StoredFile NUNCA são apagados: o mesmo blob pode estar
+    deduplicado em outros cards e o histórico precisa continuar auditável.
+    """
     card = models.ForeignKey(Card, related_name="attachments", on_delete=models.CASCADE)
     file = models.FileField(upload_to="attachments/")
     description = models.TextField(blank=True, default="")
@@ -509,11 +522,29 @@ class CardAttachment(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
+    is_active = models.BooleanField(default=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+
+    objects = ActiveAttachmentManager()   # uso padrão (só anexos vivos)
+    all_objects = models.Manager()        # para auditoria/histórico
+
     class Meta:
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(
+                fields=["card", "is_active", "created_at"],
+                name="cardattach_card_active_idx",
+            ),
+        ]
 
     def __str__(self):
         return f"Anexo do card {self.card.id}: {self.file.name}"
+
+    def soft_delete(self):
+        """Remove o anexo do card sem apagar linha nem bytes."""
+        self.is_active = False
+        self.deleted_at = timezone.now()
+        self.save(update_fields=["is_active", "deleted_at"])
 
 
 # ============================================================

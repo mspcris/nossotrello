@@ -1,0 +1,8 @@
+<a class="cm-attach-card" href="{{ url }}" target="_blank" rel="noopener"
+   title="Abrir {{ meta.name }}">
+  {% include "boards/partials/file_icon.html" with ext=meta.ext %}
+  <span class="cm-attach-card-txt">
+    <span class="cm-attach-card-name">{{ meta.name }}</span>
+    <span class="cm-attach-card-sub">{% if meta.ext %}{{ meta.ext }} · {% endif %}abrir</span>
+  </span>
+</a>

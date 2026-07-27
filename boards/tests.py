@@ -324,3 +324,102 @@ class ImpedimentTests(TestCase):
         self.assertEqual(self._active(), [self.ricardo.id])
         # histórico preservado: 1 resolvido + 1 ativo
         self.assertEqual(CardImpediment.objects.filter(card=self.card, user=self.ricardo).count(), 2)
+
+
+@override_settings(STORAGES={
+    "default": {"BACKEND": "boards.storage.DatabaseStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+})
+class AttachmentSoftDeleteTests(TestCase):
+    """Remover anexo NUNCA pode apagar linha nem bytes (regra do projeto).
+
+    Ponto crítico: `django_cleanup` está no INSTALLED_APPS e apaga o arquivo do
+    storage no post_delete de qualquer FileField. Como o DatabaseStorage
+    deduplica por checksum, um delete físico levava junto o blob compartilhado
+    com OUTROS cards. Daí o soft-delete ser obrigatório aqui.
+    """
+
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(
+            username="anexos", email="anexos@example.com", password="secret123",
+        )
+        self.board = Board.all_objects.create(name="Board anexos", created_by=self.user)
+        self.column = Column.objects.create(board=self.board, name="Coluna", position=1)
+        self.card = Card.all_objects.create(
+            title="Card anexos", column=self.column, created_by=self.user, position=1,
+        )
+        # TermsMiddleware barra quem não aceitou os termos
+        from boards.views.legal import CURRENT_TERMS_VERSION
+        profile = self.user.profile
+        profile.terms_accepted = True
+        profile.terms_version = CURRENT_TERMS_VERSION
+        profile.save(update_fields=["terms_accepted", "terms_version"])
+
+        self.client.force_login(self.user)
+
+    def _upload(self, name=b"conteudo", filename="Relatorio Assinado.PDF"):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        return self.client.post(
+            f"/card/{self.card.id}/attachments/add/",
+            {"file": SimpleUploadedFile(filename, name, content_type="application/pdf")},
+        )
+
+    def test_upload_guarda_nome_original_e_loga_o_nome(self):
+        self._upload()
+
+        attachment = CardAttachment.objects.get(card=self.card)
+        stored = StoredFile.objects.get(id=attachment.file.name)
+        # o Django sanitiza o nome no upload; é esse que o download devolve
+        self.assertEqual(stored.original_name, "Relatorio_Assinado.PDF")
+
+        # o feed cita o mesmo nome do download — nunca a chave UUID
+        log = self.card.logs.filter(attachment__gt="").first()
+        self.assertIn("Relatorio_Assinado.PDF", log.content)
+        self.assertNotIn(str(stored.id), log.content)
+
+        from boards.services.file_meta import file_meta
+        self.assertEqual(
+            file_meta(attachment.file),
+            {"name": "Relatorio_Assinado.PDF", "ext": "PDF", "kind": "pdf"},
+        )
+
+    def test_delete_e_soft_e_preserva_bytes(self):
+        self._upload()
+        attachment = CardAttachment.objects.get(card=self.card)
+        stored_id = attachment.file.name
+
+        response = self.client.post(
+            f"/card/{self.card.id}/attachments/{attachment.id}/delete/"
+        )
+        self.assertEqual(response.status_code, 200)
+
+        # linha continua existindo, só saiu de circulação
+        self.assertFalse(CardAttachment.objects.filter(id=attachment.id).exists())
+        self.assertTrue(CardAttachment.all_objects.filter(id=attachment.id).exists())
+        dead = CardAttachment.all_objects.get(id=attachment.id)
+        self.assertFalse(dead.is_active)
+        self.assertIsNotNone(dead.deleted_at)
+
+        # bytes intactos (django_cleanup não pode ter sido acionado)
+        self.assertTrue(StoredFile.objects.filter(id=stored_id).exists())
+
+        # sumiu da lista do card e o feed marca como removido
+        self.assertEqual(list(self.card.attachments.all()), [])
+        self.assertTrue(
+            self.card.logs.filter(attachment=stored_id, attachment_deleted=True).exists()
+        )
+
+    def test_blob_compartilhado_sobrevive_a_remocao_em_outro_card(self):
+        self._upload()
+        other_card = Card.all_objects.create(
+            title="Outro card", column=self.column, created_by=self.user, position=2,
+        )
+        first = CardAttachment.objects.get(card=self.card)
+        shared = CardAttachment.objects.create(card=other_card, file=first.file.name)
+
+        self.client.post(f"/card/{self.card.id}/attachments/{first.id}/delete/")
+
+        shared.refresh_from_db()
+        self.assertTrue(StoredFile.objects.filter(id=shared.file.name).exists())
+        self.assertEqual([a.id for a in other_card.attachments.all()], [shared.id])

@@ -4,6 +4,7 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
+from boards.services.file_meta import file_meta
 from boards.models import (
     Organization,
     Board,
@@ -186,17 +187,34 @@ class ChecklistSerializer(serializers.ModelSerializer):
 # ── Card Attachment ──────────────────────────────────────────────
 class CardAttachmentSerializer(serializers.ModelSerializer):
     file_url = serializers.SerializerMethodField()
+    file_name = serializers.SerializerMethodField()
+    file_ext = serializers.SerializerMethodField()
+    file_kind = serializers.SerializerMethodField()
     created_by_name = serializers.SerializerMethodField()
 
     class Meta:
         model = CardAttachment
-        fields = ["id", "file_url", "description", "created_by_name", "created_at"]
+        fields = [
+            "id", "file_url", "file_name", "file_ext", "file_kind",
+            "description", "created_by_name", "created_at",
+        ]
 
     def get_file_url(self, obj):
         if obj.file:
             req = self.context.get("request")
             return req.build_absolute_uri(obj.file.url) if req else obj.file.url
         return None
+
+    # O `name` do FileField é a chave UUID do StoredFile e a URL não tem
+    # extensão — sem estes campos o app não tem como mostrar o nome do arquivo.
+    def get_file_name(self, obj):
+        return file_meta(obj.file)["name"] if obj.file else ""
+
+    def get_file_ext(self, obj):
+        return file_meta(obj.file)["ext"] if obj.file else ""
+
+    def get_file_kind(self, obj):
+        return file_meta(obj.file)["kind"] if obj.file else "file"
 
     def get_created_by_name(self, obj):
         if obj.created_by:

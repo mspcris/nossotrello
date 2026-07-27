@@ -2748,21 +2748,108 @@ html.dark #modal #modal-breadcrumb{
   justify-content: center;
 }
 
+/* ============================================================
+   ÍCONE GENÉRICO DE ARQUIVO (folha com a extensão no meio)
+   Usado quando NÃO há miniatura de verdade — nunca renderizar
+   <img> apontando pra um arquivo que não é imagem.
+   ============================================================ */
+.cm-fileicon{
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.cm-fileicon .cm-fileicon-sheet{
+  fill: #ffffff;
+  stroke: rgba(15,23,42,0.28);
+  stroke-width: 1.6;
+}
+.cm-fileicon .cm-fileicon-fold{
+  fill: rgba(15,23,42,0.16);
+}
+.cm-fileicon .cm-fileicon-ext{
+  fill: rgba(15,23,42,0.72);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+/* Lista da aba Anexos */
+.cm-attach-icon{
+  width: 32px;
+  height: 40px;
+  display: inline-block;
+}
+
+/* Chip do anexo sem pré-visualização, no feed: ícone + NOME */
+#cm-root .cm-attach-card{
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+  min-width: 0;
+  padding: 8px 12px 8px 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(15,23,42,0.12);
+  background: rgba(255,255,255,0.55);
+  text-decoration: none;
+  color: inherit;
+}
+#cm-root a.cm-attach-card:hover{
+  background: rgba(255,255,255,0.85);
+  border-color: rgba(37,99,235,0.45);
+}
+#cm-root .cm-attach-card .cm-fileicon{
+  width: 34px;
+  height: 43px;
+  flex: 0 0 auto;
+}
+#cm-root .cm-attach-card-txt{
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+#cm-root .cm-attach-card-name{
+  font-weight: 700;
+  overflow-wrap: anywhere;
+  line-height: 1.2;
+}
+#cm-root .cm-attach-card-sub{
+  font-size: 0.78em;
+  opacity: 0.65;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+/* Tema escuro: folha e chip precisam de contraste próprio */
+#card-modal-root.theme-dark .cm-fileicon .cm-fileicon-sheet,
+#card-modal-root.card-theme-dark .cm-fileicon .cm-fileicon-sheet{
+  fill: rgba(226,232,240,0.92);
+  stroke: rgba(15,23,42,0.35);
+}
+#card-modal-root.theme-dark .cm-fileicon .cm-fileicon-fold,
+#card-modal-root.card-theme-dark .cm-fileicon .cm-fileicon-fold{
+  fill: rgba(15,23,42,0.28);
+}
+#card-modal-root.theme-dark #cm-root .cm-attach-card,
+#card-modal-root.card-theme-dark #cm-root .cm-attach-card{
+  border-color: rgba(255,255,255,0.16);
+  background: rgba(255,255,255,0.08);
+}
+#card-modal-root.theme-dark #cm-root a.cm-attach-card:hover,
+#card-modal-root.card-theme-dark #cm-root a.cm-attach-card:hover{
+  background: rgba(255,255,255,0.16);
+  border-color: rgba(147,197,253,0.55);
+}
+
 /* Anexo removido: sem interação */
-#cm-root .cm-attach-file.cm-attach-deleted{
-  color: #9ca3af;
+#cm-root .cm-attach-card.cm-attach-card-deleted{
+  cursor: default;
+  opacity: 0.7;
+  border-style: dashed;
+}
+#cm-root .cm-attach-card.cm-attach-card-deleted .cm-attach-card-name{
   text-decoration: line-through;
-  cursor: default;
-  font-weight: 600;
-}
-#cm-root .cm-attach-thumb.cm-attach-thumb-deleted{
-  cursor: default;
-  pointer-events: none;
-  opacity: 0.75;
-}
-#cm-root .cm-attach-thumb.cm-attach-thumb-deleted img{
-  object-fit: contain;
-  background: #fef2f2;
 }
 
 #cm-root .cm-replies{
