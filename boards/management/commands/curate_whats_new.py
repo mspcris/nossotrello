@@ -40,6 +40,16 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-07 ---
+    "606908a": (
+        "💤",
+        "Quem parou de usar some das listas do Espaço Social",
+        "Quem não entra no Tarefas há mais de 30 dias deixa de aparecer nas "
+        "suas listas: amigos, sugestões, pedidos de amizade, lista do chat e "
+        "os avisos de \"fulano e sicrano agora são amigos\". Assim a lista de "
+        "amigos mostra quem realmente está por aqui. Nada é apagado: as "
+        "publicações da pessoa continuam no ar, a amizade continua valendo e "
+        "ela volta a aparecer sozinha no dia em que entrar de novo.",
+    ),
     "79235ff": (
         "📎",
         "Anexo agora mostra o nome do arquivo",
