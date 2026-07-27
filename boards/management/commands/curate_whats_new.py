@@ -48,8 +48,9 @@ CURATED = {
         "o anexo nem tinha subido. Agora aparece o NOME do arquivo, tanto na aba "
         "Anexos quanto na Atividade, com um ícone de folha mostrando a extensão "
         "(PDF, XLSX, DOCX, MP4…). A miniatura só aparece quando existe de "
-        "verdade: foto ou primeira página do PDF. Vale igual pra quem arrasta o "
-        "arquivo pro card e pra quem usa o botão de anexar.",
+        "verdade: a foto, a primeira página do PDF ou o primeiro quadro do "
+        "vídeo. Vale igual pra quem arrasta o arquivo pro card e pra quem usa "
+        "o botão de anexar.",
     ),
     "96f54bc": (
         "📸",
@@ -735,6 +736,7 @@ HIDE = {
     "9ca5cc4",  # Apply text_style in Novidades reel (detalhe interno)
     "46e3cd9",  # Post board invite activity to feed (detalhe interno)
     "c1c0942",  # iteração intermediária do "Editar Quadro" (final é fcf52ee)
+    "b5bb636",  # miniatura de vídeo — já descrita na entrada 79235ff
 }
 
 
