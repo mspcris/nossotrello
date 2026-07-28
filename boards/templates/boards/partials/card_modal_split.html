@@ -474,10 +474,12 @@
                          hx-on::before-request="
                            document.getElementById('attachment-spinner').style.display='inline-block';
                            document.getElementById('attachment-file').disabled=true;
+                           if (window.ntBusy) { var _f = document.getElementById('attachment-file').files; window.ntBusy(true, 'Anexando ' + String(_f && _f[0] ? _f[0].name : 'arquivo').slice(0, 32) + '…'); }
                          "
                          hx-on::after-request="
                            document.getElementById('attachment-spinner').style.display='none';
                            document.getElementById('attachment-file').disabled=false;
+                           if (window.ntBusy) window.ntBusy(false);
                            if (event.detail && event.detail.successful) {
                              htmx.ajax('GET', '{% url 'boards:activity_panel' card.id %}', '#cm-activity-panel');
                              if (typeof window.refreshCardSnippet === 'function') { window.refreshCardSnippet({{ card.id }}); }

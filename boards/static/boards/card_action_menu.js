@@ -46,6 +46,14 @@
     return Math.min(max, Math.max(min, n));
   }
 
+  // Filme fumê + bolinha (base.html). Toda ação daqui bate no servidor e pode
+  // levar segundos — sem isso o usuário clica de novo achando que não pegou.
+  function busy(on, label) {
+    try {
+      if (typeof window.ntBusy === "function") window.ntBusy(on, label);
+    } catch (_e) {}
+  }
+
   async function postJson(url, data) {
     const res = await fetch(url, {
       method: "POST",
@@ -266,44 +274,54 @@
   async function doQuickMove(cardId, toColId, fromModal) {
     closeMenu();
     if (!toColId) return;
-    const res = await postJson("/move-card/", {
-      card_id: parseInt(cardId, 10),
-      new_column_id: parseInt(toColId, 10),
-      new_position: 0,
-    });
-    if (!res.ok) return;
+    busy(true, "Movendo o card…");
     try {
-      const data = JSON.parse(res.text || "{}");
-      if (!replaceCardWithSnippet(cardId, data.snippet, data.column_id, { prepend: true })) {
-        removeCardFromDom(cardId);
-      }
-    } catch (_e) {}
-    if (fromModal) closeModalIfOpen();
+      const res = await postJson("/move-card/", {
+        card_id: parseInt(cardId, 10),
+        new_column_id: parseInt(toColId, 10),
+        new_position: 0,
+      });
+      if (!res.ok) return;
+      try {
+        const data = JSON.parse(res.text || "{}");
+        if (!replaceCardWithSnippet(cardId, data.snippet, data.column_id, { prepend: true })) {
+          removeCardFromDom(cardId);
+        }
+      } catch (_e) {}
+      if (fromModal) closeModalIfOpen();
+    } finally {
+      busy(false);
+    }
   }
 
   async function doDuplicate(cardId) {
     closeMenu();
-    const res = await postJson(`/card/${cardId}/duplicate/`, {});
-    if (!res.ok) return;
+    busy(true, "Duplicando o card…");
     try {
-      const data = JSON.parse(res.text || "{}");
-      const destList = document.getElementById(`cards-col-${data.column_id}`);
-      const original = document.querySelector(`li[data-card-id="${cardId}"]`);
-      if (data.snippet && destList) {
-        const tmp = document.createElement("div");
-        tmp.innerHTML = String(data.snippet).trim();
-        const newLi = tmp.firstElementChild;
-        if (newLi) {
-          if (original && original.parentElement === destList) original.after(newLi);
-          else destList.appendChild(newLi);
-          newLi.classList.add("card-new-pulse");
-          setTimeout(() => newLi.classList.remove("card-new-pulse"), 700);
-          bumpDestColumn(destList);
-          afterDomMutation();
+      const res = await postJson(`/card/${cardId}/duplicate/`, {});
+      if (!res.ok) return;
+      try {
+        const data = JSON.parse(res.text || "{}");
+        const destList = document.getElementById(`cards-col-${data.column_id}`);
+        const original = document.querySelector(`li[data-card-id="${cardId}"]`);
+        if (data.snippet && destList) {
+          const tmp = document.createElement("div");
+          tmp.innerHTML = String(data.snippet).trim();
+          const newLi = tmp.firstElementChild;
+          if (newLi) {
+            if (original && original.parentElement === destList) original.after(newLi);
+            else destList.appendChild(newLi);
+            newLi.classList.add("card-new-pulse");
+            setTimeout(() => newLi.classList.remove("card-new-pulse"), 700);
+            bumpDestColumn(destList);
+            afterDomMutation();
+          }
         }
-      }
-    } catch (_e) {}
-    // duplicar não mexe no card aberto -> mantém o modal como está
+      } catch (_e) {}
+      // duplicar não mexe no card aberto -> mantém o modal como está
+    } finally {
+      busy(false);
+    }
   }
 
   function doCopyLink(cardId) {
@@ -327,17 +345,27 @@
   async function doArchive(cardId, fromModal) {
     closeMenu();
     if (!confirm("Arquivar este card? Ele vai sair do quadro e ir para Arquivados.")) return;
-    const ok = await postPlain(`/card/${cardId}/archive/`);
-    if (ok) removeCardFromDom(cardId);
-    if (fromModal) closeModalIfOpen();
+    busy(true, "Arquivando o card…");
+    try {
+      const ok = await postPlain(`/card/${cardId}/archive/`);
+      if (ok) removeCardFromDom(cardId);
+      if (fromModal) closeModalIfOpen();
+    } finally {
+      busy(false);
+    }
   }
 
   async function doTrash(cardId, fromModal) {
     closeMenu();
     if (!confirm("Enviar este card para a Lixeira?")) return;
-    const ok = await postPlain(`/card/${cardId}/trash/`);
-    if (ok) removeCardFromDom(cardId);
-    if (fromModal) closeModalIfOpen();
+    busy(true, "Enviando para a Lixeira…");
+    try {
+      const ok = await postPlain(`/card/${cardId}/trash/`);
+      if (ok) removeCardFromDom(cardId);
+      if (fromModal) closeModalIfOpen();
+    } finally {
+      busy(false);
+    }
   }
 
   // --------------------------------------------------- painel "Mover" (full)
@@ -440,25 +468,30 @@
       return;
     }
     const newPos = clampInt(parseInt(posUi, 10) - 1, 0, 999999, 0);
-    const res = await postJson("/move-card/", {
-      card_id: parseInt(cardId, 10),
-      new_column_id: parseInt(colId, 10),
-      new_position: newPos,
-    });
-    if (!res.ok) {
-      if (errEl) { errEl.style.display = "block"; errEl.textContent = `Falha ao mover (HTTP ${res.status}).`; }
-      return;
-    }
-    closeMenu();
+    busy(true, "Movendo o card…");
     try {
-      const data = JSON.parse(res.text || "{}");
-      if (!replaceCardWithSnippet(cardId, data.snippet, data.column_id, { prepend: false })) {
-        removeCardFromDom(cardId); // foi pra outro board -> some da view atual
+      const res = await postJson("/move-card/", {
+        card_id: parseInt(cardId, 10),
+        new_column_id: parseInt(colId, 10),
+        new_position: newPos,
+      });
+      if (!res.ok) {
+        if (errEl) { errEl.style.display = "block"; errEl.textContent = `Falha ao mover (HTTP ${res.status}).`; }
+        return;
       }
-    } catch (_e) {
-      removeCardFromDom(cardId);
+      closeMenu();
+      try {
+        const data = JSON.parse(res.text || "{}");
+        if (!replaceCardWithSnippet(cardId, data.snippet, data.column_id, { prepend: false })) {
+          removeCardFromDom(cardId); // foi pra outro board -> some da view atual
+        }
+      } catch (_e) {
+        removeCardFromDom(cardId);
+      }
+      if (fromModal) closeModalIfOpen();
+    } finally {
+      busy(false);
     }
-    if (fromModal) closeModalIfOpen();
   }
 
   // ---------------------------------------------------------------- eventos

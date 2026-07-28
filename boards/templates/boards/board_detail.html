@@ -3111,18 +3111,31 @@ window.cmClearImpediment = function(userId, el){
     }
 
     var done = 0;
+    function short(name){
+      name = String(name || "");
+      return name.length > 32 ? name.slice(0, 31) + "…" : name;
+    }
     function label(){
       var name = list[done] ? list[done].name : "";
       if (list.length > 1) return "Anexando " + (done + 1) + "/" + list.length + "…";
-      return "Anexando " + (name.length > 26 ? name.slice(0, 25) + "…" : name);
+      return "Anexando " + short(name);
+    }
+
+    function busy(on, text){
+      try { if (typeof window.ntBusy === "function") window.ntBusy(on, text); } catch (_e) {}
+    }
+    function busyLabel(text){
+      try { if (window.ntBusy && window.ntBusy.label) window.ntBusy.label(text); } catch (_e) {}
     }
 
     pill(li, label(), "", 0);
+    busy(true, label());
 
     var chain = Promise.resolve();
     list.forEach(function (f) {
       chain = chain.then(function () {
         pill(li, label(), "", 0);
+        busyLabel(label());
         return upload(cardId, f).then(function () { done++; });
       });
     });
@@ -3138,7 +3151,8 @@ window.cmClearImpediment = function(userId, el){
       })
       .catch(function (err) {
         pill(li, (err && err.message) ? err.message : "Falha ao anexar", "is-err", 6000);
-      });
+      })
+      .then(function () { busy(false); });
   }
 
   function modalFallback(cardId, files){

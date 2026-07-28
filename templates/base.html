@@ -164,7 +164,7 @@
 <!-- MODAL dock -->
   <!-- Menu de ações do card (FONTE ÚNICA): atende o FAB ⋮ do modal e o
        kebab ⋮ do card na board. Substitui o antigo modal.dock.js. -->
-  <script defer src="{% static 'boards/card_action_menu.js' %}?v=20260617-01"></script>
+  <script defer src="{% static 'boards/card_action_menu.js' %}?v=20260728-busy1"></script>
 
   <!-- AI: busca de cards semelhantes quando o modal abre -->
   <script defer src="{% static 'boards/modal/modal.ai_similar.js' %}"></script>
@@ -222,6 +222,39 @@
     @media (prefers-reduced-motion: reduce) {
       #nt-social-overlay .nt-social-overlay-img { animation: none; }
       #nt-social-overlay .nt-social-overlay-bar > span { animation: none; left: 0; width: 100%; opacity: .6; }
+    }
+
+    #nt-busy {
+      position: fixed; inset: 0; z-index: 100000;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(15,23,42,.42);
+      backdrop-filter: blur(1.5px);
+      opacity: 0; transition: opacity .12s ease;
+      cursor: progress;
+    }
+    #nt-busy[hidden] { display: none; }
+    #nt-busy.show { opacity: 1; }
+    #nt-busy .nt-busy-box {
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
+      padding: 20px 26px; border-radius: 16px;
+      background: rgba(255,255,255,.95);
+      box-shadow: 0 18px 44px rgba(0,0,0,.30);
+      max-width: min(78vw, 320px);
+    }
+    #nt-busy .nt-busy-spin {
+      width: 34px; height: 34px; flex: 0 0 auto;
+      border: 3px solid rgba(15,23,42,.14);
+      border-top-color: #2563eb;
+      border-radius: 50%;
+      animation: nt-busy-spin .7s linear infinite;
+    }
+    #nt-busy .nt-busy-txt {
+      font: 600 13px/1.35 system-ui,-apple-system,"Segoe UI",sans-serif;
+      color: #0f172a; text-align: center; overflow-wrap: anywhere;
+    }
+    @keyframes nt-busy-spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) {
+      #nt-busy .nt-busy-spin { animation-duration: 1.8s; }
     }
   </style>
 
@@ -1401,6 +1434,100 @@ document.addEventListener('keydown', function(e){
     var href = a.href;
     setTimeout(function () { window.location.href = href; }, 140);
   });
+})();
+</script>
+
+<div id="nt-busy" hidden aria-hidden="true" role="status" aria-live="polite">
+  <div class="nt-busy-box">
+    <span class="nt-busy-spin" aria-hidden="true"></span>
+    <span class="nt-busy-txt">Carregando…</span>
+  </div>
+</div>
+
+<script>
+(function () {
+
+  var MIN_MS = 260;
+  var WATCHDOG_MS = 30000;
+
+  var depth = 0;
+  var shownAt = 0;
+  var hideTimer = null;
+  var watchdog = null;
+
+  function el() { return document.getElementById("nt-busy"); }
+
+  function paint(label) {
+    var box = el();
+    if (!box) return;
+    var txt = box.querySelector(".nt-busy-txt");
+    if (txt) txt.textContent = label || "Carregando…";
+  }
+
+  function reveal(label) {
+    var box = el();
+    if (!box) return;
+    if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+    paint(label);
+    if (box.hasAttribute("hidden")) {
+      box.removeAttribute("hidden");
+      box.setAttribute("aria-hidden", "false");
+      void box.offsetWidth;
+      shownAt = performance.now ? performance.now() : Date.now();
+    }
+    box.classList.add("show");
+  }
+
+  function conceal() {
+    var box = el();
+    if (!box) return;
+    box.classList.remove("show");
+    box.setAttribute("aria-hidden", "true");
+    hideTimer = setTimeout(function () {
+      if (depth === 0) box.setAttribute("hidden", "");
+      hideTimer = null;
+    }, 140);
+  }
+
+  // ntBusy(true, "Movendo o card…") … ntBusy(false)
+  // Contador: duas ações lentas ao mesmo tempo não derrubam o filme uma da outra.
+  // O mínimo em tela evita o pisca-pisca quando o servidor responde rápido.
+  window.ntBusy = function (on, label) {
+    if (on) {
+      depth++;
+      reveal(label);
+      if (watchdog) clearTimeout(watchdog);
+      // Rede caiu / exceção no meio do caminho: nunca deixar a tela travada.
+      watchdog = setTimeout(function () { depth = 0; conceal(); }, WATCHDOG_MS);
+      return;
+    }
+
+    depth = Math.max(0, depth - 1);
+    if (depth > 0) return;
+    if (watchdog) { clearTimeout(watchdog); watchdog = null; }
+
+    var now = performance.now ? performance.now() : Date.now();
+    var left = MIN_MS - (now - shownAt);
+    if (left > 0) setTimeout(function () { if (depth === 0) conceal(); }, left);
+    else conceal();
+  };
+
+  // Troca só o texto, sem mexer no contador (ex.: "Anexando 2/5…").
+  window.ntBusy.label = function (text) {
+    if (depth > 0) paint(text);
+  };
+
+  // Enquanto o filme está no ar, clique e tecla não passam pra página.
+  ["click", "pointerdown", "mousedown", "touchstart"].forEach(function (evt) {
+    document.addEventListener(evt, function (e) {
+      if (depth <= 0) return;
+      var box = el();
+      if (!box || box.hasAttribute("hidden")) return;
+      e.preventDefault();
+      e.stopPropagation();
+    }, true);
+  });
+
 })();
 </script>
 </body>
