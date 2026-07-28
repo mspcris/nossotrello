@@ -2971,4 +2971,239 @@ window.cmClearImpediment = function(userId, el){
 };
 </script>
 
+<style>
+  li[data-card-id].nt-drop-over{
+    outline: 2px dashed rgba(37,99,235,0.95);
+    outline-offset: -2px;
+    box-shadow: 0 0 0 4px rgba(37,99,235,0.18);
+  }
+  .nt-drop-pill{
+    position: absolute;
+    left: 6px;
+    right: 6px;
+    bottom: 6px;
+    z-index: 6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: 9px;
+    background: rgba(15,23,42,0.88);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: center;
+    pointer-events: none;
+    overflow-wrap: anywhere;
+  }
+  .nt-drop-pill.is-err{ background: rgba(185,28,28,0.94); }
+  .nt-drop-pill.is-ok{ background: rgba(21,128,61,0.94); }
+  .nt-drop-pill .nt-drop-spin{
+    width: 11px;
+    height: 11px;
+    border: 2px solid rgba(255,255,255,0.35);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: nt-drop-spin 0.7s linear infinite;
+    flex: 0 0 auto;
+  }
+  @keyframes nt-drop-spin{ to{ transform: rotate(360deg); } }
+</style>
+
+<script>
+(function () {
+
+  var MAX_BYTES = 50 * 1024 * 1024;
+
+  function csrf(){
+    return document.querySelector("[name=csrfmiddlewaretoken]")?.value || "";
+  }
+
+  function hasFiles(e){
+    var dt = e.dataTransfer;
+    if (!dt) return false;
+    var types = dt.types;
+    if (!types) return false;
+    for (var i = 0; i < types.length; i++) {
+      if (String(types[i]) === "Files") return true;
+    }
+    return false;
+  }
+
+  function cardFrom(target){
+    if (!target || typeof target.closest !== "function") {
+      target = target && target.parentElement ? target.parentElement : null;
+    }
+    if (!target || typeof target.closest !== "function") return null;
+    return target.closest("li[data-card-id]");
+  }
+
+  function openCardId(target){
+    var root = document.getElementById("cm-root");
+    if (!root || !root.getClientRects().length) return "";
+    if (target && typeof target.closest === "function" && !target.closest("#card-modal-root")) return "";
+    return root.getAttribute("data-card-id") || "";
+  }
+
+  var lastOver = null;
+  function markOver(li){
+    if (lastOver === li) return;
+    if (lastOver) lastOver.classList.remove("nt-drop-over");
+    lastOver = li;
+    if (li) li.classList.add("nt-drop-over");
+  }
+
+  function pill(li, text, tone, holdMs){
+    if (!li) return;
+    var el = li.querySelector(".nt-drop-pill");
+    if (!el) {
+      el = document.createElement("div");
+      el.className = "nt-drop-pill";
+      li.appendChild(el);
+    }
+    el.className = "nt-drop-pill" + (tone ? " " + tone : "");
+    el.innerHTML = "";
+    if (!tone) {
+      var spin = document.createElement("span");
+      spin.className = "nt-drop-spin";
+      el.appendChild(spin);
+    }
+    el.appendChild(document.createTextNode(text));
+    if (holdMs) {
+      setTimeout(function () { if (el && el.parentNode) el.remove(); }, holdMs);
+    }
+  }
+
+  function clearPill(li){
+    if (!li) return;
+    var el = li.querySelector(".nt-drop-pill");
+    if (el) el.remove();
+  }
+
+  function upload(cardId, file){
+    var fd = new FormData();
+    fd.append("file", file, file.name);
+    return fetch("/card/" + cardId + "/attachments/add/", {
+      method: "POST",
+      headers: { "X-CSRFToken": csrf(), "X-Requested-With": "XMLHttpRequest" },
+      body: fd,
+      credentials: "same-origin"
+    }).then(function (r) {
+      if (r.ok) return true;
+      if (r.status === 403) throw new Error("Sem permissão para anexar neste quadro.");
+      if (r.status === 413) throw new Error("Arquivo maior que o limite de 50MB.");
+      throw new Error("Falha ao anexar (" + r.status + ").");
+    });
+  }
+
+  function attachAll(cardId, files, li){
+    var list = [];
+    for (var i = 0; i < files.length; i++) list.push(files[i]);
+    if (!list.length) return;
+
+    var big = list.filter(function (f) { return f.size > MAX_BYTES; });
+    list = list.filter(function (f) { return f.size <= MAX_BYTES; });
+    if (big.length && !list.length) {
+      pill(li, big.length > 1 ? "Arquivos acima de 50MB" : "Acima de 50MB", "is-err", 5000);
+      return;
+    }
+
+    var done = 0;
+    function label(){
+      var name = list[done] ? list[done].name : "";
+      if (list.length > 1) return "Anexando " + (done + 1) + "/" + list.length + "…";
+      return "Anexando " + (name.length > 26 ? name.slice(0, 25) + "…" : name);
+    }
+
+    pill(li, label(), "", 0);
+
+    var chain = Promise.resolve();
+    list.forEach(function (f) {
+      chain = chain.then(function () {
+        pill(li, label(), "", 0);
+        return upload(cardId, f).then(function () { done++; });
+      });
+    });
+
+    chain
+      .then(function () {
+        var msg = done > 1 ? done + " anexos enviados" : "Anexado";
+        if (big.length) msg += " (" + big.length + " acima de 50MB ficaram de fora)";
+        pill(li, msg, "is-ok", 3000);
+        if (typeof window.refreshCardSnippet === "function") {
+          try { window.refreshCardSnippet(cardId); } catch (_e) {}
+        }
+      })
+      .catch(function (err) {
+        pill(li, (err && err.message) ? err.message : "Falha ao anexar", "is-err", 6000);
+      });
+  }
+
+  function modalFallback(cardId, files){
+    var input = document.getElementById("attachment-file");
+    if (!input) return false;
+    try {
+      var dt = new DataTransfer();
+      dt.items.add(files[0]);
+      input.files = dt.files;
+    } catch (_e) {
+      return false;
+    }
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    return true;
+  }
+
+  document.addEventListener("dragover", function (e) {
+    if (!hasFiles(e)) return;
+    // Cancelar o dragover é o que autoriza o drop — sem isso o navegador
+    // assume o arquivo e abre/baixa em vez de deixar a página tratar.
+    e.preventDefault();
+    if (e.dataTransfer) { try { e.dataTransfer.dropEffect = "copy"; } catch (_e) {} }
+    markOver(cardFrom(e.target));
+  }, false);
+
+  document.addEventListener("dragleave", function (e) {
+    if (!hasFiles(e)) return;
+    if (!e.relatedTarget) markOver(null);
+  }, false);
+
+  document.addEventListener("dragend", function () { markOver(null); }, false);
+
+  document.addEventListener("drop", function (e) {
+    if (!hasFiles(e)) return;
+
+    // Alguém mais perto do alvo já tratou (modal de import, aba Anexos…).
+    if (e.defaultPrevented) { markOver(null); return; }
+
+    // Drop direto no <input type="file"> é o próprio navegador quem resolve.
+    var onFileInput = e.target && typeof e.target.closest === "function"
+      && e.target.closest('input[type="file"]');
+    if (onFileInput) { markOver(null); return; }
+
+    e.preventDefault();
+
+    var li = cardFrom(e.target);
+    markOver(null);
+
+    var files = e.dataTransfer && e.dataTransfer.files ? e.dataTransfer.files : null;
+    if (!files || !files.length) return;
+
+    if (li) {
+      attachAll(li.getAttribute("data-card-id"), files, li);
+      return;
+    }
+
+    // Sem card embaixo do cursor: se o modal de um card estiver aberto, o
+    // arquivo é dele. Fora disso o drop só é anulado (nunca vira download).
+    var openId = openCardId(e.target);
+    if (!openId) return;
+    if (modalFallback(openId, files)) return;
+    attachAll(openId, files, document.getElementById("card-" + openId));
+  }, false);
+
+})();
+</script>
+
 {% endblock content %}

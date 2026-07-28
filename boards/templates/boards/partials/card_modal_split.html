@@ -1260,43 +1260,68 @@
   }
 
   function initAttachmentDragDrop() {
-    const r = getRoot();
-    if (!r) return;
-    if (r.dataset.cmDropBound === "1") return;
-    r.dataset.cmDropBound = "1";
-
-    const modalRoot = document.getElementById("card-modal-root") || r;
-    const fileInput = r.querySelector("#attachment-file");
-    if (!fileInput) return;
+    // Liga no #card-modal-root (que é do base.html e nunca é trocado), não no
+    // #cm-root — este vem no swap do htmx e some a cada card aberto. Amarrar
+    // aqui evita empilhar um listener por card e, principalmente, evita ficar
+    // sem listener nenhum: sem drop cancelado o navegador BAIXA o arquivo.
+    const modalRoot = document.getElementById("card-modal-root");
+    if (!modalRoot) return;
+    if (modalRoot.dataset.cmDropBound === "1") return;
+    modalRoot.dataset.cmDropBound = "1";
 
     function setDragUI(on) { modalRoot.classList.toggle("cm-dragover", !!on); }
 
+    function hasFiles(e) {
+      const types = e.dataTransfer && e.dataTransfer.types ? e.dataTransfer.types : null;
+      if (!types) return false;
+      for (let i = 0; i < types.length; i++) {
+        if (String(types[i]) === "Files") return true;
+      }
+      return false;
+    }
+
+    function onNativeInput(e) {
+      return !!(e.target && typeof e.target.closest === "function"
+        && e.target.closest('input[type="file"]'));
+    }
+
     function onDragOver(e) {
+      if (!hasFiles(e)) return;
       e.preventDefault();
-      e.stopPropagation();
       if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
       setDragUI(true);
     }
 
     function onDrop(e) {
-      e.preventDefault();
-      e.stopPropagation();
+      if (!hasFiles(e)) return;
       setDragUI(false);
 
+      // Drop em cima do próprio <input type="file">: o navegador resolve.
+      if (onNativeInput(e)) return;
+
+      // Resolvido na hora do drop, nunca no bind: o input é recriado a cada
+      // card. Se não achar, deixa o evento seguir — o handler do quadro
+      // (board_detail.html) cancela o default e sobe o arquivo por fetch.
+      const fileInput = document.getElementById("attachment-file");
       const files = e.dataTransfer && e.dataTransfer.files ? e.dataTransfer.files : null;
-      if (!files || !files.length) return;
+      if (!fileInput || !files || !files.length) return;
 
       const dt = new DataTransfer();
       dt.items.add(files[0]);
 
       try { fileInput.files = dt.files; } catch (_e) { return; }
+
+      e.preventDefault();
+      e.stopPropagation();
       fileInput.dispatchEvent(new Event("change", { bubbles: true }));
     }
 
     modalRoot.addEventListener("dragenter", onDragOver, true);
     modalRoot.addEventListener("dragover", onDragOver, true);
     modalRoot.addEventListener("drop", onDrop, true);
-    modalRoot.addEventListener("dragleave", () => setDragUI(false), true);
+    modalRoot.addEventListener("dragleave", (e) => {
+      if (!e.relatedTarget || !modalRoot.contains(e.relatedTarget)) setDragUI(false);
+    }, true);
   }
 
   function bootAttach() { initAttachmentDragDrop(); }
