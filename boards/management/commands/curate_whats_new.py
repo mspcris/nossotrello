@@ -40,6 +40,17 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-07 ---
+    "301fa16": (
+        "📥",
+        "Arraste o arquivo direto pra cima do card",
+        "Agora dá pra pegar um arquivo no computador e soltar em cima do card, "
+        "no próprio quadro — sem abrir o card antes. Ele sobe como anexo daquele "
+        "card e o card mostra \"Anexando…\" enquanto o envio acontece. Soltar "
+        "vários de uma vez também funciona: eles sobem em fila. Se o arquivo "
+        "passar de 50MB, o card avisa em vez de falhar calado. Antes, dependendo "
+        "de onde você soltava, o navegador simplesmente baixava o arquivo de "
+        "volta e nada era anexado.",
+    ),
     "606908a": (
         "💤",
         "Quem parou de usar some das listas do Espaço Social",
