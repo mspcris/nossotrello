@@ -40,6 +40,16 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-07 ---
+    "d092d28": (
+        "⏳",
+        "Dá pra ver quando o Tarefas está trabalhando",
+        "Mover o card pelo menu ⋮ leva alguns segundos e a tela ficava parada, "
+        "sem dizer se o clique tinha pegado — aí você clicava de novo. Agora a "
+        "tela escurece e aparece uma bolinha girando com o que está acontecendo "
+        "(\"Movendo o card…\", \"Anexando contrato.pdf…\"), e o clique fica "
+        "bloqueado até terminar. Vale pra mover, duplicar, arquivar, mandar pra "
+        "Lixeira e anexar arquivo.",
+    ),
     "301fa16": (
         "📥",
         "Arraste o arquivo direto pra cima do card",
