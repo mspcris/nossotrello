@@ -158,6 +158,14 @@ def _format_mmss(seconds: int) -> str:
     return f"{mm}:{ss:02d}"
 
 
+def _safe_int(value):
+    """int() tolerante — devolve None em vez de estourar com lixo do POST."""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def _can_view_board(user, board) -> bool:
     """
     Regra de leitura:
@@ -182,7 +190,14 @@ def _can_view_board(user, board) -> bool:
 # ============================================================
 
 @login_required
-def card_tracktime_panel(request, card_id):
+def card_tracktime_panel(
+    request,
+    card_id,
+    flash=None,
+    flash_tone="ok",
+    selected_project_id=None,
+    selected_activity_id=None,
+):
     card = get_object_or_404(
         Card.objects.select_related("column__board"),
         id=card_id
@@ -263,6 +278,12 @@ def card_tracktime_panel(request, card_id):
             "confirm_due_in": confirm_due_in,
             "auto_stop_in": auto_stop_in,
             "auto_stop_mmss": _format_mmss(auto_stop_in) if auto_stop_in is not None else None,
+            "flash": flash,
+            "flash_tone": flash_tone,
+            # Mantém a escolha do usuário depois de um lançamento manual —
+            # sem isso ele precisava reselecionar projeto/atividade a cada vez.
+            "selected_project_id": _safe_int(selected_project_id),
+            "selected_activity_id": _safe_int(selected_activity_id),
         },
     )
 
@@ -495,30 +516,50 @@ def card_tracktime_manual(request, card_id):
     activity_id = (request.POST.get("activity") or "").strip()
     minutes = (request.POST.get("minutes") or "").strip()
 
-    if not project_id or not activity_id or not minutes:
-        return HttpResponseBadRequest("Dados incompletos")
+    # Erros voltam como painel re-renderizado (200) para o HTMX conseguir trocar
+    # o DOM e o usuário ver a mensagem — 4xx era engolido silenciosamente.
+    def _fail(message):
+        return card_tracktime_panel(
+            request,
+            card_id,
+            flash=message,
+            flash_tone="error",
+            selected_project_id=project_id,
+            selected_activity_id=activity_id,
+        )
+
+    if not project_id:
+        return _fail("Selecione o projeto.")
+
+    if not activity_id:
+        return _fail("Selecione a atividade.")
+
+    if not minutes:
+        return _fail("Informe os minutos.")
 
     try:
         minutes_int = int(minutes)
     except ValueError:
-        return HttpResponseBadRequest("Minutos inválidos")
+        return _fail("Minutos inválidos — informe um número inteiro.")
 
     if minutes_int <= 0:
-        return HttpResponseBadRequest("Minutos inválidos")
+        return _fail("Minutos inválidos — informe um número maior que zero.")
 
-    project = get_object_or_404(
-        Project,
+    project = Project.objects.filter(
         pk=project_id,
         created_by=request.user,
-        is_active=True
-    )
+        is_active=True,
+    ).first()
+    if not project:
+        return _fail("Projeto não encontrado — atualize as listas e tente de novo.")
 
-    activity = get_object_or_404(
-        ActivityType,
+    activity = ActivityType.objects.filter(
         pk=activity_id,
         created_by=request.user,
-        is_active=True
-    )
+        is_active=True,
+    ).first()
+    if not activity:
+        return _fail("Atividade não encontrada — atualize as listas e tente de novo.")
 
     now = timezone.now()
 
@@ -555,7 +596,14 @@ def card_tracktime_manual(request, card_id):
         ),
     )
 
-    return card_tracktime_panel(request, card_id)
+    return card_tracktime_panel(
+        request,
+        card_id,
+        flash=f"Lançado: {dur} em {project.name} / {activity.name}.",
+        flash_tone="ok",
+        selected_project_id=project.id,
+        selected_activity_id=activity.id,
+    )
 
 
 @login_required
