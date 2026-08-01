@@ -45,6 +45,15 @@ class DatabaseStorage(Storage):
         if not content_type:
             content_type = self._guess_content_type(name)
 
+        # Nome sem extensão (gravador de tela salva "video-2026-08-01_12.03.56")
+        # faz o navegador mandar application/octet-stream. Aí os bytes decidem —
+        # senão o arquivo perde miniatura, player e conversão de vídeo.
+        try:
+            from boards.services.file_sniff import resolve_content_type
+            content_type = resolve_content_type(content_type, data)
+        except Exception:
+            pass
+
         obj = StoredFile(
             original_name=name.split("/")[-1] if "/" in name else name,
             content_type=content_type,

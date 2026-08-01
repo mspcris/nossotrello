@@ -368,6 +368,58 @@ class AttachmentSoftDeleteTests(TestCase):
             {"file": SimpleUploadedFile(filename, name, content_type="application/pdf")},
         )
 
+    def test_video_sem_extensao_no_nome_ainda_e_tratado_como_video(self):
+        """Gravador de tela salva "video-2026-08-01_12.03.56" — sem extensão.
+
+        O navegador manda application/octet-stream, e o ".56" do horário era
+        lido como extensão: o anexo virava arquivo comum e perdia miniatura,
+        player e conversão. Quem decide agora são os bytes.
+        """
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from boards.services.file_meta import file_meta
+
+        # cabeçalho EBML/WebM real
+        webm = bytes.fromhex(
+            "1a45dfa39f4286810142f7810142f2810442f381084282847765626d42878102"
+        ) + b"\x00" * 128
+
+        self.client.post(
+            f"/card/{self.card.id}/attachments/add/",
+            {
+                "file": SimpleUploadedFile(
+                    "video-2026-08-01_12.03.56",
+                    webm,
+                    content_type="application/octet-stream",
+                )
+            },
+        )
+
+        attachment = CardAttachment.objects.get(card=self.card)
+        stored = StoredFile.objects.get(id=attachment.file.name)
+        self.assertEqual(stored.content_type, "video/webm")
+
+        meta = file_meta(attachment.file)
+        self.assertEqual(meta["kind"], "video")
+        self.assertEqual(meta["ext"], "WEBM")
+        self.assertEqual(meta["name"], "video-2026-08-01_12.03.56")
+
+        # e o feed registra como vídeo, não como "um arquivo"
+        log = self.card.logs.filter(attachment__gt="").first()
+        self.assertIn("anexou um vídeo", log.content)
+
+    def test_content_type_declarado_vence_o_palpite_dos_bytes(self):
+        """Só chuta quando o navegador não soube dizer — nunca por cima dele."""
+        from boards.services.file_sniff import resolve_content_type
+
+        webm = bytes.fromhex("1a45dfa39f428681") + b"webm" + b"\x00" * 64
+        self.assertEqual(resolve_content_type("video/mp4", webm), "video/mp4")
+        self.assertEqual(resolve_content_type("application/octet-stream", webm), "video/webm")
+        # sem assinatura conhecida, mantém o que veio
+        self.assertEqual(
+            resolve_content_type("application/octet-stream", b"nada disso" * 8),
+            "application/octet-stream",
+        )
+
     def test_upload_guarda_nome_original_e_loga_o_tipo(self):
         self._upload()
 

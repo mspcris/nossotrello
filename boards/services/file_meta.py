@@ -93,7 +93,10 @@ def file_meta(fieldfile) -> dict:
     ext = ""
     if "." in name:
         cand = name.rsplit(".", 1)[-1]
-        if 1 <= len(cand) <= 5 and cand.isalnum():
+        # `any(isalpha)`: "video-2026-08-01_12.03.56" não tem extensão nenhuma —
+        # o "56" é o segundo do horário. Sem essa checagem o anexo virava um
+        # arquivo ".56" e perdia o tratamento de vídeo.
+        if 1 <= len(cand) <= 5 and cand.isalnum() and any(c.isalpha() for c in cand):
             ext = cand.upper()
     if not ext and ct:
         guess = mimetypes.guess_extension(ct.split(";")[0].strip()) or ""
