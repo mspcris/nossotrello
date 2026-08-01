@@ -51,7 +51,11 @@ CURATED = {
         "prende ele ali com o ícone do tipo, você ainda escreve o que quiser e "
         "os dois vão juntos numa entrada só. E a linha do feed ficou curta — "
         "\"fulano anexou um vídeo\" — em vez de repetir o nome do arquivo e a "
-        "descrição que já aparecem logo abaixo.",
+        "descrição que já aparecem logo abaixo. Funciona também com o vídeo "
+        "que o gravador de tela salva sem extensão no nome: antes ele entrava "
+        "como arquivo qualquer, sem miniatura e sem player. Agora o Tarefas "
+        "olha o conteúdo e reconhece o que o arquivo é de verdade — o mesmo "
+        "passou a valer pra PDFs e imagens que chegavam sem extensão.",
     ),
     "da1c5d3": (
         "⏱️",
