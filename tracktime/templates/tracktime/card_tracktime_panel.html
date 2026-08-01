@@ -227,6 +227,32 @@
     border-color: rgba(248,113,113,.85) !important;
     box-shadow: 0 0 0 3px rgba(248,113,113,.18);
   }
+
+  /* Pisca por 2s (4 × 500ms) apontando o campo que faltou.
+     Anima `outline-color` e `box-shadow` — as regras de :focus/:hover setam
+     `border-color` com !important e venceriam a animação. */
+  @keyframes ttblink {
+    0%, 100% {
+      outline-color: rgba(239,68,68,0);
+      box-shadow: 0 0 0 0 rgba(239,68,68,0);
+    }
+    50% {
+      outline-color: rgba(239,68,68,.95);
+      box-shadow: 0 0 0 5px rgba(239,68,68,.35), 0 0 20px rgba(239,68,68,.80);
+    }
+  }
+  .tt-blink {
+    outline-width: 3px !important;
+    outline-style: solid !important;
+    outline-offset: 2px !important;
+    animation: ttblink .5s ease-in-out 4;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .tt-blink {
+      animation: none;
+      outline-color: rgba(239,68,68,.95) !important;
+    }
+  }
 </style>
 
 <div class="cm-card space-y-3">
@@ -482,15 +508,43 @@
       });
     }
 
-    function showManualAlert(message, offender) {
+    // Reinicia a animação mesmo se a classe já estiver aplicada (reflow forçado).
+    function blink(el) {
+      if (!el) return;
+      el.classList.remove("tt-blink");
+      void el.offsetWidth;
+      el.classList.add("tt-blink");
+      const prev = el.dataset.ttBlinkTimer;
+      if (prev) clearTimeout(Number(prev));
+      el.dataset.ttBlinkTimer = String(setTimeout(function () {
+        el.classList.remove("tt-blink");
+        delete el.dataset.ttBlinkTimer;
+      }, 2000));
+    }
+
+    // `focusOffender` fica false quando o balão nativo já está aberto em outro
+    // campo (Minutos): roubar o foco fecharia o balão do navegador.
+    function showManualAlert(message, offender, focusOffender) {
       const alertBox = panel.querySelector("#tt-manual-alert");
       const alertText = panel.querySelector("#tt-manual-alert-text");
       if (alertText) alertText.textContent = message;
       if (alertBox) alertBox.hidden = false;
-      if (offender) {
-        offender.classList.add("tt-invalid");
-        try { offender.focus({ preventScroll: false }); } catch (_) { offender.focus(); }
+      if (!offender) return;
+
+      offender.classList.add("tt-invalid");
+      blink(offender);
+
+      if (focusOffender === false) return;
+
+      // Balão nativo ("Preencha este campo") também nos selects de cima.
+      if (offender.setCustomValidity) {
+        offender.setCustomValidity(message);
+        if (offender.reportValidity) {
+          offender.reportValidity();
+          return;  // reportValidity já foca o campo
+        }
       }
+      try { offender.focus({ preventScroll: false }); } catch (_) { offender.focus(); }
     }
 
     function syncHidden() {
@@ -498,6 +552,12 @@
       const activitySel = panel.querySelector("#tt-activity");
       const project = projectSel?.value;
       const activity = activitySel?.value;
+
+      // Limpa a mensagem customizada — senão ela gruda no select e passa a
+      // barrar também o Start com um texto do Manual.
+      [projectSel, activitySel].forEach(function (sel) {
+        if (sel && sel.setCustomValidity) sel.setCustomValidity("");
+      });
 
       const mp = panel.querySelector('input[name="project"][type="hidden"]');
       const ma = panel.querySelector('input[name="activity"][type="hidden"]');
@@ -546,18 +606,42 @@
 
       if (!projectSel?.value) {
         evt.preventDefault();
-        showManualAlert("Selecione o projeto.", projectSel);
+        showManualAlert("Selecione o projeto.", projectSel, true);
         return;
       }
 
       if (!activitySel?.value) {
         evt.preventDefault();
-        showManualAlert("Selecione a atividade.", activitySel);
+        showManualAlert("Selecione a atividade.", activitySel, true);
         return;
       }
 
       clearManualAlert();
     });
+
+    // Minutos vazio: o navegador barra o envio antes do htmx e o
+    // htmx:beforeRequest acima nunca chega a rodar. O evento `invalid` (capture,
+    // porque não borbulha) é a única chance de apontar também o projeto/atividade
+    // que faltam — senão o usuário resolve os minutos e apanha de novo no clique
+    // seguinte.
+    panel.addEventListener("invalid", function (evt) {
+      const field = evt.target;
+      if (!field || field.name !== "minutes") return;
+      if (!field.closest || !field.closest("#tt-manual-form")) return;
+
+      syncHidden();
+      blink(field);
+
+      const projectSel = panel.querySelector("#tt-project");
+      const activitySel = panel.querySelector("#tt-activity");
+
+      // focusOffender=false: o balão nativo já está aberto nos Minutos.
+      if (!projectSel?.value) {
+        showManualAlert("Selecione o projeto.", projectSel, false);
+      } else if (!activitySel?.value) {
+        showManualAlert("Selecione a atividade.", activitySel, false);
+      }
+    }, true);
   }
 
   // =========================
