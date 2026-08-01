@@ -46,11 +46,12 @@ CURATED = {
         "Você digitava os minutos, clicava em Manual e não acontecia nada — "
         "porque o lançamento também precisa do projeto e da atividade, e isso "
         "não estava dito em lugar nenhum. Agora o Tarefas fala: \"Selecione o "
-        "projeto\" ou \"Selecione a atividade\", acende a caixa que falta "
-        "preencher e, quando dá certo, confirma o que foi lançado. A escolha "
-        "fica guardada para o próximo lançamento. As caixas de seleção e os "
-        "botões do Track-time também ficaram mais fáceis de enxergar, com "
-        "contorno visível parado e iluminação ao passar o mouse.",
+        "projeto\" ou \"Selecione a atividade\", abre o balão de aviso em cima "
+        "da caixa que falta e pisca ela por dois segundos, para você enxergar "
+        "de primeira onde clicar. Quando dá certo, ele confirma o que foi "
+        "lançado e guarda a escolha para o próximo lançamento. As caixas de "
+        "seleção e os botões do Track-time também ficaram mais fáceis de "
+        "enxergar, com contorno visível parado e iluminação ao passar o mouse.",
     ),
     # --- 2026-07 ---
     "d092d28": (
