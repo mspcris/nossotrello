@@ -7,10 +7,11 @@ import unittest
 from pathlib import Path
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.core.management import call_command
 from django.test import TestCase, override_settings
 
-from boards.models import Board, Card, CardAttachment, Column, StoredFile
+from boards.models import Board, Card, CardAttachment, CardLog, Column, StoredFile
 
 
 class MediaServeCompatTests(TestCase):
@@ -368,6 +369,60 @@ class AttachmentSoftDeleteTests(TestCase):
             {"file": SimpleUploadedFile(filename, name, content_type="application/pdf")},
         )
 
+    def test_storage_nao_apaga_bytes_ainda_referenciados(self):
+        """O mesmo arquivo em dois cards é UMA linha de StoredFile (dedupe).
+
+        Antes do soft-delete, apagar o anexo de um card fazia o django_cleanup
+        chamar storage.delete() e levar os bytes do OUTRO card junto — 18
+        anexos morreram assim até 07/2026. O storage agora recusa.
+        """
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from django.core.files.storage import default_storage
+
+        outro_card = Card.all_objects.create(
+            title="Outro", column=self.column, created_by=self.user, position=9,
+        )
+        self._upload()
+        self.client.post(
+            f"/card/{outro_card.id}/attachments/add/",
+            {"file": SimpleUploadedFile(
+                "Relatorio Assinado.PDF", b"conteudo", content_type="application/pdf"
+            )},
+        )
+
+        a1 = CardAttachment.objects.get(card=self.card)
+        a2 = CardAttachment.objects.get(card=outro_card)
+        self.assertEqual(a1.file.name, a2.file.name, "dedupe por checksum deveria unir os dois")
+
+        key = a1.file.name
+        default_storage.delete(key)
+        self.assertTrue(
+            StoredFile.objects.filter(id=key).exists(),
+            "storage apagou bytes que ainda tinham dono",
+        )
+
+        # sem nenhum dono, aí sim pode sair
+        CardAttachment.all_objects.filter(file=key).delete()
+        CardLog.objects.filter(attachment=key).delete()
+        default_storage.delete(key)
+        self.assertFalse(StoredFile.objects.filter(id=key).exists())
+
+    def test_anexo_com_bytes_sumidos_e_marcado_como_indisponivel(self):
+        """Chave órfã não pode virar link que devolve 404."""
+        from boards.services.file_meta import file_meta
+
+        self._upload()
+        attachment = CardAttachment.objects.get(card=self.card)
+        key = attachment.file.name
+
+        self.assertFalse(file_meta(attachment.file)["missing"])
+
+        # simula o estrago antigo: bytes fora, linha do anexo de pé
+        StoredFile.objects.filter(id=key).delete()
+        cache.delete(f"sfmeta:{key}")
+
+        self.assertTrue(file_meta(attachment.file)["missing"])
+
     def test_video_sem_extensao_no_nome_ainda_e_tratado_como_video(self):
         """Gravador de tela salva "video-2026-08-01_12.03.56" — sem extensão.
 
@@ -437,7 +492,7 @@ class AttachmentSoftDeleteTests(TestCase):
         from boards.services.file_meta import file_meta
         self.assertEqual(
             file_meta(attachment.file),
-            {"name": "Relatorio_Assinado.PDF", "ext": "PDF", "kind": "pdf"},
+            {"name": "Relatorio_Assinado.PDF", "ext": "PDF", "kind": "pdf", "missing": False},
         )
         # é daqui que o template tira o nome mostrado no feed
         self.assertEqual(file_meta(log.attachment)["name"], "Relatorio_Assinado.PDF")

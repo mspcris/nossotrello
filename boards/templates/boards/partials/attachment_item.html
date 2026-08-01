@@ -18,7 +18,13 @@
         </span>
       {% endif %}
 
-      {% if meta.kind == 'video' %}
+      {% if meta.missing %}
+        {# Os bytes não existem mais: link daria 404. Melhor dizer a verdade. #}
+        <span class="text-gray-500 dark:text-slate-400 font-medium text-sm break-words"
+              title="O arquivo foi removido do servidor e não pode ser recuperado">
+          Arquivo indisponível
+        </span>
+      {% elif meta.kind == 'video' %}
         {# Vídeo abre no player do modal — clicar não pode virar download #}
         {% with sid=attachment.file|stored_source_id %}
         <a href="{{ attachment.file.url }}"

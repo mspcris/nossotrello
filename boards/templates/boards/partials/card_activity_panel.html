@@ -118,12 +118,13 @@
                         {% if log.attachment %}
                           {% with meta=log.attachment|file_meta %}
                           <div class="cm-attach">
-                            {% if log.attachment_deleted %}
-                              {# Arquivo removido: sem link, sem imagem clicável #}
-                              <span class="cm-attach-card cm-attach-card-deleted" title="Arquivo removido">
+                            {% if log.attachment_deleted or meta.missing %}
+                              {# Arquivo removido ou bytes sumidos: sem link, sem imagem clicável #}
+                              <span class="cm-attach-card cm-attach-card-deleted"
+                                    title="{% if meta.missing %}O arquivo foi removido do servidor e não pode ser recuperado{% else %}Arquivo removido{% endif %}">
                                 {% include "boards/partials/file_icon.html" with ext=meta.ext %}
                                 <span class="cm-attach-card-txt">
-                                  <span class="cm-attach-card-name">{{ meta.name }}</span>
+                                  <span class="cm-attach-card-name">{% if meta.missing %}Arquivo indisponível{% else %}{{ meta.name }}{% endif %}</span>
                                   <span class="cm-attach-card-sub">Arquivo removido</span>
                                 </span>
                               </span>

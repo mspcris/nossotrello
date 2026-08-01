@@ -73,19 +73,26 @@ def _stored_row(key: str):
 
 
 def file_meta(fieldfile) -> dict:
-    """`{"name", "ext", "kind"}` de um anexo — 1 query memoizada por StoredFile.
+    """`{"name", "ext", "kind", "missing"}` — 1 query memoizada por StoredFile.
 
     - `name`: nome original ("relatorio.pdf"), nunca o UUID de storage.
     - `ext`:  extensão em maiúsculas sem ponto ("PDF"), "" se indeterminada.
     - `kind`: "image" | "pdf" | "video" | "file" — decide se dá pra pré-visualizar.
+    - `missing`: os bytes sumiram (chave órfã). O template mostra "arquivo
+      indisponível" em vez de um link que devolve 404.
     """
     raw = _raw_name(fieldfile)
     if not raw:
-        return {"name": "", "ext": "", "kind": "file"}
+        return {"name": "", "ext": "", "kind": "file", "missing": False}
 
     key = raw.split("/")[-1]
     orig, ct, is_uuid = _stored_row(key)
     ct = (ct or "").lower()
+
+    # Chave em formato UUID sem linha correspondente = blob que não existe mais.
+    # Referência legada (caminho) não passa por aqui e continua indo pro
+    # fallback do media_serve.
+    missing = bool(is_uuid and not orig and not ct)
 
     # Caminho legado ("attachments/foo.pdf") já traz o nome no próprio path.
     name = orig or (_FALLBACK_NAME if is_uuid else key)
@@ -112,7 +119,7 @@ def file_meta(fieldfile) -> dict:
     else:
         kind = "file"
 
-    return {"name": name, "ext": ext, "kind": kind}
+    return {"name": name, "ext": ext, "kind": kind, "missing": missing}
 
 
 def display_name(fieldfile) -> str:

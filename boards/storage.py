@@ -8,12 +8,15 @@ because Django calls storage.save(), storage.url(), etc.
 """
 
 import hashlib
+import logging
 import uuid
 from io import BytesIO
 
 from django.core.files.base import ContentFile, File
 from django.core.files.storage import Storage
 from django.utils.deconstruct import deconstructible
+
+logger = logging.getLogger(__name__)
 
 
 @deconstructible
@@ -80,11 +83,44 @@ class DatabaseStorage(Storage):
             return False
 
     def delete(self, name: str):
+        """Apaga os bytes — MAS só se ninguém mais apontar pra eles.
+
+        O storage deduplica por checksum: o mesmo arquivo anexado em dois cards
+        vira UMA linha de StoredFile. O `django_cleanup` (INSTALLED_APPS) chama
+        este delete no post_delete de qualquer FileField, inclusive em cascata.
+        Sem a checagem abaixo, remover o anexo de um card levava junto os bytes
+        do outro card — que ficava com um link quebrado e o nome "arquivo".
+
+        Foi assim que 18 anexos morreram até 07/2026. O soft-delete do
+        CardAttachment fechou a porta principal; isto fecha a classe inteira.
+        """
         StoredFile = self._get_model()
+        if not name:
+            return
         try:
+            if self._is_referenced(name):
+                logger.warning(
+                    "DatabaseStorage.delete recusado: %s ainda tem referência viva", name
+                )
+                return
             StoredFile.objects.filter(id=name).delete()
         except Exception:
             pass
+
+    @staticmethod
+    def _is_referenced(name: str) -> bool:
+        """Alguém ainda aponta pra esses bytes?
+
+        Conta anexo removido também (`all_objects`): o soft-delete existe
+        justamente pra manter o histórico auditável, e o CardLog continua
+        exibindo o arquivo das entradas antigas.
+        """
+        from boards.models import CardAttachment, CardLog
+
+        return (
+            CardAttachment.all_objects.filter(file=name).exists()
+            or CardLog.objects.filter(attachment=name).exists()
+        )
 
     def url(self, name: str) -> str:
         """Return the URL where this file can be served."""
