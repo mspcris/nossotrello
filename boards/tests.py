@@ -368,7 +368,7 @@ class AttachmentSoftDeleteTests(TestCase):
             {"file": SimpleUploadedFile(filename, name, content_type="application/pdf")},
         )
 
-    def test_upload_guarda_nome_original_e_loga_o_nome(self):
+    def test_upload_guarda_nome_original_e_loga_o_tipo(self):
         self._upload()
 
         attachment = CardAttachment.objects.get(card=self.card)
@@ -376,9 +376,10 @@ class AttachmentSoftDeleteTests(TestCase):
         # o Django sanitiza o nome no upload; é esse que o download devolve
         self.assertEqual(stored.original_name, "Relatorio_Assinado.PDF")
 
-        # o feed cita o mesmo nome do download — nunca a chave UUID
+        # A linha do feed diz só QUE anexou e de que tipo: o nome do arquivo
+        # aparece no cartão do anexo logo abaixo, renderizado de log.attachment.
         log = self.card.logs.filter(attachment__gt="").first()
-        self.assertIn("Relatorio_Assinado.PDF", log.content)
+        self.assertIn("anexou um PDF", log.content)
         self.assertNotIn(str(stored.id), log.content)
 
         from boards.services.file_meta import file_meta
@@ -386,6 +387,8 @@ class AttachmentSoftDeleteTests(TestCase):
             file_meta(attachment.file),
             {"name": "Relatorio_Assinado.PDF", "ext": "PDF", "kind": "pdf"},
         )
+        # é daqui que o template tira o nome mostrado no feed
+        self.assertEqual(file_meta(log.attachment)["name"], "Relatorio_Assinado.PDF")
 
     def test_delete_e_soft_e_preserva_bytes(self):
         self._upload()

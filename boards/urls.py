@@ -676,6 +676,11 @@ urlpatterns = [
         attachments_views.delete_attachment,
         name="delete_attachment",
     ),
+    path(
+        "card/<int:card_id>/video-playable/<uuid:source_id>/",
+        attachments_views.video_playable_url,
+        name="video_playable_url",
+    ),
 
     path("card/<int:card_id>/follow/", cards_state_views.toggle_card_follow, name="toggle_card_follow"),
     path("card/<int:card_id>/impediment/set/", cards_state_views.set_card_impediment, name="set_card_impediment"),

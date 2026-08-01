@@ -265,6 +265,24 @@ def activity_panel(request, card_id):
     )
 
 
+def _resolve_pending_attachment(card, raw_key):
+    """Chave do anexo arrastado pro compositor -> nome do arquivo, se confere.
+
+    Só aceita chave de um CardAttachment VIVO deste card: sem isso, qualquer um
+    poderia pendurar arquivo de outro board no próprio feed.
+    """
+    key = (raw_key or "").strip()
+    if not key:
+        return None
+
+    try:
+        exists = CardAttachment.objects.filter(card=card, file=key).exists()
+    except Exception:
+        return None
+
+    return key if exists else None
+
+
 @login_required
 @require_POST
 def add_activity(request, card_id):
@@ -286,8 +304,14 @@ def add_activity(request, card_id):
     # do Quill É o HTML desejado.
     as_html = (request.POST.get("as_html") or "").strip().lower() in ("1", "true", "on", "yes")
 
-    # regra mínima: precisa ter delta OU html OU texto
-    if not delta_raw and not raw_html and not text_raw:
+    # Arquivo arrastado pro compositor: já subiu por add_attachment com
+    # defer_log=1 e chegou aqui só como chave. Vira o anexo DESTE log, para o
+    # texto e o vídeo ficarem numa entrada só.
+    pending_attachment = _resolve_pending_attachment(card, request.POST.get("attachment_key"))
+
+    # regra mínima: precisa ter delta OU html OU texto — ou um anexo pendurado
+    # (arrastar o vídeo e enviar sem escrever nada é um envio legítimo).
+    if not delta_raw and not raw_html and not text_raw and not pending_attachment:
         return HttpResponse("Conteúdo vazio", status=400)
 
     reply_to_id = (request.POST.get("reply_to") or "").strip()
@@ -318,7 +342,8 @@ def add_activity(request, card_id):
         effective_text = strip_tags(clean_html).strip()
 
     # validação final: se não tem texto, não tem html útil e delta vazio => vazio
-    if not text_raw and not clean_html and not delta_obj:
+    # (o anexo pendurado conta como conteúdo — ver comentário lá em cima)
+    if not text_raw and not clean_html and not delta_obj and not pending_attachment:
         return HttpResponse("Conteúdo vazio", status=400)
 
     # menções: usa TEXTO (mais estável); fallback para HTML se necessário
@@ -364,7 +389,7 @@ def add_activity(request, card_id):
             content=clean_html,
             content_delta=delta_obj,
             content_text=effective_text,
-            attachment=None,
+            attachment=pending_attachment,
         )
 
         # Notifica (best-effort)
@@ -442,7 +467,7 @@ def add_activity(request, card_id):
                     content=comments_html,
                     content_delta={},             # FORÇA HTML => sem imagem grande
                     content_text=effective_text,  # mantém texto real
-                    attachment=None,
+                    attachment=pending_attachment,
                 )
 
                 # Notifica seguidores do card (exceto o autor da ação)
@@ -493,7 +518,7 @@ def add_activity(request, card_id):
                         content=files_html,
                         content_delta={},
                         content_text="[imagem]",  # não-vazio => classificado como comentário
-                        attachment=None,
+                        attachment=pending_attachment,
                     )
 
                 # Notifica seguidores do card (exceto o autor da ação)

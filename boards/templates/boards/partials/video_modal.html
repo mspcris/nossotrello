@@ -1,0 +1,325 @@
+{# Player de vídeo em modal — singleton, vive no base.html.
+
+   Clicar num anexo de vídeo abria o arquivo em aba nova, o que na prática
+   virava download. Aqui o vídeo toca por cima do card, e quando o navegador
+   não consegue decodificar o arquivo original o player busca a versão
+   normalizada (H.264/AAC) que o servidor gera em background. #}
+
+<style>
+#nt-video-modal{
+  position: fixed;
+  inset: 0;
+  z-index: 100000;           /* acima do modal do card */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+#nt-video-modal[hidden]{ display: none; }
+
+#nt-video-modal .nt-vm-backdrop{
+  position: absolute;
+  inset: 0;
+  background: rgba(2,6,23,.82);
+  backdrop-filter: blur(2px);
+}
+
+#nt-video-modal .nt-vm-box{
+  position: relative;
+  z-index: 1;
+  width: min(960px, 100%);
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#nt-video-modal .nt-vm-head{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #f1f5f9;
+  min-width: 0;
+}
+#nt-video-modal .nt-vm-name{
+  font-weight: 600;
+  font-size: .95rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+#nt-video-modal .nt-vm-x{
+  margin-left: auto;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid rgba(241,245,249,.35);
+  background: rgba(15,23,42,.6);
+  color: #f1f5f9;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+#nt-video-modal .nt-vm-x:hover{
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(96,165,250,.25);
+}
+
+#nt-video-modal .nt-vm-stage{
+  position: relative;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#nt-video-modal video{
+  display: block;
+  width: 100%;
+  max-height: 78vh;
+  background: #000;
+}
+#nt-video-modal video[hidden]{ display: none; }
+
+#nt-video-modal .nt-vm-msg{
+  padding: 28px 20px;
+  text-align: center;
+  color: #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+#nt-video-modal .nt-vm-msg[hidden]{ display: none; }
+#nt-video-modal .nt-vm-msg-sub{ font-size: .85rem; opacity: .75; }
+
+#nt-video-modal .nt-vm-spin{
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  border: 3px solid rgba(241,245,249,.25);
+  border-top-color: rgba(241,245,249,.85);
+  animation: nt-vm-spin .8s linear infinite;
+}
+#nt-video-modal .nt-vm-spin[hidden]{ display: none; }
+@keyframes nt-vm-spin{ to { transform: rotate(360deg); } }
+
+#nt-video-modal .nt-vm-dl{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: .5rem .9rem;
+  border-radius: .65rem;
+  border: 1px solid rgba(241,245,249,.35);
+  color: #f1f5f9;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: .9rem;
+}
+#nt-video-modal .nt-vm-dl:hover{
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(96,165,250,.22);
+}
+</style>
+
+<div id="nt-video-modal" hidden aria-hidden="true" role="dialog" aria-modal="true"
+     aria-label="Reprodução de vídeo">
+  <div class="nt-vm-backdrop" data-vm-close></div>
+
+  <div class="nt-vm-box">
+    <div class="nt-vm-head">
+      <span class="nt-vm-name" id="nt-vm-name"></span>
+      <button type="button" class="nt-vm-x" data-vm-close aria-label="Fechar">×</button>
+    </div>
+
+    <div class="nt-vm-stage">
+      <video id="nt-vm-video" controls playsinline preload="metadata"></video>
+
+      <div class="nt-vm-msg" id="nt-vm-msg" hidden>
+        <span class="nt-vm-spin" id="nt-vm-spin" hidden></span>
+        <div id="nt-vm-msg-text"></div>
+        <div class="nt-vm-msg-sub" id="nt-vm-msg-sub"></div>
+        <a class="nt-vm-dl" id="nt-vm-dl" target="_blank" rel="noopener" hidden>Baixar o vídeo</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  if (window.__ntVideoModalBound) return;
+  window.__ntVideoModalBound = true;
+
+  // Quantas vezes perguntar pela versão convertida antes de desistir e
+  // oferecer o download. A conversão roda em background desde o upload, então
+  // na prática ela já está pronta; isso cobre o vídeo antigo, aberto pela
+  // primeira vez, que ainda está sendo convertido.
+  var PROBE_TRIES = 10;
+  var PROBE_EVERY_MS = 3000;
+
+  var probeTimer = null;
+  var probeLeft = 0;
+
+  function $(id) { return document.getElementById(id); }
+
+  function stopProbe() {
+    if (probeTimer) { clearTimeout(probeTimer); probeTimer = null; }
+    probeLeft = 0;
+  }
+
+  function showMessage(text, sub, opts) {
+    opts = opts || {};
+    var msg = $("nt-vm-msg");
+    var video = $("nt-vm-video");
+    if (video) video.hidden = true;
+    if (!msg) return;
+    msg.hidden = false;
+    $("nt-vm-msg-text").textContent = text || "";
+    $("nt-vm-msg-sub").textContent = sub || "";
+    $("nt-vm-spin").hidden = !opts.busy;
+    $("nt-vm-dl").hidden = !opts.download;
+    if (opts.download) $("nt-vm-dl").href = opts.download;
+  }
+
+  function showVideo(src) {
+    var msg = $("nt-vm-msg");
+    var video = $("nt-vm-video");
+    if (msg) msg.hidden = true;
+    if (!video) return;
+    video.hidden = false;
+    video.src = src;
+    try { video.load(); } catch (_e) {}
+    var p = video.play();
+    if (p && p.catch) p.catch(function () {});  // autoplay bloqueado: controles resolvem
+  }
+
+  function close() {
+    stopProbe();
+    var modal = $("nt-video-modal");
+    var video = $("nt-vm-video");
+    if (video) {
+      try { video.pause(); } catch (_e) {}
+      video.removeAttribute("src");
+      try { video.load(); } catch (_e) {}
+    }
+    if (modal) {
+      modal.hidden = true;
+      modal.setAttribute("aria-hidden", "true");
+    }
+    document.documentElement.style.removeProperty("overflow");
+  }
+  window.ntCloseVideoModal = close;
+
+  function probe(probeUrl, downloadUrl) {
+    if (!probeUrl) {
+      showMessage(
+        "Este vídeo não abre neste navegador.",
+        "O formato do arquivo não é suportado aqui.",
+        { download: downloadUrl }
+      );
+      return;
+    }
+
+    if (probeLeft <= 0) {
+      showMessage(
+        "Não conseguimos preparar este vídeo a tempo.",
+        "Baixe o arquivo para assistir no seu computador.",
+        { download: downloadUrl }
+      );
+      return;
+    }
+    probeLeft -= 1;
+
+    fetch(probeUrl, {
+      credentials: "same-origin",
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+      cache: "no-store",
+    }).then(function (r) {
+      if (!r.ok) throw new Error(String(r.status));
+      return r.json();
+    }).then(function (data) {
+      if (data && data.ready && data.url) {
+        showVideo(data.url);
+        return;
+      }
+      probeTimer = setTimeout(function () { probe(probeUrl, downloadUrl); }, PROBE_EVERY_MS);
+    }).catch(function () {
+      showMessage(
+        "Este vídeo não abre neste navegador.",
+        "Baixe o arquivo para assistir no seu computador.",
+        { download: downloadUrl }
+      );
+    });
+  }
+
+  function open(opts) {
+    var modal = $("nt-video-modal");
+    var video = $("nt-vm-video");
+    if (!modal || !video) return;
+
+    stopProbe();
+    probeLeft = PROBE_TRIES;
+
+    $("nt-vm-name").textContent = opts.name || "Vídeo";
+    $("nt-vm-dl").href = opts.download || opts.src || "#";
+
+    modal.hidden = false;
+    modal.setAttribute("aria-hidden", "false");
+    document.documentElement.style.overflow = "hidden";
+
+    // O <video> só avisa que não sabe decodificar depois de tentar. Quando
+    // isso acontece, a gente pede a versão convertida em vez de largar o
+    // usuário num quadrado preto.
+    video.onerror = function () {
+      showMessage(
+        "Preparando uma versão compatível…",
+        "Seu navegador não abre o formato original deste vídeo.",
+        { busy: true }
+      );
+      probe(opts.probe, opts.download || opts.src);
+    };
+
+    showVideo(opts.src);
+  }
+  window.ntOpenVideoModal = open;
+
+  document.addEventListener("click", function (e) {
+    if (!e.target || !e.target.closest) return;
+
+    if (e.target.closest("[data-vm-close]")) {
+      e.preventDefault();
+      close();
+      return;
+    }
+
+    var trigger = e.target.closest("[data-video-open]");
+    if (!trigger) return;
+
+    var src = trigger.getAttribute("data-video-src");
+    if (!src) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    open({
+      src: src,
+      name: trigger.getAttribute("data-video-name") || "",
+      download: trigger.getAttribute("data-video-download") || src,
+      probe: trigger.getAttribute("data-video-probe") || "",
+    });
+  }, true);
+
+  document.addEventListener("keydown", function (e) {
+    var modal = $("nt-video-modal");
+    if (!modal || modal.hidden) return;
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();   // não deixa fechar o modal do card junto
+      close();
+    }
+  }, true);
+})();
+</script>

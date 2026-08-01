@@ -18,11 +18,27 @@
         </span>
       {% endif %}
 
-      <a href="{{ attachment.file.url }}"
-         target="_blank"
-         class="text-blue-600 font-medium hover:underline text-sm break-words">
-        {{ meta.name }}
-      </a>
+      {% if meta.kind == 'video' %}
+        {# Vídeo abre no player do modal — clicar não pode virar download #}
+        {% with sid=attachment.file|stored_source_id %}
+        <a href="{{ attachment.file.url }}"
+           class="text-blue-600 font-medium hover:underline text-sm break-words"
+           data-video-open
+           data-video-src="{{ attachment.file|playable_video_url }}"
+           data-video-name="{{ meta.name }}"
+           data-video-download="{{ attachment.file.url }}"
+           {% if sid %}data-video-probe="{% url 'boards:video_playable_url' attachment.card.id sid %}"{% endif %}
+           title="Assistir {{ meta.name }}">
+          ▶ {{ meta.name }}
+        </a>
+        {% endwith %}
+      {% else %}
+        <a href="{{ attachment.file.url }}"
+           target="_blank"
+           class="text-blue-600 font-medium hover:underline text-sm break-words">
+          {{ meta.name }}
+        </a>
+      {% endif %}
 
       {% if attachment.description %}
         {# sanitiza no render (cobre linhas legadas cruas) e mostra formatado #}

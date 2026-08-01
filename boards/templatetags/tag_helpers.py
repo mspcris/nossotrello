@@ -34,6 +34,50 @@ def preview_thumb_url(fieldfile):
 
 
 @register.filter
+def stored_source_id(fieldfile):
+    """UUID do StoredFile do anexo, ou "" se for referência legada de caminho."""
+    from boards.services.video_playable import source_id_of
+    try:
+        uid = source_id_of(fieldfile)
+        return str(uid) if uid else ""
+    except Exception:
+        return ""
+
+
+@register.filter
+def playable_video_url(fieldfile):
+    """URL do vídeo que o navegador consegue tocar.
+
+    Devolve a cópia normalizada (H.264/AAC) quando ela já existe; senão o
+    próprio arquivo, que é o caso da maioria (vídeo de celular já chega
+    tocável). A conversão é agendada em background na 1ª vez que o anexo
+    aparece — nunca dentro do render.
+    """
+    from boards.services.video_playable import (
+        ensure_playable_for_fieldfile,
+        playable_url_for_source_id,
+        source_id_of,
+    )
+
+    try:
+        uid = source_id_of(fieldfile)
+        if uid is None:
+            return fieldfile.url
+
+        url = playable_url_for_source_id(uid)
+        if url:
+            return url
+
+        ensure_playable_for_fieldfile(fieldfile)
+        return fieldfile.url
+    except Exception:
+        try:
+            return fieldfile.url
+        except Exception:
+            return ""
+
+
+@register.filter
 def quill_safe(value):
     """Sanitiza HTML (allowlist do Quill) e marca como safe pra render.
 

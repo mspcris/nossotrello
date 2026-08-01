@@ -63,6 +63,88 @@
   }
 }
 
+/* ============================================================
+   CHIP DO ARQUIVO ARRASTADO PRO COMPOSITOR (exclusivo do split)
+   ============================================================ */
+#cm-root .cm-act-attach{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid rgba(15,23,42,.20);
+  border-radius: 10px;
+  background: rgba(15,23,42,.04);
+  min-width: 0;
+}
+#cm-root .cm-act-attach[hidden]{ display: none; }
+#cm-root .cm-act-attach.is-busy{ opacity: .7; }
+
+#cm-root .cm-act-attach-icon{
+  position: relative;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+#cm-root .cm-act-attach-icon .cm-fileicon{ width: 28px; height: 34px; }
+/* marcador ▶ só no vídeo, para o ícone continuar dizendo "é um vídeo" */
+#cm-root .cm-act-attach[data-kind="video"] .cm-act-attach-icon::after{
+  content: "▶";
+  position: absolute;
+  right: -4px;
+  bottom: -2px;
+  font-size: 11px;
+  line-height: 1;
+  padding: 2px 3px;
+  border-radius: 999px;
+  background: #2563eb;
+  color: #fff;
+}
+
+#cm-root .cm-act-attach-txt{
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+#cm-root .cm-act-attach-name{
+  font-weight: 600;
+  font-size: .9em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#cm-root .cm-act-attach-sub{ font-size: .78em; opacity: .7; }
+
+#cm-root .cm-act-attach-x{
+  margin-left: auto;
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  border: 1px solid rgba(15,23,42,.20);
+  background: transparent;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+#cm-root .cm-act-attach-x:hover{
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+#card-modal-root.theme-dark #cm-root .cm-act-attach,
+html.dark #cm-root .cm-act-attach{
+  border-color: rgba(148,163,184,.35);
+  background: rgba(148,163,184,.10);
+}
+#card-modal-root.theme-dark #cm-root .cm-act-attach-x,
+html.dark #cm-root .cm-act-attach-x{
+  border-color: rgba(148,163,184,.35);
+}
+
 </style>
 
 <div class="cm-wrap"
@@ -676,6 +758,19 @@
 
             <input type="hidden" name="content" id="cm-activity-content">
 
+            <div id="cm-activity-attach" class="cm-act-attach" hidden>
+              <span class="cm-act-attach-icon" aria-hidden="true"></span>
+              <span class="cm-act-attach-txt">
+                <span class="cm-act-attach-name"></span>
+                <span class="cm-act-attach-sub">vai junto com esta atividade</span>
+              </span>
+              <button type="button"
+                      class="cm-act-attach-x"
+                      title="Tirar este anexo"
+                      aria-label="Tirar este anexo">×</button>
+            </div>
+            <input type="hidden" name="attachment_key" id="cm-activity-attachment-key">
+
             <div class="flex gap-2">
               {% comment %} 
               <button
@@ -741,7 +836,8 @@
 
 
 
-              <button type="button" class="cm-btn" onclick="resetActivityQuill()">Limpar</button>
+              <button type="button" class="cm-btn"
+                      onclick="resetActivityQuill(); var _x=document.querySelector('#cm-activity-attach .cm-act-attach-x'); if(_x) _x.click();">Limpar</button>
 
               <label id="cm-activity-as-html-label"
                      class="flex items-center gap-1.5 text-sm cursor-pointer select-none"
@@ -1301,6 +1397,21 @@
       // Drop em cima do próprio <input type="file">: o navegador resolve.
       if (onNativeInput(e)) return;
 
+      // Soltou dentro do compositor de Nova atividade: o arquivo NÃO vira uma
+      // entrada solta no feed — fica pendurado num chip para o usuário ainda
+      // escrever o texto, e sobe junto quando ele enviar.
+      const inComposer = e.target && typeof e.target.closest === "function"
+        && e.target.closest("#cm-activity-composer");
+      if (inComposer) {
+        const files0 = e.dataTransfer && e.dataTransfer.files ? e.dataTransfer.files : null;
+        if (files0 && files0.length) {
+          e.preventDefault();
+          e.stopPropagation();
+          window.cmComposerAttach(files0[0]);
+        }
+        return;
+      }
+
       // Resolvido na hora do drop, nunca no bind: o input é recriado a cada
       // card. Se não achar, deixa o evento seguir — o handler do quadro
       // (board_detail.html) cancela o default e sobe o arquivo por fetch.
@@ -1331,6 +1442,160 @@
   document.addEventListener("DOMContentLoaded", bootAttach);
   document.body.addEventListener("htmx:afterSwap", function (evt) {
     if (evt.target && evt.target.id === "modal-body") bootAttach();
+  });
+})();
+</script>
+
+<!-- ANEXO PENDURADO NO COMPOSITOR DE NOVA ATIVIDADE -->
+<script>
+(function () {
+  const MAX_BYTES = 50 * 1024 * 1024;
+
+  function csrf() {
+    const m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+    if (m) return decodeURIComponent(m[1]);
+    const i = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    return i ? i.value : "";
+  }
+
+  function chip() { return document.getElementById("cm-activity-attach"); }
+  function keyInput() { return document.getElementById("cm-activity-attachment-key"); }
+
+  // O card muda a cada abertura do modal; a URL sai do próprio form, que o
+  // htmx re-renderiza junto. Nada de guardar id em variável de módulo.
+  function cardUrls() {
+    const form = document.getElementById("cm-activity-form");
+    const post = form ? (form.getAttribute("hx-post") || "") : "";
+    const m = post.match(/\/card\/(\d+)\//);
+    if (!m) return null;
+    return {
+      add: "/card/" + m[1] + "/attachments/add/",
+      del: function (attId) { return "/card/" + m[1] + "/attachments/" + attId + "/delete/"; },
+    };
+  }
+
+  function short(name) {
+    name = String(name || "");
+    return name.length > 42 ? name.slice(0, 41) + "…" : name;
+  }
+
+  function clearChip() {
+    const c = chip();
+    const k = keyInput();
+    if (k) k.value = "";
+    if (!c) return;
+    c.hidden = true;
+    c.classList.remove("is-busy");
+    delete c.dataset.attachmentId;
+    delete c.dataset.kind;
+    c.querySelector(".cm-act-attach-icon").innerHTML = "";
+    c.querySelector(".cm-act-attach-name").textContent = "";
+  }
+  window.cmComposerClearAttach = clearChip;
+
+  function showChip(state) {
+    const c = chip();
+    if (!c) return;
+    c.hidden = false;
+    c.classList.toggle("is-busy", !!state.busy);
+    c.dataset.kind = state.kind || "file";
+    c.querySelector(".cm-act-attach-name").textContent = short(state.name);
+    c.querySelector(".cm-act-attach-sub").textContent = state.sub || "vai junto com esta atividade";
+    if (state.iconHtml !== undefined) {
+      c.querySelector(".cm-act-attach-icon").innerHTML = state.iconHtml;
+    }
+  }
+
+  // Sobe com defer_log=1: nada aparece no feed agora. O registro sai quando o
+  // usuário enviar a atividade, numa entrada só (texto + arquivo).
+  window.cmComposerAttach = function (file) {
+    if (!file) return;
+    const urls = cardUrls();
+    if (!urls) return;
+
+    if (file.size > MAX_BYTES) {
+      showChip({ name: file.name, sub: "Acima de 50MB — não foi anexado", kind: "file", iconHtml: "⚠️" });
+      setTimeout(clearChip, 5000);
+      return;
+    }
+
+    // Trocar de arquivo com um chip já pendurado: o anterior sai de cena.
+    const prevId = chip() && chip().dataset.attachmentId;
+    if (prevId) {
+      fetch(urls.del(prevId), {
+        method: "POST",
+        headers: { "X-CSRFToken": csrf(), "X-Requested-With": "XMLHttpRequest" },
+        body: new URLSearchParams({ silent: "1" }),
+        credentials: "same-origin",
+      }).catch(function () {});
+    }
+
+    showChip({ name: file.name, sub: "Anexando…", kind: "file", iconHtml: "", busy: true });
+
+    const fd = new FormData();
+    fd.append("file", file, file.name);
+    fd.append("defer_log", "1");
+
+    fetch(urls.add, {
+      method: "POST",
+      headers: { "X-CSRFToken": csrf(), "X-Requested-With": "XMLHttpRequest" },
+      body: fd,
+      credentials: "same-origin",
+    }).then(function (r) {
+      if (!r.ok) throw new Error(r.status === 403 ? "Sem permissão" : "Falha ao anexar");
+      return r.json();
+    }).then(function (data) {
+      if (!data || !data.ok) throw new Error("Falha ao anexar");
+      const k = keyInput();
+      if (k) k.value = data.key || "";
+      const c = chip();
+      if (c) c.dataset.attachmentId = String(data.id);
+      showChip({
+        name: data.name || file.name,
+        kind: data.kind || "file",
+        iconHtml: data.icon_html || "",
+        sub: "vai junto com esta atividade",
+      });
+    }).catch(function (err) {
+      showChip({
+        name: file.name,
+        sub: String(err && err.message ? err.message : "Falha ao anexar"),
+        kind: "file",
+        iconHtml: "⚠️",
+      });
+      const k = keyInput();
+      if (k) k.value = "";
+      setTimeout(clearChip, 5000);
+    });
+  };
+
+  // X do chip: tira o arquivo antes de enviar. `silent=1` porque ele nunca
+  // chegou a aparecer no feed — anunciar a remoção confundiria.
+  document.addEventListener("click", function (e) {
+    const btn = e.target && e.target.closest ? e.target.closest(".cm-act-attach-x") : null;
+    if (!btn) return;
+    e.preventDefault();
+
+    const urls = cardUrls();
+    const attId = chip() && chip().dataset.attachmentId;
+    clearChip();
+
+    if (urls && attId) {
+      fetch(urls.del(attId), {
+        method: "POST",
+        headers: { "X-CSRFToken": csrf(), "X-Requested-With": "XMLHttpRequest" },
+        body: new URLSearchParams({ silent: "1" }),
+        credentials: "same-origin",
+      }).catch(function () {});
+    }
+  });
+
+  // Enviou a atividade: o anexo já foi junto, o chip não pode sobrar pro
+  // próximo comentário.
+  document.body.addEventListener("htmx:afterRequest", function (evt) {
+    const elt = evt.detail && evt.detail.elt;
+    if (!elt || elt.id !== "cm-activity-form") return;
+    if (evt.detail.successful) clearChip();
   });
 })();
 </script>

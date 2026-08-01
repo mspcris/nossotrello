@@ -143,8 +143,34 @@
                               </a>
                             {% elif meta.kind == 'pdf' or meta.kind == 'video' %}
                               {# Miniatura gerada no servidor: 1ª página do PDF ou 1º frame do vídeo #}
-                              {% with thumb=log.attachment|preview_thumb_url %}
-                                {% if thumb %}
+                              {% with thumb=log.attachment|preview_thumb_url sid=log.attachment|stored_source_id %}
+                                {% if meta.kind == 'video' %}
+                                  {# Vídeo abre no player do modal — nunca como download #}
+                                  <a class="cm-attach-file" href="{{ log.attachment.url }}"
+                                     data-video-open
+                                     data-video-src="{{ log.attachment|playable_video_url }}"
+                                     data-video-name="{{ meta.name }}"
+                                     data-video-download="{{ log.attachment.url }}"
+                                     {% if sid %}data-video-probe="{% url 'boards:video_playable_url' card.id sid %}"{% endif %}>
+                                    {{ meta.name }}
+                                  </a>
+                                  {% if thumb %}
+                                    <a
+                                      href="{{ log.attachment.url }}"
+                                      class="cm-attach-thumb"
+                                      data-preview-src="{{ thumb }}"
+                                      data-video-open
+                                      data-video-src="{{ log.attachment|playable_video_url }}"
+                                      data-video-name="{{ meta.name }}"
+                                      data-video-download="{{ log.attachment.url }}"
+                                      {% if sid %}data-video-probe="{% url 'boards:video_playable_url' card.id sid %}"{% endif %}
+                                      title="Assistir {{ meta.name }}"
+                                    >
+                                      <img src="{{ thumb }}" alt="Pré-visualização de {{ meta.name }}">
+                                      <span class="cm-attach-zoom" aria-hidden="true">▶</span>
+                                    </a>
+                                  {% endif %}
+                                {% elif thumb %}
                                   <a class="cm-attach-file" href="{{ log.attachment.url }}" target="_blank" rel="noopener">
                                     {{ meta.name }}
                                   </a>
@@ -157,7 +183,7 @@
                                     title="Abrir {{ meta.name }}"
                                   >
                                     <img src="{{ thumb }}" alt="Pré-visualização de {{ meta.name }}">
-                                    <span class="cm-attach-zoom" aria-hidden="true">{% if meta.kind == 'video' %}▶{% else %}📄{% endif %}</span>
+                                    <span class="cm-attach-zoom" aria-hidden="true">📄</span>
                                   </a>
                                 {% else %}
                                   {% include "boards/partials/attachment_card_link.html" with url=log.attachment.url meta=meta %}
