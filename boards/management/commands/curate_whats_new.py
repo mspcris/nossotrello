@@ -40,6 +40,19 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-08 ---
+    "8c9c182": (
+        "🎬",
+        "Vídeo no card agora abre e toca ali mesmo",
+        "Clicar num vídeo anexado baixava o arquivo, e às vezes nem abria "
+        "depois de baixado, porque o computador não tinha o codec. Agora ele "
+        "toca numa janela por cima do card — e o Tarefas prepara sozinho uma "
+        "versão que funciona em qualquer navegador, então o vídeo sempre abre. "
+        "Além disso: arrastar um arquivo pra cima do campo Nova atividade "
+        "prende ele ali com o ícone do tipo, você ainda escreve o que quiser e "
+        "os dois vão juntos numa entrada só. E a linha do feed ficou curta — "
+        "\"fulano anexou um vídeo\" — em vez de repetir o nome do arquivo e a "
+        "descrição que já aparecem logo abaixo.",
+    ),
     "da1c5d3": (
         "⏱️",
         "O botão Manual do Track-time avisa o que está faltando",
