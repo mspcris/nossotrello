@@ -39,6 +39,19 @@ def _commit_datetime(commit_hash: str):
 # Textos pensados no USUÁRIO: o que ele ganha, não o que foi feito.
 # -------------------------------------------------------------
 CURATED = {
+    # --- 2026-08 ---
+    "da1c5d3": (
+        "⏱️",
+        "O botão Manual do Track-time avisa o que está faltando",
+        "Você digitava os minutos, clicava em Manual e não acontecia nada — "
+        "porque o lançamento também precisa do projeto e da atividade, e isso "
+        "não estava dito em lugar nenhum. Agora o Tarefas fala: \"Selecione o "
+        "projeto\" ou \"Selecione a atividade\", acende a caixa que falta "
+        "preencher e, quando dá certo, confirma o que foi lançado. A escolha "
+        "fica guardada para o próximo lançamento. As caixas de seleção e os "
+        "botões do Track-time também ficaram mais fáceis de enxergar, com "
+        "contorno visível parado e iluminação ao passar o mouse.",
+    ),
     # --- 2026-07 ---
     "d092d28": (
         "⏳",
