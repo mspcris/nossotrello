@@ -40,6 +40,17 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-08 ---
+    "3388365": (
+        "🧹",
+        "Tocar na sua foto abre só as configurações",
+        "No celular, tocar na sua foto abria as configurações e o seu perfil "
+        "da rede social empilhados na mesma tela, com o botão Salvar preso no "
+        "rodapé por cima de tudo. O Espaço Social morava dentro dessa tela "
+        "quando nasceu; depois ganhou página própria e ninguém tirou daqui. "
+        "Agora a tela mostra só as suas configurações, e o Espaço Social você "
+        "acessa pela página dele. De quebra ela abre bem mais rápido: carrega "
+        "dez vezes menos coisa.",
+    ),
     "cab90a7": (
         "⋮",
         "O menu do card parou de recarregar a página no celular",
