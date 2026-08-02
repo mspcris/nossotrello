@@ -755,6 +755,14 @@ li[data-card-id][data-term-status="ok"] .term-badge{ color: #16a34a; }
   isolation: isolate;
 }
 
+/* O modo calendário esconde a board com a classe .hidden do Tailwind, que é
+   1 classe (0,0,1,0) e perde pra regra acima (0,1,1,0): a board continuava
+   renderizada logo abaixo do calendário — no celular dava pra ver a coluna
+   agregadora e o começo das colunas embaixo da grade. */
+#columns-wrapper.columns-wrapper.hidden {
+  display: none;
+}
+
 /* o UL das colunas precisa ser “linha” também */
 #columns-list {
   display: flex;
