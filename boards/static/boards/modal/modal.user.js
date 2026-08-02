@@ -153,6 +153,31 @@
     }
   });
 
+  /* Filme fumê + bolinha ao salvar qualquer coisa do modal da conta — o mesmo
+     ntBusy já usado nas ações lentas do card. Fica aqui, delegado, em vez de um
+     par de hx-on em cada um dos cinco formulários: assim vale também pros que
+     forem criados depois.
+
+     Casamento pelo XHR, não pelo elemento: o htmx troca o #modal-body na
+     resposta, e no afterRequest o elemento que disparou pode já estar fora do
+     DOM — aí o closest() falharia e a tela ficaria escura pra sempre. */
+  const umBusyXhr = new WeakSet();
+
+  document.body.addEventListener("htmx:beforeRequest", (evt) => {
+    const el = evt.detail && evt.detail.elt;
+    const xhr = evt.detail && evt.detail.xhr;
+    if (!xhr || !el || !el.closest || !el.closest("#um-root")) return;
+    umBusyXhr.add(xhr);
+    if (typeof window.ntBusy === "function") window.ntBusy(true, "Salvando…");
+  });
+
+  document.body.addEventListener("htmx:afterRequest", (evt) => {
+    const xhr = evt.detail && evt.detail.xhr;
+    if (!xhr || !umBusyXhr.has(xhr)) return;
+    umBusyXhr.delete(xhr);
+    if (typeof window.ntBusy === "function") window.ntBusy(false);
+  });
+
   // quando o #modal-body é trocado por HTMX (hx-post dos forms), reprocessa e reinit
   document.body.addEventListener("htmx:afterSwap", (evt) => {
     const target = evt.detail && evt.detail.target;
