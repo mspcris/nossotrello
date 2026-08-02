@@ -40,6 +40,17 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-08 ---
+    "986528a": (
+        "📐",
+        "A largura das colunas agora vale no celular",
+        "Você podia arrastar o ajuste de largura das colunas o quanto "
+        "quisesse: no celular a coluna ficava sempre do mesmo tamanho. O "
+        "layout do celular tinha uma largura fixa que passava por cima da sua "
+        "escolha. Agora, se você escolher uma largura, ela vale no celular "
+        "também — só não deixamos a coluna passar da borda da tela. Quem nunca "
+        "mexeu no ajuste continua vendo a coluna ocupando quase a tela toda, "
+        "como antes, e é isso que o valor padrão (240px) faz.",
+    ),
     "680aee6": (
         "👤",
         "Clicar no nome de quem comentou abre o perfil",
