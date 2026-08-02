@@ -798,6 +798,7 @@ html.dark #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-
 
   --cm-focus: rgba(37,99,235,0.35);
   --cm-ring: 0 0 0 3px rgba(37,99,235,0.22);
+  --cm-count-bg: rgba(15,23,42,0.10);
 
   /* overlay de prazo */
   --cm-term-rgb: 0,0,0;
@@ -820,6 +821,7 @@ html.dark #cm-root{
   --cm-shadow: 0 14px 40px rgba(0,0,0,0.35);
   --cm-shadow-sm: 0 10px 26px rgba(0,0,0,0.30);
   --cm-ring: 0 0 0 3px rgba(59,130,246,0.25);
+  --cm-count-bg: rgba(255,255,255,0.14);
 
   --cm-link: #93c5fd;
   --cm-link-hover: #bfdbfe;
@@ -926,6 +928,29 @@ html.dark #cm-root{
   background: linear-gradient(180deg, rgba(37,99,235,0.16), rgba(37,99,235,0.10));
   border-color: rgba(37,99,235,0.38);
 }
+
+/* contador de itens da aba (Checklists / Anexos) */
+.cm-tab-count{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5em;
+  margin-left: 6px;
+  padding: 0.1em 0.42em;
+  border-radius: 999px;
+  font-size: 0.8em;
+  font-weight: 700;
+  line-height: 1.25;
+  background: var(--cm-count-bg, rgba(15,23,42,0.10));
+  border: 1px solid var(--cm-border-2);
+  color: inherit;
+}
+.cm-tabbtn.is-active .cm-tab-count{
+  background: rgba(37,99,235,0.24);
+  border-color: rgba(37,99,235,0.38);
+}
+/* [hidden] tem que vencer o display:inline-flex acima */
+.cm-tab-count[hidden]{ display: none; }
 
 /* PANELS */
 .cm-panel{ display: none; }

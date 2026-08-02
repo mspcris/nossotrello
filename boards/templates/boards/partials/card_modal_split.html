@@ -202,8 +202,8 @@ html.dark #cm-root .cm-act-attach-x{
 
             <button type="button" class="cm-tabbtn is-active" data-cm-tab="desc"> 📄 Descrição</button>
             <button type="button" class="cm-tabbtn" data-cm-tab="tags"> 🏷️ Etiquetas</button>
-            <button type="button" class="cm-tabbtn" data-cm-tab="check"> ☑️ Checklists</button>
-            <button type="button" class="cm-tabbtn" data-cm-tab="files"> 📎 Anexos</button>
+            <button type="button" class="cm-tabbtn" data-cm-tab="check"> ☑️ Checklists{% with n=checklists|length %}<span class="cm-tab-count" data-cm-count="check" title="{{ n }} checklist{{ n|pluralize }}" {% if not n %}hidden{% endif %}>{{ n }}</span>{% endwith %}</button>
+            <button type="button" class="cm-tabbtn" data-cm-tab="files"> 📎 Anexos{% with n=card.attachments.all|length %}<span class="cm-tab-count" data-cm-count="files" title="{{ n }} anexo{{ n|pluralize }}" {% if not n %}hidden{% endif %}>{{ n }}</span>{% endwith %}</button>
             <button type="button" class="cm-tabbtn" data-cm-tab="track"> ⏱️ Track-time</button>
           </div>
 {% comment %} 
@@ -1053,6 +1053,48 @@ html.dark #cm-root .cm-act-attach-x{
         }, 50);
       }
     });
+  })();
+
+  (function initTabCounters() {
+    const SOURCES = {
+      check: { listId: "checklist-list", item: ".checklist-block", noun: "checklist" },
+      files: { listId: "attachments-list", item: "[id^='attachment-']", noun: "anexo" },
+    };
+
+    let queued = false;
+
+    function sync() {
+      queued = false;
+
+      Object.keys(SOURCES).forEach((tab) => {
+        const badge = root.querySelector(`.cm-tab-count[data-cm-count="${CSS.escape(tab)}"]`);
+        if (!badge) return;
+
+        const src = SOURCES[tab];
+        const list = document.getElementById(src.listId);
+        const n = list ? list.querySelectorAll(src.item).length : 0;
+
+        badge.textContent = String(n);
+        badge.hidden = n === 0;
+        badge.title = `${n} ${src.noun}${n === 1 ? "" : "s"}`;
+      });
+    }
+
+    function schedule() {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(sync);
+    }
+
+    // htmx troca o conteúdo das listas (add/remove) e o composer de atividade
+    // insere anexo por fetch — o observer cobre os dois caminhos.
+    const obs = new MutationObserver(schedule);
+    Object.keys(SOURCES).forEach((tab) => {
+      const list = document.getElementById(SOURCES[tab].listId);
+      if (list) obs.observe(list, { childList: true, subtree: true });
+    });
+
+    sync();
   })();
 
   (function initPreventEnterSubmit() {
