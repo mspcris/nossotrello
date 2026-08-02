@@ -565,11 +565,6 @@
           </form>
         </div>
 
-        <!-- ===================== ESPAÇO SOCIAL ===================== -->
-        <div id="um-panel-social" style="{% if active_tab != 'social' %}display:none{% endif %}">
-          {% include "boards/social_panel.html" %}
-        </div>
-
       </div> <!-- /um-panels -->
 
     </div> <!-- /um-left -->
@@ -584,7 +579,8 @@
       <div class="um-social">
         <div class="um-social-title">Espaço Social</div>
         <p style="font-size:13px;opacity:0.7;margin-top:8px;">
-          Clique na aba <b>Espaço Social</b> para ver seu check-in, pendências e feed.
+          Seu check-in, pendências e feed agora ficam na
+          <a href="{% url 'boards:social_page' %}" class="js-social-link" style="text-decoration:underline;">página do Espaço Social</a>.
         </p>
       </div>
     </aside>
@@ -660,33 +656,6 @@
 })();
 </script>
 
-<script>
-  window._umSocialLoaded = false;
-  window.umOpenTab = function(tab) {
-    const panels = {
-      profile: document.getElementById("um-panel-profile"),
-      password: document.getElementById("um-panel-password"),
-      avatar: document.getElementById("um-panel-avatar"),
-      social: document.getElementById("um-panel-social"),
-    };
-
-    Object.keys(panels).forEach((k) => {
-      if (panels[k]) panels[k].style.display = (k === tab) ? "block" : "none";
-    });
-
-    // Atualiza botões de tab
-    document.querySelectorAll('[data-um-tab]').forEach(function(btn){
-      const active = btn.dataset.umTab === tab;
-      btn.classList.toggle('font-semibold', active);
-    });
-
-    // Oculta aside e divider no tab social para dar mais espaço
-    const divider = document.getElementById('um-divider-el');
-    const aside = document.getElementById('um-right-el');
-    if (divider) divider.style.display = tab === 'social' ? 'none' : '';
-    if (aside) aside.style.display = tab === 'social' ? 'none' : '';
-  };
-</script>
 
 <script>
 (function () {

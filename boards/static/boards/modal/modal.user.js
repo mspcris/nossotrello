@@ -10,37 +10,11 @@
     } catch (_e) {}
   }
 
-  // ── Carrega painel social via fetch ────────────────────────
-  function loadSocialPanel(container) {
-    if (!container) return;
-    var uid = Number(window.CURRENT_USER_ID || 0);
-    if (!uid) return;
-    // Evita recarregar se já carregou
-    if (container.querySelector("#social-panel")) return;
-    container.innerHTML = '<div class="sp-loading">Carregando...</div>';
-    fetch("/users/" + uid + "/social/", { credentials: "same-origin" })
-      .then(function(r) { return r.text(); })
-      .then(function(html) {
-        container.innerHTML = html;
-        htmxProcess(container);
-        // Executa scripts inline do social_panel.html
-        container.querySelectorAll("script").forEach(function(old) {
-          var ns = document.createElement("script");
-          ns.textContent = old.textContent;
-          old.parentNode.replaceChild(ns, old);
-        });
-      })
-      .catch(function() {
-        container.innerHTML = '<div class="sp-loading">Erro ao carregar painel social.</div>';
-      });
-  }
-
   function umOpenTab(tab) {
     const panels = {
       profile: document.getElementById("um-panel-profile"),
       password: document.getElementById("um-panel-password"),
       avatar: document.getElementById("um-panel-avatar"),
-      social: document.getElementById("um-panel-social"),
     };
 
     Object.keys(panels).forEach((k) => {
@@ -51,17 +25,6 @@
       const isActive = btn.getAttribute("data-um-tab") === tab;
       btn.classList.toggle("font-semibold", isActive);
     });
-
-    // Oculta aside e divider no tab social para dar mais espaço
-    const divider = document.getElementById("um-divider-el");
-    const aside = document.getElementById("um-right-el");
-    if (divider) divider.style.display = tab === "social" ? "none" : "";
-    if (aside) aside.style.display = tab === "social" ? "none" : "";
-
-    // Ao abrir tab social, carrega o conteúdo
-    if (tab === "social" && panels.social) {
-      loadSocialPanel(panels.social);
-    }
 
     // mantém o estado (pra quando der swap)
     const root = document.getElementById("um-root");
@@ -137,11 +100,11 @@
     umInitFromDom();
     umRefreshAvatarSelection(document);
 
-    // Carrega painel social no aside direito via fetch
-    var aside = document.getElementById("um-right-el");
-    if (aside) {
-      loadSocialPanel(aside);
-    }
+    /* Aqui o modal buscava a rede social inteira e injetava na coluna da direita.
+       Era da época em que o Espaço Social morava dentro do modal; ele virou página
+       própria e isto ficou para trás. No celular a coluna da direita empilha
+       embaixo, então abrir a foto mostrava as configurações E o perfil social na
+       mesma rolagem, com o Salvar do formulário por cima (chamado LZA-GBH-PA1M). */
 
     // Executa inline <script> tags (innerHTML não os roda automaticamente)
     // Protegido com try/catch para não bloquear o carregamento do social
