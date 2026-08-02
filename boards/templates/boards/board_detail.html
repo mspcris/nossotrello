@@ -1646,10 +1646,19 @@
       }
     }
 
+    // A agregadora amarra o ⋮ dela direto no botão e lê cor/📌 do localStorage
+    // só no init. Quando a lista de colunas é trocada por outerHTML cru (o
+    // board.invalidated do WebSocket, depois de mover card), ela volta sem
+    // listener e sem o estado salvo — travada até recarregar de verdade.
+    function ensureAggregator() {
+      safe(() => window.__aggEnsure && window.__aggEnsure());
+    }
+
     function ensureAll(scopeEl) {
       // ordem importa: primeiro processa HTMX, depois rebind Sortable, depois styles
       ensureHtmxProcess(scopeEl);
       ensureSortable();
+      ensureAggregator();
       ensureTagColors(scopeEl || document);
       ensureTermColors(scopeEl || document);
     }
@@ -1673,6 +1682,13 @@
 
     document.addEventListener("modal:closed", () => {
       window.BoardRuntime.ensure(document);
+    });
+
+    // Voltar pro quadro pelo histórico restaura a página do bfcache com o DOM
+    // exatamente como estava — inclusive quebrado. Sair e entrar não consertava
+    // nada; só recarregar de verdade. Aqui re-hidrata na volta.
+    window.addEventListener("pageshow", (e) => {
+      if (e.persisted) window.BoardRuntime.ensure(document);
     });
   })();
 </script>

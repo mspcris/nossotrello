@@ -105,4 +105,18 @@
     },
     true
   );
+
+  /* Rede de segurança pro __isDraggingCard. O bloco removido acima tinha
+     early-returns que puravam antes da limpeza e deixavam o flag preso em true
+     — e com ele preso, o pan do quadro e o puxar-pra-atualizar ficam bloqueados
+     pra sempre, sem jeito a não ser sair e voltar. O flag descreve um arrasto em
+     curso: acabou o ponteiro, acabou o arrasto. O Sortable já zera no onEnd; o
+     setTimeout deixa esse caminho normal acontecer primeiro. */
+  ["pointerup", "pointercancel"].forEach(function (evt) {
+    document.addEventListener(
+      evt,
+      function () { setTimeout(function () { window.__isDraggingCard = false; }, 0); },
+      true
+    );
+  });
 })();

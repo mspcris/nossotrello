@@ -164,6 +164,13 @@
     document.addEventListener("DOMContentLoaded", init);
     document.body.addEventListener("htmx:afterSwap", init);
     if (document.readyState !== "loading") init();
+
+    /* Exposto pro BoardRuntime.ensure(). Mover card bumpa a versão do quadro, o
+       servidor publica board.invalidated e o cliente troca o outerHTML da lista
+       de colunas — DOM cru, que não dispara DOMContentLoaded nem htmx:afterSwap.
+       Sem isto a agregadora voltava sem os listeners do ⋮ e sem o estado salvo
+       (cor e o 📌 destravado), parecendo travada até sair e voltar na página. */
+    window.__aggEnsure = init;
   })();
 </script>
 
