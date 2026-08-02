@@ -41,6 +41,20 @@ jobs:
             set -euo pipefail
             cd /opt/nossotrello
 
+            livre_gb() { df -BG --output=avail / | tail -1 | tr -dc '0-9'; }
+
+            echo "==> disco antes: $(livre_gb) GB livres"
+
+            # ── Guarda de espaco ──
+            # Build sem disco morre no meio e deixa o stack fora do ar. Se
+            # estiver apertado, limpa o cache ANTES de comecar, nao depois.
+            if [ "$(livre_gb)" -lt 25 ]; then
+              echo "==> pouco espaco livre: limpando cache de build antes do build"
+              docker builder prune -af || true
+              docker image prune -af || true
+              echo "==> disco apos limpeza preventiva: $(livre_gb) GB livres"
+            fi
+
             # ── Git sync (sempre) ──
             echo "==> git sync"
             git fetch origin
@@ -48,8 +62,13 @@ jobs:
 
             # ── Full: prune + down (só no modo full) ──
             if [ "${DEPLOY_MODE}" = "full" ]; then
-              echo "==> docker system prune"
-              docker system prune -af --volumes
+              # NUNCA --volumes aqui. Esta VM hospeda outros projetos (hesk,
+              # camila2_meuchatbot, nossotrello_hml...) e volume de stack
+              # parado conta como "nao usado": --volumes apagaria o banco
+              # deles junto. Sem a flag, o prune ainda libera imagem,
+              # container e cache, que e onde o espaco realmente esta.
+              echo "==> docker system prune (sem volumes)"
+              docker system prune -af
               echo "==> compose down"
               docker compose -p nossotrello down --remove-orphans
             fi
@@ -76,12 +95,36 @@ jobs:
             # Cada rebuild deixa a imagem antiga sem tag (orfa). Removemos TODAS as
             # orfas nao usadas -> sobra so a imagem atual (em uso pelo container).
             # `docker image prune` nunca apaga imagem com tag/em uso, entao e seguro.
-            # NAO mexe em volumes (Postgres/media) — isso so o modo full faz.
+            # NAO mexe em volumes.
             echo "==> prune: imagens orfas (deixa so a em uso)"
             docker image prune -f || true
-            echo "==> prune: build cache com mais de 7 dias"
-            docker builder prune -f --filter "until=168h" || true
 
+            # Cache de build limitado por TAMANHO, nao por idade.
+            # O filtro antigo (until=168h) so pegava cache com mais de 7 dias:
+            # com deploy quase diario, o cache da semana nunca era alcancado e
+            # chegou a 45 GB de lixo. Agora sobram no maximo 10 GB, sempre.
+            # --reserved-space e a flag do Docker >= 28 (substituiu --keep-storage).
+            echo "==> prune: cache de build acima de 10 GB"
+            docker builder prune -af --reserved-space 10GB || true
+
+            echo "==> disco depois: $(livre_gb) GB livres"
             echo "==> done"
         env:
           DEPLOY_MODE: ${{ inputs.mode || 'fast' }}
+
+      # O passo acima terminava "verde" mesmo com o site fora do ar: ele so
+      # verifica se os comandos rodaram, nao se a aplicacao respondeu. Aqui o
+      # deploy so e considerado bom se o site voltar de fato.
+      - name: Smoke test (site respondendo)
+        run: |
+          alvo="https://tarefas.camim.com.br/"
+          for i in $(seq 1 20); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$alvo" || echo 000)
+            echo "tentativa $i/20: HTTP $code"
+            case "$code" in
+              2*|3*) echo "✅ site no ar (HTTP $code)"; exit 0 ;;
+            esac
+            sleep 10
+          done
+          echo "❌ $alvo nao respondeu 2xx/3xx em ~3min — deploy suspeito"
+          exit 1
