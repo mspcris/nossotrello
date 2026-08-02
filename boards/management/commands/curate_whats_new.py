@@ -40,6 +40,15 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-08 ---
+    "b4ecb42": (
+        "🔢",
+        "As abas do card dizem quanto tem dentro",
+        "Para saber se um card tinha checklist ou anexo você precisava clicar na "
+        "aba e conferir. Agora o número aparece do lado do nome — Checklists 3, "
+        "Anexos 15 — e some quando não tem nada, para a barra não ficar poluída. "
+        "A conta se atualiza na hora em que você adiciona ou remove, sem "
+        "recarregar o card.",
+    ),
     "8c9c182": (
         "🎬",
         "Vídeo no card agora abre e toca ali mesmo",
