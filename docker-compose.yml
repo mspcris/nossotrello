@@ -168,14 +168,6 @@ services:
       - web
       - daphne
 
-  certbot:
-    image: certbot/certbot
-    restart: always
-    volumes:
-      - /etc/letsencrypt:/etc/letsencrypt
-      - ./nginx/nossotrello.conf:/etc/nginx/conf.d/default.conf
-    entrypoint: /bin/sh
-
 volumes:
   pg_data:
   redis_data:
