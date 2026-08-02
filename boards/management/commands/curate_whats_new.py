@@ -40,6 +40,16 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-08 ---
+    "56b9f98": (
+        "🔄",
+        "Puxar a tela para baixo atualiza o quadro",
+        "No celular, arrastar o dedo para baixo não atualizava o quadro — para "
+        "forçar, você tinha que sair da página e entrar de novo. Agora o gesto "
+        "funciona: puxe para baixo com o quadro já no topo, aparece a setinha, "
+        "e ao soltar a página recarrega. Puxar no meio de uma coluna comprida "
+        "continua só rolando os cards, como deve ser, e arrastar de lado para "
+        "passar de coluna não mudou nada.",
+    ),
     "ed0f3eb": (
         "🧻",
         "O anexo parou de copiar a descrição do card",
