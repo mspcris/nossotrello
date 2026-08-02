@@ -46,11 +46,18 @@
         </a>
       {% endif %}
 
-      {% if attachment.description %}
+      {% if not attachment.description|quill_is_blank %}
         {# sanitiza no render (cobre linhas legadas cruas) e mostra formatado #}
-        <div class="cm-attach-desc mt-1 text-xs text-gray-700 dark:text-slate-200 break-words">
-          {{ attachment.description|quill_safe }}
-        </div>
+        {% with desc_len=attachment.description|quill_text_len %}
+          <div class="cm-attach-desc mt-1 text-xs text-gray-700 dark:text-slate-200 break-words{% if desc_len > 180 %} is-clamped{% endif %}">
+            {{ attachment.description|quill_safe }}
+          </div>
+          {% if desc_len > 180 %}
+            <button type="button" class="cm-attach-desc-toggle" data-attach-desc-toggle>
+              ver mais
+            </button>
+          {% endif %}
+        {% endwith %}
       {% endif %}
 
       <span class="mt-1 text-xs text-gray-500 dark:text-slate-400">

@@ -2806,6 +2806,64 @@ html.dark #modal #modal-breadcrumb{
   display: inline-block;
 }
 
+/* Descrição do anexo (HTML do Quill). Sem estilo nenhum ela virava uma parede de
+   texto do tamanho do card e ainda perdia marcador de lista (o reset do Tailwind
+   zera ul/ol), então o anexo — que é o assunto da linha — sumia no meio. */
+.cm-attach-desc{
+  line-height: 1.45;
+}
+.cm-attach-desc > *:first-child{ margin-top: 0; }
+.cm-attach-desc > *:last-child{ margin-bottom: 0; }
+.cm-attach-desc p{ margin: 0 0 4px; }
+.cm-attach-desc ul,
+.cm-attach-desc ol{
+  margin: 0 0 4px;
+  padding-left: 1.25em;
+}
+.cm-attach-desc ul{ list-style: disc; }
+.cm-attach-desc ol{ list-style: decimal; }
+.cm-attach-desc li{ margin: 1px 0; }
+.cm-attach-desc code{
+  background: rgba(15,23,42,0.08);
+  border-radius: 4px;
+  padding: 0 3px;
+  word-break: break-word;
+}
+.cm-attach-desc img{
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+}
+
+/* Descrição longa nasce cortada em 3 linhas; o botão abaixo abre e fecha. */
+.cm-attach-desc.is-clamped{
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.cm-attach-desc-toggle{
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 0;
+  background: none;
+  border: 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: #2563eb;
+  cursor: pointer;
+}
+.cm-attach-desc-toggle:hover{ text-decoration: underline; }
+html.dark .cm-attach-desc-toggle,
+.theme-dark .cm-attach-desc-toggle,
+.card-theme-dark .cm-attach-desc-toggle{ color: #93c5fd; }
+
+html.dark .cm-attach-desc code,
+.theme-dark .cm-attach-desc code,
+.card-theme-dark .cm-attach-desc code{ background: rgba(255,255,255,0.14); }
+
 /* Chip do anexo sem pré-visualização, no feed: ícone + NOME */
 #cm-root .cm-attach-card{
   display: inline-flex;

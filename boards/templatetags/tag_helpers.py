@@ -90,6 +90,40 @@ def quill_safe(value):
     return mark_safe(sanitize_quill_html(str(value)))
 
 
+def _quill_plain_text(value):
+    """Texto visível de um HTML do Quill — sem tags, sem &nbsp;, sem espaço à toa."""
+    import re
+    from django.utils.html import strip_tags
+
+    txt = strip_tags(str(value or ""))
+    return re.sub(r"[\s ]+", " ", txt.replace("&nbsp;", " ")).strip()
+
+
+@register.filter
+def quill_is_blank(value):
+    """True quando o HTML do Quill não tem nada pra mostrar.
+
+    O editor grava `<p><br></p>` quando o campo fica vazio, e isso passa no
+    `{% if %}` como se fosse conteúdo — 305 anexos em prod caem nesse caso e
+    renderizam um bloco vazio. Imagem/vídeo colados contam como conteúdo mesmo
+    sem texto nenhum.
+    """
+    if not value:
+        return True
+
+    raw = str(value)
+    if "<img" in raw or "<iframe" in raw or "<video" in raw:
+        return False
+
+    return not _quill_plain_text(raw)
+
+
+@register.filter
+def quill_text_len(value):
+    """Nº de caracteres visíveis do HTML do Quill (usado pra decidir o 'ver mais')."""
+    return len(_quill_plain_text(value))
+
+
 @register.simple_tag
 def counter_value(card):
     """Valor ao vivo de um card contador (None se não for contador)."""

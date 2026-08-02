@@ -2103,6 +2103,29 @@ html.dark #cm-root .cm-act-attach-x{
 
 
 
+<script>
+  // "ver mais" da descrição do anexo. Delegado no document e instalado uma vez só:
+  // a lista de anexos é re-renderizada por htmx e perderia listener por elemento.
+  (function () {
+    if (window.__cmAttachDescToggleInstalled) return;
+    window.__cmAttachDescToggleInstalled = true;
+
+    document.addEventListener("click", function (e) {
+      const btn = e.target?.closest?.("[data-attach-desc-toggle]");
+      if (!btn) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      const desc = btn.parentElement?.querySelector(".cm-attach-desc");
+      if (!desc) return;
+
+      const open = desc.classList.toggle("is-clamped") === false;
+      btn.textContent = open ? "ver menos" : "ver mais";
+    });
+  })();
+</script>
+
 {# Edição colaborativa (Phase 5) — soft lock + live preview via WS #}
 <script src="{% static 'boards/modal/card_edit_collab.js' %}"></script>
 
