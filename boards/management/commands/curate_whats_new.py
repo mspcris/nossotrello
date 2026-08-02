@@ -40,6 +40,15 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-08 ---
+    "7cb0f7c": (
+        "🧹",
+        "O calendário não mostra mais o quadro por baixo",
+        "Quando você abria o calendário, o quadro continuava ali embaixo: "
+        "rolando um pouco apareciam o Controle de Colunas e o começo das "
+        "colunas, como se fossem duas telas empilhadas. No celular isso ficava "
+        "na cara, logo abaixo da grade do mês. Agora o calendário fica sozinho "
+        "na tela, e o quadro volta quando você sai dele.",
+    ),
     "28aa0b7": (
         "📱",
         "O calendário finalmente dá pra usar no celular",
