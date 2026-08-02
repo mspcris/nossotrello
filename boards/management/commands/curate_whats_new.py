@@ -40,6 +40,15 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-08 ---
+    "a828412": (
+        "⏳",
+        "Salvar suas configurações agora mostra que está salvando",
+        "Ao mexer nas suas configurações e clicar em Salvar, nada indicava que "
+        "o clique tinha funcionado — dava para achar que travou e clicar de "
+        "novo. Agora a tela escurece e aparece a bolinha girando enquanto "
+        "salva, do mesmo jeito que já acontecia nas ações do card. Vale para "
+        "tudo que se salva ali: perfil, senha e foto.",
+    ),
     "3388365": (
         "🧹",
         "Tocar na sua foto abre só as configurações",
