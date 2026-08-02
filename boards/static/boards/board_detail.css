@@ -929,18 +929,29 @@ li[data-card-id][data-term-status="ok"] .term-badge{ color: #16a34a; }
   }
 }
 
-/* Telas estreitas (celular ~≤430px, inclui Z Flip 7): o problema é FALTA DE
-   ESPAÇO pra ler o card. Coluna de cards passa a ocupar quase a largura da tela
-   (uma por vez, com scroll horizontal entre colunas — padrão Kanban no celular),
-   pra o card ficar confortável. A agregadora fica mais estreita quando travada;
+/* Celular (≤767px, o breakpoint mobile do projeto — o antigo ≤430px NÃO pegava a
+   tela principal do Z Flip, que reporta ~450px). Sem ajuste do usuário o problema
+   é FALTA DE ESPAÇO pra ler o card, então a coluna ocupa quase a largura da tela
+   (uma por vez, com scroll horizontal entre colunas — padrão Kanban no celular). */
+@media (max-width: 767px) {
+  #columns-wrapper .column-item:not(.aggregator-column) {
+    --col-w: min(88vw, 380px);
+    flex: 0 0 var(--col-w);
+    width: var(--col-w);
+  }
+
+  /* Quem mexeu no slider de largura manda no celular também — era isso que faltava:
+     antes o vw fixo sobrescrevia --col-base e o ajuste não saía do lugar. O teto de
+     92vw só impede a coluna de estourar a tela. Especificidade (1,3,0) ganha das
+     regras de default abaixo, então a ordem dos blocos não importa. */
+  #columns-wrapper[data-col-width-set="1"] .column-item:not(.aggregator-column) {
+    --col-w: min(var(--col-base, 240px), 92vw);
+  }
+}
+
+/* Telas estreitas (~≤430px): a agregadora fica mais enxuta quando travada;
    destravada (o usuário faz isso) ela rola junto e libera tudo. */
 @media (max-width: 430px) {
-  #columns-wrapper .column-item:not(.aggregator-column) {
-    --col-w: 88vw;
-    flex: 0 0 88vw;
-    width: 88vw;
-    max-width: 380px;
-  }
   .aggregator-column {
     width: 150px;
     flex: 0 0 150px;
@@ -953,8 +964,6 @@ li[data-card-id][data-term-status="ok"] .term-badge{ color: #16a34a; }
 @media (max-width: 360px) {
   #columns-wrapper .column-item:not(.aggregator-column) {
     --col-w: 90vw;
-    flex: 0 0 90vw;
-    width: 90vw;
   }
   .aggregator-column {
     width: 124px;
