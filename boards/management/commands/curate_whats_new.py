@@ -40,6 +40,18 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-08 ---
+    "8453d5c": (
+        "📎",
+        "A aba Anexos voltou a mostrar o anexo",
+        "Quando você mandava um arquivo junto com um texto comprido, a aba "
+        "Anexos despejava o texto inteiro embaixo do arquivo — o nome do "
+        "arquivo virava um detalhe no meio de uma parede de letras, e as "
+        "listas apareciam sem bolinha nem número. Agora o texto longo vem "
+        "cortado em três linhas, com um \"ver mais\" para abrir e fechar, e "
+        "listas, trechos de código e imagens coladas aparecem formatados. "
+        "Também sumiu aquele espaço em branco que ficava sobrando quando o "
+        "arquivo tinha sido enviado sem nenhum comentário.",
+    ),
     "986528a": (
         "📐",
         "A largura das colunas agora vale no celular",
