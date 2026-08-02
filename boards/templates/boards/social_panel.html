@@ -2024,7 +2024,7 @@ if(document.readyState !== 'loading'){ window._applyUserHeart(); }
         var tapAttr = 'onclick="_spToggleCommentActions(this,'+c.id+','+(c.author_id||0)+',\''+authorEsc+'\','+postId+')"';
         html += '<div class="sp-side-comment sp-comment-tappable" '+tapAttr+'>'+av+
           '<div class="sp-side-cm-body">'+
-          '<div class="sp-side-cm-head"><strong>'+_escHtml(c.author)+'</strong> <span class="sp-side-cm-time">'+_escHtml(c.time||'')+'</span></div>'+
+          '<div class="sp-side-cm-head"><a href="/social/'+(c.author_id||0)+'/" class="sp-author-link" onclick="event.stopPropagation()"><strong>'+_escHtml(c.author)+'</strong></a> <span class="sp-side-cm-time">'+_escHtml(c.time||'')+'</span></div>'+
           '<div class="sp-side-cm-text">'+_spMentionify(_escHtml(c.text||''))+'</div>'+
           '<span class="sp-comment-reactions" id="sp-creact-'+c.id+'"></span>'+
           '</div></div>';
@@ -3069,7 +3069,7 @@ if(document.readyState !== 'loading'){ window._applyUserHeart(); }
           var authorEsc = _escHtml(c.author || '').replace(/'/g,"\\'");
           html += '<div class="sp-reel-comment-item sp-comment-tappable" style="position:relative" '
             + 'onclick="_spToggleCommentActions(this,'+c.id+','+(c.author_id||0)+',\''+authorEsc+'\','+postId+')">'
-            + '<strong>' + _escHtml(c.author || '') + '</strong> '
+            + '<a href="/social/' + (c.author_id||0) + '/" class="sp-author-link" onclick="event.stopPropagation()"><strong>' + _escHtml(c.author || '') + '</strong></a> '
             + '<span>' + _spMentionify(_escHtml(c.text || '')) + '</span>'
             + '<span class="sp-reel-comment-time">' + _escHtml(c.time || '') + '</span>'
             + '<span class="sp-comment-reactions" id="sp-creact-' + c.id + '">'
@@ -4497,7 +4497,7 @@ document.addEventListener('click', function(e){
       if(!list) return;
       var el = document.createElement('div');
       el.className = 'sp-comment';
-      el.innerHTML = '<span class="sp-comment-author">' + d.user.replace(/</g,'&lt;') + '</span> ' +
+      el.innerHTML = '<a href="/social/' + (d.user_id||0) + '/" class="sp-comment-author sp-author-link" onclick="event.stopPropagation()">' + d.user.replace(/</g,'&lt;') + '</a> ' +
         '<span class="sp-comment-text">' + _spMentionify(d.text.replace(/</g,'&lt;')) + '</span>' +
         '<span class="sp-comment-time">' + d.created_at + '</span>' +
         '<span class="sp-comment-reactions" id="sp-creact-' + d.id + '"></span>' +
@@ -5435,7 +5435,7 @@ document.addEventListener('click', function(e){
       var el = document.createElement('div');
       el.className = 'sp-comment sp-reply-comment';
       el.innerHTML = '<span class="sp-reply-indicator">↩</span>' +
-        '<span class="sp-comment-author">' + d.user.replace(/</g,'&lt;') + '</span> ' +
+        '<a href="/social/' + (d.user_id||0) + '/" class="sp-comment-author sp-author-link" onclick="event.stopPropagation()">' + d.user.replace(/</g,'&lt;') + '</a> ' +
         '<span class="sp-comment-text">' + _spMentionify(d.text.replace(/</g,'&lt;')) + '</span>' +
         '<span class="sp-comment-time">' + d.created_at + '</span>' +
         '<span class="sp-comment-reactions" id="sp-creact-' + d.id + '"></span>' +

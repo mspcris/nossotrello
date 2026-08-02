@@ -2345,6 +2345,29 @@ video.sp-post-media {
   color: #1f2937;
   flex-shrink: 0;
 }
+
+/* Nome do comentador leva direto ao perfil. Antes só dava pra chegar lá em
+   dois toques (toca no comentário -> "Perfil de fulano"). Mantém a aparência
+   de texto: quem quiser o painel de ações continua tocando no resto da linha. */
+.sp-author-link {
+  color: inherit;          /* no reel/painel o autor herda a cor do contexto */
+  text-decoration: none;
+  cursor: pointer;
+}
+/* 2 classes: repõe a cor propria do autor no feed, que o `inherit` acima
+   apagaria (as duas regras tem 1 classe, e a de baixo vencia). */
+.sp-comment-author.sp-author-link {
+  color: #1f2937;
+}
+.sp-author-link strong {
+  font-weight: 700;
+}
+/* fica por ultimo pra vencer as duas regras acima no hover */
+.sp-author-link:hover,
+.sp-author-link:focus-visible {
+  color: #7c3aed;
+  text-decoration: underline;
+}
 /* Comentário inteiro é tappable — toque expande um painel de ações logo
    abaixo (Chat / Perfil / Denunciar). Cursor + leve hover sinalizam. */
 .sp-comment-tappable {

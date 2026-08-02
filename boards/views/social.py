@@ -2004,6 +2004,7 @@ def social_post_comment(request, post_id: int):
     return JsonResponse({
         "id": comment.id,
         "user": prof.display_name or request.user.email,
+        "user_id": request.user.id,  # o nome no feed vira link pro perfil
         "text": comment.text,
         "created_at": comment.created_at.strftime("%d/%m %H:%M"),
         "reply_to_id": reply_to.id if reply_to else None,

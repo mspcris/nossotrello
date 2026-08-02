@@ -156,7 +156,9 @@
       <div class="sp-comment sp-comment-tappable{% if c.reply_to_id %} sp-reply-comment{% endif %}" id="sp-comment-{{ c.id }}"
            onclick="_spToggleCommentActions(this,{{ c.id }},{{ c.user_id }},'{{ c.user.profile.display_name|default:c.user.email|escapejs }}',{{ post.id }})">
         {% if c.reply_to_id %}<span class="sp-reply-indicator">↩</span>{% endif %}
-        <span class="sp-comment-author">{{ c.user.profile.display_name|default:c.user.email }}</span>
+        <a href="/social/{{ c.user_id }}/" class="sp-comment-author sp-author-link"
+           onclick="event.stopPropagation()"
+           title="Ver perfil de {{ c.user.profile.display_name|default:c.user.email }}">{{ c.user.profile.display_name|default:c.user.email }}</a>
         <span class="sp-comment-text">{{ c.text|urlize|linebreaksbr }}</span>
         <span class="sp-comment-time">{{ c.created_at|date:"d/m H:i" }}</span>
         <span class="sp-comment-reactions" id="sp-creact-{{ c.id }}">
