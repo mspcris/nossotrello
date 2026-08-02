@@ -14,6 +14,14 @@
   if (window.__ntPullRefreshInstalled) return;
   window.__ntPullRefreshInstalled = true;
 
+  /* DESLIGADO em 02/08/2026 — chamado PPY-EJ6-BRTZ: tocar no ⋮ do card no
+     celular recarrega a página na hora, e só no celular, que é exatamente onde
+     este arquivo roda. Desligado pra isolar a causa: se o ⋮ continuar
+     recarregando com isto desligado, o problema não é daqui. Religar trocando
+     pra false depois de descobrir. */
+  var DESLIGADO = true;
+  if (DESLIGADO) return;
+
   // Só na tela do quadro.
   if (!document.getElementById("columns-wrapper")) return;
 
