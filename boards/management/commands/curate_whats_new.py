@@ -40,6 +40,16 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-08 ---
+    "680aee6": (
+        "👤",
+        "Clicar no nome de quem comentou abre o perfil",
+        "Para ver o perfil de alguém que comentou você precisava tocar no "
+        "comentário, esperar abrir o menuzinho e então escolher \"Perfil de "
+        "fulano\". Agora é direto: clicou no nome, foi. Vale no feed, no reel e "
+        "no painel lateral, inclusive para um comentário que acabou de ser "
+        "escrito. Quem quiser reagir, responder ou denunciar continua tocando "
+        "no resto da linha, como antes.",
+    ),
     "74d4dd0": (
         "🧽",
         "Sumiu o texto solto que aparecia na tela",
