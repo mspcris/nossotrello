@@ -13,7 +13,7 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% url 'boards:board_wallpaper_css' board.id %}">
 <link rel="stylesheet" href="{% static 'boards/board_detail.css' %}?v=20260717-aggmob2">
-<link rel="stylesheet" href="{% static 'boards/calendar.css' %}">
+<link rel="stylesheet" href="{% static 'boards/calendar.css' %}?v=20260802-agenda1">
 {# skin do cabeçalho compartilhado com a home (body.cm-skin) #}
 <link rel="stylesheet" href="{% static 'boards/cm_skin.css' %}?v=20260717-hdrcompact3">
 <script src="{% static 'boards/appearance.js' %}?v=20260615-09" defer></script>
@@ -711,7 +711,7 @@
 
 
 
-<script defer src="{% static 'boards/calendar.js' %}"></script>
+<script defer src="{% static 'boards/calendar.js' %}?v=20260802-agenda1"></script>
 <script defer src="{% static 'boards/card_paste_create.js' %}?v=20260617-01"></script>
 <script defer src="{% static 'boards/aggregator_nav.js' %}?v=20260617-06"></script>
 

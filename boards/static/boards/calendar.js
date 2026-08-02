@@ -16,9 +16,24 @@
     focus: null    // YYYY-MM-DD
   };
 
-  function ymd(d) { return d.toISOString().slice(0, 10); }
+  // Data LOCAL. toISOString() converte pra UTC: depois das 21h no Brasil
+  // (UTC-3) ele já respondia o dia seguinte, e o calendário abria focado em
+  // amanhã. parseYmd cria meia-noite local, então os dois têm que casar.
+  function ymd(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }
   function parseYmd(s) { return new Date(s + "T00:00:00"); }
   function safe(fn) { try { return fn(); } catch (_e) { return null; } }
+
+  const MOBILE_QUERY = "(max-width: 767px)";
+
+  function isMobileCal() {
+    try { return !!(window.matchMedia && window.matchMedia(MOBILE_QUERY).matches); }
+    catch (_e) { return false; }
+  }
 
   function escapeHtml(s) {
     return String(s)
@@ -168,6 +183,18 @@
     r?.__cmMonthOverflowUpdate?.();
     r?.__cmWeekOverflowUpdate?.();
   });
+
+  // Agenda ↔ grade: abrir/fechar o Flip (ou girar a tela) atravessa o
+  // breakpoint e o layout renderizado deixa de ser o certo.
+  try {
+    const mq = window.matchMedia(MOBILE_QUERY);
+    const onBreakpoint = () => {
+      if (!window.CalendarState?.active) return;
+      renderCalendar();
+    };
+    if (mq.addEventListener) mq.addEventListener("change", onBreakpoint);
+    else if (mq.addListener) mq.addListener(onBreakpoint);
+  } catch (_e) {}
 
   document.addEventListener("modal:closed", () => { clearCardFromUrl(); });
 
@@ -361,7 +388,9 @@
       root.innerHTML = renderCalendarView(data);
 
       // ✅ FIX PRINCIPAL: bind do drag após render
-      initCalendarDrag(root);
+      // Na agenda não: HTML5 drag não existe em toque, e marcar os cards como
+      // draggable só atrapalha o scroll vertical da lista.
+      if (!isMobileCal()) initCalendarDrag(root);
 
       // controles/click do card
       wireCalendarControls(root, data);
@@ -398,10 +427,16 @@
    * VIEW
    * ============================================================ */
   function renderCalendarView(data) {
+    // No celular a grade não cabe: 7 colunas em 450px deixam ~60px de título e
+    // todo card virava "Reuni…". Mês e semana viram lista vertical por dia.
+    const body = isMobileCal()
+      ? renderAgendaView(data)
+      : (data.mode === "week" ? renderWeekView(data) : renderMonthView(data));
+
     return `
       <div class="cm-calendar-shell ${data.mode}">
         ${renderCalendarHeader(data)}
-        ${data.mode === "week" ? renderWeekView(data) : renderMonthView(data)}
+        ${body}
       </div>
     `;
   }
@@ -446,7 +481,6 @@
     const focusMonth = data.focus_month; // 1..12
 
     let html = `<div class="cm-cal-month-wrap">`;
-    html += `<div class="cm-cal-month-hint">Arraste →</div>`;
     html += `<div class="cm-cal-month" data-cal-month-scroll>`;
 
     for (let i = 0; i < total; i++) {
@@ -485,7 +519,6 @@
 
     let html = `<div class="cm-cal-week">`;
     html += `<div class="cm-week-wrap">`;
-    html += `<div class="cm-week-hint" aria-hidden="true">Arraste ← →</div>`;
 
     html += `<div class="cm-week-head" data-week-head>`;
     for (let i = 0; i < 7; i++) {
@@ -522,6 +555,87 @@
   }
 
   /* ============================================================
+   * AGENDA (mobile) — lista vertical agrupada por dia
+   * Semana: os 7 dias, inclusive vazios (a semana precisa ser legível
+   *         como semana). Mês: só os dias que têm card, senão viram 42
+   *         cabeçalhos vazios pra rolar.
+   * ============================================================ */
+  const DOW_SHORT = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
+  function renderAgendaView(data) {
+    const days = data.days || {};
+    const isWeek = data.mode === "week";
+
+    const startStr = isWeek
+      ? (data.week_start || data.grid_start || CalendarState.focus || ymd(new Date()))
+      : (data.grid_start || CalendarState.focus || ymd(new Date()));
+
+    const start = parseYmd(startStr);
+    const total = isWeek ? 7 : 42;
+
+    const todayKey = ymd(new Date());
+    const focusYear = data.focus_year;
+    const focusMonth = data.focus_month; // 1..12
+
+    let html = `<div class="cm-cal-agenda">`;
+    let rendered = 0;
+
+    for (let i = 0; i < total; i++) {
+      const d = new Date(start);
+      d.setDate(d.getDate() + i);
+
+      const key = ymd(d);
+      const cards = days[key] || [];
+
+      // No mês, dia sem card não vira linha nenhuma.
+      if (!isWeek && !cards.length) continue;
+
+      const inFocusMonth =
+        !isWeek
+          ? (d.getFullYear() === focusYear && (d.getMonth() + 1) === focusMonth)
+          : true;
+
+      const isToday = key === todayKey;
+      rendered++;
+
+      html += `
+        <section class="cm-agenda-day${isToday ? " is-today" : ""}${inFocusMonth ? "" : " is-outside"}${cards.length ? "" : " is-empty"}" data-day="${key}">
+          <header class="cm-agenda-dayhead">
+            <span class="cm-agenda-dow">${DOW_SHORT[d.getDay()]}</span>
+            <span class="cm-agenda-date">${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}</span>
+            ${isToday ? `<span class="cm-agenda-today">hoje</span>` : ""}
+            ${
+              cards.length
+                ? `<span class="cm-agenda-count">${cards.length}</span>`
+                : `<span class="cm-agenda-none">sem cards</span>`
+            }
+          </header>
+
+          ${
+            cards.length
+              ? `<div class="cm-agenda-cards">
+                   ${cards.map((card) => renderCalendarCard(card, "agenda")).join("")}
+                 </div>`
+              : ""
+          }
+        </section>
+      `;
+    }
+
+    if (!rendered) {
+      html += `
+        <div class="cm-agenda-empty">
+          <div class="cm-agenda-empty-icon" aria-hidden="true">🗓️</div>
+          <p>Nenhum card com data neste período.</p>
+        </div>
+      `;
+    }
+
+    html += `</div>`;
+    return html;
+  }
+
+  /* ============================================================
    * CARD RENDER
    * ============================================================ */
   function renderCalendarCard(card, viewMode) {
@@ -532,6 +646,36 @@
     const due = card?.due_date || "";
     const warn = card?.warn_date || "";
     const notify = (card?.due_notify === false || card?.due_notify === 0) ? "0" : "1";
+
+    if (viewMode === "agenda") {
+      const column = (card && card.column) ? String(card.column) : "";
+
+      return `
+        <button
+          type="button"
+          class="cm-cal-card cm-cal-card-agenda${cover ? " has-cover" : ""}"
+          data-card-id="${escapeAttr(String(id))}"
+          data-term-due="${escapeAttr(due)}"
+          data-term-warn="${escapeAttr(warn)}"
+          data-term-notify="${escapeAttr(notify)}"
+        >
+          <span class="cm-cal-bar"></span>
+
+          ${
+            cover
+              ? `<span class="cm-cal-thumb cm-agenda-thumb">
+                   <img src="${escapeAttr(cover)}" alt="" loading="lazy" />
+                 </span>`
+              : ""
+          }
+
+          <span class="cm-agenda-text">
+            <span class="cm-agenda-title">${escapeHtml(title)}</span>
+            ${column ? `<span class="cm-agenda-col">${escapeHtml(column)}</span>` : ""}
+          </span>
+        </button>
+      `;
+    }
 
     if (viewMode === "week") {
       return `
@@ -602,6 +746,18 @@
         renderCalendar();
       });
     }
+
+    // agenda: já abre no dia de hoje quando ele está no período
+    try {
+      const today = root.querySelector(".cm-agenda-day.is-today");
+      if (today) {
+        requestAnimationFrame(() => {
+          // rect em vez de offsetTop: #calendar-root não é offsetParent
+          const delta = today.getBoundingClientRect().top - root.getBoundingClientRect().top;
+          root.scrollTop = Math.max(0, root.scrollTop + delta - 8);
+        });
+      }
+    } catch (_e) {}
 
     // abrir card
     root.querySelectorAll(".cm-cal-card[data-card-id]").forEach((el) => {

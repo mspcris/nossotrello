@@ -339,63 +339,27 @@
     justify-content: space-between;
   }
 
+  /* Mês/Semana e o seletor de campo não cabem lado a lado em 450px:
+     o "Semana" ficava cortado dentro do overflow:hidden de .cm-cal-modes. */
+  .cm-cal-right {
+    flex-wrap: wrap;
+  }
+
+  .cm-cal-modes {
+    flex: 0 0 auto;
+  }
+
+  .cm-cal-mode {
+    white-space: nowrap;
+  }
+
   .cm-cal-title {
     font-size: 14px;
   }
 
   .cm-cal-field {
+    flex: 1 1 100%;
     width: 100%;
-  }
-
-  /* ============ MONTH (mobile) ============ */
-  /* Faz a grade “mais larga” e permite arrastar horizontalmente */
-  .cm-cal-month {
-    grid-template-columns: repeat(7, 120px);
-    width: max-content;
-  }
-
-  /* O container que segura a grade precisa permitir scroll-x.
-     Como você não tem um wrapper dedicado, a opção segura é liberar overflow-x no shell */
-  .cm-calendar-shell.month {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  /* Células mais altas para toque */
-  .cm-cal-day {
-    min-height: 140px;
-  }
-
-  /* Cards no mês: aumenta hit-area */
-  .cm-cal-card-month {
-    padding: 10px 10px;
-  }
-
-  /* ============ WEEK (mobile) ============ */
-  /* Head e cols viram “carrossel” sincronizado visualmente */
-  .cm-week-head,
-  .cm-week-cols {
-    grid-auto-flow: column;
-    grid-auto-columns: 86vw; /* 1 dia por tela */
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    -webkit-overflow-scrolling: touch;
-    gap: 10px;
-  }
-
-  .cm-week-headcell,
-  .cm-week-col {
-    scroll-snap-align: start;
-  }
-
-  /* Semana não precisa forçar 100vh no mobile */
-  .cm-cal-week {
-    height: auto;
-    min-height: 0;
-  }
-
-  .cm-week-col {
-    min-height: 56vh; /* dá área boa pros cards */
   }
 }
 
@@ -410,118 +374,194 @@
   overflow-y: visible;
 }
 
-.cm-cal-month-hint {
+/* ============================================================
+ * AGENDA (<= 767px) — calendário vira lista por dia
+ *
+ * A grade de 7 colunas não cabe em 450px: sobravam ~60px de título e
+ * todo card virava "Reuni…". Aqui o dia é o cabeçalho (gruda no topo
+ * enquanto rola) e o card ocupa a largura toda. Renderizado só pelo JS
+ * quando matchMedia("(max-width: 767px)") bate — no desktop segue grade.
+ * ============================================================ */
+
+.cm-cal-agenda {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.cm-agenda-day {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cm-agenda-dayhead {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.20);
+  background: rgba(0,0,0,.62);
+  backdrop-filter: blur(8px);
+}
+
+.cm-agenda-dow {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.94);
+}
+
+.cm-agenda-date {
+  font-size: 12px;
+  color: rgba(255,255,255,.74);
+}
+
+.cm-agenda-today {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(96,165,250,.30);
+  border: 1px solid rgba(96,165,250,.65);
+  color: #fff;
+}
+
+.cm-agenda-count {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.16);
   color: rgba(255,255,255,.92);
-  text-shadow: 0 1px 2px rgba(0,0,0,.65);
-  background: rgba(0,0,0,0.55);
 }
 
-/* ============================================================
- * WEEK (mobile) — 3 dias visíveis + hint ← → + bordas indicando overflow
- * ============================================================ */
-@media (max-width: 767px) {
-  .cm-week-wrap {
-    position: relative;
-  }
-
-  /* carrossel horizontal */
-  .cm-week-head,
-  .cm-week-cols {
-    display: flex;
-    overflow-x: auto;
-    overflow-y: hidden;
-    gap: 10px;
-    scroll-snap-type: x mandatory;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-  .cm-week-head::-webkit-scrollbar,
-  .cm-week-cols::-webkit-scrollbar {
-    display: none;
-  }
-
-  /* 3 dias por viewport: (100% - 2 gaps) / 3 */
-  .cm-week-headcell,
-  .cm-week-col {
-    flex: 0 0 calc((100% - 20px) / 3);
-    scroll-snap-align: start;
-  }
-
-  /* Hint */
-  .cm-week-hint {
-    width: fit-content;
-    margin: 8px 0 6px;
-    padding: 6px 10px;
-    border-radius: 999px;
-    background: rgba(0, 0, 0, 0.45);
-    color: #fff;
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: .2px;
-    text-shadow: 0 1px 1px rgba(0,0,0,0.5);
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity .15s ease;
-  }
-  .cm-week-wrap.has-x-overflow .cm-week-hint {
-    opacity: 1;
-  }
-  .cm-week-wrap.hint-dismissed .cm-week-hint {
-    opacity: 0;
-  }
-
-  /* “sombras” laterais: indicam que tem mais conteúdo pros lados */
-  .cm-week-wrap::before,
-  .cm-week-wrap::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 42px;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity .15s ease;
-    z-index: 2;
-  }
-  .cm-week-wrap::before {
-    left: 0;
-    background: linear-gradient(to right, rgba(0,0,0,0.35), rgba(0,0,0,0));
-  }
-  .cm-week-wrap::after {
-    right: 0;
-    background: linear-gradient(to left, rgba(0,0,0,0.35), rgba(0,0,0,0));
-  }
-  .cm-week-wrap.has-x-overflow:not(.is-at-start)::before {
-    opacity: 1;
-  }
-  .cm-week-wrap.has-x-overflow:not(.is-at-end)::after {
-    opacity: 1;
-  }
+.cm-agenda-day.is-today .cm-agenda-dayhead {
+  border-color: rgba(96,165,250,.65);
 }
 
-/* ============================================================
- * MONTH (mobile) — deixa o hint sempre legível (se já existir)
- * ============================================================ */
-@media (max-width: 767px) {
-  .cm-cal-month-hint {
-    width: fit-content;
-    margin: 8px 0 6px;
-    padding: 6px 10px;
-    border-radius: 999px;
-    background: rgba(0, 0, 0, 0.45);
-    color: #fff;
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: .2px;
-    text-shadow: 0 1px 1px rgba(0,0,0,0.5);
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity .15s ease;
-  }
-  .cm-cal-month-wrap.has-x-overflow .cm-cal-month-hint {
-    opacity: 1;
-  }
-  .cm-cal-month-wrap.hint-dismissed .cm-cal-month-hint {
-    opacity: 0;
-  }
+/* dia de mês vizinho aparecendo na agenda do mês */
+.cm-agenda-day.is-outside .cm-agenda-dayhead {
+  opacity: .72;
 }
+
+.cm-agenda-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* dia vazio: cabe no próprio cabeçalho, não vira segundo bloco */
+.cm-agenda-none {
+  margin-left: auto;
+  font-size: 11px;
+  color: rgba(255,255,255,.55);
+}
+
+.cm-agenda-day.is-empty .cm-agenda-dayhead {
+  background: rgba(0,0,0,.38);
+  border-color: rgba(255,255,255,.12);
+}
+
+.cm-agenda-day.is-empty .cm-agenda-dow,
+.cm-agenda-day.is-empty .cm-agenda-date {
+  color: rgba(255,255,255,.62);
+}
+
+.cm-agenda-empty {
+  padding: 36px 16px;
+  text-align: center;
+  color: rgba(255,255,255,.80);
+}
+
+.cm-agenda-empty-icon {
+  font-size: 34px;
+  margin-bottom: 8px;
+}
+
+/* Card – Agenda (linha de largura total) */
+.cm-cal-card-agenda {
+  position: relative;
+  overflow: hidden;
+
+  display: grid;
+  grid-template-columns: 1fr;   /* sem capa: título usa a linha inteira */
+  gap: 12px;
+  align-items: center;
+
+  box-sizing: border-box;       /* padding+borda não podem estourar os 100% */
+  width: 100%;
+  min-height: 64px;              /* alvo de toque */
+  padding: 10px 12px 10px 16px;  /* 16 à esquerda: a barra de prazo ocupa 6 */
+  border-radius: 12px;
+
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(0,0,0,.34);
+  color: rgba(255,255,255,.96);
+  box-shadow: 0 2px 12px rgba(0,0,0,.18);
+}
+
+.cm-cal-card-agenda.has-cover {
+  grid-template-columns: 44px 1fr;
+}
+
+.cm-cal-card-agenda:active {
+  background: rgba(0,0,0,.46);
+}
+
+/* barra de prazo: pintada pelo applySavedTermColorsToBoard */
+.cm-cal-card-agenda .cm-cal-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  border-radius: 0;
+  background: rgba(255,255,255,.22);
+}
+
+.cm-agenda-thumb {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  flex: 0 0 44px;
+}
+
+.cm-agenda-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.cm-agenda-title {
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.28;
+
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.cm-agenda-col {
+  margin-top: 3px;
+  font-size: 11px;
+  color: rgba(255,255,255,.66);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
