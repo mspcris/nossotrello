@@ -21,8 +21,6 @@
       {% csrf_token %}
 
       <label class="block text-sm">O que contar
-        {# fundo/cor explícitos: sem isso o dropdown nativo abre branco e o texto
-           branco (herdado do tema escuro) fica invisível — só a opção destacada aparecia. #}
         <select name="mode" id="cc-mode" onchange="window.__ccMode()"
                 style="background:#1a2035;color:#fff;"
                 class="mt-1 w-full border border-white/20 rounded-lg px-2 py-2 text-sm">
