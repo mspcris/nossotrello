@@ -40,6 +40,20 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-08 ---
+    "28aa0b7": (
+        "📱",
+        "O calendário finalmente dá pra usar no celular",
+        "No computador o calendário mostra a semana em sete colunas — e era "
+        "isso que aparecia no celular também, espremido: cada dia ficava com "
+        "dois dedos de largura e todo card virava \"Reuni…\". Agora, no "
+        "celular, o calendário vira uma agenda: os dias vêm um embaixo do "
+        "outro, o nome do card aparece inteiro e ainda diz de qual coluna ele "
+        "é. A agenda já abre no dia de hoje, a data do dia fica grudada no topo "
+        "enquanto você rola, e a tarja colorida de prazo continua ali dizendo o "
+        "que está vencido, a vencer ou em dia. No mês, só aparecem os dias que "
+        "têm card, então dá pra ver o mês inteiro numa rolada só. No computador "
+        "nada muda.",
+    ),
     "b4ecb42": (
         "🔢",
         "As abas do card dizem quanto tem dentro",
