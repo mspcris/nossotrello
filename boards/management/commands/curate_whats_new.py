@@ -40,6 +40,14 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-08 ---
+    "74d4dd0": (
+        "🧽",
+        "Sumiu o texto solto que aparecia na tela",
+        "Desde ontem aparecia uma anotação nossa de bastidor no meio da página, "
+        "aquele texto começando com \"Player de vídeo em modal\". Era um "
+        "comentário de código que escapou pra tela por um detalhe de sintaxe. "
+        "Já foi.",
+    ),
     "7cb0f7c": (
         "🧹",
         "O calendário não mostra mais o quadro por baixo",
