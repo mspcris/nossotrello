@@ -135,12 +135,16 @@ def add_attachment(request, card_id):
         return HttpResponse("Nenhum arquivo enviado", status=400)
 
     uploaded = request.FILES["file"]
-    # ✅ evita conflito com o name="description" do card (aba Descrição).
-    # O form posta o campo como `attachment_desc`; mantemos os fallbacks legados.
+    # O campo de descrição do anexo é `attachment_desc` (`attachment_description`
+    # é o nome legado). NÃO existe fallback pra `description`: o input de arquivo
+    # mora dentro do #cm-main-form e, em request não-GET, o htmx inclui sozinho
+    # todos os campos do form mais próximo (getInputValues: "for a non-GET include
+    # the closest form"). Ou seja, `description` que chega aqui é a descrição do
+    # CARD, não do anexo — o fallback antigo copiava o texto inteiro do card pra
+    # dentro do anexo toda vez que a descrição do anexo ficava em branco.
     raw_desc = (
         request.POST.get("attachment_desc")
         or request.POST.get("attachment_description")
-        or request.POST.get("description")
         or ""
     ).strip()
     # A descrição pode conter HTML (Quill / colagem). Sanitiza no MESMO allowlist
