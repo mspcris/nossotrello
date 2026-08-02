@@ -14,13 +14,11 @@
   if (window.__ntPullRefreshInstalled) return;
   window.__ntPullRefreshInstalled = true;
 
-  /* DESLIGADO em 02/08/2026 — chamado PPY-EJ6-BRTZ: tocar no ⋮ do card no
-     celular recarrega a página na hora, e só no celular, que é exatamente onde
-     este arquivo roda. Desligado pra isolar a causa: se o ⋮ continuar
-     recarregando com isto desligado, o problema não é daqui. Religar trocando
-     pra false depois de descobrir. */
-  var DESLIGADO = true;
-  if (DESLIGADO) return;
+  /* Religado em 02/08/2026. Foi desligado por suspeita no chamado PPY-EJ6-BRTZ
+     (tocar no ⋮ recarregava a página no celular), mas o log do nginx inocentou
+     este arquivo: o mesmo reload acontecia às 11:12, antes do primeiro deploy
+     daqui, e continuou às 11:49/11:54, com isto desligado. A causa era o POST
+     pra "/move_card/" em modal/modal.drag.js. */
 
   // Só na tela do quadro.
   if (!document.getElementById("columns-wrapper")) return;

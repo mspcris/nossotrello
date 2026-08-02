@@ -70,64 +70,21 @@
       const card = activeCard;
       activeCard = null;
 
-      // --------------------------------------------------
-      // DETECTAR DROP DE CARD E SINCRONIZAR COM BACKEND
-      // --------------------------------------------------
-      if (moved) {
+      /* Aqui existia uma SEGUNDA sincronização de mover card, que contrariava o
+         "NUNCA interferir no SortableJS" do topo deste arquivo. Ela postava em
+         "/move_card/" — underscore — mas a rota é "/move-card/" com hífen, então
+         sempre deu 404 desde que foi escrita. O 404 devolve HTML, o r.json()
+         estourava e o .catch caía num location.reload().
 
-        const card = ev.target.closest(".card-item, li[data-card-id]");
-        if (!card) return;
+         No mouse isso nunca aparecia: clicar no ⋮ não move o ponteiro, moved
+         ficava false e o bloco nem rodava. No dedo o ⋮ é pequeno, o toque
+         costuma cair no card em vez do botão, e qualquer tremida acima de 6px
+         marcava moved=true — daí tocar nos três pontinhos recarregava a página
+         no celular (chamado PPY-EJ6-BRTZ).
 
-        const cardId = Number(card.dataset.cardId);
-        if (!cardId) return;
-
-        const column = card.closest("[data-column-id]");
-        if (!column) return;
-
-        const columnId = Number(column.dataset.columnId);
-
-        const siblings = Array.from(
-          column.querySelectorAll("li[data-card-id]")
-        );
-
-        const newPosition = siblings.indexOf(card);
-
-        try {
-
-          fetch("/move_card/", {
-            method: "POST",
-            credentials: "same-origin",
-            headers: {
-              "Content-Type": "application/json",
-              "X-CSRFToken": document.querySelector("meta[name='csrf-token']")?.content
-            },
-            body: JSON.stringify({
-              card_id: cardId,
-              new_column_id: columnId,
-              new_position: newPosition
-            })
-          })
-          .then(r => r.json())
-          .then(data => {
-
-            if (!data || data.status !== "ok") {
-              location.reload();
-              return;
-            }
-
-            const el = document.querySelector(`li[data-card-id="${data.card_id}"]`);
-            if (el && data.snippet) {
-              el.outerHTML = data.snippet;
-            }
-
-          })
-          .catch(() => location.reload());
-
-        } catch (_e) {
-          location.reload();
-        }
-
-      }
+         Quem move card de verdade é o Sortable, via postMove() em
+         board_detail.html, que usa a URL certa. Este arquivo volta a fazer só o
+         que o cabeçalho promete: separar clique de arrasto. */
 
       if (!moved) {
         const cardId = Number(card.dataset.cardId);
