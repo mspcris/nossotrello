@@ -5,23 +5,26 @@
    scroll vertical acontece DENTRO de um container aninhado (#columns-wrapper e as
    listas [id^="cards-col-"]). O documento nunca cresce, então o dedo nunca chega
    a rolar a página: o gesto fica preso no scroller interno ("scroll latching") e
-   o pull-to-refresh nativo não dispara. Este arquivo devolve o gesto. */
+   o pull-to-refresh nativo não dispara. Este arquivo devolve o gesto.
+
+   Escuta no document, não no #columns-wrapper: quem puxa pra atualizar começa o
+   gesto no alto da tela, que é o header — fora do wrapper. Escutando só no
+   wrapper o gesto mais natural não era capturado. */
 (function () {
   if (window.__ntPullRefreshInstalled) return;
   window.__ntPullRefreshInstalled = true;
 
-  var wrap = document.getElementById("columns-wrapper");
-  if (!wrap) return;
+  // Só na tela do quadro.
+  if (!document.getElementById("columns-wrapper")) return;
 
   // Só onde o gesto faz sentido: dedo + tela de celular. No desktop existe F5.
-  if (!window.matchMedia) return;
-  if (!window.matchMedia("(pointer: coarse)").matches) return;
-  if (!window.matchMedia("(max-width: 767px)").matches) return;
+  if (!("ontouchstart" in window)) return;
+  if (!window.matchMedia || !window.matchMedia("(max-width: 767px)").matches) return;
 
   var TRIGGER = 60;   // quanto o indicador precisa descer pra armar
   var CEIL = 96;      // teto do quanto ele desce
   var DAMP = 0.55;    // resistência: o dedo anda ~110px pra chegar no TRIGGER
-  var SLOP = 8;       // antes disso não decidimos a direção do gesto
+  var SLOP = 12;      // só decide a direção depois de andar isso
 
   var startY = 0;
   var startX = 0;
@@ -64,6 +67,14 @@
     return true;
   }
 
+  /* Fora do quadro o gesto não é nosso: drawer, modal, calendário e os painéis
+     sociais têm rolagem própria. */
+  function eligibleTarget(t) {
+    if (!t || !t.closest) return false;
+    if (t.closest("#modal, .nt-drawer, #calendar-root, .sp-panel, [data-sp-panel]")) return false;
+    return !!t.closest("#board-root, #columns-wrapper, header");
+  }
+
   function blocked() {
     if (firing) return true;
     if (window.__isDraggingCard) return true;
@@ -72,9 +83,10 @@
     return false;
   }
 
-  wrap.addEventListener("touchstart", function (e) {
+  document.addEventListener("touchstart", function (e) {
     if (blocked()) return;
     if (e.touches.length !== 1) return;
+    if (!eligibleTarget(e.target)) return;
     if (!scrollersAtTop(e.target)) return;
 
     startY = e.touches[0].clientY;
@@ -84,7 +96,7 @@
     dist = 0;
   }, { passive: true });
 
-  wrap.addEventListener("touchmove", function (e) {
+  document.addEventListener("touchmove", function (e) {
     if (!tracking || blocked()) return;
     if (e.touches.length !== 1) { reset(); return; }
 
@@ -92,9 +104,15 @@
     var dx = e.touches[0].clientX - startX;
 
     if (!armed) {
+      /* Não decidir a direção no primeiro evento: o começo de um swipe de dedo
+         é ruidoso (dx=3, dy=2) e comparar dx>dy ali matava o gesto antes de ele
+         existir. Só decide depois de andar SLOP de verdade. */
+      if (Math.abs(dx) < SLOP && Math.abs(dy) < SLOP) return;
+
       // Pan horizontal entre colunas continua sendo dele, não nosso.
       if (Math.abs(dx) > Math.abs(dy)) { tracking = false; return; }
-      if (dy < SLOP) return;
+      if (dy <= 0) { tracking = false; return; }
+
       armed = true;
     }
 
@@ -103,10 +121,10 @@
     dist = Math.min(CEIL, dy * DAMP);
     setPull(dist, dist >= TRIGGER);
 
-    e.preventDefault();
+    if (e.cancelable) e.preventDefault();
   }, { passive: false });
 
-  wrap.addEventListener("touchend", function () {
+  document.addEventListener("touchend", function () {
     if (!tracking) return;
 
     if (armed && dist >= TRIGGER && !blocked()) {
@@ -121,5 +139,5 @@
     reset();
   }, { passive: true });
 
-  wrap.addEventListener("touchcancel", function () { reset(); }, { passive: true });
+  document.addEventListener("touchcancel", function () { reset(); }, { passive: true });
 })();
