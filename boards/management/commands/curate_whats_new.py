@@ -40,6 +40,17 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-08 ---
+    "cab90a7": (
+        "⋮",
+        "O menu do card parou de recarregar a página no celular",
+        "No celular, tocar nos três pontinhos de um card recarregava a página "
+        "inteira e jogava o quadro de volta para o começo — o menu até abria, "
+        "mas você não tinha tempo de usar. Havia um pedaço de código antigo "
+        "que, quando o dedo tremia um pouquinho em cima do card, achava que "
+        "você tinha arrastado o card e tentava avisar o servidor num endereço "
+        "que não existe; ao dar erro, ele recarregava a página. No computador "
+        "isso nunca aparecia, porque o mouse não treme. Já foi.",
+    ),
     "56b9f98": (
         "🔄",
         "Puxar a tela para baixo atualiza o quadro",
