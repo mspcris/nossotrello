@@ -929,6 +929,41 @@ li[data-card-id][data-term-status="ok"] .term-badge{ color: #16a34a; }
   }
 }
 
+/* Indicador do pull-to-refresh — ver boards/pull_refresh.js. z-index abaixo do
+   modal (z-2000), que de todo jeito bloqueia o gesto enquanto está aberto. */
+.nt-ptr{
+  position: fixed;
+  top: 6px;
+  left: 50%;
+  transform: translate(-50%, 0);
+  z-index: 1900;
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+.nt-ptr-circle{
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: rgba(15, 23, 42, 0.82);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  font-size: 16px;
+  font-weight: 900;
+  transition: background .15s ease;
+}
+.nt-ptr-arrow{
+  display: block;
+  line-height: 1;
+  transition: transform .15s ease;
+}
+.nt-ptr.is-ready .nt-ptr-circle{ background: #2563eb; }
+.nt-ptr.is-ready .nt-ptr-arrow{ transform: rotate(180deg); }
+.nt-ptr.nt-ptr-anim .nt-ptr-circle{ animation: nt-ptr-spin .7s linear infinite; }
+@keyframes nt-ptr-spin{ to { transform: rotate(360deg); } }
+
 /* Celular (≤767px, o breakpoint mobile do projeto — o antigo ≤430px NÃO pegava a
    tela principal do Z Flip, que reporta ~450px). Sem ajuste do usuário o problema
    é FALTA DE ESPAÇO pra ler o card, então a coluna ocupa quase a largura da tela
