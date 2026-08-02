@@ -40,6 +40,16 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-08 ---
+    "ed0f3eb": (
+        "🧻",
+        "O anexo parou de copiar a descrição do card",
+        "Se você anexava um arquivo sem preencher a \"Descrição do anexo\", o "
+        "anexo nascia com a descrição inteira do card colada dentro dele — por "
+        "isso apareciam aqueles textos que você nunca escreveu ali, às vezes "
+        "com página e meia de tamanho. O campo do card estava sendo enviado "
+        "junto com o arquivo sem querer. Agora o anexo só recebe o que você "
+        "digitar no campo dele; em branco significa em branco.",
+    ),
     "8453d5c": (
         "📎",
         "A aba Anexos voltou a mostrar o anexo",
