@@ -1,362 +1,348 @@
 {# tracktime/templates/tracktime/modal/tabs/live.html #}
 
-<div id="tracktime-live-tab" class="tt-live">
-  <div class="tt-live-header">
-    <div class="tt-live-title">
-      <div style="font-weight:900;">Ao vivo</div>
-      <div class="tt-muted" style="font-size:12px;">Atualiza automaticamente a cada 2m.</div>
+<div id="tracktime-live-tab" class="ttv">
+
+  <div class="ttv-bar">
+    <div class="ttv-bar-left">
+      <span class="ttv-pulse" aria-hidden="true"></span>
+      <span class="ttv-bar-title">Ao vivo</span>
+      <span class="ttv-bar-sub">atualiza sozinho a cada 2 min</span>
     </div>
 
-    <div class="tt-live-actions">
-      <button type="button" class="btn btn-sm tt-clear-filter" id="tt-live-clear-filter" hidden>
-        ↩ Ver todos
+    <div class="ttv-bar-right">
+      <span class="ttv-bar-total" id="ttv-team-total" hidden></span>
+      <button type="button" class="ttv-btn ttv-btn-accent" id="tt-live-clear-filter" hidden>
+        Ver todos
       </button>
-      <button type="button" class="btn btn-sm" id="tt-live-refresh-btn">
+      <button type="button" class="ttv-btn" id="tt-live-refresh-btn">
         Atualizar
       </button>
     </div>
   </div>
 
-  <div id="tt-filter-chip" class="tt-filter-chip" hidden></div>
+  <div id="tt-filter-chip" class="ttv-filter" hidden></div>
 
-  {# ✅ IMPORTANTE: esse ID existe e é o alvo do JS (evita o insertBefore/null) #}
-  <div id="tt-live-list" class="tt-live-list">
-    <div class="tt-muted">Carregando...</div>
-  </div>
+  {# ===== Pessoas / totais do dia (clicar filtra) ===== #}
+  <section id="tt-totals-section" class="ttv-section" hidden>
+    <div class="ttv-label">Hoje, por pessoa</div>
+    <div id="tt-totals-list" class="ttv-people"></div>
+  </section>
 
-  {# ===== Totais hoje (minutos por usuário) ===== #}
-  <div id="tt-totals-section" class="tt-totals-section" hidden>
-    <div class="tt-sep">
-      <span class="tt-sep-label tt-sep-label--blue">Σ Totais hoje</span>
+  {# ===== Rodando agora ===== #}
+  <section class="ttv-section">
+    <div class="ttv-label">Rodando agora</div>
+    {# esse ID é alvo do JS — não renomear #}
+    <div id="tt-live-list" class="ttv-running">
+      <div class="ttv-empty">Carregando…</div>
     </div>
-    <div id="tt-totals-list" class="tt-totals-list"></div>
-  </div>
+  </section>
 
-  {# ===== Encerrados hoje (track-time parado hoje) ===== #}
-  <div id="tt-closed-section" class="tt-closed-section" hidden>
-    <div class="tt-sep">
-      <span class="tt-sep-label">✔ Encerrados hoje</span>
-    </div>
-    <div id="tt-closed-list" class="tt-closed-list"></div>
-  </div>
+  {# ===== Encerrados hoje ===== #}
+  <section id="tt-closed-section" class="ttv-section" hidden>
+    <div class="ttv-label">Encerrados hoje</div>
+    <div id="tt-closed-list" class="ttv-timeline"></div>
+  </section>
 </div>
 
 <style>
-  /* ====== layout geral ====== */
-  .tt-live { width: 100%; }
-  .tt-live-header {
-    display:flex; align-items:center; justify-content:space-between;
-    gap: 12px; margin-bottom: 12px;
+  /* ===================================================================
+     Track-time "Ao vivo".
+     Tela que fica aberta o dia inteiro — por isso nada de branco puro,
+     preto puro, cor saturada ou peso 900. Superfícies claras, texto em
+     cinza-azulado, hairlines quase invisíveis e UMA cor de destaque
+     (azul) mais o verde só para o que está correndo. Número sempre em
+     tabular-nums para não dançar a cada atualização.
+     Namespace ttv- porque .tt-grid/.tt-row já existem no painel do card.
+     =================================================================== */
+  .ttv {
+    --ttv-surface: #ffffff;
+    --ttv-surface-2: #fafbfd;
+    --ttv-line: #e6eaf1;
+    --ttv-line-soft: #eef1f6;
+    --ttv-ink: #26313f;
+    --ttv-ink-2: #64748b;
+    --ttv-ink-3: #97a3b4;
+    --ttv-accent: #3f6fd0;
+    --ttv-accent-soft: #eaf0fc;
+    --ttv-live: #2f8f68;
+    --ttv-live-soft: #e9f4ef;
+    --ttv-shadow: 0 1px 2px rgba(16, 24, 40, .04);
+
+    color: var(--ttv-ink);
+    font-size: 14px;
+    line-height: 1.45;
   }
-  .tt-muted { opacity:.75; }
-  .tt-live-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-  .tt-clear-filter {
-    border: 1px solid rgba(96,165,250,.45);
-    background: rgba(96,165,250,.12);
-    color: #60a5fa;
-    font-weight: 800;
+  .ttv *, .ttv *::before, .ttv *::after { box-sizing: border-box; }
+  /* display:flex/grid ganha do [hidden] do navegador — sem isto, seção
+     escondida vira faixa vazia na tela. */
+  .ttv [hidden] { display: none !important; }
+
+  /* ====== barra do topo ====== */
+  .ttv-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap;
+    margin-bottom: 18px;
   }
-  .tt-filter-chip {
-    display:flex; align-items:center; gap:8px;
-    margin: 0 0 12px 0; padding: 8px 12px;
-    border: 1px solid rgba(96,165,250,.30);
-    border-radius: 999px;
-    background: rgba(96,165,250,.08);
-    font-size: 13px; font-weight: 700;
+  .ttv-bar-left { display: flex; align-items: baseline; gap: 10px; min-width: 0; flex-wrap: wrap; }
+  .ttv-bar-title { font-size: 17px; font-weight: 700; letter-spacing: -.01em; }
+  .ttv-bar-sub { font-size: 12.5px; color: var(--ttv-ink-3); }
+  .ttv-bar-right { display: flex; align-items: center; gap: 10px; }
+  .ttv-bar-total {
+    font-size: 12.5px; color: var(--ttv-ink-3);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .ttv-bar-total strong { color: var(--ttv-ink-2); font-weight: 700; }
+
+  .ttv-pulse {
+    width: 8px; height: 8px; border-radius: 999px;
+    background: var(--ttv-live);
+    align-self: center;
+    box-shadow: 0 0 0 0 rgba(47, 143, 104, .45);
+    animation: ttv-pulse 2.6s ease-out infinite;
+  }
+  @keyframes ttv-pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(47, 143, 104, .40); }
+    70%  { box-shadow: 0 0 0 7px rgba(47, 143, 104, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(47, 143, 104, 0); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ttv-pulse { animation: none; }
   }
 
-  /* ====== grid dos cards (4 colunas, cresce para baixo) ====== */
-  .tt-grid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 12px;
+  .ttv-btn {
+    appearance: none;
+    border: 1px solid var(--ttv-line);
+    background: var(--ttv-surface);
+    color: var(--ttv-ink-2);
+    font-size: 13px; font-weight: 600; line-height: 1;
+    padding: 9px 14px; border-radius: 999px;
+    cursor: pointer;
+    box-shadow: var(--ttv-shadow);
+    transition: color .15s ease, border-color .15s ease, background .15s ease;
   }
-  @media (max-width: 1200px) {
-    .tt-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ttv-btn:hover { color: var(--ttv-ink); border-color: #d3dae6; }
+  .ttv-btn:focus-visible { outline: 2px solid rgba(63,111,208,.45); outline-offset: 2px; }
+  .ttv-btn[disabled] { opacity: .6; cursor: default; }
+  .ttv-btn-accent {
+    background: var(--ttv-accent-soft);
+    border-color: rgba(63,111,208,.28);
+    color: var(--ttv-accent);
   }
-  @media (max-width: 900px) {
-    .tt-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  }
-  @media (max-width: 560px) {
-    .tt-grid { grid-template-columns: 1fr; }
-  }
+  .ttv-btn-accent:hover { color: var(--ttv-accent); border-color: rgba(63,111,208,.5); }
 
-  /* ====== cartão ====== */
-  .tt-card {
-    border: 1px solid rgba(255,255,255,.10);
-    border-radius: 14px;
-    overflow: hidden;
-    background: rgba(0,0,0,.10);
-  }
-
-  .tt-cover {
-    width: 100%;
-    height: 120px;
-    background: rgba(255,255,255,.08);
-    position: relative;
-    overflow: hidden;
-  }
-  .tt-cover img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display:block;
-    filter: saturate(1.05);
-  }
-  .tt-cover-fallback {
-    width:100%; height:100%;
-    display:flex; align-items:center; justify-content:center;
-    font-weight:900; letter-spacing:.4px;
-    opacity:.8;
-  }
-
-  .tt-body { padding: 10px 12px 12px; display:flex; flex-direction:column; gap:10px; }
-
-  .tt-row { display:flex; align-items:center; justify-content:space-between; gap:10px; min-width:0; }
-  .tt-left { min-width:0; }
-
-  .tt-user {
-    display:flex; align-items:center; gap:10px; min-width:0;
-  }
-  .tt-user-pick { cursor: pointer; }
-  .tt-user.tt-user-pick { border-radius: 999px; }
-  .tt-user-pick:hover .tt-user-name { text-decoration: underline; }
-  .tt-user-dot, .tt-avatar-img {
-    width: 44px; height: 44px; border-radius: 999px;
-    background: rgba(255,255,255,.14);
-    display:flex; align-items:center; justify-content:center;
-    font-size: 18px; font-weight: 900;
-    flex: 0 0 auto;
-    object-fit: cover;
-  }
-  .tt-user-name {
-    font-weight: 800;
-    font-size: 15px;
-    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-    max-width: 100%;
-  }
-  .tt-handle { font-size: 12px; line-height: 1.1; }
-
-  .tt-times {
-    text-align:right;
-    font-variant-numeric: tabular-nums;
-    flex: 0 0 auto;
-  }
-  .tt-times .tt-mmss {
-    font-weight: 950;
-    font-size: 20px;
-  }
-  .tt-times .tt-start {
-    opacity:.75;
-    font-size: 12px;
-  }
-
-  .tt-meta {
-    display:flex; flex-direction:column; gap:4px;
-    min-width:0;
-  }
-  .tt-board {
-    font-size: 13px;
-    opacity: .85;
-    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-  }
-  .tt-title a, .tt-title span {
-    font-weight: 900;
-    font-size: 15px;
-    text-decoration: none;
-    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-    display:block;
-  }
-
-  .tt-badges {
-    display:flex; align-items:center; gap:8px; flex-wrap: wrap;
-    font-size: 13px;
-  }
-  .tt-badge {
-    display:inline-flex; align-items:center; gap:6px;
-    padding: 4px 8px;
-    border-radius: 999px;
-    border: 1px solid rgba(255,255,255,.10);
-    background: rgba(255,255,255,.06);
-    font-weight: 800;
-  }
-
-  /* ===== descrição colapsável ===== */
-  .tt-desc {
-    border-top: 1px dashed rgba(255,255,255,.10);
-    padding-top: 10px;
-  }
-  .tt-desc summary {
-    cursor:pointer;
-    user-select:none;
-    font-weight: 900;
-    list-style: none;
-    display:flex; align-items:center; justify-content:space-between;
-    gap: 10px;
-  }
-  .tt-desc summary::-webkit-details-marker { display:none; }
-
-  .tt-desc-text {
-    margin-top: 8px;
-    opacity:.9;
-    font-size: 13px;
-    line-height: 1.4;
-    display: -webkit-box;
-    -webkit-line-clamp: 6; /* preview */
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    word-break: break-word;
-  }
-  details[open] .tt-desc-text {
-    -webkit-line-clamp: unset;
-    overflow: visible;
-    display:block;
-  }
-
-  .tt-empty {
-    padding: 10px 12px;
-    border: 1px dashed rgba(255,255,255,.14);
+  /* ====== faixa de filtro ativo ====== */
+  .ttv-filter {
+    display: flex; align-items: center; gap: 8px;
+    margin: -4px 0 18px;
+    padding: 9px 14px;
     border-radius: 12px;
-    opacity: .8;
+    background: var(--ttv-accent-soft);
+    color: var(--ttv-accent);
+    font-size: 13px; font-weight: 600;
+  }
+  .ttv-filter strong { font-weight: 700; }
+
+  /* ====== seções ====== */
+  .ttv-section { margin-bottom: 26px; }
+  .ttv-section:last-child { margin-bottom: 0; }
+  .ttv-label {
+    font-size: 11px; font-weight: 700;
+    letter-spacing: .09em; text-transform: uppercase;
+    color: var(--ttv-ink-3);
+    margin-bottom: 10px;
   }
 
-  /* ===== Encerrados hoje ===== */
-  .tt-closed-section { margin-top: 28px; }
-  .tt-sep {
-    display:flex; align-items:center; gap:12px;
-    margin: 0 0 14px 0;
+  .ttv-empty {
+    padding: 22px 16px;
+    border-radius: 14px;
+    background: var(--ttv-surface-2);
+    border: 1px solid var(--ttv-line-soft);
+    color: var(--ttv-ink-3);
+    font-size: 13.5px;
+    text-align: center;
   }
-  .tt-sep::before, .tt-sep::after {
-    content:""; height:1px; flex:1;
-    background: linear-gradient(to right, transparent, rgba(255,255,255,.22), transparent);
-  }
-  .tt-sep-label {
-    font-weight: 900; font-size: 13px; letter-spacing:.3px;
-    color: #34d399; white-space: nowrap;
-  }
-  .tt-sep-label--blue { color:#60a5fa; }
 
-  /* ===== Totais hoje ===== */
-  .tt-totals-section { margin-top: 28px; }
-  .tt-totals-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 8px;
-  }
-  .tt-total-row {
-    display:flex; align-items:center; gap:10px;
-    border: 1px solid rgba(255,255,255,.10);
-    border-radius: 12px; padding: 8px 12px;
-    background: rgba(96,165,250,.06);
+  /* ====== pessoas (totais do dia) ====== */
+  .ttv-people { display: flex; flex-wrap: wrap; gap: 8px; }
+  .ttv-person {
+    display: inline-flex; align-items: center; gap: 9px;
+    padding: 7px 14px 7px 7px;
+    border-radius: 999px;
+    border: 1px solid var(--ttv-line);
+    background: var(--ttv-surface);
+    box-shadow: var(--ttv-shadow);
     cursor: pointer;
     transition: border-color .15s ease, background .15s ease, opacity .15s ease;
   }
-  .tt-total-row:hover { border-color: rgba(96,165,250,.45); background: rgba(96,165,250,.14); }
-  .tt-total-row.is-active {
-    border-color: #60a5fa;
-    background: rgba(96,165,250,.20);
-    box-shadow: 0 0 0 1px rgba(96,165,250,.35) inset;
+  .ttv-person:hover { border-color: #d3dae6; }
+  .ttv-person-name { font-size: 13.5px; font-weight: 600; color: var(--ttv-ink); white-space: nowrap; }
+  .ttv-person-min {
+    font-size: 13.5px; font-weight: 700; color: var(--ttv-ink-2);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
   }
-  .tt-totals-list.has-filter .tt-total-row:not(.is-active) { opacity:.45; }
-  .tt-total-row .tt-avatar-img, .tt-total-row .tt-user-dot {
-    width: 34px; height: 34px; font-size: 14px;
+  .ttv-person.is-active {
+    background: var(--ttv-accent-soft);
+    border-color: rgba(63,111,208,.4);
   }
-  .tt-total-name {
-    flex:1; min-width:0; font-weight:700; font-size:14px;
-    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  .ttv-person.is-active .ttv-person-name,
+  .ttv-person.is-active .ttv-person-min { color: var(--ttv-accent); }
+  .ttv-people.has-filter .ttv-person:not(.is-active) { opacity: .5; }
+  .ttv-person-live {
+    width: 6px; height: 6px; border-radius: 999px;
+    background: var(--ttv-live); flex: 0 0 auto;
+    margin-left: 1px;
   }
-  .tt-total-min {
-    font-weight: 950; font-size: 15px; white-space:nowrap;
-    font-variant-numeric: tabular-nums; color:#60a5fa;
+
+  /* ====== avatares ====== */
+  .ttv-av {
+    width: 30px; height: 30px; border-radius: 999px;
+    object-fit: cover; flex: 0 0 auto;
+    background: var(--ttv-surface-2);
+    border: 1px solid var(--ttv-line);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; color: var(--ttv-ink-3);
   }
-  .tt-closed-list {
+  .ttv-av--lg { width: 38px; height: 38px; font-size: 14px; }
+
+  /* ====== rodando agora ====== */
+  .ttv-running {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    gap: 12px;
   }
-  @media (max-width: 1000px){ .tt-closed-list { grid-template-columns: repeat(2, minmax(0,1fr)); } }
-  @media (max-width: 620px){ .tt-closed-list { grid-template-columns: 1fr; } }
-  .tt-closed-card {
-    display:flex; align-items:center; gap:10px;
-    border: 1px solid rgba(255,255,255,.10);
-    border-radius: 12px;
-    padding: 10px 12px;
-    background: rgba(52,211,153,.06);
+  .ttv-card {
+    border: 1px solid var(--ttv-line);
+    border-radius: 16px;
+    background: var(--ttv-surface);
+    box-shadow: var(--ttv-shadow);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .ttv-cover { height: 84px; background: var(--ttv-surface-2); }
+  .ttv-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  .ttv-card-body { padding: 13px 15px 15px; display: flex; flex-direction: column; gap: 11px; }
+
+  .ttv-who { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .ttv-who-main { min-width: 0; flex: 1; cursor: pointer; }
+  .ttv-who-name {
+    font-size: 13.5px; font-weight: 650; color: var(--ttv-ink);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .ttv-who-main:hover .ttv-who-name { color: var(--ttv-accent); }
+  .ttv-who-handle {
+    font-size: 12px; color: var(--ttv-ink-3);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .ttv-elapsed { text-align: right; flex: 0 0 auto; }
+  .ttv-elapsed-n {
+    font-size: 19px; font-weight: 700; color: var(--ttv-live);
+    font-variant-numeric: tabular-nums; line-height: 1.15;
+  }
+  .ttv-elapsed-since { font-size: 11.5px; color: var(--ttv-ink-3); font-variant-numeric: tabular-nums; }
+
+  .ttv-card-title {
+    font-size: 14.5px; font-weight: 650; line-height: 1.35;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .ttv-card-title a { color: inherit; text-decoration: none; }
+  .ttv-card-title a:hover { color: var(--ttv-accent); }
+
+  .ttv-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ttv-chip {
+    font-size: 11.5px; font-weight: 600; color: var(--ttv-ink-2);
+    background: var(--ttv-surface-2);
+    border: 1px solid var(--ttv-line-soft);
+    border-radius: 999px;
+    padding: 3px 9px;
+    max-width: 100%;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .ttv-dates { font-size: 11.5px; color: var(--ttv-ink-3); font-variant-numeric: tabular-nums; }
+  .ttv-desc {
+    font-size: 12.5px; color: var(--ttv-ink-2); line-height: 1.5;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden; word-break: break-word;
+  }
+
+  /* ====== encerrados: linha do tempo ====== */
+  .ttv-timeline {
+    border: 1px solid var(--ttv-line);
+    border-radius: 16px;
+    background: var(--ttv-surface);
+    box-shadow: var(--ttv-shadow);
+    overflow: hidden;
+  }
+  .ttv-tl-row {
+    display: grid;
+    grid-template-columns: 128px 30px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 16px;
+    border-top: 1px solid var(--ttv-line-soft);
     cursor: pointer;
-    transition: border-color .15s ease, background .15s ease;
+    transition: background .12s ease;
   }
-  .tt-closed-card:hover { border-color: rgba(52,211,153,.40); background: rgba(52,211,153,.12); }
-  .tt-closed-card .tt-avatar-img, .tt-closed-card .tt-user-dot {
-    width: 36px; height: 36px; font-size: 15px;
+  .ttv-tl-row:first-child { border-top: 0; }
+  .ttv-tl-row:hover { background: var(--ttv-surface-2); }
+
+  .ttv-tl-when {
+    font-size: 12.5px; font-weight: 600; color: var(--ttv-ink-2);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
   }
-  .tt-closed-main { min-width:0; flex:1; }
-  .tt-closed-title {
-    font-weight: 800; font-size: 14px;
-    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  .ttv-tl-when .ttv-arrow { color: var(--ttv-ink-3); margin: 0 4px; }
+  .ttv-tl-when.is-approx, .ttv-tl-when.is-manual { color: var(--ttv-ink-3); font-weight: 500; }
+
+  .ttv-tl-main { min-width: 0; }
+  .ttv-tl-title {
+    font-size: 13.5px; font-weight: 600; color: var(--ttv-ink);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
-  .tt-closed-title a { text-decoration:none; color: inherit; }
-  .tt-closed-sub {
-    font-size: 12px; opacity:.8;
-    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  .ttv-tl-title a { color: inherit; text-decoration: none; }
+  .ttv-tl-title a:hover { color: var(--ttv-accent); }
+  .ttv-tl-sub {
+    font-size: 12px; color: var(--ttv-ink-3);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
-  .tt-closed-when {
-    font-size: 12px; font-weight: 800; margin-top: 2px;
-    font-variant-numeric: tabular-nums;
-    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-    opacity:.95;
+  .ttv-tl-dur {
+    font-size: 13px; font-weight: 700; color: var(--ttv-ink-2);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
   }
-  .tt-closed-when .tt-arrow { opacity:.55; margin: 0 4px; font-weight: 600; }
-  /* início deduzido (tracks antigos, antes do início passar a ser guardado) */
-  .tt-closed-when.tt-when-approx { opacity:.7; font-weight: 700; }
-  .tt-closed-when.tt-when-manual { opacity:.7; font-weight: 700; }
-  .tt-closed-time {
-    font-weight: 950; font-size: 15px; white-space:nowrap;
-    font-variant-numeric: tabular-nums; color:#34d399;
+
+  /* ====== celular (Z Flip: ~450px de largura útil) ====== */
+  @media (max-width: 767px) {
+    .ttv-running { grid-template-columns: 1fr; }
+    .ttv-bar { margin-bottom: 14px; }
+    .ttv-bar-sub { width: 100%; }
+    .ttv-tl-row {
+      grid-template-columns: 30px minmax(0, 1fr) auto;
+      grid-template-areas:
+        "av main dur"
+        ".  when when";
+      row-gap: 3px;
+      padding: 12px 14px;
+    }
+    .ttv-tl-av { grid-area: av; }
+    .ttv-tl-main { grid-area: main; }
+    .ttv-tl-dur { grid-area: dur; }
+    .ttv-tl-when { grid-area: when; font-size: 12px; }
   }
 </style>
 
 <script>
 (function () {
-  // filtro por pessoa: null = todos
-  let filterUserId = null;
+  // ===== estado =====
+  let filterUserId = null;      // null = todo mundo
   let filterUserName = "";
-
-  // último payload de cada endpoint (pra re-renderizar sem refetch ao filtrar)
   let lastLive = null, lastTotals = null, lastClosed = null;
 
-  function pad2(n){ return String(n).padStart(2,"0"); }
+  // ===== helpers =====
+  function pad2(n) { return String(n).padStart(2, "0"); }
 
-  function tsOf(iso) {
-    if (!iso) return 0;
-    const t = Date.parse(iso);
-    return Number.isNaN(t) ? 0 : t;
-  }
-
-  function matchesFilter(it) {
-    if (filterUserId === null) return true;
-    return String(it.user_id) === String(filterUserId);
-  }
-
-  function formatMMSS(seconds) {
-    const s = Math.max(0, Number(seconds || 0));
-    const mm = Math.floor(s / 60);
-    const ss = Math.floor(s % 60);
-    return `${mm}:${pad2(ss)}`;
-  }
-
-  function formatStart(tsIso) {
-    if (!tsIso) return "";
-    try {
-      const d = new Date(tsIso);
-      return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
-    } catch (_) {
-      return "";
-    }
-  }
-
-    function esc(s) {
-    return String(s || "").replace(/[&<>"']/g, (c) => ({
-      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+  function esc(s) {
+    return String(s === 0 ? 0 : (s || "")).replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
     }[c]));
   }
 
@@ -366,136 +352,144 @@
     return (div.textContent || div.innerText || "").trim();
   }
 
-  async function fetchLive() {
-    const res = await fetch("{% url 'tracktime:live_json' %}", {
-      method: "GET",
-      credentials: "same-origin",
-      headers: { "Accept": "application/json", "X-Requested-With": "XMLHttpRequest" },
-      cache: "no-store",
-    });
-    if (!res.ok) return null;
-    return await res.json();
+  function tsOf(iso) {
+    if (!iso) return 0;
+    const t = Date.parse(iso);
+    return Number.isNaN(t) ? 0 : t;
   }
 
-  function cardHTML(it) {
-  const mmss = formatMMSS(it.elapsed_seconds);
-  const startHHMM = formatStart(it.started_at || null);
-
-  const user = esc(it.user);
-  const handle = esc(it.user_handle || "");
-  const avatar = esc(it.user_avatar_url || "");
-
-  const boardName = esc(it.board_name || "");
-  const title = esc(it.card_title || "(sem título)");
-
-  const url = it.card_url ? esc(it.card_url) : "";
-  const titleNode = url
-    ? `<a href="${url}" target="_blank" rel="noopener">${title}</a>`
-    : `<span>${title}</span>`;
-
-  const cover = it.card_cover ? esc(it.card_cover) : "";
-  const coverNode = cover
-    ? `<img src="${cover}" alt="">`
-    : `<div class="tt-cover-fallback">CARD</div>`;
-
-  const hasChecklist = !!it.has_checklist;
-  const hasAttachments = !!it.has_attachments;
-
-  const descText = stripHtml(it.card_description);
-  const descPreview = descText ? esc(descText.slice(0, 140)) : "(sem descrição)";
-
-  const checklistBadge = `<span class="tt-badge">☑ Checklist: ${hasChecklist ? "✓" : "–"}</span>`;
-  const attachBadge = `<span class="tt-badge">📎 Anexo: ${hasAttachments ? "✓" : "–"}</span>`;
-
-  function fmtDate(iso) {
+  function hhmm(iso) {
     if (!iso) return "";
-    try {
-      const d = new Date(iso);
-      return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${String(d.getFullYear()).slice(-2)}`;
-    } catch (_) {
-      return "";
-    }
+    const t = Date.parse(iso);
+    if (Number.isNaN(t)) return "";
+    const d = new Date(t);
+    return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
   }
 
-  const dStart = fmtDate(it.start_date);
-  const dWarn = fmtDate(it.warn_date);
-  const dDue = fmtDate(it.due_date);
+  // Data pura (YYYY-MM-DD) o navegador lê como UTC e, no fuso do Brasil,
+  // volta um dia. Por isso monta na mão quando não vier hora junto.
+  function ddmm(iso) {
+    if (!iso) return "";
+    const only = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso));
+    if (only) return `${only[3]}/${only[2]}`;
+    const t = Date.parse(iso);
+    if (Number.isNaN(t)) return "";
+    const d = new Date(t);
+    return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}`;
+  }
 
-  const datesBadges =
-    (dStart || dWarn || dDue)
-      ? `
-        <div class="tt-badges">
-          ${dStart ? `<span class="tt-badge">📅 Início: ${esc(dStart)}</span>` : ``}
-          ${dWarn  ? `<span class="tt-badge">⚠ Aviso: ${esc(dWarn)}</span>` : ``}
-          ${dDue   ? `<span class="tt-badge">⛔ Venc.: ${esc(dDue)}</span>` : ``}
-        </div>
-      `
+  // Sem segundos de propósito: número que pisca o dia inteiro cansa.
+  function fmtMin(minutes) {
+    const m = Math.max(0, Math.floor(Number(minutes || 0)));
+    const h = Math.floor(m / 60);
+    return h > 0 ? `${h}h${pad2(m % 60)}` : `${m}min`;
+  }
+
+  function elapsedMin(startedIso) {
+    const t = tsOf(startedIso);
+    if (!t) return 0;
+    return Math.max(0, Math.floor((Date.now() - t) / 60000));
+  }
+
+  function initialOf(name) {
+    const n = String(name || "").trim();
+    return n ? n[0].toUpperCase() : "?";
+  }
+
+  function avatarHTML(it, big) {
+    const cls = "ttv-av" + (big ? " ttv-av--lg" : "");
+    const url = it.user_avatar_url || "";
+    return url
+      ? `<img class="${cls}" src="${esc(url)}" alt="" loading="lazy">`
+      : `<div class="${cls}">${esc(initialOf(it.user))}</div>`;
+  }
+
+  function matchesFilter(it) {
+    if (filterUserId === null) return true;
+    return String(it.user_id) === String(filterUserId);
+  }
+
+  function pickAttrs(it) {
+    return `data-user-id="${esc(it.user_id)}" data-user-name="${esc(it.user)}"`;
+  }
+
+  // ===== fetch =====
+  async function getJSON(url) {
+    try {
+      const res = await fetch(url, {
+        method: "GET",
+        credentials: "same-origin",
+        headers: { "Accept": "application/json", "X-Requested-With": "XMLHttpRequest" },
+        cache: "no-store",
+      });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (_) { return null; }
+  }
+
+  const URL_LIVE   = "{% url 'tracktime:live_json' %}";
+  const URL_CLOSED = "{% url 'tracktime:closed_today_json' %}";
+  const URL_TOTALS = "{% url 'tracktime:today_totals_json' %}";
+
+  // ===== rodando agora =====
+  function runningCardHTML(it) {
+    const name = esc(it.user);
+    const mins = elapsedMin(it.started_at);
+    const since = hhmm(it.started_at);
+
+    const cover = it.card_cover
+      ? `<div class="ttv-cover"><img src="${esc(it.card_cover)}" alt="" loading="lazy"></div>`
       : ``;
 
-  const descBlock = `
-    <div class="tt-desc">
-      <div class="tt-desc-text">${descPreview}</div>
-    </div>
-  `;
+    const title = esc(it.card_title || "(sem título)");
+    const titleNode = it.card_url
+      ? `<a href="${esc(it.card_url)}" target="_blank" rel="noopener">${title}</a>`
+      : title;
 
-  const initial = user ? esc(user[0].toUpperCase()) : "U";
+    const chips = [];
+    if (it.board_name) chips.push(`<span class="ttv-chip">${esc(it.board_name)}</span>`);
+    if (it.has_checklist) chips.push(`<span class="ttv-chip">checklist</span>`);
+    if (it.has_attachments) chips.push(`<span class="ttv-chip">anexo</span>`);
 
-  const avatarNode = avatar
-    ? `<img class="tt-avatar-img" src="${avatar}" alt="" />`
-    : `<div class="tt-user-dot">${initial}</div>`;
+    const dates = [
+      it.start_date ? "início " + ddmm(it.start_date) : "",
+      it.warn_date ? "aviso " + ddmm(it.warn_date) : "",
+      it.due_date ? "vence " + ddmm(it.due_date) : "",
+    ].filter(Boolean).join(" · ");
 
-  const handleNode = handle
-    ? `<div class="tt-muted tt-handle" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">@${handle}</div>`
-    : ``;
+    const desc = stripHtml(it.card_description);
 
-  return `
-    <div class="tt-card">
-      <div class="tt-cover">${coverNode}</div>
-
-      <div class="tt-body">
-        <div class="tt-row">
-          <div class="tt-user tt-left tt-user-pick" data-user-id="${esc(it.user_id)}" data-user-name="${user}" title="Ver só os tracks de ${user}">
-            ${avatarNode}
-            <div style="min-width:0;">
-              <div class="tt-user-name" title="${user}">${user}</div>
-              ${handleNode}
+    return `
+      <article class="ttv-card">
+        ${cover}
+        <div class="ttv-card-body">
+          <div class="ttv-who">
+            ${avatarHTML(it, true)}
+            <div class="ttv-who-main ttv-pick" ${pickAttrs(it)} title="Ver só os tracks de ${name}">
+              <div class="ttv-who-name">${name}</div>
+              ${it.user_handle ? `<div class="ttv-who-handle">@${esc(it.user_handle)}</div>` : ``}
+            </div>
+            <div class="ttv-elapsed">
+              <div class="ttv-elapsed-n" data-started="${esc(it.started_at || "")}">${fmtMin(mins)}</div>
+              ${since ? `<div class="ttv-elapsed-since">desde ${since}</div>` : ``}
             </div>
           </div>
 
-          <div class="tt-times">
-            <div class="tt-mmss">${mmss}</div>
-            ${startHHMM ? `<div class="tt-start">Início: ${startHHMM}</div>` : `<div class="tt-start">&nbsp;</div>`}
-          </div>
+          <div class="ttv-card-title">${titleNode}</div>
+          ${chips.length ? `<div class="ttv-chips">${chips.join("")}</div>` : ``}
+          ${dates ? `<div class="ttv-dates">${esc(dates)}</div>` : ``}
+          ${desc ? `<div class="ttv-desc">${esc(desc.slice(0, 240))}</div>` : ``}
         </div>
+      </article>
+    `;
+  }
 
-        <div class="tt-meta">
-          ${boardName ? `<div class="tt-board">📋 ${boardName}</div>` : ``}
-          <div class="tt-title">${titleNode}</div>
-          ${url ? `<div class="tt-muted" style="font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">🔗 ${url}</div>` : ``}
-        </div>
-
-        <div class="tt-badges">
-          ${checklistBadge}
-          ${attachBadge}
-        </div>
-
-        ${datesBadges}
-        ${descBlock}
-      </div>
-    </div>
-  `;
-}
-
-
-  function render(data) {
+  function renderRunning(data) {
     const root = document.getElementById("tt-live-list");
     if (!root) return;
 
-    const boards = (data && data.boards) || [];
     let items = [];
-
-    // Normaliza: junta tudo em uma grid única (4 colunas), mas preserva board_name por item
-    for (const b of boards) {
+    for (const b of ((data && data.boards) || [])) {
       const bn = b.board_name || "";
       for (const it of (b.items || [])) {
         it.board_name = bn;
@@ -504,221 +498,204 @@
     }
 
     if (filterUserId !== null) {
-      // só dessa pessoa, do mais cedo para o mais tarde
-      items = items.filter(matchesFilter)
-                   .sort((a, b) => tsOf(a.started_at) - tsOf(b.started_at));
+      items = items.filter(matchesFilter);
     }
+    // do mais cedo para o mais tarde: a ordem do dia, não um ranking
+    items.sort((a, b) => tsOf(a.started_at) - tsOf(b.started_at));
 
     if (!items.length) {
-      root.innerHTML = filterUserId !== null
-        ? `<div class="tt-empty">Nenhum timer rodando agora para ${esc(filterUserName)}.</div>`
-        : `<div class="tt-empty">Nenhum timer rodando agora.</div>`;
+      root.innerHTML = `<div class="ttv-empty">${
+        filterUserId !== null
+          ? `Nenhum track rodando agora para ${esc(filterUserName)}.`
+          : `Ninguém com o cronômetro ligado agora.`
+      }</div>`;
       return;
     }
 
-    root.innerHTML = `<div class="tt-grid">${items.map(cardHTML).join("")}</div>`;
+    root.innerHTML = items.map(runningCardHTML).join("");
   }
 
-  function fmtDuration(minutes) {
-    const m = Math.max(0, Number(minutes || 0));
-    const h = Math.floor(m / 60);
-    const mm = m % 60;
-    return h > 0 ? `${h}h${pad2(mm)}` : `${mm}min`;
+  // Relógio local: mantém o "há quanto tempo" fresco sem bater no servidor.
+  function tickRunning() {
+    document.querySelectorAll("#tt-live-list .ttv-elapsed-n[data-started]").forEach((el) => {
+      const started = el.getAttribute("data-started");
+      if (!started) return;
+      const txt = fmtMin(elapsedMin(started));
+      if (el.textContent !== txt) el.textContent = txt;
+    });
   }
 
-  function closedCardHTML(it) {
-    const user = esc(it.user);
-    const initial = user ? esc(user[0].toUpperCase()) : "U";
-    const avatar = esc(it.user_avatar_url || "");
-    const avatarNode = avatar
-      ? `<img class="tt-avatar-img" src="${avatar}" alt="" />`
-      : `<div class="tt-user-dot">${initial}</div>`;
-    const title = esc(it.card_title || "(sem título)");
-    const url = it.card_url ? esc(it.card_url) : "";
-    const titleNode = url ? `<a href="${url}" target="_blank" rel="noopener">${title}</a>` : title;
-    const board = esc(it.board_name || "");
-    // item 26: hover mostra mais dados (título inteiro, quem, board, tempo, horários)
-    const s = formatStart(it.started_at), e = formatStart(it.ended_at);
-    const approx = !!it.started_approx;   // track antigo: início deduzido de fim − duração
-    const manual = !!it.is_manual;        // minutos lançados na mão, sem cronômetro
-    const whenTip = manual
-      ? "Lançado na mão às " + e
-      : (s && e)
-        ? ("Início " + (approx ? "~" : "") + s + " → fim " + e + (approx ? " (início estimado)" : ""))
-        : "";
-    const tip = esc([
-      (it.card_title || "(sem título)"),
-      user + (it.board_name ? " · " + it.board_name : ""),
-      "Trabalhado: " + fmtDuration(it.minutes),
-      whenTip
-    ].filter(Boolean).join("\n"));
-    let whenNode = ``;
-    if (manual) {
-      whenNode = `<div class="tt-closed-when tt-when-manual" title="Minutos lançados na mão, sem cronômetro">✍ lançado às ${esc(e)}</div>`;
-    } else if (s || e) {
-      const startTxt = s ? `${approx ? "~" : ""}${esc(s)}` : "–";
-      whenNode = `<div class="tt-closed-when${approx ? " tt-when-approx" : ""}">⏱ ${startTxt}<span class="tt-arrow">→</span>${esc(e || "–")}</div>`;
+  // ===== pessoas (totais) =====
+  function runningUserIds() {
+    const ids = new Set();
+    for (const b of ((lastLive && lastLive.boards) || [])) {
+      for (const it of (b.items || [])) ids.add(String(it.user_id));
     }
+    return ids;
+  }
+
+  function personHTML(it, liveIds) {
+    const active = (filterUserId !== null && String(it.user_id) === String(filterUserId));
+    const isLive = liveIds.has(String(it.user_id));
     return `
-      <div class="tt-closed-card tt-user-pick" title="${tip}"
-           data-user-id="${esc(it.user_id)}" data-user-name="${user}">
-        ${avatarNode}
-        <div class="tt-closed-main">
-          <div class="tt-closed-title">${titleNode}</div>
-          <div class="tt-closed-sub">${user}${board ? " · 📋 " + board : ""}</div>
-          ${whenNode}
-        </div>
-        <div class="tt-closed-time">${fmtDuration(it.minutes)}</div>
-      </div>
+      <button type="button" class="ttv-person ttv-pick${active ? " is-active" : ""}" ${pickAttrs(it)}
+              title="${esc(it.user)} — ${fmtMin(it.minutes)} hoje${isLive ? ", com o cronômetro ligado agora" : ""}. Clique para ver só os tracks desta pessoa.">
+        ${avatarHTML(it, false)}
+        <span class="ttv-person-name">${esc(it.user)}</span>
+        ${isLive ? `<span class="ttv-person-live" aria-hidden="true"></span>` : ``}
+        <span class="ttv-person-min">${fmtMin(it.minutes)}</span>
+      </button>
     `;
   }
 
-  async function fetchClosed() {
-    try {
-      const res = await fetch("{% url 'tracktime:closed_today_json' %}", {
-        method: "GET", credentials: "same-origin",
-        headers: { "Accept": "application/json", "X-Requested-With": "XMLHttpRequest" },
-        cache: "no-store",
-      });
-      if (!res.ok) return null;
-      return await res.json();
-    } catch (_) { return null; }
-  }
-
-  async function fetchTotals() {
-    try {
-      const res = await fetch("{% url 'tracktime:today_totals_json' %}", {
-        method: "GET", credentials: "same-origin",
-        headers: { "Accept": "application/json", "X-Requested-With": "XMLHttpRequest" },
-        cache: "no-store",
-      });
-      if (!res.ok) return null;
-      return await res.json();
-    } catch (_) { return null; }
-  }
-
-  function totalRowHTML(it) {
-    const user = esc(it.user);
-    const initial = user ? esc(user[0].toUpperCase()) : "U";
-    const avatar = esc(it.user_avatar_url || "");
-    const avatarNode = avatar
-      ? `<img class="tt-avatar-img" src="${avatar}" alt="" />`
-      : `<div class="tt-user-dot">${initial}</div>`;
-    const tip = esc(user + "\nTotal trabalhado hoje: " + fmtDuration(it.minutes) + "\nClique para ver só os tracks desta pessoa");
-    const active = (filterUserId !== null && String(it.user_id) === String(filterUserId)) ? " is-active" : "";
-    return `
-      <div class="tt-total-row tt-user-pick${active}" title="${tip}"
-           data-user-id="${esc(it.user_id)}" data-user-name="${user}">
-        ${avatarNode}
-        <div class="tt-total-name">${user}</div>
-        <div class="tt-total-min">${fmtDuration(it.minutes)}</div>
-      </div>
-    `;
-  }
-
-  function renderTotals(data) {
+  function renderPeople(data) {
     const section = document.getElementById("tt-totals-section");
     const list = document.getElementById("tt-totals-list");
+    const total = document.getElementById("ttv-team-total");
     if (!section || !list) return;
+
     const items = (data && data.items) || [];
+
+    if (total) {
+      const sum = items.reduce((acc, it) => acc + Math.max(0, Number(it.minutes || 0)), 0);
+      total.hidden = !sum;
+      total.innerHTML = sum ? `equipe hoje <strong>${fmtMin(sum)}</strong>` : "";
+    }
+
     if (!items.length) { section.hidden = true; return; }
     section.hidden = false;
     list.classList.toggle("has-filter", filterUserId !== null);
-    list.innerHTML = items.map(totalRowHTML).join("");
+    const liveIds = runningUserIds();
+    list.innerHTML = items.map((it) => personHTML(it, liveIds)).join("");
+  }
+
+  // ===== encerrados (linha do tempo) =====
+  function closedRowHTML(it) {
+    const name = esc(it.user);
+    const s = hhmm(it.started_at), e = hhmm(it.ended_at);
+    const approx = !!it.started_approx;   // track antigo: início deduzido de fim − duração
+    const manual = !!it.is_manual;        // minutos lançados na mão, sem cronômetro
+
+    let whenCls = "ttv-tl-when", whenTxt = "", whenTip = "";
+    if (manual) {
+      whenCls += " is-manual";
+      whenTxt = `lançado ${esc(e)}`;
+      whenTip = "Minutos lançados na mão, sem cronômetro";
+    } else if (s || e) {
+      if (approx) whenCls += " is-approx";
+      whenTxt = `${approx ? "~" : ""}${esc(s || "–")}<span class="ttv-arrow">→</span>${esc(e || "–")}`;
+      whenTip = approx
+        ? "Início estimado (fim menos o tempo trabalhado): esse track é anterior à correção"
+        : `Começou ${s} e terminou ${e}`;
+    }
+
+    const title = esc(it.card_title || "(sem título)");
+    const titleNode = it.card_url
+      ? `<a href="${esc(it.card_url)}" target="_blank" rel="noopener">${title}</a>`
+      : title;
+
+    return `
+      <div class="ttv-tl-row ttv-pick" ${pickAttrs(it)}>
+        <div class="${whenCls}" title="${esc(whenTip)}">${whenTxt}</div>
+        <div class="ttv-tl-av">${avatarHTML(it, false)}</div>
+        <div class="ttv-tl-main">
+          <div class="ttv-tl-title" title="${esc(it.card_title || "")}">${titleNode}</div>
+          <div class="ttv-tl-sub">${name}${it.board_name ? " · " + esc(it.board_name) : ""}</div>
+        </div>
+        <div class="ttv-tl-dur">${fmtMin(it.minutes)}</div>
+      </div>
+    `;
   }
 
   function renderClosed(data) {
     const section = document.getElementById("tt-closed-section");
     const list = document.getElementById("tt-closed-list");
     if (!section || !list) return;
+
     let items = (data && data.items) || [];
 
     if (filterUserId !== null) {
-      // só dessa pessoa, do mais cedo para o mais tarde
-      items = items.filter(matchesFilter)
-                   .sort((a, b) => tsOf(a.started_at) - tsOf(b.started_at));
+      items = items.filter(matchesFilter);
       if (!items.length) {
         section.hidden = false;
-        list.innerHTML = `<div class="tt-empty">Nenhum track encerrado hoje para ${esc(filterUserName)}.</div>`;
+        list.innerHTML = `<div class="ttv-tl-row"><div class="ttv-tl-main ttv-tl-sub">Nenhum track encerrado hoje para ${esc(filterUserName)}.</div></div>`;
         return;
       }
     }
 
     if (!items.length) { section.hidden = true; return; }
+
+    // sempre do mais cedo para o mais tarde — vira a linha do tempo do dia
+    items = items.slice().sort((a, b) => tsOf(a.started_at) - tsOf(b.started_at));
+
     section.hidden = false;
-    list.innerHTML = items.map(closedCardHTML).join("");
+    list.innerHTML = items.map(closedRowHTML).join("");
   }
 
+  // ===== filtro =====
   function renderFilterUI() {
     const chip = document.getElementById("tt-filter-chip");
     const clearBtn = document.getElementById("tt-live-clear-filter");
     const on = filterUserId !== null;
     if (chip) {
       chip.hidden = !on;
-      chip.innerHTML = on
-        ? `👤 Mostrando só <strong>${esc(filterUserName)}</strong> · do mais cedo para o mais tarde`
-        : "";
+      chip.innerHTML = on ? `Mostrando só <strong>${esc(filterUserName)}</strong> — na ordem do dia` : "";
     }
     if (clearBtn) clearBtn.hidden = !on;
   }
 
   function renderAll() {
     renderFilterUI();
-    if (lastLive) render(lastLive);
-    renderTotals(lastTotals);
+    renderRunning(lastLive);
+    renderPeople(lastTotals);
     renderClosed(lastClosed);
   }
 
   function setFilter(userId, userName) {
     const uid = (userId === null || userId === undefined || userId === "") ? null : String(userId);
-    // clicar de novo na mesma pessoa volta pra todos
+    // clicar de novo na mesma pessoa volta para todos
     filterUserId = (uid !== null && uid === filterUserId) ? null : uid;
     filterUserName = filterUserId === null ? "" : (userName || "");
     renderAll();
   }
 
+  // ===== ciclo =====
   async function refresh() {
-    try {
-      const data = await fetchLive();
-      if (data) { lastLive = data; render(data); }
-    } catch (_) {
-      // silencioso (MVP)
-    }
-    lastTotals = await fetchTotals();
-    renderTotals(lastTotals);
-    lastClosed = await fetchClosed();
-    renderClosed(lastClosed);
-    renderFilterUI();
+    const [live, totals, closed] = await Promise.all([
+      getJSON(URL_LIVE), getJSON(URL_TOTALS), getJSON(URL_CLOSED),
+    ]);
+    if (live) lastLive = live;
+    if (totals) lastTotals = totals;
+    if (closed) lastClosed = closed;
+    renderAll();
   }
 
-  // API pública
   window.TTLive = window.TTLive || {};
   window.TTLive.refresh = refresh;
 
-  // bind botão com feedback (item 25: mostrar que clicou)
-  const btn = document.getElementById("tt-live-refresh-btn");
-  if (btn) btn.addEventListener("click", async function(){
-    if (btn.dataset.busy === "1") return;
-    btn.dataset.busy = "1";
-    const orig = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = "Atualizando…";
+  const refreshBtn = document.getElementById("tt-live-refresh-btn");
+  if (refreshBtn) refreshBtn.addEventListener("click", async function () {
+    if (refreshBtn.dataset.busy === "1") return;
+    refreshBtn.dataset.busy = "1";
+    const orig = refreshBtn.textContent;
+    refreshBtn.disabled = true;
+    refreshBtn.textContent = "Atualizando…";
     try { await refresh(); }
     finally {
-      btn.disabled = false;
-      btn.textContent = orig;
-      btn.dataset.busy = "0";
+      refreshBtn.disabled = false;
+      refreshBtn.textContent = orig;
+      refreshBtn.dataset.busy = "0";
     }
   });
 
   const clearBtn = document.getElementById("tt-live-clear-filter");
-  if (clearBtn) clearBtn.addEventListener("click", function(){ setFilter(null, ""); });
+  if (clearBtn) clearBtn.addEventListener("click", function () { setFilter(null, ""); });
 
-  // clique em pessoa (total, card encerrado ou bloco de usuário do card ao vivo) → filtra
+  // clicar em qualquer pessoa (pílula, linha encerrada ou nome do card) filtra
   const tabRoot = document.getElementById("tracktime-live-tab");
-  if (tabRoot) tabRoot.addEventListener("click", function(ev){
-    if (ev.target.closest("a")) return;               // link do card abre normal
-    const pick = ev.target.closest(".tt-user-pick");
+  if (tabRoot) tabRoot.addEventListener("click", function (ev) {
+    if (ev.target.closest("a")) return;            // link do card abre normal
+    const pick = ev.target.closest(".ttv-pick");
     if (!pick || !tabRoot.contains(pick)) return;
     const uid = pick.dataset.userId;
     if (!uid || uid === "null" || uid === "undefined") return;
@@ -726,18 +703,15 @@
     setFilter(uid, pick.dataset.userName || "");
   });
 
-  // start
   refresh();
-  const timer = setInterval(() => {
-      if (document.hidden) return;
-      refresh();
-    }, 120000);
+  const timerFetch = setInterval(() => { if (!document.hidden) refresh(); }, 120000);
+  const timerTick = setInterval(() => { if (!document.hidden) tickRunning(); }, 30000);
 
-
-  // evita timer zumbi quando modal some
+  // evita timer zumbi quando a aba sai do DOM (htmx troca o conteúdo)
   const obs = new MutationObserver(() => {
     if (!document.getElementById("tracktime-live-tab")) {
-      clearInterval(timer);
+      clearInterval(timerFetch);
+      clearInterval(timerTick);
       obs.disconnect();
     }
   });

@@ -5,7 +5,101 @@
 {% block title %}Track-time{% endblock %}
 
 {% block content %}
-<div style="max-width:1280px; margin:0 auto; padding:16px;">
+<style>
+  /* ===================================================================
+     Casca da PÁGINA do Track-time (não vale para o modal).
+     Escopo: #cm-root[data-tt-page-mode="1"] — o atributo só existe aqui.
+
+     Esta é a tela que fica aberta o dia inteiro. Tudo aqui é escolhido
+     para cansar pouco: fundo levemente frio em vez de branco puro, texto
+     em cinza-azulado no lugar de preto, bordas quase invisíveis e uma
+     única cor de destaque. Contraste alto só onde precisa ler número.
+     =================================================================== */
+  .tt-page {
+    --ttp-canvas: #f4f6fa;
+    --ttp-surface: #ffffff;
+    --ttp-line: #e6eaf1;
+    --ttp-ink: #26313f;
+    --ttp-ink-2: #64748b;
+    --ttp-accent: #3f6fd0;
+    --ttp-accent-soft: #eaf0fc;
+
+    max-width: 1360px;
+    margin: 0 auto;
+    padding: 18px 16px 48px;
+  }
+
+  #cm-root[data-tt-page-mode="1"] {
+    background: var(--ttp-canvas);
+    border: 1px solid var(--ttp-line);
+    border-radius: 20px;
+    overflow: hidden;
+    color: var(--ttp-ink);
+    box-shadow: 0 1px 2px rgba(16, 24, 40, .04);
+  }
+
+  /* cabeçalho: discreto, só para situar */
+  #cm-root[data-tt-page-mode="1"] .cm-modal-header {
+    padding: 18px 22px 4px;
+  }
+  #cm-root[data-tt-page-mode="1"] .cm-modal-title {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -.01em;
+    color: var(--ttp-ink);
+  }
+
+  /* abas: pílulas de baixo contraste; a ativa é a única com cor */
+  #cm-root[data-tt-page-mode="1"] .cm-modal-tabs {
+    padding: 14px 22px 16px !important;
+    gap: 6px !important;
+    border-bottom: 1px solid var(--ttp-line);
+  }
+  #cm-root[data-tt-page-mode="1"] .tt-tab {
+    appearance: none;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--ttp-ink-2);
+    font-size: 13.5px;
+    font-weight: 600;
+    line-height: 1;
+    padding: 9px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: none;
+    transition: background .15s ease, color .15s ease, border-color .15s ease;
+  }
+  #cm-root[data-tt-page-mode="1"] .tt-tab:hover {
+    background: var(--ttp-surface);
+    border-color: var(--ttp-line);
+    color: var(--ttp-ink);
+    box-shadow: none;
+  }
+  #cm-root[data-tt-page-mode="1"] .tt-tab.tt-btn-primary {
+    background: var(--ttp-accent-soft);
+    border-color: rgba(63, 111, 208, .28);
+    color: var(--ttp-accent);
+    box-shadow: none;
+  }
+  #cm-root[data-tt-page-mode="1"] .tt-tab:focus-visible {
+    outline: 2px solid rgba(63, 111, 208, .45);
+    outline-offset: 2px;
+  }
+
+  #cm-root[data-tt-page-mode="1"] .cm-modal-body {
+    padding: 20px 22px 26px !important;
+  }
+
+  @media (max-width: 767px) {
+    .tt-page { padding: 10px 8px 32px; }
+    #cm-root[data-tt-page-mode="1"] { border-radius: 16px; }
+    #cm-root[data-tt-page-mode="1"] .cm-modal-header { padding: 14px 14px 2px; }
+    #cm-root[data-tt-page-mode="1"] .cm-modal-tabs { padding: 10px 12px 12px !important; }
+    #cm-root[data-tt-page-mode="1"] .cm-modal-body { padding: 14px 12px 20px !important; }
+  }
+</style>
+
+<div class="tt-page">
   {% include "tracktime/modal/tracktime_modal.html" %}
 </div>
 {% endblock %}
