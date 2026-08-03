@@ -40,6 +40,18 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-08 ---
+    "1bc4aba": (
+        "🕒",
+        "Track-time ao vivo: horários no card encerrado e visão por pessoa",
+        "Na aba \"Ao vivo\", os tracks encerrados hoje só mostravam quanto tempo "
+        "durou — para saber a que horas a pessoa começou e parou, você tinha que "
+        "parar o mouse em cima e esperar a tarjinha aparecer. Agora o horário de "
+        "início e de fim fica escrito no próprio card. E clicar em alguém (no "
+        "total do dia, num card encerrado ou na foto de quem está com o timer "
+        "rodando) deixa na tela só os tracks daquela pessoa, do mais cedo para o "
+        "mais tarde, dando a linha do tempo do dia dela. Um botão \"Ver todos\" "
+        "volta para a visão da equipe inteira.",
+    ),
     "a828412": (
         "⏳",
         "Salvar suas configurações agora mostra que está salvando",
