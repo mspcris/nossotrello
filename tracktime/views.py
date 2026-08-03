@@ -900,9 +900,9 @@ def tracktime_tab_limits(request):
         return HttpResponseForbidden("Apenas o administrador pode ver os limites.")
 
     # total trabalhado por usuário nos últimos 60 dias (para ordenar).
-    # ATENÇÃO: usar created_at, NÃO started_at — o stop() zera started_at (=None)
-    # ao encerrar, então filtrar por started_at excluiria os tracks concluídos
-    # (justamente os que têm os minutos). created_at nunca é zerado.
+    # ATENÇÃO: usar created_at, NÃO started_at — tracks encerrados antes de
+    # 03/08/2026 têm started_at nulo (o stop() zerava o campo), e filtrar por ele
+    # excluiria justamente os concluídos. created_at sempre existe.
     cutoff = timezone.now() - timedelta(days=60)
     totals_60d = {
         row["user_id"]: int(row["total"] or 0)
@@ -1174,6 +1174,20 @@ def tracktime_closed_today_json(request):
         board_url = reverse("boards:board_detail", kwargs={"board_id": board.id})
         card_url = f"{board_url}?card={e.card_id}" if e.card_id else ""
 
+        minutes = int(e.minutes or 0)
+
+        # Hora de início.
+        # Tracks antigos não têm: até 03/08/2026 o stop() zerava started_at ao
+        # encerrar. Para esses, deduz fim − duração e marca como aproximado (o
+        # banco não é reescrito). Lançamento manual (started == ended) não deduz:
+        # ali os minutos foram digitados, não cronometrados.
+        started_at = e.started_at
+        started_approx = False
+        is_manual = bool(started_at and e.ended_at and started_at == e.ended_at)
+        if not started_at and e.ended_at and minutes > 0:
+            started_at = e.ended_at - timedelta(minutes=minutes)
+            started_approx = True
+
         items.append({
             "entry_id": e.id,
             "card_id": e.card_id,
@@ -1184,8 +1198,10 @@ def tracktime_closed_today_json(request):
             "user": user_display,
             "user_handle": user_handle,
             "user_avatar_url": user_avatar_url,
-            "minutes": int(e.minutes or 0),
-            "started_at": e.started_at.isoformat() if e.started_at else None,
+            "minutes": minutes,
+            "started_at": started_at.isoformat() if started_at else None,
+            "started_approx": started_approx,
+            "is_manual": is_manual,
             "ended_at": e.ended_at.isoformat() if e.ended_at else None,
         })
 

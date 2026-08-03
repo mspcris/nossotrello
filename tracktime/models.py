@@ -181,6 +181,10 @@ class TimeEntry(models.Model):
         Finaliza o timer atual e acumula os minutos.
         NÃO cria novo registro.
         NÃO perde minutos já existentes.
+
+        started_at é PRESERVADO: é a hora real de início do track, exibida no
+        painel. Quem diz "está rodando" é ended_at (ver is_running) — antes o
+        stop() zerava started_at e o histórico perdia a hora de começo.
         """
         if not self.is_running:
             return
@@ -191,9 +195,8 @@ class TimeEntry(models.Model):
 
         self.minutes += extra_minutes
         self.ended_at = end
-        self.started_at = None
 
-        self.save(update_fields=["minutes", "ended_at", "started_at"])
+        self.save(update_fields=["minutes", "ended_at"])
 
     @classmethod
     def create_manual(

@@ -306,6 +306,9 @@
     opacity:.95;
   }
   .tt-closed-when .tt-arrow { opacity:.55; margin: 0 4px; font-weight: 600; }
+  /* início deduzido (tracks antigos, antes do início passar a ser guardado) */
+  .tt-closed-when.tt-when-approx { opacity:.7; font-weight: 700; }
+  .tt-closed-when.tt-when-manual { opacity:.7; font-weight: 700; }
   .tt-closed-time {
     font-weight: 950; font-size: 15px; white-space:nowrap;
     font-variant-numeric: tabular-nums; color:#34d399;
@@ -536,15 +539,26 @@
     const board = esc(it.board_name || "");
     // item 26: hover mostra mais dados (título inteiro, quem, board, tempo, horários)
     const s = formatStart(it.started_at), e = formatStart(it.ended_at);
+    const approx = !!it.started_approx;   // track antigo: início deduzido de fim − duração
+    const manual = !!it.is_manual;        // minutos lançados na mão, sem cronômetro
+    const whenTip = manual
+      ? "Lançado na mão às " + e
+      : (s && e)
+        ? ("Início " + (approx ? "~" : "") + s + " → fim " + e + (approx ? " (início estimado)" : ""))
+        : "";
     const tip = esc([
       (it.card_title || "(sem título)"),
       user + (it.board_name ? " · " + it.board_name : ""),
       "Trabalhado: " + fmtDuration(it.minutes),
-      (s && e) ? ("Início " + s + " → fim " + e) : ""
+      whenTip
     ].filter(Boolean).join("\n"));
-    const whenNode = (s || e)
-      ? `<div class="tt-closed-when">⏱ ${esc(s || "–")}<span class="tt-arrow">→</span>${esc(e || "–")}</div>`
-      : ``;
+    let whenNode = ``;
+    if (manual) {
+      whenNode = `<div class="tt-closed-when tt-when-manual" title="Minutos lançados na mão, sem cronômetro">✍ lançado às ${esc(e)}</div>`;
+    } else if (s || e) {
+      const startTxt = s ? `${approx ? "~" : ""}${esc(s)}` : "–";
+      whenNode = `<div class="tt-closed-when${approx ? " tt-when-approx" : ""}">⏱ ${startTxt}<span class="tt-arrow">→</span>${esc(e || "–")}</div>`;
+    }
     return `
       <div class="tt-closed-card tt-user-pick" title="${tip}"
            data-user-id="${esc(it.user_id)}" data-user-name="${user}">
