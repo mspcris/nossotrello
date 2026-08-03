@@ -40,6 +40,21 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-08 ---
+    "bb33159": (
+        "🌤",
+        "O Track-time ao vivo ficou uma tela de ficar olhando o dia inteiro",
+        "Quem acompanha o Ao vivo deixa a tela aberta o dia todo, e ela cansava "
+        "a vista: branco puro, letras pretas e grossas, emoji em tudo quanto é "
+        "canto e um monte de caixinha com borda. Agora o fundo é levemente "
+        "frio, o texto é cinza-azulado, as bordas quase somem e só existe uma "
+        "cor de destaque — o verde ficou reservado para o que está correndo "
+        "agora. Os encerrados do dia viraram uma linha do tempo: horário à "
+        "esquerda, o que foi feito no meio, tempo à direita, uma linha por "
+        "track. As pessoas subiram para o topo, com uma bolinha verde em quem "
+        "está com o cronômetro ligado, e o total da equipe aparece no "
+        "cabeçalho. O cronômetro dos cards anda sozinho, sem os segundos "
+        "piscando no canto do olho.",
+    ),
     "84ff239": (
         "⏱",
         "A hora que você começou o track parou de sumir",
