@@ -40,6 +40,19 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-08 ---
+    "84ff239": (
+        "⏱",
+        "A hora que você começou o track parou de sumir",
+        "Quando um track-time era encerrado, a hora de início era apagada — só "
+        "sobrava a de fim, e por isso os cards de \"Encerrados hoje\" apareciam "
+        "com um tracinho no lugar do começo. O campo do início era o mesmo que o "
+        "sistema usava para saber quem estava com o cronômetro ligado, e ao "
+        "parar ele era limpo junto. Agora o início fica guardado. Nos tracks "
+        "antigos, que já perderam esse dado, o painel calcula a hora de começo "
+        "a partir do fim menos o tempo trabalhado e mostra com um \"~\" na "
+        "frente, para você saber que ali é estimativa. Quem lança minutos na "
+        "mão continua aparecendo como \"lançado às\", sem inventar horário.",
+    ),
     "1bc4aba": (
         "🕒",
         "Track-time ao vivo: horários no card encerrado e visão por pessoa",
