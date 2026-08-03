@@ -1104,6 +1104,7 @@ def tracktime_live_json(request):
             "has_attachments": card.attachments.exists(),
 
             # ✅ usuário completo
+            "user_id": e.user_id,
             "user": user_display,
             "user_handle": user_handle,
             "user_avatar_url": user_avatar_url,
@@ -1179,6 +1180,7 @@ def tracktime_closed_today_json(request):
             "card_title": e.card_title_cache or "(sem título)",
             "card_url": card_url,
             "board_name": board.name,
+            "user_id": e.user_id,
             "user": user_display,
             "user_handle": user_handle,
             "user_avatar_url": user_avatar_url,

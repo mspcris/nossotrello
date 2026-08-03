@@ -7,10 +7,17 @@
       <div class="tt-muted" style="font-size:12px;">Atualiza automaticamente a cada 2m.</div>
     </div>
 
-    <button type="button" class="btn btn-sm" id="tt-live-refresh-btn">
-      Atualizar
-    </button>
+    <div class="tt-live-actions">
+      <button type="button" class="btn btn-sm tt-clear-filter" id="tt-live-clear-filter" hidden>
+        ↩ Ver todos
+      </button>
+      <button type="button" class="btn btn-sm" id="tt-live-refresh-btn">
+        Atualizar
+      </button>
+    </div>
   </div>
+
+  <div id="tt-filter-chip" class="tt-filter-chip" hidden></div>
 
   {# ✅ IMPORTANTE: esse ID existe e é o alvo do JS (evita o insertBefore/null) #}
   <div id="tt-live-list" class="tt-live-list">
@@ -42,6 +49,21 @@
     gap: 12px; margin-bottom: 12px;
   }
   .tt-muted { opacity:.75; }
+  .tt-live-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .tt-clear-filter {
+    border: 1px solid rgba(96,165,250,.45);
+    background: rgba(96,165,250,.12);
+    color: #60a5fa;
+    font-weight: 800;
+  }
+  .tt-filter-chip {
+    display:flex; align-items:center; gap:8px;
+    margin: 0 0 12px 0; padding: 8px 12px;
+    border: 1px solid rgba(96,165,250,.30);
+    border-radius: 999px;
+    background: rgba(96,165,250,.08);
+    font-size: 13px; font-weight: 700;
+  }
 
   /* ====== grid dos cards (4 colunas, cresce para baixo) ====== */
   .tt-grid {
@@ -96,6 +118,9 @@
   .tt-user {
     display:flex; align-items:center; gap:10px; min-width:0;
   }
+  .tt-user-pick { cursor: pointer; }
+  .tt-user.tt-user-pick { border-radius: 999px; }
+  .tt-user-pick:hover .tt-user-name { text-decoration: underline; }
   .tt-user-dot, .tt-avatar-img {
     width: 44px; height: 44px; border-radius: 999px;
     background: rgba(255,255,255,.14);
@@ -223,7 +248,16 @@
     border: 1px solid rgba(255,255,255,.10);
     border-radius: 12px; padding: 8px 12px;
     background: rgba(96,165,250,.06);
+    cursor: pointer;
+    transition: border-color .15s ease, background .15s ease, opacity .15s ease;
   }
+  .tt-total-row:hover { border-color: rgba(96,165,250,.45); background: rgba(96,165,250,.14); }
+  .tt-total-row.is-active {
+    border-color: #60a5fa;
+    background: rgba(96,165,250,.20);
+    box-shadow: 0 0 0 1px rgba(96,165,250,.35) inset;
+  }
+  .tt-totals-list.has-filter .tt-total-row:not(.is-active) { opacity:.45; }
   .tt-total-row .tt-avatar-img, .tt-total-row .tt-user-dot {
     width: 34px; height: 34px; font-size: 14px;
   }
@@ -248,7 +282,10 @@
     border-radius: 12px;
     padding: 10px 12px;
     background: rgba(52,211,153,.06);
+    cursor: pointer;
+    transition: border-color .15s ease, background .15s ease;
   }
+  .tt-closed-card:hover { border-color: rgba(52,211,153,.40); background: rgba(52,211,153,.12); }
   .tt-closed-card .tt-avatar-img, .tt-closed-card .tt-user-dot {
     width: 36px; height: 36px; font-size: 15px;
   }
@@ -262,6 +299,13 @@
     font-size: 12px; opacity:.8;
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   }
+  .tt-closed-when {
+    font-size: 12px; font-weight: 800; margin-top: 2px;
+    font-variant-numeric: tabular-nums;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    opacity:.95;
+  }
+  .tt-closed-when .tt-arrow { opacity:.55; margin: 0 4px; font-weight: 600; }
   .tt-closed-time {
     font-weight: 950; font-size: 15px; white-space:nowrap;
     font-variant-numeric: tabular-nums; color:#34d399;
@@ -270,7 +314,25 @@
 
 <script>
 (function () {
+  // filtro por pessoa: null = todos
+  let filterUserId = null;
+  let filterUserName = "";
+
+  // último payload de cada endpoint (pra re-renderizar sem refetch ao filtrar)
+  let lastLive = null, lastTotals = null, lastClosed = null;
+
   function pad2(n){ return String(n).padStart(2,"0"); }
+
+  function tsOf(iso) {
+    if (!iso) return 0;
+    const t = Date.parse(iso);
+    return Number.isNaN(t) ? 0 : t;
+  }
+
+  function matchesFilter(it) {
+    if (filterUserId === null) return true;
+    return String(it.user_id) === String(filterUserId);
+  }
 
   function formatMMSS(seconds) {
     const s = Math.max(0, Number(seconds || 0));
@@ -389,7 +451,7 @@
 
       <div class="tt-body">
         <div class="tt-row">
-          <div class="tt-user tt-left">
+          <div class="tt-user tt-left tt-user-pick" data-user-id="${esc(it.user_id)}" data-user-name="${user}" title="Ver só os tracks de ${user}">
             ${avatarNode}
             <div style="min-width:0;">
               <div class="tt-user-name" title="${user}">${user}</div>
@@ -427,7 +489,7 @@
     if (!root) return;
 
     const boards = (data && data.boards) || [];
-    const items = [];
+    let items = [];
 
     // Normaliza: junta tudo em uma grid única (4 colunas), mas preserva board_name por item
     for (const b of boards) {
@@ -438,8 +500,16 @@
       }
     }
 
+    if (filterUserId !== null) {
+      // só dessa pessoa, do mais cedo para o mais tarde
+      items = items.filter(matchesFilter)
+                   .sort((a, b) => tsOf(a.started_at) - tsOf(b.started_at));
+    }
+
     if (!items.length) {
-      root.innerHTML = `<div class="tt-empty">Nenhum timer rodando agora.</div>`;
+      root.innerHTML = filterUserId !== null
+        ? `<div class="tt-empty">Nenhum timer rodando agora para ${esc(filterUserName)}.</div>`
+        : `<div class="tt-empty">Nenhum timer rodando agora.</div>`;
       return;
     }
 
@@ -472,12 +542,17 @@
       "Trabalhado: " + fmtDuration(it.minutes),
       (s && e) ? ("Início " + s + " → fim " + e) : ""
     ].filter(Boolean).join("\n"));
+    const whenNode = (s || e)
+      ? `<div class="tt-closed-when">⏱ ${esc(s || "–")}<span class="tt-arrow">→</span>${esc(e || "–")}</div>`
+      : ``;
     return `
-      <div class="tt-closed-card" title="${tip}">
+      <div class="tt-closed-card tt-user-pick" title="${tip}"
+           data-user-id="${esc(it.user_id)}" data-user-name="${user}">
         ${avatarNode}
         <div class="tt-closed-main">
           <div class="tt-closed-title">${titleNode}</div>
           <div class="tt-closed-sub">${user}${board ? " · 📋 " + board : ""}</div>
+          ${whenNode}
         </div>
         <div class="tt-closed-time">${fmtDuration(it.minutes)}</div>
       </div>
@@ -515,9 +590,11 @@
     const avatarNode = avatar
       ? `<img class="tt-avatar-img" src="${avatar}" alt="" />`
       : `<div class="tt-user-dot">${initial}</div>`;
-    const tip = esc(user + "\nTotal trabalhado hoje: " + fmtDuration(it.minutes));
+    const tip = esc(user + "\nTotal trabalhado hoje: " + fmtDuration(it.minutes) + "\nClique para ver só os tracks desta pessoa");
+    const active = (filterUserId !== null && String(it.user_id) === String(filterUserId)) ? " is-active" : "";
     return `
-      <div class="tt-total-row" title="${tip}">
+      <div class="tt-total-row tt-user-pick${active}" title="${tip}"
+           data-user-id="${esc(it.user_id)}" data-user-name="${user}">
         ${avatarNode}
         <div class="tt-total-name">${user}</div>
         <div class="tt-total-min">${fmtDuration(it.minutes)}</div>
@@ -532,6 +609,7 @@
     const items = (data && data.items) || [];
     if (!items.length) { section.hidden = true; return; }
     section.hidden = false;
+    list.classList.toggle("has-filter", filterUserId !== null);
     list.innerHTML = items.map(totalRowHTML).join("");
   }
 
@@ -539,23 +617,64 @@
     const section = document.getElementById("tt-closed-section");
     const list = document.getElementById("tt-closed-list");
     if (!section || !list) return;
-    const items = (data && data.items) || [];
+    let items = (data && data.items) || [];
+
+    if (filterUserId !== null) {
+      // só dessa pessoa, do mais cedo para o mais tarde
+      items = items.filter(matchesFilter)
+                   .sort((a, b) => tsOf(a.started_at) - tsOf(b.started_at));
+      if (!items.length) {
+        section.hidden = false;
+        list.innerHTML = `<div class="tt-empty">Nenhum track encerrado hoje para ${esc(filterUserName)}.</div>`;
+        return;
+      }
+    }
+
     if (!items.length) { section.hidden = true; return; }
     section.hidden = false;
     list.innerHTML = items.map(closedCardHTML).join("");
   }
 
+  function renderFilterUI() {
+    const chip = document.getElementById("tt-filter-chip");
+    const clearBtn = document.getElementById("tt-live-clear-filter");
+    const on = filterUserId !== null;
+    if (chip) {
+      chip.hidden = !on;
+      chip.innerHTML = on
+        ? `👤 Mostrando só <strong>${esc(filterUserName)}</strong> · do mais cedo para o mais tarde`
+        : "";
+    }
+    if (clearBtn) clearBtn.hidden = !on;
+  }
+
+  function renderAll() {
+    renderFilterUI();
+    if (lastLive) render(lastLive);
+    renderTotals(lastTotals);
+    renderClosed(lastClosed);
+  }
+
+  function setFilter(userId, userName) {
+    const uid = (userId === null || userId === undefined || userId === "") ? null : String(userId);
+    // clicar de novo na mesma pessoa volta pra todos
+    filterUserId = (uid !== null && uid === filterUserId) ? null : uid;
+    filterUserName = filterUserId === null ? "" : (userName || "");
+    renderAll();
+  }
+
   async function refresh() {
     try {
       const data = await fetchLive();
-      if (data) render(data);
+      if (data) { lastLive = data; render(data); }
     } catch (_) {
       // silencioso (MVP)
     }
-    const totals = await fetchTotals();
-    renderTotals(totals);
-    const closed = await fetchClosed();
-    renderClosed(closed);
+    lastTotals = await fetchTotals();
+    renderTotals(lastTotals);
+    lastClosed = await fetchClosed();
+    renderClosed(lastClosed);
+    renderFilterUI();
   }
 
   // API pública
@@ -576,6 +695,21 @@
       btn.textContent = orig;
       btn.dataset.busy = "0";
     }
+  });
+
+  const clearBtn = document.getElementById("tt-live-clear-filter");
+  if (clearBtn) clearBtn.addEventListener("click", function(){ setFilter(null, ""); });
+
+  // clique em pessoa (total, card encerrado ou bloco de usuário do card ao vivo) → filtra
+  const tabRoot = document.getElementById("tracktime-live-tab");
+  if (tabRoot) tabRoot.addEventListener("click", function(ev){
+    if (ev.target.closest("a")) return;               // link do card abre normal
+    const pick = ev.target.closest(".tt-user-pick");
+    if (!pick || !tabRoot.contains(pick)) return;
+    const uid = pick.dataset.userId;
+    if (!uid || uid === "null" || uid === "undefined") return;
+    ev.preventDefault();
+    setFilter(uid, pick.dataset.userName || "");
   });
 
   // start
