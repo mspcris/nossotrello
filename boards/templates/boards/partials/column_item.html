@@ -18,7 +18,7 @@
     <!-- Linha 1: ações -->
     <div class="flex items-center justify-end gap-2">
       {% with n=column.visible_cards_count %}
-        <span class="mr-auto text-xs text-gray-600" data-column-counter>
+        <span class="mr-auto text-xs text-gray-600" data-column-counter data-total-count="{{ n }}">
           {{ n }} card{% if n != 1 %}s{% endif %}
         </span>
       {% endwith %}

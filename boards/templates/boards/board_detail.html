@@ -778,9 +778,20 @@
   // Recalcula contadores considerando o filtro atual
 
   function refreshCounters() {
+    const filtering = !!getFilterInputValue();
+
     document.querySelectorAll(".column-item[data-column-id]").forEach((col) => {
       const counter = col.querySelector("[data-column-counter]");
       if (!counter) return;
+
+      // Coluna ainda com cards por carregar (lazy-load, "intersect once" pendente):
+      // contar só o que já está no DOM subestima o total. Usa o total real do
+      // servidor até tudo carregar (a menos que tenha filtro ativo, aí é DOM mesmo).
+      if (!filtering && col.querySelector(".cm-more-sentinel")) {
+        const total = Number(counter.dataset.totalCount || 0);
+        counter.textContent = `${total} card${total !== 1 ? "s" : ""}`;
+        return;
+      }
 
       // card contador é widget, não tarefa: fora da contagem (header e agregadora)
       const n = col.querySelectorAll(
