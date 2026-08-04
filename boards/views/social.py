@@ -26,7 +26,7 @@ from ..models import (
     SocialPostReaction, SocialPostComment, SocialCommentReaction,
     DailyCheckIn, Card, CardFollow, UserProfile,
     CamilaKnowledge, CamilaConfig, SocialFriendship, SocialCardDismiss, CamilaPOP,
-    ChatConversation, ChatMessage, ChatSticker, SocialPostView,
+    ChatConversation, ChatMessage, ChatSticker, SocialPostView, SocialGroupMembership,
     HealthChatMessage, CamilaNews, CamilaChatMessage, ModerationCase,
 )
 from ..services.moderation import ContentBlocked, check_or_block, schedule_layer2
@@ -42,6 +42,18 @@ User = get_user_model()
 _mention_logger = logging.getLogger(__name__)
 
 _MENTION_RE = re.compile(r"@([a-z0-9_.]+)", re.IGNORECASE)
+
+
+def _exclude_group_only_posts(qs):
+    return qs.exclude(group__isnull=False, show_on_profile=False)
+
+
+def _can_access_group_only_post(user, post):
+    if not post.group_id or post.show_on_profile:
+        return True
+    if user.id == post.user_id or user.is_staff:
+        return True
+    return SocialGroupMembership.objects.filter(group_id=post.group_id, user=user).exists()
 
 
 def _notify_mentions(text: str, actor, post_id: int, context: str = "post"):
@@ -361,6 +373,21 @@ def _annotate_profile_posts(posts, viewer):
             except SocialPost.DoesNotExist:
                 pass
 
+        group_origin = getattr(post, "group", None)
+        if group_origin is None and post.shared_from_id:
+            try:
+                group_origin = (
+                    SocialPost.objects
+                    .only("group_id")
+                    .select_related("group")
+                    .get(id=post.shared_from_id)
+                    .group
+                )
+            except SocialPost.DoesNotExist:
+                group_origin = None
+        post.group_name = group_origin.name if group_origin else ""
+        post.group_slug = group_origin.slug if group_origin else ""
+
         post.is_friendship = False
         post.friendship_data = None
         post._hide_inactive = False
@@ -442,7 +469,13 @@ def _build_social_context(request, target_user, extra=None):
     )
 
     # Posts + prefetch reactions/comments
-    posts_qs = SocialPost.objects.filter(user=target_user, is_active=True).order_by("-created_at")
+    posts_qs = (
+        SocialPost.objects
+        .filter(user=target_user, is_active=True)
+        .select_related("user", "user__profile", "group")
+        .order_by("-created_at")
+    )
+    posts_qs = _exclude_group_only_posts(posts_qs)
     # Bit de privacidade: se o autor desmarcou o compartilhamento do Tarefas,
     # os "curtiu um card" dele somem também do próprio perfil.
     tp_prof = getattr(target_user, "profile", None)
@@ -533,6 +566,30 @@ def _build_social_context(request, target_user, extra=None):
             .select_related("profile")
             .order_by("profile__display_name")[:40]
         )
+
+    my_social_groups = []
+    if is_me:
+        memberships = list(
+            SocialGroupMembership.objects
+            .filter(user=target_user)
+            .select_related("group")
+            .order_by("-joined_at")[:4]
+        )
+        if memberships:
+            member_totals = dict(
+                SocialGroupMembership.objects
+                .filter(group_id__in=[m.group_id for m in memberships])
+                .values_list("group_id")
+                .annotate(cnt=models.Count("id"))
+            )
+            for membership in memberships:
+                group = membership.group
+                my_social_groups.append({
+                    "name": group.name,
+                    "slug": group.slug,
+                    "member_total": member_totals.get(group.id, 1),
+                    "star_count": group.current_stars(),
+                })
 
     # Meus Amigos (amizades aceitas) — só para o dono
     real_friends = []
@@ -653,6 +710,7 @@ def _build_social_context(request, target_user, extra=None):
         "pending_friend_requests": pending_friend_requests,
         "sent_friend_requests": sent_friend_requests,
         "show_onboarding_tour": show_onboarding_tour,
+        "my_social_groups": my_social_groups,
     }
     if extra:
         ctx.update(extra)
@@ -682,6 +740,8 @@ def social_page(request, user_id: int = None, handle: str = None):
 def social_post_page(request, post_id: int):
     """Abre MEU perfil e exibe a publicação em modal."""
     post = get_object_or_404(SocialPost, id=post_id, is_active=True)
+    if not _can_access_group_only_post(request.user, post):
+        raise Http404("Post não disponível.")
     # Visitante não vê post em análise/bloqueado — só o autor
     if post.moderation_status != SocialPost.MOD_CLEAN and post.user_id != request.user.id:
         raise Http404("Post não disponível.")
@@ -697,11 +757,20 @@ def social_post_page(request, post_id: int):
 def social_post_full(request, post_id: int):
     """Retorna JSON completo de um post: autor, mídia, reações, comentários."""
     post = get_object_or_404(SocialPost, id=post_id, is_active=True)
+    if not _can_access_group_only_post(request.user, post):
+        raise Http404("Post não disponível.")
     if post.moderation_status != SocialPost.MOD_CLEAN and post.user_id != request.user.id:
         raise Http404("Post não disponível.")
 
     # Autor
     author = _user_card(post.user)
+
+    group_info = None
+    if post.group_id:
+        group_info = {
+            "name": post.group.name,
+            "slug": post.group.slug,
+        }
 
     # Mídia
     photo_url = post.photo.url if post.photo else None
@@ -787,6 +856,7 @@ def social_post_full(request, post_id: int):
     return JsonResponse({
         "id": post.id,
         "author": author,
+        "group": group_info,
         "text": text,
         "text_style": text_style,
         "photo": photo_url,
@@ -833,6 +903,8 @@ def social_post_detail(request, post_id: int):
     Se o post é repost, retorna os comentários do ORIGINAL — interação é
     sempre na publicação raiz."""
     post = get_object_or_404(SocialPost, id=post_id, is_active=True)
+    if not _can_access_group_only_post(request.user, post):
+        raise Http404("Post não disponível.")
     if post.moderation_status != SocialPost.MOD_CLEAN and post.user_id != request.user.id:
         raise Http404("Post não disponível.")
     target_post = post.shared_from if post.shared_from_id else post
@@ -918,6 +990,7 @@ def social_friends_feed(request):
                 user__is_active=True, moderation_status=SocialPost.MOD_CLEAN
             )
         )
+    qs = _exclude_group_only_posts(qs)
 
     # Retroativo: atividades do Tarefas ("curtiu um card" / convite de quadro)
     # de quem desmarcou o bit somem do reel — inclusive os posts antigos.
@@ -933,7 +1006,7 @@ def social_friends_feed(request):
         qs = qs.filter(id__lt=before_id)
 
     posts = list(
-        qs.select_related("user", "user__profile")
+        qs.select_related("user", "user__profile", "group")
         .order_by("-id")
         [: PAGE_SIZE + 1]
     )
@@ -1025,6 +1098,7 @@ def social_friends_feed(request):
                 "original_user_id": orig.user_id,
                 "original_user_avatar": _avatar_url(orig_prof),
             }
+        display_group = getattr(display_post, "group", None)
 
         # Detectar post de amizade. Escondido por inteiro quando um dos dois
         # está banido (is_active=False) OU socialmente inativo (sem login há
@@ -1118,6 +1192,10 @@ def social_friends_feed(request):
             "share_count": shares_by_post.get(p.id, 0) if not p.shared_from_id else 0,
             "text_style": display_post.text_style,
             "shared_from": shared_info,
+            "group": {
+                "name": display_group.name,
+                "slug": display_group.slug,
+            } if display_group else None,
             "friendship": friendship_data,
             "card_like": card_like_data,
             "board_invite": board_invite_data,
@@ -3604,9 +3682,13 @@ def social_posts_more(request, user_id: int):
 
     is_me = request.user.id == target_user.id
 
-    qs = SocialPost.objects.filter(
-        user=target_user, is_active=True, id__lt=before_id
-    ).order_by("-created_at")
+    qs = (
+        SocialPost.objects
+        .filter(user=target_user, is_active=True, id__lt=before_id)
+        .select_related("user", "user__profile", "group")
+        .order_by("-created_at")
+    )
+    qs = _exclude_group_only_posts(qs)
     if not is_me:
         is_friend = SocialFriendship.objects.filter(
             models.Q(requester=request.user, receiver=target_user, status="accepted")

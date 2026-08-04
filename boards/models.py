@@ -6,6 +6,7 @@ from django.conf import settings
 from django.db import models
 from django.core.validators import RegexValidator
 from django.utils import timezone
+from django.utils.text import slugify
 
 # ============================================================
 # ORGANIZATION (dona dos boards)
@@ -768,6 +769,9 @@ class UserProfile(models.Model):
     # Onboarding da home de quadros concluído (sample board + modal de boas-vindas)
     boards_onboarding_done = models.BooleanField(default=False)
 
+    # Onboarding do espaço de comunidades concluído
+    groups_onboarding_done = models.BooleanField(default=False)
+
     # Última vez que o usuário abriu o painel "Novidades" (What's new)
     last_whatsnew_seen_at = models.DateTimeField(null=True, blank=True)
 
@@ -1212,6 +1216,145 @@ class UserBoardPreference(models.Model):
 # ============================================================
 # SOCIAL (scrapbook / mood / chatbot)
 # ============================================================
+class SocialGroup(models.Model):
+    name = models.CharField(max_length=120)
+    slug = models.SlugField(max_length=140, unique=True)
+    description = models.TextField(blank=True, default="")
+    theme = models.CharField(max_length=120, blank=True, default="")
+    interests = models.TextField(blank=True, default="")
+    vibe = models.CharField(max_length=120, blank=True, default="")
+    goal = models.CharField(max_length=200, blank=True, default="")
+    cover_svg = models.TextField(blank=True, default="")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="created_social_groups",
+        on_delete=models.CASCADE,
+    )
+    star_score = models.PositiveSmallIntegerField(default=0)
+    last_publication_on = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name"]
+        indexes = [
+            models.Index(fields=["slug"]),
+            models.Index(fields=["-updated_at"]),
+        ]
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base = slugify(self.name) or "comunidade"
+            slug = base
+            n = 2
+            while SocialGroup.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                slug = f"{base}-{n}"
+                n += 1
+            self.slug = slug
+        super().save(*args, **kwargs)
+
+    def current_stars(self, reference_date=None):
+        reference_date = reference_date or timezone.localdate()
+        stars = self.star_score
+        if self.last_publication_on:
+            missed_days = max(0, (reference_date - self.last_publication_on).days)
+            if missed_days:
+                stars = max(0, stars - missed_days)
+        return min(5, max(0, stars))
+
+    def register_publication(self, published_on=None):
+        published_on = published_on or timezone.localdate()
+        if self.last_publication_on == published_on:
+            return False
+        if not self.last_publication_on:
+            self.star_score = 1
+        else:
+            gap = (published_on - self.last_publication_on).days
+            base = self.star_score
+            if gap > 1:
+                base = max(0, base - (gap - 1))
+            self.star_score = min(5, base + 1)
+        self.last_publication_on = published_on
+        return True
+
+    def __str__(self):
+        return self.name
+
+
+class SocialGroupMembership(models.Model):
+    ROLE_OWNER = "owner"
+    ROLE_MEMBER = "member"
+    ROLE_CHOICES = [
+        (ROLE_OWNER, "Dono"),
+        (ROLE_MEMBER, "Membro"),
+    ]
+    group = models.ForeignKey(
+        SocialGroup, related_name="memberships", on_delete=models.CASCADE,
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, related_name="social_group_memberships", on_delete=models.CASCADE,
+    )
+    invited_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        related_name="social_group_invites_sent",
+        on_delete=models.SET_NULL,
+    )
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default=ROLE_MEMBER)
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [("group", "user")]
+        ordering = ["joined_at"]
+
+    def __str__(self):
+        return f"{self.user} em {self.group} ({self.role})"
+
+
+class SocialGroupChatMessage(models.Model):
+    group = models.ForeignKey(
+        SocialGroup, related_name="chat_messages", on_delete=models.CASCADE,
+    )
+    sender = models.ForeignKey(
+        settings.AUTH_USER_MODEL, related_name="social_group_messages_sent", on_delete=models.CASCADE,
+    )
+    text = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["created_at"]
+        indexes = [
+            models.Index(fields=["group", "created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.sender} → grupo {self.group_id}"
+
+
+class SocialGroupScrapbookEntry(models.Model):
+    group = models.ForeignKey(
+        SocialGroup, related_name="scrapbook_entries", on_delete=models.CASCADE,
+    )
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL, related_name="social_group_scrapbook_entries", on_delete=models.CASCADE,
+    )
+    text = models.TextField(blank=True, default="")
+    photo = models.ImageField(upload_to="social/groups/scrapbook/", blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["group", "-created_at"]),
+        ]
+
+    def __str__(self):
+        return f"Scrapbook {self.group_id} por {self.author_id}"
+
+
 class SocialPost(models.Model):
     VISIBILITY_ALL = "all"
     VISIBILITY_FRIENDS = "friends"
@@ -1223,6 +1366,13 @@ class SocialPost(models.Model):
         settings.AUTH_USER_MODEL,
         related_name="social_posts",
         on_delete=models.CASCADE,
+    )
+    group = models.ForeignKey(
+        SocialGroup,
+        related_name="posts",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
     )
     text = models.TextField(blank=True, default="")
     photo = models.ImageField(upload_to="social/", blank=True, null=True)
@@ -1238,6 +1388,7 @@ class SocialPost(models.Model):
         "self", null=True, blank=True, related_name="reposts",
         on_delete=models.SET_NULL,
     )
+    show_on_profile = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
     # Quando preenchido, indica que a foto deste post foi gerada por IA a
@@ -1271,6 +1422,7 @@ class SocialPost(models.Model):
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["user", "-created_at"]),
+            models.Index(fields=["group", "-created_at"]),
             models.Index(fields=["moderation_status", "-created_at"]),
         ]
 
