@@ -624,7 +624,6 @@
     <form id="sp-checkin-form" class="sp-checkin"
           hx-post="{% url 'boards:daily_checkin_save' %}"
           hx-target="#social-panel" hx-swap="outerHTML"
-          hx-on::after-swap="var p=document.querySelector('#social-panel .sp-post');if(p)p.scrollIntoView({behavior:'smooth',block:'start'});"
           hx-encoding="multipart/form-data" enctype="multipart/form-data">
       {% csrf_token %}
 
@@ -718,7 +717,7 @@
   <div class="sp-card">
     <form id="sp-posto-form" class="sp-checkin"
           hx-post="{% url 'boards:daily_checkin_save' %}"
-          hx-target="#social-panel" hx-swap="outerHTML show:#sp-posto-form:top">
+          hx-target="#social-panel" hx-swap="outerHTML">
       {% csrf_token %}
 
       <div class="sp-section-title">📍 Onde vai trabalhar hoje?</div>
@@ -730,14 +729,14 @@
         {% endif %}
       </p>
 
-      {% if checkin.daily_posto %}
+      {% if checkin.daily_posto and not keep_posto_editor_open %}
         <div class="sp-fixed-posto" style="background:#ecfdf5;border:1px solid #10b981;color:#065f46;padding:10px 14px;border-radius:10px;margin-bottom:10px;display:flex;align-items:center;gap:10px;justify-content:space-between;">
           <span>✅ Hoje você marcou: <strong>{{ checkin.daily_posto }}</strong></span>
           <button type="button" class="sp-link-btn" onclick="document.getElementById('sp-posto-select-wrap').classList.remove('sp-hidden');this.closest('.sp-fixed-posto').remove();">trocar</button>
         </div>
       {% endif %}
 
-      <div id="sp-posto-select-wrap" class="sp-field-group {% if checkin.daily_posto %}sp-hidden{% endif %}">
+      <div id="sp-posto-select-wrap" class="sp-field-group {% if checkin.daily_posto and not keep_posto_editor_open %}sp-hidden{% endif %}">
         <select name="daily_posto" class="sp-select">
           <option value="">Selecione...</option>
           <option value="Home Office">🏠 Home Office</option>
@@ -769,7 +768,7 @@
   <div class="sp-card sp-lunch-card">
     <form id="sp-lunch-form" class="sp-checkin"
           hx-post="{% url 'boards:daily_checkin_save' %}"
-          hx-target="#social-panel" hx-swap="outerHTML show:#sp-lunch-form:top"
+          hx-target="#social-panel" hx-swap="outerHTML"
           hx-encoding="multipart/form-data" enctype="multipart/form-data">
       {% csrf_token %}
 
@@ -780,7 +779,7 @@
         equilibrada no dia a dia.
       </p>
 
-      {% if checkin.lunch_text or checkin.lunch_photo %}
+      {% if (checkin.lunch_text or checkin.lunch_photo) and not keep_lunch_editor_open %}
         <!-- Estado "já registrado": resumo + botão Alterar -->
         <div class="sp-fixed-posto" style="background:#fffbeb;border:1px solid #fbbf24;color:#92400e;padding:12px 14px;border-radius:10px;display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap;">
           <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
@@ -797,7 +796,7 @@
         </div>
       {% endif %}
 
-      <div id="sp-lunch-edit-wrap" class="{% if checkin.lunch_text or checkin.lunch_photo %}sp-hidden{% endif %}">
+      <div id="sp-lunch-edit-wrap" class="{% if (checkin.lunch_text or checkin.lunch_photo) and not keep_lunch_editor_open %}sp-hidden{% endif %}">
         <div class="sp-field-group">
           <label class="sp-field-label" for="sp-lunch-input">O prato:</label>
           <div class="sp-lunch-row">
@@ -8137,5 +8136,85 @@ window.spShowProfilePhoto = function(url){
     _healthHistory = [];
     if(window.spSwitchTab) spSwitchTab('mine');
   };
+
+  if(!window.__spCheckinFocusInit){
+    window.__spCheckinFocusInit = true;
+
+    function _spFocusSelectorFor(el){
+      if(!el) return '';
+      if(el.id) return '#' + el.id;
+      if(!el.name) return '';
+      var selector = '[name="' + el.name + '"]';
+      if((el.type === 'radio' || el.type === 'checkbox') && el.value){
+        selector += '[value="' + el.value + '"]';
+      }
+      return selector;
+    }
+
+    function _spTrackCheckinField(el){
+      if(!el || !el.closest) return;
+      var form = el.closest('#sp-checkin-form, #sp-posto-form, #sp-lunch-form');
+      if(!form) return;
+      var selector = _spFocusSelectorFor(el);
+      if(!selector) return;
+      form.dataset.restoreFocusSelector = selector;
+    }
+
+    function _spRestoreCheckinFocus(state){
+      if(!state) return;
+      var panel = document.getElementById('social-panel');
+      if(!panel) return;
+      var field = state.selector ? panel.querySelector(state.selector) : null;
+      if(field){
+        var hiddenWrap = field.closest('.sp-hidden');
+        if(!hiddenWrap){
+          field.focus();
+          if((field.tagName === 'INPUT' || field.tagName === 'TEXTAREA') && field.type !== 'radio' && field.type !== 'checkbox' && field.type !== 'file'){
+            var end = (field.value || '').length;
+            try { field.setSelectionRange(end, end); } catch(err) {}
+          }
+          return;
+        }
+      }
+
+      var fallback = null;
+      if(state.formId === 'sp-lunch-form'){
+        fallback = panel.querySelector('#sp-lunch-form .sp-input-lunch, #sp-lunch-form .sp-link-btn, #sp-lunch-form .sp-photo-sm');
+      } else if(state.formId === 'sp-posto-form'){
+        fallback = panel.querySelector('#sp-posto-form .sp-select, #sp-posto-form .sp-link-btn');
+      } else if(state.formId === 'sp-checkin-form'){
+        fallback = panel.querySelector('#sp-checkin-form [name="mood_note"], #sp-checkin-form input[name="mood"]:checked, #sp-checkin-form input[name="mood"]');
+      }
+      if(fallback) fallback.focus();
+    }
+
+    document.body.addEventListener('focusin', function(e){
+      _spTrackCheckinField(e.target);
+    });
+
+    document.body.addEventListener('change', function(e){
+      _spTrackCheckinField(e.target);
+    });
+
+    document.body.addEventListener('htmx:beforeRequest', function(e){
+      var form = e.target && e.target.closest ? e.target.closest('form') : null;
+      if(!form) return;
+      if(form.id !== 'sp-checkin-form' && form.id !== 'sp-posto-form' && form.id !== 'sp-lunch-form') return;
+      window.__spPendingCheckinFocus = {
+        formId: form.id,
+        selector: form.dataset.restoreFocusSelector || '',
+      };
+    });
+
+    document.body.addEventListener('htmx:afterSwap', function(e){
+      if(!window.__spPendingCheckinFocus) return;
+      if(!e.target || e.target.id !== 'social-panel') return;
+      var pending = window.__spPendingCheckinFocus;
+      window.__spPendingCheckinFocus = null;
+      setTimeout(function(){
+        _spRestoreCheckinFocus(pending);
+      }, 30);
+    });
+  }
 })();
 </script>

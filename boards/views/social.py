@@ -1327,6 +1327,8 @@ def social_post_toggle_visibility(request, post_id: int):
 def daily_checkin_save(request):
     today = timezone.localdate()
     checkin, _ = DailyCheckIn.objects.get_or_create(user=request.user, date=today)
+    keep_lunch_editor_open = "lunch_text" in request.POST or "lunch_photo" in request.FILES
+    keep_posto_editor_open = "daily_posto" in request.POST
 
     mood = (request.POST.get("mood") or "").strip()
     mood_note = (request.POST.get("mood_note") or "").strip()
@@ -1408,7 +1410,15 @@ def daily_checkin_save(request):
         parts.append("Postei uma foto do meu almoço")
     ai_react_text = "; ".join(parts) if parts else ""
 
-    ctx = _build_social_context(request, request.user, extra={"ai_react_text": ai_react_text})
+    ctx = _build_social_context(
+        request,
+        request.user,
+        extra={
+            "ai_react_text": ai_react_text,
+            "keep_lunch_editor_open": keep_lunch_editor_open,
+            "keep_posto_editor_open": keep_posto_editor_open,
+        },
+    )
     return render(request, "boards/social_panel.html", ctx)
 
 
