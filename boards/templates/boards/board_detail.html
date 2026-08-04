@@ -784,19 +784,20 @@
       const counter = col.querySelector("[data-column-counter]");
       if (!counter) return;
 
-      // Coluna ainda com cards por carregar (lazy-load, "intersect once" pendente):
-      // contar só o que já está no DOM subestima o total. Usa o total real do
-      // servidor até tudo carregar (a menos que tenha filtro ativo, aí é DOM mesmo).
-      if (!filtering && col.querySelector(".cm-more-sentinel")) {
-        const total = Number(counter.dataset.totalCount || 0);
-        counter.textContent = `${total} card${total !== 1 ? "s" : ""}`;
-        return;
-      }
-
       // card contador é widget, não tarefa: fora da contagem (header e agregadora)
-      const n = col.querySelectorAll(
+      const domCount = col.querySelectorAll(
         'li[data-card-id]:not([data-counter="1"]):not([style*="display: none"]):not([hidden]):not(.hidden)'
       ).length;
+      const total = Number(counter.dataset.totalCount || 0);
+
+      // Coluna ainda com cards por carregar: contar só o DOM subestima. Usa o
+      // total real do servidor enquanto houver sentinel de lazy-load OU o DOM
+      // tiver menos que o total (a sentinela some por um instante no swap /
+      // carregamento frio — essa 2a pista evita travar no tamanho do 1o lote).
+      // Com filtro ativo é sempre o DOM (o filtro esconde cards de propósito).
+      const n = (!filtering && total > 0 && (col.querySelector(".cm-more-sentinel") || domCount < total))
+        ? total
+        : domCount;
 
       counter.textContent = `${n} card${n !== 1 ? "s" : ""}`;
     });

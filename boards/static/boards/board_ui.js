@@ -556,19 +556,31 @@ function startViewerPolling() {
   function refreshColumnUI(columnEl) {
     const list = findCardList(columnEl);
     const scope = list || columnEl;
-    const counterEl = findCounterEl(columnEl);
 
-    // Lazy-load pendente (sentinel ainda presente) sem filtro ativo: contar só
-    // os <li> no DOM subestima o total (mesma regra do refreshCounters() em
-    // board_detail.html — este observer é um 2º sistema de contagem que
-    // ficava sem saber do total real do servidor).
+    // Mira o MESMO contador canônico do refreshCounters() do board (o span com
+    // data-total-count). O findCounterEl por regex era um fallback frágil que
+    // podia pegar OUTRO elemento sem data-total-count e fazer os dois sistemas
+    // de contagem divergirem. Prioriza o canônico; regex só se ele não existir.
+    const counterEl = columnEl.querySelector("[data-column-counter]") || findCounterEl(columnEl);
+
     const filterEl = document.getElementById("board-filter");
     const filtering = !!(filterEl && (filterEl.value || "").trim());
-    const pendingLazyLoad = !filtering && columnEl.querySelector(".cm-more-sentinel");
+    const total = Number((counterEl && counterEl.dataset ? counterEl.dataset.totalCount : 0) || 0);
+    const domCount = countCards(scope);
 
-    const n = (pendingLazyLoad && counterEl && counterEl.dataset.totalCount)
-      ? Number(counterEl.dataset.totalCount || 0)
-      : countCards(scope);
+    // Enquanto houver cards por carregar, sem filtro ativo, confia no total do
+    // servidor — contar só os <li> do DOM subestima. Duas pistas de "ainda
+    // falta carregar", pra não travar no tamanho do 1o lote:
+    //  - sentinel presente (lazy-load pendente); OU
+    //  - DOM tem menos cards que o total (a sentinela some por um instante no
+    //    swap do lazy-load / num carregamento frio pós-restart — essa 2a pista
+    //    cobre a corrida e evita o contador ficar preso em 19).
+    const pendingLazyLoad =
+      !filtering &&
+      total > 0 &&
+      (columnEl.querySelector(".cm-more-sentinel") || domCount < total);
+
+    const n = pendingLazyLoad ? total : domCount;
 
     if (counterEl) {
       const next = `${n} card${n !== 1 ? "s" : ""}`;
