@@ -6,78 +6,142 @@
 {% block extra_css %}
 <style>
   :root{
-    --gd-ink:#172033;
-    --gd-muted:#667085;
-    --gd-line:#d9e3ef;
-    --gd-card:#fff;
-    --gd-soft:#f6fbff;
-    --gd-brand:#0f766e;
-    --gd-brand-2:#2dd4bf;
+    --gd-ink:#1a1333;
+    --gd-muted:#645d7f;
+    --gd-line:rgba(96,79,160,.18);
+    --gd-card:rgba(255,255,255,.78);
+    --gd-soft:rgba(255,255,255,.58);
+    --gd-brand:#ff6b6b;
+    --gd-brand-2:#ff9f1c;
+    --gd-brand-3:#2ec4b6;
+    --gd-brand-4:#6ee7ff;
+    --gd-dark:#140f2d;
+    --gd-success:#14532d;
+    --gd-danger:#9f1239;
   }
-  .gd-shell{max-width:1180px;margin:0 auto;padding:24px 16px 90px;color:var(--gd-ink)}
+  .gd-shell{max-width:1180px;margin:0 auto;padding:28px 16px 90px;color:var(--gd-ink);position:relative}
+  .gd-shell::before,.gd-shell::after{content:"";position:fixed;z-index:-1;border-radius:50%;filter:blur(18px);opacity:.55;pointer-events:none}
+  .gd-shell::before{width:320px;height:320px;left:-70px;top:120px;background:radial-gradient(circle,#ffd6a5 0%,rgba(255,214,165,0) 70%)}
+  .gd-shell::after{width:360px;height:360px;right:-90px;top:40px;background:radial-gradient(circle,#bde0fe 0%,rgba(189,224,254,0) 70%)}
   .gd-alerts{display:grid;gap:10px;margin-bottom:16px}
-  .gd-alert{padding:12px 14px;border-radius:16px;border:1px solid}
-  .gd-alert.success{background:#ecfdf5;border-color:#a7f3d0;color:#166534}
-  .gd-alert.error{background:#fef2f2;border-color:#fecaca;color:#991b1b}
-  .gd-alert.info{background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8}
-  .gd-banner{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:16px 18px;border-radius:20px;background:#172033;color:#fff;margin-bottom:18px}
-  .gd-banner p{margin:0;max-width:760px;line-height:1.55;color:rgba(255,255,255,.9)}
-  .gd-btn,.gd-btn-alt,.gd-btn-ghost{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:14px;font-weight:700;text-decoration:none;cursor:pointer}
-  .gd-btn{background:linear-gradient(135deg,var(--gd-brand),var(--gd-brand-2));color:#fff;border:none;padding:12px 16px;box-shadow:0 14px 28px rgba(15,118,110,.2)}
-  .gd-btn-alt{background:#fff;border:1px solid var(--gd-line);color:var(--gd-ink);padding:12px 16px}
-  .gd-btn-ghost{background:#edf7f7;border:1px solid rgba(15,118,110,.14);color:#0f4f4a;padding:10px 14px}
-  .gd-hero{border-radius:28px;overflow:hidden;background:#fff;border:1px solid var(--gd-line);box-shadow:0 18px 40px rgba(15,23,42,.08);margin-bottom:18px}
-  .gd-cover{min-height:240px;background-size:cover;background-position:center;position:relative;display:flex;align-items:flex-end}
-  .gd-cover::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(7,10,22,.06),rgba(7,10,22,.68))}
-  .gd-hero-content{position:relative;z-index:1;padding:24px;width:100%;color:#fff}
+  .gd-alert{padding:13px 16px;border-radius:18px;border:1px solid;backdrop-filter:blur(18px);box-shadow:0 16px 34px rgba(20,15,45,.08)}
+  .gd-alert.success{background:rgba(236,253,245,.9);border-color:#86efac;color:#166534}
+  .gd-alert.error{background:rgba(254,242,242,.92);border-color:#fda4af;color:#9f1239}
+  .gd-alert.info{background:rgba(239,246,255,.92);border-color:#93c5fd;color:#1d4ed8}
+  .gd-banner{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px;border-radius:24px;background:linear-gradient(135deg,#140f2d,#1f1b46 58%,#123b54);color:#fff;margin-bottom:18px;border:1px solid rgba(255,255,255,.14);box-shadow:0 20px 44px rgba(20,15,45,.22)}
+  .gd-banner p{margin:0;max-width:760px;line-height:1.6;color:rgba(255,255,255,.88)}
+  .gd-btn,.gd-btn-alt,.gd-btn-ghost,.gd-mini-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:999px;font-weight:800;text-decoration:none;cursor:pointer;font:inherit;transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease}
+  .gd-btn:hover,.gd-btn-alt:hover,.gd-btn-ghost:hover,.gd-mini-btn:hover{transform:translateY(-1px)}
+  .gd-btn{background:linear-gradient(135deg,var(--gd-brand),var(--gd-brand-2));color:#fff;border:none;padding:13px 18px;box-shadow:0 18px 32px rgba(255,107,107,.28)}
+  .gd-btn-alt{background:rgba(255,255,255,.94);border:1px solid rgba(255,255,255,.62);color:var(--gd-ink);padding:13px 18px;backdrop-filter:blur(18px);box-shadow:0 16px 28px rgba(20,15,45,.12)}
+  .gd-btn-ghost{background:rgba(20,15,45,.38);border:1px solid rgba(255,255,255,.26);color:#fff;padding:11px 15px;backdrop-filter:blur(16px)}
+  .gd-btn[disabled],.gd-mini-btn[disabled]{opacity:.55;cursor:default;transform:none;box-shadow:none}
+  .gd-mini-btn{border:1px solid rgba(96,79,160,.18);background:rgba(255,255,255,.8);color:var(--gd-ink);padding:8px 12px;font-size:.8rem;box-shadow:0 10px 20px rgba(20,15,45,.06)}
+  .gd-mini-btn.alt{background:rgba(110,231,255,.18);border-color:rgba(46,196,182,.26);color:#155e75}
+  .gd-mini-btn.danger{background:rgba(255,107,107,.12);border-color:rgba(244,63,94,.22);color:var(--gd-danger)}
+  .gd-mini-btn.success{background:rgba(134,239,172,.18);border-color:rgba(34,197,94,.24);color:var(--gd-success)}
+  .gd-hero{border-radius:34px;overflow:hidden;background:rgba(255,255,255,.72);border:1px solid rgba(255,255,255,.5);box-shadow:0 28px 54px rgba(20,15,45,.16);margin-bottom:20px;backdrop-filter:blur(24px)}
+  .gd-cover{min-height:290px;background-size:cover;background-position:center;position:relative;display:flex;align-items:flex-end}
+  .gd-cover::before{content:"";position:absolute;inset:auto auto 48px 28px;width:82px;height:82px;border-radius:22px;background:linear-gradient(135deg,rgba(255,255,255,.36),rgba(255,255,255,.06));transform:rotate(12deg);backdrop-filter:blur(10px)}
+  .gd-cover::after{content:"";position:absolute;inset:0;background:
+      radial-gradient(circle at 15% 18%,rgba(255,214,10,.18),rgba(255,214,10,0) 24%),
+      radial-gradient(circle at 82% 18%,rgba(110,231,255,.22),rgba(110,231,255,0) 30%),
+      linear-gradient(180deg,rgba(20,15,45,.14),rgba(20,15,45,.82))}
+  .gd-hero-content{position:relative;z-index:1;padding:28px;width:100%;color:#fff}
+  .gd-hero-content::before{content:"";position:absolute;inset:18px auto 18px 18px;width:min(calc(100% - 36px),720px);border-radius:28px;background:linear-gradient(135deg,rgba(20,15,45,.78),rgba(20,15,45,.54));border:1px solid rgba(255,255,255,.14);box-shadow:0 24px 44px rgba(20,15,45,.2);backdrop-filter:blur(14px)}
   .gd-hero-top{display:flex;flex-wrap:wrap;justify-content:space-between;gap:16px;align-items:flex-end}
-  .gd-hero h1{margin:0;font-size:clamp(2rem,4.8vw,3rem);line-height:1.03}
-  .gd-sub{margin:10px 0 0;max-width:760px;line-height:1.6;color:rgba(255,255,255,.88)}
-  .gd-stars{font-size:1.2rem;color:#fbbf24}
+  .gd-hero-copy,.gd-meta,.gd-nav{position:relative;z-index:1}
+  .gd-hero-copy{max-width:720px}
+  .gd-hero h1{margin:0;font-size:clamp(2rem,4.4vw,3.5rem);line-height:1.02;letter-spacing:-.04em;text-shadow:0 3px 18px rgba(0,0,0,.28)}
+  .gd-sub{margin:12px 0 0;max-width:62ch;line-height:1.62;color:rgba(255,255,255,.96);font-size:1.05rem;text-shadow:0 2px 12px rgba(0,0,0,.24)}
+  .gd-stars{font-size:1.15rem;color:#fde047;letter-spacing:.12em}
   .gd-meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
-  .gd-chip{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.2);font-size:.84rem;font-weight:700}
+  .gd-chip{display:inline-flex;align-items:center;gap:6px;padding:10px 14px;border-radius:999px;background:rgba(20,15,45,.42);border:1px solid rgba(255,255,255,.22);font-size:.86rem;font-weight:800;backdrop-filter:blur(12px);box-shadow:0 10px 24px rgba(20,15,45,.12)}
   .gd-nav{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+  .gd-status-pill{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:999px;background:rgba(20,15,45,.42);border:1px solid rgba(255,255,255,.22);color:#fff;font-size:.85rem;font-weight:800;backdrop-filter:blur(12px)}
+  .gd-tabs{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 18px;padding:10px;border-radius:26px;background:rgba(255,255,255,.52);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.46);box-shadow:0 18px 36px rgba(20,15,45,.08)}
+  .gd-tab-btn{appearance:none;border:1px solid transparent;background:transparent;color:var(--gd-muted);padding:12px 18px;border-radius:999px;font:inherit;font-weight:800;cursor:pointer;transition:.2s ease}
+  .gd-tab-btn:hover{border-color:rgba(96,79,160,.16);color:var(--gd-ink);background:rgba(255,255,255,.5)}
+  .gd-tab-btn.is-active{background:linear-gradient(135deg,var(--gd-brand-3),var(--gd-brand-4));border-color:transparent;color:#083344;box-shadow:0 14px 26px rgba(46,196,182,.22)}
+  .gd-tab-panel{display:none}
+  .gd-tab-panel.is-active{display:grid;gap:18px}
   .gd-grid{display:grid;grid-template-columns:1.25fr .85fr;gap:18px}
-  .gd-card{background:var(--gd-card);border:1px solid var(--gd-line);border-radius:24px;padding:20px;box-shadow:0 10px 28px rgba(15,23,42,.05)}
-  .gd-card h2{margin:0 0 6px;font-size:1.15rem}
+  .gd-card{background:var(--gd-card);border:1px solid rgba(255,255,255,.52);border-radius:28px;padding:22px;box-shadow:0 18px 38px rgba(20,15,45,.08);backdrop-filter:blur(24px)}
+  .gd-card h2{margin:0 0 6px;font-size:1.15rem;letter-spacing:-.02em}
   .gd-copy{margin:0;color:var(--gd-muted);line-height:1.55}
   .gd-form-grid{display:grid;gap:12px;margin-top:14px}
-  .gd-input,.gd-textarea{width:100%;border:1px solid var(--gd-line);border-radius:16px;padding:13px 14px;font:inherit;color:var(--gd-ink);background:#fff}
-  .gd-textarea{min-height:112px;resize:vertical}
+  .gd-input,.gd-textarea{width:100%;border:1px solid rgba(96,79,160,.14);border-radius:20px;padding:14px 16px;font:inherit;color:var(--gd-ink);background:rgba(255,255,255,.9);box-shadow:inset 0 1px 0 rgba(255,255,255,.72)}
+  .gd-input:focus,.gd-textarea:focus,.gd-chat-form input:focus{outline:none;border-color:rgba(46,196,182,.52);box-shadow:0 0 0 4px rgba(46,196,182,.14)}
+  .gd-textarea{min-height:120px;resize:vertical}
+  .gd-hidden{display:none!important}
+  .gd-media-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+  .gd-media-opt{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:14px 10px;border-radius:20px;border:1px solid rgba(96,79,160,.12);background:var(--gd-soft);color:var(--gd-ink);font:inherit;font-weight:800;cursor:pointer;backdrop-filter:blur(12px);transition:transform .18s ease,border-color .18s ease,background .18s ease}
+  .gd-media-opt:hover{transform:translateY(-1px);border-color:rgba(46,196,182,.34);background:rgba(255,255,255,.84)}
+  .gd-media-opt-icon{font-size:1.15rem;line-height:1}
+  .gd-media-preview{display:grid;gap:10px;padding:14px;border-radius:20px;border:1px solid rgba(96,79,160,.12);background:rgba(255,255,255,.8)}
+  .gd-media-preview img,.gd-media-preview video{width:100%;max-height:280px;object-fit:cover;border-radius:16px;background:#000}
+  .gd-mention-wrap{position:relative}
+  .gd-mention-dropdown{display:none;position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:30;padding:8px;border-radius:18px;background:rgba(255,255,255,.98);border:1px solid rgba(96,79,160,.16);box-shadow:0 18px 36px rgba(20,15,45,.12);max-height:240px;overflow:auto}
+  .gd-mention-dropdown.active{display:block}
+  .gd-mention-item{display:flex;align-items:center;gap:10px;padding:10px;border-radius:14px;cursor:pointer}
+  .gd-mention-item:hover,.gd-mention-item.selected{background:rgba(46,196,182,.12)}
+  .gd-mention-item-av,.gd-mention-item-av-placeholder{width:36px;height:36px;border-radius:12px;flex-shrink:0}
+  .gd-mention-item-av{object-fit:cover}
+  .gd-mention-item-av-placeholder{display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--gd-brand),var(--gd-brand-3));color:#fff;font-weight:800}
+  .gd-mention-item-name{font-size:.9rem;font-weight:700}
+  .gd-mention-item-handle{font-size:.78rem;color:var(--gd-muted)}
+  .gd-mention-link{color:#0f766e;font-weight:800;text-decoration:none}
+  .gd-rich-text a.gd-mention-link:hover{text-decoration:underline}
   .gd-choice-row{display:flex;flex-wrap:wrap;gap:10px}
-  .gd-choice{display:flex;gap:8px;align-items:flex-start;padding:12px;border:1px solid var(--gd-line);border-radius:16px;background:var(--gd-soft)}
+  .gd-choice{display:flex;gap:10px;align-items:flex-start;padding:14px;border:1px solid rgba(96,79,160,.12);border-radius:22px;background:var(--gd-soft);backdrop-filter:blur(12px)}
   .gd-stack{display:grid;gap:14px}
-  .gd-post{display:grid;gap:12px;padding:18px;border:1px solid var(--gd-line);border-radius:20px;background:#fff}
+  .gd-post{display:grid;gap:12px;padding:20px;border:1px solid rgba(96,79,160,.12);border-radius:24px;background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(255,255,255,.82));box-shadow:0 18px 32px rgba(20,15,45,.05)}
   .gd-post-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
   .gd-post-author{font-weight:700}
   .gd-post-time{font-size:.82rem;color:var(--gd-muted)}
   .gd-post-text{margin:0;line-height:1.65;white-space:pre-wrap;word-break:break-word}
-  .gd-post-media{width:100%;max-height:360px;object-fit:cover;border-radius:18px;border:1px solid #e4ebf5;background:#f8fafc}
-  .gd-post-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:#ecfdf5;color:#166534;font-size:.78rem;font-weight:700}
-  .gd-members{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
-  .gd-member{display:flex;gap:10px;align-items:center;padding:12px;border:1px solid var(--gd-line);border-radius:16px;background:#f9fbff}
-  .gd-avatar,.gd-avatar-fallback{width:42px;height:42px;border-radius:50%;object-fit:cover;flex-shrink:0}
-  .gd-avatar-fallback{display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0f766e,#2dd4bf);color:#fff;font-weight:700}
+  .gd-post-media{width:100%;max-height:380px;object-fit:cover;border-radius:22px;border:1px solid rgba(96,79,160,.08);background:#f8fafc}
+  .gd-post-badge{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;background:rgba(134,239,172,.22);color:#166534;font-size:.78rem;font-weight:800}
+  .gd-post-actions{display:flex;justify-content:flex-end}
+  .gd-members,.gd-join-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+  .gd-member{display:grid;gap:12px;padding:14px;border:1px solid rgba(96,79,160,.12);border-radius:22px;background:linear-gradient(180deg,rgba(255,255,255,.94),rgba(248,250,255,.76))}
+  .gd-member-top{display:flex;gap:12px;align-items:center}
+  .gd-avatar,.gd-avatar-fallback{width:46px;height:46px;border-radius:16px;object-fit:cover;flex-shrink:0;box-shadow:0 12px 20px rgba(20,15,45,.12)}
+  .gd-avatar-fallback{display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--gd-brand),var(--gd-brand-3));color:#fff;font-weight:800}
   .gd-member-name{font-weight:700;font-size:.92rem}
   .gd-member-meta{font-size:.8rem;color:var(--gd-muted)}
+  .gd-member-footer{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px}
+  .gd-role-pill{display:inline-flex;align-items:center;gap:6px;padding:7px 11px;border-radius:999px;background:rgba(46,196,182,.14);color:#0f766e;font-size:.75rem;font-weight:800}
+  .gd-role-pill.owner{background:rgba(255,214,10,.18);color:#854d0e}
+  .gd-role-pill.manager{background:rgba(110,231,255,.22);color:#155e75}
+  .gd-member-actions,.gd-request-actions{display:flex;flex-wrap:wrap;gap:8px}
+  .gd-member-actions-inline{display:flex;flex-wrap:wrap;gap:8px}
+  .gd-member-actions-inline .gd-mini-btn{padding:7px 11px;font-size:.76rem}
   .gd-friends{display:grid;gap:10px;margin-top:12px}
-  .gd-check{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid var(--gd-line);border-radius:16px;background:var(--gd-soft)}
-  .gd-chat-box{border:1px solid var(--gd-line);border-radius:18px;background:#f8fbff;overflow:hidden}
-  .gd-chat-log{max-height:320px;overflow:auto;padding:14px;display:grid;gap:10px}
-  .gd-msg{max-width:88%;padding:10px 12px;border-radius:16px;background:#fff;border:1px solid #dfe7f3}
-  .gd-msg.mine{margin-left:auto;background:#dcfce7;border-color:#bbf7d0}
+  .gd-check{display:flex;gap:10px;align-items:flex-start;padding:14px;border:1px solid rgba(96,79,160,.12);border-radius:22px;background:var(--gd-soft)}
+  .gd-locked-note{padding:16px 18px;border-radius:22px;background:linear-gradient(135deg,rgba(255,107,107,.08),rgba(255,214,165,.18));border:1px solid rgba(255,159,28,.18);color:var(--gd-ink)}
+  .gd-chat-box{border:1px solid rgba(96,79,160,.12);border-radius:24px;background:rgba(248,251,255,.84);overflow:hidden}
+  .gd-chat-log{max-height:340px;overflow:auto;padding:16px;display:grid;gap:10px}
+  .gd-msg{max-width:88%;padding:12px 14px;border-radius:20px;background:#fff;border:1px solid rgba(96,79,160,.08);box-shadow:0 12px 24px rgba(20,15,45,.04)}
+  .gd-msg.mine{margin-left:auto;background:linear-gradient(135deg,#d1fae5,#ccfbf1);border-color:rgba(16,185,129,.16)}
   .gd-msg-meta{font-size:.76rem;color:var(--gd-muted);margin-bottom:4px}
-  .gd-chat-form{display:flex;gap:10px;padding:12px;border-top:1px solid var(--gd-line);background:#fff}
-  .gd-chat-form input{flex:1;border:1px solid var(--gd-line);border-radius:14px;padding:12px 13px;font:inherit}
+  .gd-chat-form{display:flex;gap:10px;padding:12px;border-top:1px solid rgba(96,79,160,.12);background:rgba(255,255,255,.76)}
+  .gd-chat-form input{flex:1;border:1px solid rgba(96,79,160,.14);border-radius:16px;padding:12px 13px;font:inherit;background:#fff}
   .gd-scrapbook-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
-  .gd-memory{padding:12px;border:1px solid var(--gd-line);border-radius:18px;background:#fff}
+  .gd-memory{padding:14px;border:1px solid rgba(96,79,160,.12);border-radius:22px;background:linear-gradient(180deg,rgba(255,255,255,.95),rgba(255,248,250,.78))}
   .gd-memory img{width:100%;height:150px;object-fit:cover;border-radius:14px;margin-top:10px}
-  .gd-empty{padding:16px;border:1px dashed #c4d5ea;border-radius:18px;background:#f8fbff;color:var(--gd-muted)}
+  .gd-empty{padding:16px;border:1px dashed rgba(96,79,160,.24);border-radius:22px;background:rgba(248,251,255,.72);color:var(--gd-muted)}
   .gd-note{font-size:.82rem;color:var(--gd-muted)}
+  .gd-section-tag{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:rgba(110,231,255,.22);color:#155e75;font-size:.75rem;font-weight:800;margin-bottom:10px}
   @media (max-width: 920px){ .gd-grid{grid-template-columns:1fr} }
   @media (max-width: 640px){
-    .gd-shell,.gd-card{padding-left:16px;padding-right:16px}
+    .gd-shell{padding-left:14px;padding-right:14px}
+    .gd-card,.gd-banner{padding:18px}
     .gd-chat-form{flex-direction:column}
+    .gd-tabs{padding:8px}
+    .gd-tab-btn{width:100%}
+    .gd-hero-content{padding:18px}
+    .gd-hero-content::before{inset:12px;inline-size:calc(100% - 24px)}
   }
 </style>
 {% endblock %}
@@ -94,7 +158,7 @@
 
   {% if show_groups_onboarding %}
   <div class="gd-banner" id="gd-onboarding">
-    <p>Dentro de uma comunidade você publica com contexto, convida amigos, conversa no chat do grupo e decide se cada post fica só aqui ou também aparece no seu perfil.</p>
+    <p>Comunidade é fechada: quem está fora pede para entrar, e dono ou gestor decide. Aqui dentro você publica com contexto, organiza quem entra e cuida do que fica no ar.</p>
     <button type="button" class="gd-btn-alt" onclick="gdDismissOnboarding()">Entendi</button>
   </div>
   {% endif %}
@@ -103,7 +167,7 @@
     <div class="gd-cover" style="background-image:url('{{ group.cover_data }}')">
       <div class="gd-hero-content">
         <div class="gd-hero-top">
-          <div>
+          <div class="gd-hero-copy">
             <div class="gd-stars">{% for _ in group.star_fill %}★{% endfor %}{% for _ in group.star_empty %}☆{% endfor %}</div>
             <h1>{{ group.name }}</h1>
             <p class="gd-sub">{{ group.description|default:group.goal|default:"Comunidade pronta para conversas, publicações e memórias em grupo." }}</p>
@@ -122,10 +186,14 @@
         <div class="gd-nav">
           <a class="gd-btn-alt" href="{% url 'boards:groups_hub' %}">← Todas as comunidades</a>
           <a class="gd-btn-ghost" href="{% url 'boards:social_page' %}">Voltar ao Espaço Social</a>
-          {% if not is_member %}
+          {% if is_member %}
+          <span class="gd-status-pill">✨ Você está dentro como {{ membership.get_role_display|lower }}</span>
+          {% elif pending_request %}
+          <span class="gd-status-pill">⏳ Pedido enviado. Falta aprovação.</span>
+          {% else %}
           <form method="post" action="{% url 'boards:group_join' group.slug %}">
             {% csrf_token %}
-            <button type="submit" class="gd-btn">Participar desta comunidade</button>
+            <button type="submit" class="gd-btn">Pedir para entrar</button>
           </form>
           {% endif %}
         </div>
@@ -133,34 +201,17 @@
     </div>
   </section>
 
-  <div class="gd-grid">
-    <main class="gd-stack">
-      {% if is_member %}
-      <section class="gd-card">
-        <h2>Publicar na comunidade</h2>
-        <p class="gd-copy">Você decide se a publicação fica só aqui ou se também aparece no seu perfil social.</p>
-        <form method="post" action="{% url 'boards:group_post_create' group.slug %}" enctype="multipart/form-data">
-          {% csrf_token %}
-          <div class="gd-form-grid">
-            <textarea class="gd-textarea" name="text" placeholder="O que você quer compartilhar com o grupo?"></textarea>
-            <input class="gd-input" type="file" name="media" accept="image/*,video/*">
-            <div class="gd-choice-row">
-              <label class="gd-choice">
-                <input type="radio" name="destination" value="group_only" checked>
-                <span><strong>Só no grupo</strong><br><span class="gd-note">Fica visível apenas dentro desta comunidade.</span></span>
-              </label>
-              <label class="gd-choice">
-                <input type="radio" name="destination" value="group_and_profile">
-                <span><strong>Grupo + meu perfil</strong><br><span class="gd-note">Também entra no seu perfil do Espaço Social.</span></span>
-              </label>
-            </div>
-            <div><button type="submit" class="gd-btn">Publicar</button></div>
-          </div>
-        </form>
-      </section>
-      {% endif %}
+  <div class="gd-tabs" role="tablist" aria-label="Seções da comunidade">
+    <button type="button" class="gd-tab-btn is-active" data-tab="abertura" role="tab" aria-selected="true">Abertura</button>
+    <button type="button" class="gd-tab-btn" data-tab="como-publicar" role="tab" aria-selected="false">Como publicar</button>
+    <button type="button" class="gd-tab-btn" data-tab="chat" role="tab" aria-selected="false">Chat</button>
+    <button type="button" class="gd-tab-btn" data-tab="scrapbook" role="tab" aria-selected="false">Scrapbook</button>
+  </div>
 
+  <section class="gd-tab-panel is-active" data-panel="abertura" role="tabpanel">
+    <div class="gd-stack">
       <section class="gd-card">
+        <span class="gd-section-tag">Drop do grupo</span>
         <h2>Feed da comunidade</h2>
         <p class="gd-copy">Tudo o que foi publicado aqui, com o contexto do grupo preservado.</p>
         <div class="gd-stack" style="margin-top:16px">
@@ -178,9 +229,17 @@
                 <span class="gd-post-badge" style="background:#eff6ff;color:#1d4ed8">◎ Só no grupo</span>
                 {% endif %}
               </div>
-              {% if post.text %}<p class="gd-post-text">{{ post.text }}</p>{% endif %}
+              {% if post.text %}<p class="gd-post-text gd-rich-text">{{ post.text }}</p>{% endif %}
               {% if post.photo_url %}<img class="gd-post-media" src="{{ post.photo_url }}" alt="" loading="lazy">{% endif %}
               {% if post.video_url %}<video class="gd-post-media" src="{{ post.video_url }}" controls preload="metadata" playsinline></video>{% endif %}
+              {% if post.can_delete %}
+              <div class="gd-post-actions">
+                <form method="post" action="{% url 'boards:group_post_delete' group.slug post.id %}">
+                  {% csrf_token %}
+                  <button type="submit" class="gd-mini-btn danger">Apagar publicação</button>
+                </form>
+              </div>
+              {% endif %}
             </article>
             {% endfor %}
           {% else %}
@@ -188,25 +247,132 @@
           {% endif %}
         </div>
       </section>
-    </main>
+    </div>
+  </section>
 
-    <aside class="gd-stack">
+  <section class="gd-tab-panel" data-panel="como-publicar" role="tabpanel">
+    <div class="gd-grid">
+      <main class="gd-stack">
+        {% if is_member %}
+        <section class="gd-card">
+          <span class="gd-section-tag">Publicar sem vazar</span>
+          <h2>Publicar na comunidade</h2>
+          <p class="gd-copy">Você decide se a publicação fica só aqui ou se também aparece no seu perfil social.</p>
+          <form method="post" action="{% url 'boards:group_post_create' group.slug %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="gd-form-grid">
+              <div class="gd-mention-wrap">
+                <div id="gd-post-mention-dd" class="gd-mention-dropdown"></div>
+                <textarea class="gd-textarea" id="gd-post-textarea" name="text" placeholder="O que você quer compartilhar com o grupo?"></textarea>
+              </div>
+              <input id="gd-media-input" class="gd-hidden" type="file" name="media" accept="image/*,video/*">
+              <div class="gd-media-actions">
+                <button type="button" class="gd-media-opt" onclick="gdCapture('photo')">
+                  <span class="gd-media-opt-icon">📸</span>
+                  <span>Foto</span>
+                </button>
+                <button type="button" class="gd-media-opt" onclick="gdCapture('video')">
+                  <span class="gd-media-opt-icon">🎬</span>
+                  <span>Vídeo</span>
+                </button>
+                <button type="button" class="gd-media-opt" onclick="gdCapture('gallery')">
+                  <span class="gd-media-opt-icon">🖼️</span>
+                  <span>Galeria</span>
+                </button>
+              </div>
+              <div id="gd-media-preview" class="gd-media-preview gd-hidden"></div>
+              <div class="gd-note">Foto e vídeo podem ser capturados na hora ou escolhidos da galeria.</div>
+              <div class="gd-choice-row">
+                <label class="gd-choice">
+                  <input type="radio" name="destination" value="group_only" checked>
+                  <span><strong>Só no grupo</strong><br><span class="gd-note">Fica visível apenas dentro desta comunidade.</span></span>
+                </label>
+                <label class="gd-choice">
+                  <input type="radio" name="destination" value="group_and_profile">
+                  <span><strong>Grupo + meu perfil</strong><br><span class="gd-note">Também entra no seu perfil do Espaço Social.</span></span>
+                </label>
+              </div>
+              <div><button type="submit" class="gd-btn">Publicar</button></div>
+            </div>
+          </form>
+        </section>
+        {% else %}
+        <section class="gd-card">
+          <h2>Participação</h2>
+          {% if pending_request %}
+          <p class="gd-copy">Seu pedido já foi enviado. Quando dono ou gestor aprovarem, você libera publicação, chat e scrapbook.</p>
+          {% else %}
+          <p class="gd-copy">Quem não faz parte não entra direto. Primeiro você pede para entrar; depois o dono ou um gestor aprova ou recusa.</p>
+          <form method="post" action="{% url 'boards:group_join' group.slug %}" style="margin-top:16px">
+            {% csrf_token %}
+            <button type="submit" class="gd-btn">Pedir para entrar</button>
+          </form>
+          {% endif %}
+        </section>
+        {% endif %}
+      </main>
+
+      <aside class="gd-stack">
       <section class="gd-card">
+        <span class="gd-section-tag">Crew</span>
         <h2>Pessoas</h2>
         <p class="gd-copy">Quem já faz parte desta comunidade.</p>
+        {% if can_manage_group %}
+        <p class="gd-note" style="margin-top:8px">Você pode retirar membros daqui. Se for dono, também pode retirar gestores.</p>
+        {% endif %}
         {% if members %}
           <div class="gd-members" style="margin-top:16px">
             {% for member in members %}
             <div class="gd-member">
-              {% if member.profile.avatar_url %}
-                <img class="gd-avatar" src="{{ member.profile.avatar_url }}" alt="">
-              {% else %}
-                <div class="gd-avatar-fallback">{{ member.profile.display_name|default:member.email|first|upper }}</div>
-              {% endif %}
-              <div>
-                <div class="gd-member-name">{{ member.profile.display_name|default:member.email }}</div>
-                <div class="gd-member-meta">{% if member.profile.setor %}{{ member.profile.setor }}{% else %}Ativo no social{% endif %}</div>
+              <div class="gd-member-top">
+                {% if member.avatar_url %}
+                  <img class="gd-avatar" src="{{ member.avatar_url }}" alt="">
+                {% else %}
+                  <div class="gd-avatar-fallback">{{ member.display_name|first|upper }}</div>
+                {% endif %}
+                <div>
+                  <div class="gd-member-name">{{ member.display_name }}</div>
+                  <div class="gd-member-meta">{{ member.meta }}</div>
+                </div>
               </div>
+              <div class="gd-member-footer">
+                <span class="gd-role-pill{% if member.is_owner %} owner{% elif member.is_manager %} manager{% endif %}">{{ member.role_label }}</span>
+                <div class="gd-member-actions-inline">
+                {% if not member.has_posts %}
+                  <span class="gd-mini-btn" style="cursor:default">Sem publicação ainda</span>
+                {% endif %}
+                {% if member.can_nudge %}
+                <form method="post" action="{% url 'boards:group_member_nudge' group.slug member.id %}">
+                  {% csrf_token %}
+                  <button type="submit" class="gd-mini-btn success">Cutucar</button>
+                </form>
+                {% endif %}
+                {% if member.can_remove %}
+                <form method="post" action="{% url 'boards:group_member_remove' group.slug member.id %}" onsubmit="return confirm('Retirar {{ member.display_name|escapejs }} desta comunidade?')">
+                  {% csrf_token %}
+                  <button type="submit" class="gd-mini-btn danger">Retirar</button>
+                </form>
+                {% endif %}
+                </div>
+              </div>
+              {% if member.can_promote_manager or member.can_demote_manager %}
+              <div class="gd-member-actions">
+                {% if member.can_promote_manager %}
+                <form method="post" action="{% url 'boards:group_member_role_update' group.slug member.id %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="role" value="manager">
+                  <button type="submit" class="gd-mini-btn alt">Virar gestor</button>
+                </form>
+                {% endif %}
+                {% if member.can_demote_manager %}
+                <form method="post" action="{% url 'boards:group_member_role_update' group.slug member.id %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="role" value="member">
+                  <button type="submit" class="gd-mini-btn">Virar membro</button>
+                </form>
+                {% endif %}
+              </div>
+              {% endif %}
             </div>
             {% endfor %}
           </div>
@@ -215,10 +381,49 @@
         {% endif %}
       </section>
 
-      {% if is_member %}
+      {% if can_manage_group %}
       <section class="gd-card">
+        <span class="gd-section-tag">Fila de entrada</span>
+        <h2>Pedidos para entrar</h2>
+        <p class="gd-copy">Dono e gestores aprovam ou recusam quem pediu acesso.</p>
+        {% if join_requests %}
+        <div class="gd-join-grid" style="margin-top:16px">
+          {% for req in join_requests %}
+          <div class="gd-member">
+            <div class="gd-member-top">
+              {% if req.avatar_url %}
+                <img class="gd-avatar" src="{{ req.avatar_url }}" alt="">
+              {% else %}
+                <div class="gd-avatar-fallback">{{ req.display_name|first|upper }}</div>
+              {% endif %}
+              <div>
+                <div class="gd-member-name">{{ req.display_name }}</div>
+                <div class="gd-member-meta">{{ req.meta }}</div>
+              </div>
+            </div>
+            <div class="gd-note">Pediu acesso em {{ req.created_label }}</div>
+            <div class="gd-request-actions">
+              <form method="post" action="{% url 'boards:group_request_approve' group.slug req.id %}">
+                {% csrf_token %}
+                <button type="submit" class="gd-mini-btn success">Aprovar</button>
+              </form>
+              <form method="post" action="{% url 'boards:group_request_deny' group.slug req.id %}">
+                {% csrf_token %}
+                <button type="submit" class="gd-mini-btn danger">Recusar</button>
+              </form>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="gd-empty" style="margin-top:16px">Ninguém está esperando aprovação agora.</div>
+        {% endif %}
+      </section>
+
+      <section class="gd-card">
+        <span class="gd-section-tag">Convites rápidos</span>
         <h2>Convidar amigos</h2>
-        <p class="gd-copy">Só quem já é seu amigo no social aparece aqui.</p>
+        <p class="gd-copy">Só dono e gestores conseguem incluir pessoas direto. Aqui só aparecem amizades já ativas no social.</p>
         {% if invite_candidates %}
         <form method="post" action="{% url 'boards:group_invite_friends' group.slug %}">
           {% csrf_token %}
@@ -241,65 +446,90 @@
           <div class="gd-empty" style="margin-top:16px">Sem amigos disponíveis para convite agora.</div>
         {% endif %}
       </section>
-
+      {% elif is_member %}
       <section class="gd-card">
-        <h2>Chat do grupo</h2>
-        <p class="gd-copy">Conversa rápida entre quem já está dentro da comunidade.</p>
-        <div class="gd-chat-box" style="margin-top:16px">
-          <div class="gd-chat-log" id="gd-chat-log">
-            {% if chat_messages %}
-              {% for msg in chat_messages %}
-              <div class="gd-msg{% if msg.is_mine %} mine{% endif %}" data-msg-id="{{ msg.id }}">
-                <div class="gd-msg-meta">{{ msg.sender_name }} · {{ msg.created_label }}</div>
-                <div>{{ msg.text }}</div>
-              </div>
-              {% endfor %}
-            {% else %}
-              <div class="gd-empty" id="gd-chat-empty">Ainda não há mensagens neste chat.</div>
-            {% endif %}
-          </div>
-          <form class="gd-chat-form" id="gd-chat-form">
-            {% csrf_token %}
-            <input type="text" id="gd-chat-input" maxlength="1000" placeholder="Escreva uma mensagem para o grupo">
-            <button type="submit" class="gd-btn">Enviar</button>
-          </form>
-        </div>
-      </section>
-
-      <section class="gd-card">
-        <h2>Scrapbook</h2>
-        <p class="gd-copy">Memórias do grupo, com texto e foto.</p>
-        <form method="post" action="{% url 'boards:group_scrapbook_add' group.slug %}" enctype="multipart/form-data" style="margin-top:16px">
-          {% csrf_token %}
-          <div class="gd-form-grid">
-            <textarea class="gd-textarea" name="text" placeholder="Que memória vale guardar?"></textarea>
-            <input class="gd-input" type="file" name="photo" accept="image/*">
-            <div><button type="submit" class="gd-btn">Guardar no scrapbook</button></div>
-          </div>
-        </form>
-        <div class="gd-scrapbook-grid" style="margin-top:16px">
-          {% if scrapbook_entries %}
-            {% for entry in scrapbook_entries %}
-            <article class="gd-memory">
-              <strong>{{ entry.author_name }}</strong>
-              <div class="gd-note">{{ entry.created_label }}</div>
-              {% if entry.text %}<p class="gd-post-text" style="margin-top:8px">{{ entry.text }}</p>{% endif %}
-              {% if entry.photo_url %}<img src="{{ entry.photo_url }}" alt="" loading="lazy">{% endif %}
-            </article>
-            {% endfor %}
-          {% else %}
-            <div class="gd-empty">Ainda não há memórias salvas nesta comunidade.</div>
-          {% endif %}
-        </div>
-      </section>
-      {% else %}
-      <section class="gd-card">
-        <h2>Participação</h2>
-        <p class="gd-copy">Ao entrar na comunidade você libera o chat, o scrapbook e a criação de posts com a opção de aparecer também no seu perfil.</p>
+        <h2>Entradas e convites</h2>
+        <div class="gd-locked-note">Só dono e gestores podem aprovar pedidos, incluir pessoas e tirar membros da comunidade.</div>
       </section>
       {% endif %}
-    </aside>
-  </div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="gd-tab-panel" data-panel="chat" role="tabpanel">
+    {% if is_member %}
+    <section class="gd-card">
+      <h2>Chat do grupo</h2>
+      <p class="gd-copy">Conversa rápida entre quem já está dentro da comunidade.</p>
+      <div class="gd-chat-box" style="margin-top:16px">
+        <div class="gd-chat-log" id="gd-chat-log">
+          {% if chat_messages %}
+            {% for msg in chat_messages %}
+            <div class="gd-msg{% if msg.is_mine %} mine{% endif %}" data-msg-id="{{ msg.id }}">
+              <div class="gd-msg-meta">{{ msg.sender_name }} · {{ msg.created_label }}</div>
+              <div class="gd-rich-text gd-chat-text">{{ msg.text }}</div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="gd-empty" id="gd-chat-empty">Ainda não há mensagens neste chat.</div>
+          {% endif %}
+        </div>
+        <form class="gd-chat-form" id="gd-chat-form">
+          {% csrf_token %}
+          <div class="gd-mention-wrap" style="flex:1">
+            <div id="gd-chat-mention-dd" class="gd-mention-dropdown"></div>
+            <input type="text" id="gd-chat-input" maxlength="1000" placeholder="Escreva uma mensagem para o grupo">
+          </div>
+          <button type="submit" class="gd-btn">Enviar</button>
+        </form>
+      </div>
+    </section>
+    {% else %}
+    <section class="gd-card">
+      <h2>Participação</h2>
+      <p class="gd-copy">Entre na comunidade para conversar no chat do grupo.</p>
+    </section>
+    {% endif %}
+  </section>
+
+  <section class="gd-tab-panel" data-panel="scrapbook" role="tabpanel">
+    {% if is_member %}
+    <section class="gd-card">
+      <h2>Scrapbook</h2>
+      <p class="gd-copy">Memórias do grupo, com texto e foto.</p>
+      <form method="post" action="{% url 'boards:group_scrapbook_add' group.slug %}" enctype="multipart/form-data" style="margin-top:16px">
+        {% csrf_token %}
+        <div class="gd-form-grid">
+          <div class="gd-mention-wrap">
+            <div id="gd-scrapbook-mention-dd" class="gd-mention-dropdown"></div>
+            <textarea class="gd-textarea" id="gd-scrapbook-textarea" name="text" placeholder="Que memória vale guardar?"></textarea>
+          </div>
+          <input class="gd-input" type="file" name="photo" accept="image/*">
+          <div><button type="submit" class="gd-btn">Guardar no scrapbook</button></div>
+        </div>
+      </form>
+      <div class="gd-scrapbook-grid" style="margin-top:16px">
+        {% if scrapbook_entries %}
+          {% for entry in scrapbook_entries %}
+          <article class="gd-memory">
+            <strong>{{ entry.author_name }}</strong>
+            <div class="gd-note">{{ entry.created_label }}</div>
+            {% if entry.text %}<p class="gd-post-text gd-rich-text" style="margin-top:8px">{{ entry.text }}</p>{% endif %}
+            {% if entry.photo_url %}<img src="{{ entry.photo_url }}" alt="" loading="lazy">{% endif %}
+          </article>
+          {% endfor %}
+        {% else %}
+          <div class="gd-empty">Ainda não há memórias salvas nesta comunidade.</div>
+        {% endif %}
+      </div>
+    </section>
+    {% else %}
+    <section class="gd-card">
+      <h2>Participação</h2>
+      <p class="gd-copy">Entre na comunidade para guardar fotos e registros no scrapbook coletivo.</p>
+    </section>
+    {% endif %}
+  </section>
 </div>
 {% endblock %}
 
@@ -317,76 +547,318 @@
     });
   }
 </script>
-{% if is_member %}
 <script>
   (function(){
-    var form = document.getElementById("gd-chat-form");
-    var input = document.getElementById("gd-chat-input");
-    var log = document.getElementById("gd-chat-log");
-    if(!form || !input || !log) return;
+    var buttons = Array.from(document.querySelectorAll(".gd-tab-btn"));
+    var panels = Array.from(document.querySelectorAll(".gd-tab-panel"));
+    if(!buttons.length || !panels.length) return;
+    var defaultTab = "abertura";
 
-    function csrf(){
-      return document.querySelector("[name=csrfmiddlewaretoken]")?.value || "";
+    function activate(tabName){
+      var targetTab = buttons.some(function(btn){ return btn.dataset.tab === tabName; }) ? tabName : defaultTab;
+      buttons.forEach(function(btn){
+        var active = btn.dataset.tab === targetTab;
+        btn.classList.toggle("is-active", active);
+        btn.setAttribute("aria-selected", active ? "true" : "false");
+      });
+      panels.forEach(function(panel){
+        panel.classList.toggle("is-active", panel.dataset.panel === targetTab);
+      });
+      if(window.location.hash !== "#" + targetTab){
+        history.replaceState(null, "", "#" + targetTab);
+      }
     }
 
-    function escapeHtml(text){
-      return (text || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    }
+    var initial = (window.location.hash || "").replace(/^#/, "");
+    activate(initial || defaultTab);
 
-    function appendMessage(msg){
-      var empty = document.getElementById("gd-chat-empty");
-      if(empty) empty.remove();
-      var el = document.createElement("div");
-      el.className = "gd-msg" + (msg.is_mine ? " mine" : "");
-      el.dataset.msgId = msg.id;
-      el.innerHTML = '<div class="gd-msg-meta">' + escapeHtml(msg.sender_name) + ' · ' + escapeHtml(msg.created_label) + '</div><div>' + escapeHtml(msg.text).replace(/\n/g, "<br>") + '</div>';
-      log.appendChild(el);
-      log.scrollTop = log.scrollHeight;
-    }
-
-    function lastId(){
-      var items = log.querySelectorAll("[data-msg-id]");
-      if(!items.length) return 0;
-      return Number(items[items.length - 1].dataset.msgId || 0);
-    }
-
-    form.addEventListener("submit", function(ev){
-      ev.preventDefault();
-      var text = input.value.trim();
-      if(!text) return;
-      var body = new URLSearchParams();
-      body.set("text", text);
-      fetch("{% url 'boards:group_chat_send' group.slug %}", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
-          "X-CSRFToken": csrf()
-        },
-        body: body.toString()
-      })
-      .then(function(r){ return r.json().then(function(d){ return { ok:r.ok, data:d }; }); })
-      .then(function(result){
-        if(!result.ok){
-          alert(result.data.error || "Não foi possível enviar a mensagem.");
-          return;
-        }
-        appendMessage(result.data);
-        input.value = "";
+    buttons.forEach(function(btn){
+      btn.addEventListener("click", function(){
+        activate(btn.dataset.tab || defaultTab);
       });
     });
+  })();
+</script>
+{% if is_member %}
+<script>
+  function gdEscapeHtml(text){
+    return (text || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
 
-    function poll(){
-      fetch("{% url 'boards:group_chat_poll' group.slug %}?after=" + encodeURIComponent(lastId()))
-        .then(function(r){ return r.ok ? r.json() : null; })
+  function gdMentionify(text){
+    return gdEscapeHtml(text)
+      .replace(/(https?:\/\/[^\s<>"]+)/gi, function(url){
+        return '<a href="' + url + '" target="_blank" rel="noopener">' + url + '</a>';
+      })
+      .replace(/(^|[\s>])@([a-z0-9_.]+)/gi, function(match, prefix, handle){
+        return prefix + '<a class="gd-mention-link" href="/social/@' + handle + '/">@' + handle + '</a>';
+      })
+      .replace(/\n/g, "<br>");
+  }
+
+  function gdRenderMentionText(root){
+    (root || document).querySelectorAll(".gd-rich-text").forEach(function(node){
+      node.innerHTML = gdMentionify(node.textContent || "");
+    });
+  }
+
+  function gdCapture(type){
+    var input = document.getElementById("gd-media-input");
+    if(!input) return;
+    if(type === "video"){
+      input.accept = "video/*";
+      input.setAttribute("capture", "environment");
+    } else if(type === "photo"){
+      input.accept = "image/*";
+      input.setAttribute("capture", "environment");
+    } else {
+      input.accept = "image/*,video/*";
+      input.removeAttribute("capture");
+    }
+    input.value = "";
+    input.click();
+  }
+
+  (function(){
+    var cache = {};
+    var timer = null;
+    var activeResults = [];
+    var selectedIdx = -1;
+
+    function fetchMentions(query, cb){
+      if(cache[query]){
+        cb(cache[query]);
+        return;
+      }
+      fetch("{% url 'boards:group_mention_search' group.slug %}?q=" + encodeURIComponent(query))
+        .then(function(r){ return r.ok ? r.json() : []; })
         .then(function(data){
-          if(!data || !data.messages) return;
-          data.messages.forEach(function(msg){ appendMessage(msg); });
+          cache[query] = data;
+          cb(data);
         })
-        .catch(function(){});
+        .catch(function(){ cb([]); });
     }
 
-    log.scrollTop = log.scrollHeight;
-    setInterval(function(){ if(!document.hidden) poll(); }, 8000);
+    function getMentionQuery(input){
+      var val = input.value || "";
+      var pos = input.selectionStart || 0;
+      var before = val.substring(0, pos);
+      var match = before.match(/@([a-z0-9_.]{0,30})$/i);
+      if(!match) return null;
+      var idx = before.lastIndexOf("@");
+      if(idx > 0 && !/[\s\n]/.test(before.charAt(idx - 1))) return null;
+      return { query: match[1], start: idx, end: pos };
+    }
+
+    function renderDropdown(dropdown, results){
+      activeResults = results;
+      selectedIdx = results.length ? 0 : -1;
+      if(!results.length){
+        dropdown.classList.remove("active");
+        dropdown.innerHTML = "";
+        return;
+      }
+      dropdown.innerHTML = results.map(function(user, idx){
+        var avatar = user.avatar_url
+          ? '<img class="gd-mention-item-av" src="' + user.avatar_url + '" alt="">'
+          : '<span class="gd-mention-item-av-placeholder">' + (user.handle || "?").charAt(0).toUpperCase() + '</span>';
+        return '<div class="gd-mention-item' + (idx === 0 ? ' selected' : '') + '" data-idx="' + idx + '">' +
+          avatar +
+          '<div>' +
+          '<div class="gd-mention-item-name">' + gdEscapeHtml(user.display_name || user.handle) + '</div>' +
+          '<div class="gd-mention-item-handle">@' + gdEscapeHtml(user.handle) + '</div>' +
+          '</div></div>';
+      }).join("");
+      dropdown.classList.add("active");
+    }
+
+    function highlight(dropdown){
+      dropdown.querySelectorAll(".gd-mention-item").forEach(function(item, idx){
+        item.classList.toggle("selected", idx === selectedIdx);
+      });
+    }
+
+    function selectMention(input, dropdown, idx){
+      var user = activeResults[idx];
+      var mq = getMentionQuery(input);
+      if(!user || !mq) return false;
+      var val = input.value || "";
+      input.value = val.substring(0, mq.start) + "@" + user.handle + " " + val.substring(mq.end);
+      var newPos = mq.start + user.handle.length + 2;
+      input.setSelectionRange(newPos, newPos);
+      dropdown.classList.remove("active");
+      dropdown.innerHTML = "";
+      activeResults = [];
+      selectedIdx = -1;
+      input.focus();
+      return true;
+    }
+
+    function attachMention(inputId, dropdownId){
+      var input = document.getElementById(inputId);
+      var dropdown = document.getElementById(dropdownId);
+      if(!input || !dropdown) return;
+
+      input.addEventListener("input", function(){
+        clearTimeout(timer);
+        var mq = getMentionQuery(input);
+        if(!mq || mq.query.length < 1){
+          dropdown.classList.remove("active");
+          dropdown.innerHTML = "";
+          return;
+        }
+        timer = setTimeout(function(){
+          fetchMentions(mq.query, function(results){
+            renderDropdown(dropdown, results);
+          });
+        }, 180);
+      });
+
+      input.addEventListener("keydown", function(ev){
+        if(!dropdown.classList.contains("active")) return;
+        if(ev.key === "ArrowDown"){
+          ev.preventDefault();
+          selectedIdx = Math.min(selectedIdx + 1, activeResults.length - 1);
+          highlight(dropdown);
+        } else if(ev.key === "ArrowUp"){
+          ev.preventDefault();
+          selectedIdx = Math.max(selectedIdx - 1, 0);
+          highlight(dropdown);
+        } else if(ev.key === "Enter" || ev.key === "Tab"){
+          if(activeResults.length){
+            ev.preventDefault();
+            if(selectedIdx < 0) selectedIdx = 0;
+            selectMention(input, dropdown, selectedIdx);
+          }
+        } else if(ev.key === "Escape"){
+          dropdown.classList.remove("active");
+          dropdown.innerHTML = "";
+        }
+      });
+
+      dropdown.addEventListener("click", function(ev){
+        var item = ev.target.closest(".gd-mention-item");
+        if(!item) return;
+        selectMention(input, dropdown, Number(item.dataset.idx || 0));
+      });
+    }
+
+    function initMediaPreview(){
+      var input = document.getElementById("gd-media-input");
+      var preview = document.getElementById("gd-media-preview");
+      if(!input || !preview) return;
+
+      input.addEventListener("change", function(){
+        var file = input.files && input.files[0];
+        preview.innerHTML = "";
+        if(!file){
+          preview.classList.add("gd-hidden");
+          return;
+        }
+
+        preview.classList.remove("gd-hidden");
+        var url = URL.createObjectURL(file);
+        var note = document.createElement("div");
+        note.className = "gd-note";
+        note.textContent = file.name;
+
+        if((file.type || "").indexOf("video/") === 0){
+          var video = document.createElement("video");
+          video.src = url;
+          video.controls = true;
+          video.playsInline = true;
+          preview.appendChild(video);
+        } else {
+          var img = document.createElement("img");
+          img.src = url;
+          img.alt = "";
+          img.loading = "lazy";
+          preview.appendChild(img);
+        }
+        preview.appendChild(note);
+      });
+    }
+
+    function initChat(){
+      var form = document.getElementById("gd-chat-form");
+      var input = document.getElementById("gd-chat-input");
+      var log = document.getElementById("gd-chat-log");
+      if(!form || !input || !log) return;
+
+      function csrf(){
+        return document.querySelector("[name=csrfmiddlewaretoken]")?.value || "";
+      }
+
+      function appendMessage(msg){
+        var empty = document.getElementById("gd-chat-empty");
+        if(empty) empty.remove();
+        var el = document.createElement("div");
+        el.className = "gd-msg" + (msg.is_mine ? " mine" : "");
+        el.dataset.msgId = msg.id;
+        el.innerHTML = '<div class="gd-msg-meta">' + gdEscapeHtml(msg.sender_name) + ' · ' + gdEscapeHtml(msg.created_label) + '</div><div class="gd-rich-text gd-chat-text">' + gdMentionify(msg.text) + '</div>';
+        log.appendChild(el);
+        log.scrollTop = log.scrollHeight;
+      }
+
+      function lastId(){
+        var items = log.querySelectorAll("[data-msg-id]");
+        if(!items.length) return 0;
+        return Number(items[items.length - 1].dataset.msgId || 0);
+      }
+
+      form.addEventListener("submit", function(ev){
+        ev.preventDefault();
+        var text = input.value.trim();
+        if(!text) return;
+        var body = new URLSearchParams();
+        body.set("text", text);
+        fetch("{% url 'boards:group_chat_send' group.slug %}", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+            "X-CSRFToken": csrf()
+          },
+          body: body.toString()
+        })
+        .then(function(r){ return r.json().then(function(d){ return { ok:r.ok, data:d }; }); })
+        .then(function(result){
+          if(!result.ok){
+            alert(result.data.error || "Não foi possível enviar a mensagem.");
+            return;
+          }
+          appendMessage(result.data);
+          input.value = "";
+        });
+      });
+
+      function poll(){
+        fetch("{% url 'boards:group_chat_poll' group.slug %}?after=" + encodeURIComponent(lastId()))
+          .then(function(r){ return r.ok ? r.json() : null; })
+          .then(function(data){
+            if(!data || !data.messages) return;
+            data.messages.forEach(function(msg){ appendMessage(msg); });
+          })
+          .catch(function(){});
+      }
+
+      log.scrollTop = log.scrollHeight;
+      setInterval(function(){ if(!document.hidden) poll(); }, 8000);
+    }
+
+    attachMention("gd-post-textarea", "gd-post-mention-dd");
+    attachMention("gd-chat-input", "gd-chat-mention-dd");
+    attachMention("gd-scrapbook-textarea", "gd-scrapbook-mention-dd");
+    initMediaPreview();
+    initChat();
+    gdRenderMentionText(document);
+
+    document.addEventListener("click", function(ev){
+      if(!ev.target.closest(".gd-mention-wrap")){
+        document.querySelectorAll(".gd-mention-dropdown.active").forEach(function(dropdown){
+          dropdown.classList.remove("active");
+        });
+      }
+    });
   })();
 </script>
 {% endif %}

@@ -1,10 +1,12 @@
 import hashlib
 import html
+import re
 from urllib.parse import quote
 
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
+from django.db import models
 from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -14,15 +16,17 @@ from ..models import (
     SocialFriendship,
     SocialGroup,
     SocialGroupChatMessage,
+    SocialGroupJoinRequest,
     SocialGroupMembership,
     SocialGroupScrapbookEntry,
     SocialPost,
 )
 from ..services.moderation import ContentBlocked, check_or_block, schedule_layer2
 from ..services.social_activity import filter_active_users
-from .social import _get_or_create_profile, _notify_mentions
+from .social import _get_or_create_profile
 
 User = get_user_model()
+_GROUP_MENTION_RE = re.compile(r"@([a-z0-9_.]+)", re.I)
 
 _GROUP_PALETTES = [
     ("#0f766e", "#2dd4bf", "#99f6e4"),
@@ -142,14 +146,144 @@ def _decorate_group(group):
 
 
 def _group_members(group):
-    member_ids = list(
-        SocialGroupMembership.objects.filter(group=group).values_list("user_id", flat=True)
+    memberships = list(
+        SocialGroupMembership.objects
+        .filter(group=group)
+        .select_related("user", "user__profile")
     )
-    if not member_ids:
-        return []
-    return list(
-        filter_active_users(User.objects.filter(id__in=member_ids)).select_related("profile")
+    active_users = {
+        user.id: user
+        for user in filter_active_users(
+            User.objects.filter(id__in=[membership.user_id for membership in memberships])
+        ).select_related("profile")
+    }
+    return [membership for membership in memberships if membership.user_id in active_users]
+
+
+def _role_rank(role):
+    return {
+        SocialGroupMembership.ROLE_OWNER: 0,
+        SocialGroupMembership.ROLE_MANAGER: 1,
+        SocialGroupMembership.ROLE_MEMBER: 2,
+    }.get(role, 99)
+
+
+def _can_manage_group(membership):
+    return bool(membership and membership.role in {
+        SocialGroupMembership.ROLE_OWNER,
+        SocialGroupMembership.ROLE_MANAGER,
+    })
+
+
+def _can_manage_roles(membership):
+    return bool(membership and membership.role == SocialGroupMembership.ROLE_OWNER)
+
+
+def _can_remove_membership(actor_membership, target_membership):
+    if not _can_manage_group(actor_membership):
+        return False
+    if actor_membership.user_id == target_membership.user_id:
+        return False
+    if target_membership.role == SocialGroupMembership.ROLE_OWNER:
+        return False
+    if actor_membership.role == SocialGroupMembership.ROLE_OWNER:
+        return True
+    return target_membership.role == SocialGroupMembership.ROLE_MEMBER
+
+
+def _can_nudge_member(actor_membership, target_membership, posting_user_ids):
+    if not _can_manage_group(actor_membership):
+        return False
+    if not target_membership or actor_membership.user_id == target_membership.user_id:
+        return False
+    if target_membership.role != SocialGroupMembership.ROLE_MEMBER:
+        return False
+    return target_membership.user_id not in posting_user_ids
+
+
+def _member_payload(membership, actor_membership, posting_user_ids):
+    prof = getattr(membership.user, "profile", None)
+    can_manage_roles = _can_manage_roles(actor_membership)
+    has_posts = membership.user_id in posting_user_ids
+    return {
+        "id": membership.user_id,
+        "membership_id": membership.id,
+        "profile": prof,
+        "display_name": (prof.display_name if prof else "") or membership.user.email,
+        "avatar_url": getattr(prof, "avatar_url", "") if prof else "",
+        "meta": prof.setor if prof and prof.setor else "Ativo no social",
+        "role": membership.role,
+        "role_label": membership.get_role_display(),
+        "is_owner": membership.role == SocialGroupMembership.ROLE_OWNER,
+        "is_manager": membership.role == SocialGroupMembership.ROLE_MANAGER,
+        "has_posts": has_posts,
+        "can_remove": _can_remove_membership(actor_membership, membership),
+        "can_nudge": _can_nudge_member(actor_membership, membership, posting_user_ids),
+        "can_promote_manager": bool(
+            can_manage_roles and membership.role == SocialGroupMembership.ROLE_MEMBER
+        ),
+        "can_demote_manager": bool(
+            can_manage_roles and membership.role == SocialGroupMembership.ROLE_MANAGER
+        ),
+    }
+
+
+def _join_request_payload(join_request):
+    prof = getattr(join_request.user, "profile", None)
+    return {
+        "id": join_request.user_id,
+        "display_name": (prof.display_name if prof else "") or join_request.user.email,
+        "avatar_url": getattr(prof, "avatar_url", "") if prof else "",
+        "meta": prof.setor if prof and prof.setor else "Quer entrar nesta comunidade",
+        "created_label": timezone.localtime(join_request.created_at).strftime("%d/%m %H:%M"),
+    }
+
+
+def _user_sort_label(user):
+    prof = getattr(user, "profile", None)
+    return (prof.display_name if prof else "") or user.email
+
+
+def _group_mentioned_users(text, actor, group):
+    if not text:
+        return User.objects.none()
+    handles = {
+        handle.strip().lower()
+        for handle in _GROUP_MENTION_RE.findall(text)
+        if handle.strip()
+    }
+    if not handles:
+        return User.objects.none()
+    return (
+        User.objects
+        .filter(
+            social_group_memberships__group=group,
+            profile__handle__in=handles,
+        )
+        .exclude(id=actor.id)
+        .select_related("profile")
+        .distinct()
     )
+
+
+def _notify_group_post_mentions(text, actor, group, post_id):
+    mentioned_users = _group_mentioned_users(text, actor, group)
+    if not mentioned_users:
+        return
+    try:
+        from boards.services.notifications import notify_social_mention
+        for user in mentioned_users:
+            try:
+                notify_social_mention(
+                    recipient=user,
+                    actor=actor,
+                    post_id=post_id,
+                    context="post",
+                )
+            except Exception:
+                pass
+    except Exception:
+        pass
 
 
 def _invite_candidates(user, group=None):
@@ -167,8 +301,11 @@ def _invite_candidates(user, group=None):
     return list(users)
 
 
-def _post_payload(post):
+def _post_payload(post, viewer_membership=None, viewer_user=None):
     prof = getattr(post.user, "profile", None)
+    can_delete = False
+    if viewer_user is not None:
+        can_delete = post.user_id == viewer_user.id or _can_manage_group(viewer_membership)
     return {
         "id": post.id,
         "author_name": (prof.display_name if prof else "") or post.user.email,
@@ -178,6 +315,7 @@ def _post_payload(post):
         "video_url": post.video.url if post.video else "",
         "created_label": timezone.localtime(post.created_at).strftime("%d/%m/%Y %H:%M"),
         "show_on_profile": post.show_on_profile,
+        "can_delete": can_delete,
     }
 
 
@@ -190,10 +328,14 @@ def groups_hub(request):
     memberships = set(
         SocialGroupMembership.objects.filter(user=request.user).values_list("group_id", flat=True)
     )
+    pending_requests = set(
+        SocialGroupJoinRequest.objects.filter(user=request.user).values_list("group_id", flat=True)
+    )
     for group in groups:
         _decorate_group(group)
         group.member_total = group.memberships.count()
         group.is_member = group.id in memberships
+        group.has_pending_request = group.id in pending_requests
     my_groups = [g for g in groups if g.is_member]
     return render(request, "boards/groups_hub.html", {
         "groups": groups,
@@ -263,9 +405,34 @@ def group_detail(request, slug):
         .first()
     )
     is_member = membership is not None
-    members = _group_members(group)
+    can_manage_group = _can_manage_group(membership)
+    can_manage_roles = _can_manage_roles(membership)
+    posting_user_ids = set(
+        SocialPost.objects.filter(group=group, is_active=True)
+        .values_list("user_id", flat=True)
+        .distinct()
+    )
+    member_memberships = sorted(
+        _group_members(group),
+        key=lambda item: (_role_rank(item.role), _user_sort_label(item.user)),
+    )
+    members = [_member_payload(item, membership, posting_user_ids) for item in member_memberships]
+    pending_request = None
+    if not is_member:
+        pending_request = (
+            SocialGroupJoinRequest.objects
+            .filter(group=group, user=request.user)
+            .first()
+        )
+    join_requests = []
+    if can_manage_group:
+        join_requests = [
+            _join_request_payload(join_request)
+            for join_request in SocialGroupJoinRequest.objects.filter(group=group)
+            .select_related("user", "user__profile")[:20]
+        ]
     posts = [
-        _post_payload(post)
+        _post_payload(post, viewer_membership=membership, viewer_user=request.user)
         for post in SocialPost.objects.filter(
             group=group,
             is_active=True,
@@ -305,12 +472,16 @@ def group_detail(request, slug):
         "group": group,
         "is_member": is_member,
         "membership": membership,
+        "can_manage_group": can_manage_group,
+        "can_manage_roles": can_manage_roles,
+        "pending_request": pending_request,
+        "join_requests": join_requests,
         "members": members[:18],
         "member_total": len(members),
         "posts": posts,
         "chat_messages": chat_messages,
         "scrapbook_entries": scrapbook_entries,
-        "invite_candidates": _invite_candidates(request.user, group) if is_member else [],
+        "invite_candidates": _invite_candidates(request.user, group) if can_manage_group else [],
         "show_groups_onboarding": not _get_or_create_profile(request.user).groups_onboarding_done,
     })
 
@@ -319,15 +490,18 @@ def group_detail(request, slug):
 @require_POST
 def group_join(request, slug):
     group = get_object_or_404(SocialGroup, slug=slug)
-    SocialGroupMembership.objects.get_or_create(
+    if SocialGroupMembership.objects.filter(group=group, user=request.user).exists():
+        messages.info(request, "Você já faz parte desta comunidade.")
+        return redirect("boards:group_detail", slug=group.slug)
+
+    _, created = SocialGroupJoinRequest.objects.get_or_create(
         group=group,
         user=request.user,
-        defaults={
-            "invited_by": request.user,
-            "role": SocialGroupMembership.ROLE_MEMBER,
-        },
     )
-    messages.success(request, "Você entrou na comunidade.")
+    if created:
+        messages.success(request, "Pedido enviado. Agora é só aguardar a aprovação do dono ou de um gestor.")
+    else:
+        messages.info(request, "Seu pedido já está aguardando aprovação.")
     return redirect("boards:group_detail", slug=group.slug)
 
 
@@ -335,7 +509,8 @@ def group_join(request, slug):
 @require_POST
 def group_invite_friends(request, slug):
     group = get_object_or_404(SocialGroup, slug=slug)
-    if not SocialGroupMembership.objects.filter(group=group, user=request.user).exists():
+    membership = SocialGroupMembership.objects.filter(group=group, user=request.user).first()
+    if not _can_manage_group(membership):
         return HttpResponseForbidden("Sem permissão.")
 
     allowed_ids = _accepted_friend_ids(request.user)
@@ -351,9 +526,117 @@ def group_invite_friends(request, slug):
     ]
     if memberships:
         SocialGroupMembership.objects.bulk_create(memberships, ignore_conflicts=True)
+        SocialGroupJoinRequest.objects.filter(group=group, user_id__in=invite_ids).delete()
         messages.success(request, "Amigos adicionados à comunidade.")
     else:
         messages.info(request, "Escolha pelo menos um amigo para convidar.")
+    return redirect("boards:group_detail", slug=group.slug)
+
+
+@login_required
+@require_POST
+def group_request_approve(request, slug, user_id):
+    group = get_object_or_404(SocialGroup, slug=slug)
+    membership = SocialGroupMembership.objects.filter(group=group, user=request.user).first()
+    if not _can_manage_group(membership):
+        return HttpResponseForbidden("Sem permissão.")
+
+    target_user = get_object_or_404(User, id=user_id)
+    join_request = SocialGroupJoinRequest.objects.filter(group=group, user=target_user).first()
+    if not join_request:
+        messages.info(request, "Esse pedido já foi resolvido.")
+        return redirect("boards:group_detail", slug=group.slug)
+
+    SocialGroupMembership.objects.get_or_create(
+        group=group,
+        user=target_user,
+        defaults={
+            "invited_by": request.user,
+            "role": SocialGroupMembership.ROLE_MEMBER,
+        },
+    )
+    SocialGroupJoinRequest.objects.filter(group=group, user=target_user).delete()
+    messages.success(request, "Pedido aprovado. A pessoa já faz parte da comunidade.")
+    return redirect("boards:group_detail", slug=group.slug)
+
+
+@login_required
+@require_POST
+def group_request_deny(request, slug, user_id):
+    group = get_object_or_404(SocialGroup, slug=slug)
+    membership = SocialGroupMembership.objects.filter(group=group, user=request.user).first()
+    if not _can_manage_group(membership):
+        return HttpResponseForbidden("Sem permissão.")
+
+    deleted, _ = SocialGroupJoinRequest.objects.filter(group=group, user_id=user_id).delete()
+    if deleted:
+        messages.success(request, "Pedido recusado.")
+    else:
+        messages.info(request, "Esse pedido já foi resolvido.")
+    return redirect("boards:group_detail", slug=group.slug)
+
+
+@login_required
+@require_POST
+def group_member_remove(request, slug, user_id):
+    group = get_object_or_404(SocialGroup, slug=slug)
+    actor_membership = SocialGroupMembership.objects.filter(group=group, user=request.user).first()
+    target_membership = SocialGroupMembership.objects.filter(group=group, user_id=user_id).first()
+    if not actor_membership or not target_membership or not _can_remove_membership(actor_membership, target_membership):
+        return HttpResponseForbidden("Sem permissão.")
+
+    target_name = (getattr(getattr(target_membership.user, "profile", None), "display_name", "") or target_membership.user.email)
+    target_membership.delete()
+    messages.success(request, f"{target_name} foi removido da comunidade.")
+    return redirect("boards:group_detail", slug=group.slug)
+
+
+@login_required
+@require_POST
+def group_member_role_update(request, slug, user_id):
+    group = get_object_or_404(SocialGroup, slug=slug)
+    actor_membership = SocialGroupMembership.objects.filter(group=group, user=request.user).first()
+    if not _can_manage_roles(actor_membership):
+        return HttpResponseForbidden("Sem permissão.")
+
+    target_membership = get_object_or_404(SocialGroupMembership, group=group, user_id=user_id)
+    if target_membership.role == SocialGroupMembership.ROLE_OWNER or target_membership.user_id == request.user.id:
+        return HttpResponseForbidden("Sem permissão.")
+
+    new_role = (request.POST.get("role") or "").strip()
+    if new_role not in {SocialGroupMembership.ROLE_MANAGER, SocialGroupMembership.ROLE_MEMBER}:
+        messages.error(request, "Papel inválido.")
+        return redirect("boards:group_detail", slug=group.slug)
+
+    target_membership.role = new_role
+    target_membership.save(update_fields=["role"])
+    messages.success(request, f"{target_membership.user.email} agora está como {target_membership.get_role_display().lower()}.")
+    return redirect("boards:group_detail", slug=group.slug)
+
+
+@login_required
+@require_POST
+def group_member_nudge(request, slug, user_id):
+    group = get_object_or_404(SocialGroup, slug=slug)
+    actor_membership = SocialGroupMembership.objects.filter(group=group, user=request.user).first()
+    target_membership = SocialGroupMembership.objects.filter(group=group, user_id=user_id).first()
+    posting_user_ids = set(
+        SocialPost.objects.filter(group=group, is_active=True)
+        .values_list("user_id", flat=True)
+        .distinct()
+    )
+    if not actor_membership or not target_membership or not _can_nudge_member(actor_membership, target_membership, posting_user_ids):
+        return HttpResponseForbidden("Sem permissão.")
+
+    from boards.services.notifications import notify_group_nudge
+
+    notify_group_nudge(
+        recipient=target_membership.user,
+        actor=request.user,
+        group=group,
+    )
+    target_name = (getattr(getattr(target_membership.user, "profile", None), "display_name", "") or target_membership.user.email)
+    messages.success(request, f"{target_name} recebeu uma cutucada para participar mais da comunidade.")
     return redirect("boards:group_detail", slug=group.slug)
 
 
@@ -410,7 +693,7 @@ def group_post_create(request, slug):
             text=text,
             author=request.user,
         )
-        _notify_mentions(text, request.user, post.id, context="post")
+        _notify_group_post_mentions(text, request.user, group, post.id)
 
     if video:
         try:
@@ -426,6 +709,29 @@ def group_post_create(request, slug):
         messages.success(request, "Post publicado na comunidade e na sua página.")
     else:
         messages.success(request, "Post publicado só na comunidade.")
+    return redirect("boards:group_detail", slug=group.slug)
+
+
+@login_required
+@require_POST
+def group_post_delete(request, slug, post_id):
+    group = get_object_or_404(SocialGroup, slug=slug)
+    post = get_object_or_404(SocialPost, id=post_id, group=group, is_active=True)
+    membership = SocialGroupMembership.objects.filter(group=group, user=request.user).first()
+    can_delete = bool(
+        post.user_id == request.user.id or _can_manage_group(membership)
+    )
+    if not can_delete:
+        return HttpResponseForbidden("Sem permissão.")
+
+    post.is_active = False
+    update_fields = ["is_active"]
+    if post.user_id != request.user.id:
+        post.moderation_status = SocialPost.MOD_REMOVED
+        post.moderation_reason = "Removido pela gestão da comunidade."
+        update_fields.extend(["moderation_status", "moderation_reason"])
+    post.save(update_fields=update_fields)
+    messages.success(request, "Publicação apagada da comunidade.")
     return redirect("boards:group_detail", slug=group.slug)
 
 
@@ -458,6 +764,44 @@ def group_chat_send(request, slug):
         "created_label": timezone.localtime(msg.created_at).strftime("%d/%m %H:%M"),
         "is_mine": True,
     })
+
+
+@login_required
+def group_mention_search(request, slug):
+    group = get_object_or_404(SocialGroup, slug=slug)
+    if not SocialGroupMembership.objects.filter(group=group, user=request.user).exists():
+        return JsonResponse([], safe=False)
+
+    q = (request.GET.get("q") or "").strip()
+    if len(q) < 1:
+        return JsonResponse([], safe=False)
+
+    users = (
+        User.objects
+        .filter(social_group_memberships__group=group)
+        .exclude(id=request.user.id)
+        .select_related("profile")
+        .filter(
+            models.Q(profile__handle__icontains=q)
+            | models.Q(profile__display_name__icontains=q)
+        )
+        .order_by("profile__handle")
+        .distinct()[:15]
+    )
+
+    results = []
+    for user in users:
+        profile = getattr(user, "profile", None)
+        handle = (getattr(profile, "handle", "") or "").strip()
+        if not handle:
+            continue
+        results.append({
+            "id": user.id,
+            "handle": handle,
+            "display_name": (getattr(profile, "display_name", "") or "").strip(),
+            "avatar_url": getattr(profile, "avatar_url", "") if profile else "",
+        })
+    return JsonResponse(results, safe=False)
 
 
 @login_required

@@ -4,6 +4,7 @@ import shutil
 import subprocess
 import unicodedata
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from django.contrib.auth import get_user_model
@@ -194,9 +195,11 @@ class RepairLegacyFileRefsTests(TestCase):
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from boards.models import (
-    Board, BoardMembership, Card, CardImpediment, Column, Organization, UserProfile,
+    Board, BoardMembership, Card, CardImpediment, Column, Organization, SocialGroup,
+    SocialGroupJoinRequest, SocialGroupMembership, SocialPost, UserProfile,
 )
 
 User = get_user_model()
@@ -604,3 +607,215 @@ class VideoThumbTests(TestCase):
         meta = file_meta(FieldFile())
         self.assertEqual(meta["kind"], "video")
         self.assertEqual(meta["ext"], "MOV")
+
+
+class SocialGroupAccessTests(TestCase):
+    def setUp(self):
+        self.owner = _mk("groupowner", "groupowner@example.com")
+        self.manager = _mk("groupmanager", "groupmanager@example.com")
+        self.requester = _mk("grouprequester", "grouprequester@example.com")
+        self.member = _mk("groupmember", "groupmember@example.com")
+        self.group = SocialGroup.objects.create(
+            name="Comunidade Fechada",
+            created_by=self.owner,
+        )
+        SocialGroupMembership.objects.create(
+            group=self.group,
+            user=self.owner,
+            invited_by=self.owner,
+            role=SocialGroupMembership.ROLE_OWNER,
+        )
+        SocialGroupMembership.objects.create(
+            group=self.group,
+            user=self.manager,
+            invited_by=self.owner,
+            role=SocialGroupMembership.ROLE_MANAGER,
+        )
+        SocialGroupMembership.objects.create(
+            group=self.group,
+            user=self.member,
+            invited_by=self.owner,
+            role=SocialGroupMembership.ROLE_MEMBER,
+        )
+        for user, handle, name in [
+            (self.owner, "ownergroup", "Dono Grupo"),
+            (self.manager, "lucas", "Lucas Paes"),
+            (self.member, "maria", "Maria Silva"),
+            (self.requester, "fora", "Pessoa de Fora"),
+        ]:
+            user.last_login = timezone.now()
+            user.save(update_fields=["last_login"])
+            profile = user.profile
+            profile.handle = handle
+            profile.display_name = name
+            profile.save(update_fields=["handle", "display_name"])
+
+    def test_join_creates_request_instead_of_membership(self):
+        self.client.force_login(self.requester)
+
+        response = self.client.post(reverse("boards:group_join", args=[self.group.slug]))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(
+            SocialGroupMembership.objects.filter(group=self.group, user=self.requester).exists()
+        )
+        self.assertTrue(
+            SocialGroupJoinRequest.objects.filter(group=self.group, user=self.requester).exists()
+        )
+
+    def test_manager_can_approve_request(self):
+        SocialGroupJoinRequest.objects.create(group=self.group, user=self.requester)
+        self.client.force_login(self.manager)
+
+        response = self.client.post(
+            reverse("boards:group_request_approve", args=[self.group.slug, self.requester.id])
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(
+            SocialGroupMembership.objects.filter(group=self.group, user=self.requester).exists()
+        )
+        self.assertFalse(
+            SocialGroupJoinRequest.objects.filter(group=self.group, user=self.requester).exists()
+        )
+
+    def test_manager_can_remove_member(self):
+        self.client.force_login(self.manager)
+
+        response = self.client.post(
+            reverse("boards:group_member_remove", args=[self.group.slug, self.member.id])
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(
+            SocialGroupMembership.objects.filter(group=self.group, user=self.member).exists()
+        )
+
+    def test_member_can_search_mentions_only_within_group(self):
+        self.client.force_login(self.member)
+
+        response = self.client.get(
+            reverse("boards:group_mention_search", args=[self.group.slug]),
+            {"q": "lu"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["handle"], "lucas")
+
+    def test_non_member_does_not_receive_group_mentions_search_results(self):
+        self.client.force_login(self.requester)
+
+        response = self.client.get(
+            reverse("boards:group_mention_search", args=[self.group.slug]),
+            {"q": "ma"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), [])
+
+    def test_manager_sees_remove_action_on_group_detail(self):
+        self.client.force_login(self.manager)
+
+        response = self.client.get(reverse("boards:group_detail", args=[self.group.slug]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Você pode retirar membros daqui.")
+        self.assertContains(response, "Retirar")
+        self.assertContains(response, "Cutucar")
+
+    def test_member_does_not_see_remove_action_on_group_detail(self):
+        self.client.force_login(self.member)
+
+        response = self.client.get(reverse("boards:group_detail", args=[self.group.slug]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Você pode retirar membros daqui.")
+        self.assertNotContains(response, "Retirar</button>", html=False)
+        self.assertNotContains(response, "Cutucar</button>", html=False)
+
+    def test_manager_does_not_see_nudge_action_for_member_with_group_post(self):
+        SocialPost.objects.create(
+            user=self.member,
+            group=self.group,
+            text="Já publiquei aqui",
+            show_on_profile=False,
+        )
+        self.client.force_login(self.manager)
+
+        response = self.client.get(reverse("boards:group_detail", args=[self.group.slug]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Cutucar</button>", html=False)
+
+    @patch("boards.services.notifications.notify_group_nudge")
+    def test_manager_can_nudge_member_without_group_posts(self, notify_group_nudge):
+        self.client.force_login(self.manager)
+
+        response = self.client.post(
+            reverse("boards:group_member_nudge", args=[self.group.slug, self.member.id])
+        )
+
+        self.assertEqual(response.status_code, 302)
+        notify_group_nudge.assert_called_once_with(
+            recipient=self.member,
+            actor=self.manager,
+            group=self.group,
+        )
+
+    @patch("boards.services.notifications.notify_group_nudge")
+    def test_member_cannot_nudge_another_member(self, notify_group_nudge):
+        other_member = _mk("groupfriend", "groupfriend@example.com")
+        other_member.profile.handle = "ana"
+        other_member.profile.display_name = "Ana"
+        other_member.profile.save(update_fields=["handle", "display_name"])
+        SocialGroupMembership.objects.create(
+            group=self.group,
+            user=other_member,
+            invited_by=self.owner,
+            role=SocialGroupMembership.ROLE_MEMBER,
+        )
+        self.client.force_login(self.member)
+
+        response = self.client.post(
+            reverse("boards:group_member_nudge", args=[self.group.slug, other_member.id])
+        )
+
+        self.assertEqual(response.status_code, 403)
+        notify_group_nudge.assert_not_called()
+
+    @patch("boards.services.notifications.notify_group_nudge")
+    def test_manager_cannot_nudge_member_who_already_posted(self, notify_group_nudge):
+        SocialPost.objects.create(
+            user=self.member,
+            group=self.group,
+            text="Já participei",
+            show_on_profile=False,
+        )
+        self.client.force_login(self.manager)
+
+        response = self.client.post(
+            reverse("boards:group_member_nudge", args=[self.group.slug, self.member.id])
+        )
+
+        self.assertEqual(response.status_code, 403)
+        notify_group_nudge.assert_not_called()
+
+    def test_manager_can_delete_group_post(self):
+        post = SocialPost.objects.create(
+            user=self.member,
+            group=self.group,
+            text="post para moderar",
+            show_on_profile=False,
+        )
+        self.client.force_login(self.manager)
+
+        response = self.client.post(
+            reverse("boards:group_post_delete", args=[self.group.slug, post.id])
+        )
+
+        self.assertEqual(response.status_code, 302)
+        post.refresh_from_db()
+        self.assertFalse(post.is_active)
+        self.assertEqual(post.moderation_status, SocialPost.MOD_REMOVED)

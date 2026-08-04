@@ -1283,9 +1283,11 @@ class SocialGroup(models.Model):
 
 class SocialGroupMembership(models.Model):
     ROLE_OWNER = "owner"
+    ROLE_MANAGER = "manager"
     ROLE_MEMBER = "member"
     ROLE_CHOICES = [
         (ROLE_OWNER, "Dono"),
+        (ROLE_MANAGER, "Gestor"),
         (ROLE_MEMBER, "Membro"),
     ]
     group = models.ForeignKey(
@@ -1310,6 +1312,23 @@ class SocialGroupMembership(models.Model):
 
     def __str__(self):
         return f"{self.user} em {self.group} ({self.role})"
+
+
+class SocialGroupJoinRequest(models.Model):
+    group = models.ForeignKey(
+        SocialGroup, related_name="join_requests", on_delete=models.CASCADE,
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, related_name="social_group_join_requests", on_delete=models.CASCADE,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [("group", "user")]
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"{self.user} pediu entrada em {self.group}"
 
 
 class SocialGroupChatMessage(models.Model):

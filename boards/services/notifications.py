@@ -890,3 +890,58 @@ def notify_chat_message(
                 )
             except Exception:
                 logger.exception("chat notify: email failed user_id=%s", getattr(recipient, "id", None))
+
+
+def notify_group_nudge(
+    *,
+    recipient: "User",
+    actor: "User",
+    group,
+) -> None:
+    """
+    Notifica por WhatsApp e email que um gestor/dono cutucou um membro
+    para voltar a participar da comunidade.
+    """
+    if getattr(recipient, "id", None) == getattr(actor, "id", None):
+        return
+
+    prof = _get_or_create_profile(recipient)
+    actor_prof = _get_or_create_profile(actor)
+    actor_name = actor_prof.display_name or actor.email.split("@")[0]
+    group_name = getattr(group, "name", "sua comunidade")
+
+    site_url = (getattr(settings, "SITE_URL", "") or "").rstrip("/")
+    group_link = _bust(f"{site_url}/comunidades/{getattr(group, 'slug', '')}/")
+
+    subject = f"👋 {actor_name} cutucou você na comunidade {group_name}"
+    email_body = (
+        f"Oi! 👋\n\n"
+        f"{actor_name} cutucou você para participar mais da comunidade {group_name}.\n\n"
+        f"Entre no grupo para publicar e voltar a movimentar a conversa.\n\n"
+        f"— Equipe NossoTrello 😊"
+    )
+    wa_msg = (
+        f"👋 *{_wa_safe(actor_name)}* cutucou você para ficar mais ativo na comunidade "
+        f"*{_wa_safe(group_name)}*.\n\n"
+        f"Entre aqui para publicar 👇\n{group_link}"
+    )
+
+    if getattr(prof, "notify_whatsapp", False):
+        phone_digits = _safe_digits_phone(getattr(prof, "telefone", ""))
+        if phone_digits:
+            send_whatsapp(user=recipient, phone_digits=phone_digits, body=wa_msg)
+
+    if getattr(prof, "notify_email", False):
+        to_email = (getattr(recipient, "email", "") or "").strip()
+        if to_email:
+            try:
+                send_email_notification(
+                    to_email=to_email,
+                    subject=subject,
+                    body=email_body,
+                    use_social=True,
+                    cta_url=group_link,
+                    cta_label="Abrir comunidade",
+                )
+            except Exception:
+                logger.exception("group nudge: email failed user_id=%s", getattr(recipient, "id", None))

@@ -6,67 +6,76 @@
 {% block extra_css %}
 <style>
   :root{
-    --gh-ink:#172033;
-    --gh-muted:#667085;
-    --gh-line:#d8e1ee;
-    --gh-card:#ffffff;
-    --gh-bg:linear-gradient(180deg,#f4fbfa 0%,#eef4ff 100%);
-    --gh-brand:#0f766e;
-    --gh-brand-2:#2dd4bf;
-    --gh-brand-3:#134e4a;
+    --gh-ink:#1a1333;
+    --gh-muted:#655f80;
+    --gh-line:rgba(96,79,160,.18);
+    --gh-card:rgba(255,255,255,.78);
+    --gh-bg:linear-gradient(135deg,#fff1f2 0%,#eef2ff 42%,#ecfeff 100%);
+    --gh-brand:#ff6b6b;
+    --gh-brand-2:#ff9f1c;
+    --gh-brand-3:#2ec4b6;
+    --gh-brand-4:#6ee7ff;
   }
-  .gh-shell{max-width:1180px;margin:0 auto;padding:24px 16px 80px;color:var(--gh-ink)}
-  .gh-hero{background:var(--gh-bg);border:1px solid rgba(15,118,110,.12);border-radius:28px;padding:28px;box-shadow:0 18px 40px rgba(15,23,42,.08);margin-bottom:20px;position:relative;overflow:hidden}
+  .gh-shell{max-width:1180px;margin:0 auto;padding:28px 16px 80px;color:var(--gh-ink);position:relative}
+  .gh-shell::before,.gh-shell::after{content:"";position:fixed;z-index:-1;border-radius:50%;filter:blur(20px);opacity:.55;pointer-events:none}
+  .gh-shell::before{width:320px;height:320px;left:-80px;top:120px;background:radial-gradient(circle,#ffd6a5 0%,rgba(255,214,165,0) 72%)}
+  .gh-shell::after{width:360px;height:360px;right:-100px;top:40px;background:radial-gradient(circle,#bde0fe 0%,rgba(189,224,254,0) 72%)}
+  .gh-hero{background:var(--gh-bg);border:1px solid rgba(255,255,255,.52);border-radius:34px;padding:30px;box-shadow:0 28px 52px rgba(20,15,45,.12);margin-bottom:20px;position:relative;overflow:hidden;backdrop-filter:blur(20px)}
+  .gh-hero::before{content:"";position:absolute;width:110px;height:110px;border-radius:28px;left:24px;bottom:-22px;background:linear-gradient(135deg,rgba(255,255,255,.36),rgba(255,255,255,.08));transform:rotate(-16deg)}
   .gh-hero::after{content:"";position:absolute;width:260px;height:260px;border-radius:50%;right:-90px;top:-110px;background:radial-gradient(circle,rgba(45,212,191,.35),rgba(45,212,191,0))}
-  .gh-eyebrow{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.85);font-size:.82rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--gh-brand-3)}
-  .gh-hero h1{font-size:clamp(2rem,5vw,3.1rem);line-height:1.02;margin:16px 0 10px;max-width:720px}
-  .gh-hero p{max-width:720px;margin:0;color:#38506b;font-size:1rem;line-height:1.65}
+  .gh-eyebrow{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.82);font-size:.82rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#155e75}
+  .gh-hero h1{font-size:clamp(2.2rem,5.4vw,4rem);line-height:.96;letter-spacing:-.05em;margin:16px 0 10px;max-width:760px}
+  .gh-hero p{max-width:760px;margin:0;color:#3f3a5b;font-size:1rem;line-height:1.68}
   .gh-hero-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:18px}
-  .gh-btn,.gh-btn-alt,.gh-chip-link{display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;border-radius:14px;font-weight:700;cursor:pointer}
-  .gh-btn{background:linear-gradient(135deg,var(--gh-brand),var(--gh-brand-2));color:#fff;border:none;padding:13px 18px;box-shadow:0 14px 28px rgba(15,118,110,.18)}
-  .gh-btn-alt{background:#fff;color:var(--gh-ink);border:1px solid var(--gh-line);padding:13px 18px}
+  .gh-btn,.gh-btn-alt,.gh-chip-link,.gh-pill{display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;border-radius:999px;font-weight:800;cursor:pointer;transition:transform .18s ease, box-shadow .18s ease}
+  .gh-btn:hover,.gh-btn-alt:hover,.gh-chip-link:hover{transform:translateY(-1px)}
+  .gh-btn{background:linear-gradient(135deg,var(--gh-brand),var(--gh-brand-2));color:#fff;border:none;padding:13px 18px;box-shadow:0 18px 34px rgba(255,107,107,.22)}
+  .gh-btn-alt{background:rgba(255,255,255,.86);color:var(--gh-ink);border:1px solid rgba(255,255,255,.52);padding:13px 18px}
   .gh-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:18px}
-  .gh-card{background:var(--gh-card);border:1px solid var(--gh-line);border-radius:24px;padding:22px;box-shadow:0 10px 30px rgba(15,23,42,.05)}
+  .gh-card{background:var(--gh-card);border:1px solid rgba(255,255,255,.54);border-radius:28px;padding:22px;box-shadow:0 20px 38px rgba(20,15,45,.08);backdrop-filter:blur(22px)}
   .gh-card h2{margin:0 0 8px;font-size:1.2rem}
   .gh-sub{margin:0 0 18px;color:var(--gh-muted);line-height:1.55}
   .gh-alerts{display:grid;gap:10px;margin-bottom:16px}
-  .gh-alert{padding:12px 14px;border-radius:16px;border:1px solid}
-  .gh-alert.success{background:#ecfdf5;border-color:#a7f3d0;color:#166534}
-  .gh-alert.error{background:#fef2f2;border-color:#fecaca;color:#991b1b}
-  .gh-alert.info{background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8}
-  .gh-banner{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;padding:16px 18px;border-radius:20px;background:linear-gradient(135deg,#172033,#214f6d);color:#fff;margin-bottom:18px}
+  .gh-alert{padding:13px 15px;border-radius:18px;border:1px solid;backdrop-filter:blur(18px)}
+  .gh-alert.success{background:rgba(236,253,245,.9);border-color:#86efac;color:#166534}
+  .gh-alert.error{background:rgba(254,242,242,.92);border-color:#fda4af;color:#9f1239}
+  .gh-alert.info{background:rgba(239,246,255,.92);border-color:#93c5fd;color:#1d4ed8}
+  .gh-banner{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;padding:18px 20px;border-radius:24px;background:linear-gradient(135deg,#140f2d,#1f1b46 58%,#123b54);color:#fff;margin-bottom:18px;box-shadow:0 22px 44px rgba(20,15,45,.2)}
   .gh-banner p{margin:0;max-width:760px;line-height:1.55;color:rgba(255,255,255,.9)}
   .gh-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
   .gh-field{display:grid;gap:7px}
   .gh-field-full{grid-column:1/-1}
   .gh-field label{font-size:.88rem;font-weight:700;color:#344054}
-  .gh-input,.gh-textarea{width:100%;border:1px solid var(--gh-line);border-radius:16px;padding:13px 14px;font:inherit;color:var(--gh-ink);background:#fff}
+  .gh-input,.gh-textarea{width:100%;border:1px solid rgba(96,79,160,.14);border-radius:20px;padding:14px 15px;font:inherit;color:var(--gh-ink);background:rgba(255,255,255,.9)}
   .gh-textarea{min-height:118px;resize:vertical}
   .gh-help{font-size:.82rem;color:var(--gh-muted)}
   .gh-friends{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:12px}
-  .gh-check{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid var(--gh-line);border-radius:16px;background:#f8fbff}
+  .gh-check{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid rgba(96,79,160,.12);border-radius:18px;background:rgba(248,251,255,.72)}
   .gh-check input{margin-top:3px}
   .gh-check-name{font-weight:700;font-size:.92rem}
   .gh-check-meta{font-size:.8rem;color:var(--gh-muted)}
   .gh-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-  .gh-stat{padding:16px;border-radius:18px;background:#f8fbff;border:1px solid #dbe7f7}
+  .gh-stat{padding:18px;border-radius:22px;background:linear-gradient(180deg,rgba(255,255,255,.94),rgba(248,251,255,.72));border:1px solid rgba(96,79,160,.12)}
   .gh-stat strong{display:block;font-size:1.75rem}
   .gh-section{margin-top:18px}
   .gh-section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
   .gh-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
   .gh-group{overflow:hidden;padding:0}
   .gh-cover{height:120px;background-size:cover;background-position:center;position:relative}
-  .gh-cover::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(9,14,26,.02),rgba(9,14,26,.4))}
+  .gh-cover::after{content:"";position:absolute;inset:0;background:
+    radial-gradient(circle at 18% 18%,rgba(255,214,10,.16),rgba(255,214,10,0) 22%),
+    linear-gradient(180deg,rgba(9,14,26,.02),rgba(9,14,26,.48))}
   .gh-group-body{padding:18px}
   .gh-group-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
   .gh-group h3{margin:0;font-size:1.02rem}
   .gh-stars{font-size:.92rem;color:#f59e0b;white-space:nowrap}
   .gh-meta{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
-  .gh-chip{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border-radius:999px;background:#eef7f7;color:#0f4f4a;font-size:.8rem;font-weight:700}
+  .gh-chip{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border-radius:999px;background:rgba(110,231,255,.22);color:#155e75;font-size:.8rem;font-weight:800}
   .gh-copy{margin:0;color:var(--gh-muted);line-height:1.55;font-size:.92rem}
   .gh-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
-  .gh-chip-link{padding:10px 14px;background:#fff;border:1px solid var(--gh-line);color:var(--gh-ink)}
-  .gh-empty{padding:18px;border:1px dashed #bfd2ea;border-radius:18px;background:#f8fbff;color:var(--gh-muted)}
+  .gh-chip-link{padding:10px 14px;background:rgba(255,255,255,.82);border:1px solid rgba(96,79,160,.14);color:var(--gh-ink)}
+  .gh-pill{padding:10px 14px;background:rgba(255,255,255,.82);border:1px solid rgba(96,79,160,.14);color:var(--gh-muted);font-size:.84rem}
+  .gh-empty{padding:18px;border:1px dashed rgba(96,79,160,.24);border-radius:22px;background:rgba(248,251,255,.72);color:var(--gh-muted)}
   @media (max-width: 900px){ .gh-grid{grid-template-columns:1fr} }
   @media (max-width: 640px){
     .gh-hero,.gh-card{padding:18px}
@@ -87,15 +96,15 @@
 
   {% if show_groups_onboarding %}
   <div class="gh-banner" id="gh-onboarding">
-    <p>Comunidades são espaços temáticos dentro do Espaço Social. Você pode juntar amigos, publicar só ali, conversar no chat e guardar memórias no scrapbook do grupo.</p>
+    <p>Comunidades são fechadas por padrão: quem está fora pede para entrar, e dono ou gestor decide. Lá dentro você publica, conversa e organiza a galera por tema.</p>
     <button type="button" class="gh-btn-alt" onclick="ghDismissOnboarding()">Entendi</button>
   </div>
   {% endif %}
 
   <section class="gh-hero">
     <span class="gh-eyebrow">◎ Comunidades dentro do social</span>
-    <h1>Crie espaços menores para interesses, times e afinidades.</h1>
-    <p>Use comunidades para organizar conversas por tema, fazer publicações que nem sempre precisam ir para o seu perfil e manter um scrapbook coletivo com fotos e registros do grupo.</p>
+    <h1>Crie bolhas com identidade própria, entrada controlada e papo com contexto.</h1>
+    <p>Use comunidades para organizar conversas por tema, segurar o que é mais íntimo só ali dentro e deixar dono e gestores cuidarem de quem entra e do que fica publicado.</p>
     <div class="gh-hero-actions">
       <a class="gh-btn" href="#criar">Criar comunidade</a>
       <a class="gh-btn-alt" href="{% url 'boards:social_page' %}">Voltar ao Espaço Social</a>
@@ -166,7 +175,7 @@
 
     <aside class="gh-card">
       <h2>Panorama rápido</h2>
-      <p class="gh-sub">Você escolhe se um post do grupo fica só ali ou se também aparece no seu perfil do social.</p>
+      <p class="gh-sub">Toda comunidade continua visível para descoberta, mas entrar agora depende de convite ou aprovação.</p>
       <div class="gh-stats">
         <div class="gh-stat">
           <span>Total visível</span>
@@ -235,11 +244,13 @@
             <div class="gh-actions">
               <a class="gh-chip-link" href="{% url 'boards:group_detail' group.slug %}">Ver detalhes</a>
               {% if group.is_member %}
-                <a class="gh-btn" href="{% url 'boards:group_detail' group.slug %}">Entrar no grupo</a>
+                <a class="gh-btn" href="{% url 'boards:group_detail' group.slug %}">Abrir comunidade</a>
+              {% elif group.has_pending_request %}
+                <span class="gh-pill">Pedido enviado</span>
               {% else %}
                 <form method="post" action="{% url 'boards:group_join' group.slug %}">
                   {% csrf_token %}
-                  <button type="submit" class="gh-btn">Participar</button>
+                  <button type="submit" class="gh-btn">Pedir para entrar</button>
                 </form>
               {% endif %}
             </div>
