@@ -204,6 +204,18 @@ from boards.views.moderation_admin import (
     reject as moderation_reject,
 )
 from boards.views.moderation_user import my_under_review
+from boards.views.groups import (
+    groups_hub,
+    groups_onboarding_done,
+    group_create,
+    group_detail,
+    group_join,
+    group_invite_friends,
+    group_post_create,
+    group_chat_send,
+    group_chat_poll,
+    group_scrapbook_add,
+)
 
 
 app_name = "boards"
@@ -283,6 +295,16 @@ urlpatterns = [
     path("social/post/<int:post_id>/repost/", social_post_repost, name="social_post_repost"),
     path("social/post/<int:post_id>/view/", social_post_page, name="social_post_page"),
     path("social/post/<int:post_id>/full/", social_post_full, name="social_post_full"),
+    path("comunidades/", groups_hub, name="groups_hub"),
+    path("comunidades/onboarding-done/", groups_onboarding_done, name="groups_onboarding_done"),
+    path("comunidades/criar/", group_create, name="group_create"),
+    path("comunidades/<slug:slug>/", group_detail, name="group_detail"),
+    path("comunidades/<slug:slug>/entrar/", group_join, name="group_join"),
+    path("comunidades/<slug:slug>/convidar/", group_invite_friends, name="group_invite_friends"),
+    path("comunidades/<slug:slug>/publicar/", group_post_create, name="group_post_create"),
+    path("comunidades/<slug:slug>/chat/enviar/", group_chat_send, name="group_chat_send"),
+    path("comunidades/<slug:slug>/chat/poll/", group_chat_poll, name="group_chat_poll"),
+    path("comunidades/<slug:slug>/scrapbook/", group_scrapbook_add, name="group_scrapbook_add"),
 
     # Saúde e Bem Estar
     path("social/health/analyze/", social_health_analyze, name="social_health_analyze"),

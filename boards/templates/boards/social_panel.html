@@ -136,6 +136,31 @@
     </div>
   </div>
 
+  {% if is_me %}
+  <div class="sp-card" style="margin-top:14px;background:linear-gradient(135deg,#f0fdfa,#eff6ff);border:1px solid rgba(15,118,110,.12)">
+    <div style="display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:14px">
+      <div style="min-width:0;flex:1">
+        <div class="sp-section-title" style="margin:0 0 8px">◎ Comunidades</div>
+        <p style="margin:0;color:#48617c;line-height:1.55">Crie grupos por tema, publique só para quem faz parte e escolha quando um post também entra no seu perfil social.</p>
+        {% if my_social_groups %}
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">
+          {% for group in my_social_groups %}
+          <a href="{% url 'boards:group_detail' group.slug %}" style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:#fff;border:1px solid #d9e7f5;color:#0f172a;text-decoration:none;font-size:.83rem;font-weight:700">
+            <span style="color:#0f766e">◎ {{ group.name }}</span>
+            <span style="color:#64748b">👥 {{ group.member_total }}</span>
+            <span style="color:#f59e0b">{% for _ in ""|ljust:group.star_count %}★{% endfor %}</span>
+          </a>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      <div style="display:flex;align-items:center">
+        <a href="{% url 'boards:groups_hub' %}" class="sp-share-btn" style="text-decoration:none;background:linear-gradient(135deg,#0f766e,#2dd4bf);color:#fff">Abrir comunidades</a>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   {% if not is_me %}
   <!-- ═══ BARRA DE NAVEGAÇÃO DO VISITANTE ═══ -->
   <div class="sp-visitor-bar">
@@ -1756,6 +1781,9 @@ if(document.readyState !== 'loading'){ window._applyUserHeart(); }
         html += '<button type="button" class="sp-reel-edit-btn" onclick="spEditPost('+p.id+',this)" title="Editar">✏️</button>';
       }
       html += '</div>';
+      if(p.group){
+        html += '<div style="padding:0 14px 10px;font-size:0.78rem;color:#0f766e;font-weight:700">◎ <a href="/comunidades/'+p.group.slug+'/" style="color:#0f766e;text-decoration:none">Publicado em '+_escHtml(p.group.name)+'</a></div>';
+      }
 
       /* ── Conteúdo: card like, amizade especial, convite de quadro, ou mídia normal ── */
       if(p.board_invite){
@@ -7688,6 +7716,9 @@ window.spShowReach = function(postId){
     html += '</div></a>';
     html += '<button onclick="this.closest(\'#sp-post-modal-overlay\').remove();history.replaceState(null,\'\',\'/social/\')" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:#9ca3af;padding:4px 8px">✕</button>';
     html += '</div>';
+    if(d.group){
+      html += '<div style="padding:10px 16px 0;font-size:0.8rem;color:#0f766e;font-weight:700">◎ <a href="/comunidades/'+d.group.slug+'/" style="color:#0f766e;text-decoration:none">Publicado em '+_esc(d.group.name)+'</a></div>';
+    }
 
     /* Friendship card */
     if(d.is_friendship && d.friendship_data){
