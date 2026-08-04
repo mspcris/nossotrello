@@ -804,7 +804,7 @@
         equilibrada no dia a dia.
       </p>
 
-      {% if (checkin.lunch_text or checkin.lunch_photo) and not keep_lunch_editor_open %}
+      {% if checkin.lunch_text or checkin.lunch_photo and not keep_lunch_editor_open %}
         <!-- Estado "já registrado": resumo + botão Alterar -->
         <div class="sp-fixed-posto" style="background:#fffbeb;border:1px solid #fbbf24;color:#92400e;padding:12px 14px;border-radius:10px;display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap;">
           <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
@@ -821,7 +821,7 @@
         </div>
       {% endif %}
 
-      <div id="sp-lunch-edit-wrap" class="{% if (checkin.lunch_text or checkin.lunch_photo) and not keep_lunch_editor_open %}sp-hidden{% endif %}">
+      <div id="sp-lunch-edit-wrap" class="{% if checkin.lunch_text or checkin.lunch_photo and not keep_lunch_editor_open %}sp-hidden{% endif %}">
         <div class="sp-field-group">
           <label class="sp-field-label" for="sp-lunch-input">O prato:</label>
           <div class="sp-lunch-row">
