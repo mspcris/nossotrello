@@ -556,11 +556,22 @@ function startViewerPolling() {
   function refreshColumnUI(columnEl) {
     const list = findCardList(columnEl);
     const scope = list || columnEl;
-    const n = countCards(scope);
-
     const counterEl = findCounterEl(columnEl);
+
+    // Lazy-load pendente (sentinel ainda presente) sem filtro ativo: contar só
+    // os <li> no DOM subestima o total (mesma regra do refreshCounters() em
+    // board_detail.html — este observer é um 2º sistema de contagem que
+    // ficava sem saber do total real do servidor).
+    const filterEl = document.getElementById("board-filter");
+    const filtering = !!(filterEl && (filterEl.value || "").trim());
+    const pendingLazyLoad = !filtering && columnEl.querySelector(".cm-more-sentinel");
+
+    const n = (pendingLazyLoad && counterEl && counterEl.dataset.totalCount)
+      ? Number(counterEl.dataset.totalCount || 0)
+      : countCards(scope);
+
     if (counterEl) {
-      const next = `${n} cards`;
+      const next = `${n} card${n !== 1 ? "s" : ""}`;
       if ((counterEl.textContent || "").trim() !== next) {
         counterEl.textContent = next;
       }
