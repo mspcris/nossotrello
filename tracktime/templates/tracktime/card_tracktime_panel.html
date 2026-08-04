@@ -547,6 +547,30 @@
       try { offender.focus({ preventScroll: false }); } catch (_) { offender.focus(); }
     }
 
+    function focusSelectorFor(el) {
+      if (!el || !el.matches) return "";
+      if (el.matches("#tt-project")) return "#tt-project";
+      if (el.matches("#tt-activity")) return "#tt-activity";
+      if (el.matches('input[name="minutes"]')) return 'input[name="minutes"]';
+      return "";
+    }
+
+    function rememberFocusableField(el) {
+      const selector = focusSelectorFor(el);
+      if (selector) panel.dataset.ttLastFocusSelector = selector;
+    }
+
+    function restorePendingFocus() {
+      const selector = panel.dataset.ttPendingFocusSelector || "";
+      if (!selector) return;
+      delete panel.dataset.ttPendingFocusSelector;
+
+      const field = panel.querySelector(selector);
+      if (!field || field.disabled || field.type === "hidden") return;
+
+      try { field.focus({ preventScroll: false }); } catch (_) { field.focus(); }
+    }
+
     function syncHidden() {
       const projectSel = panel.querySelector("#tt-project");
       const activitySel = panel.querySelector("#tt-activity");
@@ -583,13 +607,23 @@
       if (project && activity) clearManualAlert();
     }
 
-    panel.addEventListener("change", syncHidden);
+    panel.addEventListener("focusin", function (evt) {
+      rememberFocusableField(evt.target);
+    });
+
+    panel.addEventListener("change", function (evt) {
+      rememberFocusableField(evt.target);
+      syncHidden();
+    });
 
     // Depois de um swap o painel volta com a seleção anterior já marcada nos
     // <select>; sem re-sincronizar, os hidden do Manual ficariam vazios e o
     // próximo lançamento acusaria "Selecione o projeto" sem motivo.
     panel.addEventListener("htmx:afterSwap", syncHidden);
-    panel.addEventListener("htmx:afterSettle", syncHidden);
+    panel.addEventListener("htmx:afterSettle", function () {
+      syncHidden();
+      restorePendingFocus();
+    });
 
     syncHidden();
 
@@ -597,6 +631,13 @@
     // (Sem isso o POST voltava 400 e o HTMX descartava a resposta — clique sem efeito visível.)
     panel.addEventListener("htmx:beforeRequest", function (evt) {
       const form = evt.detail && evt.detail.elt;
+      const pendingFocus = panel.dataset.ttLastFocusSelector || "";
+      if (pendingFocus) {
+        panel.dataset.ttPendingFocusSelector = pendingFocus;
+      } else {
+        delete panel.dataset.ttPendingFocusSelector;
+      }
+
       if (!form || form.id !== "tt-manual-form") return;
 
       syncHidden();
@@ -605,12 +646,14 @@
       const activitySel = panel.querySelector("#tt-activity");
 
       if (!projectSel?.value) {
+        delete panel.dataset.ttPendingFocusSelector;
         evt.preventDefault();
         showManualAlert("Selecione o projeto.", projectSel, true);
         return;
       }
 
       if (!activitySel?.value) {
+        delete panel.dataset.ttPendingFocusSelector;
         evt.preventDefault();
         showManualAlert("Selecione a atividade.", activitySel, true);
         return;
