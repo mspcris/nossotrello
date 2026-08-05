@@ -276,6 +276,12 @@
   .gd-check-inline{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:16px;border:1px solid rgba(96,79,160,.12);background:rgba(248,250,255,.82)}
   .gd-pick-card{display:grid;gap:12px;margin-bottom:16px;padding:16px;border-radius:24px;border:1px solid rgba(96,79,160,.14);background:rgba(255,255,255,.8);box-shadow:0 12px 24px rgba(20,15,45,.06)}
   .gd-pick-card strong{font-size:.95rem}
+  .gd-file-input{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0 0 0 0)}
+  .gd-file-btn{display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;border-radius:18px;border:1.5px dashed rgba(46,196,182,.55);background:rgba(110,231,255,.12);color:var(--gd-ink);cursor:pointer;transition:transform .18s ease,border-color .18s ease,background .18s ease}
+  .gd-file-btn:hover{transform:translateY(-1px);border-color:rgba(46,196,182,.85);background:rgba(110,231,255,.2)}
+  .gd-file-input:focus + .gd-file-btn{border-color:rgba(46,196,182,.95);box-shadow:0 0 0 3px rgba(46,196,182,.22)}
+  .gd-file-btn-ico{font-size:1.5rem;flex:none}
+  .gd-file-btn-txt{display:grid;gap:2px;text-align:left}
   .gd-wp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px}
   .gd-wp-opt{position:relative;display:grid;gap:8px;cursor:pointer;border-radius:18px;padding:6px;border:2px solid transparent;transition:border-color .18s ease,transform .18s ease}
   .gd-wp-opt input{position:absolute;opacity:0;pointer-events:none}
@@ -663,14 +669,18 @@
       <div class="gd-theme-cover-card">
         <div>
           <strong>Capa da comunidade</strong>
-          <div class="gd-note">A faixa grande do topo da página. Suba uma foto própria ou deixe a capa automática, gerada a partir do tema.</div>
+          <div class="gd-note">É o painel grande no topo da página. Já vem uma capa automática feita a partir do tema — troque enviando uma foto sua no botão abaixo.</div>
         </div>
         <div class="gd-theme-cover-preview">
           <img src="{{ group.cover_data }}" alt="Capa atual da comunidade" loading="lazy">
           {% if not group.cover_is_custom %}<span class="gd-theme-cover-badge">Capa automática</span>{% endif %}
         </div>
         <div class="gd-theme-upload-actions">
-          <input class="gd-input" type="file" name="cover_image" accept="image/*">
+          <input id="gd-cover-file" class="gd-file-input" type="file" name="cover_image" accept="image/*" onchange="gdFileName(this)">
+          <label class="gd-file-btn" for="gd-cover-file">
+            <span class="gd-file-btn-ico">📷</span>
+            <span class="gd-file-btn-txt"><strong data-file-label>Enviar a minha capa</strong><span class="gd-note">Toque para escolher uma foto do seu aparelho</span></span>
+          </label>
           {% if group.cover_is_custom %}
           <label class="gd-check-inline">
             <input type="checkbox" name="cover_image_clear" value="1">
@@ -759,6 +769,13 @@
       </div>
     </form>
   </section>
+  <script>
+  function gdFileName(input){
+    var lbl = input.parentElement.querySelector('[data-file-label]');
+    if(!lbl) return;
+    lbl.textContent = (input.files && input.files.length) ? input.files[0].name : 'Enviar a minha capa';
+  }
+  </script>
   {% endif %}
 
   <div class="gd-tabs" role="tablist" aria-label="Seções da comunidade">
