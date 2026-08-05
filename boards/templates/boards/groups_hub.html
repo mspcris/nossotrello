@@ -101,6 +101,95 @@
   </div>
   {% endif %}
 
+  <section class="gh-card">
+    <h2>Panorama rápido</h2>
+    <p class="gh-sub">Toda comunidade continua visível para descoberta, mas entrar agora depende de convite ou aprovação.</p>
+    <div class="gh-stats">
+      <div class="gh-stat">
+        <span>Total visível</span>
+        <strong>{{ groups|length }}</strong>
+        <small>comunidades encontradas</small>
+      </div>
+      <div class="gh-stat">
+        <span>Minhas</span>
+        <strong>{{ my_groups|length }}</strong>
+        <small>com participação sua</small>
+      </div>
+    </div>
+
+    <div class="gh-section">
+      <div class="gh-section-head">
+        <h2 style="margin:0;font-size:1rem">Minhas comunidades</h2>
+      </div>
+      {% if my_groups %}
+        <div class="gh-list">
+          {% for group in my_groups %}
+          <article class="gh-card gh-group">
+            <div class="gh-cover" style="background-image:url('{{ group.cover_data }}')"></div>
+            <div class="gh-group-body">
+              <div class="gh-group-top">
+                <h3>{{ group.name }}</h3>
+                <span class="gh-stars">{% for _ in group.star_fill %}★{% endfor %}{% for _ in group.star_empty %}☆{% endfor %}</span>
+              </div>
+              <div class="gh-meta">
+                <span class="gh-chip">👥 {{ group.member_total }} membro{{ group.member_total|pluralize:"s" }}</span>
+                {% if group.theme %}<span class="gh-chip">{{ group.theme }}</span>{% endif %}
+              </div>
+              <p class="gh-copy">{{ group.description|default:group.goal|default:"Pronto para novas publicações, conversas e memórias."|truncatechars:120 }}</p>
+              <div class="gh-actions">
+                <a class="gh-btn" href="{% url 'boards:group_detail' group.slug %}">Abrir comunidade</a>
+              </div>
+            </div>
+          </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="gh-empty">Você ainda não participa de nenhuma comunidade. A primeira pode nascer por um tema, um projeto, um hobby ou um time.</div>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="gh-section">
+    <div class="gh-section-head">
+      <h2 style="margin:0">Explorar comunidades</h2>
+    </div>
+    {% if groups %}
+      <div class="gh-list">
+        {% for group in groups %}
+        <article class="gh-card gh-group">
+          <div class="gh-cover" style="background-image:url('{{ group.cover_data }}')"></div>
+          <div class="gh-group-body">
+            <div class="gh-group-top">
+              <h3>{{ group.name }}</h3>
+              <span class="gh-stars">{% for _ in group.star_fill %}★{% endfor %}{% for _ in group.star_empty %}☆{% endfor %}</span>
+            </div>
+            <div class="gh-meta">
+              <span class="gh-chip">👥 {{ group.member_total }} membro{{ group.member_total|pluralize:"s" }}</span>
+              {% if group.goal %}<span class="gh-chip">🎯 {{ group.goal|truncatechars:28 }}</span>{% endif %}
+            </div>
+            <p class="gh-copy">{{ group.description|default:group.theme|default:group.vibe|default:"Sem descrição por enquanto."|truncatechars:130 }}</p>
+            <div class="gh-actions">
+              <a class="gh-chip-link" href="{% url 'boards:group_detail' group.slug %}">Ver detalhes</a>
+              {% if group.is_member %}
+                <a class="gh-btn" href="{% url 'boards:group_detail' group.slug %}">Abrir comunidade</a>
+              {% elif group.has_pending_request %}
+                <span class="gh-pill">Pedido enviado</span>
+              {% else %}
+                <form method="post" action="{% url 'boards:group_join' group.slug %}">
+                  {% csrf_token %}
+                  <button type="submit" class="gh-btn">Pedir para entrar</button>
+                </form>
+              {% endif %}
+            </div>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="gh-empty">Ainda não há comunidades publicadas.</div>
+    {% endif %}
+  </section>
+
   <section class="gh-hero">
     <span class="gh-eyebrow">◎ Comunidades dentro do social</span>
     <h1>Crie bolhas com identidade própria, entrada controlada e papo com contexto.</h1>
@@ -111,8 +200,7 @@
     </div>
   </section>
 
-  <div class="gh-grid">
-    <section class="gh-card" id="criar">
+  <section class="gh-card" id="criar">
       <h2>Criar uma comunidade</h2>
       <p class="gh-sub">Tema, interesses e objetivo ajudam a gerar o nome sugerido, a capa inicial e o clima do grupo.</p>
       <form method="post" action="{% url 'boards:group_create' %}">
@@ -171,96 +259,6 @@
           <button type="submit" class="gh-btn">Criar comunidade</button>
         </div>
       </form>
-    </section>
-
-    <aside class="gh-card">
-      <h2>Panorama rápido</h2>
-      <p class="gh-sub">Toda comunidade continua visível para descoberta, mas entrar agora depende de convite ou aprovação.</p>
-      <div class="gh-stats">
-        <div class="gh-stat">
-          <span>Total visível</span>
-          <strong>{{ groups|length }}</strong>
-          <small>comunidades encontradas</small>
-        </div>
-        <div class="gh-stat">
-          <span>Minhas</span>
-          <strong>{{ my_groups|length }}</strong>
-          <small>com participação sua</small>
-        </div>
-      </div>
-
-      <div class="gh-section">
-        <div class="gh-section-head">
-          <h2 style="margin:0;font-size:1rem">Minhas comunidades</h2>
-        </div>
-        {% if my_groups %}
-          <div class="gh-list">
-            {% for group in my_groups %}
-            <article class="gh-card gh-group">
-              <div class="gh-cover" style="background-image:url('{{ group.cover_data }}')"></div>
-              <div class="gh-group-body">
-                <div class="gh-group-top">
-                  <h3>{{ group.name }}</h3>
-                  <span class="gh-stars">{% for _ in group.star_fill %}★{% endfor %}{% for _ in group.star_empty %}☆{% endfor %}</span>
-                </div>
-                <div class="gh-meta">
-                  <span class="gh-chip">👥 {{ group.member_total }} membro{{ group.member_total|pluralize:"s" }}</span>
-                  {% if group.theme %}<span class="gh-chip">{{ group.theme }}</span>{% endif %}
-                </div>
-                <p class="gh-copy">{{ group.description|default:group.goal|default:"Pronto para novas publicações, conversas e memórias."|truncatechars:120 }}</p>
-                <div class="gh-actions">
-                  <a class="gh-btn" href="{% url 'boards:group_detail' group.slug %}">Abrir comunidade</a>
-                </div>
-              </div>
-            </article>
-            {% endfor %}
-          </div>
-        {% else %}
-          <div class="gh-empty">Você ainda não participa de nenhuma comunidade. A primeira pode nascer por um tema, um projeto, um hobby ou um time.</div>
-        {% endif %}
-      </div>
-    </aside>
-  </div>
-
-  <section class="gh-section">
-    <div class="gh-section-head">
-      <h2 style="margin:0">Explorar comunidades</h2>
-    </div>
-    {% if groups %}
-      <div class="gh-list">
-        {% for group in groups %}
-        <article class="gh-card gh-group">
-          <div class="gh-cover" style="background-image:url('{{ group.cover_data }}')"></div>
-          <div class="gh-group-body">
-            <div class="gh-group-top">
-              <h3>{{ group.name }}</h3>
-              <span class="gh-stars">{% for _ in group.star_fill %}★{% endfor %}{% for _ in group.star_empty %}☆{% endfor %}</span>
-            </div>
-            <div class="gh-meta">
-              <span class="gh-chip">👥 {{ group.member_total }} membro{{ group.member_total|pluralize:"s" }}</span>
-              {% if group.goal %}<span class="gh-chip">🎯 {{ group.goal|truncatechars:28 }}</span>{% endif %}
-            </div>
-            <p class="gh-copy">{{ group.description|default:group.theme|default:group.vibe|default:"Sem descrição por enquanto."|truncatechars:130 }}</p>
-            <div class="gh-actions">
-              <a class="gh-chip-link" href="{% url 'boards:group_detail' group.slug %}">Ver detalhes</a>
-              {% if group.is_member %}
-                <a class="gh-btn" href="{% url 'boards:group_detail' group.slug %}">Abrir comunidade</a>
-              {% elif group.has_pending_request %}
-                <span class="gh-pill">Pedido enviado</span>
-              {% else %}
-                <form method="post" action="{% url 'boards:group_join' group.slug %}">
-                  {% csrf_token %}
-                  <button type="submit" class="gh-btn">Pedir para entrar</button>
-                </form>
-              {% endif %}
-            </div>
-          </div>
-        </article>
-        {% endfor %}
-      </div>
-    {% else %}
-      <div class="gh-empty">Ainda não há comunidades publicadas.</div>
-    {% endif %}
   </section>
 </div>
 {% endblock %}
