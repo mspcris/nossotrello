@@ -40,6 +40,18 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-08 ---
+    "e54a4b7": (
+        "🎨",
+        "Agora dá para escolher o papel de parede e as cores da sua comunidade",
+        "No \"Ajustar visual\" da comunidade só dava para trocar a capa e as "
+        "imagens da vitrine — o fundo da página e as cores vinham prontos e "
+        "ninguém mexia. Agora o dono (ou gestor) escolhe o papel de parede numa "
+        "galeria de doze fundos prontos, de Aurora e Meia-noite a Algodão-doce, "
+        "Menta e Papel, e escolhe também a cor da comunidade numa cartela de "
+        "doze paletas, que pinta os botões, as abas e os destaques da página. É "
+        "só clicar no que quer e salvar. Quem não escolher nada continua com o "
+        "visual automático de sempre, então nenhuma comunidade muda sozinha.",
+    ),
     "bb33159": (
         "🌤",
         "O Track-time ao vivo ficou uma tela de ficar olhando o dia inteiro",
