@@ -43,6 +43,95 @@ _GROUP_THEME_IMAGE_SLOTS = [
     ("theme_image_3", "Assinatura", "A peça mais marcante, engraçada ou icônica."),
 ]
 
+# Paletas prontas para o dono escolher as cores da página da comunidade.
+# id -> (rótulo, (cor forte, cor média, cor clara)). Os ids são estáveis: nunca
+# renomear, só acrescentar no fim (ficam gravados em SocialGroup.palette).
+_GROUP_PALETTE_PRESETS = [
+    ("teal", "Verde-água", ("#0f766e", "#2dd4bf", "#99f6e4")),
+    ("amber", "Âmbar", ("#9a3412", "#fb923c", "#fed7aa")),
+    ("blue", "Azul", ("#1d4ed8", "#60a5fa", "#bfdbfe")),
+    ("lime", "Limão", ("#4d7c0f", "#a3e635", "#ecfccb")),
+    ("orange", "Laranja", ("#7c2d12", "#f97316", "#fde68a")),
+    ("rose", "Rosa", ("#be123c", "#fb7185", "#fecdd3")),
+    ("violet", "Violeta", ("#6d28d9", "#a78bfa", "#e9d5ff")),
+    ("cyan", "Ciano", ("#0e7490", "#22d3ee", "#a5f3fc")),
+    ("emerald", "Esmeralda", ("#047857", "#34d399", "#a7f3d0")),
+    ("fuchsia", "Magenta", ("#a21caf", "#e879f9", "#f5d0fe")),
+    ("indigo", "Índigo", ("#3730a3", "#818cf8", "#c7d2fe")),
+    ("slate", "Grafite", ("#334155", "#64748b", "#cbd5e1")),
+]
+_GROUP_PALETTE_BY_ID = {pid: colors for pid, _label, colors in _GROUP_PALETTE_PRESETS}
+
+# Papéis de parede prontos: cada um é um valor completo de `background` aplicado
+# ao <body> da página da comunidade. Feitos em CSS puro (sem depender de arquivo
+# de imagem), então nunca quebram e carregam na hora. id -> (rótulo, css).
+# ids estáveis: gravados em SocialGroup.wallpaper.
+_GROUP_WALLPAPERS = [
+    ("aurora", "Aurora", (
+        "radial-gradient(circle at 18% 12%,rgba(45,212,191,.30),rgba(45,212,191,0) 40%),"
+        "radial-gradient(circle at 82% 8%,rgba(96,165,250,.26),rgba(96,165,250,0) 42%),"
+        "linear-gradient(180deg,#07111f 0%,#0b1426 46%,#111f33 100%)"
+    )),
+    ("meianoite", "Meia-noite", (
+        "radial-gradient(circle at 20% 20%,rgba(129,140,248,.20),rgba(129,140,248,0) 45%),"
+        "linear-gradient(180deg,#050816 0%,#0b1030 55%,#131a3f 100%)"
+    )),
+    ("por-do-sol", "Pôr do sol", (
+        "radial-gradient(circle at 82% 14%,rgba(251,146,60,.34),rgba(251,146,60,0) 46%),"
+        "linear-gradient(180deg,#3b0a45 0%,#7c2d12 52%,#b45309 100%)"
+    )),
+    ("oceano", "Oceano", (
+        "radial-gradient(circle at 16% 10%,rgba(34,211,238,.28),rgba(34,211,238,0) 44%),"
+        "linear-gradient(180deg,#052e4a 0%,#0e4d6e 50%,#116d8f 100%)"
+    )),
+    ("floresta", "Floresta", (
+        "radial-gradient(circle at 78% 12%,rgba(163,230,53,.24),rgba(163,230,53,0) 44%),"
+        "linear-gradient(180deg,#052e1a 0%,#0f5132 52%,#166534 100%)"
+    )),
+    ("algodao-doce", "Algodão-doce", (
+        "radial-gradient(circle at 22% 16%,rgba(232,121,249,.30),rgba(232,121,249,0) 46%),"
+        "radial-gradient(circle at 80% 84%,rgba(96,165,250,.24),rgba(96,165,250,0) 46%),"
+        "linear-gradient(135deg,#fdf2ff 0%,#eee6ff 48%,#e0f2fe 100%)"
+    )),
+    ("pessego", "Pêssego", (
+        "radial-gradient(circle at 20% 16%,rgba(251,113,133,.24),rgba(251,113,133,0) 46%),"
+        "linear-gradient(135deg,#fff7ed 0%,#ffe4d6 52%,#ffe1ec 100%)"
+    )),
+    ("menta", "Menta", (
+        "radial-gradient(circle at 80% 14%,rgba(45,212,191,.24),rgba(45,212,191,0) 46%),"
+        "linear-gradient(135deg,#f0fdf9 0%,#dcfce7 52%,#e0f2fe 100%)"
+    )),
+    ("lavanda", "Lavanda", (
+        "radial-gradient(circle at 18% 18%,rgba(167,139,250,.28),rgba(167,139,250,0) 46%),"
+        "linear-gradient(135deg,#f5f3ff 0%,#ede9fe 52%,#fae8ff 100%)"
+    )),
+    ("brasa", "Brasa", (
+        "radial-gradient(circle at 24% 18%,rgba(248,113,113,.26),rgba(248,113,113,0) 46%),"
+        "linear-gradient(180deg,#180606 0%,#450a0a 52%,#7c2d12 100%)"
+    )),
+    ("grafite", "Grafite", (
+        "radial-gradient(circle at 78% 16%,rgba(148,163,184,.18),rgba(148,163,184,0) 46%),"
+        "linear-gradient(180deg,#0f172a 0%,#1e293b 55%,#334155 100%)"
+    )),
+    ("papel", "Papel", (
+        "radial-gradient(circle at 20% 14%,rgba(148,163,184,.10),rgba(148,163,184,0) 46%),"
+        "linear-gradient(135deg,#ffffff 0%,#f1f5f9 52%,#e2e8f0 100%)"
+    )),
+]
+_GROUP_WALLPAPER_BY_ID = {wid: css for wid, _label, css in _GROUP_WALLPAPERS}
+
+
+def _group_palette(group):
+    """Paleta escolhida pelo dono; se nada escolhido, cai no sorteio por hash."""
+    chosen = _GROUP_PALETTE_BY_ID.get((getattr(group, "palette", "") or "").strip())
+    if chosen:
+        return chosen, True
+    subject = _group_theme_subject(group)
+    fallback = _GROUP_PALETTES[
+        int(hashlib.md5(f"{group.slug}|{subject}".encode("utf-8")).hexdigest(), 16) % len(_GROUP_PALETTES)
+    ]
+    return fallback, False
+
 
 def _group_chat_payload(msg, viewer):
     prof = getattr(msg.sender, "profile", None)
@@ -169,9 +258,7 @@ def _group_theme_subject(group):
 
 def _group_theme_visual_data(group):
     subject = _group_theme_subject(group)
-    palette = _GROUP_PALETTES[
-        int(hashlib.md5(f"{group.slug}|{subject}".encode("utf-8")).hexdigest(), 16) % len(_GROUP_PALETTES)
-    ]
+    palette, _palette_is_custom = _group_palette(group)
     gallery_title = (group.theme_gallery_title or "").strip()
     gallery_note = (group.theme_gallery_note or "").strip()
     if not gallery_title:
@@ -228,6 +315,33 @@ def _decorate_group(group):
     group.theme_gallery_slots = visual["slots"]
     group.theme_gallery_chips = visual["chips"]
     group.theme_color_1, group.theme_color_2, group.theme_color_3 = visual["palette"]
+
+    _palette, palette_is_custom = _group_palette(group)
+    group.palette_is_custom = palette_is_custom
+    selected_palette = (getattr(group, "palette", "") or "").strip()
+    group.palette_choices = [
+        {
+            "id": pid,
+            "label": label,
+            "c1": colors[0],
+            "c2": colors[1],
+            "c3": colors[2],
+            "selected": pid == selected_palette,
+        }
+        for pid, label, colors in _GROUP_PALETTE_PRESETS
+    ]
+
+    selected_wallpaper = (getattr(group, "wallpaper", "") or "").strip()
+    group.wallpaper_css = _GROUP_WALLPAPER_BY_ID.get(selected_wallpaper, "")
+    group.wallpaper_choices = [
+        {
+            "id": wid,
+            "label": label,
+            "css": css,
+            "selected": wid == selected_wallpaper,
+        }
+        for wid, label, css in _GROUP_WALLPAPERS
+    ]
     return group
 
 
@@ -614,6 +728,20 @@ def group_theme_gallery_update(request, slug):
     if group.theme_gallery_note != note:
         group.theme_gallery_note = note
         update_fields.append("theme_gallery_note")
+
+    wallpaper = (request.POST.get("wallpaper") or "").strip()
+    if wallpaper and wallpaper not in _GROUP_WALLPAPER_BY_ID:
+        wallpaper = ""
+    if group.wallpaper != wallpaper:
+        group.wallpaper = wallpaper
+        update_fields.append("wallpaper")
+
+    palette = (request.POST.get("palette") or "").strip()
+    if palette and palette not in _GROUP_PALETTE_BY_ID:
+        palette = ""
+    if group.palette != palette:
+        group.palette = palette
+        update_fields.append("palette")
 
     from boards.services.image_compress import compress_image
 
