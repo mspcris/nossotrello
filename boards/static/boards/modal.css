@@ -2872,6 +2872,31 @@ html.dark .cm-attach-desc code,
 .theme-dark .cm-attach-desc code,
 .card-theme-dark .cm-attach-desc code{ background: rgba(255,255,255,0.14); }
 
+/* Linha de anexo no escuro: o bg-white/40 do Tailwind vira um cinza médio onde
+   nem texto claro nem escuro lê bem, e as variantes dark: nunca ativam aqui.
+   A linha escurece e data/autor/descrição clareiam junto. */
+html.dark .cm-attach-item,
+.theme-dark .cm-attach-item,
+.card-theme-dark .cm-attach-item{
+  background: rgba(255,255,255,0.07) !important;
+  border-color: rgba(255,255,255,0.16) !important;
+}
+html.dark .cm-attach-item .text-gray-500,
+.theme-dark .cm-attach-item .text-gray-500,
+.card-theme-dark .cm-attach-item .text-gray-500{
+  color: rgba(203,213,225,0.88) !important;
+}
+html.dark .cm-attach-item .cm-attach-desc,
+.theme-dark .cm-attach-item .cm-attach-desc,
+.card-theme-dark .cm-attach-item .cm-attach-desc{
+  color: rgba(226,232,240,0.96) !important;
+}
+html.dark .cm-attach-item a.text-blue-600,
+.theme-dark .cm-attach-item a.text-blue-600,
+.card-theme-dark .cm-attach-item a.text-blue-600{
+  color: #8ec5ff !important;
+}
+
 /* Chip do anexo sem pré-visualização, no feed: ícone + NOME */
 #cm-root .cm-attach-card{
   display: inline-flex;
