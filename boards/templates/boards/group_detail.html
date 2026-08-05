@@ -238,7 +238,8 @@
   .gd-comment-time{font-size:.75rem;color:var(--gd-muted)}
   .gd-comment-text{margin-top:2px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
   .gd-comment-form{display:flex;gap:8px;align-items:center}
-  .gd-comment-input{flex:1;min-width:0}
+  .gd-comment-mention-wrap{flex:1;min-width:0}
+  .gd-comment-input{width:100%}
   .gd-nudge-card{display:grid;gap:14px;padding:18px;border-radius:24px;background:linear-gradient(135deg,#0f172a,#1d4ed8 55%,#38bdf8);color:#fff;box-shadow:0 22px 34px rgba(29,78,216,.22)}
   .gd-nudge-avatars{display:flex;align-items:center;justify-content:center;gap:14px}
   .gd-nudge-avatar,.gd-nudge-avatar-fallback{width:72px;height:72px;border-radius:24px;object-fit:cover;flex-shrink:0;border:3px solid rgba(255,255,255,.72);box-shadow:0 16px 26px rgba(15,23,42,.24)}
@@ -938,7 +939,10 @@
                 {% if is_member %}
                 <form class="gd-comment-form" onsubmit="return gdCommentSubmit(event, {{ post.id }})">
                   {% csrf_token %}
-                  <input class="gd-input gd-comment-input" type="text" name="text" maxlength="500" placeholder="Escreva um comentário…" autocomplete="off">
+                  <div class="gd-mention-wrap gd-comment-mention-wrap">
+                    <div id="gd-comment-mention-dd-{{ post.id }}" class="gd-mention-dropdown"></div>
+                    <input id="gd-comment-input-{{ post.id }}" class="gd-input gd-comment-input" type="text" name="text" maxlength="500" placeholder="Escreva um comentário…" autocomplete="off">
+                  </div>
                   <button type="submit" class="gd-mini-btn">Comentar</button>
                 </form>
                 {% endif %}
@@ -1819,6 +1823,9 @@
     attachMention("gd-post-textarea", "gd-post-mention-dd");
     attachMention("gd-chat-input", "gd-chat-mention-dd");
     attachMention("gd-scrapbook-textarea", "gd-scrapbook-mention-dd");
+    document.querySelectorAll("[id^='gd-comment-input-']").forEach(function(el){
+      attachMention(el.id, "gd-comment-mention-dd-" + el.id.replace("gd-comment-input-", ""));
+    });
     initMediaPreview();
     initChat();
     gdRenderMentionText(document);
