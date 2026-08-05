@@ -176,6 +176,10 @@
   .gd-chip{display:inline-flex;align-items:center;gap:6px;padding:10px 14px;border-radius:999px;background:rgba(20,15,45,.42);border:1px solid rgba(255,255,255,.22);font-size:.86rem;font-weight:800;backdrop-filter:blur(12px);box-shadow:0 10px 24px rgba(20,15,45,.12)}
   .gd-nav{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
   .gd-status-pill{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:999px;background:rgba(20,15,45,.42);border:1px solid rgba(255,255,255,.22);color:#fff;font-size:.85rem;font-weight:800;backdrop-filter:blur(12px)}
+  .gd-facts{position:relative;z-index:1;display:grid;gap:8px;margin:12px 0 2px}
+  .gd-fact{font-size:.92rem;line-height:1.45;color:rgba(255,255,255,.9)}
+  .gd-fact b{color:#fff;font-weight:800;margin-right:6px}
+  .gd-status-line{display:inline-flex;align-items:center;gap:6px;font-size:.85rem;font-weight:700;color:rgba(255,255,255,.82)}
   .gd-tabs{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 18px;padding:10px;border-radius:26px;background:rgba(255,255,255,.52);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.46);box-shadow:0 18px 36px rgba(20,15,45,.08)}
   .gd-tab-btn{appearance:none;border:1px solid transparent;background:transparent;color:var(--gd-muted);padding:12px 18px;border-radius:999px;font:inherit;font-weight:800;cursor:pointer;transition:.2s ease}
   .gd-tab-btn:hover{border-color:rgba(96,79,160,.16);color:var(--gd-ink);background:rgba(255,255,255,.5)}
@@ -633,14 +637,18 @@
         <div class="gd-meta">
           {% if group.theme %}<span class="gd-chip">Tema: {{ group.theme }}</span>{% endif %}
           {% if group.vibe %}<span class="gd-chip">Clima: {{ group.vibe }}</span>{% endif %}
-          {% if group.goal %}<span class="gd-chip">Objetivo: {{ group.goal }}</span>{% endif %}
-          {% if group.interests %}<span class="gd-chip">Interesses: {{ group.interests }}</span>{% endif %}
         </div>
+        {% if group.goal or group.interests %}
+        <div class="gd-facts">
+          {% if group.goal %}<div class="gd-fact"><b>Objetivo:</b>{{ group.goal }}</div>{% endif %}
+          {% if group.interests %}<div class="gd-fact"><b>Interesses:</b>{{ group.interests }}</div>{% endif %}
+        </div>
+        {% endif %}
         <div class="gd-nav">
           <a class="gd-btn-alt" href="{% url 'boards:groups_hub' %}">← Todas as comunidades</a>
           <a class="gd-btn-ghost" href="{% url 'boards:social_page' %}">Voltar ao Espaço Social</a>
           {% if is_member %}
-          <span class="gd-status-pill">✨ Você está dentro como {{ membership.get_role_display|lower }}</span>
+          <span class="gd-status-line">✨ Você está dentro como {{ membership.get_role_display|lower }}</span>
           {% elif pending_request %}
           <span class="gd-status-pill">⏳ Pedido enviado. Falta aprovação.</span>
           {% else %}
