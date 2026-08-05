@@ -798,6 +798,78 @@ class SocialGroupAccessTests(TestCase):
         self.assertContains(response, "Lucas Paes cutucou Maria Silva")
         self.assertContains(response, "Chamando para participar mais da comunidade.")
 
+    def test_group_detail_chat_image_opens_in_lightbox(self):
+        SocialGroupChatMessage.objects.create(
+            group=self.group,
+            sender=self.member,
+            photo="social/groups/chat/print.png",
+        )
+        self.client.force_login(self.member)
+
+        response = self.client.get(reverse("boards:group_detail", args=[self.group.slug]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'class="gd-chat-media-btn"', html=False)
+        self.assertContains(response, "openCoverLightbox(")
+
+    def test_manager_sees_theme_visual_gear_on_group_detail(self):
+        self.group.theme = "Ovo"
+        self.group.save(update_fields=["theme"])
+        self.client.force_login(self.manager)
+
+        response = self.client.get(reverse("boards:group_detail", args=[self.group.slug]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Ajustar visual")
+        self.assertContains(response, "Configurar a vitrine do tema")
+        self.assertContains(response, "Ovo em cena")
+
+    def test_member_cannot_update_theme_gallery(self):
+        self.client.force_login(self.member)
+
+        response = self.client.post(
+            reverse("boards:group_theme_gallery_update", args=[self.group.slug]),
+            {"theme_gallery_title": "Novo visual"},
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.group.refresh_from_db()
+        self.assertEqual(self.group.theme_gallery_title, "")
+
+    def test_manager_can_update_theme_gallery(self):
+        self.group.theme = "Ovo"
+        self.group.save(update_fields=["theme"])
+        self.client.force_login(self.manager)
+        photo = SimpleUploadedFile(
+            "ovo.png",
+            (
+                b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
+                b"\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\xf8\xcf"
+                b"\xc0\x00\x00\x03\x01\x01\x00\xc9\xfe\x92\xef\x00\x00\x00\x00IEND\xaeB`\x82"
+            ),
+            content_type="image/png",
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with override_settings(MEDIA_ROOT=tmpdir):
+                response = self.client.post(
+                    reverse("boards:group_theme_gallery_update", args=[self.group.slug]),
+                    {
+                        "theme_gallery_title": "Ovos em estado puro",
+                        "theme_gallery_note": "A comunidade precisa parecer uma feira de ovos bem resolvida.",
+                        "theme_image_1": photo,
+                    },
+                )
+
+        self.assertEqual(response.status_code, 302)
+        self.group.refresh_from_db()
+        self.assertEqual(self.group.theme_gallery_title, "Ovos em estado puro")
+        self.assertEqual(
+            self.group.theme_gallery_note,
+            "A comunidade precisa parecer uma feira de ovos bem resolvida.",
+        )
+        self.assertTrue(bool(self.group.theme_image_1))
+
     @patch("boards.services.notifications.notify_group_nudge")
     def test_member_cannot_nudge_another_member(self, notify_group_nudge):
         other_member = _mk("groupfriend", "groupfriend@example.com")

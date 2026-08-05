@@ -37,6 +37,11 @@ _GROUP_PALETTES = [
     ("#7c2d12", "#f97316", "#fde68a"),
     ("#be123c", "#fb7185", "#fecdd3"),
 ]
+_GROUP_THEME_IMAGE_SLOTS = [
+    ("theme_image_1", "Cena principal", "A imagem que apresenta o clima logo de cara."),
+    ("theme_image_2", "Detalhe", "Textura, close ou recorte que aprofunda o tema."),
+    ("theme_image_3", "Assinatura", "A peça mais marcante, engraçada ou icônica."),
+]
 
 
 def _group_chat_payload(msg, viewer):
@@ -151,11 +156,74 @@ def _group_cover_data(group):
     return f"data:image/svg+xml;charset=UTF-8,{quote(svg)}"
 
 
+def _group_theme_subject(group):
+    return (
+        (group.theme or "").strip()
+        or (group.vibe or "").strip()
+        or (_interest_tokens(group.interests)[0] if _interest_tokens(group.interests) else "")
+        or "essa comunidade"
+    )
+
+
+def _group_theme_visual_data(group):
+    subject = _group_theme_subject(group)
+    palette = _GROUP_PALETTES[
+        int(hashlib.md5(f"{group.slug}|{subject}".encode("utf-8")).hexdigest(), 16) % len(_GROUP_PALETTES)
+    ]
+    gallery_title = (group.theme_gallery_title or "").strip()
+    gallery_note = (group.theme_gallery_note or "").strip()
+    if not gallery_title:
+        gallery_title = f"{subject.title()} em cena" if subject != "essa comunidade" else "A cara da comunidade"
+    if not gallery_note:
+        if subject != "essa comunidade":
+            gallery_note = f"Esse painel segura o clima de {subject.lower()}. Aqui entram as imagens que dão identidade para a comunidade."
+        else:
+            gallery_note = "Esse painel segura o clima visual da comunidade. Aqui entram as imagens que dão identidade para o grupo."
+    chips = []
+    for item in [group.theme, group.vibe, group.goal, *_interest_tokens(group.interests)]:
+        token = " ".join((item or "").split())
+        if token and token not in chips:
+            chips.append(token)
+        if len(chips) == 4:
+            break
+    slots = []
+    for idx, (field_name, slot_label, slot_hint) in enumerate(_GROUP_THEME_IMAGE_SLOTS, start=1):
+        image = getattr(group, field_name, None)
+        url = image.url if image else ""
+        slots.append({
+            "field_name": field_name,
+            "input_name": field_name,
+            "clear_name": f"{field_name}_clear",
+            "slot_number": idx,
+            "slot_label": slot_label,
+            "slot_hint": slot_hint,
+            "url": url,
+            "has_image": bool(url),
+            "prompt_title": slot_label if subject == "essa comunidade" else f"{subject.title()} #{idx}",
+            "prompt_body": f"Suba uma imagem que puxe para {subject.lower()}." if subject != "essa comunidade" else slot_hint,
+        })
+    return {
+        "subject": subject,
+        "title": gallery_title,
+        "note": gallery_note,
+        "palette": palette,
+        "chips": chips,
+        "slots": slots,
+    }
+
+
 def _decorate_group(group):
     group.cover_data = _group_cover_data(group)
     group.star_count = group.current_stars()
     group.star_fill = range(group.star_count)
     group.star_empty = range(5 - group.star_count)
+    visual = _group_theme_visual_data(group)
+    group.theme_subject = visual["subject"]
+    group.theme_gallery_title_resolved = visual["title"]
+    group.theme_gallery_note_resolved = visual["note"]
+    group.theme_gallery_slots = visual["slots"]
+    group.theme_gallery_chips = visual["chips"]
+    group.theme_color_1, group.theme_color_2, group.theme_color_3 = visual["palette"]
     return group
 
 
@@ -523,6 +591,50 @@ def group_detail(request, slug):
         "invite_candidates": _invite_candidates(request.user, group) if can_manage_group else [],
         "show_groups_onboarding": not _get_or_create_profile(request.user).groups_onboarding_done,
     })
+
+
+@login_required
+@require_POST
+def group_theme_gallery_update(request, slug):
+    group = get_object_or_404(SocialGroup, slug=slug)
+    membership = SocialGroupMembership.objects.filter(group=group, user=request.user).first()
+    if not _can_manage_group(membership):
+        return HttpResponseForbidden("Sem permissão.")
+
+    title = " ".join((request.POST.get("theme_gallery_title") or "").split())[:120]
+    note = " ".join((request.POST.get("theme_gallery_note") or "").split())[:220]
+    update_fields = []
+    if group.theme_gallery_title != title:
+        group.theme_gallery_title = title
+        update_fields.append("theme_gallery_title")
+    if group.theme_gallery_note != note:
+        group.theme_gallery_note = note
+        update_fields.append("theme_gallery_note")
+
+    from boards.services.image_compress import compress_image
+
+    for field_name, _, _ in _GROUP_THEME_IMAGE_SLOTS:
+        uploaded = request.FILES.get(field_name)
+        clear_requested = request.POST.get(f"{field_name}_clear") == "1"
+        current_file = getattr(group, field_name, None)
+        if uploaded and not (uploaded.content_type or "").lower().startswith("image/"):
+            messages.error(request, "Envie apenas imagens na vitrine do tema.")
+            return redirect("boards:group_detail", slug=group.slug)
+        if uploaded:
+            setattr(group, field_name, compress_image(uploaded))
+            update_fields.append(field_name)
+            continue
+        if clear_requested and current_file:
+            current_file.delete(save=False)
+            setattr(group, field_name, None)
+            update_fields.append(field_name)
+
+    if update_fields:
+        group.save(update_fields=list(dict.fromkeys(update_fields + ["updated_at"])))
+        messages.success(request, "Visual da comunidade atualizado.")
+    else:
+        messages.info(request, "Nada mudou no visual da comunidade.")
+    return redirect("boards:group_detail", slug=group.slug)
 
 
 @login_required

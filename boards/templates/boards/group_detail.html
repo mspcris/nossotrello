@@ -19,10 +19,248 @@
     --gd-success:#14532d;
     --gd-danger:#9f1239;
   }
+  {% if group.theme|lower == "tecnologias" or group.theme|lower == "tecnologia" %}
+  body{
+    background:
+      radial-gradient(circle at top left,rgba(59,130,246,.22),rgba(59,130,246,0) 28%),
+      radial-gradient(circle at top right,rgba(45,212,191,.16),rgba(45,212,191,0) 30%),
+      linear-gradient(180deg,#07111f 0%,#0b1426 44%,#111f33 100%);
+  }
+  {% endif %}
+  .gd-stage{position:fixed;inset:0;pointer-events:none;z-index:-4}
+  .gd-stage::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    background:
+      linear-gradient(rgba(148,163,184,.06) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(148,163,184,.06) 1px,transparent 1px);
+    background-size:36px 36px;
+    mask-image:linear-gradient(180deg,rgba(0,0,0,.62),transparent 92%);
+  }
+  .gd-side-art{
+    position:absolute;
+    top:0;
+    bottom:0;
+    width:min(19vw,246px);
+    opacity:.9;
+    background-image:
+      linear-gradient(180deg,rgba(6,10,18,.18),rgba(6,10,18,.46)),
+      url('{% static "images/home/fundo_home.png" %}');
+    background-repeat:no-repeat;
+    background-size:cover;
+    filter:saturate(.9) contrast(1.04) brightness(.72);
+  }
+  .gd-side-art::after{
+    content:"";
+    position:absolute;
+    inset:0;
+    background:
+      linear-gradient(180deg,rgba(8,15,28,.04),rgba(8,15,28,.56)),
+      linear-gradient(90deg,rgba(34,197,94,.12),transparent 22%,transparent 78%,rgba(59,130,246,.12));
+  }
+  .gd-side-art.left{
+    left:0;
+    background-position:14% center;
+    box-shadow:inset -32px 0 48px rgba(7,17,31,.92);
+  }
+  .gd-side-art.right{
+    right:0;
+    background-position:82% center;
+    box-shadow:inset 32px 0 48px rgba(7,17,31,.92);
+  }
   .gd-shell{max-width:1180px;margin:0 auto;padding:28px 16px 90px;color:var(--gd-ink);position:relative}
   .gd-shell::before,.gd-shell::after{content:"";position:fixed;z-index:-1;border-radius:50%;filter:blur(18px);opacity:.55;pointer-events:none}
   .gd-shell::before{width:320px;height:320px;left:-70px;top:120px;background:radial-gradient(circle,#ffd6a5 0%,rgba(255,214,165,0) 70%)}
   .gd-shell::after{width:360px;height:360px;right:-90px;top:40px;background:radial-gradient(circle,#bde0fe 0%,rgba(189,224,254,0) 70%)}
+  {% if group.theme|lower == "tecnologias" or group.theme|lower == "tecnologia" %}
+  .gd-shell{
+    --gd-ink:#e8f1ff;
+    --gd-muted:#9ab0d1;
+    --gd-line:rgba(96,165,250,.22);
+    --gd-card:rgba(10,18,34,.72);
+    --gd-soft:rgba(10,18,34,.58);
+    --gd-brand:#22c55e;
+    --gd-brand-2:#38bdf8;
+    --gd-brand-3:#2dd4bf;
+    --gd-brand-4:#93c5fd;
+    --gd-dark:#07111f;
+    --gd-success:#bbf7d0;
+    --gd-danger:#fecdd3;
+  }
+  .gd-shell::before{
+    width:380px;
+    height:380px;
+    left:-120px;
+    top:130px;
+    opacity:.58;
+    background:radial-gradient(circle,rgba(45,212,191,.42) 0%,rgba(45,212,191,0) 72%);
+  }
+  .gd-shell::after{
+    width:420px;
+    height:420px;
+    right:-140px;
+    top:48px;
+    opacity:.52;
+    background:radial-gradient(circle,rgba(59,130,246,.36) 0%,rgba(59,130,246,0) 74%);
+  }
+  .gd-alert{
+    background:rgba(9,16,31,.82);
+    border-color:rgba(96,165,250,.22);
+    box-shadow:0 18px 36px rgba(2,6,23,.34);
+  }
+  .gd-alert.success{color:#bbf7d0;border-color:rgba(74,222,128,.32)}
+  .gd-alert.error{color:#fecdd3;border-color:rgba(251,113,133,.28)}
+  .gd-alert.info{color:#bfdbfe;border-color:rgba(96,165,250,.32)}
+  .gd-banner{
+    background:linear-gradient(135deg,rgba(4,10,23,.92),rgba(10,31,52,.88) 56%,rgba(9,89,91,.78));
+    border-color:rgba(148,163,184,.18);
+    box-shadow:0 24px 48px rgba(2,6,23,.4);
+  }
+  .gd-btn-alt{
+    background:rgba(244,250,255,.96);
+    color:#0f172a;
+    box-shadow:0 16px 28px rgba(8,15,28,.24);
+  }
+  .gd-btn-ghost{
+    background:rgba(8,15,28,.56);
+    border-color:rgba(148,163,184,.24);
+  }
+  .gd-mini-btn{
+    background:rgba(17,24,39,.76);
+    border-color:rgba(96,165,250,.22);
+    color:var(--gd-ink);
+    box-shadow:0 12px 24px rgba(2,6,23,.22);
+  }
+  .gd-mini-btn.alt{background:rgba(13,148,136,.18);color:#ccfbf1}
+  .gd-mini-btn.danger{background:rgba(190,24,93,.14);color:#fecdd3}
+  .gd-mini-btn.success{background:rgba(34,197,94,.14);color:#dcfce7}
+  .gd-hero{
+    background:rgba(6,11,23,.72);
+    border-color:rgba(96,165,250,.16);
+    box-shadow:0 28px 56px rgba(2,6,23,.38);
+  }
+  .gd-cover::before{
+    background:linear-gradient(135deg,rgba(34,197,94,.18),rgba(56,189,248,.06));
+    border:1px solid rgba(255,255,255,.12);
+  }
+  .gd-cover::after{
+    background:
+      radial-gradient(circle at 14% 18%,rgba(34,197,94,.22),rgba(34,197,94,0) 24%),
+      radial-gradient(circle at 82% 16%,rgba(56,189,248,.2),rgba(56,189,248,0) 30%),
+      linear-gradient(180deg,rgba(7,17,31,.18),rgba(7,17,31,.9));
+  }
+  .gd-hero-content::before{
+    background:linear-gradient(135deg,rgba(5,10,22,.84),rgba(10,31,52,.66));
+    border-color:rgba(148,163,184,.16);
+    box-shadow:0 28px 48px rgba(2,6,23,.4);
+  }
+  .gd-tabs{
+    background:rgba(7,17,31,.58);
+    border-color:rgba(96,165,250,.14);
+    box-shadow:0 20px 38px rgba(2,6,23,.24);
+  }
+  .gd-tab-btn{color:#bfd3f0}
+  .gd-tab-btn:hover{
+    border-color:rgba(96,165,250,.18);
+    color:#fff;
+    background:rgba(15,23,42,.56);
+  }
+  .gd-card,
+  .gd-choice,
+  .gd-check,
+  .gd-empty,
+  .gd-media-preview,
+  .gd-memory,
+  .gd-member,
+  .gd-post,
+  .gd-chat-box,
+  .gd-chat-composer,
+  .gd-chat-preview{
+    border-color:rgba(96,165,250,.16);
+    box-shadow:0 20px 38px rgba(2,6,23,.24);
+  }
+  .gd-card{
+    background:linear-gradient(180deg,rgba(7,17,31,.82),rgba(13,25,43,.72));
+  }
+  .gd-post,
+  .gd-member,
+  .gd-memory,
+  .gd-choice,
+  .gd-check,
+  .gd-empty,
+  .gd-media-preview{
+    background:linear-gradient(180deg,rgba(10,18,34,.88),rgba(10,18,34,.68));
+  }
+  .gd-post-badge{
+    background:rgba(34,197,94,.18);
+    color:#dcfce7;
+  }
+  .gd-locked-note{
+    background:linear-gradient(135deg,rgba(30,41,59,.6),rgba(30,64,175,.18));
+    border-color:rgba(96,165,250,.18);
+  }
+  .gd-chat-box{
+    background:linear-gradient(180deg,rgba(8,15,28,.96),rgba(9,22,40,.92));
+    box-shadow:0 26px 44px rgba(2,6,23,.34),inset 0 1px 0 rgba(255,255,255,.04);
+  }
+  .gd-chat-log{
+    background:
+      radial-gradient(circle at top right,rgba(34,197,94,.12),rgba(34,197,94,0) 28%),
+      radial-gradient(circle at bottom left,rgba(59,130,246,.14),rgba(59,130,246,0) 32%),
+      linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,0));
+  }
+  .gd-msg{
+    background:rgba(11,20,36,.94);
+    border-color:rgba(96,165,250,.14);
+    box-shadow:0 14px 28px rgba(2,6,23,.28);
+  }
+  .gd-msg.mine{
+    background:linear-gradient(135deg,rgba(6,95,70,.92),rgba(14,116,144,.88));
+    border-color:rgba(45,212,191,.24);
+  }
+  .gd-chat-form{
+    background:linear-gradient(180deg,rgba(9,17,31,.74),rgba(9,17,31,.96));
+    border-top-color:rgba(96,165,250,.16);
+  }
+  .gd-chat-composer{
+    background:linear-gradient(180deg,rgba(10,18,34,.94),rgba(11,24,43,.92));
+  }
+  .gd-input,
+  .gd-textarea,
+  .gd-chat-form textarea{
+    background:rgba(5,10,22,.88);
+    border-color:rgba(96,165,250,.2);
+    color:#eff6ff;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
+  }
+  .gd-chat-form textarea::placeholder{color:#7f95b9}
+  .gd-chat-tool{
+    background:linear-gradient(135deg,rgba(15,118,110,.18),rgba(14,165,233,.16));
+    border-color:rgba(45,212,191,.32);
+    color:#ccfbf1;
+  }
+  .gd-chat-tool:hover{
+    border-color:rgba(34,197,94,.38);
+    box-shadow:0 14px 24px rgba(20,184,166,.18);
+    background:linear-gradient(135deg,rgba(21,128,61,.24),rgba(14,165,233,.2));
+  }
+  .gd-chat-preview{
+    background:rgba(8,15,28,.82);
+  }
+  .gd-note,
+  .gd-copy,
+  .gd-post-time,
+  .gd-member-meta,
+  .gd-msg-meta,
+  .gd-chat-hint,
+  .gd-chat-lead span{
+    color:var(--gd-muted);
+  }
+  .gd-role-pill{background:rgba(45,212,191,.12);color:#ccfbf1}
+  .gd-role-pill.owner{background:rgba(250,204,21,.16);color:#fef08a}
+  .gd-role-pill.manager{background:rgba(59,130,246,.18);color:#bfdbfe}
+  {% endif %}
   .gd-alerts{display:grid;gap:10px;margin-bottom:16px}
   .gd-alert{padding:13px 16px;border-radius:18px;border:1px solid;backdrop-filter:blur(18px);box-shadow:0 16px 34px rgba(20,15,45,.08)}
   .gd-alert.success{background:rgba(236,253,245,.9);border-color:#86efac;color:#166534}
@@ -56,6 +294,7 @@
   .gd-sub{margin:12px 0 0;max-width:62ch;line-height:1.62;color:rgba(255,255,255,.96);font-size:1.05rem;text-shadow:0 2px 12px rgba(0,0,0,.24)}
   .gd-stars{font-size:1.15rem;color:#fde047;letter-spacing:.12em}
   .gd-meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+  .gd-hero-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:10px}
   .gd-chip{display:inline-flex;align-items:center;gap:6px;padding:10px 14px;border-radius:999px;background:rgba(20,15,45,.42);border:1px solid rgba(255,255,255,.22);font-size:.86rem;font-weight:800;backdrop-filter:blur(12px);box-shadow:0 10px 24px rgba(20,15,45,.12)}
   .gd-nav{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
   .gd-status-pill{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:999px;background:rgba(20,15,45,.42);border:1px solid rgba(255,255,255,.22);color:#fff;font-size:.85rem;font-weight:800;backdrop-filter:blur(12px)}
@@ -128,6 +367,42 @@
   .gd-friends{display:grid;gap:10px;margin-top:12px}
   .gd-check{display:flex;gap:10px;align-items:flex-start;padding:14px;border:1px solid rgba(96,79,160,.12);border-radius:22px;background:var(--gd-soft)}
   .gd-locked-note{padding:16px 18px;border-radius:22px;background:linear-gradient(135deg,rgba(255,107,107,.08),rgba(255,214,165,.18));border:1px solid rgba(255,159,28,.18);color:var(--gd-ink)}
+  .gd-theme-config-card{display:none;gap:18px;margin:0 0 18px;border-style:dashed;background:linear-gradient(180deg,rgba(255,255,255,.92),rgba(248,250,255,.86))}
+  .gd-theme-config-card.is-open{display:grid}
+  .gd-theme-config-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;align-items:flex-start}
+  .gd-theme-config-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:16px}
+  .gd-theme-upload-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+  .gd-theme-upload-card{display:grid;gap:12px;padding:14px;border-radius:24px;border:1px solid rgba(96,79,160,.14);background:rgba(255,255,255,.8);box-shadow:0 12px 24px rgba(20,15,45,.06)}
+  .gd-theme-upload-card strong{font-size:.92rem}
+  .gd-theme-upload-thumb,.gd-theme-upload-empty{width:100%;height:150px;border-radius:18px;overflow:hidden}
+  .gd-theme-upload-thumb{display:block;object-fit:cover;border:1px solid rgba(96,79,160,.12)}
+  .gd-theme-upload-empty{display:flex;align-items:center;justify-content:center;padding:16px;text-align:center;background:linear-gradient(135deg,rgba(255,214,165,.3),rgba(110,231,255,.24));border:1px dashed rgba(96,79,160,.18);color:var(--gd-muted);font-weight:700}
+  .gd-theme-upload-actions{display:grid;gap:8px}
+  .gd-check-inline{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:16px;border:1px solid rgba(96,79,160,.12);background:rgba(248,250,255,.82)}
+  .gd-theme-stage{position:relative;overflow:hidden;padding:24px;border-radius:30px;background:linear-gradient(135deg,var(--gd-theme-1),var(--gd-theme-2) 52%,var(--gd-theme-3));color:#fff;box-shadow:0 28px 52px rgba(20,15,45,.18)}
+  .gd-theme-stage::before{content:"";position:absolute;inset:0;background:
+      radial-gradient(circle at 14% 18%,rgba(255,255,255,.22),rgba(255,255,255,0) 24%),
+      radial-gradient(circle at 82% 12%,rgba(255,255,255,.2),rgba(255,255,255,0) 30%),
+      linear-gradient(180deg,rgba(15,23,42,.12),rgba(15,23,42,.46));pointer-events:none}
+  .gd-theme-stage-layout{position:relative;z-index:1;display:grid;grid-template-columns:.9fr 1.1fr;gap:18px;align-items:stretch}
+  .gd-theme-stage-copy{display:grid;gap:14px;align-content:start}
+  .gd-theme-kicker{display:inline-flex;align-items:center;gap:8px;width:fit-content;padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.24);font-size:.76rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase}
+  .gd-theme-stage h2{margin:0;font-size:clamp(1.8rem,3vw,2.7rem);line-height:1.04;letter-spacing:-.04em}
+  .gd-theme-stage p{margin:0;color:rgba(255,255,255,.9);line-height:1.6}
+  .gd-theme-chip-cloud{display:flex;flex-wrap:wrap;gap:8px}
+  .gd-theme-chip{display:inline-flex;align-items:center;padding:8px 12px;border-radius:999px;background:rgba(15,23,42,.22);border:1px solid rgba(255,255,255,.18);font-size:.8rem;font-weight:800}
+  .gd-theme-stage-hint{padding:14px 16px;border-radius:20px;background:rgba(15,23,42,.2);border:1px solid rgba(255,255,255,.16);backdrop-filter:blur(14px)}
+  .gd-theme-gallery{display:grid;grid-template-columns:1.24fr .96fr;grid-template-rows:200px 160px;gap:14px}
+  .gd-theme-shot{position:relative;overflow:hidden;border-radius:26px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.14);box-shadow:0 18px 28px rgba(15,23,42,.16)}
+  .gd-theme-shot.main{grid-row:1 / span 2}
+  .gd-theme-shot img{width:100%;height:100%;object-fit:cover;display:block}
+  .gd-theme-shot::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(15,23,42,0),rgba(15,23,42,.76))}
+  .gd-theme-shot.empty{background:
+      linear-gradient(135deg,rgba(255,255,255,.18),rgba(255,255,255,.08)),
+      linear-gradient(135deg,var(--gd-theme-2),var(--gd-theme-3))}
+  .gd-theme-shot-copy{position:absolute;left:16px;right:16px;bottom:16px;z-index:1;display:grid;gap:4px}
+  .gd-theme-shot-copy strong{font-size:1rem;letter-spacing:-.02em}
+  .gd-theme-shot-copy span{font-size:.84rem;color:rgba(255,255,255,.88);line-height:1.45}
   .gd-chat-box{border:1px solid rgba(96,79,160,.14);border-radius:32px;background:linear-gradient(180deg,rgba(248,251,255,.98),rgba(236,245,255,.9));overflow:hidden;box-shadow:0 24px 42px rgba(20,15,45,.08),inset 0 1px 0 rgba(255,255,255,.74)}
   .gd-chat-log{max-height:420px;overflow:auto;padding:20px;display:grid;gap:12px;background:
       radial-gradient(circle at top right,rgba(110,231,255,.16),rgba(110,231,255,0) 32%),
@@ -136,7 +411,8 @@
   .gd-msg.mine{margin-left:auto;background:linear-gradient(135deg,#d1fae5,#ccfbf1);border-color:rgba(16,185,129,.16)}
   .gd-msg-meta{font-size:.76rem;color:var(--gd-muted);margin-bottom:4px}
   .gd-chat-media{display:grid;gap:8px;margin-top:10px}
-  .gd-chat-media img{width:min(280px,100%);max-height:280px;object-fit:cover;border-radius:18px;border:1px solid rgba(96,79,160,.12);background:#fff}
+  .gd-chat-media-btn{display:block;padding:0;border:none;background:transparent;cursor:zoom-in;width:fit-content;border-radius:18px}
+  .gd-chat-media-btn img{display:block;width:min(280px,100%);max-height:280px;object-fit:cover;border-radius:18px;border:1px solid rgba(96,79,160,.12);background:#fff}
   .gd-chat-form{display:grid;gap:14px;padding:18px 20px 20px;border-top:1px solid rgba(96,79,160,.12);background:linear-gradient(180deg,rgba(255,255,255,.7),rgba(255,255,255,.98))}
   .gd-chat-composer{display:grid;gap:12px;padding:18px;border:1px solid rgba(96,79,160,.14);border-radius:28px;background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(244,249,255,.96));box-shadow:0 22px 34px rgba(20,15,45,.08)}
   .gd-chat-lead{display:grid;gap:4px}
@@ -163,13 +439,29 @@
   .gd-note{font-size:.82rem;color:var(--gd-muted)}
   .gd-section-tag{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:rgba(110,231,255,.22);color:#155e75;font-size:.75rem;font-weight:800;margin-bottom:10px}
   @media (max-width: 920px){ .gd-grid{grid-template-columns:1fr} }
+  @media (max-width: 920px){
+    .gd-theme-stage-layout,.gd-theme-config-grid{grid-template-columns:1fr}
+  }
   @media (max-width: 640px){
+    .gd-side-art{
+      width:34px;
+      opacity:.72;
+      background-size:auto 100%;
+      filter:saturate(.9) contrast(1.04) brightness(.56);
+    }
+    .gd-side-art.left{background-position:left center}
+    .gd-side-art.right{background-position:right center}
     .gd-shell{padding-left:14px;padding-right:14px}
     .gd-card,.gd-banner{padding:18px}
     .gd-tabs{padding:8px}
     .gd-tab-btn{width:100%}
     .gd-hero-content{padding:18px}
     .gd-hero-content::before{inset:12px;inline-size:calc(100% - 24px)}
+    .gd-hero-actions{justify-content:flex-start}
+    .gd-theme-stage{padding:18px}
+    .gd-theme-gallery{grid-template-columns:1fr;grid-template-rows:auto}
+    .gd-theme-shot,.gd-theme-shot.main{grid-row:auto;min-height:200px}
+    .gd-theme-upload-grid{grid-template-columns:1fr}
     .gd-chat-toolbar,.gd-chat-actions{flex-direction:column;align-items:stretch}
     .gd-chat-submit{width:100%}
   }
@@ -177,6 +469,12 @@
 {% endblock %}
 
 {% block content %}
+<div class="gd-stage" aria-hidden="true">
+  {% if group.theme|lower == "tecnologias" or group.theme|lower == "tecnologia" %}
+  <div class="gd-side-art left"></div>
+  <div class="gd-side-art right"></div>
+  {% endif %}
+</div>
 <div class="gd-shell">
   {% if messages %}
   <div class="gd-alerts">
@@ -202,9 +500,14 @@
             <h1>{{ group.name }}</h1>
             <p class="gd-sub">{{ group.description|default:group.goal|default:"Comunidade pronta para conversas, publicações e memórias em grupo." }}</p>
           </div>
-          <div class="gd-meta">
-            <span class="gd-chip">👥 {{ member_total }} membro{{ member_total|pluralize:"s" }}</span>
-            {% if membership %}<span class="gd-chip">💚 {{ membership.get_role_display }}</span>{% endif %}
+          <div class="gd-hero-actions">
+            <div class="gd-meta">
+              <span class="gd-chip">👥 {{ member_total }} membro{{ member_total|pluralize:"s" }}</span>
+              {% if membership %}<span class="gd-chip">💚 {{ membership.get_role_display }}</span>{% endif %}
+            </div>
+            {% if can_manage_group %}
+            <button type="button" class="gd-btn-ghost" onclick="gdToggleThemeStudio(true)">⚙️ Ajustar visual</button>
+            {% endif %}
           </div>
         </div>
         <div class="gd-meta">
@@ -231,6 +534,60 @@
     </div>
   </section>
 
+  {% if can_manage_group %}
+  <section class="gd-card gd-theme-config-card" id="gd-theme-studio">
+    <div class="gd-theme-config-head">
+      <div>
+        <span class="gd-section-tag">Engrenagem visual</span>
+        <h2>Configurar a vitrine do tema</h2>
+        <p class="gd-copy">Troque as imagens que dão a cara da comunidade. A ideia é simples: se o tema for ovo, esse painel precisa respirar ovo.</p>
+      </div>
+      <button type="button" class="gd-mini-btn" onclick="gdToggleThemeStudio(false)">Fechar</button>
+    </div>
+    <form method="post" action="{% url 'boards:group_theme_gallery_update' group.slug %}" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div class="gd-theme-config-grid">
+        <div class="gd-form-grid">
+          <div>
+            <label class="gd-note" for="gd-theme-gallery-title">Título do espaço</label>
+            <input id="gd-theme-gallery-title" class="gd-input" type="text" name="theme_gallery_title" maxlength="120" value="{{ group.theme_gallery_title }}" placeholder="Ex.: Ovos em estado puro">
+          </div>
+          <div>
+            <label class="gd-note" for="gd-theme-gallery-note">Frase de apoio</label>
+            <textarea id="gd-theme-gallery-note" class="gd-textarea" name="theme_gallery_note" maxlength="220" placeholder="Diga em uma frase o que essas imagens precisam transmitir.">{{ group.theme_gallery_note }}</textarea>
+          </div>
+          <div class="gd-locked-note">Use imagens que deixem claro o tema antes mesmo de ler o texto. Esse espaço é a assinatura visual da comunidade.</div>
+          <div><button type="submit" class="gd-btn">Salvar visual</button></div>
+        </div>
+        <div class="gd-theme-upload-grid">
+          {% for slot in group.theme_gallery_slots %}
+          <div class="gd-theme-upload-card">
+            <div>
+              <strong>{{ slot.slot_label }}</strong>
+              <div class="gd-note">{{ slot.slot_hint }}</div>
+            </div>
+            {% if slot.url %}
+            <img class="gd-theme-upload-thumb" src="{{ slot.url }}" alt="{{ slot.slot_label }}" loading="lazy">
+            {% else %}
+            <div class="gd-theme-upload-empty">{{ slot.prompt_body }}</div>
+            {% endif %}
+            <div class="gd-theme-upload-actions">
+              <input class="gd-input" type="file" name="{{ slot.input_name }}" accept="image/*">
+              {% if slot.url %}
+              <label class="gd-check-inline">
+                <input type="checkbox" name="{{ slot.clear_name }}" value="1">
+                <span><strong>Remover esta imagem</strong><br><span class="gd-note">Marque só se quiser deixar esse espaço vazio.</span></span>
+              </label>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </form>
+  </section>
+  {% endif %}
+
   <div class="gd-tabs" role="tablist" aria-label="Seções da comunidade">
     <button type="button" class="gd-tab-btn is-active" data-tab="abertura" role="tab" aria-selected="true">Abertura</button>
     <button type="button" class="gd-tab-btn" data-tab="como-publicar" role="tab" aria-selected="false">Como publicar</button>
@@ -240,6 +597,42 @@
 
   <section class="gd-tab-panel is-active" data-panel="abertura" role="tabpanel">
     <div class="gd-stack">
+      <section class="gd-theme-stage" style="--gd-theme-1:{{ group.theme_color_1 }};--gd-theme-2:{{ group.theme_color_2 }};--gd-theme-3:{{ group.theme_color_3 }};">
+        <div class="gd-theme-stage-layout">
+          <div class="gd-theme-stage-copy">
+            <span class="gd-theme-kicker">Vitrine do tema</span>
+            <h2>{{ group.theme_gallery_title_resolved }}</h2>
+            <p>{{ group.theme_gallery_note_resolved }}</p>
+            {% if group.theme_gallery_chips %}
+            <div class="gd-theme-chip-cloud">
+              {% for chip in group.theme_gallery_chips %}
+              <span class="gd-theme-chip">{{ chip }}</span>
+              {% endfor %}
+            </div>
+            {% endif %}
+            <div class="gd-theme-stage-hint">
+              {% if can_manage_group %}
+              Essa vitrine é editável por quem cuida da comunidade. A régua é simples: bateu o olho, entendeu o tema.
+              {% else %}
+              Essa vitrine segura o repertório visual da comunidade e ajuda a manter o clima do grupo consistente.
+              {% endif %}
+            </div>
+          </div>
+          <div class="gd-theme-gallery">
+            {% for slot in group.theme_gallery_slots %}
+            <article class="gd-theme-shot{% if forloop.first %} main{% endif %}{% if not slot.url %} empty{% endif %}">
+              {% if slot.url %}
+              <img src="{{ slot.url }}" alt="{{ slot.slot_label }}" loading="lazy">
+              {% endif %}
+              <div class="gd-theme-shot-copy">
+                <strong>{{ slot.prompt_title }}</strong>
+                <span>{{ slot.prompt_body }}</span>
+              </div>
+            </article>
+            {% endfor %}
+          </div>
+        </div>
+      </section>
       <section class="gd-card">
         <span class="gd-section-tag">Drop do grupo</span>
         <h2>Feed da comunidade</h2>
@@ -521,7 +914,9 @@
               {% if msg.text %}<div class="gd-rich-text gd-chat-text">{{ msg.text }}</div>{% endif %}
               {% if msg.photo_url %}
               <div class="gd-chat-media">
-                <img src="{{ msg.photo_url }}" alt="Imagem enviada no chat" loading="lazy">
+                <button type="button" class="gd-chat-media-btn" onclick="openCoverLightbox('{{ msg.photo_url|escapejs }}')" aria-label="Abrir imagem em tamanho maior">
+                  <img src="{{ msg.photo_url }}" alt="Imagem enviada no chat" loading="lazy">
+                </button>
               </div>
               {% endif %}
             </div>
@@ -624,6 +1019,16 @@
       var el = document.getElementById("gd-onboarding");
       if(el) el.remove();
     });
+  }
+
+  function gdToggleThemeStudio(forceOpen){
+    var panel = document.getElementById("gd-theme-studio");
+    if(!panel) return;
+    var shouldOpen = typeof forceOpen === "boolean" ? forceOpen : !panel.classList.contains("is-open");
+    panel.classList.toggle("is-open", shouldOpen);
+    if(shouldOpen){
+      panel.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   }
 </script>
 <script>
@@ -923,7 +1328,7 @@
 
       function renderMessageMedia(msg){
         if(!msg.photo_url) return "";
-        return '<div class="gd-chat-media"><img src="' + gdEscapeHtml(msg.photo_url) + '" alt="Imagem enviada no chat" loading="lazy"></div>';
+        return '<div class="gd-chat-media"><button type="button" class="gd-chat-media-btn" onclick="openCoverLightbox(' + JSON.stringify(msg.photo_url) + ')" aria-label="Abrir imagem em tamanho maior"><img src="' + gdEscapeHtml(msg.photo_url) + '" alt="Imagem enviada no chat" loading="lazy"></button></div>';
       }
 
       function appendMessage(msg){
