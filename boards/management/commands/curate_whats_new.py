@@ -40,6 +40,26 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-08 ---
+    "d7279e7": (
+        "🏷",
+        "Os chips e as legendas da vitrine da comunidade agora são editáveis",
+        "A vitrine do tema dizia que era editável, mas os chips (tema, clima, "
+        "objetivo e interesses) e as legendas das imagens vinham travados do "
+        "momento em que a comunidade foi criada. Agora o dono (ou gestor) abre "
+        "o \"Ajustar visual\" e encontra os quatro campos ali, junto do título "
+        "e da frase de apoio: mudou o tema, mudam os chips, as legendas das "
+        "três imagens e até a capa automática, tudo de uma vez. Errou na "
+        "criação ou o grupo mudou de rumo? É só reescrever e salvar.",
+    ),
+    "4a24cb1": (
+        "🖼",
+        "As fotos do feed da comunidade agora aparecem inteiras",
+        "Foto em pé no feed da comunidade aparecia cortada dentro de um "
+        "retângulo deitado — cabeça e pés ficavam de fora. Agora cada foto "
+        "aparece por completo, no formato em que foi tirada: se é em pé, ocupa "
+        "um espaço em pé no meio do post; se é deitada, estica na largura. "
+        "Vídeos seguem a mesma regra.",
+    ),
     "e54a4b7": (
         "🎨",
         "Agora dá para escolher o papel de parede e as cores da sua comunidade",
