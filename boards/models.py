@@ -1228,6 +1228,7 @@ class SocialGroup(models.Model):
     cover_image = models.ImageField(upload_to="social/groups/covers/", blank=True, null=True)
     theme_gallery_title = models.CharField(max_length=120, blank=True, default="")
     theme_gallery_note = models.CharField(max_length=220, blank=True, default="")
+    theme_gallery_hint = models.CharField(max_length=220, blank=True, default="")
     theme_image_1 = models.ImageField(upload_to="social/groups/themes/", blank=True, null=True)
     theme_image_2 = models.ImageField(upload_to="social/groups/themes/", blank=True, null=True)
     theme_image_3 = models.ImageField(upload_to="social/groups/themes/", blank=True, null=True)

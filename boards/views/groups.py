@@ -780,6 +780,12 @@ def group_theme_gallery_update(request, slug):
         group.theme_gallery_note = note
         update_fields.append("theme_gallery_note")
 
+    if "theme_gallery_hint" in request.POST:
+        hint = " ".join((request.POST.get("theme_gallery_hint") or "").split())[:220]
+        if group.theme_gallery_hint != hint:
+            group.theme_gallery_hint = hint
+            update_fields.append("theme_gallery_hint")
+
     identity_changed = False
     for field_name, max_len in (("theme", 120), ("vibe", 120), ("goal", 200), ("interests", 240)):
         if field_name not in request.POST:

@@ -769,6 +769,10 @@
             <label class="gd-note" for="gd-theme-gallery-note">Frase de apoio</label>
             <textarea id="gd-theme-gallery-note" class="gd-textarea" name="theme_gallery_note" maxlength="220" placeholder="Diga em uma frase o que essas imagens precisam transmitir.">{{ group.theme_gallery_note }}</textarea>
           </div>
+          <div>
+            <label class="gd-note" for="gd-theme-gallery-hint">Frase do cartão da vitrine</label>
+            <textarea id="gd-theme-gallery-hint" class="gd-textarea" name="theme_gallery_hint" maxlength="220" placeholder="Ex.: Essa vitrine é editável por quem cuida da comunidade.">{{ group.theme_gallery_hint }}</textarea>
+          </div>
           <div class="gd-locked-note">Os quatro campos abaixo viram os chips da vitrine, e o tema também dá nome às legendas das imagens.</div>
           <div>
             <label class="gd-note" for="gd-theme-field">Tema</label>
@@ -848,12 +852,16 @@
             </div>
             {% endif %}
             <div class="gd-theme-stage-hint">
-              {% if can_manage_group %}
+              {% if group.theme_gallery_hint %}
+              {{ group.theme_gallery_hint }}
+              {% elif can_manage_group %}
               Essa vitrine é editável por quem cuida da comunidade. A régua é simples: bateu o olho, entendeu o tema.
-              <br>
-              <button type="button" class="gd-hint-edit-btn" onclick="gdToggleThemeStudio(true)">✏️ Editar a vitrine</button>
               {% else %}
               Essa vitrine segura o repertório visual da comunidade e ajuda a manter o clima do grupo consistente.
+              {% endif %}
+              {% if can_manage_group %}
+              <br>
+              <button type="button" class="gd-hint-edit-btn" onclick="gdToggleThemeStudio(true)">✏️ Editar a vitrine</button>
               {% endif %}
             </div>
           </div>
