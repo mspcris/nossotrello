@@ -1370,6 +1370,7 @@ class SocialGroupScrapbookEntry(models.Model):
     )
     text = models.TextField(blank=True, default="")
     photo = models.ImageField(upload_to="social/groups/scrapbook/", blank=True, null=True)
+    video = models.FileField(upload_to="social/groups/scrapbook/", blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
 

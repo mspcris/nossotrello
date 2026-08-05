@@ -630,6 +630,7 @@ def notify_social_interaction(
     kind: str,   # "comment" | "reply"
     post_text: str = "",
     post_id: int = None,
+    link_path: str = "",
 ) -> None:
     """
     Notifica por email e/ou WhatsApp quando alguém comenta ou responde
@@ -646,7 +647,8 @@ def notify_social_interaction(
     site_url = (getattr(settings, "SITE_URL", "") or "").rstrip("/")
     owner_id = getattr(recipient, "id", "")
     post_hash = f"#post-{post_id}" if post_id else ""
-    social_link = f"{_bust(f'{site_url}/social/{owner_id}/')}{post_hash}"
+    target_path = link_path or f"/social/{owner_id}/"
+    social_link = f"{_bust(f'{site_url}{target_path}')}{post_hash}"
 
     if kind == "comment":
         preview = (post_text or "").strip()[:60]

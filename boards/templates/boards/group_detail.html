@@ -174,6 +174,8 @@
   .gd-meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
   .gd-hero-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:10px}
   .gd-chip{display:inline-flex;align-items:center;gap:6px;padding:10px 14px;border-radius:999px;background:rgba(20,15,45,.42);border:1px solid rgba(255,255,255,.22);font-size:.86rem;font-weight:800;backdrop-filter:blur(12px);box-shadow:0 10px 24px rgba(20,15,45,.12)}
+  .gd-chip-btn{appearance:none;-webkit-appearance:none;font-family:inherit;color:inherit;line-height:1.2;cursor:pointer;transition:transform .18s ease,border-color .18s ease}
+  .gd-chip-btn:hover{transform:translateY(-1px);border-color:rgba(255,255,255,.44)}
   .gd-nav{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
   .gd-status-pill{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:999px;background:rgba(20,15,45,.42);border:1px solid rgba(255,255,255,.22);color:#fff;font-size:.85rem;font-weight:800;backdrop-filter:blur(12px)}
   .gd-facts{position:relative;z-index:1;display:grid;gap:8px;margin:12px 0 2px}
@@ -184,6 +186,7 @@
   .gd-tab-btn{appearance:none;border:1px solid transparent;background:transparent;color:var(--gd-muted);padding:12px 18px;border-radius:999px;font:inherit;font-weight:800;cursor:pointer;transition:.2s ease}
   .gd-tab-btn:hover{border-color:rgba(96,79,160,.16);color:var(--gd-ink);background:rgba(255,255,255,.5)}
   .gd-tab-btn.is-active{background:linear-gradient(135deg,var(--gd-brand-3),var(--gd-brand-4));border-color:transparent;color:#083344;box-shadow:0 14px 26px rgba(46,196,182,.22)}
+  .gd-tab-lbl-short{display:none}
   .gd-tab-panel{display:none}
   .gd-tab-panel.is-active{display:grid;gap:18px}
   .gd-grid{display:grid;grid-template-columns:1.25fr .85fr;gap:18px}
@@ -224,6 +227,18 @@
   .gd-post-media{display:block;width:auto;max-width:100%;height:auto;max-height:min(560px,70vh);margin:0 auto;border-radius:22px;border:1px solid rgba(96,79,160,.08);background:#f8fafc}
   .gd-post-badge{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;background:rgba(134,239,172,.22);color:#166534;font-size:.78rem;font-weight:800}
   .gd-post-actions{display:flex;justify-content:flex-end}
+  .gd-post-comments{display:grid;gap:10px;border-top:1px solid rgba(127,140,190,.18);padding-top:12px}
+  .gd-comment-list{display:grid;gap:10px}
+  .gd-comment-list:empty{display:none}
+  .gd-comment{display:flex;gap:10px;align-items:flex-start}
+  .gd-comment-avatar{width:34px;height:34px;border-radius:12px;object-fit:cover;flex-shrink:0}
+  .gd-comment-avatar-fallback{display:inline-flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--gd-brand-3),var(--gd-brand-4));color:#083344;font-weight:800}
+  .gd-comment-body{flex:1;min-width:0;background:rgba(127,140,190,.12);border-radius:14px;padding:8px 12px}
+  .gd-comment-author{font-weight:800;font-size:.85rem;margin-right:8px}
+  .gd-comment-time{font-size:.75rem;color:var(--gd-muted)}
+  .gd-comment-text{margin-top:2px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
+  .gd-comment-form{display:flex;gap:8px;align-items:center}
+  .gd-comment-input{flex:1;min-width:0}
   .gd-nudge-card{display:grid;gap:14px;padding:18px;border-radius:24px;background:linear-gradient(135deg,#0f172a,#1d4ed8 55%,#38bdf8);color:#fff;box-shadow:0 22px 34px rgba(29,78,216,.22)}
   .gd-nudge-avatars{display:flex;align-items:center;justify-content:center;gap:14px}
   .gd-nudge-avatar,.gd-nudge-avatar-fallback{width:72px;height:72px;border-radius:24px;object-fit:cover;flex-shrink:0;border:3px solid rgba(255,255,255,.72);box-shadow:0 16px 26px rgba(15,23,42,.24)}
@@ -358,6 +373,7 @@
   .gd-scrapbook-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
   .gd-memory{padding:14px;border:1px solid rgba(96,79,160,.12);border-radius:22px;background:linear-gradient(180deg,rgba(255,255,255,.95),rgba(255,248,250,.78))}
   .gd-memory img{width:100%;height:150px;object-fit:cover;border-radius:14px;margin-top:10px}
+  .gd-memory video{width:100%;max-height:260px;border-radius:14px;margin-top:10px;background:#000}
   .gd-empty{padding:16px;border:1px dashed rgba(96,79,160,.24);border-radius:22px;background:rgba(248,251,255,.72);color:var(--gd-muted)}
   .gd-note{font-size:.82rem;color:var(--gd-muted)}
   .gd-section-tag{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:rgba(110,231,255,.22);color:#155e75;font-size:.75rem;font-weight:800;margin-bottom:10px}
@@ -376,8 +392,10 @@
     .gd-side-art.right{background-position:right center}
     .gd-shell{padding-left:14px;padding-right:14px}
     .gd-card,.gd-banner{padding:18px}
-    .gd-tabs{padding:8px}
-    .gd-tab-btn{width:100%}
+    .gd-tabs{padding:8px;gap:6px;flex-wrap:nowrap}
+    .gd-tab-btn{flex:1;min-width:0;padding:10px 4px;font-size:.84rem;text-align:center;white-space:nowrap}
+    .gd-tab-lbl-full{display:none}
+    .gd-tab-lbl-short{display:inline}
     .gd-hero-content{padding:18px}
     .gd-hero-content::before{inset:12px;inline-size:calc(100% - 24px)}
     .gd-hero-actions{justify-content:flex-start}
@@ -626,12 +644,12 @@
           </div>
           <div class="gd-hero-actions">
             <div class="gd-meta">
-              <span class="gd-chip">👥 {{ member_total }} membro{{ member_total|pluralize:"s" }}</span>
+              <button type="button" class="gd-chip gd-chip-btn" onclick="gdOpenMembers()" title="Ver a lista de membros">👥 {{ member_total }} membro{{ member_total|pluralize:"s" }}</button>
               {% if membership %}<span class="gd-chip">💚 {{ membership.get_role_display }}</span>{% endif %}
+              {% if can_manage_group %}
+              <button type="button" class="gd-chip gd-chip-btn" onclick="gdToggleThemeStudio(true)">⚙️ Ajustar visual</button>
+              {% endif %}
             </div>
-            {% if can_manage_group %}
-            <button type="button" class="gd-btn-ghost" onclick="gdToggleThemeStudio(true)">⚙️ Ajustar visual</button>
-            {% endif %}
           </div>
         </div>
         <div class="gd-meta">
@@ -805,7 +823,7 @@
 
   <div class="gd-tabs" role="tablist" aria-label="Seções da comunidade">
     <button type="button" class="gd-tab-btn is-active" data-tab="abertura" role="tab" aria-selected="true">Abertura</button>
-    <button type="button" class="gd-tab-btn" data-tab="como-publicar" role="tab" aria-selected="false">Como publicar</button>
+    <button type="button" class="gd-tab-btn" data-tab="como-publicar" role="tab" aria-selected="false"><span class="gd-tab-lbl-full">Como publicar</span><span class="gd-tab-lbl-short">Publicar</span></button>
     <button type="button" class="gd-tab-btn" data-tab="chat" role="tab" aria-selected="false">Chat</button>
     <button type="button" class="gd-tab-btn" data-tab="scrapbook" role="tab" aria-selected="false">Scrapbook</button>
   </div>
@@ -855,7 +873,7 @@
         <div class="gd-stack" style="margin-top:16px">
           {% if posts %}
             {% for post in posts %}
-            <article class="gd-post">
+            <article class="gd-post" id="post-{{ post.id }}">
               <div class="gd-post-head">
                 <div>
                   <div class="gd-post-author">{{ post.author_name }}</div>
@@ -897,6 +915,33 @@
                   {% csrf_token %}
                   <button type="submit" class="gd-mini-btn danger">Apagar publicação</button>
                 </form>
+              </div>
+              {% endif %}
+              {% if not post.nudge_data %}
+              <div class="gd-post-comments">
+                <div class="gd-comment-list" id="gd-comment-list-{{ post.id }}">
+                  {% for comment in post.comments %}
+                  <div class="gd-comment">
+                    {% if comment.author_avatar %}
+                    <img class="gd-comment-avatar" src="{{ comment.author_avatar }}" alt="" loading="lazy">
+                    {% else %}
+                    <span class="gd-comment-avatar gd-comment-avatar-fallback">{{ comment.author_name|first|upper }}</span>
+                    {% endif %}
+                    <div class="gd-comment-body">
+                      <span class="gd-comment-author">{{ comment.author_name }}</span>
+                      <span class="gd-comment-time">{{ comment.created_label }}</span>
+                      <div class="gd-comment-text gd-rich-text">{{ comment.text }}</div>
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+                {% if is_member %}
+                <form class="gd-comment-form" onsubmit="return gdCommentSubmit(event, {{ post.id }})">
+                  {% csrf_token %}
+                  <input class="gd-input gd-comment-input" type="text" name="text" maxlength="500" placeholder="Escreva um comentário…" autocomplete="off">
+                  <button type="submit" class="gd-mini-btn">Comentar</button>
+                </form>
+                {% endif %}
               </div>
               {% endif %}
             </article>
@@ -972,9 +1017,9 @@
       </main>
 
       <aside class="gd-stack">
-      <section class="gd-card">
+      <section class="gd-card" id="gd-members-card">
         <span class="gd-section-tag">Crew</span>
-        <h2>Pessoas</h2>
+        <h2>Pessoas / Membros</h2>
         <p class="gd-copy">Quem já faz parte desta comunidade.</p>
         {% if can_manage_group %}
         <p class="gd-note" style="margin-top:8px">Você pode retirar membros daqui. Se for dono, também pode retirar gestores.</p>
@@ -1150,7 +1195,8 @@
             </div>
             <div class="gd-chat-toolbar">
               <div class="gd-chat-tools">
-                <label class="gd-chat-tool" for="gd-chat-photo">📎 Anexar imagem</label>
+                <button type="button" class="gd-chat-tool" onclick="gdPickMedia('gd-chat-photo','photo')">📷 Câmera</button>
+                <button type="button" class="gd-chat-tool" onclick="gdPickMedia('gd-chat-photo','image-gallery')">🖼️ Galeria</button>
               </div>
               <div class="gd-chat-hint">Cole um print com Ctrl+V ou Command+V</div>
             </div>
@@ -1193,7 +1239,13 @@
             <div id="gd-scrapbook-mention-dd" class="gd-mention-dropdown"></div>
             <textarea class="gd-textarea" id="gd-scrapbook-textarea" name="text" placeholder="Que memória vale guardar?"></textarea>
           </div>
-          <input class="gd-input" type="file" name="photo" accept="image/*">
+          <input id="gd-scrapbook-photo" class="gd-hidden" type="file" name="media" accept="image/*,video/*">
+          <div class="gd-chat-tools">
+            <button type="button" class="gd-chat-tool" onclick="gdPickMedia('gd-scrapbook-photo','photo')">📸 Foto</button>
+            <button type="button" class="gd-chat-tool" onclick="gdPickMedia('gd-scrapbook-photo','video')">🎬 Vídeo</button>
+            <button type="button" class="gd-chat-tool" onclick="gdPickMedia('gd-scrapbook-photo','gallery')">🖼️ Galeria</button>
+            <span class="gd-note" id="gd-scrapbook-photo-name">Nenhum arquivo escolhido</span>
+          </div>
           <div><button type="submit" class="gd-btn">Guardar no scrapbook</button></div>
         </div>
       </form>
@@ -1205,6 +1257,7 @@
             <div class="gd-note">{{ entry.created_label }}</div>
             {% if entry.text %}<p class="gd-post-text gd-rich-text" style="margin-top:8px">{{ entry.text }}</p>{% endif %}
             {% if entry.photo_url %}<img src="{{ entry.photo_url }}" alt="" loading="lazy">{% endif %}
+            {% if entry.video_url %}<video src="{{ entry.video_url }}" controls preload="metadata" playsinline></video>{% endif %}
           </article>
           {% endfor %}
         {% else %}
@@ -1253,7 +1306,7 @@
     if(!buttons.length || !panels.length) return;
     var defaultTab = "abertura";
 
-    function activate(tabName){
+    function activate(tabName, keepHash){
       var targetTab = buttons.some(function(btn){ return btn.dataset.tab === tabName; }) ? tabName : defaultTab;
       buttons.forEach(function(btn){
         var active = btn.dataset.tab === targetTab;
@@ -1263,20 +1316,33 @@
       panels.forEach(function(panel){
         panel.classList.toggle("is-active", panel.dataset.panel === targetTab);
       });
-      if(window.location.hash !== "#" + targetTab){
+      if(!keepHash && window.location.hash !== "#" + targetTab){
         history.replaceState(null, "", "#" + targetTab);
       }
     }
 
     var initial = (window.location.hash || "").replace(/^#/, "");
-    activate(initial || defaultTab);
+    var isPostAnchor = /^post-\d+$/.test(initial);
+    activate(isPostAnchor ? defaultTab : (initial || defaultTab), isPostAnchor);
+    if(isPostAnchor){
+      var anchorPost = document.getElementById(initial);
+      if(anchorPost) anchorPost.scrollIntoView({ block: "start" });
+    }
 
     buttons.forEach(function(btn){
       btn.addEventListener("click", function(){
         activate(btn.dataset.tab || defaultTab);
       });
     });
+
+    window.gdActivateTab = activate;
   })();
+
+  function gdOpenMembers(){
+    if(window.gdActivateTab) window.gdActivateTab("como-publicar");
+    var card = document.getElementById("gd-members-card");
+    if(card) card.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 </script>
 {% if is_member %}
 <script>
@@ -1300,6 +1366,107 @@
       node.innerHTML = gdMentionify(node.textContent || "");
     });
   }
+
+  var GD_VIEWER_AVATAR = "{{ viewer_avatar|escapejs }}";
+
+  function gdBuildComment(payload){
+    var wrap = document.createElement("div");
+    wrap.className = "gd-comment";
+    if(GD_VIEWER_AVATAR){
+      var img = document.createElement("img");
+      img.className = "gd-comment-avatar";
+      img.src = GD_VIEWER_AVATAR;
+      img.alt = "";
+      wrap.appendChild(img);
+    } else {
+      var fallback = document.createElement("span");
+      fallback.className = "gd-comment-avatar gd-comment-avatar-fallback";
+      fallback.textContent = ((payload.user || "?").charAt(0) || "?").toUpperCase();
+      wrap.appendChild(fallback);
+    }
+    var body = document.createElement("div");
+    body.className = "gd-comment-body";
+    var author = document.createElement("span");
+    author.className = "gd-comment-author";
+    author.textContent = payload.user || "";
+    var time = document.createElement("span");
+    time.className = "gd-comment-time";
+    time.textContent = payload.created_at || "";
+    var text = document.createElement("div");
+    text.className = "gd-comment-text gd-rich-text";
+    text.textContent = payload.text || "";
+    body.appendChild(author);
+    body.appendChild(time);
+    body.appendChild(text);
+    wrap.appendChild(body);
+    gdRenderMentionText(wrap);
+    return wrap;
+  }
+
+  function gdCommentSubmit(event, postId){
+    event.preventDefault();
+    var form = event.target;
+    var input = form.querySelector(".gd-comment-input");
+    var btn = form.querySelector("button[type=submit]");
+    var text = (input.value || "").trim();
+    if(!text || btn.disabled) return false;
+    var csrf = form.querySelector("input[name=csrfmiddlewaretoken]").value;
+    var oldLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Enviando…";
+    var data = new FormData();
+    data.append("text", text);
+    fetch("/social/post/" + postId + "/comment/", {
+      method: "POST",
+      headers: {"X-CSRFToken": csrf},
+      body: data,
+      credentials: "same-origin"
+    }).then(function(resp){
+      return resp.json().then(function(payload){ return {ok: resp.ok, payload: payload}; });
+    }).then(function(result){
+      if(!result.ok){
+        alert((result.payload && result.payload.error) || "Não foi possível comentar agora.");
+        return;
+      }
+      var list = document.getElementById("gd-comment-list-" + postId);
+      if(list){ list.appendChild(gdBuildComment(result.payload)); }
+      input.value = "";
+    }).catch(function(){
+      alert("Não foi possível comentar agora.");
+    }).finally(function(){
+      btn.disabled = false;
+      btn.textContent = oldLabel;
+    });
+    return false;
+  }
+
+  function gdPickMedia(inputId, mode){
+    var input = document.getElementById(inputId);
+    if(!input) return;
+    if(mode === "photo"){
+      input.accept = "image/*";
+      input.setAttribute("capture", "environment");
+    } else if(mode === "video"){
+      input.accept = "video/*";
+      input.setAttribute("capture", "environment");
+    } else if(mode === "image-gallery"){
+      input.accept = "image/*";
+      input.removeAttribute("capture");
+    } else {
+      input.accept = "image/*,video/*";
+      input.removeAttribute("capture");
+    }
+    input.click();
+  }
+
+  (function(){
+    var scrapPhoto = document.getElementById("gd-scrapbook-photo");
+    if(!scrapPhoto) return;
+    scrapPhoto.addEventListener("change", function(){
+      var label = document.getElementById("gd-scrapbook-photo-name");
+      if(label) label.textContent = (scrapPhoto.files && scrapPhoto.files.length) ? scrapPhoto.files[0].name : "Nenhum arquivo escolhido";
+    });
+  })();
 
   function gdCapture(type){
     var input = document.getElementById("gd-media-input");

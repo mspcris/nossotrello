@@ -1,6 +1,7 @@
 import hashlib
 import html
 import re
+from collections import defaultdict
 from urllib.parse import quote
 
 from django.contrib import messages
@@ -21,6 +22,7 @@ from ..models import (
     SocialGroupMembership,
     SocialGroupScrapbookEntry,
     SocialPost,
+    SocialPostComment,
 )
 from ..services.moderation import ContentBlocked, check_or_block, schedule_layer2
 from ..services.social_activity import filter_active_users
@@ -524,6 +526,37 @@ def _group_nudge_data(post):
     }
 
 
+def _scrapbook_video_photo_names(entries):
+    """Nomes de arquivo do campo photo que na verdade guardam vídeo (entradas antigas)."""
+    from ..models import StoredFile
+
+    photo_names = [entry.photo.name for entry in entries if entry.photo]
+    if not photo_names:
+        return set()
+    return {
+        str(stored_id)
+        for stored_id, content_type in StoredFile.objects.filter(id__in=photo_names).values_list("id", "content_type")
+        if (content_type or "").lower().startswith("video/")
+    }
+
+
+def _scrapbook_entry_payload(entry, video_photo_names=frozenset()):
+    entry_prof = getattr(entry.author, "profile", None)
+    photo_url = entry.photo.url if entry.photo else ""
+    video_url = entry.video.url if entry.video else ""
+    # Entradas antigas: vídeo enviado pelo campo de foto ficava com ícone quebrado.
+    if photo_url and not video_url and entry.photo.name in video_photo_names:
+        video_url, photo_url = photo_url, ""
+    return {
+        "author_name": (entry_prof.display_name if entry_prof else "") or entry.author.email,
+        "author_avatar": getattr(entry_prof, "avatar_url", "") if entry_prof else "",
+        "text": entry.text,
+        "photo_url": photo_url,
+        "video_url": video_url,
+        "created_label": timezone.localtime(entry.created_at).strftime("%d/%m/%Y %H:%M"),
+    }
+
+
 def _post_payload(post, viewer_membership=None, viewer_user=None):
     prof = getattr(post.user, "profile", None)
     can_delete = False
@@ -664,6 +697,25 @@ def group_detail(request, slug):
             moderation_status=SocialPost.MOD_CLEAN,
         ).select_related("user", "user__profile").order_by("-created_at")[:30]
     ]
+    comments_by_post = defaultdict(list)
+    post_ids = [item["id"] for item in posts]
+    if post_ids:
+        for comment in (
+            SocialPostComment.objects
+            .filter(post_id__in=post_ids, is_active=True)
+            .select_related("user", "user__profile")
+            .order_by("created_at")
+        ):
+            comment_prof = getattr(comment.user, "profile", None)
+            comments_by_post[comment.post_id].append({
+                "id": comment.id,
+                "author_name": (comment_prof.display_name if comment_prof else "") or comment.user.email,
+                "author_avatar": getattr(comment_prof, "avatar_url", "") if comment_prof else "",
+                "text": comment.text,
+                "created_label": timezone.localtime(comment.created_at).strftime("%d/%m %H:%M"),
+            })
+    for item in posts:
+        item["comments"] = comments_by_post.get(item["id"], [])
     chat_messages = []
     scrapbook_entries = []
     if is_member:
@@ -680,17 +732,15 @@ def group_detail(request, slug):
                 group=group, is_active=True,
             ).select_related("sender", "sender__profile").order_by("-created_at")[:40][::-1]
         ]
-        scrapbook_entries = [
-            {
-                "author_name": (getattr(entry.author, "profile", None).display_name if getattr(entry.author, "profile", None) else "") or entry.author.email,
-                "author_avatar": getattr(getattr(entry.author, "profile", None), "avatar_url", ""),
-                "text": entry.text,
-                "photo_url": entry.photo.url if entry.photo else "",
-                "created_label": timezone.localtime(entry.created_at).strftime("%d/%m/%Y %H:%M"),
-            }
-            for entry in SocialGroupScrapbookEntry.objects.filter(
+        scrapbook_rows = list(
+            SocialGroupScrapbookEntry.objects.filter(
                 group=group, is_active=True,
             ).select_related("author", "author__profile")[:12]
+        )
+        scrapbook_video_names = _scrapbook_video_photo_names(scrapbook_rows)
+        scrapbook_entries = [
+            _scrapbook_entry_payload(entry, scrapbook_video_names)
+            for entry in scrapbook_rows
         ]
 
     return render(request, "boards/group_detail.html", {
@@ -708,6 +758,7 @@ def group_detail(request, slug):
         "scrapbook_entries": scrapbook_entries,
         "invite_candidates": _invite_candidates(request.user, group) if can_manage_group else [],
         "show_groups_onboarding": not _get_or_create_profile(request.user).groups_onboarding_done,
+        "viewer_avatar": getattr(_get_or_create_profile(request.user), "avatar_url", ""),
     })
 
 
@@ -1174,8 +1225,16 @@ def group_scrapbook_add(request, slug):
 
     text = (request.POST.get("text") or "").strip()
     photo = request.FILES.get("photo")
-    if not text and not photo:
-        messages.error(request, "Escreva algo ou envie uma foto para o scrapbook.")
+    video = request.FILES.get("video")
+    media = request.FILES.get("media")
+    if media and not photo and not video:
+        content_type = (media.content_type or "").lower()
+        if content_type.startswith("video/"):
+            video = media
+        else:
+            photo = media
+    if not text and not photo and not video:
+        messages.error(request, "Escreva algo ou envie uma foto ou um vídeo para o scrapbook.")
         return redirect("boards:group_detail", slug=group.slug)
 
     from boards.services.image_compress import compress_image
@@ -1185,6 +1244,7 @@ def group_scrapbook_add(request, slug):
         author=request.user,
         text=text,
         photo=compress_image(photo) if photo else None,
+        video=video or None,
     )
     messages.success(request, "Memória adicionada ao scrapbook.")
     return redirect("boards:group_detail", slug=group.slug)

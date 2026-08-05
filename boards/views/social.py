@@ -2031,6 +2031,12 @@ def social_post_comment(request, post_id: int):
     # Se é repost, comentário vai pro original — interação é sempre na publicação raiz.
     target_post = post.shared_from if post.shared_from_id else post
 
+    if not _can_access_group_only_post(request.user, target_post):
+        return JsonResponse({"error": "Só quem participa da comunidade pode comentar."}, status=403)
+
+    # Publicação de comunidade: notificação leva pra página do grupo, não pro reel.
+    group_link_path = f"/comunidades/{target_post.group.slug}/" if target_post.group_id else ""
+
     # Resposta a outro comentário?
     reply_to = None
     reply_to_id = request.POST.get("reply_to_id")
@@ -2066,6 +2072,7 @@ def social_post_comment(request, post_id: int):
                     actor=request.user,
                     kind="reply",
                     post_id=target_post.id,
+                    link_path=group_link_path,
                 )
         else:
             # Comentário simples → avisa o dono do post original
@@ -2076,6 +2083,7 @@ def social_post_comment(request, post_id: int):
                     kind="comment",
                     post_text=target_post.text or "",
                     post_id=target_post.id,
+                    link_path=group_link_path,
                 )
     except Exception:
         _mention_logger.exception("social notify: unexpected error")
