@@ -583,8 +583,16 @@ html.dark #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-
    [11] REMOVER BARRA DE ABAS DO TOPO
    ======================================================================= */
 #card-modal-root #card-tabs{ display: none !important; }
-/* compat */
-#card-modal-root.cm-mode #card-tabs{ display: none !important; }
+#card-modal-root[data-shell-tabs="on"] #card-tabs{
+  display: flex !important;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+#card-modal-root[data-shell-tabs="on"] #card-tabs .cm-tabbtn{
+  white-space: nowrap;
+}
 
 /* Opção B (remover header/capa) — manter comentado
 #card-modal-root .card-aero-header{ display: none !important; }

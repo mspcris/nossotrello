@@ -157,13 +157,13 @@
                 <input type="checkbox" name="friend_ids" value="{{ friend.id }}">
                 <span>
                   <span class="gh-check-name">{{ friend.profile.display_name|default:friend.email }}</span>
-                  <span class="gh-check-meta">{% if friend.profile.setor %}{{ friend.profile.setor }}{% else %}Colega ativo no social{% endif %}</span>
+                  <span class="gh-check-meta">{% if friend.profile.setor %}{{ friend.profile.setor }}{% else %}Amizade aceita no social{% endif %}</span>
                 </span>
               </label>
               {% endfor %}
             </div>
           {% else %}
-            <div class="gh-empty">Quando você tiver amizades ativas no social, elas aparecem aqui para convite rápido.</div>
+            <div class="gh-empty">Quando você tiver amizades aceitas no social, elas aparecem aqui para convite rápido.</div>
           {% endif %}
         </div>
 

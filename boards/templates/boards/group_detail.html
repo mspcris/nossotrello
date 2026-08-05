@@ -423,7 +423,7 @@
       <section class="gd-card">
         <span class="gd-section-tag">Convites rápidos</span>
         <h2>Convidar amigos</h2>
-        <p class="gd-copy">Só dono e gestores conseguem incluir pessoas direto. Aqui só aparecem amizades já ativas no social.</p>
+        <p class="gd-copy">Só dono e gestores conseguem incluir pessoas direto. Aqui aparecem amizades já aceitas no social que ainda não entraram na comunidade.</p>
         {% if invite_candidates %}
         <form method="post" action="{% url 'boards:group_invite_friends' group.slug %}">
           {% csrf_token %}
@@ -433,7 +433,7 @@
               <input type="checkbox" name="friend_ids" value="{{ friend.id }}">
               <span>
                 <strong>{{ friend.profile.display_name|default:friend.email }}</strong><br>
-                <span class="gd-note">{% if friend.profile.setor %}{{ friend.profile.setor }}{% else %}Colega ativo no social{% endif %}</span>
+                <span class="gd-note">{% if friend.profile.setor %}{{ friend.profile.setor }}{% else %}Amizade aceita no social{% endif %}</span>
               </span>
             </label>
             {% endfor %}

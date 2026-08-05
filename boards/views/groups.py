@@ -295,9 +295,12 @@ def _invite_candidates(user, group=None):
         excluded = set(
             SocialGroupMembership.objects.filter(group=group).values_list("user_id", flat=True)
         )
-    users = filter_active_users(
-        User.objects.filter(id__in=friend_ids).exclude(id__in=excluded)
-    ).select_related("profile")
+    users = (
+        User.objects
+        .filter(id__in=friend_ids)
+        .exclude(id__in=excluded)
+        .select_related("profile")
+    )
     return list(users)
 
 

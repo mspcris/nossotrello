@@ -654,28 +654,8 @@
            onclick="event.stopPropagation();">
 
         <div class="flex items-center justify-between p-2 gap-3 border-b border-white/20">
-          <!-- Tabs (se o seu HTML injetado usar isso, ok; senão, fica neutro) -->
-          <div id="card-tabs" class="flex flex-wrap items-end gap-2">
-            <button type="button" class="card-tab-btn card-tab-active"
-                    data-tab-target="card-tab-desc"
-                    onclick="window.cardOpenTab?.('card-tab-desc')">Descrição</button>
-
-            <button type="button" class="card-tab-btn"
-                    data-tab-target="card-tab-tags"
-                    onclick="window.cardOpenTab?.('card-tab-tags')">Etiquetas</button>
-
-            <button type="button" class="card-tab-btn"
-                    data-tab-target="card-tab-check"
-                    onclick="window.cardOpenTab?.('card-tab-check')">Checklists</button>
-
-            <button type="button" class="card-tab-btn"
-                    data-tab-target="card-tab-ativ"
-                    onclick="window.cardOpenTab?.('card-tab-ativ')">Atividade</button>
-
-            <button type="button" class="card-tab-btn"
-                    data-tab-target="card-tab-files"
-                    onclick="window.cardOpenTab?.('card-tab-files')">Anexos</button>
-          </div>
+          <!-- Tabs espelhadas do conteúdo real do card -->
+          <div id="card-tabs" class="flex flex-wrap items-end gap-2" role="tablist" aria-label="Abas do card"></div>
 
           <!-- Theme dots -->
           <div class="flex items-center gap-2 mr-2">
@@ -781,16 +761,116 @@
        ============================================================ -->
   <script>
     (function () {
+      function getModalShell() {
+        return {
+          root: document.getElementById("card-modal-root"),
+          body: document.getElementById("modal-body"),
+          shell: document.getElementById("card-tabs"),
+        };
+      }
+
+      function getActiveCmTab(cmRoot) {
+        if (!cmRoot) return "";
+        return (
+          cmRoot.getAttribute("data-cm-active") ||
+          cmRoot.dataset.cmActive ||
+          cmRoot.querySelector(".cm-tabbtn.is-active[data-cm-tab]")?.getAttribute("data-cm-tab") ||
+          ""
+        ).trim();
+      }
+
+      function syncShellTabs(cmRoot) {
+        const { root, shell } = getModalShell();
+        if (!root || !shell) return;
+
+        shell.innerHTML = "";
+
+        if (!cmRoot) {
+          root.removeAttribute("data-shell-tabs");
+          return;
+        }
+
+        const sourceTabs = Array.from(cmRoot.querySelectorAll(".cm-tabbtn[data-cm-tab]"));
+        if (!sourceTabs.length) {
+          root.removeAttribute("data-shell-tabs");
+          return;
+        }
+
+        const activeTab = getActiveCmTab(cmRoot);
+
+        sourceTabs.forEach(function (btn) {
+          const tab = (btn.getAttribute("data-cm-tab") || "").trim();
+          if (!tab) return;
+
+          const shellBtn = document.createElement("button");
+          shellBtn.type = "button";
+          shellBtn.className = "cm-tabbtn";
+          shellBtn.dataset.cmShellTab = tab;
+          shellBtn.innerHTML = btn.innerHTML;
+          shellBtn.title = btn.title || btn.textContent.trim();
+
+          if (tab === activeTab) {
+            shellBtn.classList.add("is-active");
+          }
+
+          if (btn.classList.contains("cm-tab-disabled")) {
+            shellBtn.classList.add("cm-tab-disabled");
+            shellBtn.disabled = true;
+          }
+
+          shell.appendChild(shellBtn);
+        });
+
+        root.setAttribute("data-shell-tabs", "on");
+      }
+
       function syncCardModalMode() {
-        const root = document.getElementById("card-modal-root");
-        const body = document.getElementById("modal-body");
+        const { root, body } = getModalShell();
         if (!root || !body) return;
 
-        const hasRadical = !!body.querySelector("#cm-root");
+        const cmRoot = body.querySelector("#cm-root");
+        const hasRadical = !!cmRoot;
         root.classList.toggle("cm-mode", hasRadical);
+        syncShellTabs(cmRoot);
+      }
+
+      function handleShellTabClick(tab) {
+        const { body } = getModalShell();
+        const cmRoot = body?.querySelector("#cm-root");
+        if (!cmRoot || !tab) return;
+
+        const selector = `.cm-tabbtn[data-cm-tab="${CSS.escape(tab)}"]`;
+        const realBtn = cmRoot.querySelector(selector);
+        if (!realBtn || realBtn.classList.contains("cm-tab-disabled")) return;
+
+        realBtn.click();
+        window.requestAnimationFrame(syncCardModalMode);
       }
 
       document.addEventListener("DOMContentLoaded", syncCardModalMode);
+
+      document.addEventListener(
+        "click",
+        function (evt) {
+          const shellBtn = evt.target.closest?.("#card-tabs [data-cm-shell-tab]");
+          if (shellBtn) {
+            evt.preventDefault();
+            evt.stopPropagation();
+            handleShellTabClick(shellBtn.getAttribute("data-cm-shell-tab"));
+            return;
+          }
+
+          const innerBtn = evt.target.closest?.("#modal-body .cm-tabbtn[data-cm-tab]");
+          if (innerBtn) {
+            window.requestAnimationFrame(syncCardModalMode);
+          }
+        },
+        true
+      );
+
+      document.body.addEventListener("cm:tabchange", function () {
+        syncCardModalMode();
+      });
 
       document.body.addEventListener("htmx:afterSwap", function (evt) {
         const t = evt.target;
