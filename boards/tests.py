@@ -16,6 +16,21 @@ from boards.models import Board, Card, CardAttachment, CardLog, Column, StoredFi
 
 
 class MediaServeCompatTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = get_user_model().objects.create_user(
+            username="cristiano",
+            email="Cristiano@camim.com.br",
+            password="secret123",
+        )
+        profile = cls.user.profile
+        profile.terms_accepted = True
+        profile.terms_version = "2.0"
+        profile.save(update_fields=["terms_accepted", "terms_version"])
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
     def test_serves_stored_file_by_uuid(self):
         stored = StoredFile.objects.create(
             original_name="report.xlsx",
