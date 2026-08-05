@@ -1225,6 +1225,7 @@ class SocialGroup(models.Model):
     vibe = models.CharField(max_length=120, blank=True, default="")
     goal = models.CharField(max_length=200, blank=True, default="")
     cover_svg = models.TextField(blank=True, default="")
+    cover_image = models.ImageField(upload_to="social/groups/covers/", blank=True, null=True)
     theme_gallery_title = models.CharField(max_length=120, blank=True, default="")
     theme_gallery_note = models.CharField(max_length=220, blank=True, default="")
     theme_image_1 = models.ImageField(upload_to="social/groups/themes/", blank=True, null=True)

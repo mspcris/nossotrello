@@ -821,7 +821,8 @@ class SocialGroupAccessTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Ajustar visual")
-        self.assertContains(response, "Configurar a vitrine do tema")
+        self.assertContains(response, "Aparência da comunidade")
+        self.assertContains(response, "Capa da comunidade")
         self.assertContains(response, "Ovo em cena")
 
     def test_member_cannot_update_theme_gallery(self):
@@ -869,6 +870,36 @@ class SocialGroupAccessTests(TestCase):
             "A comunidade precisa parecer uma feira de ovos bem resolvida.",
         )
         self.assertTrue(bool(self.group.theme_image_1))
+
+    def test_manager_can_upload_and_clear_group_cover(self):
+        self.client.force_login(self.manager)
+        cover = SimpleUploadedFile(
+            "capa.png",
+            (
+                b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
+                b"\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\xf8\xcf"
+                b"\xc0\x00\x00\x03\x01\x01\x00\xc9\xfe\x92\xef\x00\x00\x00\x00IEND\xaeB`\x82"
+            ),
+            content_type="image/png",
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with override_settings(MEDIA_ROOT=tmpdir):
+                response = self.client.post(
+                    reverse("boards:group_theme_gallery_update", args=[self.group.slug]),
+                    {"cover_image": cover},
+                )
+                self.assertEqual(response.status_code, 302)
+                self.group.refresh_from_db()
+                self.assertTrue(bool(self.group.cover_image))
+
+                response = self.client.post(
+                    reverse("boards:group_theme_gallery_update", args=[self.group.slug]),
+                    {"cover_image_clear": "1"},
+                )
+                self.assertEqual(response.status_code, 302)
+                self.group.refresh_from_db()
+                self.assertFalse(bool(self.group.cover_image))
 
     @patch("boards.services.notifications.notify_group_nudge")
     def test_member_cannot_nudge_another_member(self, notify_group_nudge):

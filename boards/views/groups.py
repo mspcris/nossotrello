@@ -152,6 +152,8 @@ def _group_cover_svg(name, theme, interests, vibe):
 
 
 def _group_cover_data(group):
+    if getattr(group, "cover_image", None):
+        return group.cover_image.url
     svg = group.cover_svg or _group_cover_svg(group.name, group.theme, group.interests, group.vibe)
     return f"data:image/svg+xml;charset=UTF-8,{quote(svg)}"
 
@@ -214,6 +216,8 @@ def _group_theme_visual_data(group):
 
 def _decorate_group(group):
     group.cover_data = _group_cover_data(group)
+    group.cover_is_custom = bool(getattr(group, "cover_image", None))
+    group.cover_image_url = group.cover_image.url if group.cover_is_custom else ""
     group.star_count = group.current_stars()
     group.star_fill = range(group.star_count)
     group.star_empty = range(5 - group.star_count)
@@ -612,6 +616,18 @@ def group_theme_gallery_update(request, slug):
         update_fields.append("theme_gallery_note")
 
     from boards.services.image_compress import compress_image
+
+    cover_upload = request.FILES.get("cover_image")
+    if cover_upload and not (cover_upload.content_type or "").lower().startswith("image/"):
+        messages.error(request, "Envie apenas imagens na capa da comunidade.")
+        return redirect("boards:group_detail", slug=group.slug)
+    if cover_upload:
+        group.cover_image = compress_image(cover_upload)
+        update_fields.append("cover_image")
+    elif request.POST.get("cover_image_clear") == "1" and group.cover_image:
+        group.cover_image.delete(save=False)
+        group.cover_image = None
+        update_fields.append("cover_image")
 
     for field_name, _, _ in _GROUP_THEME_IMAGE_SLOTS:
         uploaded = request.FILES.get(field_name)
