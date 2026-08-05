@@ -1,0 +1,18 @@
+{
+  "id": "/social/",
+  "name": "Espaço Social CAMIM",
+  "short_name": "Social CAMIM",
+  "description": "A rede social da equipe CAMIM: publicações, comunidades, chat e amigos.",
+  "lang": "pt-BR",
+  "start_url": "/social/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#0e1726",
+  "icons": [
+    { "src": "/static/images/social/pwa-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/static/images/social/pwa-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/static/images/social/pwa-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

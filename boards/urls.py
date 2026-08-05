@@ -25,6 +25,7 @@ from .views.polling import board_poll
 
 from boards.views.modal_card_term import set_card_term_due, set_board_term_colors
 from boards.views import camim_auth
+from boards.views.pwa import service_worker
 
 
 from .views.activity import (
@@ -233,6 +234,7 @@ urlpatterns = [
     # HOME (lista de quadros)
     # ============================================================
     path("", index, name="boards_index"),
+    path("sw.js", service_worker, name="pwa_service_worker"),
 
     # ============================================================
     # PERFIL PÚBLICO (rota curta por handle)

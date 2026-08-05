@@ -31,6 +31,11 @@
   <link rel="icon" type="image/png" href="{% static 'images/logo-camim.png' %}">
   {% endblock favicon %}
 
+  <!-- PWA do Espaço Social: instalado, o app abre direto em /social/ -->
+  <link rel="manifest" href="{% static 'images/social/manifest.webmanifest' %}?v=20260805-pwa1">
+  <meta name="theme-color" content="#0e1726">
+  <link rel="apple-touch-icon" href="{% static 'images/social/pwa-192.png' %}">
+
   <!-- Open Graph -->
   {% block og_meta %}
   <meta property="og:title" content="{% block og_title %}NossoTrello — Tarefas Camim{% endblock %}">

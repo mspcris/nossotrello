@@ -13,6 +13,7 @@ _ALWAYS_FREE = [
     "/auth/camim/",   # OAuth2 IDCamim (login + callback)
     "/api/",          # API mobile (auth via Token, não via session)
     "/500/",          # página de teste de erro 500 (handler500 também usa o template)
+    "/sw.js",         # service worker do PWA — redirect pro login quebra o registro
 ]
 
 
