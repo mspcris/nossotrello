@@ -40,6 +40,15 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-08 ---
+    "edf58f1": (
+        "🌙",
+        "A data e a descrição dos anexos voltaram a aparecer no card escuro",
+        "Quem usa o card no tema escuro via os anexos numa faixa cinza onde a "
+        "data e a hora do envio praticamente sumiam e a descrição exigia "
+        "esforço para ler. Agora a linha do anexo escurece junto com o tema e "
+        "os textos clareiam: dá para ver quem anexou, quando, e o que está "
+        "escrito na descrição — sem forçar a vista.",
+    ),
     "659ceeb": (
         "💬",
         "Agora dá para comentar nas publicações da comunidade",
