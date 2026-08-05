@@ -6,6 +6,7 @@ from urllib.parse import quote
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
+from django.core.cache import cache
 from django.db import models
 from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -36,6 +37,19 @@ _GROUP_PALETTES = [
     ("#7c2d12", "#f97316", "#fde68a"),
     ("#be123c", "#fb7185", "#fecdd3"),
 ]
+
+
+def _group_chat_payload(msg, viewer):
+    prof = getattr(msg.sender, "profile", None)
+    return {
+        "id": msg.id,
+        "sender_name": (prof.display_name if prof else "") or msg.sender.email,
+        "sender_avatar": getattr(prof, "avatar_url", "") if prof else "",
+        "text": msg.text,
+        "photo_url": msg.photo.url if getattr(msg, "photo", None) else "",
+        "created_label": timezone.localtime(msg.created_at).strftime("%d/%m %H:%M"),
+        "is_mine": msg.sender_id == viewer.id,
+    }
 
 
 def _accepted_friend_ids(user):
@@ -304,21 +318,43 @@ def _invite_candidates(user, group=None):
     return list(users)
 
 
+def _group_nudge_data(post):
+    if not (post.text or "").startswith("__group_nudge__:"):
+        return None
+    try:
+        target_uid = int(post.text.split(":", 1)[1])
+        target_user = User.objects.select_related("profile").get(id=target_uid)
+    except (TypeError, ValueError, User.DoesNotExist):
+        return None
+
+    actor_prof = getattr(post.user, "profile", None)
+    target_prof = getattr(target_user, "profile", None)
+    return {
+        "actor_name": (actor_prof.display_name if actor_prof else "") or post.user.get_full_name() or post.user.email,
+        "actor_avatar": getattr(actor_prof, "avatar_url", "") if actor_prof else "",
+        "target_name": (target_prof.display_name if target_prof else "") or target_user.get_full_name() or target_user.email,
+        "target_avatar": getattr(target_prof, "avatar_url", "") if target_prof else "",
+        "target_id": target_user.id,
+    }
+
+
 def _post_payload(post, viewer_membership=None, viewer_user=None):
     prof = getattr(post.user, "profile", None)
     can_delete = False
     if viewer_user is not None:
         can_delete = post.user_id == viewer_user.id or _can_manage_group(viewer_membership)
+    nudge_data = _group_nudge_data(post)
     return {
         "id": post.id,
         "author_name": (prof.display_name if prof else "") or post.user.email,
         "author_avatar": getattr(prof, "avatar_url", "") if prof else "",
-        "text": post.text,
+        "text": "" if nudge_data else post.text,
         "photo_url": post.photo.url if post.photo else "",
         "video_url": post.video.url if post.video else "",
         "created_label": timezone.localtime(post.created_at).strftime("%d/%m/%Y %H:%M"),
         "show_on_profile": post.show_on_profile,
         "can_delete": can_delete,
+        "nudge_data": nudge_data,
     }
 
 
@@ -638,6 +674,13 @@ def group_member_nudge(request, slug, user_id):
         actor=request.user,
         group=group,
     )
+    SocialPost.objects.create(
+        user=request.user,
+        group=group,
+        text=f"__group_nudge__:{target_membership.user_id}",
+        visibility=SocialPost.VISIBILITY_ALL,
+        show_on_profile=False,
+    )
     target_name = (getattr(getattr(target_membership.user, "profile", None), "display_name", "") or target_membership.user.email)
     messages.success(request, f"{target_name} recebeu uma cutucada para participar mais da comunidade.")
     return redirect("boards:group_detail", slug=group.slug)
@@ -749,24 +792,47 @@ def group_chat_send(request, slug):
         return JsonResponse({"error": "Seu acesso ao Espaço Social está bloqueado no momento."}, status=403)
 
     text = (request.POST.get("text") or "").strip()
-    if not text:
+    photo = request.FILES.get("photo")
+    if photo and not (photo.content_type or "").lower().startswith("image/"):
+        return JsonResponse({"error": "Envie apenas imagens no chat."}, status=400)
+    if not text and not photo:
         return JsonResponse({"error": "Mensagem vazia."}, status=400)
+    client_request_id = (request.POST.get("client_request_id") or "").strip()[:100]
 
-    msg = SocialGroupChatMessage.objects.create(
-        group=group,
-        sender=request.user,
-        text=text,
-    )
-    prof = _get_or_create_profile(request.user)
-    group.save()
-    return JsonResponse({
-        "id": msg.id,
-        "sender_name": prof.display_name or request.user.email,
-        "sender_avatar": prof.avatar_url,
-        "text": msg.text,
-        "created_label": timezone.localtime(msg.created_at).strftime("%d/%m %H:%M"),
-        "is_mine": True,
-    })
+    result_cache_key = None
+    pending_cache_key = None
+    if client_request_id:
+        result_cache_key = f"group-chat-send:{group.id}:{request.user.id}:{client_request_id}"
+        pending_cache_key = f"{result_cache_key}:pending"
+        existing_msg_id = cache.get(result_cache_key)
+        if existing_msg_id:
+            existing_msg = (
+                SocialGroupChatMessage.objects
+                .filter(group=group, sender=request.user, id=existing_msg_id)
+                .select_related("sender", "sender__profile")
+                .first()
+            )
+            if existing_msg:
+                return JsonResponse(_group_chat_payload(existing_msg, request.user))
+        if not cache.add(pending_cache_key, 1, timeout=30):
+            return JsonResponse({"error": "Essa mensagem já está sendo enviada."}, status=409)
+
+    try:
+        from boards.services.image_compress import compress_image
+
+        msg = SocialGroupChatMessage.objects.create(
+            group=group,
+            sender=request.user,
+            text=text,
+            photo=compress_image(photo) if photo else None,
+        )
+        if result_cache_key:
+            cache.set(result_cache_key, msg.id, timeout=120)
+        group.save()
+        return JsonResponse(_group_chat_payload(msg, request.user))
+    finally:
+        if pending_cache_key:
+            cache.delete(pending_cache_key)
 
 
 @login_required
@@ -822,15 +888,7 @@ def group_chat_poll(request, slug):
     for msg in SocialGroupChatMessage.objects.filter(
         group=group, is_active=True, id__gt=after_id,
     ).select_related("sender", "sender__profile").order_by("created_at")[:60]:
-        prof = getattr(msg.sender, "profile", None)
-        messages_payload.append({
-            "id": msg.id,
-            "sender_name": (prof.display_name if prof else "") or msg.sender.email,
-            "sender_avatar": getattr(prof, "avatar_url", "") if prof else "",
-            "text": msg.text,
-            "created_label": timezone.localtime(msg.created_at).strftime("%d/%m %H:%M"),
-            "is_mine": msg.sender_id == request.user.id,
-        })
+        messages_payload.append(_group_chat_payload(msg, request.user))
     return JsonResponse({"messages": messages_payload})
 
 

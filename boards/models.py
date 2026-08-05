@@ -1339,6 +1339,7 @@ class SocialGroupChatMessage(models.Model):
         settings.AUTH_USER_MODEL, related_name="social_group_messages_sent", on_delete=models.CASCADE,
     )
     text = models.TextField(blank=True, default="")
+    photo = models.ImageField(upload_to="social/groups/chat/", blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
 

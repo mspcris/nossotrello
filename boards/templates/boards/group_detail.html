@@ -71,7 +71,7 @@
   .gd-copy{margin:0;color:var(--gd-muted);line-height:1.55}
   .gd-form-grid{display:grid;gap:12px;margin-top:14px}
   .gd-input,.gd-textarea{width:100%;border:1px solid rgba(96,79,160,.14);border-radius:20px;padding:14px 16px;font:inherit;color:var(--gd-ink);background:rgba(255,255,255,.9);box-shadow:inset 0 1px 0 rgba(255,255,255,.72)}
-  .gd-input:focus,.gd-textarea:focus,.gd-chat-form input:focus{outline:none;border-color:rgba(46,196,182,.52);box-shadow:0 0 0 4px rgba(46,196,182,.14)}
+  .gd-input:focus,.gd-textarea:focus,.gd-chat-form input:focus,.gd-chat-form textarea:focus{outline:none;border-color:rgba(46,196,182,.52);box-shadow:0 0 0 4px rgba(46,196,182,.14)}
   .gd-textarea{min-height:120px;resize:vertical}
   .gd-hidden{display:none!important}
   .gd-media-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
@@ -103,6 +103,14 @@
   .gd-post-media{width:100%;max-height:380px;object-fit:cover;border-radius:22px;border:1px solid rgba(96,79,160,.08);background:#f8fafc}
   .gd-post-badge{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;background:rgba(134,239,172,.22);color:#166534;font-size:.78rem;font-weight:800}
   .gd-post-actions{display:flex;justify-content:flex-end}
+  .gd-nudge-card{display:grid;gap:14px;padding:18px;border-radius:24px;background:linear-gradient(135deg,#0f172a,#1d4ed8 55%,#38bdf8);color:#fff;box-shadow:0 22px 34px rgba(29,78,216,.22)}
+  .gd-nudge-avatars{display:flex;align-items:center;justify-content:center;gap:14px}
+  .gd-nudge-avatar,.gd-nudge-avatar-fallback{width:72px;height:72px;border-radius:24px;object-fit:cover;flex-shrink:0;border:3px solid rgba(255,255,255,.72);box-shadow:0 16px 26px rgba(15,23,42,.24)}
+  .gd-nudge-avatar-fallback{display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.18);color:#fff;font-size:1.4rem;font-weight:800}
+  .gd-nudge-hand{display:flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:18px;background:rgba(255,255,255,.16);backdrop-filter:blur(10px);font-size:1.6rem;box-shadow:inset 0 1px 0 rgba(255,255,255,.2)}
+  .gd-nudge-copy{display:grid;gap:4px;text-align:center}
+  .gd-nudge-copy strong{font-size:1.05rem;letter-spacing:-.01em}
+  .gd-nudge-copy span{color:rgba(255,255,255,.84);line-height:1.5}
   .gd-members,.gd-join-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
   .gd-member{display:grid;gap:12px;padding:14px;border:1px solid rgba(96,79,160,.12);border-radius:22px;background:linear-gradient(180deg,rgba(255,255,255,.94),rgba(248,250,255,.76))}
   .gd-member-top{display:flex;gap:12px;align-items:center}
@@ -120,13 +128,34 @@
   .gd-friends{display:grid;gap:10px;margin-top:12px}
   .gd-check{display:flex;gap:10px;align-items:flex-start;padding:14px;border:1px solid rgba(96,79,160,.12);border-radius:22px;background:var(--gd-soft)}
   .gd-locked-note{padding:16px 18px;border-radius:22px;background:linear-gradient(135deg,rgba(255,107,107,.08),rgba(255,214,165,.18));border:1px solid rgba(255,159,28,.18);color:var(--gd-ink)}
-  .gd-chat-box{border:1px solid rgba(96,79,160,.12);border-radius:24px;background:rgba(248,251,255,.84);overflow:hidden}
-  .gd-chat-log{max-height:340px;overflow:auto;padding:16px;display:grid;gap:10px}
-  .gd-msg{max-width:88%;padding:12px 14px;border-radius:20px;background:#fff;border:1px solid rgba(96,79,160,.08);box-shadow:0 12px 24px rgba(20,15,45,.04)}
+  .gd-chat-box{border:1px solid rgba(96,79,160,.14);border-radius:32px;background:linear-gradient(180deg,rgba(248,251,255,.98),rgba(236,245,255,.9));overflow:hidden;box-shadow:0 24px 42px rgba(20,15,45,.08),inset 0 1px 0 rgba(255,255,255,.74)}
+  .gd-chat-log{max-height:420px;overflow:auto;padding:20px;display:grid;gap:12px;background:
+      radial-gradient(circle at top right,rgba(110,231,255,.16),rgba(110,231,255,0) 32%),
+      linear-gradient(180deg,rgba(255,255,255,.58),rgba(255,255,255,0))}
+  .gd-msg{max-width:min(88%,720px);padding:12px 14px;border-radius:22px;background:rgba(255,255,255,.96);border:1px solid rgba(96,79,160,.08);box-shadow:0 12px 24px rgba(20,15,45,.04)}
   .gd-msg.mine{margin-left:auto;background:linear-gradient(135deg,#d1fae5,#ccfbf1);border-color:rgba(16,185,129,.16)}
   .gd-msg-meta{font-size:.76rem;color:var(--gd-muted);margin-bottom:4px}
-  .gd-chat-form{display:flex;gap:10px;padding:12px;border-top:1px solid rgba(96,79,160,.12);background:rgba(255,255,255,.76)}
-  .gd-chat-form input{flex:1;border:1px solid rgba(96,79,160,.14);border-radius:16px;padding:12px 13px;font:inherit;background:#fff}
+  .gd-chat-media{display:grid;gap:8px;margin-top:10px}
+  .gd-chat-media img{width:min(280px,100%);max-height:280px;object-fit:cover;border-radius:18px;border:1px solid rgba(96,79,160,.12);background:#fff}
+  .gd-chat-form{display:grid;gap:14px;padding:18px 20px 20px;border-top:1px solid rgba(96,79,160,.12);background:linear-gradient(180deg,rgba(255,255,255,.7),rgba(255,255,255,.98))}
+  .gd-chat-composer{display:grid;gap:12px;padding:18px;border:1px solid rgba(96,79,160,.14);border-radius:28px;background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(244,249,255,.96));box-shadow:0 22px 34px rgba(20,15,45,.08)}
+  .gd-chat-lead{display:grid;gap:4px}
+  .gd-chat-lead strong{font-size:1rem;letter-spacing:-.01em}
+  .gd-chat-lead span{font-size:.85rem;color:var(--gd-muted);line-height:1.45}
+  .gd-chat-toolbar{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .gd-chat-tools{display:flex;flex-wrap:wrap;gap:8px}
+  .gd-chat-tool{display:inline-flex;align-items:center;gap:8px;padding:12px 16px;border-radius:18px;border:1px dashed rgba(46,196,182,.42);background:linear-gradient(135deg,rgba(240,253,250,.96),rgba(236,254,255,.96));color:#0f766e;font:inherit;font-weight:800;cursor:pointer;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease,background .18s ease}
+  .gd-chat-tool:hover{transform:translateY(-1px);border-color:rgba(15,118,110,.42);box-shadow:0 14px 24px rgba(46,196,182,.14);background:linear-gradient(135deg,rgba(220,252,231,.98),rgba(224,242,254,.98))}
+  .gd-chat-hint{font-size:.8rem;color:var(--gd-muted)}
+  .gd-chat-form textarea{width:100%;min-height:144px;border:1px solid rgba(96,79,160,.14);border-radius:22px;padding:18px 20px;font:inherit;color:var(--gd-ink);background:#fff;resize:vertical;line-height:1.58;box-shadow:inset 0 1px 0 rgba(255,255,255,.8)}
+  .gd-chat-form textarea::placeholder{color:#8b84a7}
+  .gd-chat-actions{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+  .gd-chat-preview{display:none;gap:10px;padding:12px;border-radius:20px;border:1px dashed rgba(46,196,182,.34);background:rgba(240,253,250,.9)}
+  .gd-chat-preview.is-active{display:grid}
+  .gd-chat-preview img{width:min(220px,100%);max-height:220px;object-fit:cover;border-radius:16px;border:1px solid rgba(96,79,160,.12);background:#fff}
+  .gd-chat-preview-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .gd-chat-preview-name{font-size:.84rem;font-weight:700;color:var(--gd-ink);word-break:break-word}
+  .gd-chat-submit{min-width:168px;min-height:54px;font-size:1rem;box-shadow:0 18px 28px rgba(255,107,107,.24)}
   .gd-scrapbook-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
   .gd-memory{padding:14px;border:1px solid rgba(96,79,160,.12);border-radius:22px;background:linear-gradient(180deg,rgba(255,255,255,.95),rgba(255,248,250,.78))}
   .gd-memory img{width:100%;height:150px;object-fit:cover;border-radius:14px;margin-top:10px}
@@ -137,11 +166,12 @@
   @media (max-width: 640px){
     .gd-shell{padding-left:14px;padding-right:14px}
     .gd-card,.gd-banner{padding:18px}
-    .gd-chat-form{flex-direction:column}
     .gd-tabs{padding:8px}
     .gd-tab-btn{width:100%}
     .gd-hero-content{padding:18px}
     .gd-hero-content::before{inset:12px;inline-size:calc(100% - 24px)}
+    .gd-chat-toolbar,.gd-chat-actions{flex-direction:column;align-items:stretch}
+    .gd-chat-submit{width:100%}
   }
 </style>
 {% endblock %}
@@ -229,6 +259,27 @@
                 <span class="gd-post-badge" style="background:#eff6ff;color:#1d4ed8">◎ Só no grupo</span>
                 {% endif %}
               </div>
+              {% if post.nudge_data %}
+              <div class="gd-nudge-card">
+                <div class="gd-nudge-avatars">
+                  {% if post.author_avatar %}
+                  <img class="gd-nudge-avatar" src="{{ post.author_avatar }}" alt="{{ post.nudge_data.actor_name }}" loading="lazy">
+                  {% else %}
+                  <span class="gd-nudge-avatar-fallback">{{ post.nudge_data.actor_name|first|upper }}</span>
+                  {% endif %}
+                  <span class="gd-nudge-hand">👉</span>
+                  {% if post.nudge_data.target_avatar %}
+                  <img class="gd-nudge-avatar" src="{{ post.nudge_data.target_avatar }}" alt="{{ post.nudge_data.target_name }}" loading="lazy">
+                  {% else %}
+                  <span class="gd-nudge-avatar-fallback">{{ post.nudge_data.target_name|first|upper }}</span>
+                  {% endif %}
+                </div>
+                <div class="gd-nudge-copy">
+                  <strong>{{ post.nudge_data.actor_name }} cutucou {{ post.nudge_data.target_name }}</strong>
+                  <span>Chamando para participar mais da comunidade.</span>
+                </div>
+              </div>
+              {% endif %}
               {% if post.text %}<p class="gd-post-text gd-rich-text">{{ post.text }}</p>{% endif %}
               {% if post.photo_url %}<img class="gd-post-media" src="{{ post.photo_url }}" alt="" loading="lazy">{% endif %}
               {% if post.video_url %}<video class="gd-post-media" src="{{ post.video_url }}" controls preload="metadata" playsinline></video>{% endif %}
@@ -467,20 +518,48 @@
             {% for msg in chat_messages %}
             <div class="gd-msg{% if msg.is_mine %} mine{% endif %}" data-msg-id="{{ msg.id }}">
               <div class="gd-msg-meta">{{ msg.sender_name }} · {{ msg.created_label }}</div>
-              <div class="gd-rich-text gd-chat-text">{{ msg.text }}</div>
+              {% if msg.text %}<div class="gd-rich-text gd-chat-text">{{ msg.text }}</div>{% endif %}
+              {% if msg.photo_url %}
+              <div class="gd-chat-media">
+                <img src="{{ msg.photo_url }}" alt="Imagem enviada no chat" loading="lazy">
+              </div>
+              {% endif %}
             </div>
             {% endfor %}
           {% else %}
             <div class="gd-empty" id="gd-chat-empty">Ainda não há mensagens neste chat.</div>
           {% endif %}
         </div>
-        <form class="gd-chat-form" id="gd-chat-form">
+        <form class="gd-chat-form" id="gd-chat-form" enctype="multipart/form-data">
           {% csrf_token %}
-          <div class="gd-mention-wrap" style="flex:1">
-            <div id="gd-chat-mention-dd" class="gd-mention-dropdown"></div>
-            <input type="text" id="gd-chat-input" maxlength="1000" placeholder="Escreva uma mensagem para o grupo">
+          <input id="gd-chat-photo" class="gd-hidden" type="file" accept="image/*">
+          <div class="gd-chat-composer">
+            <div class="gd-chat-lead">
+              <strong>Mensagem do grupo</strong>
+              <span>Escreva melhor, cole um print ou puxe uma imagem sem sair da conversa.</span>
+            </div>
+            <div class="gd-chat-toolbar">
+              <div class="gd-chat-tools">
+                <label class="gd-chat-tool" for="gd-chat-photo">📎 Anexar imagem</label>
+              </div>
+              <div class="gd-chat-hint">Cole um print com Ctrl+V ou Command+V</div>
+            </div>
+            <div class="gd-mention-wrap">
+              <div id="gd-chat-mention-dd" class="gd-mention-dropdown"></div>
+              <textarea id="gd-chat-input" maxlength="1000" placeholder="Escreva para o grupo com mais contexto, ou envie só uma imagem."></textarea>
+            </div>
+            <div class="gd-chat-preview" id="gd-chat-preview" aria-live="polite">
+              <div class="gd-chat-preview-top">
+                <div class="gd-chat-preview-name" id="gd-chat-preview-name"></div>
+                <button type="button" class="gd-mini-btn danger" id="gd-chat-preview-remove">Remover</button>
+              </div>
+              <img id="gd-chat-preview-image" alt="Prévia da imagem do chat">
+            </div>
           </div>
-          <button type="submit" class="gd-btn">Enviar</button>
+          <div class="gd-chat-actions">
+            <div class="gd-chat-hint">Enter envia. Shift+Enter quebra linha.</div>
+            <button type="submit" class="gd-btn gd-chat-submit">Enviar</button>
+          </div>
         </form>
       </div>
     </section>
@@ -783,19 +862,81 @@
       var form = document.getElementById("gd-chat-form");
       var input = document.getElementById("gd-chat-input");
       var log = document.getElementById("gd-chat-log");
+      var submitButton = form ? form.querySelector('button[type="submit"]') : null;
+      var photoInput = document.getElementById("gd-chat-photo");
+      var preview = document.getElementById("gd-chat-preview");
+      var previewName = document.getElementById("gd-chat-preview-name");
+      var previewImage = document.getElementById("gd-chat-preview-image");
+      var previewRemove = document.getElementById("gd-chat-preview-remove");
+      var mentionDropdown = document.getElementById("gd-chat-mention-dd");
+      var sending = false;
+      var selectedPhoto = null;
+      var previewUrl = "";
       if(!form || !input || !log) return;
 
       function csrf(){
         return document.querySelector("[name=csrfmiddlewaretoken]")?.value || "";
       }
 
+      function hasMessage(id){
+        if(!id) return false;
+        return !!log.querySelector('[data-msg-id="' + String(id) + '"]');
+      }
+
+      function setSending(nextSending){
+        sending = !!nextSending;
+        form.dataset.sending = sending ? "1" : "0";
+        if(submitButton) submitButton.disabled = sending;
+        if(photoInput) photoInput.disabled = sending;
+        input.setAttribute("aria-busy", sending ? "true" : "false");
+      }
+
+      function revokePreviewUrl(){
+        if(previewUrl){
+          URL.revokeObjectURL(previewUrl);
+          previewUrl = "";
+        }
+      }
+
+      function clearSelectedPhoto(){
+        selectedPhoto = null;
+        if(photoInput) photoInput.value = "";
+        if(preview){
+          preview.classList.remove("is-active");
+        }
+        if(previewName) previewName.textContent = "";
+        if(previewImage){
+          previewImage.removeAttribute("src");
+        }
+        revokePreviewUrl();
+      }
+
+      function setSelectedPhoto(file){
+        if(!file) return clearSelectedPhoto();
+        selectedPhoto = file;
+        revokePreviewUrl();
+        previewUrl = URL.createObjectURL(file);
+        if(previewName) previewName.textContent = file.name || "Imagem pronta para envio";
+        if(previewImage) previewImage.src = previewUrl;
+        if(preview) preview.classList.add("is-active");
+      }
+
+      function renderMessageMedia(msg){
+        if(!msg.photo_url) return "";
+        return '<div class="gd-chat-media"><img src="' + gdEscapeHtml(msg.photo_url) + '" alt="Imagem enviada no chat" loading="lazy"></div>';
+      }
+
       function appendMessage(msg){
+        if(hasMessage(msg.id)) return;
         var empty = document.getElementById("gd-chat-empty");
         if(empty) empty.remove();
         var el = document.createElement("div");
         el.className = "gd-msg" + (msg.is_mine ? " mine" : "");
         el.dataset.msgId = msg.id;
-        el.innerHTML = '<div class="gd-msg-meta">' + gdEscapeHtml(msg.sender_name) + ' · ' + gdEscapeHtml(msg.created_label) + '</div><div class="gd-rich-text gd-chat-text">' + gdMentionify(msg.text) + '</div>';
+        el.innerHTML =
+          '<div class="gd-msg-meta">' + gdEscapeHtml(msg.sender_name) + ' · ' + gdEscapeHtml(msg.created_label) + '</div>'
+          + (msg.text ? '<div class="gd-rich-text gd-chat-text">' + gdMentionify(msg.text) + '</div>' : '')
+          + renderMessageMedia(msg);
         log.appendChild(el);
         log.scrollTop = log.scrollHeight;
       }
@@ -806,19 +947,54 @@
         return Number(items[items.length - 1].dataset.msgId || 0);
       }
 
+      function buildRequestId(){
+        return String(Date.now()) + "-" + Math.random().toString(36).slice(2, 10);
+      }
+
+      if(photoInput){
+        photoInput.addEventListener("change", function(){
+          setSelectedPhoto(photoInput.files && photoInput.files[0] ? photoInput.files[0] : null);
+        });
+      }
+
+      if(previewRemove){
+        previewRemove.addEventListener("click", clearSelectedPhoto);
+      }
+
+      input.addEventListener("paste", function(ev){
+        var items = ev.clipboardData && ev.clipboardData.items ? Array.from(ev.clipboardData.items) : [];
+        var imageItem = items.find(function(item){
+          return (item.type || "").indexOf("image/") === 0;
+        });
+        if(!imageItem) return;
+        var file = imageItem.getAsFile();
+        if(file) setSelectedPhoto(file);
+      });
+
+      input.addEventListener("keydown", function(ev){
+        if(ev.key !== "Enter" || ev.shiftKey) return;
+        if(mentionDropdown && mentionDropdown.classList.contains("active")) return;
+        ev.preventDefault();
+        form.requestSubmit();
+      });
+
       form.addEventListener("submit", function(ev){
         ev.preventDefault();
+        if(sending) return;
         var text = input.value.trim();
-        if(!text) return;
-        var body = new URLSearchParams();
+        if(!text && !selectedPhoto) return;
+        var requestId = buildRequestId();
+        var body = new FormData();
         body.set("text", text);
+        body.set("client_request_id", requestId);
+        if(selectedPhoto) body.set("photo", selectedPhoto, selectedPhoto.name || "chat-image.png");
+        setSending(true);
         fetch("{% url 'boards:group_chat_send' group.slug %}", {
           method: "POST",
           headers: {
-            "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
             "X-CSRFToken": csrf()
           },
-          body: body.toString()
+          body: body
         })
         .then(function(r){ return r.json().then(function(d){ return { ok:r.ok, data:d }; }); })
         .then(function(result){
@@ -828,6 +1004,13 @@
           }
           appendMessage(result.data);
           input.value = "";
+          clearSelectedPhoto();
+        })
+        .catch(function(){
+          alert("Não foi possível enviar a mensagem.");
+        })
+        .finally(function(){
+          setSending(false);
         });
       });
 
@@ -842,6 +1025,7 @@
       }
 
       log.scrollTop = log.scrollHeight;
+      window.addEventListener("beforeunload", revokePreviewUrl);
       setInterval(function(){ if(!document.hidden) poll(); }, 8000);
     }
 

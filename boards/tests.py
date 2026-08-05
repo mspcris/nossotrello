@@ -9,6 +9,7 @@ from pathlib import Path
 
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
 from django.test import TestCase, override_settings
 
@@ -214,7 +215,7 @@ from django.utils import timezone
 
 from boards.models import (
     Board, BoardMembership, Card, CardImpediment, Column, Organization, SocialGroup,
-    SocialGroupJoinRequest, SocialGroupMembership, SocialPost, UserProfile,
+    SocialGroupChatMessage, SocialGroupJoinRequest, SocialGroupMembership, SocialPost, UserProfile,
 )
 
 User = get_user_model()
@@ -778,6 +779,24 @@ class SocialGroupAccessTests(TestCase):
             actor=self.manager,
             group=self.group,
         )
+        nudge_post = SocialPost.objects.get(group=self.group, user=self.manager)
+        self.assertEqual(nudge_post.text, f"__group_nudge__:{self.member.id}")
+        self.assertFalse(nudge_post.show_on_profile)
+
+    def test_group_detail_renders_group_nudge_post(self):
+        SocialPost.objects.create(
+            user=self.manager,
+            group=self.group,
+            text=f"__group_nudge__:{self.member.id}",
+            show_on_profile=False,
+        )
+        self.client.force_login(self.manager)
+
+        response = self.client.get(reverse("boards:group_detail", args=[self.group.slug]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Lucas Paes cutucou Maria Silva")
+        self.assertContains(response, "Chamando para participar mais da comunidade.")
 
     @patch("boards.services.notifications.notify_group_nudge")
     def test_member_cannot_nudge_another_member(self, notify_group_nudge):
@@ -834,3 +853,60 @@ class SocialGroupAccessTests(TestCase):
         post.refresh_from_db()
         self.assertFalse(post.is_active)
         self.assertEqual(post.moderation_status, SocialPost.MOD_REMOVED)
+
+
+class SocialGroupChatTests(TestCase):
+    def setUp(self):
+        self.owner = _mk("chatowner", "chatowner@example.com")
+        self.member = _mk("chatmember", "chatmember@example.com")
+        self.outsider = _mk("chatoutsider", "chatoutsider@example.com")
+        self.group = SocialGroup.objects.create(
+            name="Grupo com chat",
+            created_by=self.owner,
+        )
+        SocialGroupMembership.objects.create(
+            group=self.group,
+            user=self.owner,
+            invited_by=self.owner,
+            role=SocialGroupMembership.ROLE_OWNER,
+        )
+        SocialGroupMembership.objects.create(
+            group=self.group,
+            user=self.member,
+            invited_by=self.owner,
+            role=SocialGroupMembership.ROLE_MEMBER,
+        )
+        self.send_url = reverse("boards:group_chat_send", args=[self.group.slug])
+
+    def test_member_can_send_group_chat_image_without_text(self):
+        self.client.force_login(self.member)
+        photo = SimpleUploadedFile(
+            "print.png",
+            (
+                b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
+                b"\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\xf8\xcf"
+                b"\xc0\x00\x00\x03\x01\x01\x00\xc9\xfe\x92\xef\x00\x00\x00\x00IEND\xaeB`\x82"
+            ),
+            content_type="image/png",
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with override_settings(MEDIA_ROOT=tmpdir):
+                response = self.client.post(self.send_url, {"photo": photo})
+
+                self.assertEqual(response.status_code, 200)
+                data = response.json()
+                self.assertTrue(data["photo_url"])
+                self.assertEqual(data["text"], "")
+
+                msg = SocialGroupChatMessage.objects.get(group=self.group, sender=self.member)
+                self.assertTrue(bool(msg.photo))
+
+    def test_non_member_cannot_send_group_chat_image(self):
+        self.client.force_login(self.outsider)
+        photo = SimpleUploadedFile("print.png", b"fake", content_type="image/png")
+
+        response = self.client.post(self.send_url, {"photo": photo})
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(SocialGroupChatMessage.objects.filter(group=self.group).exists())
