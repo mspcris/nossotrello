@@ -40,6 +40,18 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-08 ---
+    "659ceeb": (
+        "💬",
+        "Agora dá para comentar nas publicações da comunidade",
+        "Cada publicação do feed da comunidade ganhou um espaço de comentários "
+        "logo abaixo — é escrever e enviar, sem sair da página. Quem publicou "
+        "recebe um aviso por e-mail ou WhatsApp com um link que cai direto na "
+        "publicação comentada. O scrapbook também cresceu: além de foto, agora "
+        "guarda vídeo, com botões de Foto, Vídeo e Galeria que abrem a câmera "
+        "ou o rolo do celular — no chat, os mesmos botões de Câmera e Galeria. "
+        "E no celular as abas da comunidade ficaram lado a lado, com o número "
+        "de membros clicável levando direto para a lista de pessoas.",
+    ),
     "d7279e7": (
         "🏷",
         "Os chips e as legendas da vitrine da comunidade agora são editáveis",
