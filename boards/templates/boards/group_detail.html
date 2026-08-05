@@ -668,7 +668,7 @@
       <div>
         <span class="gd-section-tag">Engrenagem visual</span>
         <h2>Aparência da comunidade</h2>
-        <p class="gd-copy">Aqui você troca todas as imagens que dão a cara do grupo: a capa lá em cima e as três da vitrine. A régua é simples: se o tema for ovo, tudo aqui precisa respirar ovo.</p>
+        <p class="gd-copy">Aqui você troca as imagens e os textos que dão a cara do grupo: a capa lá em cima, as três da vitrine e os chips do tema. A régua é simples: se o tema for ovo, tudo aqui precisa respirar ovo.</p>
       </div>
       <button type="button" class="gd-mini-btn" onclick="gdToggleThemeStudio(false)">Fechar</button>
     </div>
@@ -746,6 +746,23 @@
           <div>
             <label class="gd-note" for="gd-theme-gallery-note">Frase de apoio</label>
             <textarea id="gd-theme-gallery-note" class="gd-textarea" name="theme_gallery_note" maxlength="220" placeholder="Diga em uma frase o que essas imagens precisam transmitir.">{{ group.theme_gallery_note }}</textarea>
+          </div>
+          <div class="gd-locked-note">Os quatro campos abaixo viram os chips da vitrine, e o tema também dá nome às legendas das imagens.</div>
+          <div>
+            <label class="gd-note" for="gd-theme-field">Tema</label>
+            <input id="gd-theme-field" class="gd-input" type="text" name="theme" maxlength="120" value="{{ group.theme }}" placeholder="Design, corrida, leitura…">
+          </div>
+          <div>
+            <label class="gd-note" for="gd-vibe-field">Clima</label>
+            <input id="gd-vibe-field" class="gd-input" type="text" name="vibe" maxlength="120" value="{{ group.vibe }}" placeholder="Leve, prático, criativo…">
+          </div>
+          <div>
+            <label class="gd-note" for="gd-goal-field">Objetivo</label>
+            <input id="gd-goal-field" class="gd-input" type="text" name="goal" maxlength="200" value="{{ group.goal }}" placeholder="O que esse grupo resolve ou promove?">
+          </div>
+          <div>
+            <label class="gd-note" for="gd-interests-field">Interesses</label>
+            <input id="gd-interests-field" class="gd-input" type="text" name="interests" maxlength="240" value="{{ group.interests }}" placeholder="Separe por vírgula">
           </div>
           <div class="gd-locked-note">Use imagens que deixem claro o tema antes mesmo de ler o texto. Esse espaço é a assinatura visual da comunidade.</div>
           <div><button type="submit" class="gd-btn">Salvar visual</button></div>

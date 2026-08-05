@@ -729,6 +729,19 @@ def group_theme_gallery_update(request, slug):
         group.theme_gallery_note = note
         update_fields.append("theme_gallery_note")
 
+    identity_changed = False
+    for field_name, max_len in (("theme", 120), ("vibe", 120), ("goal", 200), ("interests", 240)):
+        if field_name not in request.POST:
+            continue
+        value = " ".join((request.POST.get(field_name) or "").split())[:max_len]
+        if getattr(group, field_name) != value:
+            setattr(group, field_name, value)
+            update_fields.append(field_name)
+            identity_changed = True
+    if identity_changed:
+        group.cover_svg = _group_cover_svg(group.name, group.theme, group.interests, group.vibe)
+        update_fields.append("cover_svg")
+
     wallpaper = (request.POST.get("wallpaper") or "").strip()
     if wallpaper and wallpaper not in _GROUP_WALLPAPER_BY_ID:
         wallpaper = ""
