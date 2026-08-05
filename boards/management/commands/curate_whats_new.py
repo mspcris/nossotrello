@@ -40,6 +40,18 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-08 ---
+    "5be77f0": (
+        "📲",
+        "O Espaço Social agora vira um app no seu celular",
+        "Abrindo o Espaço Social pelo celular, aparece um botão \"Instalar o "
+        "app do Social\" no alto da página e um convite com o ícone grande. "
+        "Um toque em \"Instalar agora\" e o Social ganha ícone na tela "
+        "inicial do aparelho, abrindo em tela cheia, sem a barra do "
+        "navegador — direto no seu feed. Quem preferir continuar no "
+        "navegador toca em \"Agora não\" e o convite se recolhe por uma "
+        "semana. No iPhone, o botão explica o caminho: Compartilhar e "
+        "\"Adicionar à Tela de Início\".",
+    ),
     "edf58f1": (
         "🌙",
         "A data e a descrição dos anexos voltaram a aparecer no card escuro",
