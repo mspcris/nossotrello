@@ -40,6 +40,18 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-08 ---
+    "ce45815": (
+        "👉",
+        "O Cutucar voltou a servir para quem falou uma vez e sumiu",
+        "Antes o botão \"Cutucar\" só aparecia em quem nunca tinha publicado "
+        "na comunidade: bastava uma publicação, de qualquer época, e ele "
+        "desaparecia para sempre daquela pessoa — mesmo que ela ficasse "
+        "semanas calada depois. Agora a conta é por tempo: o Cutucar aparece "
+        "em quem está há mais de 36 horas sem publicar nada ali. Assim que a "
+        "pessoa publica, o botão some sozinho e só volta depois de outras 36 "
+        "horas de silêncio. A regra ficou escrita no próprio card de membros, "
+        "para quem cuida da comunidade não precisar adivinhar.",
+    ),
     "a374fe3": (
         "🎨",
         "O painel \"Ajustar visual\" da comunidade voltou a aparecer inteiro",
