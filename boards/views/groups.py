@@ -2,6 +2,7 @@ import hashlib
 import html
 import re
 from collections import defaultdict
+from datetime import timedelta
 from urllib.parse import quote
 
 from django.contrib import messages
@@ -397,17 +398,36 @@ def _can_remove_membership(actor_membership, target_membership):
     return target_membership.role == SocialGroupMembership.ROLE_MEMBER
 
 
-def _can_nudge_member(actor_membership, target_membership, posting_user_ids):
+NUDGE_QUIET_HOURS = 36
+
+
+def _recent_poster_ids(group, hours=NUDGE_QUIET_HOURS):
+    """
+    Quem publicou de verdade na comunidade nas últimas `hours` horas. O próprio
+    cutucão vira um post no grupo, então fica de fora: cutucar alguém não é
+    publicar, e não pode deixar quem cutucou imune a levar cutucão.
+    """
+    since = timezone.now() - timedelta(hours=hours)
+    return set(
+        SocialPost.objects
+        .filter(group=group, is_active=True, created_at__gte=since)
+        .exclude(text__startswith="__group_nudge__:")
+        .values_list("user_id", flat=True)
+        .distinct()
+    )
+
+
+def _can_nudge_member(actor_membership, target_membership, recent_poster_ids):
     if not _can_manage_group(actor_membership):
         return False
     if not target_membership or actor_membership.user_id == target_membership.user_id:
         return False
     if target_membership.role != SocialGroupMembership.ROLE_MEMBER:
         return False
-    return target_membership.user_id not in posting_user_ids
+    return target_membership.user_id not in recent_poster_ids
 
 
-def _member_payload(membership, actor_membership, posting_user_ids):
+def _member_payload(membership, actor_membership, posting_user_ids, recent_poster_ids):
     prof = getattr(membership.user, "profile", None)
     can_manage_roles = _can_manage_roles(actor_membership)
     has_posts = membership.user_id in posting_user_ids
@@ -424,7 +444,7 @@ def _member_payload(membership, actor_membership, posting_user_ids):
         "is_manager": membership.role == SocialGroupMembership.ROLE_MANAGER,
         "has_posts": has_posts,
         "can_remove": _can_remove_membership(actor_membership, membership),
-        "can_nudge": _can_nudge_member(actor_membership, membership, posting_user_ids),
+        "can_nudge": _can_nudge_member(actor_membership, membership, recent_poster_ids),
         "can_promote_manager": bool(
             can_manage_roles and membership.role == SocialGroupMembership.ROLE_MEMBER
         ),
@@ -679,13 +699,17 @@ def group_detail(request, slug):
         .values_list("user_id", flat=True)
         .distinct()
     )
+    recent_poster_ids = _recent_poster_ids(group)
     member_memberships = sorted(
         _group_members(group),
         key=lambda item: (_role_rank(item.role), _user_sort_label(item.user)),
     )
     member_total = len(member_memberships)
     members = (
-        [_member_payload(item, membership, posting_user_ids) for item in member_memberships]
+        [
+            _member_payload(item, membership, posting_user_ids, recent_poster_ids)
+            for item in member_memberships
+        ]
         if can_see_inside
         else []
     )
@@ -1061,12 +1085,8 @@ def group_member_nudge(request, slug, user_id):
     group = get_object_or_404(SocialGroup, slug=slug)
     actor_membership = SocialGroupMembership.objects.filter(group=group, user=request.user).first()
     target_membership = SocialGroupMembership.objects.filter(group=group, user_id=user_id).first()
-    posting_user_ids = set(
-        SocialPost.objects.filter(group=group, is_active=True)
-        .values_list("user_id", flat=True)
-        .distinct()
-    )
-    if not actor_membership or not target_membership or not _can_nudge_member(actor_membership, target_membership, posting_user_ids):
+    recent_poster_ids = _recent_poster_ids(group)
+    if not actor_membership or not target_membership or not _can_nudge_member(actor_membership, target_membership, recent_poster_ids):
         return HttpResponseForbidden("Sem permissão.")
 
     from boards.services.notifications import notify_group_nudge
