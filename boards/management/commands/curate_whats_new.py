@@ -40,6 +40,17 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-08 ---
+    "8a34ea3": (
+        "🖼️",
+        "As memórias do scrapbook agora abrem em tela cheia",
+        "Foto e vídeo guardados no scrapbook viravam um ícone de imagem "
+        "quebrada quando o vídeo tinha sido enviado pelo botão de foto. Agora "
+        "toda memória mostra uma miniatura — com o ▶ em cima quando é vídeo — "
+        "e um toque abre a mídia em tela cheia, com o player completo. Para "
+        "voltar, é só tocar fora ou apertar Esc. E quando o arquivo de uma "
+        "memória antiga não existe mais no servidor, em vez de um link "
+        "quebrado aparece um aviso explicando que só o texto sobrou.",
+    ),
     "ce45815": (
         "👉",
         "O Cutucar voltou a servir para quem falou uma vez e sumiu",
