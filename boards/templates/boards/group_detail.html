@@ -524,6 +524,15 @@
     background:linear-gradient(180deg,rgba(7,17,31,.82),rgba(13,25,43,.72));
   }
   .gd-section-tag{background:rgba(110,231,255,.16);color:#a5f3fc}
+  /* O painel de ajuste visual é claro de propósito e tudo dentro dele assume
+     fundo claro. Sem estas duas linhas o override de .gd-card acima escurece
+     só o fundo e deixa o título e o botão Fechar escuros em cima de escuro. */
+  .gd-shell .gd-theme-config-card{
+    background:linear-gradient(180deg,rgba(248,250,252,.98),rgba(226,232,240,.94));
+    border-color:rgba(148,163,184,.28);
+  }
+  .gd-shell .gd-theme-config-card .gd-section-tag{background:rgba(110,231,255,.22);color:#155e75}
+  .gd-shell .gd-theme-config-card .gd-mini-btn{background:rgba(255,255,255,.9);border-color:rgba(96,79,160,.18);color:#0f172a;box-shadow:0 10px 20px rgba(20,15,45,.06)}
   .gd-post,
   .gd-member,
   .gd-memory,
