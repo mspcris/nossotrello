@@ -1234,6 +1234,7 @@ class SocialGroup(models.Model):
     theme_image_3 = models.ImageField(upload_to="social/groups/themes/", blank=True, null=True)
     wallpaper = models.CharField(max_length=40, blank=True, default="")
     palette = models.CharField(max_length=40, blank=True, default="")
+    is_open = models.BooleanField(default=False)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name="created_social_groups",

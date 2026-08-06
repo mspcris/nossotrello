@@ -377,8 +377,12 @@ def _can_manage_group(membership):
     })
 
 
-def _can_manage_roles(membership):
+def _is_group_owner(membership):
     return bool(membership and membership.role == SocialGroupMembership.ROLE_OWNER)
+
+
+def _can_manage_roles(membership):
+    return _is_group_owner(membership)
 
 
 def _can_remove_membership(actor_membership, target_membership):
@@ -626,6 +630,7 @@ def group_create(request):
         interests=interests,
         vibe=vibe,
         goal=goal,
+        is_open=(request.POST.get("is_open") == "1"),
         cover_svg=_group_cover_svg(name, theme, interests, vibe),
         created_by=request.user,
     )
@@ -665,6 +670,10 @@ def group_detail(request, slug):
     is_member = membership is not None
     can_manage_group = _can_manage_group(membership)
     can_manage_roles = _can_manage_roles(membership)
+    is_owner = _is_group_owner(membership)
+    # Comunidade fechada não mostra nada de dentro para quem está fora: sobra a capa
+    # de identidade e o botão de pedir para participar.
+    can_see_inside = is_member or group.is_open
     posting_user_ids = set(
         SocialPost.objects.filter(group=group, is_active=True)
         .values_list("user_id", flat=True)
@@ -674,7 +683,12 @@ def group_detail(request, slug):
         _group_members(group),
         key=lambda item: (_role_rank(item.role), _user_sort_label(item.user)),
     )
-    members = [_member_payload(item, membership, posting_user_ids) for item in member_memberships]
+    member_total = len(member_memberships)
+    members = (
+        [_member_payload(item, membership, posting_user_ids) for item in member_memberships]
+        if can_see_inside
+        else []
+    )
     pending_request = None
     if not is_member:
         pending_request = (
@@ -689,14 +703,16 @@ def group_detail(request, slug):
             for join_request in SocialGroupJoinRequest.objects.filter(group=group)
             .select_related("user", "user__profile")[:20]
         ]
-    posts = [
-        _post_payload(post, viewer_membership=membership, viewer_user=request.user)
-        for post in SocialPost.objects.filter(
-            group=group,
-            is_active=True,
-            moderation_status=SocialPost.MOD_CLEAN,
-        ).select_related("user", "user__profile").order_by("-created_at")[:30]
-    ]
+    posts = []
+    if can_see_inside:
+        posts = [
+            _post_payload(post, viewer_membership=membership, viewer_user=request.user)
+            for post in SocialPost.objects.filter(
+                group=group,
+                is_active=True,
+                moderation_status=SocialPost.MOD_CLEAN,
+            ).select_related("user", "user__profile").order_by("-created_at")[:30]
+        ]
     comments_by_post = defaultdict(list)
     post_ids = [item["id"] for item in posts]
     if post_ids:
@@ -749,10 +765,12 @@ def group_detail(request, slug):
         "membership": membership,
         "can_manage_group": can_manage_group,
         "can_manage_roles": can_manage_roles,
+        "is_owner": is_owner,
+        "can_see_inside": can_see_inside,
         "pending_request": pending_request,
         "join_requests": join_requests,
         "members": members[:18],
-        "member_total": len(members),
+        "member_total": member_total,
         "posts": posts,
         "chat_messages": chat_messages,
         "scrapbook_entries": scrapbook_entries,
@@ -859,6 +877,16 @@ def group_join(request, slug):
         messages.info(request, "Você já faz parte desta comunidade.")
         return redirect("boards:group_detail", slug=group.slug)
 
+    if group.is_open:
+        SocialGroupMembership.objects.get_or_create(
+            group=group,
+            user=request.user,
+            defaults={"role": SocialGroupMembership.ROLE_MEMBER},
+        )
+        SocialGroupJoinRequest.objects.filter(group=group, user=request.user).delete()
+        messages.success(request, "Pronto, você entrou na comunidade.")
+        return redirect("boards:group_detail", slug=group.slug)
+
     _, created = SocialGroupJoinRequest.objects.get_or_create(
         group=group,
         user=request.user,
@@ -867,6 +895,54 @@ def group_join(request, slug):
         messages.success(request, "Pedido enviado. Agora é só aguardar a aprovação do dono ou de um gestor.")
     else:
         messages.info(request, "Seu pedido já está aguardando aprovação.")
+    return redirect("boards:group_detail", slug=group.slug)
+
+
+@login_required
+@require_POST
+def group_visibility_update(request, slug):
+    group = get_object_or_404(SocialGroup, slug=slug)
+    membership = SocialGroupMembership.objects.filter(group=group, user=request.user).first()
+    if not _is_group_owner(membership):
+        return HttpResponseForbidden("Só o dono pode abrir ou fechar a comunidade.")
+
+    is_open = request.POST.get("is_open") == "1"
+    if group.is_open == is_open:
+        messages.info(request, "A comunidade já estava assim.")
+        return redirect("boards:group_detail", slug=group.slug)
+
+    group.is_open = is_open
+    group.save(update_fields=["is_open", "updated_at"])
+
+    if is_open:
+        # Comunidade aberta não tem fila de espera: quem já tinha pedido entra na hora,
+        # em vez de ficar pendente sem ninguém ter o que decidir.
+        pending = list(
+            SocialGroupJoinRequest.objects.filter(group=group).values_list("user_id", flat=True)
+        )
+        if pending:
+            SocialGroupMembership.objects.bulk_create(
+                [
+                    SocialGroupMembership(
+                        group=group,
+                        user_id=user_id,
+                        invited_by=request.user,
+                        role=SocialGroupMembership.ROLE_MEMBER,
+                    )
+                    for user_id in pending
+                ],
+                ignore_conflicts=True,
+            )
+            SocialGroupJoinRequest.objects.filter(group=group).delete()
+            if len(pending) == 1:
+                fila = "O pedido que estava na fila entrou direto."
+            else:
+                fila = f"Os {len(pending)} pedidos que estavam na fila entraram direto."
+            messages.success(request, f"Comunidade aberta. {fila}")
+        else:
+            messages.success(request, "Comunidade aberta: qualquer pessoa vê o conteúdo e entra sozinha.")
+    else:
+        messages.success(request, "Comunidade fechada: de fora ninguém vê o conteúdo, só pede para participar.")
     return redirect("boards:group_detail", slug=group.slug)
 
 

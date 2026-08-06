@@ -103,7 +103,7 @@
 
   <section class="gh-card">
     <h2>Panorama rápido</h2>
-    <p class="gh-sub">Toda comunidade continua visível para descoberta, mas entrar agora depende de convite ou aprovação.</p>
+    <p class="gh-sub">Toda comunidade aparece aqui para descoberta. Na aberta você entra sozinho; na fechada o conteúdo fica guardado e a entrada depende de convite ou aprovação do dono.</p>
     <div class="gh-stats">
       <div class="gh-stat">
         <span>Total visível</span>
@@ -133,6 +133,7 @@
               </div>
               <div class="gh-meta">
                 <span class="gh-chip">👥 {{ group.member_total }} membro{{ group.member_total|pluralize:"s" }}</span>
+                <span class="gh-chip">{% if group.is_open %}🔓 Aberta{% else %}🔒 Fechada{% endif %}</span>
                 {% if group.theme %}<span class="gh-chip">{{ group.theme }}</span>{% endif %}
               </div>
               <p class="gh-copy">{{ group.description|default:group.goal|default:"Pronto para novas publicações, conversas e memórias."|truncatechars:120 }}</p>
@@ -165,6 +166,7 @@
             </div>
             <div class="gh-meta">
               <span class="gh-chip">👥 {{ group.member_total }} membro{{ group.member_total|pluralize:"s" }}</span>
+              <span class="gh-chip">{% if group.is_open %}🔓 Aberta{% else %}🔒 Fechada{% endif %}</span>
               {% if group.goal %}<span class="gh-chip">🎯 {{ group.goal|truncatechars:28 }}</span>{% endif %}
             </div>
             <p class="gh-copy">{{ group.description|default:group.theme|default:group.vibe|default:"Sem descrição por enquanto."|truncatechars:130 }}</p>
@@ -177,7 +179,7 @@
               {% else %}
                 <form method="post" action="{% url 'boards:group_join' group.slug %}">
                   {% csrf_token %}
-                  <button type="submit" class="gh-btn">Pedir para entrar</button>
+                  <button type="submit" class="gh-btn">{% if group.is_open %}Entrar{% else %}Pedir para entrar{% endif %}</button>
                 </form>
               {% endif %}
             </div>
@@ -230,6 +232,26 @@
             <label for="gh-description">Descrição</label>
             <textarea class="gh-textarea" id="gh-description" name="description" placeholder="Conte como o grupo funciona, para quem ele existe e o tipo de publicação esperado."></textarea>
             <span class="gh-help">Se o nome ficar vazio, o sistema sugere um automaticamente.</span>
+          </div>
+          <div class="gh-field gh-field-full">
+            <label>Quem pode entrar</label>
+            <div class="gh-friends">
+              <label class="gh-check">
+                <input type="radio" name="is_open" value="0" checked>
+                <span>
+                  <span class="gh-check-name">🔒 Fechada</span>
+                  <span class="gh-check-meta">De fora ninguém vê o conteúdo: só pede para participar e espera aprovação.</span>
+                </span>
+              </label>
+              <label class="gh-check">
+                <input type="radio" name="is_open" value="1">
+                <span>
+                  <span class="gh-check-name">🔓 Aberta</span>
+                  <span class="gh-check-meta">Qualquer pessoa do Espaço Social vê tudo e entra sozinha.</span>
+                </span>
+              </label>
+            </div>
+            <span class="gh-help">Depois só o dono muda isso, na página da comunidade.</span>
           </div>
         </div>
 

@@ -191,6 +191,10 @@
   .gd-tab-panel.is-active{display:grid;gap:18px}
   .gd-grid{display:grid;grid-template-columns:1.25fr .85fr;gap:18px}
   .gd-card{background:var(--gd-card);border:1px solid rgba(255,255,255,.52);border-radius:28px;padding:22px;box-shadow:0 18px 38px rgba(20,15,45,.08);backdrop-filter:blur(24px)}
+  .gd-privacy-card,.gd-locked-card{margin-bottom:18px}
+  .gd-privacy-actions,.gd-locked-actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:16px}
+  .gd-privacy-actions .gd-note{max-width:520px}
+  .gd-locked-card .gd-status-pill{background:rgba(20,15,45,.62)}
   .gd-card h2{margin:0 0 6px;font-size:1.15rem;letter-spacing:-.02em}
   .gd-copy{margin:0;color:var(--gd-muted);line-height:1.55}
   .gd-form-grid{display:grid;gap:12px;margin-top:14px}
@@ -445,9 +449,9 @@
     border-color:rgba(96,165,250,.22);
     box-shadow:0 18px 36px rgba(2,6,23,.34);
   }
-  .gd-alert.success{color:#bbf7d0;border-color:rgba(74,222,128,.32)}
-  .gd-alert.error{color:#fecdd3;border-color:rgba(251,113,133,.28)}
-  .gd-alert.info{color:#bfdbfe;border-color:rgba(96,165,250,.32)}
+  .gd-alert.success{background:rgba(6,26,20,.86);color:#bbf7d0;border-color:rgba(74,222,128,.32)}
+  .gd-alert.error{background:rgba(30,9,14,.86);color:#fecdd3;border-color:rgba(251,113,133,.28)}
+  .gd-alert.info{background:rgba(9,16,31,.86);color:#bfdbfe;border-color:rgba(96,165,250,.32)}
   .gd-banner{
     background:linear-gradient(135deg,rgba(4,10,23,.92),rgba(10,31,52,.88) 56%,rgba(9,89,91,.78));
     border-color:rgba(148,163,184,.18);
@@ -519,6 +523,7 @@
   .gd-card{
     background:linear-gradient(180deg,rgba(7,17,31,.82),rgba(13,25,43,.72));
   }
+  .gd-section-tag{background:rgba(110,231,255,.16);color:#a5f3fc}
   .gd-post,
   .gd-member,
   .gd-memory,
@@ -632,7 +637,7 @@
 
   {% if show_groups_onboarding %}
   <div class="gd-banner" id="gd-onboarding">
-    <p>Comunidade é fechada: quem está fora pede para entrar, e dono ou gestor decide. Aqui dentro você publica com contexto, organiza quem entra e cuida do que fica no ar.</p>
+    <p>Cada comunidade é aberta ou fechada, e só o dono decide. Fechada, quem está de fora nem vê o conteúdo: pede para participar e espera a aprovação. Aberta, qualquer pessoa vê e entra sozinha.</p>
     <button type="button" class="gd-btn-alt" onclick="gdDismissOnboarding()">Entendi</button>
   </div>
   {% endif %}
@@ -648,7 +653,16 @@
           </div>
           <div class="gd-hero-actions">
             <div class="gd-meta">
+              {% if can_see_inside %}
               <button type="button" class="gd-chip gd-chip-btn" onclick="gdOpenMembers()" title="Ver a lista de membros">👥 {{ member_total }} membro{{ member_total|pluralize:"s" }}</button>
+              {% else %}
+              <span class="gd-chip">👥 {{ member_total }} membro{{ member_total|pluralize:"s" }}</span>
+              {% endif %}
+              {% if group.is_open %}
+              <span class="gd-chip" title="Qualquer pessoa vê o conteúdo e entra sozinha">🔓 Aberta</span>
+              {% else %}
+              <span class="gd-chip" title="De fora ninguém vê o conteúdo: só pede para participar">🔒 Fechada</span>
+              {% endif %}
               {% if membership %}<span class="gd-chip">💚 {{ membership.get_role_display }}</span>{% endif %}
               {% if can_manage_group %}
               <button type="button" class="gd-chip gd-chip-btn" onclick="gdToggleThemeStudio(true)">⚙️ Ajustar visual</button>
@@ -676,13 +690,41 @@
           {% else %}
           <form method="post" action="{% url 'boards:group_join' group.slug %}">
             {% csrf_token %}
-            <button type="submit" class="gd-btn">Pedir para entrar</button>
+            <button type="submit" class="gd-btn">{% if group.is_open %}Entrar na comunidade{% else %}Pedir para entrar{% endif %}</button>
           </form>
           {% endif %}
         </div>
       </div>
     </div>
   </section>
+
+  {% if is_owner %}
+  <section class="gd-card gd-privacy-card">
+    <span class="gd-section-tag">Quem entra</span>
+    <h2>{% if group.is_open %}Comunidade aberta{% else %}Comunidade fechada{% endif %}</h2>
+    <p class="gd-copy">
+      {% if group.is_open %}
+      Qualquer pessoa do Espaço Social vê o feed, os membros e entra sozinha, sem passar por aprovação.
+      {% else %}
+      De fora só aparece a capa e a ficha do grupo. Para ver o conteúdo é preciso pedir para participar e ser aprovado por você ou por um gestor.
+      {% endif %}
+    </p>
+    <div class="gd-privacy-actions">
+      <form method="post" action="{% url 'boards:group_visibility_update' group.slug %}">
+        {% csrf_token %}
+        <input type="hidden" name="is_open" value="{% if group.is_open %}0{% else %}1{% endif %}">
+        <button type="submit" class="gd-btn">{% if group.is_open %}🔒 Fechar a comunidade{% else %}🔓 Abrir a comunidade{% endif %}</button>
+      </form>
+      <span class="gd-note">
+        {% if group.is_open %}
+        Fechando, quem já é membro continua dentro — muda só quem consegue chegar de novo.
+        {% else %}
+        Abrindo, os pedidos que estiverem na fila entram na hora: comunidade aberta não tem o que aprovar.
+        {% endif %}
+      </span>
+    </div>
+  </section>
+  {% endif %}
 
   {% if can_manage_group %}
   <section class="gd-card gd-theme-config-card" id="gd-theme-studio">
@@ -829,6 +871,24 @@
   </script>
   {% endif %}
 
+  {% if not can_see_inside %}
+  <section class="gd-card gd-locked-card">
+    <span class="gd-section-tag">Comunidade fechada</span>
+    <h2>🔒 O conteúdo daqui é só para quem participa</h2>
+    <p class="gd-copy">Feed, membros, chat e scrapbook ficam guardados. Peça para participar e, assim que o dono ou um gestor aprovar, tudo abre para você.</p>
+    <div class="gd-locked-actions">
+      {% if pending_request %}
+      <span class="gd-status-pill">⏳ Pedido enviado. Falta aprovação.</span>
+      {% else %}
+      <form method="post" action="{% url 'boards:group_join' group.slug %}">
+        {% csrf_token %}
+        <button type="submit" class="gd-btn">Pedir para participar</button>
+      </form>
+      {% endif %}
+      <a class="gd-btn-alt" href="{% url 'boards:groups_hub' %}">← Todas as comunidades</a>
+    </div>
+  </section>
+  {% else %}
   <div class="gd-tabs" role="tablist" aria-label="Seções da comunidade">
     <button type="button" class="gd-tab-btn is-active" data-tab="abertura" role="tab" aria-selected="true">Abertura</button>
     <button type="button" class="gd-tab-btn" data-tab="como-publicar" role="tab" aria-selected="false"><span class="gd-tab-lbl-full">Como publicar</span><span class="gd-tab-lbl-short">Publicar</span></button>
@@ -1289,6 +1349,7 @@
     </section>
     {% endif %}
   </section>
+  {% endif %}
 </div>
 {% endblock %}
 
