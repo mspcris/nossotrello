@@ -1094,14 +1094,28 @@ def move_card(request):
     except Exception:
         pass
 
-    _log_card(
-        card,
-        request,
-        (
+    changed_board = old_board.id != new_board.id
+    if changed_board:
+        message_html = (
+            f"<p><strong>{actor}</strong> moveu este card do quadro "
+            f"<strong>{escape(old_board.name)}</strong> › "
+            f"<strong>{escape(old_column.name)}</strong> para o quadro "
+            f"<strong>{escape(new_board.name)}</strong> › "
+            f"<strong>{escape(new_column.name)}</strong>.</p>"
+        )
+    else:
+        message_html = (
             f"<p><strong>{actor}</strong> moveu este card de "
             f"<strong>{escape(old_column.name)}</strong> para "
             f"<strong>{escape(new_column.name)}</strong>.</p>"
-        ),
+        )
+
+    _log_card(
+        card,
+        request,
+        message_html,
+        board=old_board,
+        board_to=new_board if changed_board else None,
     )
 
     snippet_html = render_to_string(

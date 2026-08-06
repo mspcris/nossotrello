@@ -54,6 +54,7 @@ from .helpers import (
     _actor_label,
     _log_board,
     _log_card,
+    board_card_logs,
     get_or_create_user_default_organization,
 )
 from .cards import _user_can_edit_board, _deny_read_only
@@ -697,10 +698,7 @@ def board_detail(request, board_id):
 
         last_seen = st.last_seen_at if st and st.last_seen_at else None
 
-        qs = CardLog.objects.filter(
-            card__column__board=board,
-            card__is_deleted=False,
-        )
+        qs = board_card_logs(board).filter(card__is_deleted=False)
 
         if last_seen:
             qs = qs.filter(created_at__gt=last_seen)
@@ -2123,10 +2121,7 @@ def board_poll(request, board_id):
         st = BoardActivityReadState.objects.filter(board=board, user=request.user).first()
         last_seen = st.last_seen_at if st and st.last_seen_at else None
 
-        qs_logs = CardLog.objects.filter(
-            card__column__board=board,
-            card__is_deleted=False,
-        )
+        qs_logs = board_card_logs(board).filter(card__is_deleted=False)
 
         if last_seen:
             qs_logs = qs_logs.filter(created_at__gt=last_seen)
@@ -2322,9 +2317,9 @@ def board_history_modal(request, board_id):
         return HttpResponse("Você não tem acesso a este quadro.", status=403)
 
     logs = (
-        CardLog.objects
-        .filter(card__column__board=board, card__is_deleted=False)
-        .select_related("card", "card__column")
+        board_card_logs(board)
+        .filter(card__is_deleted=False)
+        .select_related("card", "card__column", "card__column__board", "board", "board_to")
         .order_by("-created_at")[:500]
     )
 
@@ -2380,8 +2375,7 @@ def board_history_unread_count(request, board_id):
     st = BoardActivityReadState.objects.filter(board=board, user=request.user).first()
     last_seen = st.last_seen_at if st and st.last_seen_at else None
 
-    qs = CardLog.objects.filter(
-        card__column__board=board,
+    qs = board_card_logs(board).filter(
         card__is_deleted=False,
         card__is_archived=False,
     )

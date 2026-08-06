@@ -1006,6 +1006,7 @@ def import_trello_actions(request):
                 continue
             log_objs.append(CardLog(
                 card_id=cid, actor=None,
+                board=board,
                 content=it.get("html") or "",
                 content_text=(it.get("text") or "")[:5000],
             ))

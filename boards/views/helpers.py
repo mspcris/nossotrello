@@ -230,10 +230,28 @@ def build_impediment_previews(cards, request_user_id=None, user_is_owner=False):
     return out
 
 
-def _log_card(card: Card, request, message_html: str, attachment=None):
+def board_card_logs(board):
+    """
+    Logs que aconteceram NESTE quadro — inclusive os de cards que já saíram
+    dele. `board`/`board_to` passaram a ser carimbados em cada CardLog; para os
+    registros anteriores a isso vale o quadro onde o card está hoje.
+    """
+    return CardLog.objects.filter(
+        Q(board=board)
+        | Q(board_to=board)
+        | Q(board__isnull=True, card__column__board=board)
+    )
+
+
+def _log_card(card: Card, request, message_html: str, attachment=None, board=None, board_to=None):
     """
     Registra no histórico do card (CardLog) e enfileira notificação
     no buffer (consolidada a cada 5 min pelo flush_notifications).
+
+    `board` fixa em qual quadro o evento aconteceu — sem ele o CardLog.save()
+    usa o quadro onde o card está agora. Só precisa ser passado quando o card
+    muda de quadro na própria ação, junto com `board_to` (o destino), para o
+    registro aparecer no histórico dos dois quadros.
     """
     try:
         actor = None
@@ -245,6 +263,8 @@ def _log_card(card: Card, request, message_html: str, attachment=None):
             actor=actor,
             content=message_html,
             attachment=attachment,
+            board=board,
+            board_to=board_to,
         )
 
         # Enfileira no buffer para envio consolidado

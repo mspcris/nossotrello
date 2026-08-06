@@ -369,6 +369,26 @@ class Card(models.Model):
 class CardLog(models.Model):
     card = models.ForeignKey(Card, related_name="logs", on_delete=models.CASCADE)
 
+    # Quadro onde o evento aconteceu. Sem isso o "Histórico do quadro" seria
+    # derivado de onde o card ESTÁ agora: card que muda de quadro levava junto
+    # todo o próprio histórico, inclusive o registro da mudança.
+    board = models.ForeignKey(
+        "Board",
+        related_name="card_logs",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+    )
+    # Só no move entre quadros: o destino. Faz o mesmo log aparecer nos dois
+    # históricos sem duplicar a linha no histórico do card.
+    board_to = models.ForeignKey(
+        "Board",
+        related_name="card_logs_received",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+    )
+
     actor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
@@ -395,10 +415,21 @@ class CardLog(models.Model):
     attachment_deleted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    def save(self, *args, **kwargs):
+        # Carimba o quadro de origem quando quem escreveu o log não passou
+        # explicitamente (vale para todos os pontos que criam CardLog direto).
+        if self.board_id is None and self.card_id:
+            try:
+                self.board_id = self.card.column.board_id
+            except Exception:
+                pass
+        super().save(*args, **kwargs)
+
     class Meta:
         indexes = [
             models.Index(fields=["card", "created_at"], name="cardlog_card_created_idx"),
             models.Index(fields=["actor", "created_at"], name="cardlog_actor_created_idx"),
+            models.Index(fields=["board", "created_at"], name="cardlog_board_created_idx"),
         ]
 
 

@@ -15,9 +15,12 @@
     <div class="space-y-2 max-h-[70vh] overflow-auto pr-1">
       {% for log in logs %}
         <a class="block rounded-lg border border-gray-200 bg-white/70 hover:bg-white p-3"
-           href="{% url 'boards:board_detail' board.id %}?card={{ log.card.id }}&tab=ativ">
+           href="{% url 'boards:board_detail' log.card.column.board.id %}?card={{ log.card.id }}&tab=ativ">
           <div class="text-xs text-gray-500">
             {{ log.created_at|date:"d/m/Y H:i" }} • {{ log.card.column.name }} • Card #{{ log.card.id }}
+            {% if log.card.column.board_id != board.id %}
+            • <span class="font-semibold">hoje no quadro {{ log.card.column.board.name }}</span>
+            {% endif %}
           </div>
           <div class="text-sm text-gray-900 font-semibold mt-1">
             {{ log.card.title }}
