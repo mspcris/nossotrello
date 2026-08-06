@@ -40,6 +40,16 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-08 ---
+    "a374fe3": (
+        "🎨",
+        "O painel \"Ajustar visual\" da comunidade voltou a aparecer inteiro",
+        "Em comunidade com o fundo escuro, quem abria o \"Ajustar visual\" "
+        "encontrava o painel pela metade: o título \"Aparência da comunidade\" "
+        "e o botão \"Fechar\" simplesmente não apareciam, porque estavam "
+        "escritos em cor escura sobre fundo escuro. O painel voltou a ser o "
+        "quadro claro de sempre, com o título, o texto de ajuda e o botão de "
+        "fechar todos visíveis.",
+    ),
     "c1306e3": (
         "🧾",
         "Card que muda de quadro agora deixa rastro nos dois históricos",
