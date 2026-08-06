@@ -40,6 +40,17 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-08 ---
+    "fe8af22": (
+        "🗂️",
+        "As abas do card agora ficam só no alto, e sobram duas telas de espaço",
+        "O card mostrava a mesma fileira de abas duas vezes: uma no alto, ao "
+        "lado do nome do quadro, e outra logo abaixo, empurrando o Título e a "
+        "Descrição para baixo. Ficou só a de cima. No celular a diferença é "
+        "grande: a fileira quebrava em cinco linhas e engolia metade da tela — "
+        "agora é uma faixa única que desliza para o lado com o dedo. E no tema "
+        "escuro a palavra \"Entregue\" tinha sumido dentro do próprio botão; "
+        "voltou a aparecer, tanto marcada quanto desmarcada.",
+    ),
     "8a34ea3": (
         "🖼️",
         "As memórias do scrapbook agora abrem em tela cheia",
