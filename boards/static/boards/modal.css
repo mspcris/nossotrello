@@ -587,11 +587,38 @@ html.dark #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-
   display: flex !important;
   flex: 1 1 auto;
   min-width: 0;
+  /* nowrap vence o flex-wrap do Tailwind no markup: sem isto, tela estreita
+     quebra as abas em cinco linhas e o header do modal come metade do celular. */
+  flex-wrap: nowrap !important;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
   padding-bottom: 2px;
 }
+#card-modal-root[data-shell-tabs="on"] #card-tabs::-webkit-scrollbar{ display: none; }
 #card-modal-root[data-shell-tabs="on"] #card-tabs .cm-tabbtn{
   white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+/* A barra de abas de dentro do card vira duplicata assim que a do topo existe:
+   some com ela e com o espaço, mas só quando a de cima está montada — se o JS
+   não rodar, `data-shell-tabs` não entra e as abas continuam onde sempre
+   estiveram. O clique da barra de cima chama .click() na de baixo, que segue
+   funcionando escondida. */
+#card-modal-root[data-shell-tabs="on"] #cm-root .cm-topbar:not(.cm-activity-togglebar){
+  display: none !important;
+}
+
+@media (max-width: 767px){
+  #card-modal-root[data-shell-tabs="on"] #card-tabs{
+    gap: 6px;
+  }
+  #card-modal-root[data-shell-tabs="on"] #card-tabs .cm-tabbtn{
+    padding: 6px 10px;
+    font-size: .82rem;
+  }
 }
 
 /* Opção B (remover header/capa) — manter comentado
@@ -3514,6 +3541,32 @@ html.dark .cm-attach-item a.text-blue-600,
 #cm-root .cm-delivered-toggle input:checked + .cm-delivered-ui .cm-delivered-dot{
   border-color: rgba(16,185,129,0.75);
   background: rgba(16,185,129,0.85);
+}
+
+/* Tema escuro: a pílula tinha fundo branco e texto quase preto fixos, então
+   no escuro sobrava a cápsula e a palavra "Entregue" sumia junto com o fundo. */
+#card-modal-root.theme-dark #cm-root .cm-delivered-ui,
+#card-modal-root.card-theme-dark #cm-root .cm-delivered-ui{
+  border-color: rgba(148,163,184,0.28);
+  background: rgba(15,23,42,0.55);
+  box-shadow: 0 6px 18px rgba(2,6,23,0.28);
+}
+#card-modal-root.theme-dark #cm-root .cm-delivered-text,
+#card-modal-root.card-theme-dark #cm-root .cm-delivered-text{
+  color: rgba(226,232,240,0.92);
+}
+#card-modal-root.theme-dark #cm-root .cm-delivered-dot,
+#card-modal-root.card-theme-dark #cm-root .cm-delivered-dot{
+  border-color: rgba(226,232,240,0.45);
+}
+#card-modal-root.theme-dark #cm-root .cm-delivered-toggle input:checked + .cm-delivered-ui,
+#card-modal-root.card-theme-dark #cm-root .cm-delivered-toggle input:checked + .cm-delivered-ui{
+  border-color: rgba(16,185,129,0.55);
+  background: rgba(16,185,129,0.22);
+}
+#card-modal-root.theme-dark #cm-root .cm-delivered-toggle input:checked + .cm-delivered-ui .cm-delivered-text,
+#card-modal-root.card-theme-dark #cm-root .cm-delivered-toggle input:checked + .cm-delivered-ui .cm-delivered-text{
+  color: #d1fae5;
 }
 
 
