@@ -40,6 +40,17 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-08 ---
+    "dd33aa8": (
+        "📱",
+        "No celular, as abas do card ganharam uma linha só delas",
+        "Abrindo um card pelo celular, o alto da tela mostrava \"Descriçã\" "
+        "cortado pela metade e mais nada: Etiquetas, Checklists, Anexos e "
+        "Track-time ficavam fora da tela, sem nenhum sinal de que era só "
+        "arrastar para o lado. Quem não sabia, não achava. Agora o cabeçalho "
+        "se divide em duas linhas: em cima o nome do card com o ? e o ✕; "
+        "embaixo, as cinco abas lado a lado, todas visíveis de uma vez. No "
+        "computador nada muda.",
+    ),
     "fe8af22": (
         "🗂️",
         "As abas do card agora ficam só no alto, e sobram duas telas de espaço",
