@@ -611,13 +611,57 @@ html.dark #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-
   display: none !important;
 }
 
-@media (max-width: 767px){
+/* Toque (celular/tablet), nunca desktop: o cabeçalho do modal vira duas linhas.
+   Em cima ficam o nome do card, o ? e o ✕; embaixo, os menus sozinhos ocupando
+   a largura inteira. Numa linha só sobrava "Descriçã" cortado e ninguém
+   descobria que as outras abas existiam à direita. */
+/* Agrupa nome do card + ? + ✕ para eles andarem sempre juntos, em qualquer
+   largura. Sem o grupo, o ✕ quebrava sozinho numa terceira linha aos 360px. */
+#card-modal-root .cm-modal-topline{
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+#card-modal-root .cm-modal-topline > #modal-breadcrumb{
+  min-width: 0;
+}
+
+@media (max-width: 767px), (pointer: coarse) and (max-width: 1024px){
+  #card-modal-root .cm-modal-topbar{
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+  #card-modal-root .cm-modal-topline{
+    order: 1;
+    flex: 1 1 100%;
+    width: 100%;
+    flex-wrap: nowrap;
+  }
+  #card-modal-root .cm-modal-topline > #modal-breadcrumb{
+    flex: 1 1 auto;
+  }
   #card-modal-root[data-shell-tabs="on"] #card-tabs{
+    order: 2;
+    flex: 1 1 100%;
+    width: 100%;
     gap: 6px;
   }
   #card-modal-root[data-shell-tabs="on"] #card-tabs .cm-tabbtn{
-    padding: 6px 10px;
+    padding: 7px 11px;
     font-size: .82rem;
+  }
+}
+
+/* Telas bem estreitas: aperta o botão para as cinco abas caberem sem rolagem. */
+@media (max-width: 480px){
+  #card-modal-root[data-shell-tabs="on"] #card-tabs{
+    gap: 4px;
+  }
+  #card-modal-root[data-shell-tabs="on"] #card-tabs .cm-tabbtn{
+    padding: 6px 8px;
+    font-size: .76rem;
   }
 }
 
