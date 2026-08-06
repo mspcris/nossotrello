@@ -111,16 +111,33 @@ class DatabaseStorage(Storage):
     def _is_referenced(name: str) -> bool:
         """Alguém ainda aponta pra esses bytes?
 
-        Conta anexo removido também (`all_objects`): o soft-delete existe
-        justamente pra manter o histórico auditável, e o CardLog continua
-        exibindo o arquivo das entradas antigas.
-        """
-        from boards.models import CardAttachment, CardLog
+        Varre TODO FileField/ImageField do projeto em vez de uma lista escrita
+        à mão. A lista fixa cobria só CardAttachment e CardLog e deixava a
+        mídia do social — scrapbook, chat, post, avatar, capa — sem proteção
+        nenhuma: foi assim que o vídeo de uma memória do scrapbook perdeu os
+        bytes em 08/2026, sobrando a linha com um link quebrado.
 
-        return (
-            CardAttachment.all_objects.filter(file=name).exists()
-            or CardLog.objects.filter(attachment=name).exists()
-        )
+        Conta anexo removido também (`all_objects` onde existe): o soft-delete
+        existe pra manter o histórico auditável, e o CardLog continua exibindo
+        o arquivo das entradas antigas.
+        """
+        from django.apps import apps
+        from django.db.models import FileField
+
+        for model in apps.get_models():
+            field_names = [
+                f.name for f in model._meta.get_fields() if isinstance(f, FileField)
+            ]
+            if not field_names:
+                continue
+            manager = getattr(model, "all_objects", None) or model._default_manager
+            for field_name in field_names:
+                try:
+                    if manager.filter(**{field_name: name}).exists():
+                        return True
+                except Exception:
+                    continue
+        return False
 
     def url(self, name: str) -> str:
         """Return the URL where this file can be served."""

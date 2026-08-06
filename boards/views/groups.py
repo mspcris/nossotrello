@@ -550,33 +550,64 @@ def _group_nudge_data(post):
     }
 
 
-def _scrapbook_video_photo_names(entries):
-    """Nomes de arquivo do campo photo que na verdade guardam vídeo (entradas antigas)."""
+_STORED_FILE_NAME_RE = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.I
+)
+
+
+def _scrapbook_stored_media(entries):
+    """
+    content_type de cada arquivo do scrapbook que está no StoredFile. Resolve
+    dois casos: entrada antiga com vídeo gravado no campo de foto, e arquivo
+    cujos bytes sumiram do banco — nesse a chave nem aparece no mapa.
+    """
     from ..models import StoredFile
 
-    photo_names = [entry.photo.name for entry in entries if entry.photo]
-    if not photo_names:
-        return set()
+    names = [
+        f.name
+        for entry in entries
+        for f in (entry.photo, entry.video)
+        if f and _STORED_FILE_NAME_RE.match(f.name or "")
+    ]
+    if not names:
+        return {}
     return {
-        str(stored_id)
-        for stored_id, content_type in StoredFile.objects.filter(id__in=photo_names).values_list("id", "content_type")
-        if (content_type or "").lower().startswith("video/")
+        str(stored_id): (content_type or "")
+        for stored_id, content_type in StoredFile.objects
+        .filter(id__in=names)
+        .values_list("id", "content_type")
     }
 
 
-def _scrapbook_entry_payload(entry, video_photo_names=frozenset()):
+def _scrapbook_entry_payload(entry, stored_media=None):
+    stored_media = stored_media or {}
     entry_prof = getattr(entry.author, "profile", None)
+    photo_name = (entry.photo.name if entry.photo else "") or ""
+    video_name = (entry.video.name if entry.video else "") or ""
     photo_url = entry.photo.url if entry.photo else ""
     video_url = entry.video.url if entry.video else ""
+
     # Entradas antigas: vídeo enviado pelo campo de foto ficava com ícone quebrado.
-    if photo_url and not video_url and entry.photo.name in video_photo_names:
-        video_url, photo_url = photo_url, ""
+    if photo_name and not video_name and stored_media.get(photo_name, "").lower().startswith("video/"):
+        video_url, video_name = photo_url, photo_name
+        photo_url, photo_name = "", ""
+
+    # Arquivo que perdeu os bytes: melhor dizer isso do que servir link morto.
+    # Só vale para nome de StoredFile — arquivo de outro storage não entra na conta.
+    media_missing = any(
+        name and _STORED_FILE_NAME_RE.match(name) and name not in stored_media
+        for name in (photo_name, video_name)
+    )
+    if media_missing:
+        photo_url = video_url = ""
+
     return {
         "author_name": (entry_prof.display_name if entry_prof else "") or entry.author.email,
         "author_avatar": getattr(entry_prof, "avatar_url", "") if entry_prof else "",
         "text": entry.text,
         "photo_url": photo_url,
         "video_url": video_url,
+        "media_missing": media_missing,
         "created_label": timezone.localtime(entry.created_at).strftime("%d/%m/%Y %H:%M"),
     }
 
@@ -777,9 +808,9 @@ def group_detail(request, slug):
                 group=group, is_active=True,
             ).select_related("author", "author__profile")[:12]
         )
-        scrapbook_video_names = _scrapbook_video_photo_names(scrapbook_rows)
+        scrapbook_media = _scrapbook_stored_media(scrapbook_rows)
         scrapbook_entries = [
-            _scrapbook_entry_payload(entry, scrapbook_video_names)
+            _scrapbook_entry_payload(entry, scrapbook_media)
             for entry in scrapbook_rows
         ]
 

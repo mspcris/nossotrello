@@ -381,6 +381,18 @@
   .gd-memory{padding:14px;border:1px solid rgba(96,79,160,.12);border-radius:22px;background:linear-gradient(180deg,rgba(255,255,255,.95),rgba(255,248,250,.78))}
   .gd-memory img{width:100%;height:150px;object-fit:cover;border-radius:14px;margin-top:10px}
   .gd-memory video{width:100%;max-height:260px;border-radius:14px;margin-top:10px;background:#000}
+  .gd-memory-thumb{display:block;position:relative;width:100%;padding:0;margin-top:10px;border:0;border-radius:14px;background:transparent;cursor:pointer;overflow:hidden;line-height:0}
+  .gd-memory-thumb img,.gd-memory-thumb video{width:100%;height:150px;object-fit:cover;border-radius:14px;margin:0;background:#000}
+  .gd-memory-thumb:hover img,.gd-memory-thumb:hover video{filter:brightness(.82)}
+  .gd-memory-play,.gd-memory-zoom{position:absolute;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:rgba(8,15,28,.66);color:#fff;backdrop-filter:blur(6px);pointer-events:none}
+  .gd-memory-play{inset:0;margin:auto;width:46px;height:46px;font-size:1.05rem;padding-left:3px}
+  .gd-memory-zoom{right:8px;bottom:8px;width:30px;height:30px;font-size:.9rem}
+  .gd-memory-lost{margin-top:10px;padding:12px 14px;border-radius:14px;border:1px dashed rgba(148,163,184,.5);background:rgba(148,163,184,.12);color:var(--gd-muted);font-size:.82rem;line-height:1.45}
+  .gd-lightbox{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(2,6,23,.88);backdrop-filter:blur(6px)}
+  .gd-lightbox.is-open{display:flex}
+  .gd-lightbox-inner{max-width:min(1100px,94vw);max-height:88vh;line-height:0}
+  .gd-lightbox-inner img,.gd-lightbox-inner video{max-width:100%;max-height:88vh;border-radius:18px;background:#000}
+  .gd-lightbox-close{position:absolute;top:18px;right:18px;border:1px solid rgba(255,255,255,.28);background:rgba(15,23,42,.72);color:#fff;border-radius:999px;padding:10px 16px;font:inherit;font-weight:800;cursor:pointer}
   .gd-empty{padding:16px;border:1px dashed rgba(96,79,160,.24);border-radius:22px;background:rgba(248,251,255,.72);color:var(--gd-muted)}
   .gd-note{font-size:.82rem;color:var(--gd-muted)}
   .gd-section-tag{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:rgba(110,231,255,.22);color:#155e75;font-size:.75rem;font-weight:800;margin-bottom:10px}
@@ -1343,8 +1355,19 @@
             <strong>{{ entry.author_name }}</strong>
             <div class="gd-note">{{ entry.created_label }}</div>
             {% if entry.text %}<p class="gd-post-text gd-rich-text" style="margin-top:8px">{{ entry.text }}</p>{% endif %}
-            {% if entry.photo_url %}<img src="{{ entry.photo_url }}" alt="" loading="lazy">{% endif %}
-            {% if entry.video_url %}<video src="{{ entry.video_url }}" controls preload="metadata" playsinline></video>{% endif %}
+            {% if entry.photo_url %}
+            <button type="button" class="gd-memory-thumb" data-media-kind="foto" data-media-url="{{ entry.photo_url }}" title="Abrir a foto">
+              <img src="{{ entry.photo_url }}" alt="Foto da memória" loading="lazy">
+              <span class="gd-memory-zoom">⤢</span>
+            </button>
+            {% elif entry.video_url %}
+            <button type="button" class="gd-memory-thumb is-video" data-media-kind="video" data-media-url="{{ entry.video_url }}" title="Abrir o vídeo">
+              <video src="{{ entry.video_url }}#t=0.1" preload="metadata" muted playsinline></video>
+              <span class="gd-memory-play">▶</span>
+            </button>
+            {% elif entry.media_missing %}
+            <div class="gd-memory-lost">O arquivo desta memória não está mais no servidor. O texto acima é o que sobrou.</div>
+            {% endif %}
           </article>
           {% endfor %}
         {% else %}
@@ -1360,6 +1383,11 @@
     {% endif %}
   </section>
   {% endif %}
+
+  <div class="gd-lightbox" id="gd-lightbox" role="dialog" aria-modal="true" aria-label="Mídia da memória">
+    <button type="button" class="gd-lightbox-close" id="gd-lightbox-close">Fechar</button>
+    <div class="gd-lightbox-inner" id="gd-lightbox-inner"></div>
+  </div>
 </div>
 {% endblock %}
 
@@ -1376,6 +1404,50 @@
       if(el) el.remove();
     });
   }
+
+  (function(){
+    var box = document.getElementById("gd-lightbox");
+    var inner = document.getElementById("gd-lightbox-inner");
+    if(!box || !inner) return;
+
+    function close(){
+      box.classList.remove("is-open");
+      inner.textContent = "";
+      document.body.style.overflow = "";
+    }
+
+    function open(kind, url){
+      if(!url) return;
+      inner.textContent = "";
+      var el = document.createElement(kind === "video" ? "video" : "img");
+      el.src = url;
+      if(kind === "video"){
+        el.controls = true;
+        el.autoplay = true;
+        el.playsInline = true;
+      } else {
+        el.alt = "Mídia da memória";
+      }
+      inner.appendChild(el);
+      box.classList.add("is-open");
+      document.body.style.overflow = "hidden";
+    }
+
+    document.addEventListener("click", function(ev){
+      var thumb = ev.target.closest && ev.target.closest(".gd-memory-thumb");
+      if(thumb){
+        ev.preventDefault();
+        open(thumb.dataset.mediaKind, thumb.dataset.mediaUrl);
+      }
+    });
+
+    box.addEventListener("click", function(ev){
+      if(!ev.target.closest(".gd-lightbox-inner")) close();
+    });
+    document.addEventListener("keydown", function(ev){
+      if(ev.key === "Escape" && box.classList.contains("is-open")) close();
+    });
+  })();
 
   function gdToggleThemeStudio(forceOpen){
     var panel = document.getElementById("gd-theme-studio");
