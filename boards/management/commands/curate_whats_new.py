@@ -40,6 +40,20 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-08 ---
+    "b867ffe": (
+        "🔒",
+        "Agora a comunidade pode ser aberta ou fechada — e só o dono decide",
+        "Na página da comunidade apareceu o quadro \"Quem entra\", visível "
+        "apenas para o dono, com um botão para abrir ou fechar o grupo. "
+        "Fechada, quem está de fora não vê mais nada de dentro: feed, "
+        "membros, chat e scrapbook ficam guardados e só aparece a capa com a "
+        "ficha do grupo e o botão de pedir para participar. Aberta, qualquer "
+        "pessoa do Espaço Social vê o conteúdo e entra sozinha, sem esperar "
+        "aprovação — e quem já tinha pedido na fila entra na hora, sem ficar "
+        "pendurado esperando alguém aprovar. Toda comunidade que já existia "
+        "continua fechada, e no hub cada cartão agora mostra se é aberta ou "
+        "fechada antes de você clicar.",
+    ),
     "5be77f0": (
         "📲",
         "O Espaço Social agora vira um app no seu celular",
