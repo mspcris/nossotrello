@@ -40,6 +40,18 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-08 ---
+    "c1306e3": (
+        "🧾",
+        "Card que muda de quadro agora deixa rastro nos dois históricos",
+        "Quando alguém movia um card para outro quadro, o Histórico do quadro "
+        "de origem não registrava nada: o card sumia levando o próprio "
+        "histórico junto, e não dava para saber quem tinha tirado, quando, "
+        "nem para onde. Agora a mudança aparece nos dois lados, dizendo o "
+        "nome dos quadros e das colunas — \"moveu este card do quadro Camim "
+        "Gestão Web › TO DO para o quadro Tarefas Cristiano › A Fazer\". No "
+        "histórico, o card que já foi embora mostra em que quadro ele está "
+        "hoje, e clicar nele abre o card lá, no lugar certo.",
+    ),
     "b867ffe": (
         "🔒",
         "Agora a comunidade pode ser aberta ou fechada — e só o dono decide",
