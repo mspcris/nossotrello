@@ -1185,3 +1185,209 @@ if (!window.__colorPopoverOutsideInstalled) {
 })();
 
 
+/* ============================================================
+   VISUALIZADOR DE IMAGEM COM ZOOM (lightbox estilo HESK)
+   Abre a imagem de um anexo em tela cheia com barra de comandos
+   no topo (diminuir, aumentar, ajustar, %, baixar, fechar).
+   Dispara no clique da miniatura de IMAGEM (.cm-attach-thumb[data-zoom-src]);
+   vídeo e PDF seguem seu próprio caminho.
+   Montado uma vez em <body>: sobrevive às trocas de tela do htmx.
+   ============================================================ */
+(function () {
+  var overlay, imgEl, stageEl, titleEl, pctEl, dlEl;
+  var natW = 1, natH = 1;           // tamanho natural da imagem carregada
+  var fitScale = 1;                 // escala em que a imagem cabe na tela
+  var scale = 1, tx = 0, ty = 0;    // estado atual (escala + deslocamento em px)
+  var MIN = 0.05, MAX = 8, STEP = 1.2;
+  var dragging = false, dragMoved = false, sx = 0, sy = 0, stx = 0, sty = 0;
+
+  function svg(inner) {
+    return '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" ' +
+           'stroke="currentColor" stroke-width="2" stroke-linecap="round" ' +
+           'stroke-linejoin="round" aria-hidden="true">' + inner + '</svg>';
+  }
+  var ICONS = {
+    out:  svg('<circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.5" y1="15.5" x2="21" y2="21"/><line x1="7.5" y1="10.5" x2="13.5" y2="10.5"/>'),
+    zin:  svg('<circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.5" y1="15.5" x2="21" y2="21"/><line x1="7.5" y1="10.5" x2="13.5" y2="10.5"/><line x1="10.5" y1="7.5" x2="10.5" y2="13.5"/>'),
+    fit:  svg('<path d="M4 9V5a1 1 0 0 1 1-1h4"/><path d="M20 9V5a1 1 0 0 0-1-1h-4"/><path d="M4 15v4a1 1 0 0 0 1 1h4"/><path d="M20 15v4a1 1 0 0 1-1 1h-4"/>'),
+    dl:   svg('<path d="M12 3v12"/><path d="M7 12l5 5 5-5"/><path d="M5 21h14"/>'),
+    x:    svg('<line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/>')
+  };
+
+  function build() {
+    if (overlay) return;
+    overlay = document.createElement("div");
+    overlay.className = "cm-lightbox";
+    overlay.id = "cm-lightbox";
+    overlay.setAttribute("aria-hidden", "true");
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-label", "Imagem");
+    overlay.innerHTML =
+      '<div class="cm-lb-bar">' +
+        '<span class="cm-lb-title" id="cm-lb-title">Imagem</span>' +
+        '<div class="cm-lb-tools">' +
+          '<button type="button" class="cm-lb-btn" data-act="out" title="Diminuir (−)" aria-label="Diminuir zoom">' + ICONS.out + '</button>' +
+          '<button type="button" class="cm-lb-btn" data-act="in" title="Aumentar (+)" aria-label="Aumentar zoom">' + ICONS.zin + '</button>' +
+          '<button type="button" class="cm-lb-btn" data-act="fit" title="Ajustar à tela (0)" aria-label="Ajustar à tela">' + ICONS.fit + '</button>' +
+          '<span class="cm-lb-pct" id="cm-lb-pct">100%</span>' +
+          '<a class="cm-lb-btn" id="cm-lb-dl" download title="Baixar" aria-label="Baixar imagem">' + ICONS.dl + '</a>' +
+          '<button type="button" class="cm-lb-btn cm-lb-close" data-act="close" title="Fechar (Esc)" aria-label="Fechar">' + ICONS.x + '</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="cm-lb-stage" id="cm-lb-stage">' +
+        '<img id="cm-lb-img" alt="" draggable="false">' +
+      '</div>';
+    document.body.appendChild(overlay);
+
+    stageEl = overlay.querySelector("#cm-lb-stage");
+    imgEl   = overlay.querySelector("#cm-lb-img");
+    titleEl = overlay.querySelector("#cm-lb-title");
+    pctEl   = overlay.querySelector("#cm-lb-pct");
+    dlEl    = overlay.querySelector("#cm-lb-dl");
+
+    overlay.querySelector(".cm-lb-tools").addEventListener("click", function (e) {
+      var b = e.target.closest("[data-act]");
+      if (!b) return;
+      var act = b.getAttribute("data-act");
+      if (act === "close") close();
+      else if (act === "fit") resetFit();
+      else if (act === "in")  zoomBy(STEP, 0, 0);
+      else if (act === "out") zoomBy(1 / STEP, 0, 0);
+    });
+
+    // Clique no fundo (fora da imagem) fecha — mas não logo após um arraste
+    stageEl.addEventListener("click", function (e) {
+      if (dragMoved) { dragMoved = false; return; }
+      if (e.target === stageEl) close();
+    });
+
+    // Roda do mouse = zoom centrado no ponteiro
+    stageEl.addEventListener("wheel", function (e) {
+      e.preventDefault();
+      var r = stageEl.getBoundingClientRect();
+      zoomBy(e.deltaY < 0 ? STEP : 1 / STEP,
+             e.clientX - (r.left + r.width / 2),
+             e.clientY - (r.top + r.height / 2));
+    }, { passive: false });
+
+    // Arrastar para mover (mouse e toque, via pointer events)
+    stageEl.addEventListener("pointerdown", function (e) {
+      dragging = true; dragMoved = false;
+      sx = e.clientX; sy = e.clientY; stx = tx; sty = ty;
+      try { stageEl.setPointerCapture(e.pointerId); } catch (_e) {}
+    });
+    stageEl.addEventListener("pointermove", function (e) {
+      if (!dragging) return;
+      var dx = e.clientX - sx, dy = e.clientY - sy;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragMoved = true;
+      tx = stx + dx; ty = sty + dy;
+      clampPan(); apply();
+    });
+    function endDrag(e) {
+      if (!dragging) return;
+      dragging = false;
+      try { stageEl.releasePointerCapture(e.pointerId); } catch (_e) {}
+    }
+    stageEl.addEventListener("pointerup", endDrag);
+    stageEl.addEventListener("pointercancel", endDrag);
+
+    // Duplo clique alterna entre ajustar e ~200%
+    stageEl.addEventListener("dblclick", function (e) {
+      var r = stageEl.getBoundingClientRect();
+      var px = e.clientX - (r.left + r.width / 2);
+      var py = e.clientY - (r.top + r.height / 2);
+      if (scale > fitScale * 1.02) resetFit();
+      else zoomTo(Math.max(fitScale * 2, 2), px, py);
+    });
+
+    imgEl.addEventListener("load", function () {
+      natW = imgEl.naturalWidth || 1;
+      natH = imgEl.naturalHeight || 1;
+      resetFit();
+    });
+  }
+
+  function apply() {
+    imgEl.style.transform = "translate(" + tx + "px," + ty + "px) scale(" + scale + ")";
+    if (pctEl) pctEl.textContent = Math.round(scale * 100) + "%";
+  }
+
+  // Não deixa a imagem sair de vista: só permite deslocar até revelar as bordas.
+  function clampPan() {
+    var r = stageEl.getBoundingClientRect();
+    var maxX = Math.max(0, (natW * scale - r.width) / 2);
+    var maxY = Math.max(0, (natH * scale - r.height) / 2);
+    if (tx > maxX) tx = maxX; if (tx < -maxX) tx = -maxX;
+    if (ty > maxY) ty = maxY; if (ty < -maxY) ty = -maxY;
+  }
+
+  // Zoom mantendo fixo o ponto (px,py), medido a partir do centro do palco.
+  function zoomTo(next, px, py) {
+    next = Math.min(MAX, Math.max(MIN, next));
+    var ix = (px - tx) / scale;
+    var iy = (py - ty) / scale;
+    scale = next;
+    tx = px - ix * scale;
+    ty = py - iy * scale;
+    clampPan(); apply();
+  }
+  function zoomBy(factor, px, py) { zoomTo(scale * factor, px, py); }
+
+  function resetFit() {
+    var r = stageEl.getBoundingClientRect();
+    fitScale = Math.min(r.width / natW, r.height / natH, 1) || 1;
+    scale = fitScale; tx = 0; ty = 0;
+    apply();
+  }
+
+  function open(src, name) {
+    build();
+    titleEl.textContent = name || "Imagem";
+    dlEl.href = src;
+    dlEl.setAttribute("download", name || "");
+    natW = natH = 1; scale = 1; tx = ty = 0;
+    imgEl.src = src;
+    overlay.classList.add("is-on");
+    overlay.setAttribute("aria-hidden", "false");
+    document.documentElement.classList.add("cm-lb-lock");
+    // imagem em cache pode não disparar "load" — trata na hora
+    if (imgEl.complete && imgEl.naturalWidth) {
+      natW = imgEl.naturalWidth; natH = imgEl.naturalHeight; resetFit();
+    }
+  }
+
+  function close() {
+    if (!overlay) return;
+    overlay.classList.remove("is-on");
+    overlay.setAttribute("aria-hidden", "true");
+    document.documentElement.classList.remove("cm-lb-lock");
+    imgEl.src = "";
+  }
+
+  // Abre no clique da miniatura de imagem — captura para vencer o target=_blank.
+  document.addEventListener("click", function (e) {
+    var a = e.target.closest ? e.target.closest(".cm-attach-thumb[data-zoom-src]") : null;
+    if (!a) return;
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return; // deixa abrir em nova aba
+    var src = a.getAttribute("data-zoom-src");
+    if (!src) return;
+    e.preventDefault();
+    // se o visualizador falhar por qualquer motivo, cai no antigo: abre a imagem crua
+    try { open(src, a.getAttribute("data-zoom-name") || "Imagem"); }
+    catch (_e) { window.open(src, "_blank", "noopener"); }
+  }, true);
+
+  document.addEventListener("keydown", function (e) {
+    if (!overlay || !overlay.classList.contains("is-on")) return;
+    if (e.key === "Escape") close();
+    else if (e.key === "+" || e.key === "=") zoomBy(STEP, 0, 0);
+    else if (e.key === "-" || e.key === "_") zoomBy(1 / STEP, 0, 0);
+    else if (e.key === "0") resetFit();
+  });
+
+  window.addEventListener("resize", function () {
+    if (overlay && overlay.classList.contains("is-on")) { clampPan(); apply(); }
+  });
+})();
+
+

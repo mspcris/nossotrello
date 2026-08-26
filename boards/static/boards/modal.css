@@ -4285,3 +4285,101 @@ html:not(.dark) #modal #card-modal-root:not(.theme-dark):not(.card-theme-dark) .
 html.dark #modal #card-modal-root:not(.theme-dark):not(.card-theme-dark) .code-copy-btn .code-copy-ic{
   color:#ffce3a !important;
 }
+
+/* ============================================================
+   VISUALIZADOR DE IMAGEM COM ZOOM (lightbox estilo HESK)
+   Abre no clique da miniatura de imagem do feed. Barra de
+   comandos no topo: diminuir, aumentar, ajustar, %, baixar, X.
+   Montado em <body> pelo board_ui.js — fora do #cm-root.
+   ============================================================ */
+html.cm-lb-lock{ overflow: hidden; }
+
+.cm-lightbox{
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;            /* acima do modal (999999); abaixo dos menuzinhos */
+  display: none;
+  flex-direction: column;
+  background: rgba(2,6,23,0.92);
+  -webkit-user-select: none;
+  user-select: none;
+}
+.cm-lightbox.is-on{ display: flex; }
+
+.cm-lb-bar{
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  color: #fff;
+}
+.cm-lb-title{
+  font-weight: 700;
+  font-size: 15px;
+  opacity: 0.92;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.cm-lb-tools{
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+.cm-lb-btn{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 0;
+  background: rgba(255,255,255,0.10);
+  color: #fff;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+.cm-lb-btn:hover{ background: rgba(255,255,255,0.22); }
+.cm-lb-btn:active{ background: rgba(255,255,255,0.30); }
+.cm-lb-pct{
+  min-width: 56px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.9;
+  padding: 0 4px;
+  color: #fff;
+}
+.cm-lb-close{ background: rgba(220,38,38,0.85); }
+.cm-lb-close:hover{ background: rgba(220,38,38,1); }
+
+.cm-lb-stage{
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;             /* pan/zoom próprios; sem scroll do navegador */
+}
+.cm-lb-stage:active{ cursor: grabbing; }
+#cm-lb-img{
+  max-width: none;
+  max-height: none;
+  transform-origin: center center;
+  will-change: transform;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+@media (max-width: 640px){
+  .cm-lb-title{ font-size: 13px; max-width: 40vw; }
+  .cm-lb-btn{ width: 34px; height: 34px; }
+  .cm-lb-pct{ min-width: 46px; font-size: 12px; }
+}
