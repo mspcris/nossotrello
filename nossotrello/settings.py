@@ -61,6 +61,25 @@ CSRF_TRUSTED_ORIGINS = _env_csv(
 )
 
 # ============================================================
+# HARDENING — cookies de sessão/CSRF só trafegam sob HTTPS
+# ============================================================
+# O acesso público é https://tarefas.camim.com.br; a porta 8081 é só o encaixe
+# interno entre o proxy da VM e o nginx do container. Sem estas flags o cookie
+# de sessão pode sair em claro num acesso http e a sessão vira sequestrável.
+#
+# NÃO habilitar SECURE_SSL_REDIRECT nem SECURE_PROXY_SSL_HEADER: o nginx do
+# container escuta só em :80 e reescreve X-Forwarded-Proto com $scheme (=http),
+# então o Django nunca enxergaria "https" e entraria em loop de redirect.
+#
+# Escape hatch: SECURE_COOKIES=0 no .env desliga sem precisar de novo deploy
+# (necessário apenas se alguém acessar por http direto no IP da rede interna).
+SECURE_COOKIES = _env_bool("SECURE_COOKIES", default=not DEBUG)
+SESSION_COOKIE_SECURE = SECURE_COOKIES
+CSRF_COOKIE_SECURE = SECURE_COOKIES
+SESSION_COOKIE_HTTPONLY = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+
+# ============================================================
 # BANCO — PostgreSQL (produção) / SQLite (dev fallback)
 # ============================================================
 
