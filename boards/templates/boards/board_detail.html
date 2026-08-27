@@ -12,7 +12,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% url 'boards:board_wallpaper_css' board.id %}">
-<link rel="stylesheet" href="{% static 'boards/board_detail.css' %}?v=20260802-ptr1">
+<link rel="stylesheet" href="{% static 'boards/board_detail.css' %}?v=20260826-colw2">
 <link rel="stylesheet" href="{% static 'boards/calendar.css' %}?v=20260802-agenda1">
 {# skin do cabeçalho compartilhado com a home (body.cm-skin) #}
 <link rel="stylesheet" href="{% static 'boards/cm_skin.css' %}?v=20260717-hdrcompact3">
@@ -600,8 +600,13 @@
       <div
       id="columns-wrapper"
       class="columns-wrapper"
-      data-col-width-set="{% if request.user.is_authenticated and request.user.profile.board_col_width and request.user.profile.board_col_width != 240 %}1{% else %}0{% endif %}"
-      style="--col-base: {% if request.user.is_authenticated %}{{ request.user.profile.board_col_width|default:240 }}{% else %}240{% endif %}px;"
+      {% comment %}
+        --col-base vale sempre (desktop). --col-user só sai quando a pessoa mexeu
+        no slider e é o que o celular lê; sem ela o celular usa o automático.
+        Antes o celular dependia de um data-attr separado que não chegava, e o
+        ajuste não valia lá nem pra mais nem pra menos.
+      {% endcomment %}
+      style="--col-base: {% if request.user.is_authenticated %}{{ request.user.profile.board_col_width|default:240 }}{% else %}240{% endif %}px;{% if request.user.is_authenticated and request.user.profile.board_col_width and request.user.profile.board_col_width != 240 %} --col-user: {{ request.user.profile.board_col_width }}px;{% endif %}"
     >
 
 
@@ -2347,7 +2352,15 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!wrap) return;
 
     wrap.style.setProperty("--col-base", `${w}px`);
-    wrap.dataset.colWidthSet = Number(w) === 240 ? "0" : "1";
+
+    // 240 = padrão: o celular volta pro automático (quase a tela toda). Qualquer
+    // outro valor vira --col-user, que é o que o celular lê. Espelha o que o
+    // template renderiza no load, pra aplicar na hora dar o mesmo que dar F5.
+    if (Number(w) === 240) {
+      wrap.style.removeProperty("--col-user");
+    } else {
+      wrap.style.setProperty("--col-user", `${w}px`);
+    }
   });
 </script>
 

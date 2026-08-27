@@ -969,18 +969,23 @@ li[data-card-id][data-term-status="ok"] .term-badge{ color: #16a34a; }
    é FALTA DE ESPAÇO pra ler o card, então a coluna ocupa quase a largura da tela
    (uma por vez, com scroll horizontal entre colunas — padrão Kanban no celular). */
 @media (max-width: 767px) {
+  /* --col-user só é emitida quando a pessoa mexeu no slider; sem ela vale o
+     automático (quase a tela toda, uma coluna por vez).
+
+     Antes isso dependia de um atributo data-col-width-set no wrapper, e SÓ o
+     celular precisava dele: o desktop lê --col-base direto por herança. Quando o
+     atributo não chegava como "1", o desktop continuava certo e o celular
+     ignorava o ajuste inteiro — nem aumentava, nem diminuía. Agora os dois leem
+     a mesma variável herdada, então ou funciona nos dois ou quebra nos dois.
+
+     Sem teto de vw de propósito: o antigo min(...,92vw) dava ~361px numa tela de
+     390, quase o mesmo que o automático (~346px), então toda a metade de cima do
+     slider caía no mesmo lugar. O valor já vem limitado a 200–420 pelo servidor;
+     passar da tela só liga o scroll horizontal, normal no Kanban. */
   #columns-wrapper .column-item:not(.aggregator-column) {
-    --col-w: min(88vw, 380px);
+    --col-w: var(--col-user, min(88vw, 380px));
     flex: 0 0 var(--col-w);
     width: var(--col-w);
-  }
-
-  /* Quem mexeu no slider de largura manda no celular também — era isso que faltava:
-     antes o vw fixo sobrescrevia --col-base e o ajuste não saía do lugar. O teto de
-     92vw só impede a coluna de estourar a tela. Especificidade (1,3,0) ganha das
-     regras de default abaixo, então a ordem dos blocos não importa. */
-  #columns-wrapper[data-col-width-set="1"] .column-item:not(.aggregator-column) {
-    --col-w: min(var(--col-base, 240px), 92vw);
   }
 }
 
@@ -998,7 +1003,7 @@ li[data-card-id][data-term-status="ok"] .term-badge{ color: #16a34a; }
    agregadora travada fica bem enxuta. */
 @media (max-width: 360px) {
   #columns-wrapper .column-item:not(.aggregator-column) {
-    --col-w: 90vw;
+    --col-w: var(--col-user, 90vw);
   }
   .aggregator-column {
     width: 124px;
