@@ -602,6 +602,62 @@ html.dark #modal:not(.hidden) #card-modal-root:not(.theme-dark):not(.card-theme-
   flex: 0 0 auto;
 }
 
+/* A barra do topo vive fora do #cm-root, onde moram os tokens --cm-*: os
+   botões clonados chegavam sem fundo nem borda, só o texto solto sobre a capa.
+   Com capa escura, as abas sumiam. Aqui cada pílula tem fundo próprio, e no
+   tema escuro elas acendem: fundo claro translúcido, borda visível e a ativa
+   com um brilho azul. */
+#card-modal-root #card-tabs .cm-tabbtn{
+  background: rgba(255,255,255,0.74);
+  border-color: rgba(15,23,42,0.16);
+  color: rgba(15,23,42,0.92);
+}
+#card-modal-root #card-tabs .cm-tabbtn:hover{
+  background: rgba(255,255,255,0.92);
+}
+#card-modal-root #card-tabs .cm-tabbtn.is-active{
+  background: rgba(37,99,235,0.18);
+  border-color: rgba(37,99,235,0.48);
+}
+#card-modal-root #card-tabs .cm-tab-count{
+  background: rgba(15,23,42,0.10);
+  border-color: rgba(15,23,42,0.14);
+}
+
+#card-modal-root.theme-dark #card-tabs .cm-tabbtn,
+#card-modal-root.card-theme-dark #card-tabs .cm-tabbtn,
+html.dark #card-modal-root #card-tabs .cm-tabbtn{
+  background: rgba(255,255,255,0.14);
+  border-color: rgba(255,255,255,0.32);
+  color: rgba(248,250,252,0.97);
+}
+#card-modal-root.theme-dark #card-tabs .cm-tabbtn:hover,
+#card-modal-root.card-theme-dark #card-tabs .cm-tabbtn:hover,
+html.dark #card-modal-root #card-tabs .cm-tabbtn:hover{
+  background: rgba(255,255,255,0.22);
+  border-color: rgba(255,255,255,0.45);
+}
+#card-modal-root.theme-dark #card-tabs .cm-tabbtn.is-active,
+#card-modal-root.card-theme-dark #card-tabs .cm-tabbtn.is-active,
+html.dark #card-modal-root #card-tabs .cm-tabbtn.is-active{
+  background: rgba(96,165,250,0.34);
+  border-color: rgba(147,197,253,0.80);
+  color: #ffffff;
+  box-shadow: 0 0 0 1px rgba(147,197,253,0.22), 0 0 14px rgba(96,165,250,0.40);
+}
+#card-modal-root.theme-dark #card-tabs .cm-tab-count,
+#card-modal-root.card-theme-dark #card-tabs .cm-tab-count,
+html.dark #card-modal-root #card-tabs .cm-tab-count{
+  background: rgba(255,255,255,0.18);
+  border-color: rgba(255,255,255,0.32);
+}
+#card-modal-root.theme-dark #card-tabs .cm-tabbtn.is-active .cm-tab-count,
+#card-modal-root.card-theme-dark #card-tabs .cm-tabbtn.is-active .cm-tab-count,
+html.dark #card-modal-root #card-tabs .cm-tabbtn.is-active .cm-tab-count{
+  background: rgba(147,197,253,0.35);
+  border-color: rgba(147,197,253,0.70);
+}
+
 /* A barra de abas de dentro do card vira duplicata assim que a do topo existe:
    some com ela e com o espaço, mas só quando a de cima está montada — se o JS
    não rodar, `data-shell-tabs` não entra e as abas continuam onde sempre
