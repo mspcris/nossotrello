@@ -40,6 +40,15 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-08 ---
+    "5d76f1e": (
+        "📎",
+        "Anexos dos chamados do Hesk abrem direto no card",
+        "Quando um chamado do Hesk virava card, a imagem do relato e os arquivos "
+        "anexados ficavam apontando para o Hesk — quem não tem login lá via a "
+        "imagem quebrada e não conseguia baixar o arquivo. Agora os anexos são "
+        "copiados para dentro do card (aparecem também na aba Anexos) e abrem "
+        "aqui mesmo, sem login no Hesk. Os cards antigos foram corrigidos também.",
+    ),
     "e534802": (
         "🌙",
         "As abas do card acendem quando o fundo é escuro",
