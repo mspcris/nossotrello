@@ -554,7 +554,10 @@ class CardAttachment(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
-    is_active = models.BooleanField(default=True)
+    # db_default: o HESK insere anexos por SQL cru (dashboard/nossotrello.py). Quando
+    # o soft-delete entrou (0139) sem default no banco, o INSERT dele passou a falhar
+    # em silencio e nenhum anexo de chamado chegou ao card por um mes.
+    is_active = models.BooleanField(default=True, db_default=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
 
     objects = ActiveAttachmentManager()   # uso padrão (só anexos vivos)
