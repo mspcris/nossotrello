@@ -357,6 +357,9 @@ def update_card(request, card_id):
     raw_desc = _norm(request.POST.get("description", card.description or ""))
     new_desc_html, saved_paths = _save_base64_images_to_media(raw_desc, folder="quill")
     card.description = _norm(sanitize_quill_html(new_desc_html))
+    # Link /anexo/ do HESK que um editor desatualizado devolveu → anexo do card.
+    from boards.services.hesk_links import reapontar_anexos_hesk
+    card.description = reapontar_anexos_hesk(card, card.description)
 
     new_tags_raw = request.POST.get("tags", old_tags_raw) or ""
 

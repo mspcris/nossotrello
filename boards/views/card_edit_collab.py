@@ -215,6 +215,8 @@ def card_field_release(request, card_id: int, field: str):
                 )
                 new_html = raw_value
             card.description = sanitize_quill_html((new_html or "").strip())
+            from boards.services.hesk_links import reapontar_anexos_hesk
+            card.description = reapontar_anexos_hesk(card, card.description)
             card.save(update_fields=["description"])
             final_value = card.description
 

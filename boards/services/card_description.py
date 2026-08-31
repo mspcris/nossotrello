@@ -34,8 +34,9 @@ def atualizar_descricao(*, card, descricao, actor, request=None):
     cada sincronização encheria o feed de ruído."""
     from boards.views.helpers import _log_card
 
+    from boards.services.hesk_links import reapontar_anexos_hesk
     antes = card.description or ""
-    depois = descricao or ""
+    depois = reapontar_anexos_hesk(card, descricao or "")
     if antes.strip() == depois.strip():
         return False
 
