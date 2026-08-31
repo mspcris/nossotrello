@@ -40,6 +40,16 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-08 ---
+    "81b9910": (
+        "🔍",
+        "Imagem da descrição abre no visualizador com zoom",
+        "Clicar numa imagem dentro da descrição do card — o print de um chamado, "
+        "por exemplo — agora abre o mesmo visualizador das miniaturas do feed: "
+        "zoom com a roda do mouse ou com os botões, ajustar à tela, baixar e o X "
+        "vermelho que volta para o card. Antes a imagem ficava presa no tamanho "
+        "do editor e, para ver de perto, era preciso abrir numa aba solta. Na aba "
+        "Anexos, o link de uma imagem também abre no visualizador.",
+    ),
     "5d76f1e": (
         "📎",
         "Anexos dos chamados do Hesk abrem direto no card",
