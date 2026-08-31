@@ -3,29 +3,32 @@
 API server-to-server consumida pelo idCamim.
 
 POST /api/idcamim/whatsapp/ — envia uma mensagem de WhatsApp pelo Evolution
-(mesma instância "Tarefas" usada nas notificações de card).
+usando a instância DO CHAMADOR (o idCamim tem a dele, ex.: "CRM"), não a do
+Tarefas. O Tarefas entra só com o que o idCamim não tem: o telefone do perfil
+daqui quando o idCamim não tem telefone cadastrado, e o cliente Evolution.
 
-Uso hoje: link de redefinição de senha do idCamim. O idCamim manda o telefone
-cadastrado lá; se vier vazio, usamos o telefone do perfil do usuário DAQUI
-com o mesmo e-mail (fallback "usa o do tarefas").
-
-Autenticação: header `X-IdCamim-Token` igual a `IDCAMIM_ZAP_TOKEN` (.env).
-Sem token configurado o endpoint fica desligado (503) — nunca aberto.
+Autenticação: header `X-Evolution-Token` com o token da instância no Evolution.
+O token é conferido NO PRÓPRIO EVOLUTION (`GET /instance/fetchInstances`): se
+ele aceitar e devolver exatamente uma instância, o chamador é legítimo e é por
+essa instância que a mensagem sai. Token inválido → 401. Nada de segredo
+compartilhado para manter em dois lugares.
 
 Body JSON:
     {"email": "fulano@camim.com.br", "phone": "(21) 9...", "text": "..."}
 
 Respostas:
-    200 {"ok": true,  "source": "idcamim"|"tarefas", "number_masked": "5521*****2098"}
-    404 {"ok": false, "error": "sem_telefone"}      — nem idCamim nem Tarefas têm número
-    502 {"ok": false, "error": "evolution", ...}     — Evolution recusou/caiu
+    200 {"ok": true,  "instance": "CRM", "source": "idcamim"|"tarefas", "number_masked": "5521*****2098"}
+    401 {"ok": false, "error": "unauthorized"}              — Evolution recusou o token
+    404 {"ok": false, "error": "sem_telefone"}              — nem idCamim nem Tarefas têm número
+    409 {"ok": false, "error": "instancia_desconectada"}    — instância existe mas está sem WhatsApp
+    502 {"ok": false, "error": "evolution", ...}            — Evolution caiu/recusou o envio
 """
 from __future__ import annotations
 
-import hmac
 import json
 import logging
 import re
+from urllib import error, request
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -38,7 +41,7 @@ from tracktime.services.evolution import EvolutionError, send_text_message
 
 logger = logging.getLogger(__name__)
 
-TOKEN_HEADER = "HTTP_X_IDCAMIM_TOKEN"
+TOKEN_HEADER = "HTTP_X_EVOLUTION_TOKEN"
 
 
 def normalize_phone(raw) -> str:
@@ -70,13 +73,47 @@ def _mask(number: str) -> str:
     return number[:4] + "*" * (len(number) - 8) + number[-4:]
 
 
-def _authorized(request) -> bool | None:
-    """True/False = token conferido; None = endpoint sem token configurado."""
-    expected = (getattr(settings, "IDCAMIM_ZAP_TOKEN", "") or "").strip()
-    if not expected:
-        return None
-    given = (request.META.get(TOKEN_HEADER) or "").strip()
-    return bool(given) and hmac.compare_digest(given, expected)
+def resolve_instance(base_url: str, token: str) -> tuple[dict | None, str]:
+    """
+    Pergunta ao Evolution de quem é este token.
+
+    Retorna (instancia, "") ou (None, motivo). `instancia` = {"name", "state"}.
+    Um token de instância só enxerga a própria instância; a chave global
+    enxerga todas — e aí não dá para saber por qual enviar (token_ambiguo).
+    """
+    if not token:
+        return None, "unauthorized"
+    req = request.Request(
+        url=f"{base_url.rstrip('/')}/instance/fetchInstances",
+        method="GET",
+        headers={"apikey": token},
+    )
+    try:
+        with request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode("utf-8", errors="replace") or "[]")
+    except error.HTTPError as e:
+        if e.code in (401, 403):
+            return None, "unauthorized"
+        return None, f"evolution_http_{e.code}"
+    except Exception as e:  # rede, timeout, JSON
+        logger.warning("idcamim_api: fetchInstances falhou: %s", e)
+        return None, "evolution_indisponivel"
+
+    if isinstance(data, dict):
+        data = [data]
+    items = []
+    for i in data if isinstance(data, list) else []:
+        if not isinstance(i, dict):
+            continue
+        inner = i.get("instance") if isinstance(i.get("instance"), dict) else {}
+        name = i.get("name") or inner.get("instanceName")
+        state = i.get("connectionStatus") or inner.get("status") or inner.get("state")
+        if name:
+            items.append({"name": str(name), "state": str(state or "")})
+
+    if len(items) != 1:
+        return None, "token_ambiguo" if items else "unauthorized"
+    return items[0], ""
 
 
 def _phone_from_tarefas(email: str) -> str:
@@ -96,14 +133,23 @@ def _phone_from_tarefas(email: str) -> str:
 @csrf_exempt
 @require_POST
 def whatsapp(request):
-    auth = _authorized(request)
-    if auth is None:
+    base_url = (getattr(settings, "EVOLUTION_BASE_URL", "") or "").strip()
+    if not base_url:
         return JsonResponse(
-            {"ok": False, "error": "nao_configurado", "message": "IDCAMIM_ZAP_TOKEN não configurado no Tarefas."},
+            {"ok": False, "error": "evolution_nao_configurado", "message": "EVOLUTION_BASE_URL não configurada no Tarefas."},
             status=503,
         )
-    if not auth:
-        return JsonResponse({"ok": False, "error": "unauthorized"}, status=401)
+
+    token = (request.META.get(TOKEN_HEADER) or "").strip()
+    instance, why = resolve_instance(base_url, token)
+    if not instance:
+        status = 401 if why in ("unauthorized", "token_ambiguo") else 502
+        msg = {
+            "unauthorized": "O Evolution não reconheceu este token de instância.",
+            "token_ambiguo": "Este token enxerga várias instâncias (chave global?). Use o token de UMA instância.",
+        }.get(why, "Evolution indisponível para validar o token.")
+        logger.info("idcamim_api: token recusado (%s)", why)
+        return JsonResponse({"ok": False, "error": why, "message": msg}, status=status)
 
     try:
         body = json.loads(request.body or b"{}")
@@ -130,26 +176,28 @@ def whatsapp(request):
             status=404,
         )
 
-    base_url = (getattr(settings, "EVOLUTION_BASE_URL", "") or "").strip()
-    api_key = (getattr(settings, "EVOLUTION_API_KEY", "") or "").strip()
-    instance = (getattr(settings, "EVOLUTION_INSTANCE", "") or "").strip()
-    if not (base_url and api_key and instance):
+    if instance["state"] and instance["state"] != "open":
         return JsonResponse(
-            {"ok": False, "error": "evolution_nao_configurado", "message": "Evolution API não configurada no Tarefas."},
-            status=503,
+            {
+                "ok": False,
+                "error": "instancia_desconectada",
+                "instance": instance["name"],
+                "message": f"A instância {instance['name']} está '{instance['state']}' no Evolution — reconecte o WhatsApp dela.",
+            },
+            status=409,
         )
 
     try:
         send_text_message(
             base_url=base_url,
-            api_key=api_key,
-            instance=instance,
+            api_key=token,
+            instance=instance["name"],
             number=number,
             body=text,
         )
     except EvolutionError as exc:
-        logger.warning("idcamim_api: evolution falhou email=%s number=%s: %s", email, _mask(number), exc)
-        return JsonResponse({"ok": False, "error": "evolution", "message": str(exc)}, status=502)
+        logger.warning("idcamim_api: evolution falhou instance=%s email=%s number=%s: %s", instance["name"], email, _mask(number), exc)
+        return JsonResponse({"ok": False, "error": "evolution", "instance": instance["name"], "message": str(exc)}, status=502)
 
-    logger.info("idcamim_api: whatsapp enviado email=%s source=%s number=%s", email, source, _mask(number))
-    return JsonResponse({"ok": True, "source": source, "number_masked": _mask(number)})
+    logger.info("idcamim_api: whatsapp enviado instance=%s email=%s source=%s number=%s", instance["name"], email, source, _mask(number))
+    return JsonResponse({"ok": True, "instance": instance["name"], "source": source, "number_masked": _mask(number)})
