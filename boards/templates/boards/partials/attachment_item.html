@@ -38,6 +38,15 @@
           ▶ {{ meta.name }}
         </a>
         {% endwith %}
+      {% elif meta.kind == 'image' %}
+        <a href="{{ attachment.file.url }}"
+           target="_blank"
+           class="text-blue-600 font-medium hover:underline text-sm break-words"
+           data-zoom-src="{{ attachment.file.url }}"
+           data-zoom-name="{{ meta.name }}"
+           title="Ver {{ meta.name }}">
+          🔍 {{ meta.name }}
+        </a>
       {% else %}
         <a href="{{ attachment.file.url }}"
            target="_blank"

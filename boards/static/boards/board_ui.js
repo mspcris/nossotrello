@@ -1364,9 +1364,10 @@ if (!window.__colorPopoverOutsideInstalled) {
     imgEl.src = "";
   }
 
-  // Abre no clique da miniatura de imagem — captura para vencer o target=_blank.
+  // Abre no clique de qualquer [data-zoom-src] (miniatura do feed, link da aba
+  // Anexos) — captura para vencer o target=_blank.
   document.addEventListener("click", function (e) {
-    var a = e.target.closest ? e.target.closest(".cm-attach-thumb[data-zoom-src]") : null;
+    var a = e.target.closest ? e.target.closest("[data-zoom-src]") : null;
     if (!a) return;
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return; // deixa abrir em nova aba
     var src = a.getAttribute("data-zoom-src");
@@ -1375,6 +1376,23 @@ if (!window.__colorPopoverOutsideInstalled) {
     // se o visualizador falhar por qualquer motivo, cai no antigo: abre a imagem crua
     try { open(src, a.getAttribute("data-zoom-name") || "Imagem"); }
     catch (_e) { window.open(src, "_blank", "noopener"); }
+  }, true);
+
+  // Imagem dentro da DESCRIÇÃO (editor Quill) também abre no visualizador.
+  // Antes só as miniaturas do feed abriam; a imagem do relato de um chamado
+  // ficava presa no tamanho do editor, sem zoom, e quem queria ver abria a
+  // URL crua numa aba — sem comandos e sem o X pra voltar ao card.
+  // Não cancela o evento: o Quill continua selecionando a imagem por baixo
+  // (apagar/mover seguem funcionando quando o visualizador fecha).
+  document.addEventListener("click", function (e) {
+    var img = e.target && e.target.tagName === "IMG" ? e.target : null;
+    if (!img || !img.closest || !img.closest(".ql-editor")) return;
+    if (img.closest("[data-zoom-src]")) return;                 // já tratado acima
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
+    var src = img.currentSrc || img.src;
+    if (!src || (/^data:/i.test(src) && src.length > 4e6)) return; // colagem gigante ainda não salva
+    var name = img.getAttribute("alt") || (src.split("/").filter(Boolean).pop() || "Imagem");
+    try { open(src, name); } catch (_e) {}
   }, true);
 
   document.addEventListener("keydown", function (e) {
