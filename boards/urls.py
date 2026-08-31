@@ -25,6 +25,7 @@ from .views.polling import board_poll
 
 from boards.views.modal_card_term import set_card_term_due, set_board_term_colors
 from boards.views import camim_auth
+from boards.views import idcamim_api
 from boards.views.pwa import service_worker
 
 
@@ -360,6 +361,9 @@ urlpatterns = [
     # ============================================================
     path("auth/camim/login/",    camim_auth.camim_login,    name="camim_login"),
     path("auth/camim/callback/", camim_auth.camim_callback, name="camim_callback"),
+    # Server-to-server: idCamim pede para mandar WhatsApp (link de senha).
+    # Fica sob /api/ de propósito: LoginRequiredMiddleware libera esse prefixo.
+    path("api/idcamim/whatsapp/", idcamim_api.whatsapp, name="idcamim_whatsapp"),
 
     # ============================================================
     # AUTH / CONTAS (login/logout/primeiro login/recuperação senha)

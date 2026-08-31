@@ -391,6 +391,11 @@ CAMIM_CLIENT_SECRET = (os.getenv("CAMIM_CLIENT_SECRET") or "").strip()
 CAMIM_ADMIN_API_BASE = (os.getenv("CAMIM_ADMIN_API_BASE") or "https://auth.camim.com.br").strip()
 CAMIM_ADMIN_API_KEY  = (os.getenv("CAMIM_ADMIN_API_KEY") or "").strip()
 
+# Token que o idCamim manda (header X-IdCamim-Token) em POST /api/idcamim/whatsapp/
+# para pedir o envio de WhatsApp (link de redefinição de senha). O MESMO valor
+# vai no painel do idCamim em Integrações > Tarefas. Vazio = endpoint desligado.
+IDCAMIM_ZAP_TOKEN = (os.getenv("IDCAMIM_ZAP_TOKEN") or "").strip()
+
 
 # ============================================================
 # GROQ AI API (mood check-in / chatbot motivacional)
