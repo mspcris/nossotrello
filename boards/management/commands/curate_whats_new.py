@@ -47,8 +47,8 @@ CURATED = {
         "do alto do card — Descrição, Etiquetas, Checklists, Anexos, "
         "Track-time — viravam texto solto sobre o fundo, quase invisível; só "
         "a aba aberta tinha alguma cor. Agora cada aba é uma pílula com fundo "
-        "e borda próprios, e no escuro elas ficam mais claras, com a aba "
-        "aberta em azul mais forte e um brilho ao redor. No claro também "
+        "e borda próprios, e no escuro elas ficam mais claras; a aba "
+        "aberta é azul sólido com letra branca, legível sobre qualquer capa. No claro também "
         "ganharam fundo, mas ali a diferença é discreta.",
     ),
     "dd33aa8": (
