@@ -40,6 +40,17 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-08 ---
+    "e534802": (
+        "🌙",
+        "As abas do card acendem quando o fundo é escuro",
+        "Com o modal no tema escuro, ou o board com uma capa escura, as abas "
+        "do alto do card — Descrição, Etiquetas, Checklists, Anexos, "
+        "Track-time — viravam texto solto sobre o fundo, quase invisível; só "
+        "a aba aberta tinha alguma cor. Agora cada aba é uma pílula com fundo "
+        "e borda próprios, e no escuro elas ficam mais claras, com a aba "
+        "aberta em azul mais forte e um brilho ao redor. No claro também "
+        "ganharam fundo, mas ali a diferença é discreta.",
+    ),
     "dd33aa8": (
         "📱",
         "No celular, as abas do card ganharam uma linha só delas",
