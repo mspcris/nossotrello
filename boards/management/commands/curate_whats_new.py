@@ -39,6 +39,20 @@ def _commit_datetime(commit_hash: str):
 # Textos pensados no USUÁRIO: o que ele ganha, não o que foi feito.
 # -------------------------------------------------------------
 CURATED = {
+    # --- 2026-09 ---
+    "924143a": (
+        "📅",
+        "Entrega mensal de relatório: a lista cobra sozinha",
+        "Nova automação para listas de relatório obrigatório, como a "
+        "\"Relatórios Empresariais\" dos postos: cada card precisa de um anexo por "
+        "mês. Ao anexar, o arquivo entra no mês pendente mais antigo (ou no mês "
+        "escrito no nome do arquivo), a IA lê o conteúdo e o responsável recebe um "
+        "e-mail com o resumo; o card já fica com a data do próximo dia 15. Mês "
+        "vencido sem anexo vira cobrança automática aos gerentes do posto, com cópia "
+        "ao responsável. O card ganha a aba \"Mensal\" com o histórico de cada mês e "
+        "um selo no quadro mostrando o que falta. Ative pelo raio ⚡ da lista, em "
+        "\"Entrega mensal de relatório\".",
+    ),
     # --- 2026-08 ---
     "81b9910": (
         "🔍",
