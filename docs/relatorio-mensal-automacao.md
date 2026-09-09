@@ -25,26 +25,50 @@ Padrão observado nos dados: o gestor anexa o arquivo no card durante o mês e a
 data de entrega do card aponta para o **dia 15 do mês seguinte** (ex.: anexo em
 18/08 → entrega 15/09). O flag "Entregue" está marcado na maioria, sem uso real.
 
-### 1.1 Quem são os gerentes (o sistema NÃO sabe formalmente)
+### 1.1 Quem são os gerentes — fonte: cadastro de Gestores do Hesk
 
-Não existe campo "cargo" no perfil; `posto`/`setor` são preenchidos pelo próprio
-usuário e estão inconsistentes. O que existe de confiável é o **histórico de quem
-anexou** nesses cards (CardLog "anexou"). Inferência:
+O Tarefas não tem cargo no perfil. A fonte oficial é o **Hesk**
+(`administrativo.camim.com.br`, Configurações → Gestores dos postos), tabelas
+`dashboard_gestor`, `dashboard_gestorposto` e `dashboard_posto` no banco `hesk`
+da **mesma RDS** (`postgres-db...us-east-1.rds.amazonaws.com:9432`, usuário
+`camim_pg`) que o Tarefas já usa. É de lá que a página `/recursos/` e o
+"meu-posto" do Hesk tiram a lista.
 
-| Board | Responsável inferido (quem anexa)                       | Anexos | Observação |
-|------:|---------------------------------------------------------|-------:|------------|
-| 34    | julio@camim.com.br; elisangela.rodrigues@clinicacamim.com.br | 10 / 4 | ambos "Administração/Anchieta" |
-| 35    | davi@clinicacamim.com.br                                | 13     | |
-| 36    | carne@camim.com.br                                      | 12     | setor "GERENCIA"; peterson@ tem setor "Gerente" mas nunca anexou |
-| 37    | alessandra@camim.com.br                                 | 16     | |
-| 38    | raissa.reis@clinicacamim.com.br                         | 15     | |
-| 39    | thais@clinicacamim.com.br                               | 13     | |
-| 40    | **ninguém** (só Leonardo/Cristiano)                     | 0      | candidato: gabriel.carvalho@clinicacamim.com.br (posto Nova Iguaçu, Administração). Parou de anexar em março. |
-| 41    | gerenciar@camim.com.br                                  | 4      | parou em abril |
+Casamento: **nome do quadro = nome do posto** (case-insensitive, sem acento):
+`ANCHIETA` ↔ `Anchieta`, `CAMPO GRANDE X` ↔ `Campo Grande X`, etc.
 
-Consequência de design: **a lista de responsáveis é configurada explicitamente na
-automação** (multi-select de membros do quadro). Sem essa lista o aviso do dia 15
-vai só para o Leonardo, com a frase "sem responsáveis configurados".
+```sql
+-- gestores ativos por posto (rodar no banco hesk)
+SELECT p.nome AS posto, g.nome, g.email, g.telefone
+FROM dashboard_posto p
+JOIN dashboard_gestorposto gp ON gp.posto_id = p.id
+JOIN dashboard_gestor g ON g.id = gp.gestor_id
+WHERE p.excluido_em IS NULL AND g.excluido_em IS NULL AND g.ativo
+ORDER BY p.ordem, p.nome, g.nome;
+```
+
+Resultado hoje (09/09/2026) para os 8 quadros:
+
+| Board | Posto (Hesk)   | Gestores cadastrados |
+|------:|----------------|----------------------|
+| 34    | Anchieta       | Elisangela Rodrigues <elisangela.rodrigues@clinicacamim.com.br>; Júlio Albuquerque <julio@camim.com.br> |
+| 35    | Bangu          | Davi <davi@clinicacamim.com.br>; Renato <jose.renato@clinicacamim.com.br> |
+| 36    | Campo Grande   | Luann <carne@camim.com.br>; Petterson <peterson@clinicacamim.com.br> |
+| 37    | Campo Grande X | Alessandra Lourenço <alessandra@camim.com.br> |
+| 38    | Campo Grande Y | Mariana Mello <marianamello@clinicacamim.com.br> |
+| 39    | Nilópolis      | Romulo Azevedo <romulo@clinicacamim.com.br>; Thais Lima <thais@clinicacamim.com.br> |
+| 40    | Nova Iguaçu    | Gabriel Carvalho <gabriel.carvalho@clinicacamim.com.br>; Marcos Dantas <dantas@clinicacamim.com.br> |
+| 41    | Realengo       | Camilla Gaspar <gerenciar@camim.com.br>; Thiago Silva <thiago.silva@clinicacamim.com.br> |
+
+Bate com quem de fato anexa nos cards (histórico), exceto Campo Grande Y, onde
+quem anexa é raissa.reis@ e a gestora cadastrada é Mariana Mello — ambas são
+membros do quadro; a cobrança vai para a gestora, como manda o cadastro.
+
+Consequência de design: o Tarefas **lê o cadastro do Hesk em tempo real**
+(alias de banco `hesk`, somente leitura, cache de 10 min) e mostra os gestores
+na regra. A regra permite **adicionar** pessoas extras (multi-select de membros
+do quadro), nunca substituir a fonte. Se o Hesk estiver fora, usa o último cache
+e, no limite, avisa só o destinatário (Leonardo) com "gestores indisponíveis".
 
 ---
 
@@ -125,7 +149,8 @@ ciclo. Linhas do livro-razão nunca são apagadas.
   {
     "day": 15,
     "recipient_email": "leonardo@camim.com.br",
-    "responsible_user_ids": [123, 456],
+    "extra_user_ids": [123, 456],       // pessoas ALÉM dos gestores do Hesk
+    "posto_nome": "Anchieta",           // override opcional; default = nome do quadro
     "ai_validate": true,
     "ai_instructions": "texto livre opcional: o que o relatório precisa conter",
     "start_month": "2026-09"
@@ -217,8 +242,8 @@ Executa uma vez, idempotente, na VM (`nossotrello-web-1`):
 1. Renomeia a coluna 343 para "Relatórios Empresariais".
 2. Cria em cada coluna (343, 348, 346, 345, 344, 317, 342, 347) a regra
    `attach → monthly_report` com `day=15`, `recipient_email=leonardo@camim.com.br`,
-   `ai_validate=true`, `start_month=2026-09` e os responsáveis da tabela 1.1
-   (**lista precisa ser confirmada pelo Cristiano antes**).
+   `ai_validate=true`, `start_month=2026-09`. Responsáveis vêm do cadastro de
+   Gestores do Hesk (tabela 1.1); nada fixo no código.
 3. **Histórico**: para cada card, percorre os anexos ativos desde março/2026 e
    cria as linhas dos ciclos passados: com anexo na janela → `delivered`
    (`attached_at/by` do anexo, sem IA, sem e-mail); sem anexo → `skipped`.
@@ -241,6 +266,8 @@ Executa uma vez, idempotente, na VM (`nossotrello-web-1`):
 
 | Arquivo | Mudança |
 |---|---|
+| `nossotrello/settings.py` | alias `DATABASES["hesk"]` (mesmo host/usuário, banco `hesk`) + router que proíbe migrate/write |
+| `boards/services/hesk_gestores.py` (novo) | `gestores_do_posto(nome)` via SQL cru no alias `hesk`, cache 10 min |
 | `boards/models.py` | choices novas em `ColumnAutomation`; model `MonthlyReportEntry` |
 | `boards/migrations/0XXX_monthly_report.py` | tabela nova + índices |
 | `boards/services/monthly_report.py` (novo) | ciclo, atribuição do anexo, IA (Groq), e-mails, lembrete do dia 15, aceitar, soft-delete |
