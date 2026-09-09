@@ -115,6 +115,7 @@ from .views.search import board_search, home_search
 from .views import columns as columns_views
 from .views.email_ingest import email_ingest_config, email_ingest_sync_now, email_ingest_test
 from .views.column_automation import column_automation_modal, column_automation_delete
+from .views import monthly_report as monthly_views
 from .views.column_autosort import column_autosort_config, column_autosort_now
 from .views.card_counter import card_counter_modal
 
@@ -617,6 +618,11 @@ urlpatterns = [
 
     # Automação da coluna (gatilho card entra/sai -> ação)
     path("column/<int:column_id>/automation/", column_automation_modal, name="column_automation_modal"),
+    # Relatório mensal (recorrência): aba do card + aceitar anexo reprovado
+    path("card/<int:card_id>/monthly/", monthly_views.monthly_panel, name="monthly_panel"),
+    path("card/<int:card_id>/monthly/<int:entry_id>/accept/", monthly_views.monthly_accept, name="monthly_accept"),
+    # Monitoramento externo (Token DRF). Sob /api/ de propósito: middleware libera.
+    path("api/monthly-reports/", monthly_views.monthly_reports_api, name="monthly_reports_api"),
     path("column-automation/<int:automation_id>/delete/", column_automation_delete, name="column_automation_delete"),
 
     # Auto-ordenação agendada da coluna

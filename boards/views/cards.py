@@ -1354,6 +1354,16 @@ def _render_card_modal(request, card, context=None):
     # ✅ SEGREDOS/SNIPPETS (curl com chave etc.) — só no modal split
     ctx.update(_card_secret_context(card, request.user))
 
+    # ✅ RELATÓRIO MENSAL (aba "Mensal") — só quando a coluna tem a recorrência
+    try:
+        from boards.services.monthly_report import panel_context
+        ctx["monthly"] = panel_context(card)
+        from ..permissions import can_edit_board as _can_edit_board
+        ctx["viewer_can_edit"] = _can_edit_board(request.user, card.column.board)
+    except Exception:
+        ctx["monthly"] = {}
+        ctx["viewer_can_edit"] = False
+
     # hardening: chaves usadas nos templates
     ctx.setdefault("card", card)
     ctx.setdefault("column", getattr(card, "column", None))

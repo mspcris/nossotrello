@@ -12,8 +12,8 @@
       <h2 class="text-lg font-bold">Automação — {{ column.name }}</h2>
     </div>
     <p class="text-sm text-white/60 mb-4">
-      Quando um card <strong>entra</strong>/<strong>sai</strong> desta lista — ou quando ela fica
-      com <strong>menos/mais</strong> de X cards — executa uma ação.
+      Quando um card <strong>entra</strong>/<strong>sai</strong> desta lista, <strong>recebe um anexo</strong>,
+      fica parado — ou quando ela fica com <strong>menos/mais</strong> de X cards — executa uma ação.
     </p>
 
     <style>
@@ -50,10 +50,15 @@
                  data-label="{{ r.params.label|default:'' }}"
                  data-label-color="{{ r.params.label_color|default:'#888888' }}"
                  data-user-id="{{ r.params.user_id|default:'' }}"
-                 data-target-column-id="{{ r.params.target_column_id|default:'' }}">
+                 data-target-column-id="{{ r.params.target_column_id|default:'' }}"
+                 data-day="{{ r.monthly.day|default:'' }}"
+                 data-recipient-email="{{ r.monthly.recipient_email|default:'' }}"
+                 data-ai-validate="{% if r.monthly.ai_validate %}1{% else %}0{% endif %}"
+                 data-ai-instructions="{{ r.monthly.ai_instructions|default:'' }}"
+                 data-extra-ids="{{ r.monthly.extra_ids_csv|default:'' }}">
               <span class="n8n-box n8n-box--trigger">⚡ {{ r.get_trigger_display }}{% if r.params.count %} ({{ r.params.count }}){% elif r.trigger == 'stale' and r.params.days %} ({{ r.params.days }}d){% endif %}</span>
               <span class="n8n-arrow">→</span>
-              <span class="n8n-box n8n-box--action">{{ r.get_action_display }}{% if r.params.email %} ({{ r.params.email }}){% elif r.params.phone %} ({{ r.params.phone }}){% elif r.params.days %} (+{{ r.params.days }}d){% elif r.params.label %} ({{ r.params.label }}){% endif %} ✏️</span>
+              <span class="n8n-box n8n-box--action">{{ r.get_action_display }}{% if r.action == 'monthly_report' %} (dia {{ r.monthly.day }} → {{ r.monthly.recipient_email|default:'sem destinatário' }}){% elif r.params.email %} ({{ r.params.email }}){% elif r.params.phone %} ({{ r.params.phone }}){% elif r.params.days %} (+{{ r.params.days }}d){% elif r.params.label %} ({{ r.params.label }}){% endif %} ✏️</span>
             </div>
             <button type="button" class="shrink-0 text-red-400 hover:text-red-300 text-lg leading-none"
                     title="Remover automação"
@@ -144,6 +149,56 @@
         </div>
       </div>
 
+      <div id="ca-p-monthly" class="ca-param hidden space-y-3 rounded-xl border border-white/10 bg-black/20 p-3">
+        <p class="text-xs text-white/70">
+          Cada card desta lista é um relatório que precisa de <strong>um anexo por mês</strong>. O anexo entra no mês
+          pendente mais antigo (ou no mês citado no nome do arquivo). Entregue → a IA valida, o destinatário abaixo
+          recebe o resumo e a data de entrega do card pula para o dia escolhido do mês seguinte. Mês vencido sem anexo →
+          cobrança aos gestores do posto com cópia ao destinatário.
+        </p>
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-xs text-white/50">Cobrar no dia</span>
+          <input type="number" name="day" value="15" min="1" max="28"
+                 class="w-20 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm">
+          <span class="text-xs text-white/50">de cada mês</span>
+        </div>
+        <div>
+          <span class="text-xs text-white/50">Quem recebe o aviso “anexado” com o resumo (e cópia das cobranças)</span>
+          <input type="email" name="recipient_email" placeholder="leonardo@camim.com.br"
+                 class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm mt-1">
+        </div>
+        <div>
+          <span class="text-xs text-white/50">Gestores do posto <strong>{{ posto_nome }}</strong> (cadastro do Hesk — quem recebe a cobrança)</span>
+          <div class="text-sm mt-1">
+            {% for g in hesk_gestores %}
+              <div>👤 {{ g.nome }} <span class="text-white/50">&lt;{{ g.email|default:'sem e-mail' }}&gt;</span></div>
+            {% empty %}
+              <div class="text-amber-300/90 text-xs">
+                {% if hesk_available %}Nenhum gestor cadastrado para “{{ posto_nome }}” no Hesk.{% else %}Cadastro do Hesk indisponível neste ambiente.{% endif %}
+                Cadastre em <a class="underline" href="https://administrativo.camim.com.br/" target="_blank" rel="noopener">administrativo.camim.com.br → Configurações → Gestores dos postos</a>.
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+        <div>
+          <span class="text-xs text-white/50">Pessoas extras que também recebem a cobrança (membros do quadro)</span>
+          <div class="mt-1 max-h-32 overflow-y-auto space-y-1 pr-1">
+            {% for m in members %}
+              <label class="flex items-center gap-2 text-xs cursor-pointer">
+                <input type="checkbox" name="extra_user_ids" value="{{ m.user_id }}">
+                {{ m.user.profile.display_name|default:m.user.get_full_name|default:m.user.email }} <span class="text-white/40">{{ m.user.email }}</span>
+              </label>
+            {% endfor %}
+          </div>
+        </div>
+        <label class="flex items-center gap-2 text-sm cursor-pointer">
+          <input type="checkbox" name="ai_validate" value="1" checked> Validar o anexo com IA (Groq) e mandar o resumo no e-mail
+        </label>
+        <textarea name="ai_instructions" rows="2" placeholder="Instruções para a IA (opcional): o que o relatório precisa conter"
+                  class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm"></textarea>
+        <p class="text-[11px] text-white/45">Ao salvar, os cards desta lista ganham a aba “Mensal” e o histórico é montado a partir dos anexos já existentes.</p>
+      </div>
+
       <div class="flex items-center gap-2">
         <button type="submit" id="ca-submit-btn" class="px-4 py-2 rounded-lg bg-[#0052CC] hover:bg-blue-500 text-sm font-semibold transition">
           Adicionar automação
@@ -176,6 +231,15 @@
         __caSet('stale_days', d.days);    // gatilho stale usa params.days
         if (d.userId) __caSet('user_id', d.userId);
         if (d.targetColumnId) __caSet('target_column_id', d.targetColumnId);
+        if (d.action === 'monthly_report') {
+          __caSet('day', d.day || '15');
+          __caSet('recipient_email', d.recipientEmail);
+          __caSet('ai_instructions', d.aiInstructions);
+          var ai = document.querySelector('#col-automation-modal [name="ai_validate"]');
+          if (ai) ai.checked = (d.aiValidate !== '0');
+          var ids = (d.extraIds || '').split(',').filter(Boolean);
+          document.querySelectorAll('#col-automation-modal [name="extra_user_ids"]').forEach(function (cb) { cb.checked = ids.indexOf(cb.value) >= 0; });
+        }
         document.getElementById('ca-rule-id').value = d.ruleId || '';
         document.getElementById('ca-form-title').textContent = '✏️ Editar automação';
         document.getElementById('ca-submit-btn').textContent = 'Salvar alteração';
@@ -202,7 +266,13 @@
         var map = { send_email:['ca-p-email','ca-p-message'], send_whatsapp:['ca-p-whatsapp','ca-p-message'],
                     notify_placer:['ca-p-message'],
                     assign_user:['ca-p-member'], move_to:['ca-p-column'], copy_to:['ca-p-column'],
-                    set_due:['ca-p-days'], set_start:['ca-p-days'], add_label:['ca-p-label'] };
+                    set_due:['ca-p-days'], set_start:['ca-p-days'], add_label:['ca-p-label'],
+                    monthly_report:['ca-p-monthly'] };
+        // recorrência mensal só faz sentido com o gatilho "anexo adicionado"
+        if (sel && sel.value === 'monthly_report') {
+          var tr = document.querySelector('#col-automation-modal input[name=trigger][value="attach"]');
+          if (tr) { tr.checked = true; window.__caTrigger(); }
+        }
         document.querySelectorAll('#col-automation-modal .ca-param').forEach(function (el) { el.classList.add('hidden'); });
         var ids = sel ? (map[sel.value] || []) : [];
         ids.forEach(function (id) { var el = document.getElementById(id); if (el) el.classList.remove('hidden'); });

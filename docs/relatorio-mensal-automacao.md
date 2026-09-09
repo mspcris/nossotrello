@@ -87,45 +87,55 @@ Estado do card passa a significar sempre **"a próxima entrega"**:
 
 ### 2.1 Ciclo (competência)
 
-- Ciclo `YYYY-MM` = entrega com prazo **dia 15 de YYYY-MM** (dia configurável, default 15).
-- Janela de anexo do ciclo M: `16/(M-1)` até `15/M`.
-- Ciclo corrente: se hoje ≤ dia 15 → mês atual; senão → mês seguinte.
-  Ex.: 09/09 → ciclo Set/2026 (prazo 15/09). 20/09 → ciclo Out/2026 (prazo 15/10).
+- Ciclo `YYYY-MM` = **mês calendário**. Cada mês precisa de um anexo.
+- Prazo (cobrança) = **dia 15 do próprio mês** (dia configurável na regra).
+- Mês corrente = mês de hoje. Anexo depois do dia 15 conta para o mês (atrasado),
+  nunca "pula" para o seguinte.
+- **Meses passados sem anexo ficam PENDENTES e são cobrados** (ex.: parou em
+  maio → junho, julho e agosto pendentes; setembro em aberto vencendo dia 15).
 
 ### 2.2 O que acontece ao anexar (gatilho `attach`)
 
-1. O anexo é atribuído ao **ciclo pendente mais antigo** entre `início da regra` e
-   o `ciclo corrente`. Se não há ciclo pendente (o corrente já foi entregue), o
-   arquivo entra como **arquivo adicional** do ciclo corrente, sem rolar a data.
-   → Isso implementa "não pode cadastrar o mês seguinte com o anterior faltando".
+1. **Mês de destino**: se o nome do arquivo cita um mês
+   (`…_Abril_de_2026.pdf`, `CTRL-Q 08-2026.xlsx`, `2026-06`) e esse mês está em
+   aberto, vai para ele; senão vai para o **mês pendente mais antigo** (≤ mês
+   corrente). Sem nada pendente → arquivo **adicional** do mês citado/corrente,
+   sem rolar a data. É isso que implementa "não pode cadastrar o mês seguinte
+   com o anterior faltando".
 2. Se `validar com IA` estiver ligado: extrai o texto (pdfplumber para PDF,
-   openpyxl para XLSX, texto puro para CSV/TXT; imagem não é validada) e chama
-   a Groq (`GROQ_MODEL=openai/gpt-oss-120b`, já configurado no `.env`) com o
-   prompt: título do card, posto, mês de referência, instruções opcionais da
-   regra, e o texto extraído (máx. ~12k caracteres). Resposta em JSON:
-   `{"veredito": "aprovado|atencao|reprovado", "resumo": "...", "problemas": ["..."]}`.
+   openpyxl para XLSX, DOCX pelo XML, CSV/TXT direto; imagem/vídeo não valida) e
+   chama a Groq (`GROQ_MODEL=openai/gpt-oss-120b`, já no `.env`) com título do
+   card, posto, mês, instruções opcionais da regra e o texto (máx. 12k chars).
+   Resposta JSON: `{"veredito": "aprovado|atencao|reprovado", "resumo", "problemas": []}`.
+   Roda em thread: o upload responde na hora e a aba Mensal se atualiza sozinha.
 3. Veredito:
-   - `aprovado` ou `atencao` (ou IA desligada/indisponível) → ciclo fica **entregue**,
-     card: `is_delivered=False`, `due_date = dia 15 do ciclo seguinte`, log no card.
-   - `reprovado` (arquivo claramente errado) → ciclo fica **"anexo reprovado"**,
-     card **não rola**; quem anexou recebe aviso (WhatsApp/e-mail) e o Leonardo
-     também. Um editor pode clicar **"Aceitar mesmo assim"** na aba Mensal.
-4. E-mail para o destinatário da regra (`leonardo@camim.com.br`), assunto
-   `[Tarefas] <posto> — <relatório> — <Mês/Ano> anexado`, corpo: quem anexou,
-   quando, nome do arquivo, veredito, resumo da IA, problemas, link do card.
+   - `aprovado`, `atencao`, IA desligada, sem texto ou IA fora do ar → mês
+     **entregue**; card: `is_delivered=False`,
+     `due_date = dia 15 do próximo mês pendente` (cria o mês seguinte se não
+     houver nenhum aberto); log no card.
+   - `reprovado` (arquivo claramente errado) → mês **"anexo reprovado"**, card
+     **não rola**; quem anexou recebe e-mail (e WhatsApp, se tiver) com cópia ao
+     Leonardo. Um editor pode clicar **"Aceitar mesmo assim"** na aba Mensal.
+4. E-mail ao destinatário da regra (`leonardo@camim.com.br`), assunto
+   `[Tarefas] <posto> — <relatório> — <Mês/Ano> anexado`: quem anexou, quando,
+   arquivo, veredito, resumo, pontos de atenção e link do card.
 
-### 2.3 Dia 15 (scheduler)
+### 2.3 Cobrança (scheduler)
 
-Comando `run_monthly_reports` entra no loop do `scheduler` do docker-compose
-(a cada 10 min, idempotente):
+Comando `run_monthly_reports` no loop do `scheduler` do docker-compose (a cada
+10 min, idempotente):
 
-- No dia do prazo (15), para cada ciclo corrente **pendente**: e-mail aos
-  responsáveis da regra **com cópia** para o destinatário (Leonardo), assunto
-  `[Tarefas] <posto> — <relatório> — <Mês/Ano> NÃO anexado`, link do card.
-  Grava `reminded_at` (manda 1 vez por ciclo).
-- Também reprocessa validações de IA que falharam (`ai_status=pending`), com
-  limite de tentativas.
-- Cria a linha do ciclo corrente se ainda não existir (para o painel mostrar
+- Para cada card, **um e-mail** listando **todos os meses vencidos sem anexo**
+  ainda não cobrados (`reminded_at` vazio): vai para os **gestores do posto**
+  (cadastro do Hesk + extras da regra), citando o nome de cada gestor e o posto
+  no corpo, **com cópia** ao destinatário (Leonardo). Assunto:
+  `[Tarefas] <posto> — <relatório> — 3 meses sem relatório (Jun/2026, Jul/2026, Ago/2026)`
+  ou `… — Set/2026 NÃO anexado`. Cada mês é cobrado uma única vez.
+- Sem gestor cadastrado no Hesk: o e-mail vai só para a cópia, com o aviso
+  "nenhum gestor cadastrado para este posto".
+- Reprocessa validações de IA presas (thread morta, Groq fora), até 3 tentativas;
+  depois entrega sem validação com a nota "IA indisponível".
+- Cria a linha do mês corrente se ainda não existir (o painel mostra
   "Pendente: Set/2026" mesmo sem ninguém abrir o card).
 
 ### 2.4 Nada de exclusão física
@@ -166,8 +176,9 @@ ciclo. Linhas do livro-razão nunca são apagadas.
 | card_id           | FK Card                   | |
 | month             | date (dia 1)              | ciclo `YYYY-MM-01`; único por (card, month) |
 | due_on            | date                      | prazo (dia 15 do mês) |
-| status            | varchar(12)               | `pending` · `delivered` · `rejected` · `skipped` (histórico sem anexo, antes do início da regra) |
+| status            | varchar(12)               | `pending` · `validating` · `delivered` · `rejected` · `skipped` (reservado) |
 | attachment_id     | FK CardAttachment null    | arquivo principal do ciclo |
+| extra_attachment_ids | jsonb                  | arquivos adicionais do mesmo mês (ids) |
 | attached_at       | timestamptz null          | |
 | attached_by_id    | FK User null              | |
 | ai_status         | varchar(12)               | `off` · `pending` · `done` · `error` |
@@ -175,6 +186,7 @@ ciclo. Linhas do livro-razão nunca são apagadas.
 | ai_summary        | text                      | resumo em PT-BR |
 | ai_problems       | jsonb                     | lista de strings |
 | ai_checked_at     | timestamptz null          | |
+| ai_attempts       | smallint                  | tentativas (máx. 3) |
 | notified_at       | timestamptz null          | e-mail "anexado" enviado |
 | reminded_at       | timestamptz null          | e-mail "NÃO anexado" (dia 15) enviado |
 | accepted_by_id    | FK User null              | "Aceitar mesmo assim" |
@@ -189,8 +201,10 @@ ciclo. Linhas do livro-razão nunca são apagadas.
 Mesma RDS Postgres do Tarefas. Tudo o que o monitor precisa:
 
 ```sql
--- situação atual de cada card monitorado (1 linha por card = ciclo corrente)
-SELECT b.id AS board_id, b.name AS posto, c.id AS card_id, c.title,
+-- situação de cada card monitorado: o mês em aberto MAIS ANTIGO
+-- (é nele que o próximo anexo entra); sem nada em aberto, o mês corrente
+SELECT DISTINCT ON (c.id)
+       b.id AS board_id, b.name AS posto, c.id AS card_id, c.title,
        e.month, e.due_on, e.status, e.attached_at, u.email AS attached_by,
        e.ai_verdict, e.ai_summary, e.reminded_at, e.notified_at
 FROM boards_monthlyreportentry e
@@ -198,20 +212,30 @@ JOIN boards_card c     ON c.id = e.card_id
 JOIN boards_column col ON col.id = c.column_id
 JOIN boards_board b    ON b.id = col.board_id
 LEFT JOIN auth_user u  ON u.id = e.attached_by_id
-WHERE e.month = date_trunc('month',
-        CASE WHEN extract(day FROM current_date) <= 15
-             THEN current_date ELSE current_date + interval '1 month' END)::date
-ORDER BY b.name, c.title;
+WHERE e.month <= date_trunc('month', current_date)::date
+ORDER BY c.id,
+         (e.status IN ('pending','rejected','validating')) DESC,
+         CASE WHEN e.status IN ('pending','rejected','validating') THEN e.month END ASC,
+         e.month DESC;
 
 -- atrasados (prazo passou e continua pendente)
 SELECT * FROM boards_monthlyreportentry
 WHERE status = 'pending' AND due_on < current_date;
 ```
 
-Também haverá um JSON somente-leitura para quem não acessa o banco:
-`GET /api/monthly-reports/?board=34` (ou sem filtro), autenticado com a mesma
-`X-Admin-Key` dos demais endpoints administrativos do Tarefas. Retorna a mesma
-projeção da primeira query, agrupada por board.
+JSON somente-leitura para quem não acessa o banco:
+
+```
+GET https://tarefas.camim.com.br/api/monthly-reports/            (1 linha por card: mês em aberto mais antigo)
+GET https://tarefas.camim.com.br/api/monthly-reports/?board=34   (só um quadro)
+GET https://tarefas.camim.com.br/api/monthly-reports/?all=1      (todas as linhas do livro-razão)
+Authorization: Token <NOSSOTRELLO_API_TOKEN>   (o mesmo token DRF que o Hesk já usa)
+```
+
+Resposta: `{"ok": true, "today": "2026-09-09", "count": 24, "rows": [{"board_id", "posto",
+"card_id", "card_title", "month": "2026-06", "due_on", "status", "attached_at",
+"attached_by", "attachment_id", "ai_verdict", "ai_summary", "reminded_at",
+"notified_at", "card_url"}]}`.
 
 ---
 
@@ -237,30 +261,26 @@ projeção da primeira query, agrupada por board.
 
 ## 6. Rollout nos 8 quadros (comando `setup_monthly_reports`)
 
-Executa uma vez, idempotente, na VM (`nossotrello-web-1`):
+```
+docker exec nossotrello-web-1 python manage.py setup_monthly_reports \
+    --boards 34,35,36,37,38,39,40,41 --recipient leonardo@camim.com.br --remind-now
+```
 
-1. Renomeia a coluna 343 para "Relatórios Empresariais".
-2. Cria em cada coluna (343, 348, 346, 345, 344, 317, 342, 347) a regra
-   `attach → monthly_report` com `day=15`, `recipient_email=leonardo@camim.com.br`,
-   `ai_validate=true`, `start_month=2026-09`. Responsáveis vêm do cadastro de
-   Gestores do Hesk (tabela 1.1); nada fixo no código.
-3. **Histórico**: para cada card, percorre os anexos ativos desde março/2026 e
-   cria as linhas dos ciclos passados: com anexo na janela → `delivered`
-   (`attached_at/by` do anexo, sem IA, sem e-mail); sem anexo → `skipped`.
-   Histórico é só informativo: não gera cobrança nem bloqueio.
-4. **Ciclo corrente (Set/2026, prazo 15/09)** — regra do Cristiano "se já
-   anexou neste mês, deixa pendente para o próximo dia 15":
-   - anexo ativo entre 16/08 e 15/09 → ciclo `delivered`, card
-     `is_delivered=False`, `due_date=2026-10-15`;
-   - sem anexo nessa janela → ciclo `pending`, card `is_delivered=False`,
-     `due_date=2026-09-15`.
-   Com os dados de hoje só entram como entregues: board 36 (CTRL-Q e CEDAE,
-   anexos 18/08) e board 39 (CEDAE, 01/09). Os outros 21 cards ficam pendentes
-   para 15/09 e recebem a cobrança no dia 15.
-5. Registra no CardLog de cada card: "Automação de entrega mensal ativada;
-   ciclo Set/2026 pendente/entregue".
+Idempotente. Para cada quadro:
 
----
+1. Acha a coluna (aceita a grafia "Reloatórios") e corrige o nome para
+   "Relatórios Empresariais".
+2. Cria/reativa a regra `attach → monthly_report` com `day=15`,
+   `recipient_email=leonardo@camim.com.br`, `ai_validate=true`. Responsáveis
+   vêm do cadastro de Gestores do Hesk; nada fixo no código.
+3. **Histórico** a partir dos anexos existentes (mês pelo nome do arquivo,
+   senão pela data do upload; no máximo 12 meses para trás): mês com anexo →
+   `delivered`; **mês sem anexo → `pending`** (será cobrado). `start_month` da
+   regra = primeiro mês encontrado.
+4. Card: `is_delivered=False`, `due_date = dia 15 do mês pendente mais antigo`
+   (ou do mês seguinte, se tudo entregue). Log no card.
+5. `--remind-now`: dispara na hora a cobrança dos meses já vencidos (um e-mail
+   por card, gestores + cópia ao Leonardo). Setembro só é cobrado no dia 15.
 
 ## 7. Arquivos a tocar (NossoTrello)
 
@@ -290,9 +310,10 @@ Executa uma vez, idempotente, na VM (`nossotrello-web-1`):
 
 - "Validado" não bloqueia por `atencao`; só `reprovado` segura o ciclo, com
   override manual. Evita a IA travar entrega legítima.
-- Um único aviso no dia 15; sem repetição diária (o card fica vermelho de atraso
-  e o chip mostra "falta").
-- Anexo depois do dia 15 conta para o ciclo atrasado (mais antigo), nunca pula.
+- Cada mês vencido é cobrado uma única vez (e-mail agrupado por card); sem
+  repetição diária — o card fica vermelho de atraso e o chip mostra "falta".
+- Anexo depois do dia 15 conta para o mês atrasado (mais antigo), nunca pula.
 - Imagem/print não passa pela IA (o modelo gpt-oss-120b não lê imagem); entra
-  como entregue com veredito vazio e o e-mail avisa "não validado (imagem)".
-- Regra só enforça a partir de `start_month`; meses anteriores viram histórico.
+  como entregue com veredito vazio e o e-mail avisa "não validado".
+- Excluir a regra no modal só a desativa (o livro-razão fica para auditoria).
+- Histórico no rollout limitado a 12 meses para trás.

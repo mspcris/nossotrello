@@ -201,3 +201,14 @@ def trimstartswith(value, arg):
 
     return value_clean.startswith(arg_clean)
 
+
+
+@register.simple_tag
+def monthly_chip(card):
+    """Chip do relatório mensal no card do quadro ({'text','tone'} ou None).
+    Zero query em coluna sem a recorrência (set de colunas em cache)."""
+    try:
+        from boards.services.monthly_report import chip_for_card
+        return chip_for_card(card)
+    except Exception:
+        return None

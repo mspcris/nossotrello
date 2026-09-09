@@ -19,8 +19,8 @@ from django.utils import timezone
 logger = logging.getLogger(__name__)
 
 
-def run_for(card, trigger, column, actor=None):
-    """Roda as automações ativas da coluna para o gatilho ('enter'/'leave')."""
+def run_for(card, trigger, column, actor=None, attachment=None):
+    """Roda as automações ativas da coluna para o gatilho ('enter'/'leave'/'attach')."""
     from boards.models import ColumnAutomation
 
     try:
@@ -39,7 +39,7 @@ def run_for(card, trigger, column, actor=None):
     ran = False
     for rule in rules:
         try:
-            _apply(rule, card, column, actor)
+            _apply(rule, card, column, actor, attachment=attachment)
             ran = True
         except Exception:
             logger.exception("automation: falha rule=%s card=%s", rule.id, getattr(card, "id", None))
@@ -54,9 +54,15 @@ def run_for(card, trigger, column, actor=None):
             logger.debug("automation: bump board falhou", exc_info=True)
 
 
-def _apply(rule, card, column, actor):
+def _apply(rule, card, column, actor, attachment=None):
     p = rule.params or {}
     a = rule.action
+    if a == "monthly_report":
+        # só faz sentido com o gatilho 'attach'; os demais gatilhos ignoram
+        if rule.trigger == "attach" and card is not None and attachment is not None:
+            from boards.services.monthly_report import on_attachment_added
+            on_attachment_added(card, attachment, actor=actor)
+        return
     if a == "send_email":
         _send_email(rule, card, column, p)
         return
@@ -102,7 +108,7 @@ def _send_email(rule, card, column, p):
             f"está com {count} card(s)."
         )
     else:
-        trig = "entrou na" if rule.trigger == "enter" else "saiu da"
+        trig = {"enter": "entrou na", "leave": "saiu da", "attach": "recebeu um anexo na"}.get(rule.trigger, "mudou na")
         title = card.title if card else column.name
         subject = f"[NossoTrello] {title}"[:200]
         if card:
@@ -130,7 +136,7 @@ def _whatsapp_context(rule, card, column):
             f'Lista "{column.name}" ({column.board.name}) está com {count} card(s).'
         )
     if card:
-        trig = "entrou em" if rule.trigger == "enter" else "saiu de"
+        trig = {"enter": "entrou em", "leave": "saiu de", "attach": "recebeu um anexo em"}.get(rule.trigger, "mudou em")
         return f'Card "{card.title}" {trig} "{column.name}" ({column.board.name}).'
     return f'Atualização na lista "{column.name}".'
 

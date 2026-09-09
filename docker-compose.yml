@@ -97,6 +97,7 @@ services:
   #   - sync_email_cards      (e-mail -> card; respeita o intervalo de cada caixa)
   #   - run_column_autosort   (auto-ordenação; respeita a frequência de cada coluna)
   #   - run_stale_automations (automação "card parado X dias")
+  #   - run_monthly_reports   (relatório mensal: cobrança do dia 15 + retry da IA)
   # Cada comando é tolerante a falha (|| true) pra não derrubar o loop.
   # notify_cards_due NÃO entra aqui (é diário às 08:00, com --kind próprio).
   # ============================================================
@@ -109,6 +110,7 @@ services:
         python manage.py sync_email_cards || true;
         python manage.py run_column_autosort || true;
         python manage.py run_stale_automations || true;
+        python manage.py run_monthly_reports || true;
         sleep 600;
       done"
     depends_on:

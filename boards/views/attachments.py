@@ -77,6 +77,13 @@ def delete_attachment(request, card_id, attachment_id):
     # histórico do card precisa continuar auditável.
     attachment.soft_delete()
 
+    # relatório mensal: o mês volta a ficar pendente se este era o anexo dele
+    try:
+        from boards.services.monthly_report import on_attachment_removed
+        on_attachment_removed(card, attachment)
+    except Exception:
+        pass
+
     # Marca os logs do card que citam esse arquivo como removidos, a menos que
     # outro anexo VIVO do mesmo card ainda aponte pro mesmo arquivo.
     if file_name:
@@ -160,6 +167,13 @@ def add_attachment(request, card_id):
 
     board.version += 1
     board.save(update_fields=["version"])
+
+    # Automação da coluna (gatilho "anexo adicionado": e-mail, relatório mensal…)
+    try:
+        from boards.services.column_automation import run_for as _run_automation
+        _run_automation(card, "attach", card.column, actor=request.user, attachment=attachment)
+    except Exception:
+        pass
 
     # miniatura de PDF/vídeo (best-effort) — gera já no upload p/ o 1º render do feed
     try:

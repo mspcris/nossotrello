@@ -112,6 +112,27 @@ else:
         }
     }
 
+# ------------------------------------------------------------
+# HESK (administrativo.camim.com.br) — SOMENTE LEITURA
+# ------------------------------------------------------------
+# Cadastro "Gestores dos postos" do Hesk (dashboard_gestor / dashboard_gestorposto
+# / dashboard_posto). Mesma RDS e mesmo usuário do Tarefas; só muda o banco.
+# Usado por boards/services/hesk_gestores.py para saber quem é gerente de cada
+# posto (cobrança do relatório mensal). O router abaixo proíbe migrate/escrita.
+if "default" in DATABASES and DATABASES["default"]["ENGINE"].endswith("postgresql"):
+    DATABASES["hesk"] = {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": (os.getenv("HESK_DB_NAME") or "hesk").strip(),
+        "USER": (os.getenv("HESK_DB_USER") or DATABASES["default"]["USER"]).strip(),
+        "PASSWORD": (os.getenv("HESK_DB_PASSWORD") or DATABASES["default"]["PASSWORD"]).strip(),
+        "HOST": (os.getenv("HESK_DB_HOST") or DATABASES["default"]["HOST"]).strip(),
+        "PORT": (os.getenv("HESK_DB_PORT") or DATABASES["default"]["PORT"]).strip(),
+        "CONN_MAX_AGE": 600,
+        "OPTIONS": {"connect_timeout": 5},
+    }
+
+DATABASE_ROUTERS = ["nossotrello.db_routers.ReadOnlyHeskRouter"]
+
 
 # ============================================================
 # APLICAÇÕES

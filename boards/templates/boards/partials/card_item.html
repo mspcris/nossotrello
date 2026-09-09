@@ -230,6 +230,12 @@
           {{ card.due_date|date:"d/m/Y" }}
         </span>
       {% endif %}
+      {% monthly_chip card as mchip %}
+      {% if mchip %}
+        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md border" data-monthly-chip
+              style="{% if mchip.tone == 'ok' %}background:#d5f2e0;color:#0f5c30;border-color:#a9dfbf;{% elif mchip.tone == 'late' %}background:#ffd9d9;color:#8a1010;border-color:#f3b4b4;{% elif mchip.tone == 'info' %}background:#dbe8fb;color:#1c3f7a;border-color:#b9d1f0;{% else %}background:#fff1cc;color:#7a4d00;border-color:#f3d79a;{% endif %}"
+              title="Relatório mensal">{{ mchip.text }}</span>
+      {% endif %}
     </div>
 
     <div class="tt-slot"></div>

@@ -205,6 +205,7 @@ html.dark #cm-root .cm-act-attach-x{
             <button type="button" class="cm-tabbtn" data-cm-tab="check"> ☑️ Checklists{% with n=checklists|length %}<span class="cm-tab-count" data-cm-count="check" title="{{ n }} checklist{{ n|pluralize }}" {% if not n %}hidden{% endif %}>{{ n }}</span>{% endwith %}</button>
             <button type="button" class="cm-tabbtn" data-cm-tab="files"> 📎 Anexos{% with n=card.attachments.all|length %}<span class="cm-tab-count" data-cm-count="files" title="{{ n }} anexo{{ n|pluralize }}" {% if not n %}hidden{% endif %}>{{ n }}</span>{% endwith %}</button>
             <button type="button" class="cm-tabbtn" data-cm-tab="track"> ⏱️ Track-time</button>
+            {% if monthly %}<button type="button" class="cm-tabbtn" data-cm-tab="monthly"> 📅 Mensal{% if monthly.current and monthly.current.status != 'delivered' %}<span class="cm-tab-count" data-cm-count="monthly" title="mês pendente">!</span>{% endif %}</button>{% endif %}
           </div>
 {% comment %} 
            <div class="cm-actions" id="cm-actions">
@@ -565,6 +566,8 @@ html.dark #cm-root .cm-act-attach-x{
                            if (event.detail && event.detail.successful) {
                              htmx.ajax('GET', '{% url 'boards:activity_panel' card.id %}', '#cm-activity-panel');
                              if (typeof window.refreshCardSnippet === 'function') { window.refreshCardSnippet({{ card.id }}); }
+                             var _mp = document.getElementById('cm-monthly-panel');
+                             if (_mp && window.htmx) { setTimeout(function(){ htmx.ajax('GET', _mp.getAttribute('data-monthly-url'), {target:'#cm-monthly-panel', swap:'outerHTML'}); }, 1500); }
                            }
                          ">
 
@@ -586,6 +589,13 @@ html.dark #cm-root .cm-act-attach-x{
               </div>
             </div>
           </section>
+
+          {% if monthly %}
+          <!-- Aba: Mensal (automação de entrega mensal de relatório) -->
+          <section class="cm-panel" data-cm-panel="monthly" role="tabpanel">
+            {% include "boards/partials/monthly_report_panel.html" with monthly=monthly viewer_can_edit=viewer_can_edit %}
+          </section>
+          {% endif %}
 
           <!-- Aba: Track-time -->
           <section class="cm-panel" data-cm-panel="track" role="tabpanel">

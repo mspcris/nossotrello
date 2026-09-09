@@ -2549,6 +2549,7 @@ class ColumnAutomation(models.Model):
         ("count_below", "Quando a lista fica com MENOS de X cards"),
         ("count_above", "Quando a lista fica com MAIS de X cards"),
         ("stale", "Quando um card fica parado X dias nesta lista"),
+        ("attach", "Quando um anexo é adicionado a um card desta lista"),
     ]
     ACTION_CHOICES = [
         ("send_email", "Disparar e-mail avisando alguém"),
@@ -2562,6 +2563,7 @@ class ColumnAutomation(models.Model):
         ("add_label", "Adicionar etiqueta"),
         ("mark_delivered", "Marcar como entregue"),
         ("mark_undelivered", "Marcar como NÃO entregue (limpa a data de entrega)"),
+        ("monthly_report", "Entrega mensal de relatório (recorrência)"),
     ]
 
     column = models.ForeignKey(
@@ -2586,6 +2588,85 @@ class ColumnAutomation(models.Model):
 
     def __str__(self):
         return f"{self.column.name}: {self.trigger} -> {self.action}"
+
+
+class MonthlyReportEntry(models.Model):
+    """Livro-razão da automação "Entrega mensal de relatório" (recorrência).
+
+    Uma linha por (card, mês/ciclo). O ciclo YYYY-MM tem prazo no dia `day` da
+    regra (default 15) e é satisfeito pelo anexo mais antigo que cair nele —
+    sempre no ciclo pendente mais antigo, nunca "pulando" um mês.
+    Linhas nunca são apagadas (auditoria); anexo removido volta o ciclo para
+    `pending`. Ver docs/relatorio-mensal-automacao.md.
+    """
+    STATUS_CHOICES = [
+        ("pending", "Pendente"),
+        ("validating", "Validando"),
+        ("delivered", "Entregue"),
+        ("rejected", "Anexo reprovado"),
+        ("skipped", "Sem anexo (histórico)"),
+    ]
+    AI_STATUS_CHOICES = [
+        ("off", "Desligada"),
+        ("pending", "Aguardando"),
+        ("done", "Concluída"),
+        ("error", "Erro"),
+        ("skipped", "Não aplicável"),
+    ]
+
+    rule = models.ForeignKey(
+        ColumnAutomation, related_name="monthly_entries", on_delete=models.CASCADE
+    )
+    card = models.ForeignKey(Card, related_name="monthly_entries", on_delete=models.CASCADE)
+    month = models.DateField(help_text="Primeiro dia do mês do ciclo (YYYY-MM-01)")
+    due_on = models.DateField()
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default="pending")
+
+    attachment = models.ForeignKey(
+        CardAttachment, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="monthly_entries",
+    )
+    extra_attachment_ids = models.JSONField(default=list, blank=True)
+    attached_at = models.DateTimeField(null=True, blank=True)
+    attached_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="monthly_entries_attached",
+    )
+
+    ai_status = models.CharField(max_length=12, choices=AI_STATUS_CHOICES, default="off")
+    ai_verdict = models.CharField(max_length=12, blank=True, default="")
+    ai_summary = models.TextField(blank=True, default="")
+    ai_problems = models.JSONField(default=list, blank=True)
+    ai_checked_at = models.DateTimeField(null=True, blank=True)
+    ai_attempts = models.PositiveSmallIntegerField(default=0)
+
+    notified_at = models.DateTimeField(null=True, blank=True)
+    reminded_at = models.DateTimeField(null=True, blank=True)
+    accepted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="monthly_entries_accepted",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-month"]
+        constraints = [
+            models.UniqueConstraint(fields=["card", "month"], name="monthlyreport_card_month_uniq"),
+        ]
+        indexes = [
+            models.Index(fields=["status", "due_on"], name="monthlyreport_status_due_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.card_id} {self.month:%Y-%m} {self.status}"
+
+    @property
+    def label(self) -> str:
+        """'Set/2026'."""
+        meses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
+        return f"{meses[self.month.month - 1]}/{self.month.year}"
 
 
 # END boards/models.py
