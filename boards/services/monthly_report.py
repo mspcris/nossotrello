@@ -12,8 +12,10 @@ Regra de negócio (docs/relatorio-mensal-automacao.md):
 * Entregue -> IA (Groq) valida o arquivo; `reprovado` segura o ciclo (com
   "Aceitar mesmo assim"); qualquer outro veredito entrega: card fica
   NÃO entregue com data de entrega = dia 15 do próximo ciclo pendente.
-* Dia 15 com o ciclo pendente -> e-mail aos gestores do posto (cadastro do
-  Hesk + extras da regra) com cópia ao destinatário (Leonardo). Uma vez.
+* Mês vencido (dia 15 passou) sem anexo -> e-mail DIÁRIO aos gestores do posto
+  (cadastro do Hesk + extras da regra) com cópia ao destinatário (Leonardo),
+  a partir das REMINDER_HOUR, até o anexo entrar. Um e-mail por card por dia,
+  listando todos os meses em atraso.
 * Nada é apagado: anexo removido devolve o ciclo para pendente.
 
 Quem é gerente vem de boards/services/hesk_gestores.py.
@@ -40,6 +42,7 @@ ACTION = "monthly_report"
 TRIGGER = "attach"
 DEFAULT_DAY = 15
 MAX_AI_ATTEMPTS = 3
+REMINDER_HOUR = 8  # cobrança diária sai a partir desta hora (local); nunca de madrugada
 MAX_TEXT_CHARS = 12000
 
 MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
@@ -570,12 +573,15 @@ def run_scheduler(now=None) -> dict:
                     if first_open is not None:
                         card.due_date = first_open.due_on
                         card.save(update_fields=["due_date"])
-                overdue = list(
-                    MonthlyReportEntry.objects.filter(
-                        card=card, status="pending", attachment__isnull=True,
-                        due_on__lte=today, reminded_at__isnull=True,
+                # cobrança DIÁRIA: todo mês vencido sem anexo, 1x por dia a partir das 8h
+                if timezone.localtime(now).hour < REMINDER_HOUR:
+                    continue
+                overdue = [
+                    e for e in MonthlyReportEntry.objects.filter(
+                        card=card, status="pending", attachment__isnull=True, due_on__lte=today,
                     ).order_by("month")
-                )
+                    if e.reminded_at is None or timezone.localtime(e.reminded_at).date() < today
+                ]
                 if overdue:
                     _send_reminder(rule, card, overdue)
                     for e in overdue:
@@ -885,8 +891,9 @@ def _notify_rejected(entry):
 
 
 def _send_reminder(rule, card, entries: list):
-    """Cobrança: um e-mail por card listando TODOS os meses vencidos sem anexo.
-    Vai para os gestores do posto (nome citado no corpo) com cópia ao destinatário."""
+    """Cobrança diária: um e-mail por card listando TODOS os meses vencidos sem
+    anexo. Vai para os gestores do posto (nome citado no corpo) com cópia ao
+    destinatário. Repete todo dia até o anexo entrar."""
     p = rule_params(rule)
     posto = posto_nome(rule)
     resp = responsaveis(rule)
@@ -926,6 +933,8 @@ def _send_reminder(rule, card, entries: list):
         "(ex.: \"Relatório CEDAE - Junho de 2026.pdf\") ele é creditado àquele mês; "
         "senão entra no mês pendente mais antigo. A cada anexo o Leonardo Pereira recebe "
         "o aviso com o resumo.",
+        "",
+        "Este lembrete se repete todos os dias enquanto houver mês sem relatório.",
         "",
         f"Abrir o card: {_card_link(card)}",
     ]

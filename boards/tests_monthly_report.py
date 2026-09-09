@@ -125,7 +125,7 @@ class MonthlyFlowTests(TestCase):
         self.assertFalse(MonthlyReportEntry.objects.filter(card=self.card, month=date(2026, 10, 1)).exists())
 
     # --- cobrança ------------------------------------------------------------
-    def test_scheduler_groups_overdue_months_in_one_email_once(self):
+    def test_scheduler_groups_overdue_months_daily(self):
         for m in (6, 7, 8, 9):
             mr.ensure_entry(self.rule, self.card, date(2026, m, 1))
         stats = mr.run_scheduler(now=timezone.make_aware(datetime(2026, 9, 9, 8)))
@@ -140,14 +140,30 @@ class MonthlyFlowTests(TestCase):
             self.assertIn(lb, msg.subject)
         self.assertNotIn("Set/2026", msg.subject)  # setembro só vence dia 15
         self.assertEqual(MonthlyReportEntry.objects.filter(card=self.card, reminded_at__isnull=False).count(), 3)
+        self.assertIn("se repete todos os dias", msg.body)
         # segunda rodada no mesmo dia: nada novo
         mr.run_scheduler(now=timezone.make_aware(datetime(2026, 9, 9, 9)))
         self.assertEqual(len(mail.outbox), 1)
-        # dia 15: cobra setembro
+        # dia seguinte antes das 8h: ainda não; a partir das 8h: cobra de novo os mesmos meses
+        with patch("boards.services.monthly_report.today_local", return_value=date(2026, 9, 10)):
+            mr.run_scheduler(now=timezone.make_aware(datetime(2026, 9, 10, 6)))
+            self.assertEqual(len(mail.outbox), 1)
+            mr.run_scheduler(now=timezone.make_aware(datetime(2026, 9, 10, 8, 5)))
+        self.assertEqual(len(mail.outbox), 2)
+        self.assertIn("3 meses sem relatório", mail.outbox[1].subject)
+        # dia 15: setembro entra na lista diária
         with patch("boards.services.monthly_report.today_local", return_value=date(2026, 9, 15)):
             mr.run_scheduler(now=timezone.make_aware(datetime(2026, 9, 15, 8)))
-        self.assertEqual(len(mail.outbox), 2)
-        self.assertIn("Set/2026 NÃO anexado", mail.outbox[1].subject)
+        self.assertEqual(len(mail.outbox), 3)
+        self.assertIn("4 meses sem relatório", mail.outbox[2].subject)
+        self.assertIn("Set/2026", mail.outbox[2].subject)
+        # anexou tudo: para de cobrar
+        for m in (6, 7, 8, 9):
+            e = MonthlyReportEntry.objects.get(card=self.card, month=date(2026, m, 1))
+            e.status = "delivered"; e.save()
+        with patch("boards.services.monthly_report.today_local", return_value=date(2026, 9, 16)):
+            mr.run_scheduler(now=timezone.make_aware(datetime(2026, 9, 16, 9)))
+        self.assertEqual(len(mail.outbox), 3)
 
     def test_scheduler_without_gestores_goes_to_recipient_only(self):
         mr.ensure_entry(self.rule, self.card, date(2026, 8, 1))

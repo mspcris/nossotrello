@@ -16,10 +16,11 @@ Commits `924143a` (feature) e `c4608fb` (Novidades), deploy automático concluí
 - **Card** fica NÃO entregue com data de entrega no dia 15 do próximo mês
   pendente. Ganhou a aba "📅 Mensal" (histórico mês a mês: arquivo, quem/quando,
   parecer da IA) e um selo no quadro ("📎 falta Jun/2026").
-- **Cobrança** roda no scheduler a cada 10 min (`run_monthly_reports`): um
-  e-mail por card listando TODOS os meses vencidos sem anexo, citando o nome de
-  cada gestor e o posto, com cópia ao Leonardo. Cada mês é cobrado uma vez.
-  Dia 15 é o prazo do mês corrente.
+- **Cobrança DIÁRIA** (ajuste do mesmo dia): enquanto houver mês vencido sem
+  anexo, o scheduler (`run_monthly_reports`, a cada 10 min) manda todo dia a
+  partir das 8h um e-mail por card listando todos os meses em atraso, citando o
+  nome de cada gestor e o posto, com cópia ao Leonardo. Dia 15 é o prazo do mês
+  corrente; para de cobrar quando o anexo entra.
 - **Gerentes vêm do Hesk** (administrativo.camim.com.br → Configurações →
   Gestores dos postos), lidos pelo alias de banco `hesk`, somente leitura,
   casando nome do quadro = nome do posto. Nada fixo no código. Pessoas extras

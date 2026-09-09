@@ -120,17 +120,19 @@ Estado do card passa a significar sempre **"a próxima entrega"**:
    `[Tarefas] <posto> — <relatório> — <Mês/Ano> anexado`: quem anexou, quando,
    arquivo, veredito, resumo, pontos de atenção e link do card.
 
-### 2.3 Cobrança (scheduler)
+### 2.3 Cobrança (scheduler) — DIÁRIA
 
 Comando `run_monthly_reports` no loop do `scheduler` do docker-compose (a cada
 10 min, idempotente):
 
-- Para cada card, **um e-mail** listando **todos os meses vencidos sem anexo**
-  ainda não cobrados (`reminded_at` vazio): vai para os **gestores do posto**
-  (cadastro do Hesk + extras da regra), citando o nome de cada gestor e o posto
-  no corpo, **com cópia** ao destinatário (Leonardo). Assunto:
-  `[Tarefas] <posto> — <relatório> — 3 meses sem relatório (Jun/2026, Jul/2026, Ago/2026)`
-  ou `… — Set/2026 NÃO anexado`. Cada mês é cobrado uma única vez.
+- Mês vencido (prazo dia 15 passou) sem anexo = **pendência**. Enquanto houver
+  pendência, **todo dia, a partir das 8h**, sai **um e-mail por card** listando
+  **todos os meses em atraso**, para os **gestores do posto** (cadastro do Hesk +
+  extras da regra), citando o nome de cada gestor e o posto no corpo, **com
+  cópia** ao destinatário (Leonardo). Um envio por dia por card (`reminded_at`).
+  Assunto: `[Tarefas] <posto> — <relatório> — 3 meses sem relatório (Jun/2026, Jul/2026, Ago/2026)`
+  ou `… — Set/2026 NÃO anexado`. Para de cobrar quando o último mês pendente
+  recebe anexo.
 - Sem gestor cadastrado no Hesk: o e-mail vai só para a cópia, com o aviso
   "nenhum gestor cadastrado para este posto".
 - Reprocessa validações de IA presas (thread morta, Groq fora), até 3 tentativas;
@@ -188,7 +190,7 @@ ciclo. Linhas do livro-razão nunca são apagadas.
 | ai_checked_at     | timestamptz null          | |
 | ai_attempts       | smallint                  | tentativas (máx. 3) |
 | notified_at       | timestamptz null          | e-mail "anexado" enviado |
-| reminded_at       | timestamptz null          | e-mail "NÃO anexado" (dia 15) enviado |
+| reminded_at       | timestamptz null          | última cobrança enviada (repete 1x/dia enquanto pendente) |
 | accepted_by_id    | FK User null              | "Aceitar mesmo assim" |
 | created_at / updated_at | timestamptz         | |
 
@@ -310,8 +312,9 @@ Idempotente. Para cada quadro:
 
 - "Validado" não bloqueia por `atencao`; só `reprovado` segura o ciclo, com
   override manual. Evita a IA travar entrega legítima.
-- Cada mês vencido é cobrado uma única vez (e-mail agrupado por card); sem
-  repetição diária — o card fica vermelho de atraso e o chip mostra "falta".
+- Pendência é cobrada TODO DIA (decisão do Cristiano em 09/09/2026), um e-mail
+  por card agrupando os meses, a partir das 8h; o card fica vermelho de atraso
+  e o chip mostra "falta".
 - Anexo depois do dia 15 conta para o mês atrasado (mais antigo), nunca pula.
 - Imagem/print não passa pela IA (o modelo gpt-oss-120b não lê imagem); entra
   como entregue com veredito vazio e o e-mail avisa "não validado".
