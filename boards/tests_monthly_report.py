@@ -383,3 +383,87 @@ class MonthlyTemplatesTests(TestCase):
         self.assertEqual(r.status_code, 200)
         e.refresh_from_db()
         self.assertEqual(e.status, "pending")
+
+    # --- upload direto na linha do mês (aba Mensal) -------------------------
+    def test_upload_no_mes_escolhido_quita_mes_atrasado(self):
+        """O gestor escolhe Ago/2026 mesmo com Set/2026 aberto — e só Ago fecha."""
+        mr.ensure_entry(self.rule, self.card, date(2026, 8, 1))
+        mr.ensure_entry(self.rule, self.card, date(2026, 9, 1))
+        alvo = MonthlyReportEntry.objects.get(card=self.card, month=date(2026, 8, 1))
+        with patch("boards.services.monthly_report._bg", side_effect=lambda fn, *a: fn(*a)):
+            r = self.client.post(
+                f"/card/{self.card.id}/monthly/{alvo.id}/upload/",
+                {"file": SimpleUploadedFile("sem-mes-no-nome.png", b"\x89PNG fake")},
+                SERVER_NAME="localhost",
+            )
+        self.assertEqual(r.status_code, 200)
+        data = r.json()
+        self.assertTrue(data["ok"])
+        self.assertEqual(data["attachments_count"], 1)
+        self.assertIn("Ago/2026", data["panel_html"])
+
+        alvo.refresh_from_db()
+        self.assertEqual(alvo.status, "delivered")
+        self.assertIsNotNone(alvo.attachment_id)
+        self.assertEqual(alvo.attached_by, self.owner)
+        # setembro continua aberto e volta a ser o prazo do card
+        setembro = MonthlyReportEntry.objects.get(card=self.card, month=date(2026, 9, 1))
+        self.assertEqual(setembro.status, "pending")
+        self.card.refresh_from_db()
+        self.assertEqual(self.card.due_date, date(2026, 9, 15))
+        # e o arquivo é um anexo comum do card (aba Anexos)
+        self.assertEqual(self.card.attachments.count(), 1)
+        self.assertIn("attachment-", data["attachments_html"])
+
+    def test_upload_em_mes_entregue_vira_adicional(self):
+        mr.ensure_entry(self.rule, self.card, date(2026, 8, 1))
+        alvo = MonthlyReportEntry.objects.get(card=self.card, month=date(2026, 8, 1))
+        with patch("boards.services.monthly_report._bg", side_effect=lambda fn, *a: fn(*a)):
+            self.client.post(
+                f"/card/{self.card.id}/monthly/{alvo.id}/upload/",
+                {"file": SimpleUploadedFile("ago.png", b"\x89PNG fake")},
+                SERVER_NAME="localhost",
+            )
+            alvo.refresh_from_db()
+            self.assertEqual(alvo.status, "delivered")
+            primeiro = alvo.attachment_id
+            self.client.post(
+                f"/card/{self.card.id}/monthly/{alvo.id}/upload/",
+                {"file": SimpleUploadedFile("ago-v2.png", b"\x89PNG fake")},
+                SERVER_NAME="localhost",
+            )
+        alvo.refresh_from_db()
+        self.assertEqual(alvo.status, "delivered")
+        self.assertEqual(alvo.attachment_id, primeiro)
+        self.assertEqual(len(alvo.extra_attachment_ids), 1)
+
+    def test_upload_sem_arquivo_e_somente_leitura(self):
+        mr.ensure_entry(self.rule, self.card, date(2026, 9, 1))
+        alvo = MonthlyReportEntry.objects.get(card=self.card, month=date(2026, 9, 1))
+        r = self.client.post(f"/card/{self.card.id}/monthly/{alvo.id}/upload/", SERVER_NAME="localhost")
+        self.assertEqual(r.status_code, 400)
+
+        User = get_user_model()
+        leitor = User.objects.create_user(username="leitor", email="leitor@camim.com.br", password="x")
+        prof = leitor.profile
+        prof.terms_accepted = True
+        from django.conf import settings as dj
+        prof.terms_version = getattr(dj, "CURRENT_TERMS_VERSION", "2.0")
+        prof.save()
+        BoardMembership.objects.create(board=self.board, user=leitor, role="viewer")
+        self.client.force_login(leitor)
+        r = self.client.post(
+            f"/card/{self.card.id}/monthly/{alvo.id}/upload/",
+            {"file": SimpleUploadedFile("x.png", b"\x89PNG fake")},
+            SERVER_NAME="localhost",
+        )
+        self.assertEqual(r.status_code, 403)
+        self.assertEqual(self.card.attachments.count(), 0)
+
+    def test_painel_mostra_botao_de_anexar_por_mes(self):
+        mr.ensure_entry(self.rule, self.card, date(2026, 8, 1))
+        alvo = MonthlyReportEntry.objects.get(card=self.card, month=date(2026, 8, 1))
+        r = self.client.get(f"/card/{self.card.id}/monthly/", SERVER_NAME="localhost")
+        html = r.content.decode()
+        self.assertIn(f"/card/{self.card.id}/monthly/{alvo.id}/upload/", html)
+        self.assertIn("Anexar relatório de Ago/2026", html)

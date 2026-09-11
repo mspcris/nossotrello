@@ -620,6 +620,7 @@ urlpatterns = [
     path("column/<int:column_id>/automation/", column_automation_modal, name="column_automation_modal"),
     # Relatório mensal (recorrência): aba do card + aceitar anexo reprovado
     path("card/<int:card_id>/monthly/", monthly_views.monthly_panel, name="monthly_panel"),
+    path("card/<int:card_id>/monthly/<int:entry_id>/upload/", monthly_views.monthly_upload, name="monthly_upload"),
     path("card/<int:card_id>/monthly/<int:entry_id>/accept/", monthly_views.monthly_accept, name="monthly_accept"),
     # Monitoramento externo (Token DRF). Sob /api/ de propósito: middleware libera.
     path("api/monthly-reports/", monthly_views.monthly_reports_api, name="monthly_reports_api"),
@@ -732,6 +733,11 @@ urlpatterns = [
         "card/<int:card_id>/video-playable/<uuid:source_id>/",
         attachments_views.video_playable_url,
         name="video_playable_url",
+    ),
+    path(
+        "card/<int:card_id>/attachments/<int:attachment_id>/sheet/",
+        attachments_views.attachment_sheet_preview,
+        name="attachment_sheet_preview",
     ),
 
     path("card/<int:card_id>/follow/", cards_state_views.toggle_card_follow, name="toggle_card_follow"),

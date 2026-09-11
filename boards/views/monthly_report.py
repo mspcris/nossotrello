@@ -2,18 +2,21 @@
 """Aba "Mensal" do card (automação de entrega mensal) + API de monitoramento.
 
 - monthly_panel      GET  -> partial da aba (recarrega após anexar)
+- monthly_upload     POST -> anexa o relatório DIRETO na linha de um mês
 - monthly_accept     POST -> "Aceitar mesmo assim" (anexo reprovado pela IA)
 - monthly_reports_api GET -> JSON p/ projetos externos (TokenAuthentication do DRF)
 """
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
+from django.template.loader import render_to_string
 from django.views.decorators.http import require_http_methods, require_POST
 
-from ..models import Card, ColumnAutomation, MonthlyReportEntry
+from ..models import Card, CardAttachment, ColumnAutomation, MonthlyReportEntry
 from ..permissions import can_edit_board
 from ..services import monthly_report as mr
-from .attachments import _can_view_card
+from .attachments import _attached_label, _can_view_card
+from .helpers import _actor_label, _log_card, sanitize_quill_html
 
 
 def _render_panel(request, card):
@@ -31,6 +34,81 @@ def monthly_panel(request, card_id):
     if not _can_view_card(request.user, card):
         return HttpResponse("Sem acesso", status=403)
     return _render_panel(request, card)
+
+
+@login_required
+@require_POST
+def monthly_upload(request, card_id, entry_id):
+    """Upload feito NA ABA MENSAL, já amarrado ao mês da linha.
+
+    O arquivo vira um `CardAttachment` normal (aparece na aba Anexos e no
+    histórico como qualquer outro) e, em vez de cair no ciclo pendente mais
+    antigo, entra no mês que o gestor escolheu — é assim que ele quita os
+    meses atrasados sem precisar renomear arquivo.
+
+    Devolve JSON com o HTML já renderizado do painel e da lista de anexos: o
+    input de arquivo mora dentro do #cm-main-form, então subir por htmx
+    arrastaria junto todos os campos do card (inclusive o outro input `file`).
+    """
+    card = get_object_or_404(Card.objects.select_related("column__board"), id=card_id, is_deleted=False)
+    board = card.column.board
+    if not can_edit_board(request.user, board):
+        return JsonResponse({"ok": False, "error": "Somente leitura."}, status=403)
+
+    entry = get_object_or_404(MonthlyReportEntry, id=entry_id, card=card)
+
+    if "file" not in request.FILES:
+        return JsonResponse({"ok": False, "error": "Nenhum arquivo enviado."}, status=400)
+
+    desc = sanitize_quill_html((request.POST.get("attachment_desc") or "").strip())
+    attachment = CardAttachment.objects.create(
+        card=card,
+        file=request.FILES["file"],
+        description=desc,
+        created_by=request.user,
+    )
+
+    board.version += 1
+    board.save(update_fields=["version"])
+
+    _log_card(
+        card,
+        request,
+        f"<p><strong>{_actor_label(request)}</strong> anexou {_attached_label(attachment.file)} "
+        f"como o relatório de <strong>{mr.label(entry.month)}</strong>.</p>",
+        attachment=attachment.file,
+    )
+
+    # miniatura (best-effort) — mesma cortesia do upload comum
+    try:
+        from boards.services.attach_thumbs import ensure_thumb_for_fieldfile
+        ensure_thumb_for_fieldfile(attachment.file)
+    except Exception:
+        pass
+
+    mr.attach_to_entry(card, entry, attachment, actor=request.user)
+
+    card = Card.objects.get(id=card.id)
+    items = list(card.attachments.all())
+    attachments_html = "".join(
+        render_to_string("boards/partials/attachment_item.html", {"attachment": att}, request=request)
+        for att in items
+    ) or '<div class="cm-muted">Nenhum anexo ainda.</div>'
+
+    return JsonResponse({
+        "ok": True,
+        "panel_html": render_to_string(
+            "boards/partials/monthly_report_panel.html",
+            {
+                "card": card,
+                "monthly": mr.panel_context(card),
+                "viewer_can_edit": True,
+            },
+            request=request,
+        ),
+        "attachments_html": attachments_html,
+        "attachments_count": len(items),
+    })
 
 
 @login_required

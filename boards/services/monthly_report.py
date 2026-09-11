@@ -351,11 +351,7 @@ def on_attachment_added(card, attachment, actor=None, sync: bool = False):
             entry = MonthlyReportEntry.objects.filter(card=card, month=cur).first()
         if entry is None:
             return None
-        extras = list(entry.extra_attachment_ids or [])
-        if attachment.id not in extras and attachment.id != entry.attachment_id:
-            extras.append(attachment.id)
-            entry.extra_attachment_ids = extras
-            entry.save(update_fields=["extra_attachment_ids", "updated_at"])
+        _add_extra(entry, attachment)
         _log(card, actor, (
             f"<p><strong>{escape(_who(actor))}</strong> anexou um arquivo adicional ao "
             f"relatório de <strong>{label(entry.month)}</strong>, que já estava entregue "
@@ -363,7 +359,24 @@ def on_attachment_added(card, attachment, actor=None, sync: bool = False):
         ))
         return entry
 
-    p = rule_params(rule)
+    _assign(entry, attachment, actor, rule_params(rule))
+
+    _log(card, actor, (
+        f"<p><strong>{escape(_who(actor))}</strong> anexou o relatório de "
+        f"<strong>{label(entry.month)}</strong>"
+        + (" — enviado para validação da IA." if entry.status == "validating" else ".")
+        + "</p>"
+    ))
+    _bump_board(card)
+
+    if sync:
+        return finalize(entry.id, actor=actor) or entry
+    _bg(finalize, entry.id)
+    return entry
+
+
+def _assign(entry, attachment, actor, p: dict):
+    """Grava o anexo na entrada e zera o estado da validação anterior."""
     entry.attachment = attachment
     entry.attached_at = timezone.now()
     entry.attached_by = actor if (actor and getattr(actor, "id", None)) else None
@@ -378,12 +391,48 @@ def on_attachment_added(card, attachment, actor=None, sync: bool = False):
         entry.status = "validating"
         entry.ai_status = "pending"
     else:
+        entry.status = "pending"
         entry.ai_status = "skipped" if p["ai_validate"] else "off"
     entry.save()
+    return entry
+
+
+def _add_extra(entry, attachment):
+    """Arquivo adicional de um mês que já está entregue."""
+    extras = list(entry.extra_attachment_ids or [])
+    if attachment.id not in extras and attachment.id != entry.attachment_id:
+        extras.append(attachment.id)
+        entry.extra_attachment_ids = extras
+        entry.save(update_fields=["extra_attachment_ids", "updated_at"])
+    return entry
+
+
+def attach_to_entry(card, entry, attachment, actor=None, sync: bool = False):
+    """Anexo enviado PELA ABA MENSAL, direto na linha de um mês escolhido.
+
+    É o caminho do gestor que está quitando meses atrasados: aqui a regra do
+    "ciclo pendente mais antigo" não vale — ele apontou a linha. Mês já
+    entregue recebe o arquivo como adicional, sem reabrir o ciclo.
+    """
+    rule = entry.rule or rule_for_card(card)
+    if rule is None or attachment is None:
+        return None
+
+    if entry.status == "delivered":
+        _add_extra(entry, attachment)
+        _log(card, actor, (
+            f"<p><strong>{escape(_who(actor))}</strong> anexou um arquivo adicional ao "
+            f"relatório de <strong>{label(entry.month)}</strong>, que já estava entregue "
+            f"(automação de entrega mensal).</p>"
+        ))
+        _bump_board(card)
+        return entry
+
+    _assign(entry, attachment, actor, rule_params(rule))
 
     _log(card, actor, (
         f"<p><strong>{escape(_who(actor))}</strong> anexou o relatório de "
-        f"<strong>{label(entry.month)}</strong>"
+        f"<strong>{label(entry.month)}</strong> pela aba Mensal"
         + (" — enviado para validação da IA." if entry.status == "validating" else ".")
         + "</p>"
     ))

@@ -1,5 +1,8 @@
 {% load tag_helpers %}
-<div id="cm-monthly-panel" data-monthly-url="{% url 'boards:monthly_panel' card.id %}">
+<div id="cm-monthly-panel"
+     data-monthly-url="{% url 'boards:monthly_panel' card.id %}"
+     data-activity-url="{% url 'boards:activity_panel' card.id %}"
+     data-card-id="{{ card.id }}">
 <style>
   .mr-head { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
   .mr-state { display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:10px; font-weight:700; font-size:.95rem; border:1px solid transparent; }
@@ -23,8 +26,19 @@
   .mr-ai--aprovado { color:#0f5c30; }
   .mr-people { font-size:.82rem; opacity:.8; }
   .mr-people b { font-weight:600; }
-  .mr-btn { font-size:.78rem; padding:4px 10px; border-radius:8px; border:1px solid rgba(0,0,0,.15); background:#fff; cursor:pointer; }
+  .mr-btn { font-size:.78rem; padding:4px 10px; border-radius:8px; border:1px solid rgba(0,0,0,.15); background:#fff; cursor:pointer; white-space:nowrap; }
   .mr-btn:hover { background:#f3f4f6; }
+  .mr-btn[disabled] { opacity:.6; cursor:default; }
+  .mr-btn--send { border-color:#2563eb; color:#1d4ed8; font-weight:700; }
+  .mr-btn--send:hover { background:#eef4ff; }
+  .mr-cta { font-size:.86rem; padding:8px 14px; border-radius:10px; border:1px solid #2563eb; background:#2563eb; color:#fff; font-weight:700; cursor:pointer; }
+  .mr-cta:hover { background:#1d4ed8; }
+  .mr-cta[disabled] { opacity:.65; cursor:default; }
+  .mr-actions { display:flex; gap:6px; align-items:center; justify-content:flex-end; }
+  .mr-err { margin-top:6px; font-size:.8rem; color:#9b1c1c; }
+  [data-theme="dark"] .mr-btn, .cm-theme-dark .mr-btn { background:rgba(255,255,255,.06); color:inherit; border-color:rgba(255,255,255,.18); }
+  [data-theme="dark"] .mr-btn:hover, .cm-theme-dark .mr-btn:hover { background:rgba(255,255,255,.12); }
+  [data-theme="dark"] .mr-btn--send, .cm-theme-dark .mr-btn--send { color:#93b4ff; border-color:#3b6cd4; }
   [data-theme="dark"] .mr-table th, .cm-theme-dark .mr-table th { border-color:rgba(255,255,255,.12); }
   [data-theme="dark"] .mr-table td, .cm-theme-dark .mr-table td { border-color:rgba(255,255,255,.08); }
 </style>
@@ -49,6 +63,10 @@
           {% else %}
             <span class="mr-state mr-state--pending">📎 Pendente: {{ cur.label }} — prazo {{ cur.due_on|date:"d/m/Y" }}</span>
           {% endif %}
+          {% if viewer_can_edit and cur.status != 'delivered' and cur.status != 'validating' %}
+            <button type="button" class="mr-cta" data-mr-upload="{% url 'boards:monthly_upload' card.id cur.id %}" data-mr-label="{{ cur.label }}"
+                    style="margin-left:8px;">📎 Anexar relatório de {{ cur.label }}</button>
+          {% endif %}
         {% endif %}
       </div>
       <div class="mr-people">
@@ -60,7 +78,9 @@
     </div>
 
     <div class="cm-muted" style="font-size:.8rem;">
-      O próximo arquivo anexado na aba Anexos entra como a entrega do mês pendente mais antigo
+      Use o botão <strong>Anexar</strong> na linha do mês para enviar o relatório direto ali — dá para
+      quitar meses atrasados em qualquer ordem, e o arquivo aparece normalmente na aba Anexos.
+      Arquivo enviado pela aba Anexos, sem escolher o mês, entra na entrega do mês pendente mais antigo
       (ou do mês citado no nome do arquivo, ex.: “…Junho de 2026.pdf”). Depois de entregue, a data de
       entrega do card pula para o dia {{ monthly.params.day }} do mês seguinte.
     </div>
@@ -82,8 +102,8 @@
             {% if e.reminded_at %}<div class="cm-muted" style="font-size:.7rem;">cobrado {{ e.reminded_at|date:"d/m H:i" }}</div>{% endif %}
           </td>
           <td>
-            {% if e.attachment %}{% with meta=e.attachment.file|file_meta %}<a href="{{ e.attachment.file.url }}" target="_blank" rel="noopener">{{ meta.name|default:e.attachment.file.name }}</a>{% endwith %}{% else %}—{% endif %}
-            {% for x in e.extras %}{% with meta=x.file|file_meta %}<div class="cm-muted" style="font-size:.74rem;">+ <a href="{{ x.file.url }}" target="_blank" rel="noopener">{{ meta.name|default:x.file.name }}</a></div>{% endwith %}{% endfor %}
+            {% if e.attachment %}{% include "boards/partials/monthly_file_link.html" with att=e.attachment %}{% else %}—{% endif %}
+            {% for x in e.extras %}<div class="cm-muted" style="font-size:.74rem;">+ {% include "boards/partials/monthly_file_link.html" with att=x %}</div>{% endfor %}
           </td>
           <td>{% if e.attached_by %}{{ e.attached_by.profile.display_name|default:e.attached_by.email }}<br>{% endif %}{% if e.attached_at %}<span class="cm-muted">{{ e.attached_at|date:"d/m/Y H:i" }}</span>{% endif %}{% if e.accepted_by %}<div class="cm-muted" style="font-size:.72rem;">aceito por {{ e.accepted_by.profile.display_name|default:e.accepted_by.email }}</div>{% endif %}</td>
           <td>
@@ -97,12 +117,23 @@
             {% else %}<span class="cm-muted">—</span>{% endif %}
           </td>
           <td>
-            {% if e.status == 'rejected' and viewer_can_edit %}
-              <button type="button" class="mr-btn"
-                      hx-post="{% url 'boards:monthly_accept' card.id e.id %}"
-                      hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
-                      hx-target="#cm-monthly-panel" hx-swap="outerHTML"
-                      hx-confirm="Aceitar este anexo como o relatório de {{ e.label }} mesmo com a reprovação da IA?">Aceitar mesmo assim</button>
+            {% if viewer_can_edit %}
+              <div class="mr-actions">
+                {% if e.status == 'rejected' %}
+                  <button type="button" class="mr-btn"
+                          hx-post="{% url 'boards:monthly_accept' card.id e.id %}"
+                          hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                          hx-target="#cm-monthly-panel" hx-swap="outerHTML"
+                          hx-confirm="Aceitar este anexo como o relatório de {{ e.label }} mesmo com a reprovação da IA?">Aceitar mesmo assim</button>
+                {% endif %}
+                {% if e.status != 'validating' %}
+                  <button type="button" class="mr-btn{% if e.status != 'delivered' %} mr-btn--send{% endif %}"
+                          data-mr-upload="{% url 'boards:monthly_upload' card.id e.id %}" data-mr-label="{{ e.label }}"
+                          {% if e.status == 'delivered' %}data-mr-extra="1" title="Enviar um arquivo adicional para {{ e.label }}"{% endif %}>
+                    {% if e.status == 'delivered' %}＋ Adicional{% elif e.attachment %}🔁 Trocar arquivo{% else %}📎 Anexar{% endif %}
+                  </button>
+                {% endif %}
+              </div>
             {% endif %}
           </td>
         </tr>
@@ -112,7 +143,125 @@
       </tbody>
     </table>
     </div>
+
+    {% if viewer_can_edit %}
+      <input type="file" id="mr-file-input" style="display:none;" aria-hidden="true">
+      <div id="mr-upload-error" class="mr-err" style="display:none;"></div>
+    {% endif %}
   </div>
   {% endwith %}
+{% endif %}
+
+{% if viewer_can_edit %}
+<script>
+/* Upload direto na linha do mês.
+
+   Não dá pra usar htmx aqui: este painel mora dentro do #cm-main-form e, num
+   POST, o htmx anexaria sozinho todos os campos do card — inclusive o OUTRO
+   input[name=file] da aba Anexos.
+
+   O listener é de documento e registrado UMA vez: o painel é trocado inteiro
+   (outerHTML) a cada recarga, e HTML injetado assim não reexecuta <script>. */
+(function(){
+  if (window.__mrUploadWired) return;
+  window.__mrUploadWired = true;
+
+  var input = document.createElement("input");
+  input.type = "file";
+  input.style.display = "none";
+  document.body.appendChild(input);
+  var pending = null;
+
+  function panelOf(el){ return el.closest("#cm-monthly-panel"); }
+  function csrf(){
+    return (typeof _ntCsrf === "function")
+      ? _ntCsrf()
+      : (document.querySelector("[name=csrfmiddlewaretoken]") || {}).value || "";
+  }
+  function showErr(msg){
+    var box = document.getElementById("mr-upload-error");
+    if (!box) { alert(msg); return; }
+    box.textContent = msg;
+    box.style.display = "block";
+  }
+  function refreshPanel(){
+    var mp = document.getElementById("cm-monthly-panel");
+    if (mp && window.htmx) {
+      try { htmx.ajax("GET", mp.getAttribute("data-monthly-url"), {target:"#cm-monthly-panel", swap:"outerHTML"}); } catch(_e){}
+    }
+  }
+
+  document.addEventListener("click", function(ev){
+    var btn = ev.target.closest("[data-mr-upload]");
+    if (!btn || !panelOf(btn)) return;
+    ev.preventDefault();
+    var box = document.getElementById("mr-upload-error");
+    if (box) box.style.display = "none";
+    pending = {btn: btn, panel: panelOf(btn)};
+    input.value = "";
+    input.click();
+  });
+
+  input.addEventListener("change", function(){
+    var file = input.files && input.files[0];
+    var ctx = pending;
+    pending = null;
+    input.value = "";
+    if (!file || !ctx) return;
+    var btn = ctx.btn, panel = ctx.panel;
+
+    var mes = btn.getAttribute("data-mr-label") || "o mês";
+    if (btn.hasAttribute("data-mr-extra")
+        && !confirm(mes + " já está entregue. Enviar \u201c" + file.name + "\u201d como arquivo ADICIONAL desse mês?")) {
+      return;
+    }
+
+    var restore = (typeof _ntBtnLoading === "function") ? _ntBtnLoading(btn, "Enviando…") : function(){};
+    if (window.ntBusy) window.ntBusy(true, "Anexando " + String(file.name).slice(0, 32) + "…");
+
+    var fd = new FormData();
+    fd.append("file", file);
+    fetch(btn.getAttribute("data-mr-upload"), {
+      method: "POST",
+      headers: {"X-CSRFToken": csrf()},
+      body: fd,
+      credentials: "same-origin"
+    }).then(function(r){
+      return r.json().catch(function(){ throw new Error("Falha no envio (HTTP " + r.status + ")."); });
+    }).then(function(data){
+      if (!data || !data.ok) throw new Error((data && data.error) || "Não foi possível anexar.");
+
+      var list = document.getElementById("attachments-list");
+      if (list) list.innerHTML = data.attachments_html;
+      var tab = document.querySelector("[data-cm-count='files']");
+      if (tab && typeof data.attachments_count === "number") {
+        tab.textContent = data.attachments_count;
+        tab.hidden = !data.attachments_count;
+      }
+
+      var holder = document.getElementById("cm-monthly-panel");
+      if (holder) holder.outerHTML = data.panel_html;
+
+      var activity = panel && panel.getAttribute("data-activity-url");
+      var cardId = panel && panel.getAttribute("data-card-id");
+      if (activity && window.htmx) {
+        try { htmx.ajax("GET", activity, "#cm-activity-panel"); } catch(_e){}
+      }
+      if (cardId && typeof window.refreshCardSnippet === "function") {
+        window.refreshCardSnippet(Number(cardId));
+      }
+
+      /* a IA valida em background: recarrega o painel um pouco depois pra
+         mostrar o veredito sem o usuário precisar reabrir o card */
+      setTimeout(refreshPanel, 6000);
+    }).catch(function(err){
+      restore();
+      showErr(String((err && err.message) || err));
+    }).then(function(){
+      if (window.ntBusy) window.ntBusy(false);
+    });
+  });
+})();
+</script>
 {% endif %}
 </div>
