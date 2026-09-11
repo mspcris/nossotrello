@@ -40,6 +40,27 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-09 ---
+    "b9cf482": (
+        "📊",
+        "Planilha anexada abre na tela, sem precisar baixar",
+        "Clicar num .xlsx ou .csv anexado baixava o arquivo — quem só queria "
+        "conferir o conteúdo ficava com um download a cada olhada. Agora o link "
+        "abre a planilha em tela cheia: tabela com o cabeçalho e a numeração das "
+        "linhas fixos, abas quando a planilha tem mais de uma, e o botão de baixar "
+        "na barra do topo para quando você decidir que quer o arquivo. Vale na aba "
+        "Anexos e na aba Mensal.",
+    ),
+    "1c64e1d": (
+        "📅",
+        "Aba Mensal: anexar o relatório direto na linha do mês",
+        "Quem estava com meses atrasados não tinha como quitá-los pela aba Mensal: "
+        "o arquivo enviado pela aba Anexos cai sempre no mês pendente mais antigo. "
+        "Agora cada linha do histórico tem o botão \"Anexar\", e o mês em aberto "
+        "ganhou um botão em destaque no topo do painel. O arquivo entra no mês que "
+        "você escolheu, em qualquer ordem, e aparece normalmente na aba Anexos e no "
+        "histórico do card. Em mês já entregue, o botão vira \"Adicional\" e o "
+        "arquivo entra sem reabrir o mês.",
+    ),
     "924143a": (
         "📅",
         "Entrega mensal de relatório: a lista cobra sozinha",
