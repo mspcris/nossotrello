@@ -50,6 +50,16 @@ CURATED = {
         "na barra do topo para quando você decidir que quer o arquivo. Vale na aba "
         "Anexos e na aba Mensal.",
     ),
+    "c415a7f": (
+        "🔔",
+        "Relatório mensal atrasado é cobrado todo dia, não só no dia 15",
+        "Antes a cobrança do relatório saía uma vez, no vencimento, e depois "
+        "silenciava — mês esquecido ficava esquecido. Agora, enquanto o anexo não "
+        "entra, os gerentes do posto recebem um e-mail por dia (a partir das 8h) "
+        "listando todos os meses em atraso daquele card, com cópia para o "
+        "responsável pelo acompanhamento. Assim que o relatório é anexado, a "
+        "cobrança para sozinha.",
+    ),
     "1c64e1d": (
         "📅",
         "Aba Mensal: anexar o relatório direto na linha do mês",
