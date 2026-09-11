@@ -18,6 +18,14 @@ _CACHE_TTL = 7 * 24 * 3600
 
 _IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg", ".avif", ".heic")
 _VIDEO_EXTS = (".mp4", ".mov", ".webm", ".mkv", ".avi", ".m4v", ".3gp")
+# planilhas que o visualizador do card abre em tabela (boards/services/sheet_preview.py)
+_SHEET_EXTS = (".xlsx", ".xlsm", ".csv", ".tsv")
+_SHEET_CTS = (
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-excel.sheet.macroenabled.12",
+    "text/csv",
+    "text/tab-separated-values",
+)
 
 # Sem StoredFile (linha apagada ou chave órfã) não dá pra recuperar o nome —
 # melhor um rótulo genérico do que despejar o UUID na tela.
@@ -77,7 +85,8 @@ def file_meta(fieldfile) -> dict:
 
     - `name`: nome original ("relatorio.pdf"), nunca o UUID de storage.
     - `ext`:  extensão em maiúsculas sem ponto ("PDF"), "" se indeterminada.
-    - `kind`: "image" | "pdf" | "video" | "file" — decide se dá pra pré-visualizar.
+    - `kind`: "image" | "pdf" | "video" | "sheet" | "file" — decide se dá pra
+      pré-visualizar.
     - `missing`: os bytes sumiram (chave órfã). O template mostra "arquivo
       indisponível" em vez de um link que devolve 404.
     """
@@ -116,6 +125,8 @@ def file_meta(fieldfile) -> dict:
         kind = "pdf"
     elif ct.startswith("video/") or lower.endswith(_VIDEO_EXTS):
         kind = "video"
+    elif lower.endswith(_SHEET_EXTS) or ct.split(";")[0].strip() in _SHEET_CTS:
+        kind = "sheet"
     else:
         kind = "file"
 

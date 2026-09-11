@@ -22,6 +22,7 @@ _KIND_LABEL = {
     "image": "uma imagem",
     "video": "um vídeo",
     "pdf": "um PDF",
+    "sheet": "uma planilha",
     "file": "um arquivo",
 }
 
@@ -251,6 +252,43 @@ def add_attachment(request, card_id):
     )
 
     return HttpResponse(oob_refresh, content_type="text/html")
+
+
+@login_required
+def attachment_sheet_preview(request, card_id, attachment_id):
+    """Conteúdo de um XLSX/CSV anexado, em JSON, para o visualizador do card.
+
+    Clicar no arquivo baixava — quem só queria conferir ficava com um download
+    por olhada. A leitura é feita aqui (openpyxl) e limitada a uma prévia; o
+    download continua no botão do visualizador.
+    """
+    card = get_object_or_404(
+        Card.objects.select_related("column__board"), id=card_id, is_deleted=False
+    )
+    if not _can_view_card(request.user, card):
+        return JsonResponse({"ok": False, "error": "Sem acesso."}, status=403)
+
+    attachment = get_object_or_404(CardAttachment, id=attachment_id, card=card)
+
+    from boards.services import sheet_preview
+
+    meta = file_meta(attachment.file) or {}
+    name = meta.get("name") or display_name(attachment.file)
+    ext = (meta.get("ext") or "").lower().lstrip(".")
+    if not ext:
+        raw = attachment.file.name or ""
+        ext = raw.rsplit(".", 1)[-1].lower() if "." in raw else ""
+
+    result = sheet_preview.read(attachment.file, ext, title=name)
+    if "error" in result:
+        return JsonResponse({"ok": False, "error": result["error"]}, status=422)
+
+    return JsonResponse({
+        "ok": True,
+        "name": name,
+        "download_url": attachment.file.url,
+        "sheets": result["sheets"],
+    })
 
 
 @login_required

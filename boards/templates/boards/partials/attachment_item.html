@@ -47,6 +47,16 @@
            title="Ver {{ meta.name }}">
           🔍 {{ meta.name }}
         </a>
+      {% elif meta.kind == 'sheet' %}
+        {# Planilha abre em tabela no visualizador; baixar é decisão de quem viu #}
+        <a href="{{ attachment.file.url }}"
+           class="text-blue-600 font-medium hover:underline text-sm break-words"
+           data-sheet-src="{% url 'boards:attachment_sheet_preview' attachment.card.id attachment.id %}"
+           data-sheet-name="{{ meta.name }}"
+           data-sheet-download="{{ attachment.file.url }}"
+           title="Ver {{ meta.name }} sem baixar">
+          📊 {{ meta.name }}
+        </a>
       {% else %}
         <a href="{{ attachment.file.url }}"
            target="_blank"

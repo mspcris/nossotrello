@@ -1409,3 +1409,170 @@ if (!window.__colorPopoverOutsideInstalled) {
 })();
 
 
+
+
+/* ============================================================
+   VISUALIZADOR DE PLANILHA (XLSX / XLSM / CSV)
+   Clicar num .xlsx anexado baixava o arquivo — quem só queria
+   conferir o conteúdo ficava com um download a cada olhada.
+   Aqui o servidor lê a planilha (openpyxl) e devolve as linhas;
+   a tela monta a tabela, com abas quando há mais de uma planilha.
+   Baixar continua a um clique, no botão da barra.
+   Montado uma vez em <body>: sobrevive às trocas de tela do htmx.
+   ============================================================ */
+(function () {
+  var overlay, titleEl, stageEl, tabsEl, dlEl;
+  var data = null, active = 0, reqId = 0;
+
+  function svg(inner) {
+    return '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" ' +
+           'stroke="currentColor" stroke-width="2" stroke-linecap="round" ' +
+           'stroke-linejoin="round" aria-hidden="true">' + inner + '</svg>';
+  }
+  var ICON_DL = svg('<path d="M12 3v12"/><path d="M7 12l5 5 5-5"/><path d="M5 21h14"/>');
+  var ICON_X  = svg('<line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/>');
+
+  function esc(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function build() {
+    if (overlay) return;
+    overlay = document.createElement("div");
+    overlay.className = "cm-lightbox cm-sheetbox";
+    overlay.id = "cm-sheetbox";
+    overlay.setAttribute("aria-hidden", "true");
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-label", "Planilha");
+    overlay.innerHTML =
+      '<div class="cm-lb-bar">' +
+        '<span class="cm-lb-title" id="cm-sb-title">Planilha</span>' +
+        '<div class="cm-lb-tools">' +
+          '<a class="cm-lb-btn" id="cm-sb-dl" download title="Baixar planilha" aria-label="Baixar planilha">' + ICON_DL + '</a>' +
+          '<button type="button" class="cm-lb-btn cm-lb-close" data-act="close" title="Fechar (Esc)" aria-label="Fechar">' + ICON_X + '</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="cm-sb-tabs" id="cm-sb-tabs"></div>' +
+      '<div class="cm-sb-stage" id="cm-sb-stage"></div>';
+    document.body.appendChild(overlay);
+
+    titleEl = overlay.querySelector("#cm-sb-title");
+    stageEl = overlay.querySelector("#cm-sb-stage");
+    tabsEl  = overlay.querySelector("#cm-sb-tabs");
+    dlEl    = overlay.querySelector("#cm-sb-dl");
+
+    overlay.querySelector(".cm-lb-tools").addEventListener("click", function (e) {
+      if (e.target.closest('[data-act="close"]')) close();
+    });
+    tabsEl.addEventListener("click", function (e) {
+      var b = e.target.closest("[data-sheet-idx]");
+      if (!b) return;
+      active = Number(b.getAttribute("data-sheet-idx")) || 0;
+      render();
+    });
+  }
+
+  function render() {
+    if (!data || !data.sheets || !data.sheets.length) return;
+    var many = data.sheets.length > 1;
+    tabsEl.hidden = !many;
+    tabsEl.innerHTML = many ? data.sheets.map(function (s, i) {
+      return '<button type="button" class="cm-sb-tab' + (i === active ? " is-on" : "") +
+             '" data-sheet-idx="' + i + '">' + esc(s.title) + "</button>";
+    }).join("") : "";
+
+    var sheet = data.sheets[active] || data.sheets[0];
+    var rows = sheet.rows || [];
+    if (!rows.length) {
+      stageEl.innerHTML = '<div class="cm-sb-msg">Esta planilha está vazia.</div>';
+      return;
+    }
+    /* Primeira linha vira cabeçalho: é o que quase toda planilha de relatório
+       faz, e sem isso a tabela rola sem referência nenhuma de coluna. */
+    var head = rows[0], body = rows.slice(1);
+    var html = '<table class="cm-sb-table"><thead><tr><th class="cm-sb-rownum"></th>' +
+      head.map(function (c) { return "<th>" + esc(c) + "</th>"; }).join("") +
+      "</tr></thead><tbody>" +
+      body.map(function (r, i) {
+        var tds = "";
+        for (var c = 0; c < head.length; c++) tds += "<td>" + esc(r[c]) + "</td>";
+        return '<tr><td class="cm-sb-rownum">' + (i + 2) + "</td>" + tds + "</tr>";
+      }).join("") +
+      "</tbody></table>";
+    if (sheet.truncated) {
+      html += '<div class="cm-sb-msg">Prévia cortada — a planilha é maior que isso. ' +
+              "Baixe o arquivo para ver tudo.</div>";
+    }
+    stageEl.innerHTML = html;
+    stageEl.scrollTop = 0;
+    stageEl.scrollLeft = 0;
+  }
+
+  function open(url, name, downloadUrl) {
+    build();
+    var mine = ++reqId;
+    data = null;
+    active = 0;
+    titleEl.textContent = name || "Planilha";
+    dlEl.href = downloadUrl || "#";
+    dlEl.setAttribute("download", name || "");
+    tabsEl.hidden = true;
+    tabsEl.innerHTML = "";
+    stageEl.innerHTML = '<div class="cm-sb-msg"><span class="nt-spin" aria-hidden="true"></span> Abrindo a planilha…</div>';
+    overlay.classList.add("is-on");
+    overlay.setAttribute("aria-hidden", "false");
+    document.documentElement.classList.add("cm-lb-lock");
+
+    fetch(url, { credentials: "same-origin" })
+      .then(function (r) { return r.json().catch(function () { return {ok: false}; }); })
+      .then(function (d) {
+        if (mine !== reqId) return;
+        if (!d || !d.ok) {
+          stageEl.innerHTML = '<div class="cm-sb-msg">' +
+            esc((d && d.error) || "Não foi possível abrir a planilha.") +
+            ' <a href="' + esc(downloadUrl || "#") + '" download>Baixar o arquivo</a>.</div>';
+          return;
+        }
+        data = d;
+        if (d.name) titleEl.textContent = d.name;
+        if (d.download_url) dlEl.href = d.download_url;
+        render();
+      })
+      .catch(function () {
+        if (mine !== reqId) return;
+        stageEl.innerHTML = '<div class="cm-sb-msg">Falha de rede ao abrir a planilha. ' +
+          '<a href="' + esc(downloadUrl || "#") + '" download>Baixar o arquivo</a>.</div>';
+      });
+  }
+
+  function close() {
+    if (!overlay) return;
+    reqId++;
+    overlay.classList.remove("is-on");
+    overlay.setAttribute("aria-hidden", "true");
+    document.documentElement.classList.remove("cm-lb-lock");
+    stageEl.innerHTML = "";
+    data = null;
+  }
+
+  // Captura para vencer o href do link (que baixaria o arquivo).
+  document.addEventListener("click", function (e) {
+    var a = e.target.closest ? e.target.closest("[data-sheet-src]") : null;
+    if (!a) return;
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return; // deixa baixar de propósito
+    var src = a.getAttribute("data-sheet-src");
+    if (!src) return;
+    e.preventDefault();
+    try {
+      open(src, a.getAttribute("data-sheet-name") || "Planilha", a.getAttribute("data-sheet-download") || a.href);
+    } catch (_e) {
+      window.open(a.href, "_blank", "noopener");
+    }
+  }, true);
+
+  document.addEventListener("keydown", function (e) {
+    if (!overlay || !overlay.classList.contains("is-on")) return;
+    if (e.key === "Escape") { e.stopPropagation(); close(); }
+  }, true);
+})();

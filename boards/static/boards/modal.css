@@ -4454,3 +4454,104 @@ html.cm-lb-lock{ overflow: hidden; }
   .cm-lb-btn{ width: 34px; height: 34px; }
   .cm-lb-pct{ min-width: 46px; font-size: 12px; }
 }
+
+/* ============================================================
+   VISUALIZADOR DE PLANILHA (XLSX / XLSM / CSV)
+   Mesma moldura do lightbox de imagem (.cm-lightbox), mas o
+   palco é uma tabela rolável com cabeçalho e numeração de
+   linha fixos. Montado em <body> pelo board_ui.js.
+   ============================================================ */
+.cm-sheetbox .cm-lb-bar{ border-bottom: 1px solid rgba(255,255,255,0.10); }
+
+.cm-sb-tabs{
+  flex: 0 0 auto;
+  display: flex;
+  gap: 6px;
+  padding: 8px 16px 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.cm-sb-tabs[hidden]{ display: none; }
+.cm-sb-tab{
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 8px 8px 0 0;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.72);
+  background: rgba(255,255,255,0.08);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cm-sb-tab:hover{ background: rgba(255,255,255,0.16); color: #fff; }
+.cm-sb-tab.is-on{ background: #fff; color: #0f172a; }
+
+.cm-sb-stage{
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 8px 16px 16px;
+  border-radius: 12px;
+  background: #fff;
+  color: #0f172a;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  user-select: text;
+}
+
+.cm-sb-table{
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  width: max-content;
+  min-width: 100%;
+}
+.cm-sb-table th,
+.cm-sb-table td{
+  border-right: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 6px 10px;
+  text-align: left;
+  vertical-align: top;
+  max-width: 420px;
+  overflow-wrap: anywhere;
+}
+.cm-sb-table thead th{
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #f1f5f9;       /* opaco: linha rolando por baixo não pode vazar */
+  font-weight: 700;
+  white-space: nowrap;
+}
+.cm-sb-table tbody tr:nth-child(even) td{ background: #fafafa; }
+.cm-sb-table tbody tr:hover td{ background: #eff6ff; }
+/* numeração da linha: âncora fixa na esquerda, como no Excel */
+.cm-sb-table .cm-sb-rownum{
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: #f1f5f9;
+  color: #64748b;
+  font-weight: 600;
+  text-align: right;
+  white-space: nowrap;
+  border-right: 1px solid #cbd5e1;
+}
+.cm-sb-table thead .cm-sb-rownum{ z-index: 3; }
+
+.cm-sb-msg{
+  padding: 18px 20px;
+  font-size: 14px;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cm-sb-msg a{ color: #1d4ed8; text-decoration: underline; }
+
+@media (max-width: 767px){
+  .cm-sb-stage{ margin: 8px 8px 12px; }
+  .cm-sb-table th, .cm-sb-table td{ padding: 5px 8px; font-size: 12px; max-width: 260px; }
+}
