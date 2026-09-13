@@ -133,7 +133,7 @@ class MonthlyFlowTests(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         msg = mail.outbox[0]
         self.assertEqual(sorted(msg.to), sorted(["julio@camim.com.br", "elisangela@camim.com.br"]))
-        self.assertEqual(msg.cc, ["leonardo@camim.com.br"])
+        self.assertEqual(msg.cc, [])
         self.assertIn("Júlio Albuquerque", msg.body)
         self.assertIn("posto ANCHIETA", msg.body)
         for lb in ("Jun/2026", "Jul/2026", "Ago/2026"):
@@ -165,12 +165,20 @@ class MonthlyFlowTests(TestCase):
             mr.run_scheduler(now=timezone.make_aware(datetime(2026, 9, 16, 9)))
         self.assertEqual(len(mail.outbox), 3)
 
-    def test_scheduler_without_gestores_goes_to_recipient_only(self):
+    def test_scheduler_without_gestores_nao_envia_nada(self):
+        """Sem gestor no Hesk não há para quem cobrar — e o destinatário do
+        relatório não pode virar saco de pancada da cobrança diária."""
         mr.ensure_entry(self.rule, self.card, date(2026, 8, 1))
         with patch("boards.services.hesk_gestores.gestores_do_posto", return_value=[]):
             mr.run_scheduler(now=timezone.make_aware(datetime(2026, 9, 9, 8)))
-        self.assertEqual(mail.outbox[0].to, ["leonardo@camim.com.br"])
-        self.assertIn("nenhum gestor cadastrado", mail.outbox[0].body)
+        self.assertEqual(mail.outbox, [])
+
+    def test_cobranca_diaria_nao_copia_o_destinatario(self):
+        mr.ensure_entry(self.rule, self.card, date(2026, 8, 1))
+        mr.run_scheduler(now=timezone.make_aware(datetime(2026, 9, 9, 8)))
+        self.assertEqual(mail.outbox[0].to,
+                         ["julio@camim.com.br", "elisangela@camim.com.br"])
+        self.assertEqual(mail.outbox[0].cc, [])
 
     # --- IA ------------------------------------------------------------------
     def test_ai_rejected_holds_month_until_accepted(self):
@@ -263,7 +271,7 @@ class MonthlyFlowTests(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn("Ago/2026", mail.outbox[0].subject)
         self.assertIn("Júlio Albuquerque", mail.outbox[0].body)
-        self.assertEqual(mail.outbox[0].cc, ["leonardo@camim.com.br"])
+        self.assertEqual(mail.outbox[0].cc, [])
 
     # --- chip / painel / API -------------------------------------------------
     def test_chip_and_panel(self):

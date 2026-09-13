@@ -941,13 +941,22 @@ def _notify_rejected(entry):
 
 def _send_reminder(rule, card, entries: list):
     """Cobrança diária: um e-mail por card listando TODOS os meses vencidos sem
-    anexo. Vai para os gestores do posto (nome citado no corpo) com cópia ao
-    destinatário. Repete todo dia até o anexo entrar."""
-    p = rule_params(rule)
+    anexo. Vai SÓ para os gestores do posto (nome citado no corpo) — o
+    destinatário do relatório não entra na cópia, senão recebe uma cobrança por
+    posto todo dia. Repete todo dia até o anexo entrar."""
     posto = posto_nome(rule)
     resp = responsaveis(rule)
     to = [r["email"] for r in resp if r.get("email")]
     nomes = [r["nome"] for r in resp if r.get("nome")]
+    if not to:
+        # sem gestor no Hesk não há para quem cobrar: registra no card em vez de
+        # jogar o aviso na caixa de quem só quer o relatório pronto.
+        _log(card, None, (
+            f"<p>Cobrança <strong>não enviada</strong>: o posto <strong>{escape(posto)}</strong> não tem "
+            f"gestor cadastrado no Hesk (Configurações → Gestores dos postos). Meses sem relatório: "
+            f"<strong>{escape(', '.join(label(e.month) for e in entries))}</strong>.</p>"
+        ))
+        return
     meses = [label_long(e.month) for e in entries]
     if len(meses) == 1:
         meses_txt = meses[0]
@@ -961,9 +970,6 @@ def _send_reminder(rule, card, entries: list):
     )
     saud = ("Olá, " + (" e ".join(nomes) if len(nomes) <= 2 else ", ".join(nomes[:-1]) + " e " + nomes[-1])
             + f" (posto {posto}),") if nomes else f"Olá, gestão do posto {posto},"
-    aviso = ("" if to else
-             "ATENÇÃO: nenhum gestor cadastrado para este posto no Hesk "
-             "(Configurações → Gestores dos postos). Este aviso foi só para a cópia.\n\n")
     linhas = [
         saud, "",
         (f"O relatório \"{card.title}\" do posto {posto} está sem anexo nos seguintes meses: "
@@ -987,11 +993,10 @@ def _send_reminder(rule, card, entries: list):
         "",
         f"Abrir o card: {_card_link(card)}",
     ]
-    _send_mail(to, subject, aviso + "\n".join(linhas), cc=[p["recipient_email"]])
+    _send_mail(to, subject, "\n".join(linhas))
     _log(card, None, (
         f"<p>Cobrança enviada: relatório sem anexo em <strong>{escape(', '.join(label(e.month) for e in entries))}</strong>"
-        f" — para {escape(', '.join(nomes) or 'ninguém (sem gestores cadastrados no Hesk)')}"
-        f" com cópia para {escape(p['recipient_email'] or '—')}.</p>"
+        f" — para {escape(', '.join(nomes) or ', '.join(to))}.</p>"
     ))
 
 
