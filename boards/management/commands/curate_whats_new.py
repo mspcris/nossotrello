@@ -40,6 +40,14 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-09 ---
+    "a7bfc0f": (
+        "🔍",
+        "Imagem do card abre no visualizador, sem abrir nova aba",
+        "Clicar numa imagem da descrição abria uma aba nova com a imagem crua e, "
+        "por cima, o visualizador — e a imagem colada num comentário do feed nem "
+        "abria. Agora as duas abrem só no visualizador com zoom, arrastar e o "
+        "botão de baixar, e o X devolve você ao card.",
+    ),
     "b9cf482": (
         "📊",
         "Planilha anexada abre na tela, sem precisar baixar",
