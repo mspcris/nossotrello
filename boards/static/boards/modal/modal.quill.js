@@ -1033,32 +1033,6 @@ function bindQuillToDiv(div, hiddenInput, boardId) {
 
 
   // ---------------------------
-  // Click em imagem abre em nova aba
-  // ---------------------------
-  (function installQuillImageOpenInNewTab() {
-    if (window.__cmQuillImgOpenInstalled) return;
-    window.__cmQuillImgOpenInstalled = true;
-
-    document.addEventListener(
-      "click",
-      function (e) {
-        const img = e.target?.closest?.(
-          ".ql-editor img, .cm-quill img, #cm-activity-editor .ql-editor img, .cm-activity-content img"
-        );
-        if (!img) return;
-
-        const src = img.getAttribute("src");
-        if (!src) return;
-
-        e.preventDefault();
-        e.stopPropagation();
-        window.open(src, "_blank", "noopener,noreferrer");
-      },
-      true
-    );
-  })();
-
-  // ---------------------------
   // Resize Grip flutuante (não interfere no layout/overflow)
   // ---------------------------
   (function installDescResizeGripFloating() {

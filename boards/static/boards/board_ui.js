@@ -1378,20 +1378,24 @@ if (!window.__colorPopoverOutsideInstalled) {
     catch (_e) { window.open(src, "_blank", "noopener"); }
   }, true);
 
-  // Imagem dentro da DESCRIÇÃO (editor Quill) também abre no visualizador.
-  // Antes só as miniaturas do feed abriam; a imagem do relato de um chamado
-  // ficava presa no tamanho do editor, sem zoom, e quem queria ver abria a
-  // URL crua numa aba — sem comandos e sem o X pra voltar ao card.
-  // Não cancela o evento: o Quill continua selecionando a imagem por baixo
-  // (apagar/mover seguem funcionando quando o visualizador fecha).
+  // Imagem dentro da DESCRIÇÃO (editor Quill) ou do FEED (comentário/resposta)
+  // também abre no visualizador. Antes só as miniaturas de anexo abriam; a
+  // imagem do relato ficava presa no tamanho do editor e a colada num
+  // comentário não abria nada — quem queria ver abria a URL crua numa aba.
+  // No editor não cancela o evento: o Quill continua selecionando a imagem por
+  // baixo (apagar/mover seguem funcionando quando o visualizador fecha).
   document.addEventListener("click", function (e) {
     var img = e.target && e.target.tagName === "IMG" ? e.target : null;
-    if (!img || !img.closest || !img.closest(".ql-editor")) return;
+    if (!img || !img.closest) return;
+    var inEditor = !!img.closest(".ql-editor");
+    if (!inEditor && !img.closest(".cm-feed-body")) return;
     if (img.closest("[data-zoom-src]")) return;                 // já tratado acima
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
+    if (img.naturalWidth && img.naturalWidth < 48 && img.naturalHeight < 48) return; // ícone/emoji
     var src = img.currentSrc || img.src;
     if (!src || (/^data:/i.test(src) && src.length > 4e6)) return; // colagem gigante ainda não salva
     var name = img.getAttribute("alt") || (src.split("/").filter(Boolean).pop() || "Imagem");
+    if (!inEditor || img.closest("a[href]")) e.preventDefault();  // imagem dentro de link não sai da tela
     try { open(src, name); } catch (_e) {}
   }, true);
 
