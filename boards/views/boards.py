@@ -562,7 +562,14 @@ def board_detail(request, board_id):
         .prefetch_related(
             Prefetch(
                 "cards",
-                queryset=Card.objects.filter(is_archived=False).order_by("position", "id"),
+                # defer("description"): o cartão do quadro não mostra a descrição, e
+                # ela (HTML longo) era ~200 KB por abertura vindo da RDS. O modal do
+                # card carrega o card completo por conta própria.
+                queryset=(
+                    Card.objects.filter(is_archived=False)
+                    .defer("description")
+                    .order_by("position", "id")
+                ),
             )
         )
     )
