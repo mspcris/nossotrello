@@ -681,7 +681,7 @@ if SENTRY_DSN:
     import logging
 
     import sentry_sdk
-    from sentry_sdk.integrations.logging import LoggingIntegration
+    from sentry_sdk.integrations.logging import LoggingIntegration, ignore_logger
 
     def _env_float(key: str, default: float) -> float:
         try:
@@ -704,3 +704,14 @@ if SENTRY_DSN:
         profile_session_sample_rate=_env_float("SENTRY_PROFILES_SAMPLE_RATE", 0.0),
         profile_lifecycle="trace",
     )
+
+    # Ruído que não é defeito nosso:
+    # - DisallowedHost: scanner batendo com cabeçalho Host inválido ('_', IP cru). O
+    #   Django já responde 400; não há o que consertar.
+    # - pika*: quando a conexão com o RabbitMQ cai, o pika registra 3-4 ERRORs por
+    #   conta própria. O publicador (boards/services/pubsub_service.py) descarta a
+    #   conexão e tenta de novo; se o evento se perder de verdade, quem avisa é o
+    #   nosso "publish.fail … evento PERDIDO", em logger próprio.
+    ignore_logger("django.security.DisallowedHost")
+    ignore_logger("pika")
+    ignore_logger("pika.*")
