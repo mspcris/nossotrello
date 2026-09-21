@@ -40,6 +40,14 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-09 ---
+    "8e3238d": (
+        "🚀",
+        "Abrir card por link ficou mais rápido",
+        "Quem abria um card por link direto (de e-mail, WhatsApp ou da busca) esperava "
+        "o quadro inteiro terminar de se atualizar antes do card aparecer. Agora o "
+        "card vem primeiro e os contadores do quadro carregam depois. O quadro também "
+        "parou de pedir a mesma informação várias vezes seguidas ao servidor.",
+    ),
     "bfa5a26": (
         "🔑",
         "Código compartilhado voltou a ser legível depois de revelado",
