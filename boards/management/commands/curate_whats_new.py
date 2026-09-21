@@ -40,6 +40,15 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-09 ---
+    "97eb10d": (
+        "🚚",
+        "Mover card ficou instantâneo, e nada se perde se o servidor engasgar",
+        "Arrastar um card agora responde na hora: a gravação segue em segundo "
+        "plano, na ordem dos seus cliques, com até 3 tentativas. Se mesmo assim "
+        "não der, você recebe um aviso na tela, o quadro volta ao estado real e "
+        "chega um e-mail contando o que houve. E-mails, WhatsApp e o preparo de "
+        "vídeos também saíram do caminho do clique — a tela não espera mais por eles.",
+    ),
     "3836dc1": (
         "⚡",
         "Abrir card e carregar imagens ficou bem mais rápido",
