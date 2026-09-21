@@ -40,6 +40,14 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-09 ---
+    "04094dd": (
+        "➕",
+        "Botão “+ Card” não quebra mais em duas linhas na coluna estreita",
+        "Com a largura das colunas reduzida, o botão “+ Card” do topo da coluna quebrava "
+        "em duas linhas em algumas colunas e deixava o cabeçalho torto. Agora ele fica "
+        "sempre numa linha só: primeiro diminui um pouco a letra e, quando a coluna é "
+        "bem estreita, vira apenas o “+”.",
+    ),
     "3b5bab7": (
         "🎯",
         "Card movido já cai no lugar certo, sem dar o pulinho",
