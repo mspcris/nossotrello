@@ -40,6 +40,14 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-09 ---
+    "3836dc1": (
+        "⚡",
+        "Abrir card e carregar imagens ficou bem mais rápido",
+        "Abrir um card fazia o servidor consultar o banco 66 vezes; agora são 18. "
+        "Toda tela deixou de repetir consultas de sessão e perfil a cada clique, e "
+        "as imagens passam a ficar guardadas no servidor depois da primeira vez, em "
+        "vez de virem do banco a cada abertura de quadro.",
+    ),
     "a7bfc0f": (
         "🔍",
         "Imagem do card abre no visualizador, sem abrir nova aba",
