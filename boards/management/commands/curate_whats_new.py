@@ -40,6 +40,14 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-09 ---
+    "13826eb": (
+        "📡",
+        "Atualização em tempo real mais confiável",
+        "De vez em quando um card movido por um colega, ou o aviso de que alguém "
+        "estava digitando, não aparecia na sua tela até você recarregar. A conexão "
+        "que leva esses avisos caía quando ficava parada, e o aviso seguinte se "
+        "perdia. Agora ela se mantém viva e, se cair, o aviso é reenviado.",
+    ),
     "8e3238d": (
         "🚀",
         "Abrir card por link ficou mais rápido",
