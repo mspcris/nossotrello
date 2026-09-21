@@ -162,7 +162,7 @@ const UNREAD_FETCH_EVERY_MS = 120000;// 120s — reduzido para evitar sobrecarga
     inFlight = true;
 
     try {
-      const res = await (window.ntGet || fetch)(`/board/${boardId}/poll/?v=${boardVersion}`, {
+      const res = await fetch(`/board/${boardId}/poll/?v=${boardVersion}`, {
         method: "GET",
         credentials: "same-origin",
         headers: { "X-Requested-With": "XMLHttpRequest", "Accept": "application/json" },

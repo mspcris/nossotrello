@@ -157,6 +157,12 @@
     let data = {};
     try { data = JSON.parse(res.text || "{}"); } catch (_e) {}
     if (res.status === 202 || data.status === "queued") {
+      // O servidor AINDA não gravou (o worker leva ~1-2 s). Fechar o modal dispara um refresh
+      // do quadro; se ele rodar agora, busca o estado de ANTES do movimento e desenha o card de
+      // volta na coluna antiga. Segura o polling uns segundos: quem acerta a tela é o evento
+      // board.invalidated, que só sai depois do commit (se o mover falhar, o card.move.failed
+      // força o refresh).
+      window.__skipBoardPollUntil = Date.now() + 5000;
       if (!moveCardLi(cardId, destColId, position)) removeCardFromDom(cardId); // outro quadro
       return;
     }
