@@ -568,7 +568,7 @@ def board_detail(request, board_id):
     )
 
 
-    memberships_qs = board.memberships.select_related("user")
+    memberships_qs = board.memberships.select_related("user", "user__profile")  # avatares dos membros sem N+1
 
     my_membership = None
     invited_membership = None
@@ -703,10 +703,9 @@ def board_detail(request, board_id):
         if last_seen:
             qs = qs.filter(created_at__gt=last_seen)
 
-        # ignora ações do próprio usuário
-        actor_label = _actor_label(request)
-        if actor_label:
-            qs = qs.exclude(content__icontains=actor_label)
+        # ignora ações do próprio usuário — por autor, igual ao unread-count.
+        # (o ILIKE no conteúdo varria a tabela de logs inteira a cada abertura)
+        qs = qs.exclude(actor_id=request.user.id)
 
         unread_activity_count = qs.count()
 

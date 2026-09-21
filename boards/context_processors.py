@@ -63,20 +63,46 @@ def user_profile(request):
     return {"profile": prof}
 
 
+from django.core.cache import cache
+
 from .models import WhatsNewItem
 
+WHATSNEW_CACHE_TTL = 300
+
+
+def whats_new_cache_key(user_id) -> str:
+    return f"whatsnew_unseen:{user_id}"
+
+
 def whats_new_context(request):
+    """Badge "Novidades não vistas" do header.
+
+    Rodava um get_or_create + COUNT em TODO render de página. Agora fica em
+    cache por 5 min por usuário; whats_new_mark_seen invalida ao abrir o painel.
+    """
     user = getattr(request, "user", None)
     if not (user and getattr(user, "is_authenticated", False)):
         return {"whats_new_unseen": 0}
+    key = whats_new_cache_key(user.pk)
     try:
-        prof, _ = UserProfile.objects.get_or_create(user=user)
-        qs = WhatsNewItem.objects.filter(is_published=True)
-        if prof.last_whatsnew_seen_at:
-            qs = qs.filter(published_at__gt=prof.last_whatsnew_seen_at)
-        count = qs.count()
+        count = cache.get(key)
     except Exception:
-        count = 0
+        count = None
+    if count is None:
+        try:
+            prof = getattr(user, "profile", None)
+            if prof is None:
+                prof, _ = UserProfile.objects.get_or_create(user=user)
+            qs = WhatsNewItem.objects.filter(is_published=True)
+            if prof.last_whatsnew_seen_at:
+                qs = qs.filter(published_at__gt=prof.last_whatsnew_seen_at)
+            count = qs.count()
+        except Exception:
+            count = 0
+        try:
+            cache.set(key, count, WHATSNEW_CACHE_TTL)
+        except Exception:
+            pass
     return {"whats_new_unseen": count}
 
 #END boards/context_processors.py

@@ -1973,7 +1973,7 @@
 
       log.scrollTop = log.scrollHeight;
       window.addEventListener("beforeunload", revokePreviewUrl);
-      setInterval(function(){ if(!document.hidden) poll(); }, 8000);
+      setInterval(function(){ if(!document.hidden) poll(); }, 30000);
     }
 
     attachMention("gd-post-textarea", "gd-post-mention-dd");

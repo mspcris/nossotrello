@@ -77,6 +77,9 @@ SECURE_COOKIES = _env_bool("SECURE_COOKIES", default=not DEBUG)
 SESSION_COOKIE_SECURE = SECURE_COOKIES
 CSRF_COOKIE_SECURE = SECURE_COOKIES
 SESSION_COOKIE_HTTPONLY = True
+# Sessão lida do cache (Redis em prod), banco só como persistência/fallback:
+# tira 1 ida ao RDS (~100 ms) de TODA requisição autenticada, inclusive polls.
+SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
 SECURE_CONTENT_TYPE_NOSNIFF = True
 
 # ============================================================

@@ -2160,6 +2160,7 @@ class StoredFile(models.Model):
         verbose_name_plural = "Arquivos armazenados"
         indexes = [
             models.Index(fields=["checksum"], name="storedfile_checksum_idx"),
+            models.Index(fields=["original_name"], name="storedfile_origname_idx"),
         ]
 
     def __str__(self):

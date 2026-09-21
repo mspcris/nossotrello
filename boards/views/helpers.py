@@ -19,7 +19,7 @@ from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.core.mail import send_mail
 from django.db import transaction
-from django.db.models import Count, Q
+from django.db.models import Count, Prefetch, Q
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.templatetags.static import static as static_url
@@ -961,8 +961,13 @@ def _board_member_users(board) -> list:
     User = get_user_model()
     users = []
 
+    # memo por instância do board: o modal chama isto 2x (impedimento + segredos)
+    cached = getattr(board, "_nt_member_users", None) if board is not None else None
+    if cached is not None:
+        return list(cached)
+
     memberships = (
-        board.memberships.select_related("user").all() if board else []
+        board.memberships.select_related("user", "user__profile").all() if board else []
     )
     if memberships:
         users = [m.user for m in memberships if m.user]
@@ -979,6 +984,11 @@ def _board_member_users(board) -> list:
         out.append(u)
 
     out.sort(key=lambda u: (_user_secret_label(u) or "").lower())
+    if board is not None:
+        try:
+            board._nt_member_users = list(out)
+        except Exception:
+            pass
     return out
 
 
@@ -991,7 +1001,9 @@ def _card_secret_context(card, user) -> dict:
     secrets = (
         card.secrets.filter(is_active=True)
         .select_related("author", "author__profile")
-        .prefetch_related("viewers")
+        .prefetch_related(
+            Prefetch("viewers", queryset=get_user_model().objects.select_related("profile"))
+        )
         .order_by("-created_at")
     )
 

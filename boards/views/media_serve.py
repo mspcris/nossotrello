@@ -209,6 +209,20 @@ def _safe_legacy_path(file_ref: str) -> str:
         raise Http404("Caminho de arquivo invalido") from exc
 
 
+@require_GET
+def media_auth(request):
+    """Subrequest do nginx (auth_request) antes de servir /media/serve/ do cache.
+
+    Só diz "pode" (204) ou "não pode" (401); o arquivo nunca sai daqui. Assim o
+    nginx guarda a mídia em disco e serve sem passar pelo Django/RDS, mas
+    continua exigindo login em toda requisição. Isento do
+    LoginRequiredMiddleware: um 302 pro login seria lido pelo nginx como 500.
+    """
+    if getattr(request.user, "is_authenticated", False):
+        return HttpResponse(status=204)
+    return HttpResponse(status=401)
+
+
 @login_required
 @require_GET
 @xframe_options_sameorigin  # permite <iframe> de mesma origem (preview de PDF no feed)

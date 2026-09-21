@@ -997,44 +997,32 @@ def tracktime_live_json(request):
 
 
     by_board = {}
-    boards_cache = {}
 
-    for e in qs:
-        board_id = e.board_id
-        card_id = e.card_id
+    # Endpoint pollado a cada 2 min por quem está com o modal aberto: carrega
+    # todos os cards de uma vez e decide a permissão 1x por quadro, em vez de
+    # 3 queries por timer ativo.
+    entries = [e for e in qs if e.board_id and e.card_id]
+    cards_by_id = {
+        c.id: c
+        for c in (
+            Card.objects
+            .filter(id__in={e.card_id for e in entries})
+            .select_related("column", "column__board")
+            .prefetch_related("checklists", "attachments")
+        )
+    }
+    can_view = {}
 
-        if not board_id or not card_id:
+    for e in entries:
+        card = cards_by_id.get(e.card_id)
+        if card is None or not card.column_id:
             continue
 
-        # cache board + permissão (barato)
-        if board_id not in boards_cache:
-            try:
-                b = Board.objects.get(id=board_id)
-            except Board.DoesNotExist:
-                boards_cache[board_id] = None
-            else:
-                boards_cache[board_id] = b
-
-        board = boards_cache.get(board_id)
-        if not board:
-            continue
-        if not _can_view_board(request.user, board):
-            continue
-
-        # ✅ pega o card aqui (sem isso dá 500)
-        try:
-            card = (
-                Card.objects
-                .select_related("column", "column__board")
-                .prefetch_related("checklists", "attachments")
-                .get(id=card_id)
-            )
-        except Card.DoesNotExist:
-            continue
-
-        # por segurança: board real do card (não confia só no cache)
+        # board real do card (não confia no board_id gravado no timer)
         board = card.column.board
-        if not _can_view_board(request.user, board):
+        if board.id not in can_view:
+            can_view[board.id] = _can_view_board(request.user, board)
+        if not can_view[board.id]:
             continue
 
         elapsed = int((now - e.started_at).total_seconds())

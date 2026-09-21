@@ -687,11 +687,11 @@ def update_card(request, card_id):
     parents_qs = (
         card.logs
         .filter(reply_to__isnull=True)
-        .select_related("actor")
+        .select_related("actor", "actor__profile")  # avatar/handle por log sem N+1
         .prefetch_related(
             Prefetch(
                 "replies",
-                queryset=CardLog.objects.select_related("actor").order_by("created_at"),
+                queryset=CardLog.objects.select_related("actor", "actor__profile").order_by("created_at"),
             )
         )
         .order_by("-created_at")
@@ -1337,19 +1337,22 @@ def _render_card_modal(request, card, context=None):
     parents_qs = (
         card.logs
         .filter(reply_to__isnull=True)
-        .select_related("actor")
+        .select_related("actor", "actor__profile")  # avatar/handle por log sem N+1
         .prefetch_related(
             Prefetch(
                 "replies",
-                queryset=CardLog.objects.select_related("actor").order_by("created_at"),
+                queryset=CardLog.objects.select_related("actor", "actor__profile").order_by("created_at"),
             )
         )
         .order_by("-created_at")
     )
-    ctx["logs"] = _decorate_logs_for_feed(parents_qs)
+    if "logs" not in ctx:  # card_modal já montou os logs — não repetir as 2 queries
+        ctx["logs"] = _decorate_logs_for_feed(parents_qs)
 
-    # ✅ CHECKLISTS
-    ctx["checklists"] = card.checklists.all()
+    # ✅ CHECKLISTS — _card_modal_context já traz o queryset anotado (total/done,
+    # que a barra de progresso do checklist_list.html lê) com os itens prefetched.
+    if "checklists" not in ctx:
+        ctx["checklists"] = card.checklists.all()
 
     # ✅ SEGREDOS/SNIPPETS (curl com chave etc.) — só no modal split
     ctx.update(_card_secret_context(card, request.user))
@@ -1409,7 +1412,13 @@ def _summarize_html(html: str, limit: int = 220) -> str:
 @login_required
 def card_modal(request, card_id):
     # Tenta buscar o card (inclusive deletados)
-    card = Card.all_objects.select_related("column__board").filter(id=card_id).first()
+    card = (
+        Card.all_objects
+        .select_related("column__board")
+        .prefetch_related("attachments")  # o template conta e lista os anexos: 1 query, não 2
+        .filter(id=card_id)
+        .first()
+    )
 
     if card is None:
         return HttpResponse(
@@ -1426,8 +1435,8 @@ def card_modal(request, card_id):
     # ?card= quando o feed social abre uma URL de board sem acesso.
     board = card.column.board if card.column_id else None
     if board is not None:
-        memberships_qs = board.memberships
-        if memberships_qs.exists() and not memberships_qs.filter(user=request.user).exists():
+        member_ids = set(board.memberships.values_list("user_id", flat=True))
+        if member_ids and request.user.id not in member_ids:
             return HttpResponse(status=403)
 
     if card.is_deleted:
@@ -1456,23 +1465,25 @@ def card_modal(request, card_id):
     if not card.column_id:
         return HttpResponse(status=204)
 
+    # "visto": UPDATE direto = 1 ida ao banco. update_or_create abria transação
+    # + SELECT FOR UPDATE + UPDATE + COMMIT (4 idas, ~100 ms cada até a RDS).
     try:
-        CardSeen.objects.update_or_create(
-            card=card,
-            user=request.user,
-            defaults={"last_seen_at": timezone.now()},
-        )
+        _now = timezone.now()
+        if not CardSeen.objects.filter(card=card, user=request.user).update(last_seen_at=_now):
+            CardSeen.objects.get_or_create(
+                card=card, user=request.user, defaults={"last_seen_at": _now}
+            )
     except Exception:
         pass
 
     parents_qs = (
         card.logs
         .filter(reply_to__isnull=True)
-        .select_related("actor")
+        .select_related("actor", "actor__profile")  # avatar/handle por log sem N+1
         .prefetch_related(
             Prefetch(
                 "replies",
-                queryset=CardLog.objects.select_related("actor").order_by("created_at"),
+                queryset=CardLog.objects.select_related("actor", "actor__profile").order_by("created_at"),
             )
         )
         .order_by("-created_at")

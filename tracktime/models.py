@@ -150,8 +150,23 @@ class TimeEntry(models.Model):
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["project"]),
-            models.Index(fields=["user"]),
-            models.Index(fields=["card_id"]),
+            # "quem tem timer rodando neste quadro / card / usuário"
+            models.Index(fields=["board_id", "ended_at"], name="te_board_ended_idx"),
+            models.Index(fields=["card_id", "ended_at"], name="te_card_ended_idx"),
+            models.Index(fields=["user", "ended_at"], name="te_user_ended_idx"),
+            # relatórios por período
+            models.Index(fields=["created_at"], name="te_created_idx"),
+            # varredura do tick (minuto a minuto): só timers em aberto — parcial
+            models.Index(
+                fields=["auto_stop_at"],
+                name="te_autostop_open_idx",
+                condition=Q(ended_at__isnull=True),
+            ),
+            models.Index(
+                fields=["confirm_due_at"],
+                name="te_confirmdue_open_idx",
+                condition=Q(ended_at__isnull=True),
+            ),
         ]
 
     def __str__(self) -> str:

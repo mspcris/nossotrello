@@ -37,4 +37,10 @@ def whats_new_mark_seen(request):
     profile, _ = UserProfile.objects.get_or_create(user=request.user)
     profile.last_whatsnew_seen_at = timezone.now()
     profile.save(update_fields=["last_whatsnew_seen_at"])
+    try:
+        from django.core.cache import cache
+        from boards.context_processors import whats_new_cache_key
+        cache.delete(whats_new_cache_key(request.user.pk))
+    except Exception:
+        pass
     return JsonResponse({"ok": True, "unseen": 0})

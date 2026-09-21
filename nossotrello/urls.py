@@ -31,7 +31,7 @@ from boards.views.legal import (
     cookie_accept_view,
     cookie_reject_view,
 )
-from boards.views.media_serve import serve_stored_file
+from boards.views.media_serve import serve_stored_file, media_auth
 from nossotrello.error_views import server_error as custom_500
 
 # Página custom de erro 500 (byte_maze) — usada pelo Django quando uma
@@ -72,6 +72,7 @@ urlpatterns = [
 
 # Serving de arquivos do banco (StoredFile) e referencias legadas
 urlpatterns += [
+    path("media/auth/", media_auth, name="media_auth"),
     path("media/serve/<path:file_ref>/", serve_stored_file, name="serve_stored_file"),
 ]
 

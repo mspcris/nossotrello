@@ -30,3 +30,17 @@ class UsernameOrEmailBackend(ModelBackend):
         if user_obj.check_password(password) and self.user_can_authenticate(user_obj):
             return user_obj
         return None
+
+    def get_user(self, user_id):
+        """Carrega o usuário da sessão JÁ com o perfil (1 query em vez de 2).
+
+        Todo request autenticado passa por aqui; o perfil é lido em seguida
+        pelo TermsMiddleware, pelo header e pelos avatares — sem isto era uma
+        segunda ida ao banco em cada requisição.
+        """
+        UserModel = get_user_model()
+        try:
+            user = UserModel._default_manager.select_related("profile").get(pk=user_id)
+        except UserModel.DoesNotExist:
+            return None
+        return user if self.user_can_authenticate(user) else None

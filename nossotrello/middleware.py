@@ -14,6 +14,7 @@ _ALWAYS_FREE = [
     "/api/",          # API mobile (auth via Token, não via session)
     "/500/",          # página de teste de erro 500 (handler500 também usa o template)
     "/sw.js",         # service worker do PWA — redirect pro login quebra o registro
+    "/media/auth/",   # auth_request do nginx (cache de mídia): 302 pro login viraria erro 500 no nginx
 ]
 
 
@@ -40,8 +41,14 @@ class LoginRequiredMiddleware:
             query = urlencode({"next": full_path})
             return redirect(f"{self.login_url}?{query}")
 
-        # Prefetch profile para evitar N+1 em todas as views e no TermsMiddleware
+        # Perfil já vem junto com o usuário (UsernameOrEmailBackend.get_user faz
+        # select_related). Só refaz a busca quando NÃO veio — evita uma 2ª ida ao
+        # banco em toda requisição.
         if not hasattr(request.user, "_profile_prefetched"):
+            _fc = getattr(getattr(request.user, "_state", None), "fields_cache", None) or {}
+            if "profile" in _fc:
+                request.user._profile_prefetched = True
+                return self.get_response(request)
             try:
                 from django.contrib.auth import get_user_model
                 User = get_user_model()
