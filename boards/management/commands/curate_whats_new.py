@@ -40,6 +40,13 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-09 ---
+    "a94997a": (
+        "🧭",
+        "Mover o card pelo menu de dentro dele atualiza o quadro na hora",
+        "Ao mover um card usando o menu de dentro do próprio card, o servidor movia, "
+        "mas o quadro continuava mostrando o card na coluna antiga até a página ser "
+        "recarregada. Agora o quadro se acerta sozinho logo depois do movimento.",
+    ),
     "13826eb": (
         "📡",
         "Atualização em tempo real mais confiável",
