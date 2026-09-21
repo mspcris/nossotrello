@@ -37,6 +37,28 @@
         }
         return e.p.then(function (r) { return r.clone(); });
       };
+      // Card contador (li[data-counter="1"]) fica SEMPRE em 1º na coluna: é a regra do servidor
+      // (perform_card_move e add_card). Quem põe um card no topo de uma lista chama isto logo
+      // depois: se ele caiu acima de um contador, desce pra logo abaixo. Devolve a posição final
+      // (0-based, contando só li[data-card-id]) — o arrasto manda ESSA posição pro servidor, e a
+      // tela não dá mais o pulo de "1º, e um segundo depois 2º".
+      window.ntContadorNoTopo = function (list, li) {
+        try {
+          if (!list || !li) return -1;
+          var cards = function () { return Array.prototype.filter.call(list.children, function (c) { return c.matches && c.matches('li[data-card-id]'); }); };
+          if (li.getAttribute('data-counter') !== '1') {
+            var cs = cards(), i = cs.indexOf(li), ultimo = null;
+            for (var j = i + 1; i >= 0 && j < cs.length && cs[j].getAttribute('data-counter') === '1'; j++) ultimo = cs[j];
+            if (ultimo) ultimo.after(li);
+          }
+          return cards().indexOf(li);
+        } catch (e) { return -1; }
+      };
+      // criar card "no topo" entra por htmx (afterbegin) na lista da coluna
+      document.addEventListener('htmx:afterSwap', function (e) {
+        var t = e && e.detail && e.detail.target;
+        if (t && t.id && t.id.indexOf('cards-col-') === 0 && t.firstElementChild) window.ntContadorNoTopo(t, t.firstElementChild);
+      });
       // Deep link (?card=ID): quem abriu o link veio ver o card. Os pollers esperam o
       // modal chegar (#modal-body com conteúdo) ou 6 s, o que vier primeiro.
       window.ntDepoisDoModalDoLink = function (fn) {
@@ -153,7 +175,7 @@
 
   <!-- Base -->
   <script defer src="{% static 'boards/menu.js' %}"></script>
-  <script defer src="{% static 'boards/board_ui.js' %}?v=20260917-feedimgzoom"></script>
+  <script defer src="{% static 'boards/board_ui.js' %}?v=20260921-contador"></script>
 
   <!-- Modal core -->
   <script defer src="{% static 'boards/modal/modal.core.js' %}?v=20260616-dblfix"></script>
@@ -209,7 +231,7 @@
 <!-- MODAL dock -->
   <!-- Menu de ações do card (FONTE ÚNICA): atende o FAB ⋮ do modal e o
        kebab ⋮ do card na board. Substitui o antigo modal.dock.js. -->
-  <script defer src="{% static 'boards/card_action_menu.js' %}?v=20260921-pollreal"></script>
+  <script defer src="{% static 'boards/card_action_menu.js' %}?v=20260921-contador"></script>
 
   <!-- AI: busca de cards semelhantes quando o modal abre -->
   <script defer src="{% static 'boards/modal/modal.ai_similar.js' %}"></script>

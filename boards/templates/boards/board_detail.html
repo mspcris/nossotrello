@@ -713,7 +713,7 @@
 
 
 <script defer src="{% static 'boards/calendar.js' %}?v=20260802-agenda1"></script>
-<script defer src="{% static 'boards/card_paste_create.js' %}?v=20260617-01"></script>
+<script defer src="{% static 'boards/card_paste_create.js' %}?v=20260921-contador"></script>
 <script defer src="{% static 'boards/aggregator_nav.js' %}?v=20260617-06"></script>
 
 <!-- Altura das colunas = preenche a viewport (Trello): sem barra de rolagem na
@@ -1420,7 +1420,10 @@
           const item = evt.item;
           const cardId = resolveCardIdFromItem(item);
           const newColumnId = resolveColumnIdFromList(evt.to);
-          const newPosition = Number(evt.newIndex || 0);
+          // contador fica em 1º: se soltou acima dele, o card desce pra 2º já na tela,
+          // e é ESSA posição que vai pro servidor (nada pra corrigir depois)
+          const posAjustada = window.ntContadorNoTopo ? window.ntContadorNoTopo(evt.to, item) : -1;
+          const newPosition = posAjustada >= 0 ? posAjustada : Number(evt.newIndex || 0);
 
           if (!cardId || !newColumnId) return;
 
@@ -1435,7 +1438,10 @@
           const item = evt.item;
           const cardId = resolveCardIdFromItem(item);
           const newColumnId = resolveColumnIdFromList(evt.to);
-          const newPosition = Number(evt.newIndex || 0);
+          // contador fica em 1º: se soltou acima dele, o card desce pra 2º já na tela,
+          // e é ESSA posição que vai pro servidor (nada pra corrigir depois)
+          const posAjustada = window.ntContadorNoTopo ? window.ntContadorNoTopo(evt.to, item) : -1;
+          const newPosition = posAjustada >= 0 ? posAjustada : Number(evt.newIndex || 0);
 
           if (!cardId || !newColumnId) return;
 

@@ -43,7 +43,7 @@
         tmp.innerHTML = (html || "").trim();
         const li = tmp.querySelector("li[data-card-id]");
         if (li && list) {
-          if (where === "top") list.prepend(li);
+          if (where === "top") { list.prepend(li); window.ntContadorNoTopo?.(list, li); }
           else list.appendChild(li);
         }
         try { form.remove(); } catch (_e) {}

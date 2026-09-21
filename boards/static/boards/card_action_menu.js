@@ -124,7 +124,7 @@
 
     cardLi.replaceWith(newLi);
     if (destList) {
-      if (prepend) destList.prepend(newLi);
+      if (prepend) { destList.prepend(newLi); window.ntContadorNoTopo?.(destList, newLi); }
       else destList.appendChild(newLi);
     }
     newLi.classList.add("card-new-pulse");
@@ -145,6 +145,7 @@
     const idx = Math.max(0, Math.min(Number(position) || 0, siblings.length));
     if (idx >= siblings.length) destList.appendChild(cardLi);
     else destList.insertBefore(cardLi, siblings[idx]);
+    window.ntContadorNoTopo?.(destList, cardLi); // contador fica em 1º: o card já nasce em 2º
     cardLi.classList.add("card-new-pulse");
     setTimeout(() => cardLi.classList.remove("card-new-pulse"), 700);
     requestAnimationFrame(() => cardLi.scrollIntoView({ behavior: "smooth", block: "nearest" }));

@@ -1090,7 +1090,7 @@ if (!window.__colorPopoverOutsideInstalled) {
       const list = document.getElementById(`cards-col-${colId}`);
       if (list) {
         const newCard = info.where === "top"
-          ? list.firstElementChild
+          ? (list.querySelector('li[data-card-id]:not([data-counter="1"])') || list.firstElementChild)
           : list.lastElementChild;
         if (newCard && newCard.matches?.("li[data-card-id]")) {
           requestAnimationFrame(() => {

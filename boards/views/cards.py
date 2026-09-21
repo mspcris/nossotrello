@@ -998,6 +998,15 @@ def perform_card_move(*, user, card_id, new_column_id, new_position):
         if new_position > len(siblings):
             new_position = len(siblings)
 
+        # mesma exceção do mover entre colunas: card contador fica sempre em 1º
+        if (
+            new_position == 0
+            and siblings
+            and getattr(siblings[0], "counter_mode", False)
+            and not getattr(card, "counter_mode", False)
+        ):
+            new_position = 1
+
         _renumber_cards(siblings, insert_at=new_position)
 
         card.position = new_position
