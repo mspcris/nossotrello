@@ -660,3 +660,38 @@ if TASK_QUEUE_ENABLED:
     QUEUED_EMAIL_REAL_BACKEND = EMAIL_BACKEND
     EMAIL_BACKEND = "boards.services.queued_email.QueuedEmailBackend"
 
+
+# ============================================================
+# SENTRY — monitoramento de erros / performance
+# ------------------------------------------------------------
+# Só inicializa se SENTRY_DSN estiver no .env. Sem DSN o SDK vira
+# no-op (nada é enviado), então dev/HML rodam sem configurar nada.
+#
+# As taxas de amostragem vêm do .env porque o custo (CPU + cota do
+# plano) é proporcional a elas: 1.0 significa instrumentar 100% das
+# requisições. Em produção com gunicorn 4x8 threads isso pesa —
+# default conservador aqui, suba pontualmente se precisar investigar.
+# ============================================================
+SENTRY_DSN = (os.getenv("SENTRY_DSN") or "").strip()
+
+if SENTRY_DSN:
+    import sentry_sdk
+
+    def _env_float(key: str, default: float) -> float:
+        try:
+            return float((os.getenv(key) or "").strip())
+        except ValueError:
+            return default
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        environment=(os.getenv("SENTRY_ENVIRONMENT") or ("dev" if DEBUG else "prod")).strip(),
+        release=(os.getenv("SENTRY_RELEASE") or "").strip() or None,
+        # manda headers/IP/usuário junto do evento — ajuda a reproduzir o bug
+        send_default_pii=True,
+        # logger.error()/logger.warning() do Python viram logs no Sentry
+        enable_logs=_env_bool("SENTRY_ENABLE_LOGS", default=True),
+        traces_sample_rate=_env_float("SENTRY_TRACES_SAMPLE_RATE", 0.05),
+        profile_session_sample_rate=_env_float("SENTRY_PROFILES_SAMPLE_RATE", 0.0),
+        profile_lifecycle="trace",
+    )
