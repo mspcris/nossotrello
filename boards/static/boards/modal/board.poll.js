@@ -162,7 +162,7 @@ const UNREAD_FETCH_EVERY_MS = 120000;// 120s — reduzido para evitar sobrecarga
     inFlight = true;
 
     try {
-      const res = await fetch(`/board/${boardId}/poll/?v=${boardVersion}`, {
+      const res = await (window.ntGet || fetch)(`/board/${boardId}/poll/?v=${boardVersion}`, {
         method: "GET",
         credentials: "same-origin",
         headers: { "X-Requested-With": "XMLHttpRequest", "Accept": "application/json" },
@@ -238,15 +238,19 @@ document.addEventListener("DOMContentLoaded", () => {
   setTimeout(bootstrapHydrate, 50);
   setTimeout(bootstrapHydrate, 250);
 
-  // 🔑 CHAMADA IMEDIATA (SEM ESPERAR POLL)
-  syncUnreadBadge(boardId);
-  syncCardUnreadBadges(boardId);
+  // 🔑 CHAMADA IMEDIATA (SEM ESPERAR POLL) — no deep link (?card=) espera o modal chegar:
+  // quem abriu o link veio ver o card, e esta rajada disputava a vez com ele.
+  const largada = () => {
+    syncUnreadBadge(boardId);
+    syncCardUnreadBadges(boardId);
 
-  // ✅ SOLICITAÇÕES DE ACESSO (sem F5)
-  syncAccessRequests(boardId);
+    // ✅ SOLICITAÇÕES DE ACESSO (sem F5)
+    syncAccessRequests(boardId);
 
-  // depois entra no loop normal
-  loop();
+    // depois entra no loop normal
+    loop();
+  };
+  (window.ntDepoisDoModalDoLink || ((fn) => fn()))(largada);
 });
 
 
@@ -342,7 +346,7 @@ document.addEventListener("visibilitychange", () => {
     __ttLastFetchMs = nowMs;
 
     try {
-      const res = await fetch(`/track-time/boards/${boardId}/running/`, {
+      const res = await (window.ntGet || fetch)(`/track-time/boards/${boardId}/running/`, {
         method: "GET",
         credentials: "same-origin",
         headers: { "X-Requested-With": "XMLHttpRequest", "Accept": "application/json" },
@@ -365,7 +369,7 @@ document.addEventListener("visibilitychange", () => {
   __lastUnreadFetchMs = now;
 
   try {
-    const res = await fetch(`/board/${boardId}/history/unread-count/`, {
+    const res = await (window.ntGet || fetch)(`/board/${boardId}/history/unread-count/`, {
       credentials: "same-origin",
       headers: { "X-Requested-With": "XMLHttpRequest" },
       cache: "no-store",
@@ -419,7 +423,7 @@ async function syncCardUnreadBadges(boardId) {
   });
 
   try {
-    const res = await fetch(`/board/${boardId}/cards/unread-activity/`, {
+    const res = await (window.ntGet || fetch)(`/board/${boardId}/cards/unread-activity/`, {
       credentials: "same-origin",
       cache: "no-store",
       headers: { "Accept": "application/json" }

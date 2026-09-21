@@ -2062,7 +2062,7 @@ document.addEventListener("DOMContentLoaded", () => {
 (function () {
   async function refreshBoardHistoryBadge() {
     try {
-      const resp = await fetch(`/board/${window.BOARD_ID}/history/unread-count/`, {
+      const resp = await (window.ntGet || fetch)(`/board/${window.BOARD_ID}/history/unread-count/`, {
         method: "GET",
         credentials: "same-origin",
         headers: { "Accept": "application/json" }
@@ -2097,7 +2097,7 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (e) {}
   }
 
-  document.addEventListener("DOMContentLoaded", refreshBoardHistoryBadge);
+  document.addEventListener("DOMContentLoaded", () => (window.ntDepoisDoModalDoLink || ((fn) => fn()))(refreshBoardHistoryBadge));
 
   document.body.addEventListener("htmx:afterSwap", () => {
     refreshBoardHistoryBadge();
@@ -2280,7 +2280,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (document.getElementById("modal-body")) return;
 
     try {
-      const resp = await fetch(
+      const resp = await (window.ntGet || fetch)(
         `/board/${window.BOARD_ID}/cards/unread-activity/`,
         {
           method: "GET",
@@ -2712,7 +2712,7 @@ document.addEventListener("pointerup", (e) => {
 
   function poll(){
     var q = uids.length ? '?ids=' + uids.join(',') : '?ids=';
-    fetch('/social/unread/' + q)
+    (window.ntGet || fetch)('/social/unread/' + q)
       .then(function(r){ return r.json(); })
       .then(function(d){
         updateBadges(d.counts || {}, d.fresh || [], d.fresh_texts || {}, d.fresh_ts || {}, d.my_comment_count || 0, d.my_latest_post_id || null);
@@ -2720,7 +2720,7 @@ document.addEventListener("pointerup", (e) => {
       .catch(function(){});
   }
 
-  setTimeout(poll, 2000);
+  (window.ntDepoisDoModalDoLink || function (fn) { fn(); })(function () { setTimeout(poll, 2000); });
   // Phase 3 pub/sub: era 30s × 800 usuários = 26 req/s só pra badges de
   // membros. Agora 300s como safety net + refresh oportunístico quando
   // chega qualquer evento de atividade no canal pessoal WS. (Social posts

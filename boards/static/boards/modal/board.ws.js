@@ -111,7 +111,7 @@
     if (!list) return;
 
     try {
-      const res = await fetch(`/board/${boardId}/poll/?v=${force ? -1 : boardVersion}`, {
+      const res = await (window.ntGet || fetch)(`/board/${boardId}/poll/?v=${force ? -1 : boardVersion}`, {
         method: "GET",
         credentials: "same-origin",
         headers: { "X-Requested-With": "XMLHttpRequest", "Accept": "application/json" },
