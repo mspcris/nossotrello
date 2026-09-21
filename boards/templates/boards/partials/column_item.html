@@ -16,7 +16,7 @@
   <div class="column-header shrink-0 px-4 py-2 border-b border-white/40 z-10 min-h-[72px]">
 
     <!-- Linha 1: ações -->
-    <div class="flex items-center justify-end gap-2">
+    <div class="col-head-actions flex items-center justify-end gap-2">
       {% with n=column.visible_cards_count %}
         <span class="mr-auto text-xs text-gray-600" data-column-counter data-total-count="{{ n }}">
           {{ n }} card{% if n != 1 %}s{% endif %}
@@ -95,14 +95,16 @@
 
       <!-- + Card (TOPO) -->
       <button type="button"
-              class="text-gray-700 hover:text-gray-900 px-2 py-1 rounded-lg
+              class="col-add-card text-gray-700 hover:text-gray-900 px-2 py-1 rounded-lg
                      bg-white/20 backdrop-blur-sm border border-white/40 transition"
               hx-get="{% url 'boards:add_card' column.id %}?where=top"
               hx-target="#form-top-col-{{ column.id }}"
               hx-swap="innerHTML"
+              title="Novo card no topo"
+              aria-label="Novo card no topo"
               onpointerdown="event.stopPropagation();"
               ontouchstart="event.stopPropagation();">
-        + Card
+        +<span class="col-add-card__txt">&nbsp;Card</span>
       </button>
 
       <!-- menu 3 dots (POPOVER) -->

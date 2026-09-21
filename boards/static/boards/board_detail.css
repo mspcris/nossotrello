@@ -436,6 +436,34 @@ header{ position: relative; z-index: 50; }
   --col-max: 520px;
 }
 
+/* Linha de ações do cabeçalho (contador · seguir · + Card · menu).
+   O "+ Card" era o único item com espaço no texto, então em coluna estreita era
+   ele que quebrava em duas linhas. Agora nunca quebra: quem cede primeiro é o
+   contador (reticências); depois o botão encolhe a fonte; por fim fica só o "+".
+   Limites medidos (linha = coluna - 26px): 👁 34 + ⋮ 22 + 3 vãos de 8 = 80px fixos;
+   "+ Card" 69px (56 na fonte menor, 31 só o "+"); contador até ~62px ("1280 cards"). */
+#columns-wrapper .column-header .col-head-actions{
+  container-type: inline-size;
+  container-name: colhead;
+  flex-wrap: nowrap;
+}
+#columns-wrapper .column-header .col-head-actions > *{ flex: 0 0 auto; }
+#columns-wrapper .column-header .col-head-actions > [data-column-counter]{
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#columns-wrapper .column-header .col-add-card{ white-space: nowrap; }
+@container colhead (max-width: 212px){
+  #columns-wrapper .column-header .col-add-card{ font-size: 13px; padding-left: 6px; padding-right: 6px; }
+}
+@container colhead (max-width: 191px){
+  #columns-wrapper .column-header .col-add-card__txt{ display: none; }
+  #columns-wrapper .column-header .col-add-card{ font-size: 16px; padding-left: 9px; padding-right: 9px; }
+}
+
 /* Legibilidade PADRÃO do card: superfície mais opaca + texto escuro (Trello-like).
    Cards com cor escolhida pelo usuário (style inline) ganham por especificidade
    -> a escolha do usuário é respeitada. */
