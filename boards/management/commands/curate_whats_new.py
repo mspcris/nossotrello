@@ -40,6 +40,15 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-09 ---
+    "35c2379": (
+        "📲",
+        "Avisos por WhatsApp voltaram a chegar para quem tem telefone no formato (021)",
+        "Quem tinha o telefone cadastrado com o zero na frente do DDD — “(021) 9…”, o formato "
+        "que vem do cadastro da CAMIM — não recebia nenhum aviso por WhatsApp: menção, card "
+        "seguido, pedido de acesso, vencimento. Era 1 em cada 4 pessoas com telefone. O "
+        "sistema agora entende esse formato. De quebra, o WhatsApp da automação de coluna "
+        "passou a tentar de novo quando o envio falha, sem segurar quem moveu o card.",
+    ),
     "04094dd": (
         "➕",
         "Botão “+ Card” não quebra mais em duas linhas na coluna estreita",
