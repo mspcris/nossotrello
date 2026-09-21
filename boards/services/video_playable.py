@@ -292,28 +292,36 @@ def schedule_playable(source_id) -> None:
     except Exception:
         pass
 
-    def _runner():
-        try:
-            _build_playable_sync(source_id)
-        except Exception:
-            logger.exception("video_playable: erro convertendo %s", source_id)
-        finally:
-            try:
-                cache.delete(lock)
-            except Exception:
-                pass
-
     def _spawn():
-        threading.Thread(
-            target=_runner,
-            name=f"video-playable-{source_id}",
-            daemon=True,
-        ).start()
+        # Fila "media" (worker próprio): o ffmpeg sai do processo web e sobrevive
+        # a deploy. Sem fila/broker, cai na thread daemon de sempre.
+        from boards.services.jobs import enqueue
+        from boards.tasks import video_playable_build
+
+        enqueue(
+            video_playable_build,
+            str(source_id),
+            fallback=lambda: run_playable_job(source_id),
+            mode="thread",
+        )
 
     try:
         transaction.on_commit(_spawn)
     except Exception:
         _spawn()
+
+
+def run_playable_job(source_id) -> None:
+    """Converte e solta a trava de "em andamento". Roda no worker (ou na thread de reserva)."""
+    try:
+        _build_playable_sync(source_id)
+    except Exception:
+        logger.exception("video_playable: erro convertendo %s", source_id)
+    finally:
+        try:
+            cache.delete(_inflight_key(source_id))
+        except Exception:
+            pass
 
 
 def ensure_playable_for_fieldfile(fieldfile) -> None:

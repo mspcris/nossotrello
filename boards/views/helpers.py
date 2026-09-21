@@ -284,21 +284,24 @@ def _log_card(card: Card, request, message_html: str, attachment=None, board=Non
                     or ""
                 )
 
-            followers = [cf.user for cf in card.follows.select_related("user").all()]
-            if actor:
-                followers = [u for u in followers if u.id != actor.id]
+            # Fora da requisição: o buffer é consolidado de 5 em 5 min de qualquer
+            # jeito, então ninguém precisa esperar por ele para o clique responder.
+            # on_commit: ação desfeita (rollback) não gera notificação.
+            _card_id = card.id
+            _actor_id = actor.id if actor else None
 
-            if followers:
-                buffers = [
-                    NotificationBuffer(
-                        card=card,
-                        recipient=u,
-                        actor_name=actor_name,
-                        event_summary=event_text,
-                    )
-                    for u in followers
-                ]
-                NotificationBuffer.objects.bulk_create(buffers)
+            def _enqueue_buffers():
+                from boards.services.jobs import enqueue
+                from boards.tasks import card_notifications
+
+                enqueue(
+                    card_notifications,
+                    _card_id, _actor_id, actor_name, event_text,
+                    fallback=lambda: create_notification_buffers(_card_id, _actor_id, actor_name, event_text),
+                    mode="sync",
+                )
+
+            transaction.on_commit(_enqueue_buffers)
 
         except Exception:
             # buffer nunca derruba a auditoria
@@ -308,6 +311,31 @@ def _log_card(card: Card, request, message_html: str, attachment=None, board=Non
 
     except Exception:
         return None
+
+
+def create_notification_buffers(card_id, actor_id, actor_name, event_text) -> int:
+    """Uma linha de NotificationBuffer por seguidor do card (menos quem fez a ação)."""
+    from boards.models import CardFollow
+
+    recipient_ids = list(
+        CardFollow.objects.filter(card_id=card_id).values_list("user_id", flat=True)
+    )
+    if actor_id:
+        recipient_ids = [uid for uid in recipient_ids if uid != actor_id]
+    if not recipient_ids:
+        return 0
+    NotificationBuffer.objects.bulk_create(
+        [
+            NotificationBuffer(
+                card_id=card_id,
+                recipient_id=uid,
+                actor_name=actor_name or "",
+                event_summary=event_text or "",
+            )
+            for uid in recipient_ids
+        ]
+    )
+    return len(recipient_ids)
 
 def _board_anchor_card(board: Board):
     """

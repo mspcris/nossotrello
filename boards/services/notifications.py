@@ -349,9 +349,32 @@ def send_whatsapp(*, user, phone_digits: str, body: str, sync: bool = False) -> 
 
     if sync:
         _send()
-    else:
-        t = threading.Thread(target=_send, daemon=True)
-        t.start()
+        return
+
+    # Fila com tentativas (boards.tasks.send_whatsapp_task): a mensagem não se
+    # perde se a Evolution oscilar nem se um deploy matar o processo. Sem
+    # fila/broker, thread daemon como sempre foi.
+    from boards.services.jobs import enqueue
+    from boards.tasks import send_whatsapp_task
+
+    enqueue(send_whatsapp_task, user_id, phone_digits, body, fallback=_send, mode="thread")
+
+
+def send_whatsapp_now(*, phone_digits: str, body: str) -> None:
+    """Envio direto, SEM engolir erro: quem chama (o worker) decide repetir ou desistir."""
+    base_url = (getattr(settings, "EVOLUTION_BASE_URL", "") or "").strip()
+    api_key = (getattr(settings, "EVOLUTION_API_KEY", "") or "").strip()
+    instance = (getattr(settings, "EVOLUTION_INSTANCE", "") or "").strip()
+    if not (base_url and api_key and instance):
+        logger.info("evolution: skipped (missing config)")
+        return
+    evolution_send(
+        base_url=base_url,
+        api_key=api_key,
+        instance=instance,
+        number=phone_digits,
+        body=body,
+    )
 
 
 def _build_social_email_connection():

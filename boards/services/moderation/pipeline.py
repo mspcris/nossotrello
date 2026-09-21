@@ -127,7 +127,40 @@ def schedule_layer2(
         except Exception:
             logger.exception("moderation.layer2 worker falhou (obj=%s kind=%s)", getattr(obj, "pk", None), kind)
 
-    threading.Thread(target=_run, daemon=True).start()
+    pk = getattr(obj, "pk", None)
+    if pk is None:
+        threading.Thread(target=_run, daemon=True).start()
+        return
+
+    from boards.services.jobs import enqueue
+    from boards.tasks import moderation_layer2
+
+    enqueue(
+        moderation_layer2,
+        obj._meta.label,
+        pk,
+        kind,
+        text,
+        getattr(author, "pk", None),
+        fallback=_run,
+        mode="thread",
+    )
+
+
+def run_layer2_job(model_label, pk, kind, text, author_id) -> None:
+    """Camada 2 no worker: recarrega o objeto e o autor pelo id (a fila só carrega JSON)."""
+    from django.apps import apps
+    from django.contrib.auth import get_user_model
+
+    try:
+        model = apps.get_model(model_label)
+        obj = model._base_manager.filter(pk=pk).first()
+        if obj is None:
+            return
+        author = get_user_model().objects.filter(pk=author_id).first() if author_id else None
+        _layer2_worker(obj=obj, kind=kind, text=text, author=author)
+    except Exception:
+        logger.exception("moderation.layer2 job falhou (obj=%s kind=%s)", pk, kind)
 
 
 def _layer2_worker(*, obj, kind, text, author):

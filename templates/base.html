@@ -160,16 +160,17 @@
 
   <!-- BOARD WEBSOCKET — realtime sync (Phase 1 pub/sub) -->
   <!-- Substitui o polling central. Fallback lento (5min) se WS cair. -->
-  <script defer src="{% static 'boards/modal/board.ws.js' %}?v=20260717-modalclose"></script>
+  <script defer src="{% static 'boards/modal/board.ws.js' %}?v=20260921-forcerefresh"></script>
 
   <!-- USER WEBSOCKET — canal pessoal (/ws/me/) -->
   <!-- Recebe chat, notificações, track-time, pills (Phase 3 pub/sub) -->
   <script defer src="{% static 'boards/modal/user.ws.js' %}?v=20260615-wsstable"></script>
+  <script defer src="{% static 'boards/jobs_feedback.js' %}?v=20260921-fila1"></script>
 
 <!-- MODAL dock -->
   <!-- Menu de ações do card (FONTE ÚNICA): atende o FAB ⋮ do modal e o
        kebab ⋮ do card na board. Substitui o antigo modal.dock.js. -->
-  <script defer src="{% static 'boards/card_action_menu.js' %}?v=20260728-busy1"></script>
+  <script defer src="{% static 'boards/card_action_menu.js' %}?v=20260921-fila1"></script>
 
   <!-- AI: busca de cards semelhantes quando o modal abre -->
   <script defer src="{% static 'boards/modal/modal.ai_similar.js' %}"></script>

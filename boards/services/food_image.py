@@ -252,20 +252,24 @@ def schedule_food_image(post_id: int):
     if not _is_enabled():
         return
 
-    def _runner():
-        try:
-            _process_post_sync(post_id)
-        except Exception:
-            logger.exception("food_image: erro processando post_id=%s", post_id)
-
     def _spawn():
-        t = threading.Thread(target=_runner, name=f"food-image-{post_id}", daemon=True)
-        t.start()
+        from boards.services.jobs import enqueue
+        from boards.tasks import food_image_post
+
+        enqueue(food_image_post, post_id, fallback=lambda: run_food_image_job(post_id), mode="thread")
 
     try:
         transaction.on_commit(_spawn)
     except Exception:
         _spawn()
+
+
+def run_food_image_job(post_id: int) -> None:
+    """Roda no worker da fila "media" (ou na thread de reserva)."""
+    try:
+        _process_post_sync(post_id)
+    except Exception:
+        logger.exception("food_image: erro processando post_id=%s", post_id)
 
 
 def _is_enabled() -> bool:

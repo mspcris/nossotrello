@@ -580,3 +580,83 @@ RABBITMQ_CONSUMER_QUEUE = (os.getenv("RABBITMQ_CONSUMER_QUEUE") or "nossotrello-
 
 # Se o broker não estiver configurado o producer vira no-op (degrada suave).
 PUBSUB_ENABLED = bool(RABBITMQ_HOST and RABBITMQ_USER)
+
+
+# ============================================================
+# FILA DE TAREFAS (Celery) — nossotrello/celery.py, boards/tasks.py
+# ------------------------------------------------------------
+# Broker: Redis PRÓPRIO da fila (serviço redis-queue: appendonly + noeviction).
+# NÃO usar o redis do cache: ele roda com allkeys-lru e descartaria tarefa calado.
+# Sem CELERY_BROKER_URL (dev local) a fila fica desligada e tudo roda pelo
+# caminho antigo (thread/direto) — ver boards/services/jobs.py.
+# ============================================================
+CELERY_BROKER_URL = (os.getenv("CELERY_BROKER_URL") or "").strip()
+TASK_QUEUE_ENABLED = bool(CELERY_BROKER_URL)
+if not TASK_QUEUE_ENABLED:
+    CELERY_BROKER_URL = "memory://"
+    CELERY_TASK_ALWAYS_EAGER = True
+
+CELERY_TASK_IGNORE_RESULT = True
+CELERY_TASK_ACKS_LATE = True                 # só confirma depois de executar...
+CELERY_TASK_REJECT_ON_WORKER_LOST = True     # ...e devolve pra fila se o worker morrer (deploy)
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_BROKER_TRANSPORT_OPTIONS = {
+    "visibility_timeout": 3600,
+    "socket_connect_timeout": 2,   # broker fora: o web descobre rápido e usa a reserva
+    "socket_timeout": 10,
+}
+CELERY_TASK_SERIALIZER = "json"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_TASK_DEFAULT_QUEUE = "default"
+CELERY_TASK_TIME_LIMIT = 60 * 45
+CELERY_TASK_ROUTES = {
+    # fila ORDENADA: um consumidor só, operações do quadro na ordem do clique
+    "boards.tasks.apply_card_move": {"queue": "board_ops"},
+    "boards.tasks.board_ops_heartbeat": {"queue": "board_ops"},
+    # pesado (ffmpeg, IA): worker próprio pra não segurar e-mail/WhatsApp
+    "boards.tasks.video_playable_build": {"queue": "media"},
+    "boards.tasks.video_compress_post": {"queue": "media"},
+    "boards.tasks.food_image_post": {"queue": "media"},
+    "boards.tasks.embed_card": {"queue": "media"},
+    "boards.tasks.moderation_layer2": {"queue": "media"},
+}
+
+if TASK_QUEUE_ENABLED:
+    from celery.schedules import crontab as _crontab
+
+    # Substitui o laço de shell do antigo serviço "scheduler": cada comando é uma
+    # tarefa independente (um travado não segura os outros) e a falha fica no log.
+    CELERY_BEAT_SCHEDULE = {
+        "board-ops-heartbeat": {
+            "task": "boards.tasks.board_ops_heartbeat",
+            "schedule": 10.0,
+            "options": {"queue": "board_ops", "expires": 20},
+        },
+        "sync-email-cards": {
+            "task": "boards.tasks.run_management_command",
+            "schedule": _crontab(minute="*/10"),
+            "args": ["sync_email_cards"],
+        },
+        "column-autosort": {
+            "task": "boards.tasks.run_management_command",
+            "schedule": _crontab(minute="2-59/10"),
+            "args": ["run_column_autosort"],
+        },
+        "stale-automations": {
+            "task": "boards.tasks.run_management_command",
+            "schedule": _crontab(minute="4-59/10"),
+            "args": ["run_stale_automations"],
+        },
+        "monthly-reports": {
+            "task": "boards.tasks.run_management_command",
+            "schedule": _crontab(minute="6-59/10"),
+            "args": ["run_monthly_reports"],
+        },
+    }
+
+    # Todo send_mail/EmailMessage.send do projeto passa pela fila, com tentativas.
+    QUEUED_EMAIL_REAL_BACKEND = EMAIL_BACKEND
+    EMAIL_BACKEND = "boards.services.queued_email.QueuedEmailBackend"
+

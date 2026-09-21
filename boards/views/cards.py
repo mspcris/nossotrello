@@ -892,51 +892,105 @@ def restore_card(request, card_id):
 
 
 
-@login_required
-@require_POST
-@transaction.atomic
-def move_card(request):
-    """
-    Move um card dentro da mesma coluna ou entre colunas.
-    Implementação determinística para evitar rollback visual via polling.
-    """
-    data = json.loads(request.body.decode("utf-8"))
+# ============================================================
+# MOVER CARD
+# ------------------------------------------------------------
+# perform_card_move() é o núcleo, sem `request`: roda igual na requisição
+# (caminho síncrono) e no worker da fila ordenada (boards.tasks.apply_card_move).
+# ============================================================
+class CardMoveRejected(Exception):
+    """Movimento que não adianta repetir: sem permissão, card/coluna não existe."""
 
-    card_id = int(data.get("card_id"))
-    new_column_id = int(data.get("new_column_id"))
+
+class _ActorRequest:
+    """Só o que _log_card/_actor_label leem de um request: o usuário."""
+
+    def __init__(self, user):
+        self.user = user
+
+
+_MOVE_LATEST_KEY = "nt:move:last:{card_id}"
+
+
+def mark_move_requested(card_id, requested_at) -> None:
+    """Guarda o instante do pedido MAIS NOVO de mover este card."""
     try:
-        new_position = int(data.get("new_position", 0))
-    except Exception:
-        new_position = 0
+        from django.core.cache import cache
 
-    card = get_object_or_404(Card, id=card_id)
+        cache.set(_MOVE_LATEST_KEY.format(card_id=card_id), float(requested_at), 3600)
+    except Exception:
+        pass
+
+
+def is_move_superseded(card_id, requested_at) -> bool:
+    """True se já existe um pedido mais novo para o mesmo card (um retry atrasado
+    não pode passar por cima do movimento que veio depois)."""
+    try:
+        from django.core.cache import cache
+
+        last = cache.get(_MOVE_LATEST_KEY.format(card_id=card_id))
+        return last is not None and float(last) > float(requested_at) + 1e-6
+    except Exception:
+        return False
+
+
+def _renumber_cards(cards, insert_at=None) -> None:
+    """Posições 0..n-1, abrindo um buraco em `insert_at`. UM UPDATE para a coluna
+    inteira — antes era um save() por card (coluna de 94 cards = 94 idas ao banco)."""
+    changed = []
+    for index, c in enumerate(cards):
+        pos = index if (insert_at is None or index < insert_at) else index + 1
+        if int(c.position or 0) != pos:
+            c.position = pos
+            changed.append(c)
+    if changed:
+        Card.objects.bulk_update(changed, ["position"], batch_size=500)
+
+
+def perform_card_move(*, user, card_id, new_column_id, new_position):
+    """Move o card (mesma coluna ou outra). Chamar dentro de transaction.atomic().
+    Devolve o card já atualizado. Levanta CardMoveRejected quando não é para repetir."""
+    card = Card.objects.filter(id=card_id).select_related("column", "column__board").first()
+    if card is None:
+        raise CardMoveRejected("o card não existe mais.")
+    new_column = Column.objects.filter(id=new_column_id).select_related("board").first()
+    if new_column is None:
+        raise CardMoveRejected("a coluna de destino não existe mais.")
 
     old_column = card.column
-    new_column = get_object_or_404(Column, id=new_column_id)
-
     old_board = old_column.board
     new_board = new_column.board
 
     # permissão (origem e destino)
     if (
-        not _user_can_edit_board(request.user, old_board)
-        or not _user_can_edit_board(request.user, new_board)
+        not _user_can_edit_board(user, old_board)
+        or not _user_can_edit_board(user, new_board)
     ):
-        return _deny_read_only(request, as_json=True)
+        raise CardMoveRejected("você não tem permissão de edição neste quadro.")
 
+    try:
+        new_position = int(new_position)
+    except Exception:
+        new_position = 0
+
+    request = _ActorRequest(user)
     actor = _actor_label(request)
     old_pos = int(card.position or 0)
 
-    # ============================================================
-    # 1) MOVER DENTRO DA MESMA COLUNA (CORRIGIDO)
-    # ============================================================
-    if old_column.id == new_column.id:
-        # cards exceto o movido
-        siblings = list(
-            old_column.cards
+    # só o necessário dos vizinhos: nada de trazer a descrição de 90 cards pra renumerar
+    def _siblings(column):
+        return list(
+            column.cards
             .exclude(id=card.id)
+            .only("id", "position", "counter_mode")
             .order_by("position")
         )
+
+    # ============================================================
+    # 1) MOVER DENTRO DA MESMA COLUNA
+    # ============================================================
+    if old_column.id == new_column.id:
+        siblings = _siblings(old_column)
 
         # clamp
         if new_position < 0:
@@ -944,15 +998,8 @@ def move_card(request):
         if new_position > len(siblings):
             new_position = len(siblings)
 
-        # reindexa os outros cards
-        for index, c in enumerate(siblings):
-            if index >= new_position:
-                c.position = index + 1
-            else:
-                c.position = index
-            c.save(update_fields=["position"])
+        _renumber_cards(siblings, insert_at=new_position)
 
-        # salva o card movido isoladamente
         card.position = new_position
         card.save(update_fields=["position"])
 
@@ -969,43 +1016,18 @@ def move_card(request):
                 f"(de {old_pos} para {new_position}).</p>"
             ),
         )
-
-        snippet_html = render_to_string(
-        "boards/partials/card_item.html",
-        {"card": card},
-        request=request,
-        )
-
-        return JsonResponse({
-            "status": "ok",
-            "card_id": card.id,
-            "column_id": card.column_id,
-            "position": card.position,
-            "snippet": snippet_html
-        })
+        return card
 
     # ============================================================
-    # 2) MOVER PARA OUTRA COLUNA (ESTÁVEL)
+    # 2) MOVER PARA OUTRA COLUNA
     # ============================================================
-
-    # reindexa coluna antiga
-    old_cards = list(
-        old_column.cards
-        .exclude(id=card.id)
-        .order_by("position")
-    )
-
-    for index, c in enumerate(old_cards):
-        if int(c.position or 0) != index:
-            c.position = index
-            c.save(update_fields=["position"])
+    _renumber_cards(_siblings(old_column))
 
     # move card para nova coluna
     card.column = new_column
     card.save(update_fields=["column"])
-    # ===============================
+
     # AUTO-FOLLOW: seguidores da coluna destino (include_new=True)
-    # ===============================
     try:
         follower_ids = list(
             ColumnFollow.objects
@@ -1020,13 +1042,8 @@ def move_card(request):
     except Exception:
         pass
 
-
     # cards da nova coluna (sem o card)
-    new_cards = list(
-        new_column.cards
-        .exclude(id=card.id)
-        .order_by("position")
-    )
+    new_cards = _siblings(new_column)
 
     # clamp
     if new_position < 0:
@@ -1045,24 +1062,15 @@ def move_card(request):
     ):
         new_position = 1
 
-    # reindexa nova coluna
-    for index, c in enumerate(new_cards):
-        if index >= new_position:
-            c.position = index + 1
-        else:
-            c.position = index
-        c.save(update_fields=["position"])
+    _renumber_cards(new_cards, insert_at=new_position)
 
-    # posiciona o card; se trocou de coluna, zera o cronômetro "parado"
+    # posiciona o card; trocou de coluna -> zera o cronômetro "parado".
+    # guarda quando o card entrou na coluna ANTIGA (a automação "avisar quem
+    # colocou o card" usa isso pra dizer "você o colocou aqui em tal dia/hora")
     card.position = new_position
-    if old_column.id != new_column.id:
-        # guarda quando o card entrou na coluna ANTIGA (a automação "avisar quem
-        # colocou o card" usa isso pra dizer "você o colocou aqui em tal dia/hora")
-        card._placed_at = card.column_since
-        card.column_since = timezone.now()
-        card.save(update_fields=["position", "column_since"])
-    else:
-        card.save(update_fields=["position"])
+    card._placed_at = card.column_since
+    card.column_since = timezone.now()
+    card.save(update_fields=["position", "column_since"])
 
     # versão do board destino
     new_board.version += 1
@@ -1074,21 +1082,20 @@ def move_card(request):
         # 'leave' roda ANTES de atualizar column_entered_by: assim a ação
         # "avisar quem colocou o card" usa quem o pôs na coluna ANTIGA, e
         # card.column já aponta pro destino (pra montar "foi para X").
-        run_for(card, "leave", old_column, actor=request.user)
+        run_for(card, "leave", old_column, actor=user)
         # agora quem colocou o card na coluna NOVA é quem fez este move
-        if old_column.id != new_column.id:
-            card.column_entered_by = request.user
-            card.save(update_fields=["column_entered_by"])
-        run_for(card, "enter", new_column, actor=request.user)
-        run_count_triggers(old_column, actor=request.user)
-        run_count_triggers(new_column, actor=request.user)
+        card.column_entered_by = user
+        card.save(update_fields=["column_entered_by"])
+        run_for(card, "enter", new_column, actor=user)
+        run_count_triggers(old_column, actor=user)
+        run_count_triggers(new_column, actor=user)
     except Exception:
         pass
 
     # Registra histórico de movimentação para sugestões personalizadas
     try:
         CardMoveHistory.objects.create(
-            user=request.user,
+            user=user,
             from_column=old_column,
             to_column=new_column,
             from_board=old_board,
@@ -1120,11 +1127,79 @@ def move_card(request):
         board=old_board,
         board_to=new_board if changed_board else None,
     )
+    return card
+
+
+@login_required
+@require_POST
+def move_card(request):
+    """
+    Move um card dentro da mesma coluna ou entre colunas.
+
+    Com `"async": true` no corpo (a tela já moveu o card sozinha), o pedido vai
+    para a fila ordenada e a resposta sai na hora (202). O worker grava com 3
+    tentativas; se nenhuma der certo, o usuário recebe `card.move.failed` na tela
+    e um e-mail. Sem fila viva — ou sem o `async`, como manda o JS antigo em
+    cache — grava na própria requisição, como sempre foi.
+    """
+    import time as _time
+
+    data = json.loads(request.body.decode("utf-8"))
+
+    card_id = int(data.get("card_id"))
+    new_column_id = int(data.get("new_column_id"))
+    try:
+        new_position = int(data.get("new_position", 0))
+    except Exception:
+        new_position = 0
+
+    card = get_object_or_404(Card, id=card_id)
+    new_column = get_object_or_404(Column, id=new_column_id)
+
+    # permissão (origem e destino) — checada AQUI, com o usuário da sessão,
+    # antes de qualquer coisa ir para a fila
+    if (
+        not _user_can_edit_board(request.user, card.column.board)
+        or not _user_can_edit_board(request.user, new_column.board)
+    ):
+        return _deny_read_only(request, as_json=True)
+
+    requested_at = _time.time()
+    mark_move_requested(card_id, requested_at)
+
+    if data.get("async"):
+        from boards.services.jobs import board_ops_alive, enqueue
+        from boards.tasks import apply_card_move
+
+        if board_ops_alive():
+            op_id = uuid.uuid4().hex
+            queued = enqueue(
+                apply_card_move,
+                op_id, card_id, new_column_id, new_position, request.user.id, requested_at,
+                mode="none",
+            )
+            if queued:
+                return JsonResponse(
+                    {"status": "queued", "op_id": op_id, "card_id": card_id, "column_id": new_column_id},
+                    status=202,
+                )
+
+    # caminho síncrono
+    try:
+        with transaction.atomic():
+            card = perform_card_move(
+                user=request.user,
+                card_id=card_id,
+                new_column_id=new_column_id,
+                new_position=new_position,
+            )
+    except CardMoveRejected:
+        return _deny_read_only(request, as_json=True)
 
     snippet_html = render_to_string(
-    "boards/partials/card_item.html",
-    {"card": card},
-    request=request,
+        "boards/partials/card_item.html",
+        {"card": card},
+        request=request,
     )
 
     return JsonResponse({

@@ -143,18 +143,26 @@ def embed_card_async(card_id: int) -> None:
     Dispara geração de embedding em thread daemon — não bloqueia request.
     Reabre a conexão do Django dentro da thread.
     """
-    def _run():
-        try:
-            from django.db import connection
-            connection.close()
-            card = Card.all_objects.filter(id=card_id).first()
-            if card:
-                embed_card(card)
-        except Exception as e:
-            logger.warning("embed_card_async falhou (card=%s): %s", card_id, e)
+    def _thread_fallback():
+        # thread nova = conexão nova com o banco
+        from django.db import connection
+        connection.close()
+        run_embed_job(card_id)
 
-    t = threading.Thread(target=_run, daemon=True)
-    t.start()
+    from boards.services.jobs import enqueue
+    from boards.tasks import embed_card as embed_card_task
+
+    enqueue(embed_card_task, card_id, fallback=_thread_fallback, mode="thread")
+
+
+def run_embed_job(card_id: int) -> None:
+    """Gera/atualiza o embedding. Roda no worker da fila "media" (ou na thread de reserva)."""
+    try:
+        card = Card.all_objects.filter(id=card_id).first()
+        if card:
+            embed_card(card)
+    except Exception as e:
+        logger.warning("embed_card_async falhou (card=%s): %s", card_id, e)
 
 
 # ────────────────────────────────────────────────────────────────

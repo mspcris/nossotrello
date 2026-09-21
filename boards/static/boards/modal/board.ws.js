@@ -76,31 +76,42 @@
   // Fetch de colunas (mesma lógica do polling antigo, mas só
   // dispara quando o servidor MANDA via WebSocket)
   // ============================================================
-  async function applyBoardInvalidation(newVersion) {
+  async function applyBoardInvalidation(newVersion, opts) {
     if (!boardId) return;
+    // force: a tela está com um estado que o servidor NÃO tem (mover que falhou).
+    // Ignora dedupe de versão e cooldown de arrasto e pede o HTML mesmo sem mudança.
+    const force = !!(opts && opts.force);
 
     // Se já estou na versão recebida, nada a fazer (dedupe).
-    if (Number(newVersion) > 0 && Number(newVersion) <= boardVersion) {
+    if (!force && Number(newVersion) > 0 && Number(newVersion) <= boardVersion) {
       log("skip: versão recebida <= atual", newVersion, boardVersion);
       return;
     }
 
     // Respeita as mesmas pausas do polling antigo (modal aberto, drag, input focado).
-    if (window.Modal?.state?.isOpen) { log("pause: modal aberto"); return; }
-    if (window.__isDraggingCard)    { log("pause: dragging");    return; }
+    // Forçado e em pausa: tenta de novo daqui a pouco (no máx. 10x), senão o card
+    // ficaria no lugar errado até o próximo evento do quadro.
+    const retryForced = () => {
+      if (!force) return;
+      const left = (opts.retriesLeft == null ? 10 : opts.retriesLeft) - 1;
+      if (left <= 0) return;
+      setTimeout(() => applyBoardInvalidation(0, { force: true, retriesLeft: left }), 3000);
+    };
+    if (window.Modal?.state?.isOpen) { log("pause: modal aberto"); retryForced(); return; }
+    if (window.__isDraggingCard)    { log("pause: dragging");    retryForced(); return; }
     const ae = document.activeElement;
     if (ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" || ae.isContentEditable)) {
-      log("pause: input focado"); return;
+      log("pause: input focado"); retryForced(); return;
     }
     // Cooldown pós-drag (evita snap-back)
     const sinceLastDrag = Date.now() - (window.__lastDragEndMs || 0);
-    if (sinceLastDrag < 3000) { log("pause: drag cooldown"); return; }
+    if (!force && sinceLastDrag < 3000) { log("pause: drag cooldown"); return; }
 
     const list = getColumnsList();
     if (!list) return;
 
     try {
-      const res = await fetch(`/board/${boardId}/poll/?v=${boardVersion}`, {
+      const res = await fetch(`/board/${boardId}/poll/?v=${force ? -1 : boardVersion}`, {
         method: "GET",
         credentials: "same-origin",
         headers: { "X-Requested-With": "XMLHttpRequest", "Accept": "application/json" },
@@ -135,6 +146,12 @@
       log("fetch poll falhou", e);
     }
   }
+
+  // Ressincroniza as colunas com o servidor AGORA (jobs_feedback.js chama isto
+  // quando um mover-card em fila falha, pra devolver o card ao lugar real).
+  window.__ntForceBoardRefresh = function () {
+    return applyBoardInvalidation(0, { force: true });
+  };
 
   // ============================================================
   // Dispatcher dos eventos recebidos do servidor

@@ -1283,13 +1283,16 @@
         body: JSON.stringify({
           card_id: cardId,
           new_column_id: newColumnId,
-          new_position: newPosition
+          new_position: newPosition,
+          async: true
         })
       });
 
       if (!resp.ok) {
         const txt = await resp.text().catch(() => "");
         console.error("move-card falhou:", resp.status, txt);
+        window.ntJobToast?.("Não foi possível mover o card. Ele voltou ao lugar original.", "error");
+        window.__ntForceBoardRefresh?.();
       } else {
         // contadores (Total / últimos X dias / etc.) são calculados no servidor:
         // recalcula na hora pra não precisar de F5 após mover.

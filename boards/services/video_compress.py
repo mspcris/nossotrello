@@ -202,20 +202,24 @@ def schedule_video_compress(post_id: int):
     if not _is_enabled():
         return
 
-    def _runner():
-        try:
-            _process_post_sync(post_id)
-        except Exception:
-            logger.exception("video_compress: erro processando post_id=%s", post_id)
-
     def _spawn():
-        t = threading.Thread(target=_runner, name=f"video-compress-{post_id}", daemon=True)
-        t.start()
+        from boards.services.jobs import enqueue
+        from boards.tasks import video_compress_post
+
+        enqueue(video_compress_post, post_id, fallback=lambda: run_compress_job(post_id), mode="thread")
 
     try:
         transaction.on_commit(_spawn)
     except Exception:
         _spawn()
+
+
+def run_compress_job(post_id: int) -> None:
+    """Roda no worker da fila "media" (ou na thread de reserva)."""
+    try:
+        _process_post_sync(post_id)
+    except Exception:
+        logger.exception("video_compress: erro processando post_id=%s", post_id)
 
 
 def _is_enabled() -> bool:

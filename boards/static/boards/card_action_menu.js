@@ -135,6 +135,36 @@
     return true;
   }
 
+  // Movimento em fila (HTTP 202): não vem snippet — a própria tela leva o <li>
+  // pro destino. O servidor grava em seguida e o evento do quadro acerta o resto.
+  function moveCardLi(cardId, destColId, position) {
+    const cardLi = document.querySelector(`li[data-card-id="${cardId}"]`);
+    const destList = destColId ? document.getElementById(`cards-col-${destColId}`) : null;
+    if (!cardLi || !destList) return false;
+    const siblings = Array.from(destList.querySelectorAll(":scope > li[data-card-id]")).filter((li) => li !== cardLi);
+    const idx = Math.max(0, Math.min(Number(position) || 0, siblings.length));
+    if (idx >= siblings.length) destList.appendChild(cardLi);
+    else destList.insertBefore(cardLi, siblings[idx]);
+    cardLi.classList.add("card-new-pulse");
+    setTimeout(() => cardLi.classList.remove("card-new-pulse"), 700);
+    requestAnimationFrame(() => cardLi.scrollIntoView({ behavior: "smooth", block: "nearest" }));
+    bumpDestColumn(destList);
+    afterDomMutation();
+    return true;
+  }
+
+  function applyMoveResponse(res, cardId, destColId, position, prepend) {
+    let data = {};
+    try { data = JSON.parse(res.text || "{}"); } catch (_e) {}
+    if (res.status === 202 || data.status === "queued") {
+      if (!moveCardLi(cardId, destColId, position)) removeCardFromDom(cardId); // outro quadro
+      return;
+    }
+    if (!replaceCardWithSnippet(cardId, data.snippet, data.column_id, { prepend })) {
+      removeCardFromDom(cardId);
+    }
+  }
+
   function removeCardFromDom(cardId) {
     const li = document.querySelector(`li[data-card-id="${cardId}"]`);
     if (li) li.remove();
@@ -280,14 +310,13 @@
         card_id: parseInt(cardId, 10),
         new_column_id: parseInt(toColId, 10),
         new_position: 0,
+        async: true,
       });
-      if (!res.ok) return;
-      try {
-        const data = JSON.parse(res.text || "{}");
-        if (!replaceCardWithSnippet(cardId, data.snippet, data.column_id, { prepend: true })) {
-          removeCardFromDom(cardId);
-        }
-      } catch (_e) {}
+      if (!res.ok) {
+        window.ntJobToast?.("Não foi possível mover o card.", "error");
+        return;
+      }
+      applyMoveResponse(res, cardId, toColId, 0, true);
       if (fromModal) closeModalIfOpen();
     } finally {
       busy(false);
@@ -474,20 +503,14 @@
         card_id: parseInt(cardId, 10),
         new_column_id: parseInt(colId, 10),
         new_position: newPos,
+        async: true,
       });
       if (!res.ok) {
         if (errEl) { errEl.style.display = "block"; errEl.textContent = `Falha ao mover (HTTP ${res.status}).`; }
         return;
       }
       closeMenu();
-      try {
-        const data = JSON.parse(res.text || "{}");
-        if (!replaceCardWithSnippet(cardId, data.snippet, data.column_id, { prepend: false })) {
-          removeCardFromDom(cardId); // foi pra outro board -> some da view atual
-        }
-      } catch (_e) {
-        removeCardFromDom(cardId);
-      }
+      applyMoveResponse(res, cardId, colId, newPos, false); // outro board -> some da view atual
       if (fromModal) closeModalIfOpen();
     } finally {
       busy(false);
