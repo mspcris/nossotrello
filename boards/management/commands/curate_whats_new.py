@@ -40,6 +40,14 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-09 ---
+    "3b5bab7": (
+        "🎯",
+        "Card movido já cai no lugar certo, sem dar o pulinho",
+        "Em coluna com o card contador no topo, o card movido aparecia em 1º lugar e, "
+        "um segundo depois, pulava para o 2º. Agora ele já entra em 2º — no menu de "
+        "mover, ao arrastar, ao criar no topo e ao colar. E não dá mais para deixar "
+        "um card acima do contador arrastando dentro da mesma coluna.",
+    ),
     "a94997a": (
         "🧭",
         "Mover o card pelo menu de dentro dele atualiza o quadro na hora",
