@@ -259,9 +259,12 @@ services:
   nginx:
     image: nginx:latest
     restart: always
+    # Só 127.0.0.1: quem fala com este nginx é o nginx do HOST (TLS, catch-all). Publicado em
+    # 0.0.0.0 a porta ficava aberta pra internet em HTTP puro — porta do Docker passa por fora
+    # do UFW — e scanner batendo direto nela é que gerava os DisallowedHost no Sentry.
     ports:
-      - "${NGINX_HTTP_PORT:-8081}:80"
-      - "${NGINX_HTTPS_PORT:-8443}:443"
+      - "127.0.0.1:${NGINX_HTTP_PORT:-8081}:80"
+      - "127.0.0.1:${NGINX_HTTPS_PORT:-8443}:443"
     volumes:
       - ./nginx/nossotrello.conf:/etc/nginx/conf.d/default.conf
       - ./nginx/502.html:/etc/nginx/502.html
