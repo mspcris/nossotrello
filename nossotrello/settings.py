@@ -600,6 +600,9 @@ CELERY_TASK_IGNORE_RESULT = True
 CELERY_TASK_ACKS_LATE = True                 # só confirma depois de executar...
 CELERY_TASK_REJECT_ON_WORKER_LOST = True     # ...e devolve pra fila se o worker morrer (deploy)
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+# O print dos comandos periódicos ("Total: 0 card(s)") é capturado pelo worker; o
+# padrão do Celery registra isso como WARNING, que não é — e WARNING vai pro Sentry.
+CELERY_WORKER_REDIRECT_STDOUTS_LEVEL = "INFO"
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 CELERY_BROKER_TRANSPORT_OPTIONS = {
     "visibility_timeout": 3600,
@@ -675,7 +678,10 @@ if TASK_QUEUE_ENABLED:
 SENTRY_DSN = (os.getenv("SENTRY_DSN") or "").strip()
 
 if SENTRY_DSN:
+    import logging
+
     import sentry_sdk
+    from sentry_sdk.integrations.logging import LoggingIntegration
 
     def _env_float(key: str, default: float) -> float:
         try:
@@ -691,6 +697,9 @@ if SENTRY_DSN:
         send_default_pii=True,
         # logger.error()/logger.warning() do Python viram logs no Sentry
         enable_logs=_env_bool("SENTRY_ENABLE_LOGS", default=True),
+        # Só de WARNING pra cima. O padrão (INFO) mandava o heartbeat da fila —
+        # 3 linhas a cada 10 s — e somava ~1 GB de log por mês no Sentry.
+        integrations=[LoggingIntegration(sentry_logs_level=logging.WARNING)],
         traces_sample_rate=_env_float("SENTRY_TRACES_SAMPLE_RATE", 0.05),
         profile_session_sample_rate=_env_float("SENTRY_PROFILES_SAMPLE_RATE", 0.0),
         profile_lifecycle="trace",
