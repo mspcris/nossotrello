@@ -74,8 +74,25 @@ jobs:
             fi
 
             # ── Build + recreate ──
-            echo "==> compose up --build"
-            docker compose -p nossotrello up -d --build --force-recreate
+            # Recria SO o que roda o nosso codigo. Ate 21/09/2026 era --force-recreate
+            # em tudo: a cada deploy o redis, o redis-queue e o db caiam com os outros
+            # containers ainda de pe -- ~50 erros de conexao por deploy no Sentry, cache
+            # frio e a fila de tarefas parada por segundos, a toa.
+            # Mudou a config de um servico de infra no compose (volume, command)? Rode
+            # o workflow no modo "full": ele da down em tudo e sobe do zero.
+            INFRA='db|redis|redis-queue|nginx'
+            APPS=$(docker compose -p nossotrello config --services | grep -vxE "$INFRA" | tr '\n' ' ')
+            echo "==> build"
+            docker compose -p nossotrello build
+            echo "==> infra: sobe o que faltar, sem tocar no que esta de pe"
+            docker compose -p nossotrello up -d --no-recreate
+            echo "==> recria os apps: $APPS"
+            docker compose -p nossotrello up -d --force-recreate --no-deps $APPS
+            # O nginx guarda o IP de web/daphne de quando subiu; container novo = IP
+            # novo = 502. O reload relê o conf e resolve os nomes de novo, sem derrubar
+            # conexao aberta.
+            echo "==> nginx reload"
+            docker compose -p nossotrello exec -T nginx nginx -s reload || docker compose -p nossotrello restart nginx
 
             # ── Migrate + collectstatic (sempre) ──
             echo "==> migrate"
