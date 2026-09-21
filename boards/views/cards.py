@@ -336,7 +336,7 @@ def update_card(request, card_id):
     # ============================================================
     posted_title = request.POST.get("title", None)
     posted_titles = request.POST.getlist("title")
-    logger.warning(
+    logger.debug(
         "[update_card] card_id=%s keys=%s title(get)=%r titles(getlist)=%r",
         card_id,
         sorted(list(request.POST.keys())),

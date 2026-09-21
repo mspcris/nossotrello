@@ -1830,15 +1830,11 @@ def _user_label(user):
 def _send_transfer_whatsapp(user, lines):
     """Best-effort: sem telefone no profile, simplesmente não envia."""
     try:
-        import re
-
-        from boards.services.notifications import send_whatsapp
+        from boards.services.notifications import send_whatsapp, _safe_digits_phone
 
         prof = getattr(user, "profile", None)
-        phone = re.sub(r"\D+", "", (getattr(prof, "telefone", "") if prof else "") or "")
-        if len(phone) in (10, 11):
-            phone = "55" + phone
-        if len(phone) not in (12, 13):
+        phone = _safe_digits_phone(getattr(prof, "telefone", "") if prof else "")
+        if not phone:
             return
         for line in lines:
             send_whatsapp(user=user, phone_digits=phone, body=line)
@@ -2503,20 +2499,14 @@ def request_board_access(request, board_id):
     # 2) WHATSAPP PARA O DONO DO QUADRO
     # --------------------------------------------------
     try:
-        from boards.services.notifications import send_whatsapp
-        import re
+        from boards.services.notifications import send_whatsapp, _safe_digits_phone
 
         owner = owner_user
         prof = getattr(owner, "profile", None)
 
-        phone = getattr(prof, "telefone", "") if prof else ""
-        phone = re.sub(r"\D+", "", phone or "")
+        phone = _safe_digits_phone(getattr(prof, "telefone", "") if prof else "")
 
-        # adiciona DDI Brasil se necessário
-        if len(phone) in (10, 11):
-            phone = "55" + phone
-
-        if len(phone) in (12, 13):
+        if phone:
             nome = request.user.get_full_name() or request.user.username
             msg = (
                 f"{nome} solicitou acesso ao seu quadro:\n"

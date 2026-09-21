@@ -301,7 +301,18 @@ def _user_was_mentioned_in_card(*, card: Card, user: User) -> bool:
 
 
 def _safe_digits_phone(phone_raw: str) -> str:
+    """
+    Telefone do cadastro -> número da Evolution (DDI + DDD + número) ou "".
+    É o ÚNICO normalizador: todo envio de WhatsApp passa por aqui.
+    """
     phone_digits = re.sub(r"\D+", "", (phone_raw or "").strip())
+
+    # Zero de tronco antes do DDD — "(021) 9…", o formato que vem do cadastro do
+    # IDCamim/ERP — e "00" de discagem internacional não fazem parte do número.
+    # Sem tirar, "0219…" (12 dígitos) passava como se já tivesse DDI e "0212…"
+    # (11) virava "55021…": a Evolution respondia exists:false e a pessoa nunca
+    # recebia nada (30 usuários ativos em 09/2026). Nenhum DDI começa com 0.
+    phone_digits = phone_digits.lstrip("0")
 
     # Sem DDD (só o número local: 8 fixo / 9 celular) → assume DDD 21 (Rio) + BR
     if len(phone_digits) in (8, 9):
@@ -320,8 +331,8 @@ def _safe_digits_phone(phone_raw: str) -> str:
 def send_whatsapp(*, user, phone_digits: str, body: str, sync: bool = False) -> None:
     """
     Envia mensagem WhatsApp via Evolution API.
-    sync=True → envia no mesmo thread (bloqueia até completar).
-    sync=False → envia em background thread (fire-and-forget).
+    Sempre pela fila (com novas tentativas). Sem fila/broker:
+    sync=True → envia no mesmo thread; sync=False → thread daemon.
     """
     base_url = (getattr(settings, "EVOLUTION_BASE_URL", "") or "").strip()
     api_key = (getattr(settings, "EVOLUTION_API_KEY", "") or "").strip()
@@ -347,17 +358,18 @@ def send_whatsapp(*, user, phone_digits: str, body: str, sync: bool = False) -> 
         except Exception as e:
             logger.warning("evolution: send failed user_id=%s: %s", user_id, e)
 
-    if sync:
-        _send()
-        return
-
     # Fila com tentativas (boards.tasks.send_whatsapp_task): a mensagem não se
-    # perde se a Evolution oscilar nem se um deploy matar o processo. Sem
-    # fila/broker, thread daemon como sempre foi.
+    # perde se a Evolution oscilar nem se um deploy matar o processo.
+    #
+    # sync=True é de quem não pode contar com thread daemon (comando de gerência,
+    # automação de coluna). Vai para a fila do mesmo jeito — antes enviava na
+    # hora, de dentro da requisição: num timeout da Evolution a mensagem se
+    # perdia e quem moveu o card ficava esperando. O que o sync muda é a reserva
+    # quando não há fila/broker: envia na hora, em vez de thread daemon.
     from boards.services.jobs import enqueue
     from boards.tasks import send_whatsapp_task
 
-    enqueue(send_whatsapp_task, user_id, phone_digits, body, fallback=_send, mode="thread")
+    enqueue(send_whatsapp_task, user_id, phone_digits, body, fallback=_send, mode="sync" if sync else "thread")
 
 
 def send_whatsapp_now(*, phone_digits: str, body: str) -> None:

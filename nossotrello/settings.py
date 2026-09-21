@@ -689,6 +689,19 @@ if SENTRY_DSN:
         except ValueError:
             return default
 
+    def _sentry_before_send_log(log, _hint):
+        # 409 nas rotas de trava de campo do card (/card/<id>/field/<campo>/…) é
+        # protocolo, não falha: quem perdeu a trava recebe 409 e readquire. Só
+        # aparece porque o Django registra todo 4xx como WARNING em django.request.
+        try:
+            if (log.get("attributes") or {}).get("logger.name") == "django.request":
+                body = str(log.get("body") or "")
+                if body.startswith("Conflict: /card/") and "/field/" in body:
+                    return None
+        except Exception:
+            pass
+        return log
+
     sentry_sdk.init(
         dsn=SENTRY_DSN,
         environment=(os.getenv("SENTRY_ENVIRONMENT") or ("dev" if DEBUG else "prod")).strip(),
@@ -700,6 +713,7 @@ if SENTRY_DSN:
         # Só de WARNING pra cima. O padrão (INFO) mandava o heartbeat da fila —
         # 3 linhas a cada 10 s — e somava ~1 GB de log por mês no Sentry.
         integrations=[LoggingIntegration(sentry_logs_level=logging.WARNING)],
+        before_send_log=_sentry_before_send_log,
         traces_sample_rate=_env_float("SENTRY_TRACES_SAMPLE_RATE", 0.05),
         profile_session_sample_rate=_env_float("SENTRY_PROFILES_SAMPLE_RATE", 0.0),
         profile_lifecycle="trace",

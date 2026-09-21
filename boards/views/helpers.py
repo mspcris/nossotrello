@@ -29,6 +29,7 @@ from django.utils.html import escape
 
 from boards.services.notifications import (
     send_whatsapp,
+    _safe_digits_phone,
     get_card_followers,
     build_card_snapshot,
     format_card_message,
@@ -611,14 +612,9 @@ def _send_mention_whatsapp(request, mentioned_user, actor_user, board, card, men
             return
 
         phone_raw = (getattr(prof, "telefone", "") or "").strip()
-        phone_digits = re.sub(r"\D+", "", phone_raw)
+        phone_digits = _safe_digits_phone(phone_raw)
 
-        # Se não tiver DDI, assume BR
-        if len(phone_digits) in (10, 11):
-            phone_digits = "55" + phone_digits
-
-        # Valida: 55 + DDD + (8 ou 9)
-        if len(phone_digits) not in (12, 13):
+        if not phone_digits:
             logger.warning(
                 "mention_whatsapp: invalid phone user_id=%s raw=%r digits=%r",
                 getattr(mentioned_user, "id", None), phone_raw, phone_digits
@@ -681,12 +677,9 @@ def _get_mention_notify_plan(mentioned_user) -> dict:
     will_email = bool(to_email) and bool(getattr(prof, "notify_email", True) if prof else True)
 
     phone_raw = (getattr(prof, "telefone", "") or "").strip() if prof else ""
-    phone_digits = re.sub(r"\D+", "", phone_raw)
-    if len(phone_digits) in (10, 11):
-        phone_digits = "55" + phone_digits
     will_whatsapp = (
         bool(getattr(prof, "notify_whatsapp", False) if prof else False)
-        and len(phone_digits) in (12, 13)
+        and bool(_safe_digits_phone(phone_raw))
     )
 
     return {"name": name, "email": will_email, "whatsapp": will_whatsapp}
