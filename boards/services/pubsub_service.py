@@ -79,7 +79,14 @@ class PubSubService:
                 port=settings.RABBITMQ_PORT,
                 virtual_host=settings.RABBITMQ_VHOST,
                 credentials=credentials,
-                heartbeat=30,
+                # heartbeat=0 de propósito. BlockingConnection só responde heartbeat
+                # quando o código a usa; numa thread do gunicorn parada por ~1 min o
+                # broker derrubava a conexão e o publish seguinte achava o socket
+                # morto (192 erros e eventos perdidos no Sentry em 21/09/2026). Quem
+                # segura a conexão ociosa agora é o keepalive do TCP, que o kernel
+                # responde sozinho.
+                heartbeat=0,
+                tcp_options={"TCP_KEEPIDLE": 60, "TCP_KEEPINTVL": 10, "TCP_KEEPCNT": 3},
                 blocked_connection_timeout=10,
                 connection_attempts=2,
                 retry_delay=1,
@@ -140,66 +147,81 @@ class PubSubService:
             rmq_logger.debug("publish.skip reason=disabled type=%s", etype)
             return False
 
-        channel = cls._channel()
-        if channel is None:
-            rmq_logger.warning(
-                "publish.skip reason=no_channel type=%s board=%s user=%s",
-                etype,
-                data.get("board_id"),
-                data.get("user_id"),
-            )
-            return False
-
-        t0 = time.monotonic()
         try:
             body = json.dumps(data, default=str).encode("utf-8")
-            channel.basic_publish(
-                exchange=settings.RABBITMQ_EXCHANGE,
-                routing_key=settings.RABBITMQ_ROUTING_KEY,
-                body=body,
-                properties=pika.BasicProperties(
-                    content_type="application/json",
-                    delivery_mode=2,  # persistente
-                ),
-            )
-            rmq_logger.info(
-                "publish.ok type=%s bytes=%d board=%s user=%s users=%s global=%s took_ms=%.1f",
-                etype,
-                len(body),
-                data.get("board_id"),
-                data.get("user_id"),
-                len(data.get("user_ids") or []) if isinstance(data.get("user_ids"), (list, tuple)) else None,
-                bool(data.get("global")),
-                (time.monotonic() - t0) * 1000.0,
-            )
-            return True
         except Exception as exc:  # noqa: BLE001
-            rmq_logger.warning(
-                "publish.fail type=%s board=%s user=%s err=%s:%s took_ms=%.1f",
-                etype,
-                data.get("board_id"),
-                data.get("user_id"),
-                type(exc).__name__,
-                exc,
-                (time.monotonic() - t0) * 1000.0,
-                exc_info=True,
-            )
-            # descarta conexão ruim; próxima publish tenta de novo
-            try:
-                conn = getattr(cls._local, "connection", None)
-                if conn is not None:
-                    conn.close()
-                    rmq_logger.info("publish.fail.close_ok type=%s", etype)
-            except Exception as close_exc:  # noqa: BLE001
-                rmq_logger.debug(
-                    "publish.fail.close_err type=%s err=%s:%s",
-                    etype,
-                    type(close_exc).__name__,
-                    close_exc,
-                )
-            cls._local.connection = None
-            cls._local.channel = None
+            rmq_logger.error("publish.fail type=%s err=%s:%s — payload não serializável", etype, type(exc).__name__, exc)
             return False
+        t0 = time.monotonic()
+        # Conexão pode morrer por fora (broker reiniciou, rede caiu) sem o pika saber:
+        # is_open continua True até alguém escrever no socket. Por isso a 1ª falha
+        # não é erro — descarta a conexão e tenta UMA vez numa nova. Só a 2ª falha
+        # significa evento perdido.
+        for tentativa in (1, 2):
+            channel = cls._channel()
+            if channel is None:
+                rmq_logger.warning(
+                    "publish.skip reason=no_channel type=%s board=%s user=%s",
+                    etype,
+                    data.get("board_id"),
+                    data.get("user_id"),
+                )
+                return False
+            try:
+                channel.basic_publish(
+                    exchange=settings.RABBITMQ_EXCHANGE,
+                    routing_key=settings.RABBITMQ_ROUTING_KEY,
+                    body=body,
+                    properties=pika.BasicProperties(
+                        content_type="application/json",
+                        delivery_mode=2,  # persistente
+                    ),
+                )
+                rmq_logger.info(
+                    "publish.ok type=%s bytes=%d board=%s user=%s users=%s global=%s tentativa=%d took_ms=%.1f",
+                    etype,
+                    len(body),
+                    data.get("board_id"),
+                    data.get("user_id"),
+                    len(data.get("user_ids") or []) if isinstance(data.get("user_ids"), (list, tuple)) else None,
+                    bool(data.get("global")),
+                    tentativa,
+                    (time.monotonic() - t0) * 1000.0,
+                )
+                return True
+            except Exception as exc:  # noqa: BLE001
+                cls._descartar_conexao()
+                if tentativa == 1:
+                    rmq_logger.info(
+                        "publish.retry type=%s err=%s:%s — conexão morta, tentando em uma nova",
+                        etype,
+                        type(exc).__name__,
+                        exc,
+                    )
+                    continue
+                rmq_logger.error(
+                    "publish.fail type=%s board=%s user=%s err=%s:%s took_ms=%.1f — evento PERDIDO",
+                    etype,
+                    data.get("board_id"),
+                    data.get("user_id"),
+                    type(exc).__name__,
+                    exc,
+                    (time.monotonic() - t0) * 1000.0,
+                    exc_info=True,
+                )
+        return False
+
+    @classmethod
+    def _descartar_conexao(cls) -> None:
+        conn = getattr(cls._local, "connection", None)
+        cls._local.connection = None
+        cls._local.channel = None
+        if conn is None:
+            return
+        try:
+            conn.close()
+        except Exception:  # noqa: BLE001 — já estava morta; é o esperado
+            pass
 
     # ------------------------------------------------------------------
     # Consumer API (usado apenas pelo `rabbit_bridge`)
