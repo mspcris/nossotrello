@@ -40,6 +40,15 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-09 ---
+    "bfa5a26": (
+        "🔑",
+        "Código compartilhado voltou a ser legível depois de revelado",
+        "No tema claro, ao revelar um código compartilhado do card (chave, curl, "
+        "senha) o conteúdo aparecia como uma caixa preta: o texto estava lá, mas "
+        "escuro sobre fundo escuro. Agora aparece normalmente, com os botões de "
+        "copiar e ocultar. O mesmo defeito atingia blocos de código vindos de "
+        "e-mail ou colagem, e também foi corrigido.",
+    ),
     "97eb10d": (
         "🚚",
         "Mover card ficou instantâneo, e nada se perde se o servidor engasgar",
