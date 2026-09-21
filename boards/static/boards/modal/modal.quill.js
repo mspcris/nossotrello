@@ -108,6 +108,7 @@
     const pres = root.querySelectorAll("pre:not([data-code-copy])");
     pres.forEach((pre) => {
       if (pre.closest(".ql-editor")) return; // bloco editável: não decora
+      if (pre.classList.contains("cm-secret-pre")) return; // segredo revelado: tem Copiar/Ocultar próprios
       // já embrulhado (por um render anterior)? só marca e garante 1 botão.
       if (pre.parentElement && pre.parentElement.classList.contains("code-copy-wrap")) {
         pre.setAttribute("data-code-copy", "1");

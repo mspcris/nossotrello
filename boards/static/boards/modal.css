@@ -4287,6 +4287,15 @@ html.dark #modal #card-modal-root:not(.theme-dark):not(.card-theme-dark) pre.ql-
 .code-copy-wrap > pre.ql-syntax{
   color:#e2e8f0 !important;
 }
+/* O fundo escuro acima vale pra TODO `.code-copy-wrap > pre`, mas a exceção de
+   cor só cobria o pre.ql-syntax: um <pre> de outra origem (e-mail virado card,
+   colagem) ficava #111 sobre #0b1220 no tema claro. Mesmo prefixo + wrap => (2,4,2). */
+html:not(.dark) #modal #card-modal-root:not(.theme-dark):not(.card-theme-dark) .code-copy-wrap > pre,
+html.dark #modal #card-modal-root:not(.theme-dark):not(.card-theme-dark) .code-copy-wrap > pre,
+html:not(.dark) #modal #card-modal-root:not(.theme-dark):not(.card-theme-dark) .code-copy-wrap > pre code,
+html.dark #modal #card-modal-root:not(.theme-dark):not(.card-theme-dark) .code-copy-wrap > pre code{
+  color:#e2e8f0 !important;
+}
 /* barra de ações do bloco (paleta + copiar), canto superior direito */
 .code-tools{
   position:absolute; top:6px; right:6px;
