@@ -40,6 +40,14 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-09 ---
+    "825e791": (
+        "⏳",
+        "Ao abrir um quadro, você vê na hora que o clique pegou",
+        "Na tela inicial, o quadro clicado agora afunda, ganha uma bola girando e o aviso "
+        "“Abrindo…” enquanto carrega, e os outros ficam mais apagados. Também dá pra clicar "
+        "em qualquer ponto do card, inclusive no espaço vazio embaixo do nome, que antes "
+        "não fazia nada.",
+    ),
     "35c2379": (
         "📲",
         "Avisos por WhatsApp voltaram a chegar para quem tem telefone no formato (021)",
