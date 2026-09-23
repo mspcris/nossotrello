@@ -554,6 +554,115 @@
     ];
   </script>
 
+  {# ===================== ABRINDO QUADRO: feedback de clique + spinner ===================== #}
+  <style>
+    .board-card.is-opening {
+      transform: scale(0.97) !important;
+      box-shadow: 0 0 0 3px rgba(255,255,255,.9), 0 0 0 6px rgba(79,70,229,.55), 0 14px 34px rgba(0,0,0,.25) !important;
+      z-index: 20;
+      transition: transform .12s ease, box-shadow .12s ease;
+    }
+    body.nt-opening-board .board-card:not(.is-opening) {
+      opacity: .55;
+      transition: opacity .2s ease;
+    }
+    .nt-open-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 40;
+      border-radius: inherit;
+      background: rgba(15, 23, 42, .58);
+      backdrop-filter: blur(3px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: #fff;
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: .02em;
+      pointer-events: none;
+      animation: ntOpenFade .12s ease-out;
+    }
+    .nt-open-spinner {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: 3px solid rgba(255,255,255,.3);
+      border-top-color: #fff;
+      animation: ntOpenSpin .8s linear infinite;
+    }
+    a.nt-open-link { position: relative; opacity: .7; }
+    a.nt-open-link .nt-open-spinner {
+      position: absolute; right: 18px; top: 50%;
+      width: 26px; height: 26px; margin-top: -13px;
+      border-color: rgba(15,23,42,.2); border-top-color: #4f46e5;
+    }
+    @keyframes ntOpenSpin { to { transform: rotate(360deg); } }
+    @keyframes ntOpenFade { from { opacity: 0; } to { opacity: 1; } }
+  </style>
+  <script>
+  (function () {
+    var BOARD_PATH = /^\/board\/\d+\/?$/;
+
+    function clearOpening() {
+      document.body.classList.remove("nt-opening-board");
+      document.querySelectorAll(".board-card.is-opening").forEach(function (c) { c.classList.remove("is-opening"); });
+      document.querySelectorAll(".nt-open-overlay").forEach(function (o) { o.remove(); });
+      document.querySelectorAll("a.nt-open-link").forEach(function (a) {
+        a.classList.remove("nt-open-link");
+        a.querySelectorAll(".nt-open-spinner").forEach(function (s) { s.remove(); });
+      });
+    }
+
+    function markCard(card) {
+      clearOpening();
+      document.body.classList.add("nt-opening-board");
+      card.classList.add("is-opening");
+      var ov = document.createElement("div");
+      ov.className = "nt-open-overlay";
+      ov.innerHTML = '<span class="nt-open-spinner"></span><span>Abrindo…</span>';
+      card.appendChild(ov);
+    }
+
+    function markLink(a) {
+      clearOpening();
+      a.classList.add("nt-open-link");
+      var sp = document.createElement("span");
+      sp.className = "nt-open-spinner";
+      a.appendChild(sp);
+    }
+
+    document.addEventListener("click", function (e) {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      var t = e.target;
+
+      var card = t.closest && t.closest(".board-card[data-board-id]");
+      if (card) {
+        if (t.closest("button, input, select, textarea, label, [hx-get], [hx-post], .board-card__actions")) return;
+        if (document.body.dataset.boardDeleteMode === "1" || document.body.dataset.boardArchiveMode === "1") return;
+        var link = card.querySelector("a[href]");
+        if (!link) return;
+        if (card.classList.contains("is-opening")) { e.preventDefault(); return; }
+        markCard(card);
+        if (!t.closest("a[href]")) {
+          e.preventDefault();
+          window.location.href = link.href;
+        }
+        return;
+      }
+
+      var a = t.closest && t.closest("a[href]");
+      if (a && !a.target && a.origin === location.origin && BOARD_PATH.test(a.pathname)) {
+        markLink(a);
+      }
+    });
+
+    window.addEventListener("pageshow", function (e) { if (e.persisted) clearOpening(); });
+  })();
+  </script>
+
   {# ===================== MODOS: EXCLUIR / ARQUIVAR (sem quebrar) ===================== #}
   <script>
   (function () {
