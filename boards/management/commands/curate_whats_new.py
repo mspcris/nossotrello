@@ -40,6 +40,20 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-09 ---
+    "a1cde84": (
+        "🔗",
+        "Link de card mandado no WhatsApp mostra o título do card",
+        "Ao copiar o link de um card (ou copiar da barra do navegador) e mandar no WhatsApp, "
+        "Telegram ou Slack, a prévia mostra o título do card e o quadro, não só o endereço. "
+        "Só quem recebeu o link de alguém com acesso vê o título. E a aba do navegador passa a "
+        "mostrar o nome do card aberto, fácil de achar entre muitas abas.",
+    ),
+    "ed3e941": (
+        "🎯",
+        "Card movido não volta mais para a coluna antiga",
+        "Ao mover um card, ele às vezes voltava para a coluna de onde saiu por alguns segundos "
+        "antes de ir para o lugar certo. Agora ele fica no destino desde o primeiro instante.",
+    ),
     "bc71645": (
         "✨",
         "Abrir um quadro ou card pelo link agora mostra o que está carregando",
