@@ -36,11 +36,11 @@
   .mr-cta[disabled] { opacity:.65; cursor:default; }
   .mr-actions { display:flex; gap:6px; align-items:center; justify-content:flex-end; }
   .mr-err { margin-top:6px; font-size:.8rem; color:#9b1c1c; }
-  [data-theme="dark"] .mr-btn, .cm-theme-dark .mr-btn { background:rgba(255,255,255,.06); color:inherit; border-color:rgba(255,255,255,.18); }
-  [data-theme="dark"] .mr-btn:hover, .cm-theme-dark .mr-btn:hover { background:rgba(255,255,255,.12); }
-  [data-theme="dark"] .mr-btn--send, .cm-theme-dark .mr-btn--send { color:#93b4ff; border-color:#3b6cd4; }
-  [data-theme="dark"] .mr-table th, .cm-theme-dark .mr-table th { border-color:rgba(255,255,255,.12); }
-  [data-theme="dark"] .mr-table td, .cm-theme-dark .mr-table td { border-color:rgba(255,255,255,.08); }
+  [data-theme="dark"] .mr-btn, .cm-theme-dark .mr-btn, .theme-dark .mr-btn { background:rgba(255,255,255,.06); color:inherit; border-color:rgba(255,255,255,.18); }
+  [data-theme="dark"] .mr-btn:hover, .cm-theme-dark .mr-btn:hover, .theme-dark .mr-btn:hover { background:rgba(255,255,255,.12); }
+  [data-theme="dark"] .mr-btn--send, .cm-theme-dark .mr-btn--send, .theme-dark .mr-btn--send { color:#93b4ff; border-color:#3b6cd4; }
+  [data-theme="dark"] .mr-table th, .cm-theme-dark .mr-table th, .theme-dark .mr-table th { border-color:rgba(255,255,255,.12); }
+  [data-theme="dark"] .mr-table td, .cm-theme-dark .mr-table td, .theme-dark .mr-table td { border-color:rgba(255,255,255,.08); }
 </style>
 
 {% if not monthly %}
@@ -161,7 +161,9 @@
    input[name=file] da aba Anexos.
 
    O listener é de documento e registrado UMA vez: o painel é trocado inteiro
-   (outerHTML) a cada recarga, e HTML injetado assim não reexecuta <script>. */
+   (outerHTML) a cada recarga, e HTML injetado assim não reexecuta <script>.
+   Fase de CAPTURA: o #card-modal-root faz stopPropagation no clique, então na
+   bolha o clique nunca chegava ao document e o botão não fazia nada. */
 (function(){
   if (window.__mrUploadWired) return;
   window.__mrUploadWired = true;
@@ -200,7 +202,7 @@
     pending = {btn: btn, panel: panelOf(btn)};
     input.value = "";
     input.click();
-  });
+  }, true);
 
   input.addEventListener("change", function(){
     var file = input.files && input.files[0];
