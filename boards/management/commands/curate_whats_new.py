@@ -40,6 +40,15 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-09 ---
+    "bc71645": (
+        "✨",
+        "Abrir um quadro ou card pelo link agora mostra o que está carregando",
+        "Ao abrir um quadro direto pelo link, por um favorito ou pelo WhatsApp, aparece uma "
+        "tela com a capa e o nome do quadro e as etapas: quadro recebido, montando colunas e "
+        "cards e, se o link for de um card, qual card está abrindo. Ela some sozinha no "
+        "instante em que tudo fica pronto, sem atrasar nada. Clicar em um link para outro "
+        "quadro também mostra essa tela na hora.",
+    ),
     "825e791": (
         "⏳",
         "Ao abrir um quadro, você vê na hora que o clique pegou",
