@@ -57,6 +57,7 @@ from ..models import (
     OrganizationMembership,
     UserProfile,
 )
+from boards.services.link_preview import card_share_query
 
 
 
@@ -576,7 +577,7 @@ def _send_mention_email(request, mentioned_user, actor_user, board, card, mentio
                      actor_user.get_full_name() or actor_user.get_username()
 
         path = reverse("boards:board_detail", kwargs={"board_id": board.id})
-        url = request.build_absolute_uri(f"{path}?card={card.id}&tab=ativ&mention={mention.id}")
+        url = request.build_absolute_uri(f"{path}?{card_share_query(card.id)}&tab=ativ&mention={mention.id}")
 
         column_name = getattr(getattr(card, "column", None), "name", "") or ""
         subject = f"'{actor_name}' marcou você no card: '{card.title}'"
@@ -631,7 +632,7 @@ def _send_mention_whatsapp(request, mentioned_user, actor_user, board, card, men
 
         # Link igual ao e-mail (tab=ativ&mention=...)
         path = reverse("boards:board_detail", kwargs={"board_id": board.id})
-        url = request.build_absolute_uri(f"{path}?card={card.id}&tab=ativ&mention={mention.id}")
+        url = request.build_absolute_uri(f"{path}?{card_share_query(card.id)}&tab=ativ&mention={mention.id}")
 
         column_name = getattr(getattr(card, "column", None), "name", "") or ""
 

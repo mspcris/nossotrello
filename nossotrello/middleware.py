@@ -37,6 +37,12 @@ class LoginRequiredMiddleware:
             return self.get_response(request)
 
         if not request.user.is_authenticated:
+            # Robô de prévia (WhatsApp etc.): devolve só as tags og: em vez do login.
+            from boards.services.link_preview import is_preview_bot, preview_response
+            if request.method in ("GET", "HEAD") and is_preview_bot(request):
+                resp = preview_response(request)
+                if resp is not None:
+                    return resp
             full_path = request.get_full_path() or path
             query = urlencode({"next": full_path})
             return redirect(f"{self.login_url}?{query}")

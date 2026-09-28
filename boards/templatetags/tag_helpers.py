@@ -212,3 +212,13 @@ def monthly_chip(card):
         return chip_for_card(card)
     except Exception:
         return None
+
+
+@register.filter
+def card_sig(card_id):
+    """Assinatura do link do card (`?card=<id>&s=<sig>`) — prévia no WhatsApp."""
+    from boards.services.link_preview import card_sig as _sig
+    try:
+        return _sig(card_id)
+    except (TypeError, ValueError):
+        return ""

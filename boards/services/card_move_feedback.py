@@ -11,6 +11,7 @@ import logging
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
+from boards.services.link_preview import card_share_query
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +54,7 @@ def notify_move_failed(*, op_id, card_id, user_id, attempts, reason: str = "") -
         if not email:
             return
         base = (getattr(settings, "SITE_URL", "") or "https://tarefas.camim.com.br").rstrip("/")
-        link = f"{base}/board/{board_id}/?card={card_id}" if board_id else base
+        link = f"{base}/board/{board_id}/?{card_share_query(card_id)}" if board_id else base
         lines = [
             f"Não conseguimos gravar a movimentação do card “{title}”.",
             "",

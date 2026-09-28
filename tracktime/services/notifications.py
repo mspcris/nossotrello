@@ -17,6 +17,7 @@ import re
 from django.utils.html import strip_tags
 
 from boards.services.notifications import sanitize_card_description_to_text
+from boards.services.link_preview import card_share_query
 
 
 logger = logging.getLogger(__name__)
@@ -99,7 +100,7 @@ def snapshot_card(*, card, site_url: str) -> CardSnapshot:
     column_name = _safe_str(getattr(column, "name", ""))
 
     board_url = reverse("boards:board_detail", kwargs={"board_id": int(board_id or 0)})
-    card_url = f"{board_url}?card={int(card.id)}"
+    card_url = f"{board_url}?{card_share_query(card.id)}"
 
     full_card_url = site_url.rstrip("/") + card_url
 

@@ -35,6 +35,7 @@ from django.core.mail import EmailMessage
 from django.db import connection
 from django.utils import timezone
 from django.utils.html import escape
+from boards.services.link_preview import card_share_query
 
 logger = logging.getLogger(__name__)
 
@@ -270,7 +271,7 @@ def open_entries(card, upto: date):
 def _card_link(card) -> str:
     site = (getattr(settings, "SITE_URL", "") or "").rstrip("/")
     try:
-        return f"{site}/board/{card.column.board_id}/?card={card.id}"
+        return f"{site}/board/{card.column.board_id}/?{card_share_query(card.id)}"
     except Exception:
         return site
 

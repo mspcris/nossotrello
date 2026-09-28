@@ -23,6 +23,7 @@ from tracktime.services.evolution import send_text_message as evolution_send, Ev
 
 from django.utils import timezone
 from django.db import transaction
+from boards.services.link_preview import card_share_query
 
 
 
@@ -117,7 +118,7 @@ def build_card_snapshot(*, card: Card) -> CardSnapshot:
     card_id = int(card.id)
 
     board_url = reverse("boards:board_detail", kwargs={"board_id": board_id})
-    card_url = f"{settings.SITE_URL.rstrip('/')}{board_url}?card={card_id}"
+    card_url = f"{settings.SITE_URL.rstrip('/')}{board_url}?{card_share_query(card_id)}"
     tracktime_url = f"{card_url}&tab=tracktime"
 
     delivered_at = getattr(card, "delivered_at", None)

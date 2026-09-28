@@ -159,6 +159,7 @@ html.dark #cm-root .cm-act-attach-x{
      data-board="{{ board.name|default:'' }}"
      data-column="{{ card.column.name|default:'' }}"
      data-card-position="{{ card.position|add:1 }}"
+     data-share-sig="{{ card.id|card_sig }}"
      data-card-title="{{ card.title|default:'' }}">
 
 

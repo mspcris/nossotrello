@@ -15,6 +15,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.core.mail import send_mail
 from django.utils import timezone
+from boards.services.link_preview import card_share_query
 
 logger = logging.getLogger(__name__)
 
@@ -217,7 +218,7 @@ def _notify_placer(rule, card, column, p, actor=None):
         site = (getattr(settings, "SITE_URL", "") or "").rstrip("/")
         bid = card.column.board_id
         if site and bid and card.id:
-            link = f"{site}/board/{bid}/?card={card.id}"
+            link = f"{site}/board/{bid}/?{card_share_query(card.id)}"
     except Exception:
         link = ""
 

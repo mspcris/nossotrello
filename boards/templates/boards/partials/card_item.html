@@ -3,6 +3,7 @@
 <li
   id="card-{{ card.id }}"
   data-card-id="{{ card.id }}"
+  data-share-sig="{{ card.id|card_sig }}"
   data-is-delivered="{{ card.is_delivered|yesno:'1,0' }}"
   {% if card.counter_mode %}data-counter="1"{% endif %}
   data-is-impeded="{{ card.is_impeded|yesno:'1,0' }}"

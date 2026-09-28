@@ -40,6 +40,7 @@ from boards.services.notifications import (
 )
 
 from boards.models import UserBoardPreference
+from boards.services.link_preview import card_share_query
 
 
 def _safe_user_handle_or_email(u):
@@ -399,7 +400,7 @@ def add_activity(request, card_id):
 
             if followers:
                 snap = build_card_snapshot(card=card)
-                card_url = request.build_absolute_uri(f"/board/{board.id}/?card={card.id}")
+                card_url = request.build_absolute_uri(f"/board/{board.id}/?{card_share_query(card.id)}")
 
                 msg = format_card_message(
                     title_prefix="📝 Atividade no card",
@@ -477,7 +478,7 @@ def add_activity(request, card_id):
 
                     if followers:
                         snap = build_card_snapshot(card=card)
-                        card_url = request.build_absolute_uri(f"/board/{board.id}/?card={card.id}")
+                        card_url = request.build_absolute_uri(f"/board/{board.id}/?{card_share_query(card.id)}")
 
                         msg = format_card_message(
                             title_prefix="📝 Atividade no card",
