@@ -77,6 +77,130 @@
       };
     })();
   </script>
+  <style>
+    .nt-bload {
+      position: fixed; inset: 0; z-index: 2147483000;
+      display: flex; align-items: center; justify-content: center;
+      padding: 16px;
+      background: radial-gradient(120% 90% at 50% 0%, rgba(49,46,129,.72), rgba(15,23,42,.9));
+      -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+      color: #e2e8f0;
+      opacity: 1; transition: opacity .22s ease;
+      animation: ntBloadIn .16s ease-out;
+    }
+    .nt-bload.is-leaving { opacity: 0; pointer-events: none; }
+    .nt-bload.is-leaving .nt-bload__panel { transform: scale(1.04); }
+    .nt-bload__panel {
+      width: min(360px, 100%);
+      padding: 26px 24px 22px;
+      border-radius: 22px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.14);
+      box-shadow: 0 24px 60px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.12);
+      text-align: center;
+      transition: transform .22s ease;
+    }
+    .nt-bload__cover {
+      width: 72px; height: 72px; margin: 0 auto 14px;
+      border-radius: 18px; object-fit: cover; display: block;
+      box-shadow: 0 0 0 3px rgba(255,255,255,.16), 0 10px 26px rgba(0,0,0,.4);
+      animation: ntBloadPulse 1.6s ease-in-out infinite;
+    }
+    .nt-bload__cover--ph {
+      display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, #6366f1, #a855f7);
+      font-size: 30px; font-weight: 800; color: #fff;
+    }
+    .nt-bload__title {
+      font-size: 17px; font-weight: 800; letter-spacing: .01em; color: #fff;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .nt-bload__bar {
+      position: relative; height: 5px; margin: 16px 0 14px;
+      border-radius: 99px; background: rgba(255,255,255,.12); overflow: hidden;
+    }
+    .nt-bload__bar i {
+      position: absolute; left: 0; top: 0; bottom: 0; width: 30%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #818cf8, #c084fc, #f0abfc);
+      transition: width .35s ease;
+    }
+    .nt-bload__bar i::after {
+      content: ""; position: absolute; inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent);
+      animation: ntBloadShine 1.1s linear infinite;
+    }
+    .nt-bload__steps { list-style: none; margin: 0; padding: 0; text-align: left; font-size: 13px; }
+    .nt-bload__steps li {
+      position: relative; display: block;
+      padding: 4px 2px 4px 26px; color: rgba(226,232,240,.45);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .nt-bload__steps li[hidden] { display: none; }
+    .nt-bload__steps li::before {
+      content: ""; position: absolute; left: 2px; top: 50%;
+      width: 14px; height: 14px; margin-top: -7px; border-radius: 50%;
+      border: 2px solid rgba(226,232,240,.3); box-sizing: border-box;
+      font-size: 10px; line-height: 14px; text-align: center; font-weight: 800;
+    }
+    .nt-bload__steps li.is-on { color: #fff; font-weight: 600; }
+    .nt-bload__steps li.is-on::before {
+      border-color: rgba(255,255,255,.25); border-top-color: #fff;
+      animation: ntBloadSpin .7s linear infinite;
+    }
+    .nt-bload__steps li.is-done { color: rgba(226,232,240,.8); }
+    .nt-bload__steps li.is-done::before {
+      content: "✓"; border: 0; background: #22c55e; color: #fff;
+    }
+    @keyframes ntBloadIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes ntBloadSpin { to { transform: rotate(360deg); } }
+    @keyframes ntBloadShine { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+    @keyframes ntBloadPulse { 50% { transform: scale(.96); } }
+    @media (prefers-reduced-motion: reduce) {
+      .nt-bload, .nt-bload__cover, .nt-bload__bar i::after, .nt-bload__steps li.is-on::before { animation: none; }
+    }
+  </style>
+  <script>
+    (function () {
+      // Clique em link para OUTRO quadro: a tela de carregamento aparece na hora do
+      // clique, sem esperar o servidor (1,3–2,9 s no quadro 15, medido em 28/09/2026).
+      // A home tem o spinner próprio no card clicado; lá não entra.
+      var BOARD = /^\/board\/\d+\/?$/;
+      function show(a) {
+        if (document.getElementById("nt-bload")) return;
+        var el = document.createElement("div");
+        el.id = "nt-bload";
+        el.className = "nt-bload";
+        el.setAttribute("role", "status");
+        el.innerHTML =
+          '<div class="nt-bload__panel">' +
+          '<div class="nt-bload__cover nt-bload__cover--ph">&#9638;</div>' +
+          '<div class="nt-bload__title"></div>' +
+          '<div class="nt-bload__bar"><i></i></div>' +
+          '<ol class="nt-bload__steps"><li class="is-on">Pedindo o quadro ao servidor</li></ol>' +
+          '</div>';
+        el.querySelector(".nt-bload__title").textContent =
+          /[?&]card=\d+/.test(a.search) ? "Abrindo o card" : "Abrindo o quadro";
+        document.body.appendChild(el);
+        setTimeout(function () { var i = el.querySelector(".nt-bload__bar i"); if (i) i.style.width = "55%"; }, 30);
+        setTimeout(function () { if (el.parentNode) el.remove(); }, 15000);
+      }
+      document.addEventListener("click", function (e) {
+        if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        var a = e.target.closest && e.target.closest("a[href]");
+        if (!a || a.target || a.hasAttribute("download") || a.origin !== location.origin) return;
+        if (!BOARD.test(a.pathname) || a.pathname === location.pathname) return;
+        if (a.matches("[hx-get],[hx-post]") || document.body.classList.contains("is-home")) return;
+        setTimeout(function () { if (!e.defaultPrevented) show(a); }, 0);
+      });
+      window.addEventListener("pageshow", function (e) {
+        if (!e.persisted) return;
+        var el = document.getElementById("nt-bload");
+        if (el) el.remove();
+      });
+    })();
+  </script>
   <title>{% block title %}NossoTrello{% endblock %}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
@@ -348,6 +472,7 @@
          {% block body_class %}{% endblock %}"
   {% block body_attrs %}{% endblock %}
 >
+{% block body_start %}{% endblock %}
 
 
   {% if home_bg and home_bg_image %}

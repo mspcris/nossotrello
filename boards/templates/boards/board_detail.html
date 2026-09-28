@@ -25,6 +25,66 @@
 
 {% block body_attrs %}style="overflow-x:hidden;"{% endblock %}
 
+{% block body_start %}
+<div id="nt-bload" class="nt-bload" role="status" aria-live="polite">
+  <div class="nt-bload__panel">
+    {% if board.image %}
+      <img class="nt-bload__cover" src="{{ board.image.url }}" alt="">
+    {% else %}
+      <div class="nt-bload__cover nt-bload__cover--ph">{{ board.name|slice:":1"|upper }}</div>
+    {% endif %}
+    <div class="nt-bload__title">{{ board.name }}</div>
+    <div class="nt-bload__bar"><i style="width:40%"></i></div>
+    <ol class="nt-bload__steps">
+      <li class="is-done">Quadro recebido do servidor</li>
+      <li class="is-on" data-s="montar">Montando colunas e cards</li>
+      <li data-s="card" hidden>Abrindo o card</li>
+    </ol>
+  </div>
+</div>
+<script>
+(function () {
+  // Sai no instante em que o quadro está montado (logo depois do DOMContentLoaded;
+  // setTimeout e não requestAnimationFrame, que fica parado em aba de fundo):
+  // não espera imagem nem papel de parede. Com ?card= espera o modal, no máximo 4 s.
+  var el = document.getElementById("nt-bload");
+  if (!el) return;
+  var bar = el.querySelector(".nt-bload__bar i");
+  var stMontar = el.querySelector('[data-s="montar"]');
+  var stCard = el.querySelector('[data-s="card"]');
+  var cardId = 0;
+  try { cardId = Number(new URLSearchParams(location.search).get("card") || 0); } catch (e) {}
+  if (cardId) { stCard.hidden = false; stCard.textContent = "Abrindo o card #" + cardId; }
+
+  var saiu = false;
+  function sair() {
+    if (saiu) return;
+    saiu = true;
+    bar.style.width = "100%";
+    el.classList.add("is-leaving");
+    setTimeout(function () { if (el.parentNode) el.remove(); }, 240);
+  }
+  el.addEventListener("click", sair);
+  setTimeout(sair, 15000);
+  window.addEventListener("pageshow", function (e) { if (e.persisted) sair(); });
+
+  document.addEventListener("DOMContentLoaded", function () {
+    setTimeout(function () {
+      stMontar.classList.remove("is-on");
+      stMontar.classList.add("is-done");
+      if (!cardId) { sair(); return; }
+      var t = document.querySelector("#card-" + cardId + " .card-title-clamp");
+      if (t && t.getAttribute("title")) stCard.textContent = "Abrindo o card: " + t.getAttribute("title");
+      stCard.classList.add("is-on");
+      bar.style.width = "80%";
+      (window.ntDepoisDoModalDoLink || function (fn) { fn(); })(sair);
+      setTimeout(sair, 4000);
+    }, 0);
+  });
+})();
+</script>
+{% endblock %}
+
 
 
 
