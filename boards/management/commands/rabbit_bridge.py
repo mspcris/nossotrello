@@ -38,6 +38,11 @@ logger = logging.getLogger(__name__)
 # Logger dedicado para inspeção do RabbitMQ — vai para logs/rabbitmq.log.
 rmq_logger = logging.getLogger("nossotrello.pubsub")
 
+# consumidor que ficou de pé ao menos isto antes de cair zera a espera entre tentativas
+STABLE_RUN_S = 60
+# queda do broker mais longa que isto vira ERROR (issue no Sentry)
+DOWN_ALERT_S = 300
+
 
 class Command(BaseCommand):
     help = (
@@ -81,10 +86,18 @@ class Command(BaseCommand):
             sys.exit(3)
 
         # Loop com reconexão: se a conexão Rabbit cair, dorme e tenta de novo.
+        # O broker reinicia todo dia (~03:00 UTC): queda de conexão é esperada e vira
+        # WARNING. Só vira ERROR (issue no Sentry) se ficar DOWN_ALERT_S sem voltar,
+        # ou se a exceção não for do pika (aí é defeito nosso).
+        from pika.exceptions import AMQPError
+
         backoff = 1.0
         reconnect_count = 0
+        down_since = None
+        alerted = False
         while True:
             service = PubSubService()
+            started_at = time.monotonic()
             try:
                 rmq_logger.info(
                     "bridge.start queue=%s reconnect_count=%d",
@@ -101,6 +114,12 @@ class Command(BaseCommand):
                 rmq_logger.info("bridge.shutdown reason=keyboard_interrupt")
                 return
             except Exception as exc:  # noqa: BLE001
+                now = time.monotonic()
+                if now - started_at >= STABLE_RUN_S:
+                    # ficou de pé: a queda é nova, recomeça a espera do zero
+                    backoff, down_since, alerted = 1.0, None, False
+                if down_since is None:
+                    down_since = now
                 reconnect_count += 1
                 sleep_for = min(backoff, 30.0)
                 rmq_logger.warning(
@@ -111,7 +130,17 @@ class Command(BaseCommand):
                     reconnect_count,
                     exc_info=True,
                 )
-                logger.exception("rabbit_bridge: consumer caiu, reconectando")
+                if not isinstance(exc, AMQPError):
+                    logger.exception("rabbit_bridge: consumer caiu, reconectando")
+                elif now - down_since >= DOWN_ALERT_S and not alerted:
+                    alerted = True
+                    logger.error(
+                        "rabbit_bridge: sem conexão com o RabbitMQ há %d s (%s) — tempo real parado",
+                        int(now - down_since),
+                        type(exc).__name__,
+                    )
+                else:
+                    logger.warning("rabbit_bridge: conexão com o RabbitMQ caiu (%s), reconectando", type(exc).__name__)
                 time.sleep(sleep_for)
                 backoff = min(backoff * 2, 30.0)
                 continue

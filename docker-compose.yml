@@ -38,7 +38,11 @@ services:
   daphne:
     build: .
     restart: always
-    command: sh -lc "python manage.py collectstatic --noinput && daphne -b 0.0.0.0 -p 8001 nossotrello.asgi:application"
+    # Sem collectstatic aqui: o web já roda e os dois gravam na MESMA pasta (./static).
+    # Rodando juntos no deploy, um apagava o arquivo enquanto o outro lia →
+    # FileNotFoundError, o daphne morria e o tempo real ficava ~1 min fora
+    # (Sentry NOSSOTRELLO-Y, 28/09/2026).
+    command: sh -lc "daphne -b 0.0.0.0 -p 8001 nossotrello.asgi:application"
     depends_on:
       - db
       - redis
