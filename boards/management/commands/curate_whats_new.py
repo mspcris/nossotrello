@@ -40,6 +40,12 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-09 ---
+    "ea31450": (
+        "📎",
+        "Botão Anexar da aba Mensal voltou a funcionar",
+        "Na aba Mensal do card, clicar em Anexar agora abre a escolha do arquivo e envia o "
+        "relatório direto na linha do mês. No tema escuro, o botão Adicional ficou legível.",
+    ),
     "a1cde84": (
         "🔗",
         "Link de card mandado no WhatsApp mostra o título do card",
