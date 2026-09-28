@@ -57,8 +57,95 @@
     } catch (_e) {}
   };
 
+  // ------------------------------------------------------------
+  // Movimentos A CAMINHO: a tela já mostrou, o worker ainda não gravou.
+  // Qualquer redesenho do quadro nesse intervalo (evento de outra mudança,
+  // fechar o modal, polling) traz o HTML do servidor com o card no lugar
+  // ANTIGO. Visto em 28/09: comentário subiu a versão do quadro 4 s antes do
+  // mover, o worker levou 11 s, e o card voltou pra coluna de origem.
+  // Por isso quem troca o HTML das colunas chama reapply() logo depois.
+  // Sai do registro quando o servidor já mostra o card no destino, quando o
+  // mover falha (card.move.failed) ou depois de PENDING_TTL_MS.
+  // ------------------------------------------------------------
+  var PENDING_TTL_MS = 60000;
+  var pending = {};
+
+  function cardsOf(list) {
+    return Array.prototype.filter.call(list.children, function (c) {
+      return c.matches && c.matches("li[data-card-id]");
+    });
+  }
+
+  function bumpTotal(list, delta) {
+    var col = list && list.closest && list.closest(".column-item[data-column-id]");
+    var counter = col && col.querySelector("[data-column-counter]");
+    if (!counter) return;
+    var total = Number(counter.dataset.totalCount || 0);
+    if (total > 0) counter.dataset.totalCount = String(Math.max(0, total + delta));
+  }
+
+  window.ntPendingMoves = {
+    add: function (cardId, destColId, position, fromColId) {
+      if (!cardId || !destColId) return;
+      pending[String(cardId)] = {
+        col: String(destColId),
+        from: String(fromColId || ""),
+        pos: Number(position) || 0,
+        until: Date.now() + PENDING_TTL_MS,
+      };
+    },
+    clear: function (cardId) {
+      delete pending[String(cardId)];
+    },
+    reapply: function () {
+      var changed = false;
+      Object.keys(pending).forEach(function (cardId) {
+        var mv = pending[cardId];
+        if (Date.now() > mv.until) { delete pending[cardId]; return; }
+        var li = document.querySelector('li[data-card-id="' + cardId + '"]');
+        var dest = document.getElementById("cards-col-" + mv.col);
+        if (!dest) {
+          // destino em outro quadro: enquanto o servidor ainda mostra o card aqui, ele some
+          if (li) { bumpTotal(li.parentElement, -1); li.remove(); changed = true; }
+          else delete pending[cardId];
+          return;
+        }
+        if (!li) return;
+        var from = li.parentElement;
+        if (from !== dest) {
+          var sibs = cardsOf(dest);
+          var idx = Math.max(0, Math.min(mv.pos, sibs.length));
+          if (idx >= sibs.length) dest.appendChild(li);
+          else dest.insertBefore(li, sibs[idx]);
+          if (window.ntContadorNoTopo) window.ntContadorNoTopo(dest, li);
+          bumpTotal(from, -1);
+          bumpTotal(dest, +1);
+          changed = true;
+          return;
+        }
+        // servidor já mostra o card na coluna de destino de um movimento entre colunas: gravou
+        if (mv.from && mv.from !== mv.col) { delete pending[cardId]; return; }
+        // reordenação na mesma coluna: se recolocar não muda nada, o servidor já concorda
+        var before = cardsOf(dest).indexOf(li);
+        var others = cardsOf(dest).filter(function (c) { return c !== li; });
+        var j = Math.max(0, Math.min(mv.pos, others.length));
+        if (j >= others.length) dest.appendChild(li);
+        else dest.insertBefore(li, others[j]);
+        if (window.ntContadorNoTopo) window.ntContadorNoTopo(dest, li);
+        if (cardsOf(dest).indexOf(li) === before) delete pending[cardId];
+        else changed = true;
+      });
+      if (changed) {
+        try { window.ntRefreshColumnCounters && window.ntRefreshColumnCounters(); } catch (_e) {}
+        try { window.updateAggregatorCounts && window.updateAggregatorCounts(); } catch (_e) {}
+      }
+      return changed;
+    },
+  };
+
   window.addEventListener("user:card.move.failed", function (ev) {
     var d = (ev && ev.detail) || {};
+    if (d.card_id) window.ntPendingMoves.clear(d.card_id);
     window.ntJobToast(d.message || "Não foi possível mover o card. Ele voltou ao lugar original.", "error");
     // só ressincroniza se o quadro aberto é o do card
     var here = Number(window.BOARD_ID || 0);

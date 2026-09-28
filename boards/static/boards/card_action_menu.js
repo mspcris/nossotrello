@@ -164,6 +164,10 @@
       // board.invalidated, que só sai depois do commit (se o mover falhar, o card.move.failed
       // força o refresh).
       window.__skipBoardPollUntil = Date.now() + 5000;
+      // a trava acima não cobre tudo (evento de outra mudança, worker lento): quem redesenha
+      // o quadro reaplica este movimento até o servidor gravar
+      const fromList = document.querySelector(`li[data-card-id="${cardId}"]`)?.closest('[id^="cards-col-"]');
+      window.ntPendingMoves?.add(cardId, destColId, position, (fromList?.id || "").replace("cards-col-", ""));
       if (!moveCardLi(cardId, destColId, position)) removeCardFromDom(cardId); // outro quadro
       return;
     }
@@ -362,7 +366,11 @@
 
   function doCopyLink(cardId) {
     closeMenu();
-    const url = `${location.origin}${location.pathname}?card=${cardId}`;
+    const sigEl =
+      document.querySelector(`#cm-root[data-card-id="${cardId}"]`) ||
+      document.querySelector(`li[data-card-id="${cardId}"]`);
+    const sig = sigEl ? (sigEl.dataset.shareSig || "") : "";
+    const url = `${location.origin}${location.pathname}?card=${cardId}` + (sig ? `&s=${sig}` : "");
     const fallback = () => {
       const tmp = document.createElement("input");
       tmp.value = url;

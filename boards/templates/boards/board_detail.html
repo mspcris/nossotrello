@@ -867,6 +867,7 @@
       counter.textContent = `${n} card${n !== 1 ? "s" : ""}`;
     });
   }
+  window.ntRefreshColumnCounters = refreshCounters;
 
 
 
@@ -1330,8 +1331,10 @@
       return v ? Number(v) : 0;
     }
 
-    async function postMove({ cardId, newColumnId, newPosition }) {
+    async function postMove({ cardId, newColumnId, newPosition, fromColumnId }) {
       const csrf = getCsrfToken();
+      // o worker grava depois: quem redesenha o quadro antes disso reaplica este movimento
+      window.ntPendingMoves?.add(cardId, newColumnId, newPosition, fromColumnId);
 
       const resp = await fetch("/move-card/", {
         method: "POST",
@@ -1351,6 +1354,7 @@
       if (!resp.ok) {
         const txt = await resp.text().catch(() => "");
         console.error("move-card falhou:", resp.status, txt);
+        window.ntPendingMoves?.clear(cardId);
         window.ntJobToast?.("Não foi possível mover o card. Ele voltou ao lugar original.", "error");
         window.__ntForceBoardRefresh?.();
       } else {
@@ -1488,7 +1492,7 @@
           if (!cardId || !newColumnId) return;
 
           afterLocalMoveUpdateUI(); // destino
-          postMove({ cardId, newColumnId, newPosition });
+          postMove({ cardId, newColumnId, newPosition, fromColumnId: resolveColumnIdFromList(evt.from) });
         },
 
         onUpdate: (evt) => {
@@ -1506,7 +1510,7 @@
           if (!cardId || !newColumnId) return;
 
           afterLocalMoveUpdateUI(); // mesma coluna
-          postMove({ cardId, newColumnId, newPosition });
+          postMove({ cardId, newColumnId, newPosition, fromColumnId: newColumnId });
         },
 
         onRemove: (evt) => {

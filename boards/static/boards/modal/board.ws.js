@@ -127,6 +127,8 @@
 
       if (data.html && String(data.html).trim()) {
         list.outerHTML = data.html;
+        // o HTML é do servidor: card movido que o worker ainda não gravou voltaria pra origem
+        try { window.ntPendingMoves?.reapply(); } catch (_) {}
       }
       boardVersion = Number(data.version || boardVersion);
       window.BOARD_VERSION = boardVersion;
