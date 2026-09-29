@@ -42,7 +42,7 @@ from boards.models import (
 )
 
 from boards.views.social import (
-    _groq_chat,
+    _ia_chat,
     _health_system_prompt,
     _health_food_context,
     _health_history_summary,
@@ -777,7 +777,7 @@ def api_health_analyze(request):
     try:
         from boards.models import CamilaConfig
         cfg = CamilaConfig.get()
-        response = _groq_chat(messages, prompt, config=cfg)
+        response = _ia_chat(messages, prompt, config=cfg)
     except Exception as exc:
         logging.getLogger(__name__).error("Health analyze error: %s", exc)
         response = ""
@@ -821,7 +821,7 @@ def api_health_chat(request):
     try:
         from boards.models import CamilaConfig
         cfg = CamilaConfig.get()
-        response = _groq_chat(db_messages, prompt, config=cfg)
+        response = _ia_chat(db_messages, prompt, config=cfg)
     except Exception as exc:
         logging.getLogger(__name__).error("Health chat error: %s", exc)
         response = "Desculpe, não consegui processar. Tente novamente."
@@ -844,7 +844,7 @@ def api_camila_chat(request):
         return Response({"error": "Mensagem vazia."}, status=status.HTTP_400_BAD_REQUEST)
 
     from boards.models import CamilaConfig, CamilaKnowledge, CamilaPOP
-    from boards.views.social import _groq_chat, _camila_knowledge_prompt, _get_weather_context
+    from boards.views.social import _ia_chat, _camila_knowledge_prompt, _get_weather_context
 
     cfg = CamilaConfig.get()
 
@@ -866,7 +866,7 @@ def api_camila_chat(request):
 
     prompt = cfg.prompt_chat + social_ctx + _camila_knowledge_prompt(message) + _get_weather_context()
     messages = [*history[-10:], {"role": "user", "content": message}]
-    response = _groq_chat(messages, prompt, config=cfg)
+    response = _ia_chat(messages, prompt, config=cfg)
     return Response({"response": response})
 
 

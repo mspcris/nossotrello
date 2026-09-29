@@ -749,31 +749,23 @@ def extract_text(attachment, limit: int = MAX_TEXT_CHARS):
     return text[:limit]
 
 
-def _groq_json(system: str, user: str, model: str = "") -> dict:
-    import requests
+def _ia_json(system: str, user: str, model: str = "") -> dict:
+    """Chat pela OpenRouter pedindo JSON (boards/services/openrouter.py)."""
+    from boards.services import openrouter
 
-    api_key = (getattr(settings, "GROQ_API_KEY", "") or "").strip()
-    if not api_key:
-        raise RuntimeError("GROQ_API_KEY ausente")
-    import os
-    model = model or (os.getenv("GROQ_MODEL") or "").strip() or "openai/gpt-oss-120b"
-    payload = {
-        "model": model,
-        "messages": [
+    if not openrouter.is_configured():
+        raise RuntimeError("OPENROUTER_API_KEY ausente")
+    content = openrouter.chat(
+        [
             {"role": "system", "content": system},
             {"role": "user", "content": user},
         ],
-        "temperature": 0.2,
-        "max_tokens": 900,
-        "response_format": {"type": "json_object"},
-    }
-    r = requests.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-        json=payload, timeout=60,
+        model=model or openrouter.MODEL_REPORT,
+        temperature=0.2,
+        max_tokens=900,
+        response_format={"type": "json_object"},
+        timeout=60,
     )
-    r.raise_for_status()
-    content = r.json()["choices"][0]["message"]["content"]
     try:
         return json.loads(content)
     except Exception:
@@ -823,9 +815,9 @@ def validate_with_ai(entry):
         f"{text}\n--- FIM ---"
     )
     try:
-        data = _groq_json(_SYSTEM, user)
+        data = _ia_json(_SYSTEM, user)
     except Exception:
-        logger.exception("monthly_report: Groq falhou entry=%s", entry.id)
+        logger.exception("monthly_report: IA (OpenRouter) falhou entry=%s", entry.id)
         return None
     v = str(data.get("veredito") or "").strip().lower()
     v = {"aprovado": "aprovado", "atencao": "atencao", "atenção": "atencao", "reprovado": "reprovado"}.get(v, "atencao")

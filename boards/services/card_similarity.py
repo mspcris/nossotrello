@@ -4,7 +4,7 @@ Detecção de cards semelhantes via embeddings semânticos.
 
 Pipeline:
   1) Extrai texto do card (título + descrição em texto puro)
-  2) Gera embedding via OpenAI text-embedding-3-small (1536d)
+  2) Gera embedding text-embedding-3-small (1536d) pela OpenRouter
   3) Compara por cosseno contra cards visíveis ao usuário
   4) Retorna top-K com score >= threshold
 
@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import hashlib
 import logging
-import os
 import re
 import threading
 from typing import Iterable
@@ -28,7 +27,10 @@ from boards.models import Board, BoardMembership, Card, CardEmbedding
 
 logger = logging.getLogger(__name__)
 
-EMBED_MODEL = os.getenv("OPENAI_EMBED_MODEL", "text-embedding-3-small")
+# Rótulo gravado em CardEmbedding.model. Continua "text-embedding-3-small":
+# pela OpenRouter o modelo é o mesmo (openai/text-embedding-3-small) e os
+# vetores são compatíveis com os já gravados — não precisa regerar nada.
+EMBED_MODEL = "text-embedding-3-small"
 EMBED_DIM = 1536  # text-embedding-3-small
 
 # Limiares de alerta (mesmos que viram cor/intensidade na UI)
@@ -65,25 +67,12 @@ def content_hash(text: str) -> str:
 
 
 # ────────────────────────────────────────────────────────────────
-# OpenAI client
+# Cliente (OpenRouter — boards/services/openrouter.py)
 # ────────────────────────────────────────────────────────────────
-_client = None
-
-
 def _get_client():
-    global _client
-    if _client is not None:
-        return _client
-    api_key = os.getenv("OPENAI_API_KEY", "").strip()
-    if not api_key:
-        return None
-    try:
-        from openai import OpenAI
-        _client = OpenAI(api_key=api_key)
-        return _client
-    except Exception as e:
-        logger.warning("OpenAI client indisponível: %s", e)
-        return None
+    from boards.services import openrouter
+
+    return openrouter.get_client()
 
 
 def generate_embedding(text: str) -> list[float] | None:
@@ -97,7 +86,9 @@ def generate_embedding(text: str) -> list[float] | None:
     if client is None:
         return None
     try:
-        resp = client.embeddings.create(model=EMBED_MODEL, input=text)
+        from boards.services import openrouter
+
+        resp = client.embeddings.create(model=openrouter.MODEL_EMBED, input=text)
         vec = resp.data[0].embedding
         return list(vec)
     except Exception as e:

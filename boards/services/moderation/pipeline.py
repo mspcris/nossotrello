@@ -27,6 +27,7 @@ from typing import Optional
 from django.utils import timezone
 
 from .blocklist import scan as blocklist_scan
+from .openai_client import PROVIDER_LABEL as _L2_PROVIDER
 from .openai_client import classify as openai_classify
 
 logger = logging.getLogger(__name__)
@@ -110,7 +111,7 @@ def schedule_layer2(
     text: str,
     author,
 ) -> None:
-    """Dispara Camada 2 (OpenAI Moderation) em thread daemon.
+    """Dispara Camada 2 (moderação por IA, via OpenRouter) em thread daemon.
 
     `obj` precisa ter `pk` e suportar `moderation_status` se for SocialPost.
     Falha silenciosa — nunca derruba a criação do conteúdo.
@@ -172,7 +173,7 @@ def _layer2_worker(*, obj, kind, text, author):
     layer1_term_id = hit.term_id if hit else None
     layer1_flag = hit is not None and hit.severity == "flag"
 
-    # Camada 2 — OpenAI
+    # Camada 2 — IA (OpenRouter)
     res = openai_classify(text or "")
     needs_human = (res is not None and res.needs_human) or layer1_flag
 
@@ -187,7 +188,7 @@ def _layer2_worker(*, obj, kind, text, author):
         subject_text=(text or "")[:4000],
         layer1_hit=layer1_flag,
         layer1_term_id=layer1_term_id,
-        layer2_provider="openai_moderation" if res else "",
+        layer2_provider=_L2_PROVIDER if res else "",
         layer2_scores=(res.scores if res else {}),
         layer2_categories=(res.categories if res else []),
         layer2_flagged=(res.flagged if res else False),

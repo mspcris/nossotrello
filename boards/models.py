@@ -1787,13 +1787,13 @@ class CamilaKnowledge(models.Model):
 
 class CamilaConfig(models.Model):
     """Configuração singleton da Camila.AI — gerenciável pela interface."""
+    # IDs da OpenRouter (boards/services/openrouter.py). Até 29/09/2026 eram
+    # IDs da Groq; Llama 3 70B e Mixtral saíram por não existirem na OpenRouter.
     MODEL_CHOICES = [
         ("openai/gpt-oss-20b", "GPT-OSS 20B (rápido)"),
         ("openai/gpt-oss-120b", "GPT-OSS 120B (potente)"),
-        ("llama-3.3-70b-versatile", "Llama 3.3 70B"),
-        ("llama-3.1-8b-instant", "Llama 3.1 8B"),
-        ("llama3-70b-8192", "Llama 3 70B"),
-        ("mixtral-8x7b-32768", "Mixtral 8x7B"),
+        ("meta-llama/llama-3.3-70b-instruct", "Llama 3.3 70B"),
+        ("meta-llama/llama-3.1-8b-instruct", "Llama 3.1 8B"),
     ]
 
     # Prompts

@@ -86,44 +86,28 @@ def _notify_mentions(text: str, actor, post_id: int, context: str = "post"):
 
 from django.contrib.admin.views.decorators import staff_member_required
 
-_GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-_GROQ_MODEL_DEFAULT = "llama-3.3-70b-versatile"
+def _ia_chat(messages: list[dict], system_prompt: str = "", config=None) -> str:
+    """Chat da Camila pela OpenRouter (boards/services/openrouter.py). Retorna o texto da resposta."""
+    from boards.services import openrouter
 
-
-def _groq_chat(messages: list[dict], system_prompt: str = "", config=None) -> str:
-    """Chama a Groq API e retorna o texto da resposta."""
-    api_key = os.getenv("GROQ_API_KEY", "").strip()
-    if not api_key:
+    if not openrouter.is_configured():
         return ""
     if config is None:
         try:
             config = CamilaConfig.get()
         except Exception:
             config = None
-    model = (config.model if config else None) or os.getenv("GROQ_MODEL", "").strip() or _GROQ_MODEL_DEFAULT
+    model = openrouter.resolve_model(config.model if config else None)
     temperature = config.temperature if config else 0.8
     max_tokens = config.max_tokens if config else 500
-    payload = {
-        "model": model,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            *messages,
-        ],
-        "max_tokens": max_tokens,
-        "temperature": temperature,
-    }
     try:
-        r = http_requests.post(
-            _GROQ_API_URL,
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            },
-            json=payload,
+        return openrouter.chat(
+            [{"role": "system", "content": system_prompt}, *messages],
+            model=model,
+            max_tokens=max_tokens,
+            temperature=temperature,
             timeout=20,
         )
-        r.raise_for_status()
-        return r.json()["choices"][0]["message"]["content"].strip()
     except Exception as exc:
         return f"Erro ao contatar a IA: {exc}"
 
@@ -1549,7 +1533,7 @@ def mood_checkin(request):
         "ofereça uma palavra de acolhimento e sugira uma ação simples de autocuidado. "
         "Seja caloroso, humano e conciso. Responda sempre em português brasileiro."
     )
-    response = _groq_chat([{"role": "user", "content": text}], system_prompt)
+    response = _ia_chat([{"role": "user", "content": text}], system_prompt)
     return JsonResponse({"response": response, "mood_text": text})
 
 
@@ -1574,7 +1558,7 @@ def social_chatbot_message(request):
     system_prompt = cfg.prompt_coach
 
     messages = [*history[-10:], {"role": "user", "content": message}]
-    response = _groq_chat(messages, system_prompt, config=cfg)
+    response = _ia_chat(messages, system_prompt, config=cfg)
     return JsonResponse({"response": response})
 
 
@@ -1685,7 +1669,7 @@ def social_ai_react(request):
 
     cfg = CamilaConfig.get()
     prompt = cfg.prompt_react + _camila_knowledge_prompt()
-    response = _groq_chat(
+    response = _ia_chat(
         [{"role": "user", "content": context}],
         prompt,
         config=cfg,
@@ -1795,7 +1779,7 @@ def social_camila_chat(request):
     ]
     combined = db_history or list(history[-10:])
     messages = [*combined, {"role": "user", "content": message}]
-    response = _groq_chat(messages, prompt, config=cfg)
+    response = _ia_chat(messages, prompt, config=cfg)
 
     # Persiste a conversa (mesmo se resposta vier vazia, registramos o
     # pedido do usuário; resposta só é gravada se veio algo útil).
@@ -2764,7 +2748,7 @@ def camila_test_chat(request):
     cfg = CamilaConfig.get()
     prompt = cfg.prompt_chat + _camila_knowledge_prompt(message)
     messages = [*history[-10:], {"role": "user", "content": message}]
-    response = _groq_chat(messages, prompt, config=cfg)
+    response = _ia_chat(messages, prompt, config=cfg)
     return JsonResponse({"response": response or "Sem resposta da IA."})
 
 
@@ -2963,64 +2947,36 @@ def _extract_text_pdfplumber(pdf_bytes: bytes) -> str:
 
 
 def _summarize_with_claude(raw_text: str, title: str) -> str:
-    """Sumariza o texto do POP.
-    Prioridade: Claude (ANTHROPIC_API_KEY) → Groq (GROQ_API_KEY) → truncamento.
+    """Sumariza o texto do POP com Claude Haiku pela OpenRouter.
+    Falhou → texto bruto truncado.
     """
+    from boards.services import openrouter
+
     user_content = (
         f"{_CLAUDE_SUMMARIZE_PROMPT}\n\n"
         f"Título do POP: {title}\n\n"
         f"Texto extraído do PDF:\n\n{raw_text[:12000]}"
     )
-
-    # 1. Claude (melhor qualidade, mais barato por token)
-    anthropic_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
-    if anthropic_key:
+    if openrouter.is_configured():
         try:
-            import anthropic
-            client = anthropic.Anthropic(api_key=anthropic_key)
-            message = client.messages.create(
-                model="claude-haiku-4-5-20251001",
-                max_tokens=1024,
-                messages=[{"role": "user", "content": user_content}],
-            )
-            return message.content[0].text.strip()
-        except Exception:
-            pass  # cai para Groq
-
-    # 2. Groq (fallback)
-    groq_key = os.getenv("GROQ_API_KEY", "").strip()
-    if groq_key:
-        summary = _groq_chat(
-            [{"role": "user", "content": user_content}],
-            system_prompt="Você é um especialista em documentação operacional. Responda apenas com o resumo estruturado, sem comentários adicionais.",
-        )
-        if summary and not summary.startswith("Erro"):
-            return summary
-
-    # 3. OpenAI (fallback)
-    openai_key = os.getenv("OPENAI_API_KEY", "").strip()
-    if openai_key:
-        try:
-            from openai import OpenAI
-            client = OpenAI(api_key=openai_key)
-            resp = client.chat.completions.create(
-                model="gpt-4o-mini",
-                max_tokens=1024,
-                messages=[
+            text = openrouter.chat(
+                [
                     {
                         "role": "system",
                         "content": "Você é um especialista em documentação operacional. Responda apenas com o resumo estruturado, sem comentários adicionais.",
                     },
                     {"role": "user", "content": user_content},
                 ],
+                model=openrouter.MODEL_SUMMARY,
+                max_tokens=1024,
+                timeout=60,
             )
-            text = resp.choices[0].message.content.strip()
             if text:
                 return text
         except Exception:
-            pass
+            _mention_logger.warning("resumo de POP pela OpenRouter falhou", exc_info=True)
 
-    # 4. Último recurso: texto bruto truncado
+    # Último recurso: texto bruto truncado
     return raw_text[:4000]
 
 
@@ -3970,7 +3926,7 @@ def social_health_analyze(request):
 
     cfg = CamilaConfig.get()
     try:
-        response = _groq_chat(messages, prompt, config=cfg)
+        response = _ia_chat(messages, prompt, config=cfg)
     except Exception as exc:
         logging.getLogger(__name__).error("Health analyze error: %s", exc)
         response = ""
@@ -4040,7 +3996,7 @@ def social_health_chat(request):
     prompt = _health_system_prompt(user_name, food_context)
 
     cfg = CamilaConfig.get()
-    response = _groq_chat(db_messages, prompt, config=cfg)
+    response = _ia_chat(db_messages, prompt, config=cfg)
 
     # Grava resposta da IA
     if response and not response.startswith("Erro"):

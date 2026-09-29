@@ -1,11 +1,14 @@
-"""Detecção de comida em posts de texto + geração de foto do prato via DALL-E.
+"""Detecção de comida em posts de texto + geração de foto do prato.
+
+Tudo pela OpenRouter (boards/services/openrouter.py).
 
 Fluxo (chamado em background por process_food_post):
-    1. detect_dish(text) usa Groq pra decidir se o texto é uma menção a uma
+    1. detect_dish(text) usa um LLM pra decidir se o texto é uma menção a uma
        comida CONHECIDA com confiança ≥ 0.95, e retornar o nome canônico
        do prato (ex: "Strogonoff de carne"). Sem foto → None.
     2. Checa cota (1/dia/usuário). Já bateu → desiste.
-    3. generate_dish_image(dish_name) usa DALL-E 3 pra criar foto do prato.
+    3. generate_dish_image(dish_name) gera a foto do prato (Gemini 2.5 Flash Image,
+       via chat com modalities=[image, text]).
     4. Salva os bytes em SocialPost.photo via compress_image, marca
        ai_food_dish e dispara save.
 
@@ -27,14 +30,6 @@ from django.utils import timezone
 
 
 logger = logging.getLogger(__name__)
-
-_GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-_GROQ_MODEL = "llama-3.3-70b-versatile"
-
-_OPENAI_IMAGE_URL = "https://api.openai.com/v1/images/generations"
-# gpt-image-1 é o modelo de imagem atual da OpenAI (sucessor de DALL-E 3).
-# Retorna b64_json por padrão (diferente do DALL-E 3 que devolvia URL).
-_OPENAI_IMAGE_MODEL = "gpt-image-1"
 
 _CONFIDENCE_THRESHOLD = 0.85
 
@@ -73,35 +68,25 @@ def detect_dish(text: str) -> str:
     if not text or len(text) > 500:
         return ""
 
-    api_key = os.getenv("GROQ_API_KEY", "").strip()
-    if not api_key:
+    from boards.services import openrouter
+
+    if not openrouter.is_configured():
         return ""
 
-    payload = {
-        "model": _GROQ_MODEL,
-        "messages": [
-            {"role": "system", "content": _DETECTOR_SYSTEM_PROMPT},
-            {"role": "user", "content": text},
-        ],
-        "max_tokens": 100,
-        "temperature": 0.0,
-        "response_format": {"type": "json_object"},
-    }
-
     try:
-        r = http_requests.post(
-            _GROQ_URL,
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            },
-            json=payload,
+        raw = openrouter.chat(
+            [
+                {"role": "system", "content": _DETECTOR_SYSTEM_PROMPT},
+                {"role": "user", "content": text},
+            ],
+            model=openrouter.MODEL_FOOD_DETECT,
+            max_tokens=100,
+            temperature=0.0,
+            response_format={"type": "json_object"},
             timeout=15,
         )
-        r.raise_for_status()
-        raw = r.json()["choices"][0]["message"]["content"]
     except Exception as exc:
-        logger.warning("food_image.detect_dish: groq falhou: %s", exc)
+        logger.warning("food_image.detect_dish: IA falhou: %s", exc)
         return ""
 
     try:
@@ -125,10 +110,16 @@ def detect_dish(text: str) -> str:
 
 
 def generate_dish_image(dish_name: str) -> bytes:
-    """Gera uma foto do prato via OpenAI gpt-image-1 e retorna os bytes PNG.
-    Retorna b'' em qualquer falha."""
-    api_key = os.getenv("OPENAI_API_KEY", "").strip()
-    if not api_key:
+    """Gera uma foto do prato pela OpenRouter e retorna os bytes da imagem (PNG).
+    Retorna b'' em qualquer falha.
+
+    A OpenRouter não tem /images/generations: imagem sai do chat com
+    modalities=["image", "text"] e volta em message.images[].image_url.url
+    como data URL base64."""
+    from boards.services import openrouter
+
+    client = openrouter.get_client()
+    if client is None:
         return b""
 
     prompt = (
@@ -139,43 +130,38 @@ def generate_dish_image(dish_name: str) -> bytes:
     )
 
     try:
-        r = http_requests.post(
-            _OPENAI_IMAGE_URL,
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
+        resp = client.with_options(timeout=120).chat.completions.create(
+            model=openrouter.MODEL_IMAGE,
+            messages=[{"role": "user", "content": prompt}],
+            extra_body={
+                **openrouter.PROVIDER_CHEAPEST,
+                "modalities": ["image", "text"],
+                "image_config": {"aspect_ratio": "1:1"},
             },
-            json={
-                "model": _OPENAI_IMAGE_MODEL,
-                "prompt": prompt,
-                "size": "1024x1024",
-                "quality": "low",
-                "n": 1,
-            },
-            timeout=120,
         )
-        r.raise_for_status()
-        item = r.json()["data"][0]
+        msg = resp.choices[0].message.model_dump()
+        images = msg.get("images") or []
+        url = ((images[0] or {}).get("image_url") or {}).get("url", "") if images else ""
     except Exception as exc:
-        logger.warning("food_image.generate_dish_image: OpenAI falhou: %s", exc)
+        logger.warning("food_image.generate_dish_image: OpenRouter falhou: %s", exc)
         return b""
 
-    # gpt-image-1 retorna b64_json; modelos antigos retornavam url.
-    if "b64_json" in item and item["b64_json"]:
+    if not url:
+        logger.warning("food_image.generate_dish_image: resposta sem imagem")
+        return b""
+    if url.startswith("data:"):
         try:
-            return base64.b64decode(item["b64_json"])
+            return base64.b64decode(url.split(",", 1)[1])
         except Exception as exc:
             logger.warning("food_image.generate_dish_image: b64 decode falhou: %s", exc)
             return b""
-    if item.get("url"):
-        try:
-            ir = http_requests.get(item["url"], timeout=30)
-            ir.raise_for_status()
-            return ir.content
-        except Exception as exc:
-            logger.warning("food_image.generate_dish_image: download URL falhou: %s", exc)
-            return b""
-    return b""
+    try:
+        ir = http_requests.get(url, timeout=30)
+        ir.raise_for_status()
+        return ir.content
+    except Exception as exc:
+        logger.warning("food_image.generate_dish_image: download URL falhou: %s", exc)
+        return b""
 
 
 def _has_used_quota_today(user_id: int) -> bool:

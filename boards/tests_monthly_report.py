@@ -46,7 +46,7 @@ class MonthFromFilenameTests(TestCase):
         self.assertIsNone(f("image_fTkl9tq.png", today))
 
 
-@override_settings(GROQ_API_KEY="")
+@override_settings(OPENROUTER_API_KEY="")
 class MonthlyFlowTests(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -302,7 +302,7 @@ class MonthlyFlowTests(TestCase):
         self.assertEqual(data["rows"][0]["posto"], "ANCHIETA")
 
 
-@override_settings(GROQ_API_KEY="")
+@override_settings(OPENROUTER_API_KEY="")
 class MonthlyTemplatesTests(TestCase):
     """As telas novas renderizam (aba Mensal, modal de automação com a recorrência)."""
 

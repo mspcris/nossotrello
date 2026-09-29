@@ -417,16 +417,11 @@ CAMIM_ADMIN_API_KEY  = (os.getenv("CAMIM_ADMIN_API_KEY") or "").strip()
 
 
 # ============================================================
-# GROQ AI API (mood check-in / chatbot motivacional)
+# IA — tudo pela OpenRouter (boards/services/openrouter.py): chat da Camila,
+# relatório mensal, resumo de POP, embeddings de cards similares, moderação
+# social e foto do prato. Sem chave Groq/OpenAI/Anthropic direta (29/09/2026).
 # ============================================================
-GROQ_API_KEY = (os.getenv("GROQ_API_KEY") or "").strip()
-
-
-# ============================================================
-# OpenAI — usada por: cards similares (embedding) e moderação social
-# (boards/services/moderation/openai_client.py — Moderation API gratuita).
-# ============================================================
-OPENAI_API_KEY = (os.getenv("OPENAI_API_KEY") or "").strip()
+OPENROUTER_API_KEY = (os.getenv("OPENROUTER_API_KEY") or "").strip()
 
 
 # ============================================================
