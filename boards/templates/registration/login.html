@@ -17,6 +17,13 @@
 {% else %}
 <title>NossoTrello — Acesso</title>
 <link rel="icon" type="image/png" href="{% static 'images/logo-camim.png' %}">
+<meta property="og:title" content="NossoTrello — Tarefas Camim">
+<meta property="og:description" content="Entre para ver quadros e cards.">
+<meta property="og:image" content="https://{{ request.get_host }}{% static 'images/social/tarefas_og.png' %}">
+<meta property="og:image:width" content="256">
+<meta property="og:image:height" content="256">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="NossoTrello · Tarefas Camim">
 {% endif %}
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.4/css/all.min.css">

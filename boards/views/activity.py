@@ -30,6 +30,7 @@ from .helpers import (
     _extract_media_image_paths,
     process_mentions_and_notify,
     build_notify_toast_html,
+    _person_display_name,
     sanitize_quill_html,
 )
 
@@ -63,6 +64,19 @@ def _safe_user_handle_or_email(u):
         pass
 
     return ""
+
+
+def _activity_lines(user, text: str, *, images: bool = False) -> list[str]:
+    """Linha "💬 Fulano: comentário" da notificação — sem ela a mensagem não diz o que aconteceu."""
+    name = _person_display_name(user)
+    if images:
+        return [f"📷 {name} enviou imagem"]
+    text = " ".join((text or "").split())
+    if not text:
+        return []
+    if len(text) > 300:
+        text = text[:299].rstrip() + "…"
+    return [f"💬 {name}: {text}"]
 
 
 def _compact_quill_html(s: str) -> str:
@@ -405,6 +419,7 @@ def add_activity(request, card_id):
                 msg = format_card_message(
                     title_prefix="📝 Atividade no card",
                     snap=snap,
+                    extra_lines=_activity_lines(request.user, effective_text),
                 )
 
                 notify_users_for_card(
@@ -483,6 +498,7 @@ def add_activity(request, card_id):
                         msg = format_card_message(
                             title_prefix="📝 Atividade no card",
                             snap=snap,
+                            extra_lines=_activity_lines(request.user, effective_text),
                         )
 
                         notify_users_for_card(
@@ -532,6 +548,7 @@ def add_activity(request, card_id):
                         msg = format_card_message(
                             title_prefix="📝 Atividade no card",
                             snap=snap,
+                            extra_lines=_activity_lines(request.user, "", images=True),
                         )
                         notify_users_for_card(
                             card=card,

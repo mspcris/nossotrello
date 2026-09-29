@@ -24,10 +24,8 @@ from boards.services.notifications import (
 
 logger = logging.getLogger(__name__)
 
-# Intervalo (em segundos) entre cada par mensagem+link para o mesmo número
+# Intervalo (em segundos) entre cada mensagem para o mesmo número
 DELAY_BETWEEN_MESSAGES_S = 60
-# Pequeno intervalo entre a mensagem e o link dela (garante ordem)
-DELAY_MSG_LINK_S = 3
 
 
 class Command(BaseCommand):
@@ -129,12 +127,8 @@ class Command(BaseCommand):
 
         for phone_digits, items in phone_queue.items():
             for i, (user, msg, link) in enumerate(items):
-                # Envia a mensagem (síncrono — garante ordem)
-                send_whatsapp(user=user, phone_digits=phone_digits, body=msg, sync=True)
-                # Pequena pausa para garantir que o link chegue depois
-                time.sleep(DELAY_MSG_LINK_S)
-                # Envia o link
-                send_whatsapp(user=user, phone_digits=phone_digits, body=link, sync=True)
+                # Mensagem + link num balão só (a prévia do card fica no topo)
+                send_whatsapp(user=user, phone_digits=phone_digits, body=f"{msg}\n\n{link}", sync=True)
 
                 # Aguarda antes da próxima mensagem (exceto a última)
                 if i < len(items) - 1:

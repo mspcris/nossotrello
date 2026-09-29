@@ -24,7 +24,10 @@ _BOT_UA = re.compile(
     r"whatsapp|facebookexternalhit|facebookcatalog|meta-externalagent|telegrambot|"
     r"slackbot|slack-imgproxy|discordbot|linkedinbot|twitterbot|skypeuripreview|"
     r"microsoftpreview|applebot|pinterest|embedly|iframely|vkshare|redditbot|"
-    r"mattermost",
+    r"mattermost|"
+    # Evolution API (WhatsApp que o sistema usa pra notificar): quem monta a
+    # prévia é ela, com o fetch do Node — User-Agent literal "node".
+    r"^node$",
     re.I,
 )
 _BOARD_PATH = re.compile(r"^/board/(\d+)/$")
@@ -63,13 +66,18 @@ def _card_meta(card_id):
             column__board__is_deleted=False,
         )
         .select_related("column__board")
-        .only("title", "column__name", "column__board__name")
+        .only("title", "due_date", "is_delivered", "column__name", "column__board__name")
         .first()
     )
     if not card:
         return None
     title = " ".join((card.title or "").split())[:120] or f"Card #{card_id}"
-    return title, f"Quadro {card.column.board.name} · {card.column.name}"
+    parts = [f"{card.column.board.name} › {card.column.name}"]
+    if card.is_delivered:
+        parts.append("entregue")
+    elif card.due_date:
+        parts.append(f"vence {card.due_date.strftime('%d/%m/%Y')}")
+    return title, " · ".join(parts)
 
 
 def preview_response(request):
@@ -92,7 +100,9 @@ def preview_response(request):
 
     site = getattr(settings, "SITE_URL", "").rstrip("/") or f"{request.scheme}://{request.get_host()}"
     url = f"{site}{request.get_full_path()}"
-    image = f"{site}{settings.STATIC_URL}images/social/camim_social_md.png"
+    # 256×256: o WhatsApp mostra miniatura nítida ao lado do texto (400+ vira
+    # imagem grande em cima, esticada e borrada).
+    image = f"{site}{settings.STATIC_URL}images/social/tarefas_og.png"
     t, d, u, i = escape(title), escape(desc), escape(url), escape(image)
     html = (
         "<!doctype html><html lang=\"pt-br\"><head><meta charset=\"utf-8\">"
@@ -103,7 +113,9 @@ def preview_response(request):
         f"<meta property=\"og:image\" content=\"{i}\">"
         f"<meta property=\"og:url\" content=\"{u}\">"
         "<meta property=\"og:type\" content=\"website\">"
-        "<meta property=\"og:site_name\" content=\"NossoTrello\">"
+        "<meta property=\"og:image:width\" content=\"256\">"
+        "<meta property=\"og:image:height\" content=\"256\">"
+        "<meta property=\"og:site_name\" content=\"NossoTrello · Tarefas Camim\">"
         "<meta name=\"robots\" content=\"noindex, nofollow\">"
         f"</head><body><a href=\"{u}\">{t}</a></body></html>"
     )

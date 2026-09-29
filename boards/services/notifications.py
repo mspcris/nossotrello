@@ -110,7 +110,7 @@ class CardSnapshot:
 def _fmt_date(d) -> str:
     if not d:
         return ""
-    return d.strftime("%Y-%m-%d")
+    return d.strftime("%d/%m/%Y")
 
 
 def build_card_snapshot(*, card: Card) -> CardSnapshot:
@@ -122,7 +122,7 @@ def build_card_snapshot(*, card: Card) -> CardSnapshot:
     tracktime_url = f"{card_url}&tab=tracktime"
 
     delivered_at = getattr(card, "delivered_at", None)
-    delivered_at_str = delivered_at.strftime("%Y-%m-%d") if delivered_at else ""
+    delivered_at_str = _fmt_date(delivered_at)
 
     return CardSnapshot(
         card_id=card_id,
@@ -165,42 +165,50 @@ def _wa_bold(label: str) -> str:
 
 
 def format_card_message(*, title_prefix: str, snap: CardSnapshot, extra_lines: Optional[list[str]] = None) -> str:
-    title = _wa_safe(title_prefix)
+    """Mensagem de card pro WhatsApp/e-mail: tipo, nome do card e só o que está preenchido.
 
-    card_title = _wa_safe(snap.title)
-    tags = _wa_safe(snap.tags)
-    desc = _wa_safe(snap.description)
+    Campo vazio não aparece (antes era uma linha "(vazia)" por campo, e o que
+    importava sumia no meio). O link vai junto, no fim, por quem envia — a
+    prévia do link (título do card, ver link_preview.py) fica no topo do balão.
+    """
+    board_name = _wa_safe(snap.board_name)
+    column_name = _wa_safe(snap.column_name)
+    where = " › ".join(x for x in (board_name, column_name) if x)
+    if where and snap.card_position:
+        where = f"{where} · #{snap.card_position}"
 
-    start_date = _wa_safe(snap.start_date)
-    warn_date = _wa_safe(snap.due_warn_date)
-    due_date = _wa_safe(snap.due_date)
-    delivered_at = _wa_safe(getattr(snap, "delivered_at", ""))
+    dates = " · ".join(
+        f"{label} {_wa_safe(value)}"
+        for label, value in (
+            ("Início", snap.start_date),
+            ("Aviso", snap.due_warn_date),
+            ("Vence", snap.due_date),
+        )
+        if value
+    )
 
-    board_name = _wa_safe(getattr(snap, 'board_name', ''))
-    column_name = _wa_safe(getattr(snap, 'column_name', ''))
-    card_position = getattr(snap, 'card_position', None)
+    desc = snap.description
+    if len(desc) > 280:
+        desc = desc[:279].rstrip() + "…"
+    desc_lines = [f"> {_wa_safe(x)}" for x in desc.splitlines() if x.strip()]
 
     lines = [
-        # título em negrito para destacar o "tipo" da notificação
-        f"{_wa_bold(title)}",
-        f"{_wa_bold('Quadro:')} {board_name}" if board_name else None,
-        f"{_wa_bold('Coluna:')} {column_name}" if column_name else None,
-        f"{_wa_bold('Posição:')} #{card_position}" if card_position else None,
-        f"{_wa_bold('Card:')} {card_title}",
-        f"{_wa_bold('Tags:')} {tags}" if tags else f"{_wa_bold('Tags:')} (sem etiquetas)",
-        f"{_wa_bold('Descrição:')} {desc}" if desc else f"{_wa_bold('Descrição:')} (vazia)",
-        f"{_wa_bold('Data Início:')} {start_date}" if start_date else f"{_wa_bold('Data Início:')} (vazia)",
-        f"{_wa_bold('Data Aviso:')} {warn_date}" if warn_date else f"{_wa_bold('Data Aviso:')} (vazia)",
-        f"{_wa_bold('Data Vencimento:')} {due_date}" if due_date else f"{_wa_bold('Data Vencimento:')} (vazia)",
-        f"{_wa_bold('Data Entrega:')} {delivered_at}" if delivered_at else f"{_wa_bold('Data Entrega:')} (vazia)",
+        _wa_safe(title_prefix),
+        _wa_bold(snap.title or f"Card #{snap.card_id}"),
+        "",
+        f"📋 {where}" if where else None,
+        f"🏷️ {_wa_safe(snap.tags)}" if snap.tags else None,
+        f"🗓️ {dates}" if dates else None,
+        f"✅ Entregue em {_wa_safe(snap.delivered_at)}" if snap.delivered_at else None,
     ]
+    if desc_lines:
+        lines += [""] + desc_lines
 
-    if extra_lines:
-        # mantém extras, mas também protege caracteres especiais
-        lines.extend([_wa_safe(x) for x in extra_lines if x])
+    extras = [_wa_safe(x) for x in (extra_lines or []) if x]
+    if extras:
+        lines += [""] + extras
 
     return "\n".join(x for x in lines if x is not None).strip()
-
 
 
 def is_in_notification_window(profile: UserProfile, *, now=None) -> bool:
@@ -565,9 +573,10 @@ def notify_users_for_card(
         if getattr(prof, "notify_whatsapp", False):
             phone_digits = _safe_digits_phone(getattr(prof, "telefone", ""))
             if phone_digits:
-                send_whatsapp(user=u, phone_digits=phone_digits, body=message)
-                if include_link_as_second_whatsapp_message:
-                    send_whatsapp(user=u, phone_digits=phone_digits, body=link)
+                # Link no fim da MESMA mensagem: a prévia (título do card)
+                # aparece no topo do balão, e não num segundo balão solto.
+                body = f"{message}\n\n{link}" if include_link_as_second_whatsapp_message else message
+                send_whatsapp(user=u, phone_digits=phone_digits, body=body)
 
         # Email
         if getattr(prof, "notify_email", False):
