@@ -201,12 +201,12 @@ html.dark #cm-root .cm-act-attach-x{
         <div class="cm-bar" role="tablist" aria-label="Abas do card">
           <div class="cm-tabs">
 
-            <button type="button" class="cm-tabbtn is-active" data-cm-tab="desc"> 📄 Descrição</button>
-            <button type="button" class="cm-tabbtn" data-cm-tab="tags"> 🏷️ Etiquetas</button>
-            <button type="button" class="cm-tabbtn" data-cm-tab="check"> ☑️ Checklists{% with n=checklists|length %}<span class="cm-tab-count" data-cm-count="check" title="{{ n }} checklist{{ n|pluralize }}" {% if not n %}hidden{% endif %}>{{ n }}</span>{% endwith %}</button>
-            <button type="button" class="cm-tabbtn" data-cm-tab="files"> 📎 Anexos{% with n=card.attachments.all|length %}<span class="cm-tab-count" data-cm-count="files" title="{{ n }} anexo{{ n|pluralize }}" {% if not n %}hidden{% endif %}>{{ n }}</span>{% endwith %}</button>
-            <button type="button" class="cm-tabbtn" data-cm-tab="track"> ⏱️ Track-time</button>
-            {% if monthly %}<button type="button" class="cm-tabbtn" data-cm-tab="monthly"> 📅 Mensal{% if monthly.current and monthly.current.status != 'delivered' %}<span class="cm-tab-count" data-cm-count="monthly" title="mês pendente">!</span>{% endif %}</button>{% endif %}
+            <button type="button" class="cm-tabbtn is-active" data-cm-tab="desc"><span class="cm-tab-ico" aria-hidden="true">📄</span> <span class="cm-tab-label">Descrição</span></button>
+            <button type="button" class="cm-tabbtn" data-cm-tab="tags"><span class="cm-tab-ico" aria-hidden="true">🏷️</span> <span class="cm-tab-label">Etiquetas</span></button>
+            <button type="button" class="cm-tabbtn" data-cm-tab="check"><span class="cm-tab-ico" aria-hidden="true">☑️</span> <span class="cm-tab-label">Checklists</span>{% with n=checklists|length %}<span class="cm-tab-count" data-cm-count="check" title="{{ n }} checklist{{ n|pluralize }}" {% if not n %}hidden{% endif %}>{{ n }}</span>{% endwith %}</button>
+            <button type="button" class="cm-tabbtn" data-cm-tab="files"><span class="cm-tab-ico" aria-hidden="true">📎</span> <span class="cm-tab-label">Anexos</span>{% with n=card.attachments.all|length %}<span class="cm-tab-count" data-cm-count="files" title="{{ n }} anexo{{ n|pluralize }}" {% if not n %}hidden{% endif %}>{{ n }}</span>{% endwith %}</button>
+            <button type="button" class="cm-tabbtn" data-cm-tab="track"><span class="cm-tab-ico" aria-hidden="true">⏱️</span> <span class="cm-tab-label">Track-time</span></button>
+            {% if monthly %}<button type="button" class="cm-tabbtn" data-cm-tab="monthly"><span class="cm-tab-ico" aria-hidden="true">📅</span> <span class="cm-tab-label">Mensal</span>{% if monthly.current and monthly.current.status != 'delivered' %}<span class="cm-tab-count" data-cm-count="monthly" title="mês pendente">!</span>{% endif %}</button>{% endif %}
           </div>
 {% comment %} 
            <div class="cm-actions" id="cm-actions">

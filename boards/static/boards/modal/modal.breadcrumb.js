@@ -17,13 +17,30 @@
       const position = root?.dataset.cardPosition || "";
       const title    = (root?.dataset.cardTitle   || "").trim();
 
-      const parts = [
+      const path = [
         board,
         column,
         position ? `#${position}` : "",
-        title,
       ].filter(Boolean);
-      host.textContent = parts.join("  ›  ");
+      const full = [...path, title].filter(Boolean).join("  ›  ");
+
+      // Duas partes: sem espaço, o caminho (quadro › coluna › #n) some em "…"
+      // antes do título do card. O caminho inteiro fica na dica.
+      host.textContent = "";
+      host.title = full;
+      if (path.length && title) {
+        const pathEl = document.createElement("span");
+        pathEl.className = "cm-crumb-path";
+        pathEl.textContent = path.join("  ›  ") + "  ›";
+        const titleEl = document.createElement("span");
+        titleEl.className = "cm-crumb-title";
+        titleEl.textContent = title;
+        host.append(pathEl, titleEl);
+      } else {
+        host.textContent = full;
+      }
+
+      window.ntFitShellTabs?.();
     },
 
     bind() {

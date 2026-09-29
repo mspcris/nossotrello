@@ -682,6 +682,44 @@ html.dark #card-modal-root #card-tabs .cm-tabbtn.is-active .cm-tab-count{
   display: none !important;
 }
 
+/* Desktop com pouco espaço: as abas guardam a largura delas e quem cede é o
+   caminho do card — primeiro "quadro › coluna › #n" vira "…", depois o título.
+   Quando nem assim cabe, o JS (fitShellTabs em base.html) liga
+   data-tabs-compact e as abas ficam só com o ícone; a aberta mantém o nome. */
+@media (min-width: 768px){
+  #card-modal-root[data-shell-tabs="on"] #card-tabs{
+    flex: 0 0 auto;
+  }
+  /* só o caminho encolhe: ?, ✕ e bolinhas de tema não amassam */
+  #card-modal-root .cm-modal-topline > :not(#modal-breadcrumb){
+    flex-shrink: 0;
+  }
+}
+#card-modal-root[data-tabs-compact="on"] #card-tabs .cm-tabbtn:not(.is-active) .cm-tab-label{
+  display: none;
+}
+#card-modal-root[data-tabs-compact="on"] #card-tabs .cm-tabbtn:not(.is-active){
+  padding-left: 10px;
+  padding-right: 10px;
+}
+#card-modal-root[data-tabs-compact="on"] #card-tabs{
+  gap: 6px;
+}
+#modal #modal-breadcrumb .cm-crumb-path,
+#modal #modal-breadcrumb .cm-crumb-title{
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: pre;
+}
+#modal #modal-breadcrumb .cm-crumb-path{
+  flex: 0 1000 auto;
+}
+#modal #modal-breadcrumb .cm-crumb-title{
+  flex: 0 1 auto;
+  margin-left: .45em;
+}
+
 /* Toque (celular/tablet), nunca desktop: o cabeçalho do modal vira duas linhas.
    Em cima ficam o nome do card, o ? e o ✕; embaixo, os menus sozinhos ocupando
    a largura inteira. Numa linha só sobrava "Descriçã" cortado e ninguém

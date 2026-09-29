@@ -262,7 +262,7 @@
 
   <!-- CSS Global -->
   <link rel="stylesheet" href="{% static 'boards/base.css' %}?v=20260617-inter">
-  <link rel="stylesheet" href="{% static 'boards/modal.css' %}?v=20260921-secretpre">
+  <link rel="stylesheet" href="{% static 'boards/modal.css' %}?v=20260929-tabsfit">
   <link rel="stylesheet" href="{% static 'boards/modal_user.css' %}?v=20260802-authorlink1">
   <link rel="stylesheet" href="{% static 'boards/camilinho.css' %}?v=20260524a">
   <link rel="stylesheet" href="{% static 'boards/nossotrello_drawer.css' %}?v=20260413">
@@ -331,7 +331,7 @@
   {% endif %}
   <script defer src="{% static 'boards/modal/modal.theme.js' %}?v=20260717-userpref1"></script>
   <script defer src="{% static 'boards/modal/modal.user.js' %}?v=20260802-busy1"></script>
-  <script defer src="{% static 'boards/modal/modal.breadcrumb.js' %}"></script>
+  <script defer src="{% static 'boards/modal/modal.breadcrumb.js' %}?v=20260929-tabsfit"></script>
   <script defer src="{% static 'boards/modal/modal.cover.js' %}?v=20260710-spin"></script>
   <script defer src="{% static 'boards/modal/modal.checklists.js' %}?v=20260616-quiet"></script>
 
@@ -1002,7 +1002,13 @@
           shellBtn.className = "cm-tabbtn";
           shellBtn.dataset.cmShellTab = tab;
           shellBtn.innerHTML = btn.innerHTML;
-          shellBtn.title = btn.title || btn.textContent.trim();
+          // No modo compacto só o ícone aparece: a dica e o leitor de tela
+          // precisam do nome da aba, com o contador quando houver.
+          const label = (btn.querySelector(".cm-tab-label")?.textContent || btn.textContent).trim();
+          const count = btn.querySelector(".cm-tab-count:not([hidden])");
+          const countTip = count ? (count.title || count.textContent).trim() : "";
+          shellBtn.title = btn.title || (countTip ? `${label} (${countTip})` : label);
+          shellBtn.setAttribute("aria-label", shellBtn.title);
 
           if (tab === activeTab) {
             shellBtn.classList.add("is-active");
@@ -1017,7 +1023,42 @@
         });
 
         root.setAttribute("data-shell-tabs", "on");
+        fitShellTabs();
       }
+
+      // Falta espaço no cabeçalho: o caminho do card encolhe primeiro (CSS);
+      // quando nem ele cabe mais, as abas viram só ícone (a aberta mantém o
+      // nome). Mede o espaço de verdade em vez de usar breakpoint, porque o
+      // que sobra depende do tamanho do nome do card e do quadro.
+      const TWO_LINE_HEADER = window.matchMedia("(max-width: 767px), (pointer: coarse) and (max-width: 1024px)");
+      const CRUMB_MIN_PX = 180;
+
+      function fitShellTabs() {
+        const { root, shell } = getModalShell();
+        if (!root || !shell) return;
+        root.removeAttribute("data-tabs-compact");
+        if (TWO_LINE_HEADER.matches || root.getAttribute("data-shell-tabs") !== "on") return;
+
+        const crumb = document.getElementById("modal-breadcrumb");
+        const crumbTight = crumb && crumb.textContent.trim() && crumb.clientWidth < CRUMB_MIN_PX;
+        const tabsOverflow = shell.scrollWidth > shell.clientWidth + 1;
+        if (crumbTight || tabsOverflow) root.setAttribute("data-tabs-compact", "on");
+      }
+
+      window.ntFitShellTabs = fitShellTabs;
+      TWO_LINE_HEADER.addEventListener?.("change", fitShellTabs);
+
+      (function watchHeaderWidth() {
+        const topbar = document.querySelector("#card-modal-root .cm-modal-topbar");
+        if (!topbar || !window.ResizeObserver) return;
+        let lastWidth = 0;
+        new ResizeObserver(function (entries) {
+          const w = Math.round(entries[0].contentRect.width);
+          if (w === lastWidth) return;
+          lastWidth = w;
+          fitShellTabs();
+        }).observe(topbar);
+      })();
 
       function syncCardModalMode() {
         const { root, body } = getModalShell();
