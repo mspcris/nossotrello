@@ -40,6 +40,14 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-09 ---
+    "a7b0612": (
+        "🗂️",
+        "Abas do card cabem em qualquer tela",
+        "Em telas menores, as abas do card (Descrição, Etiquetas, Checklists, Anexos, "
+        "Track-time) não ficam mais escondidas: o caminho do card encolhe primeiro e, se "
+        "precisar, as abas mostram só o ícone. Passe o mouse para ver o nome; a aba aberta "
+        "continua com o nome escrito.",
+    ),
     "ea31450": (
         "📎",
         "Botão Anexar da aba Mensal voltou a funcionar",
