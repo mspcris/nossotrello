@@ -56,7 +56,7 @@ Destinatários resolvidos pelo Hesk no momento do rollout:
 | 36 | Campo Grande | Luann, Petterson |
 | 37 | Campo Grande X | Alessandra Lourenço |
 | 38 | Campo Grande Y | Mariana Mello |
-| 39 | Nilópolis | Romulo Azevedo, Thais Lima |
+| 39 | Nilópolis | Thais Lima |
 | 40 | Nova Iguaçu | Gabriel Carvalho, Marcos Dantas |
 | 41 | Realengo | Camilla Gaspar, Thiago Silva |
 

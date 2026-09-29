@@ -56,7 +56,7 @@ Resultado hoje (09/09/2026) para os 8 quadros:
 | 36    | Campo Grande   | Luann <carne@camim.com.br>; Petterson <peterson@clinicacamim.com.br> |
 | 37    | Campo Grande X | Alessandra Lourenço <alessandra@camim.com.br> |
 | 38    | Campo Grande Y | Mariana Mello <marianamello@clinicacamim.com.br> |
-| 39    | Nilópolis      | Romulo Azevedo <romulo@clinicacamim.com.br>; Thais Lima <thais@clinicacamim.com.br> |
+| 39    | Nilópolis      | Thais Lima <thais@clinicacamim.com.br> |
 | 40    | Nova Iguaçu    | Gabriel Carvalho <gabriel.carvalho@clinicacamim.com.br>; Marcos Dantas <dantas@clinicacamim.com.br> |
 | 41    | Realengo       | Camilla Gaspar <gerenciar@camim.com.br>; Thiago Silva <thiago.silva@clinicacamim.com.br> |
 
