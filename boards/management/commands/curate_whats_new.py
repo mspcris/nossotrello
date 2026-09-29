@@ -40,6 +40,14 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-09 ---
+    "8432e61": (
+        "💬",
+        "Avisos do WhatsApp mais fáceis de ler",
+        "As mensagens de card no WhatsApp ficaram enxutas: nome do card em destaque, "
+        "quadro e coluna numa linha, datas no formato dia/mês e sem campos vazios. "
+        "O aviso de atividade agora diz quem comentou e o quê, e o link vem no mesmo "
+        "balão, com o nome do card e um ícone nítido na prévia.",
+    ),
     "a7b0612": (
         "🗂️",
         "Abas do card cabem em qualquer tela",
