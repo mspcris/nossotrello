@@ -652,6 +652,13 @@ if TASK_QUEUE_ENABLED:
             "schedule": _crontab(minute="6-59/10"),
             "args": ["run_monthly_reports"],
         },
+        # Conta desativada no IDCamim sai dos quadros dos outros e some da rede
+        # social; reativada, volta (boards/services/idcamim_status.py).
+        "sync-idcamim-status": {
+            "task": "boards.tasks.run_management_command",
+            "schedule": _crontab(minute="8-59/10"),
+            "args": ["sync_idcamim_status"],
+        },
     }
 
     # Todo send_mail/EmailMessage.send do projeto passa pela fila, com tentativas.

@@ -9,7 +9,8 @@ Dinâmico e auto-reversível: assim que a pessoa loga de novo (last_login
 atualiza no login, inclusive via IDCamim), ela reaparece. Baseado em
 User.last_login — Tarefas e Tarefas Social compartilham o mesmo login.
 
-NULL last_login (nunca logou) conta como inativo.
+NULL last_login (nunca logou) conta como inativo. Conta desativada
+(is_active=False — IDCamim ou moderação) também, sempre.
 """
 from datetime import timedelta
 
@@ -26,6 +27,8 @@ def social_active_cutoff():
 
 def is_socially_active(user) -> bool:
     """True se o user logou nos últimos 30 dias. Sem last_login = inativo."""
+    if not getattr(user, "is_active", True):
+        return False
     ll = getattr(user, "last_login", None)
     return bool(ll and ll >= social_active_cutoff())
 
@@ -38,11 +41,11 @@ def active_ids(user_ids) -> set:
     User = get_user_model()
     return set(
         User.objects
-        .filter(id__in=ids, last_login__gte=social_active_cutoff())
+        .filter(id__in=ids, is_active=True, last_login__gte=social_active_cutoff())
         .values_list("id", flat=True)
     )
 
 
 def filter_active_users(qs):
-    """Restringe um queryset de User aos ativos (login nos últimos 30 dias)."""
-    return qs.filter(last_login__gte=social_active_cutoff())
+    """Restringe um queryset de User aos ativos (conta ativa e login nos últimos 30 dias)."""
+    return qs.filter(is_active=True, last_login__gte=social_active_cutoff())

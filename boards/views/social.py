@@ -713,6 +713,8 @@ def social_page(request, user_id: int = None, handle: str = None):
         target_user = get_object_or_404(User, id=user_id)
     else:
         target_user = request.user
+    if not target_user.is_active and target_user != request.user and not request.user.is_staff:
+        raise Http404("Perfil não encontrado")
     ctx = _build_social_context(request, target_user)
     return render(request, "boards/social_page.html", ctx)
 
@@ -3777,6 +3779,7 @@ def social_mention_search(request):
     q_lower = q.lower()
     users = (
         User.objects
+        .filter(is_active=True)
         .exclude(id=request.user.id)
         .select_related("profile")
         .filter(

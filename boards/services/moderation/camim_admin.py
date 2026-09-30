@@ -103,3 +103,37 @@ def update_user_phone(camim_sub: str, phone_number: str) -> CamimAdminResult:
     return CamimAdminResult(
         ok=False, status_code=resp.status_code, error=resp.text[:500],
     )
+
+
+def fetch_inactive_users() -> tuple[list[dict] | None, str]:
+    """Lista as contas desativadas no IDCamim (GET /api/clientes/usuarios-inativos).
+
+    Autentica com as credenciais OAuth do Tarefas (Basic CAMIM_CLIENT_ID:
+    CAMIM_CLIENT_SECRET). Retorna (usuarios, "") ou (None, erro) — None
+    significa "não sei", e quem chama NÃO deve reativar ninguém nesse caso.
+    Cada item: {"sub", "email", "desativado_em", "motivo"}.
+    """
+    base = _base()
+    client_id = (getattr(settings, "CAMIM_CLIENT_ID", "") or "").strip()
+    client_secret = (getattr(settings, "CAMIM_CLIENT_SECRET", "") or "").strip()
+    if not base or not client_id or not client_secret:
+        return None, "CAMIM_ADMIN_API_BASE/CAMIM_CLIENT_ID/CAMIM_CLIENT_SECRET não configurados"
+    try:
+        resp = requests.get(
+            f"{base}/api/clientes/usuarios-inativos",
+            auth=(client_id, client_secret),
+            headers={"Accept": "application/json"},
+            timeout=30,
+        )
+    except requests.RequestException as e:
+        logger.exception("camim_admin.fetch_inactive_users: requisição falhou")
+        return None, str(e)
+    if resp.status_code != 200:
+        return None, f"HTTP {resp.status_code}: {resp.text[:300]}"
+    try:
+        usuarios = resp.json().get("usuarios")
+    except ValueError:
+        return None, "resposta não é JSON"
+    if not isinstance(usuarios, list):
+        return None, "resposta sem a lista 'usuarios'"
+    return usuarios, ""

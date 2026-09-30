@@ -16,6 +16,7 @@ from django.shortcuts import redirect
 from django.views.decorators.http import require_GET
 
 from boards.services.camim_identity import resolve_or_create_camim_user
+from boards.services.idcamim_status import apply_idcamim_reactivated
 
 logger = logging.getLogger(__name__)
 
@@ -200,6 +201,14 @@ def camim_callback(request):
     # Foto: IDCamim é a fonte da verdade. Guarda a URL (claim 'picture') para
     # usar como avatar quando o usuário não subiu foto própria.
     _sync_camim_picture(user, picture=(userinfo.get("picture") or "").strip())
+
+    # O IDCamim acabou de autenticar: a conta está ativa lá. Se ela tinha sido
+    # desativada aqui pelo sync (idcamim_inativo), volta agora com os
+    # compartilhamentos — sem esperar o próximo ciclo do sync_idcamim_status.
+    profile = getattr(user, "profile", None)
+    if profile is not None and profile.idcamim_inativo:
+        apply_idcamim_reactivated(user)
+        user.refresh_from_db(fields=["is_active"])
 
     if not user.is_active:
         messages.error(request, "Sua conta está inativa. Fale com o administrador.")

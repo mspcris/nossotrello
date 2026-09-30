@@ -485,6 +485,7 @@ def _group_mentioned_users(text, actor, group):
         .filter(
             social_group_memberships__group=group,
             profile__handle__in=handles,
+            is_active=True,
         )
         .exclude(id=actor.id)
         .select_related("profile")
@@ -523,7 +524,7 @@ def _invite_candidates(user, group=None):
         )
     users = (
         User.objects
-        .filter(id__in=friend_ids)
+        .filter(id__in=friend_ids, is_active=True)
         .exclude(id__in=excluded)
         .select_related("profile")
     )
@@ -1300,7 +1301,7 @@ def group_mention_search(request, slug):
 
     users = (
         User.objects
-        .filter(social_group_memberships__group=group)
+        .filter(social_group_memberships__group=group, is_active=True)
         .exclude(id=request.user.id)
         .select_related("profile")
         .filter(

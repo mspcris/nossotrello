@@ -24,7 +24,7 @@ def board_mentions(request, board_id: int):
     # Busca apenas por handle — única forma de @marcar
     users = (
         User.objects
-        .filter(id__in=member_user_ids)
+        .filter(id__in=member_user_ids, is_active=True)
         .select_related("profile")
         .filter(profile__handle__icontains=q_l)
         .order_by("profile__handle")[:20]

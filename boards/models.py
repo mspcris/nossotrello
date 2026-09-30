@@ -185,6 +185,38 @@ class BoardMembership(models.Model):
         return f"{self.user} em {self.board} ({self.role})"
 
 
+class RevokedBoardMembership(models.Model):
+    """Compartilhamento retirado porque a conta foi desativada no IDCamim.
+
+    Guarda o vínculo como era para devolvê-lo se a conta for reativada
+    (services/idcamim_status.py). Os quadros do próprio usuário (role owner)
+    nunca são retirados.
+    """
+
+    board = models.ForeignKey(
+        Board,
+        related_name="revoked_memberships",
+        on_delete=models.CASCADE,
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="revoked_board_memberships",
+        on_delete=models.CASCADE,
+    )
+    role = models.CharField(max_length=20, choices=BoardMembership.Role.choices)
+    invited_at = models.DateTimeField(null=True, blank=True)
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    membership_created_at = models.DateTimeField(null=True, blank=True)
+    revoked_at = models.DateTimeField(auto_now_add=True)
+    reason = models.CharField(max_length=40, default="idcamim_inativo")
+
+    class Meta:
+        unique_together = ("board", "user")
+
+    def __str__(self):
+        return f"{self.user} retirado de {self.board} ({self.role})"
+
+
 # ============================================================
 # COLUMN
 # ============================================================
@@ -820,6 +852,13 @@ class UserProfile(models.Model):
     account_blocked_until = models.DateTimeField(null=True, blank=True)
     idcamim_blocked = models.BooleanField(default=False)
     idcamim_blocked_at = models.DateTimeField(null=True, blank=True)
+    # ── Status no IDCamim ──
+    # idcamim_inativo: a conta foi desativada no IDCamim (painel, help desk ou
+    # 30 dias sem login) e o sync_idcamim_status tirou o usuário dos quadros
+    # dos outros (guardados em RevokedBoardMembership) e marcou is_active=False.
+    # Volta sozinho quando o IDCamim reativa a conta (sync ou login).
+    idcamim_inativo = models.BooleanField(default=False, db_index=True)
+    idcamim_inativo_em = models.DateTimeField(null=True, blank=True)
     social_warn_count = models.PositiveIntegerField(default=0)
     social_block_count = models.PositiveIntegerField(default=0)
     last_offense_at = models.DateTimeField(null=True, blank=True)

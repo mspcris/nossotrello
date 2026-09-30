@@ -14,6 +14,10 @@ User = get_user_model()
 def user_profile_readonly_modal(request, user_id: int):
     target_user = get_object_or_404(User, id=user_id)
 
+    # Conta desativada (IDCamim/moderação) some — só staff ainda vê.
+    if not target_user.is_active and request.user != target_user and not request.user.is_staff:
+        raise Http404("Perfil não encontrado")
+
     # 🔒 Segurança: só permite ver quem compartilha ao menos um board
     shared = BoardMembership.objects.filter(
         user=request.user,
