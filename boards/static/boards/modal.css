@@ -1856,6 +1856,12 @@ html.dark #card-modal-root{
   align-items: center;
 }
 
+/* Com título, o caminho vira dois <span> e o [10] CONTRASTE do tema claro
+   pinta todo span de #111 — texto preto no chip escuro. Três ids vencem. */
+#modal #card-modal-root #modal-breadcrumb :where(.cm-crumb-path, .cm-crumb-title){
+  color: rgba(255,255,255,0.96) !important;
+}
+
 /* Dark: chip um pouco mais discreto, mantendo leitura */
 #modal.theme-dark #modal-breadcrumb,
 #modal.card-theme-dark #modal-breadcrumb,
