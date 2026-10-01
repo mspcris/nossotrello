@@ -1836,10 +1836,12 @@ html.dark #card-modal-root{
   letter-spacing: .2px;
   line-height: 1.15;
 
-  /* chip de contraste */
+  /* chip de contraste: fundo quase opaco, senão no tema claro (glass) o
+     texto branco some em cima do cinza-claro */
   color: rgba(255,255,255,0.96) !important;
-  background: rgba(0,0,0,0.28) !important;
-  border: 1px solid rgba(255,255,255,0.14) !important;
+  background: rgba(15,23,42,0.82) !important;
+  border: 1px solid rgba(255,255,255,0.18) !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.25);
   border-radius: 999px !important;
   padding: 4px 10px !important;
 
