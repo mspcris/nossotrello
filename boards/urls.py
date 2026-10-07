@@ -622,6 +622,7 @@ urlpatterns = [
     path("card/<int:card_id>/monthly/", monthly_views.monthly_panel, name="monthly_panel"),
     path("card/<int:card_id>/monthly/<int:entry_id>/upload/", monthly_views.monthly_upload, name="monthly_upload"),
     path("card/<int:card_id>/monthly/<int:entry_id>/accept/", monthly_views.monthly_accept, name="monthly_accept"),
+    path("card/<int:card_id>/monthly/<int:entry_id>/waive/", monthly_views.monthly_waive, name="monthly_waive"),
     # Monitoramento externo (Token DRF). Sob /api/ de propósito: middleware libera.
     path("api/monthly-reports/", monthly_views.monthly_reports_api, name="monthly_reports_api"),
     path("column-automation/<int:automation_id>/delete/", column_automation_delete, name="column_automation_delete"),

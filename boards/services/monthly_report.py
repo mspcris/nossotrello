@@ -538,6 +538,68 @@ def accept(entry, actor):
 
 
 # ---------------------------------------------------------------------------
+# Liberação (dispensa) de um mês — ação de admin do quadro
+# ---------------------------------------------------------------------------
+WAIVABLE_STATUSES = ("pending", "rejected", "skipped")
+
+
+def _recompute_due(rule, card):
+    """Aponta a data de entrega do card para o ciclo em aberto mais antigo (cria
+    o mês corrente se nenhum estiver aberto). Usado após liberar/reverter, quando
+    o mês que puxava a data pode ter mudado."""
+    nxt = open_entries(card, add_months(month_first(today_local()), 1)).first()
+    if nxt is None:
+        nxt = ensure_current(rule, card)
+    if nxt is not None and card.due_date != nxt.due_on:
+        card.due_date = nxt.due_on
+        card.save(update_fields=["due_date"])
+    return nxt
+
+
+def waive(entry, actor=None, reason: str = ""):
+    """Admin dispensa o mês: sai da cobrança e a API passa a reportar 'waived'
+    (para o administrativo/Hesk não cobrar). Só vale para mês ainda em aberto ou
+    sem anexo — nunca para entregue/validando. Reversível por `unwaive`."""
+    if entry.status not in WAIVABLE_STATUSES:
+        return entry
+    card = entry.card
+    entry.status = "waived"
+    entry.waived_at = timezone.now()
+    entry.waived_by = actor if (actor and getattr(actor, "id", None)) else None
+    entry.waived_reason = (reason or "").strip()[:300]
+    entry.save(update_fields=["status", "waived_at", "waived_by", "waived_reason", "updated_at"])
+    _recompute_due(entry.rule, card)
+    motivo = f" Motivo: {escape(entry.waived_reason)}." if entry.waived_reason else ""
+    _log(card, actor, (
+        f"<p><strong>{escape(_who(actor))}</strong> liberou (dispensou) o relatório de "
+        f"<strong>{label(entry.month)}</strong> — este mês sai da cobrança.{motivo}</p>"
+    ))
+    _bump_board(card)
+    return entry
+
+
+def unwaive(entry, actor=None):
+    """Reverte a liberação: o mês volta a ser cobrado (pendente)."""
+    if entry.status != "waived":
+        return entry
+    card = entry.card
+    entry.status = "pending"
+    entry.waived_at = None
+    entry.waived_by = None
+    entry.waived_reason = ""
+    # zera reminded_at: se já estiver vencido, o próximo scheduler cobra de novo.
+    entry.reminded_at = None
+    entry.save(update_fields=["status", "waived_at", "waived_by", "waived_reason", "reminded_at", "updated_at"])
+    _recompute_due(entry.rule, card)
+    _log(card, actor, (
+        f"<p><strong>{escape(_who(actor))}</strong> reverteu a liberação de "
+        f"<strong>{label(entry.month)}</strong> — o mês volta a ser cobrado.</p>"
+    ))
+    _bump_board(card)
+    return entry
+
+
+# ---------------------------------------------------------------------------
 # Gatilho: anexo removido
 # ---------------------------------------------------------------------------
 def on_attachment_removed(card, attachment):
@@ -1050,6 +1112,8 @@ def chip_for_card(card, today: date = None):
             return {"text": f"📎 falta {label(month_first(today))}", "tone": "warn"}
     if e.status == "delivered":
         return {"text": f"📎 {label(e.month)} ok", "tone": "ok"}
+    if e.status == "waived":
+        return {"text": f"🆓 {label(e.month)} liberado", "tone": "info"}
     if e.status == "validating":
         return {"text": f"📎 {label(e.month)} validando", "tone": "info"}
     if e.status == "rejected":

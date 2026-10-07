@@ -20,6 +20,10 @@
   .mr-badge--validating { background:#dbe8fb; color:#1c3f7a; }
   .mr-badge--rejected { background:#ffd9d9; color:#8a1010; }
   .mr-badge--skipped { background:#e9e9e9; color:#555; }
+  .mr-badge--waived { background:#e6e9f5; color:#3b3f72; }
+  .mr-state--waived { background:#eef0fb; color:#3b3f72; border-color:#c7cdf0; }
+  .mr-btn--waive { border-color:#6b7280; color:#4b5563; }
+  .mr-btn--waive:hover { background:#f3f4f6; }
   .mr-ai { margin-top:4px; font-size:.8rem; opacity:.85; white-space:pre-line; }
   .mr-ai--reprovado { color:#8a1010; }
   .mr-ai--atencao { color:#7a4d00; }
@@ -58,12 +62,14 @@
             <span class="mr-state mr-state--info">⏳ {{ cur.label }} — anexo em validação pela IA</span>
           {% elif cur.status == 'rejected' %}
             <span class="mr-state mr-state--late">⛔ {{ cur.label }} — anexo reprovado pela IA, mês continua pendente</span>
+          {% elif cur.status == 'waived' %}
+            <span class="mr-state mr-state--waived">🆓 {{ cur.label }} liberado — dispensado da entrega{% if cur.waived_by %} por {{ cur.waived_by.profile.display_name|default:cur.waived_by.email }}{% endif %}</span>
           {% elif cur.is_late %}
             <span class="mr-state mr-state--late">🔴 Falta o relatório de {{ cur.label }} — prazo {{ cur.due_on|date:"d/m/Y" }} vencido</span>
           {% else %}
             <span class="mr-state mr-state--pending">📎 Pendente: {{ cur.label }} — prazo {{ cur.due_on|date:"d/m/Y" }}</span>
           {% endif %}
-          {% if viewer_can_edit and cur.status != 'delivered' and cur.status != 'validating' %}
+          {% if viewer_can_edit and cur.status != 'delivered' and cur.status != 'validating' and cur.status != 'waived' %}
             <button type="button" class="mr-cta" data-mr-upload="{% url 'boards:monthly_upload' card.id cur.id %}" data-mr-label="{{ cur.label }}"
                     style="margin-left:8px;">📎 Anexar relatório de {{ cur.label }}</button>
           {% endif %}
@@ -98,8 +104,10 @@
             {% elif e.status == 'delivered' %}<span class="mr-badge mr-badge--delivered">Entregue</span>
             {% elif e.status == 'validating' %}<span class="mr-badge mr-badge--validating">Validando</span>
             {% elif e.status == 'rejected' %}<span class="mr-badge mr-badge--rejected">Reprovado</span>
+            {% elif e.status == 'waived' %}<span class="mr-badge mr-badge--waived">Liberado</span>
             {% else %}<span class="mr-badge mr-badge--skipped">Sem anexo</span>{% endif %}
-            {% if e.reminded_at %}<div class="cm-muted" style="font-size:.7rem;">cobrado {{ e.reminded_at|date:"d/m H:i" }}</div>{% endif %}
+            {% if e.status == 'waived' %}<div class="cm-muted" style="font-size:.7rem;">liberado{% if e.waived_by %} por {{ e.waived_by.profile.display_name|default:e.waived_by.email }}{% endif %}{% if e.waived_at %} {{ e.waived_at|date:"d/m" }}{% endif %}{% if e.waived_reason %} · {{ e.waived_reason }}{% endif %}</div>
+            {% elif e.reminded_at %}<div class="cm-muted" style="font-size:.7rem;">cobrado {{ e.reminded_at|date:"d/m H:i" }}</div>{% endif %}
           </td>
           <td>
             {% if e.attachment %}{% include "boards/partials/monthly_file_link.html" with att=e.attachment %}{% else %}—{% endif %}
@@ -117,21 +125,36 @@
             {% else %}<span class="cm-muted">—</span>{% endif %}
           </td>
           <td>
-            {% if viewer_can_edit %}
+            {% if viewer_can_edit or viewer_can_admin %}
               <div class="mr-actions">
-                {% if e.status == 'rejected' %}
+                {% if viewer_can_edit and e.status == 'rejected' %}
                   <button type="button" class="mr-btn"
                           hx-post="{% url 'boards:monthly_accept' card.id e.id %}"
                           hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
                           hx-target="#cm-monthly-panel" hx-swap="outerHTML"
                           hx-confirm="Aceitar este anexo como o relatório de {{ e.label }} mesmo com a reprovação da IA?">Aceitar mesmo assim</button>
                 {% endif %}
-                {% if e.status != 'validating' %}
+                {% if viewer_can_edit and e.status != 'validating' and e.status != 'waived' %}
                   <button type="button" class="mr-btn{% if e.status != 'delivered' %} mr-btn--send{% endif %}"
                           data-mr-upload="{% url 'boards:monthly_upload' card.id e.id %}" data-mr-label="{{ e.label }}"
                           {% if e.status == 'delivered' %}data-mr-extra="1" title="Enviar um arquivo adicional para {{ e.label }}"{% endif %}>
                     {% if e.status == 'delivered' %}＋ Adicional{% elif e.attachment %}🔁 Trocar arquivo{% else %}📎 Anexar{% endif %}
                   </button>
+                {% endif %}
+                {% if viewer_can_admin %}
+                  {% if e.status == 'waived' %}
+                    <button type="button" class="mr-btn"
+                            hx-post="{% url 'boards:monthly_waive' card.id e.id %}"
+                            hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                            hx-target="#cm-monthly-panel" hx-swap="outerHTML"
+                            hx-confirm="Reverter a liberação de {{ e.label }}? O mês volta a ser cobrado.">↩︎ Reverter liberação</button>
+                  {% elif e.status == 'pending' or e.status == 'rejected' or e.status == 'skipped' %}
+                    <button type="button" class="mr-btn mr-btn--waive"
+                            hx-post="{% url 'boards:monthly_waive' card.id e.id %}"
+                            hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                            hx-target="#cm-monthly-panel" hx-swap="outerHTML"
+                            hx-prompt="Liberar {{ e.label }} da entrega — o mês sai da cobrança e o administrativo deixa de cobrar. Motivo (opcional):">🆓 Liberar</button>
+                  {% endif %}
                 {% endif %}
               </div>
             {% endif %}

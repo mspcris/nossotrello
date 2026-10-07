@@ -13,17 +13,19 @@ from django.template.loader import render_to_string
 from django.views.decorators.http import require_http_methods, require_POST
 
 from ..models import Card, CardAttachment, ColumnAutomation, MonthlyReportEntry
-from ..permissions import can_edit_board
+from ..permissions import can_admin_board, can_edit_board
 from ..services import monthly_report as mr
 from .attachments import _attached_label, _can_view_card
 from .helpers import _actor_label, _log_card, sanitize_quill_html
 
 
 def _render_panel(request, card):
+    board = card.column.board
     return render(request, "boards/partials/monthly_report_panel.html", {
         "card": card,
         "monthly": mr.panel_context(card),
-        "viewer_can_edit": can_edit_board(request.user, card.column.board),
+        "viewer_can_edit": can_edit_board(request.user, board),
+        "viewer_can_admin": can_admin_board(request.user, board),
     })
 
 
@@ -103,6 +105,7 @@ def monthly_upload(request, card_id, entry_id):
                 "card": card,
                 "monthly": mr.panel_context(card),
                 "viewer_can_edit": True,
+                "viewer_can_admin": can_admin_board(request.user, board),
             },
             request=request,
         ),
@@ -122,6 +125,26 @@ def monthly_accept(request, card_id, entry_id):
     return _render_panel(request, card)
 
 
+@login_required
+@require_POST
+def monthly_waive(request, card_id, entry_id):
+    """Liberar (dispensar) um mês ou reverter a liberação — SÓ admin do quadro.
+
+    Toggle: se o mês está liberado, reverte; senão, libera. O motivo (opcional)
+    chega pelo cabeçalho HX-Prompt (hx-prompt no botão). Mês liberado sai da
+    cobrança e a API passa a reportá-lo como 'waived' para o administrativo."""
+    card = get_object_or_404(Card.objects.select_related("column__board"), id=card_id, is_deleted=False)
+    if not can_admin_board(request.user, card.column.board):
+        return HttpResponse("Apenas administradores do quadro podem liberar um mês.", status=403)
+    entry = get_object_or_404(MonthlyReportEntry, id=entry_id, card=card)
+    if entry.status == "waived":
+        mr.unwaive(entry, request.user)
+    else:
+        reason = (request.headers.get("HX-Prompt") or "").strip()
+        mr.waive(entry, request.user, reason=reason)
+    return _render_panel(request, card)
+
+
 def _entry_json(e, card):
     board = card.column.board
     return {
@@ -132,6 +155,9 @@ def _entry_json(e, card):
         "month": e.month.strftime("%Y-%m"),
         "due_on": e.due_on.isoformat(),
         "status": e.status,
+        "waived": e.status == "waived",
+        "waived_at": e.waived_at.isoformat() if e.waived_at else None,
+        "waived_by": (e.waived_by.email if e.waived_by else None),
         "attached_at": e.attached_at.isoformat() if e.attached_at else None,
         "attached_by": (e.attached_by.email if e.attached_by else None),
         "attachment_id": e.attachment_id,

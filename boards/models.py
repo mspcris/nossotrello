@@ -2645,6 +2645,7 @@ class MonthlyReportEntry(models.Model):
         ("delivered", "Entregue"),
         ("rejected", "Anexo reprovado"),
         ("skipped", "Sem anexo (histórico)"),
+        ("waived", "Liberado (dispensado)"),
     ]
     AI_STATUS_CHOICES = [
         ("off", "Desligada"),
@@ -2686,6 +2687,16 @@ class MonthlyReportEntry(models.Model):
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
         related_name="monthly_entries_accepted",
     )
+
+    # Liberação (dispensa) do mês: um admin do quadro isenta aquele ciclo da
+    # entrega — some da cobrança e a API passa a reportar status="waived" para o
+    # administrativo (Hesk) não cobrar. Auditável e reversível.
+    waived_at = models.DateTimeField(null=True, blank=True)
+    waived_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="monthly_entries_waived",
+    )
+    waived_reason = models.CharField(max_length=300, blank=True, default="")
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

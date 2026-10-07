@@ -180,6 +180,86 @@ class MonthlyFlowTests(TestCase):
                          ["julio@camim.com.br", "elisangela@camim.com.br"])
         self.assertEqual(mail.outbox[0].cc, [])
 
+    # --- liberação (dispensa) de um mês ------------------------------------
+    def test_waive_tira_mes_da_cobranca(self):
+        for m in (6, 7, 8):
+            mr.ensure_entry(self.rule, self.card, date(2026, m, 1))
+        ago = MonthlyReportEntry.objects.get(card=self.card, month=date(2026, 8, 1))
+        mr.waive(ago, actor=self.owner, reason="posto em reforma")
+        ago.refresh_from_db()
+        self.assertEqual(ago.status, "waived")
+        self.assertEqual(ago.waived_by, self.owner)
+        self.assertIsNotNone(ago.waived_at)
+        self.assertEqual(ago.waived_reason, "posto em reforma")
+        mr.run_scheduler(now=timezone.make_aware(datetime(2026, 9, 9, 8)))
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("Jun/2026", mail.outbox[0].subject)
+        self.assertIn("Jul/2026", mail.outbox[0].subject)
+        self.assertNotIn("Ago/2026", mail.outbox[0].subject)
+
+    def test_waive_nao_vale_para_entregue(self):
+        e = mr.ensure_entry(self.rule, self.card, date(2026, 8, 1))
+        e.status = "delivered"; e.save()
+        mr.waive(e, actor=self.owner)
+        e.refresh_from_db()
+        self.assertEqual(e.status, "delivered")
+
+    def test_unwaive_volta_a_cobrar(self):
+        e = mr.ensure_entry(self.rule, self.card, date(2026, 8, 1))
+        mr.waive(e, actor=self.owner)
+        mr.unwaive(e, actor=self.owner)
+        e.refresh_from_db()
+        self.assertEqual(e.status, "pending")
+        self.assertIsNone(e.waived_by)
+        self.assertEqual(e.waived_reason, "")
+        mr.run_scheduler(now=timezone.make_aware(datetime(2026, 9, 9, 8)))
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("Ago/2026", mail.outbox[0].subject)
+
+    def test_can_admin_board_owner_sim_editor_nao(self):
+        from boards.permissions import can_admin_board
+        self.assertTrue(can_admin_board(self.owner, self.board))
+        self.assertFalse(can_admin_board(self.julio, self.board))
+
+    def test_view_waive_so_admin_e_faz_toggle(self):
+        from django.conf import settings as dj
+        for u in (self.owner, self.julio):
+            prof = u.profile
+            prof.terms_accepted = True
+            prof.terms_version = getattr(dj, "CURRENT_TERMS_VERSION", "2.0")
+            prof.save()
+        e = mr.ensure_entry(self.rule, self.card, date(2026, 8, 1))
+        url = f"/card/{self.card.id}/monthly/{e.id}/waive/"
+        # editor não pode liberar
+        self.client.force_login(self.julio)
+        r = self.client.post(url, SERVER_NAME="localhost", HTTP_HX_PROMPT="por quê")
+        self.assertEqual(r.status_code, 403)
+        e.refresh_from_db()
+        self.assertEqual(e.status, "pending")
+        # admin (owner) pode; o motivo vem do cabeçalho HX-Prompt
+        self.client.force_login(self.owner)
+        r = self.client.post(url, SERVER_NAME="localhost", HTTP_HX_PROMPT="feriado")
+        self.assertEqual(r.status_code, 200)
+        e.refresh_from_db()
+        self.assertEqual(e.status, "waived")
+        self.assertEqual(e.waived_reason, "feriado")
+        # mesmo endpoint reverte
+        self.client.post(url, SERVER_NAME="localhost")
+        e.refresh_from_db()
+        self.assertEqual(e.status, "pending")
+
+    def test_api_reporta_waived(self):
+        from rest_framework.authtoken.models import Token
+        e = mr.ensure_entry(self.rule, self.card, date(2026, 8, 1))
+        mr.waive(e, actor=self.owner)
+        tok = Token.objects.create(user=self.owner)
+        r = self.client.get("/api/monthly-reports/?all=1",
+                             HTTP_AUTHORIZATION=f"Token {tok.key}", SERVER_NAME="localhost")
+        rows = {row["month"]: row for row in r.json()["rows"]}
+        self.assertEqual(rows["2026-08"]["status"], "waived")
+        self.assertTrue(rows["2026-08"]["waived"])
+        self.assertEqual(rows["2026-08"]["waived_by"], self.owner.email)
+
     # --- IA ------------------------------------------------------------------
     def test_ai_rejected_holds_month_until_accepted(self):
         self.rule.params["ai_validate"] = True
