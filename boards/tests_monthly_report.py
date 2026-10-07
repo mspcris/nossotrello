@@ -216,12 +216,15 @@ class MonthlyFlowTests(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn("Ago/2026", mail.outbox[0].subject)
 
-    def test_can_admin_board_owner_sim_editor_nao(self):
-        from boards.permissions import can_admin_board
-        self.assertTrue(can_admin_board(self.owner, self.board))
-        self.assertFalse(can_admin_board(self.julio, self.board))
+    @override_settings(RELATORIO_MENSAL_LIBERADORES=["julio@camim.com.br"])
+    def test_can_waive_monthly_segue_a_lista(self):
+        from boards.permissions import can_waive_monthly
+        # editor, mas DENTRO da lista -> pode; owner do quadro, FORA -> não
+        self.assertTrue(can_waive_monthly(self.julio))
+        self.assertFalse(can_waive_monthly(self.owner))
 
-    def test_view_waive_so_admin_e_faz_toggle(self):
+    @override_settings(RELATORIO_MENSAL_LIBERADORES=["julio@camim.com.br"])
+    def test_view_waive_segue_a_lista_nao_o_papel(self):
         from django.conf import settings as dj
         for u in (self.owner, self.julio):
             prof = u.profile
@@ -230,18 +233,19 @@ class MonthlyFlowTests(TestCase):
             prof.save()
         e = mr.ensure_entry(self.rule, self.card, date(2026, 8, 1))
         url = f"/card/{self.card.id}/monthly/{e.id}/waive/"
-        # editor não pode liberar
-        self.client.force_login(self.julio)
-        r = self.client.post(url, SERVER_NAME="localhost", HTTP_HX_PROMPT="por quê")
+        # owner do quadro, mas FORA da lista -> não pode (não é por papel)
+        self.client.force_login(self.owner)
+        r = self.client.post(url, SERVER_NAME="localhost", HTTP_HX_PROMPT="x")
         self.assertEqual(r.status_code, 403)
         e.refresh_from_db()
         self.assertEqual(e.status, "pending")
-        # admin (owner) pode; o motivo vem do cabeçalho HX-Prompt
-        self.client.force_login(self.owner)
+        # editor, mas DENTRO da lista -> pode; motivo vem do cabeçalho HX-Prompt
+        self.client.force_login(self.julio)
         r = self.client.post(url, SERVER_NAME="localhost", HTTP_HX_PROMPT="feriado")
         self.assertEqual(r.status_code, 200)
         e.refresh_from_db()
         self.assertEqual(e.status, "waived")
+        self.assertEqual(e.waived_by, self.julio)
         self.assertEqual(e.waived_reason, "feriado")
         # mesmo endpoint reverte
         self.client.post(url, SERVER_NAME="localhost")

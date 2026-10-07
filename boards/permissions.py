@@ -41,32 +41,19 @@ def can_edit_board(user, board) -> bool:
     return bool(created_by_id and created_by_id == user.id)
 
 
-def can_admin_board(user, board) -> bool:
-    """Admin do quadro: ações privilegiadas (ex.: liberar/dispensar um mês do
-    relatório mensal). Mais restrito que `can_edit_board` — editor NÃO é admin.
+def can_waive_monthly(user) -> bool:
+    """Quem pode LIBERAR (dispensar) um mês do relatório mensal.
 
-    - superuser: True
-    - board com memberships: SOMENTE role 'owner'
-    - board legado (sem memberships): somente o criador
+    Regra de negócio (Cristiano, 06/10/2026): uma DUPLA FIXA de administradores
+    da rede, definida em settings.RELATORIO_MENSAL_LIBERADORES (por e-mail) —
+    NÃO o dono de cada quadro, senão o gestor do próprio posto se auto-perdoaria.
+    Independe do papel (owner/editor/viewer) e de ser superusuário.
     """
     if not user or not getattr(user, "is_authenticated", False):
         return False
-
-    if getattr(user, "is_superuser", False):
-        return True
-
-    memberships_qs = getattr(board, "memberships", None)
-    if memberships_qs is None:
+    from django.conf import settings
+    email = (getattr(user, "email", "") or "").strip().lower()
+    if not email:
         return False
-
-    if memberships_qs.exists():
-        role = (
-            memberships_qs
-            .filter(user=user)
-            .values_list("role", flat=True)
-            .first()
-        )
-        return (role or "").strip().lower() == "owner"
-
-    created_by_id = getattr(board, "created_by_id", None)
-    return bool(created_by_id and created_by_id == user.id)
+    allowed = {e.strip().lower() for e in getattr(settings, "RELATORIO_MENSAL_LIBERADORES", [])}
+    return email in allowed

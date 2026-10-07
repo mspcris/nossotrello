@@ -594,7 +594,7 @@ html.dark #cm-root .cm-act-attach-x{
           {% if monthly %}
           <!-- Aba: Mensal (automação de entrega mensal de relatório) -->
           <section class="cm-panel" data-cm-panel="monthly" role="tabpanel">
-            {% include "boards/partials/monthly_report_panel.html" with monthly=monthly viewer_can_edit=viewer_can_edit %}
+            {% include "boards/partials/monthly_report_panel.html" with monthly=monthly viewer_can_edit=viewer_can_edit viewer_can_admin=viewer_can_admin %}
           </section>
           {% endif %}
 

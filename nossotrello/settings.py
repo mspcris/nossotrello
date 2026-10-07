@@ -136,6 +136,22 @@ if "default" in DATABASES and DATABASES["default"]["ENGINE"].endswith("postgresq
 
 DATABASE_ROUTERS = ["nossotrello.db_routers.ReadOnlyHeskRouter"]
 
+# ------------------------------------------------------------
+# Relatório mensal — quem pode LIBERAR (dispensar) um mês da cobrança.
+# Decisão de negócio (Cristiano, 06/10/2026): é uma DUPLA FIXA de
+# administradores da rede, NÃO o dono de cada quadro — senão o gestor do
+# próprio posto se auto-perdoaria. Editar aqui (ou via env, separada por
+# vírgula) quando mudar quem libera.
+# ------------------------------------------------------------
+RELATORIO_MENSAL_LIBERADORES = [
+    e.strip().lower()
+    for e in os.getenv(
+        "RELATORIO_MENSAL_LIBERADORES",
+        "leonardo@camim.com.br,cristiano@camim.com.br",
+    ).split(",")
+    if e.strip()
+]
+
 
 # ============================================================
 # APLICAÇÕES

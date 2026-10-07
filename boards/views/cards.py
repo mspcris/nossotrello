@@ -1445,11 +1445,13 @@ def _render_card_modal(request, card, context=None):
     try:
         from boards.services.monthly_report import panel_context
         ctx["monthly"] = panel_context(card)
-        from ..permissions import can_edit_board as _can_edit_board
+        from ..permissions import can_edit_board as _can_edit_board, can_waive_monthly as _can_waive_monthly
         ctx["viewer_can_edit"] = _can_edit_board(request.user, card.column.board)
+        ctx["viewer_can_admin"] = _can_waive_monthly(request.user)
     except Exception:
         ctx["monthly"] = {}
         ctx["viewer_can_edit"] = False
+        ctx["viewer_can_admin"] = False
 
     # hardening: chaves usadas nos templates
     ctx.setdefault("card", card)

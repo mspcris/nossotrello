@@ -13,7 +13,7 @@ from django.template.loader import render_to_string
 from django.views.decorators.http import require_http_methods, require_POST
 
 from ..models import Card, CardAttachment, ColumnAutomation, MonthlyReportEntry
-from ..permissions import can_admin_board, can_edit_board
+from ..permissions import can_edit_board, can_waive_monthly
 from ..services import monthly_report as mr
 from .attachments import _attached_label, _can_view_card
 from .helpers import _actor_label, _log_card, sanitize_quill_html
@@ -25,7 +25,7 @@ def _render_panel(request, card):
         "card": card,
         "monthly": mr.panel_context(card),
         "viewer_can_edit": can_edit_board(request.user, board),
-        "viewer_can_admin": can_admin_board(request.user, board),
+        "viewer_can_admin": can_waive_monthly(request.user),
     })
 
 
@@ -105,7 +105,7 @@ def monthly_upload(request, card_id, entry_id):
                 "card": card,
                 "monthly": mr.panel_context(card),
                 "viewer_can_edit": True,
-                "viewer_can_admin": can_admin_board(request.user, board),
+                "viewer_can_admin": can_waive_monthly(request.user),
             },
             request=request,
         ),
@@ -134,8 +134,8 @@ def monthly_waive(request, card_id, entry_id):
     chega pelo cabeçalho HX-Prompt (hx-prompt no botão). Mês liberado sai da
     cobrança e a API passa a reportá-lo como 'waived' para o administrativo."""
     card = get_object_or_404(Card.objects.select_related("column__board"), id=card_id, is_deleted=False)
-    if not can_admin_board(request.user, card.column.board):
-        return HttpResponse("Apenas administradores do quadro podem liberar um mês.", status=403)
+    if not can_waive_monthly(request.user):
+        return HttpResponse("Apenas os administradores autorizados podem liberar um mês.", status=403)
     entry = get_object_or_404(MonthlyReportEntry, id=entry_id, card=card)
     if entry.status == "waived":
         mr.unwaive(entry, request.user)
