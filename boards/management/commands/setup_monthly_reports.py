@@ -14,6 +14,8 @@ card, gestores do Hesk + cópia ao destinatário).
 
 Idempotente: rodar de novo não duplica regra nem entradas.
 """
+import re
+
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
@@ -30,15 +32,19 @@ class Command(BaseCommand):
         parser.add_argument("--column", default="", help="nome exato da coluna (opcional)")
         parser.add_argument("--day", type=int, default=15)
         parser.add_argument("--no-ai", action="store_true")
+        parser.add_argument("--ai-instructions", default=None,
+                            help="o que o arquivo precisa conter (orienta a IA); omitido = não mexe")
+        parser.add_argument("--start-month", default="",
+                            help="YYYY-MM: cobra deste mês em diante (sem ele, desde o 1º anexo achado)")
         parser.add_argument("--remind-now", action="store_true", help="cobra os meses vencidos já")
         parser.add_argument("--dry-run", action="store_true")
 
     def _find_column(self, board, name):
         qs = Column.objects.filter(board=board, is_deleted=False)
         if name:
-            col = qs.filter(name__iexact=name).first()
-            if col:
-                return col
+            # nome explícito: SÓ a coluna exata — nunca cair na heurística e mexer
+            # na regra de outra coluna (ex.: "Relatórios Empresariais")
+            return qs.filter(name__iexact=name).first()
         for c in qs:
             n = (c.name or "").lower()
             # aceita a grafia errada "Reloatórios" que existe em produção
@@ -51,6 +57,9 @@ class Command(BaseCommand):
         if not ids:
             raise CommandError("--boards vazio")
         dry = opts["dry_run"]
+        start = (opts["start_month"] or "").strip()
+        if start and not re.fullmatch(r"20\d{2}-(0[1-9]|1[0-2])", start):
+            raise CommandError("--start-month precisa ser YYYY-MM")
 
         for bid in ids:
             board = Board.all_objects.filter(id=bid).first()
@@ -73,23 +82,25 @@ class Command(BaseCommand):
                 params = {
                     "day": opts["day"],
                     "recipient_email": opts["recipient"].strip().lower(),
-                    "extra_user_ids": [],
                     "ai_validate": not opts["no_ai"],
-                    "ai_instructions": "",
-                    "posto_nome": "",
                 }
+                if opts["ai_instructions"] is not None:
+                    params["ai_instructions"] = opts["ai_instructions"].strip()
+                if start:
+                    params["start_month"] = start
                 if rule is None:
                     self.stdout.write(f"board {bid} {board.name}: criando regra na coluna {col.id}")
                     if dry:
                         continue
                     rule = ColumnAutomation.objects.create(
-                        column=col, trigger="attach", action="monthly_report", params=params,
+                        column=col, trigger="attach", action="monthly_report",
+                        params={"extra_user_ids": [], "ai_instructions": "", "posto_nome": "", **params},
                     )
                 else:
                     self.stdout.write(f"board {bid} {board.name}: regra {rule.id} já existe (atualizando)")
                     if not dry:
                         merged = dict(rule.params or {})
-                        merged.update({k: v for k, v in params.items() if k != "extra_user_ids"})
+                        merged.update(params)
                         rule.params = merged
                         rule.trigger = "attach"
                         rule.is_active = True
@@ -109,7 +120,7 @@ class Command(BaseCommand):
                     first = rule.monthly_entries.filter(card=card).order_by("month").values_list("month", flat=True).first()
                     if first and (earliest is None or first < earliest):
                         earliest = first
-                if earliest:
+                if earliest and not start:
                     p = dict(rule.params or {})
                     p["start_month"] = earliest.strftime("%Y-%m")
                     rule.params = p

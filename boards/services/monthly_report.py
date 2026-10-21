@@ -13,8 +13,10 @@ Regra de negócio (docs/relatorio-mensal-automacao.md):
   "Aceitar mesmo assim"); qualquer outro veredito entrega: card fica
   NÃO entregue com data de entrega = dia 15 do próximo ciclo pendente.
 * Mês vencido (dia 15 passou) sem anexo -> e-mail DIÁRIO aos gestores do posto
-  (cadastro do Hesk + extras da regra) com cópia ao destinatário (Leonardo),
-  a partir das REMINDER_HOUR, até o anexo entrar. Um e-mail por card por dia,
+  (cadastro do Hesk + extras da regra), sem cópia ao destinatário do resumo,
+  a partir das REMINDER_HOUR, até o anexo entrar.
+* O nome do arquivo manda no mês creditado — até o mês SEGUINTE ao corrente
+  (relatório prospectivo, ex.: escala de novembro anexada em outubro). Um e-mail por card por dia,
   listando todos os meses em atraso.
 * Nada é apagado: anexo removido devolve o ciclo para pendente.
 
@@ -127,9 +129,15 @@ def month_from_filename(name: str, today: date = None):
             year = 2000 + int(t)
             break
     if year is None:
-        year = today.year
-        if date(year, month, 1) > month_first(today):
-            year -= 1
+        # sem ano: a ocorrência mais recente, tolerando o MÊS SEGUINTE (relatório
+        # prospectivo, ex.: escala de novembro anexada em outubro)
+        nxt = add_months(month_first(today), 1)
+        if month == nxt.month:
+            year = nxt.year
+        else:
+            year = today.year
+            if date(year, month, 1) > month_first(today):
+                year -= 1
     try:
         return date(year, month, 1)
     except Exception:
@@ -276,6 +284,24 @@ def _card_link(card) -> str:
         return site
 
 
+def _recipient_label(p: dict) -> str:
+    """Nome de quem recebe o resumo de cada anexo (ou o e-mail, se não for usuário)."""
+    em = (p.get("recipient_email") or "").strip()
+    if not em:
+        return ""
+    try:
+        from django.contrib.auth import get_user_model
+        u = get_user_model().objects.filter(email__iexact=em).select_related("profile").first()
+        if u is not None:
+            prof = getattr(u, "profile", None)
+            nome = (getattr(prof, "display_name", "") or "").strip() or u.get_full_name().strip()
+            if nome:
+                return nome
+    except Exception:
+        pass
+    return em
+
+
 def _who(user) -> str:
     if not user:
         return "alguém"
@@ -340,7 +366,14 @@ def on_attachment_added(card, attachment, actor=None, sync: bool = False):
     ensure_current(rule, card, today)
 
     hint = month_from_filename(_display_name(attachment), today)
-    candidates = list(open_entries(card, cur))
+    if hint == add_months(cur, 1):
+        # nome cita o mês SEGUINTE (relatório prospectivo, ex.: escala de novembro
+        # anexada em outubro): entra nele; o que estiver pendente continua
+        # pendente (e cobrado).
+        nxt = ensure_entry(rule, card, hint)
+        candidates = [nxt] if nxt.status in ("pending", "rejected") else []
+    else:
+        candidates = list(open_entries(card, cur))
     entry = next((e for e in candidates if hint and e.month == hint), None) or (candidates[0] if candidates else None)
     if entry is None:
         # nada pendente: arquivo adicional do mês citado no nome (ou do corrente)
@@ -1001,6 +1034,7 @@ def _send_reminder(rule, card, entries: list):
     posto todo dia. Repete todo dia até o anexo entrar."""
     posto = posto_nome(rule)
     resp = responsaveis(rule)
+    dest = _recipient_label(rule_params(rule))
     to = [r["email"] for r in resp if r.get("email")]
     nomes = [r["nome"] for r in resp if r.get("nome")]
     if not to:
@@ -1040,9 +1074,9 @@ def _send_reminder(rule, card, entries: list):
     linhas += [
         "",
         "Anexe cada arquivo na aba Anexos do card. Se o nome do arquivo trouxer o mês "
-        "(ex.: \"Relatório CEDAE - Junho de 2026.pdf\") ele é creditado àquele mês; "
-        "senão entra no mês pendente mais antigo. A cada anexo o Leonardo Pereira recebe "
-        "o aviso com o resumo.",
+        f"(ex.: \"{card.title} - Junho de 2026.pdf\") ele é creditado àquele mês; "
+        "senão entra no mês pendente mais antigo."
+        + (f" A cada anexo {dest} recebe o aviso com o resumo." if dest else ""),
         "",
         "Este lembrete se repete todos os dias enquanto houver mês sem relatório.",
         "",

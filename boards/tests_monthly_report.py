@@ -344,7 +344,10 @@ class MonthlyFlowTests(TestCase):
         from django.core.management import call_command
         self.rule.delete()
         _att(self.card, "Relatório_CEDAE_-_Julho_de_2026.pdf", self.julio, _dt(2026, 7, 10))
-        call_command("setup_monthly_reports", boards=str(self.board.id), remind_now=True, verbosity=0)
+        # --remind-now usa o relógio real: fixa o "agora" no dia patchado, senão o
+        # mês corrente de verdade entra no livro-razão e o teste vence com o calendário
+        with patch("django.utils.timezone.now", return_value=_dt(2026, 9, 9)):
+            call_command("setup_monthly_reports", boards=str(self.board.id), remind_now=True, verbosity=0)
         self.col.refresh_from_db()
         self.assertEqual(self.col.name, "Relatórios Empresariais")
         rule = ColumnAutomation.objects.get(column=self.col, action="monthly_report")
@@ -559,3 +562,128 @@ class MonthlyTemplatesTests(TestCase):
         html = r.content.decode()
         self.assertIn(f"/card/{self.card.id}/monthly/{alvo.id}/upload/", html)
         self.assertIn("Anexar relatório de Ago/2026", html)
+
+
+class MesSeguinteTests(TestCase):
+    """Relatório prospectivo (ex.: escala de médicos, prazo dia 1): o arquivo do
+    mês SEGUINTE costuma ser anexado ainda no mês corrente e tem que cair nele."""
+
+    @classmethod
+    def setUpTestData(cls):
+        User = get_user_model()
+        cls.owner = User.objects.create_user(username="paulo2", email="paulo2@camim.com.br", password="x")
+        cls.julio = User.objects.create_user(username="julio2", email="julio2@camim.com.br", password="x")
+        cls.board = Board.objects.create(name="ANCHIETA", created_by=cls.owner)
+        BoardMembership.objects.create(board=cls.board, user=cls.owner, role="owner")
+        BoardMembership.objects.create(board=cls.board, user=cls.julio, role="editor")
+        cls.col = Column.objects.create(board=cls.board, name="DIRETORIA CLÍNICA", position=0)
+        cls.card = Card.objects.create(column=cls.col, title="ESCALA MÉDICOS DIRETORES CLÍNICOS",
+                                       created_by=cls.owner)
+        cls.rule = ColumnAutomation.objects.create(
+            column=cls.col, trigger="attach", action="monthly_report",
+            params={"day": 15, "recipient_email": "leonardo@camim.com.br", "ai_validate": False,
+                    "start_month": "2026-06"},
+        )
+
+    def setUp(self):
+        mr.invalidate_cache()
+        p = patch("boards.services.hesk_gestores.gestores_do_posto", return_value=list(GESTORES))
+        p.start(); self.addCleanup(p.stop)
+        t = patch("boards.services.monthly_report.today_local", return_value=date(2026, 9, 9))
+        t.start(); self.addCleanup(t.stop)
+
+    def test_nome_sem_ano_tolera_o_mes_seguinte(self):
+        today = date(2026, 10, 21)
+        f = mr.month_from_filename
+        self.assertEqual(f("Escala_Novembro.pdf", today), date(2026, 11, 1))   # mês seguinte: este ano
+        self.assertEqual(f("Escala_Outubro.pdf", today), date(2026, 10, 1))
+        self.assertEqual(f("Escala Dezembro.pdf", today), date(2025, 12, 1))   # 2 meses à frente: ano anterior
+        self.assertEqual(f("Escala_Janeiro.pdf", date(2026, 12, 10)), date(2027, 1, 1))  # virada de ano
+
+    def test_anexo_citando_mes_seguinte_vai_para_ele_quando_corrente_entregue(self):
+        mr.ensure_entry(self.rule, self.card, date(2026, 9, 1))
+        mr.on_attachment_added(self.card, _att(self.card, "set.pdf", self.julio), actor=self.julio, sync=True)
+        self.assertTrue(MonthlyReportEntry.objects.filter(card=self.card, month=date(2026, 10, 1), status="pending").exists())
+        e = mr.on_attachment_added(self.card, _att(self.card, "escala outubro.pdf", self.julio), actor=self.julio, sync=True)
+        self.assertEqual(e.month, date(2026, 10, 1))
+        self.assertEqual(e.status, "delivered")
+        self.assertEqual(e.extra_attachment_ids, [])
+        self.card.refresh_from_db()
+        self.assertEqual(self.card.due_date, date(2026, 11, 15))
+
+    def test_anexo_citando_mes_seguinte_cria_o_mes_e_mantem_corrente_pendente(self):
+        mr.ensure_entry(self.rule, self.card, date(2026, 9, 1))
+        e = mr.on_attachment_added(self.card, _att(self.card, "Escala Outubro de 2026.pdf", self.julio), actor=self.julio, sync=True)
+        self.assertEqual(e.month, date(2026, 10, 1))
+        self.assertEqual(e.status, "delivered")
+        setembro = MonthlyReportEntry.objects.get(card=self.card, month=date(2026, 9, 1))
+        self.assertEqual(setembro.status, "pending")
+        self.assertIsNone(setembro.attachment_id)
+        self.card.refresh_from_db()
+        self.assertEqual(self.card.due_date, date(2026, 9, 15))
+
+    def test_anexo_sem_mes_no_nome_nao_vai_para_o_mes_seguinte(self):
+        mr.ensure_entry(self.rule, self.card, date(2026, 9, 1))
+        mr.on_attachment_added(self.card, _att(self.card, "escala.pdf", self.julio), actor=self.julio, sync=True)
+        a2 = _att(self.card, "v2.pdf", self.julio)
+        e = mr.on_attachment_added(self.card, a2, actor=self.julio, sync=True)
+        self.assertEqual(e.month, date(2026, 9, 1))
+        self.assertEqual(e.extra_attachment_ids, [a2.id])
+        outubro = MonthlyReportEntry.objects.get(card=self.card, month=date(2026, 10, 1))
+        self.assertEqual(outubro.status, "pending")
+        self.assertIsNone(outubro.attachment_id)
+
+    def test_cobranca_cita_o_destinatario_da_regra(self):
+        from boards.models import UserProfile
+        User = get_user_model()
+        cris = User.objects.create_user(username="cris", email="cristiano@camim.com.br", password="x")
+        prof, _ = UserProfile.objects.get_or_create(user=cris)
+        prof.display_name = "Cristiano Souza"
+        prof.save()
+        self.rule.params = {**self.rule.params, "recipient_email": "cristiano@camim.com.br"}
+        self.rule.save()
+        mr.invalidate_cache()
+        mr.ensure_entry(self.rule, self.card, date(2026, 8, 1))
+        mr.run_scheduler(now=timezone.make_aware(datetime(2026, 9, 9, 10, 0)))
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("Cristiano Souza recebe o aviso", mail.outbox[0].body)
+        self.assertNotIn("Leonardo", mail.outbox[0].body)
+
+    # --- comando de rollout: coluna exata, dia 1, mês inicial e instruções da IA ---
+    def test_setup_command_respeita_start_month_dia_e_instrucoes(self):
+        from django.core.management import call_command
+        self.rule.delete()
+        _att(self.card, "Escala_médicos_Diretores_Clínicos_Janeiro.pdf", self.julio, _dt(2026, 1, 7))
+        with patch("boards.services.monthly_report.today_local", return_value=date(2026, 10, 21)):
+            call_command(
+                "setup_monthly_reports", boards=str(self.board.id), column="DIRETORIA CLÍNICA",
+                day=1, start_month="2026-10", ai_instructions="escala do mês com CRM",
+                recipient="cristiano@camim.com.br", verbosity=0,
+            )
+        rule = ColumnAutomation.objects.get(column=self.col, action="monthly_report")
+        self.assertEqual(rule.params["day"], 1)
+        self.assertEqual(rule.params["start_month"], "2026-10")
+        self.assertEqual(rule.params["ai_instructions"], "escala do mês com CRM")
+        self.assertEqual(rule.params["recipient_email"], "cristiano@camim.com.br")
+        entries = {e.month: (e.status, e.due_on) for e in MonthlyReportEntry.objects.filter(card=self.card)}
+        self.assertEqual(entries, {date(2026, 10, 1): ("pending", date(2026, 10, 1))})
+        self.card.refresh_from_db()
+        self.assertEqual(self.card.due_date, date(2026, 10, 1))
+
+    def test_setup_command_coluna_inexistente_nao_mexe_em_outra_coluna(self):
+        from django.core.management import call_command
+        self.rule.delete()
+        outra = Column.objects.create(board=self.board, name="Relatórios Empresariais", position=1)
+        cedae = ColumnAutomation.objects.create(
+            column=outra, trigger="attach", action="monthly_report",
+            params={"day": 15, "recipient_email": "leonardo@camim.com.br", "ai_validate": True},
+        )
+        Column.objects.filter(id=self.col.id).update(name="OUTRA COISA")
+        call_command(
+            "setup_monthly_reports", boards=str(self.board.id), column="DIRETORIA CLÍNICA",
+            day=1, recipient="cristiano@camim.com.br", verbosity=0,
+        )
+        cedae.refresh_from_db()
+        self.assertEqual(cedae.params["day"], 15)
+        self.assertEqual(cedae.params["recipient_email"], "leonardo@camim.com.br")
+        self.assertEqual(ColumnAutomation.objects.filter(action="monthly_report").count(), 1)
