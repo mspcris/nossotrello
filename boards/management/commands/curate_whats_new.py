@@ -39,6 +39,15 @@ def _commit_datetime(commit_hash: str):
 # Textos pensados no USUÁRIO: o que ele ganha, não o que foi feito.
 # -------------------------------------------------------------
 CURATED = {
+    "c85e0b2": (
+        "🩺",
+        "Escala dos médicos diretores clínicos com cobrança mensal",
+        "Os postos com posto de coleta (Anchieta, Bangu, Campo Grande, Nova Iguaçu e Realengo) "
+        "ganharam a coluna DIRETORIA CLÍNICA com o card da escala, cobrado todo mês: a escala "
+        "tem que estar anexada até o dia 1. Se o nome do arquivo trouxer o mês, ele é creditado "
+        "àquele mês, inclusive o mês seguinte, para anexar a escala de novembro ainda em outubro. "
+        "O e-mail de cobrança passa a citar quem de fato recebe o resumo de cada anexo.",
+    ),
     # --- 2026-09 ---
     "8432e61": (
         "💬",
