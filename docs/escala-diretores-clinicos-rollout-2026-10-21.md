@@ -81,6 +81,24 @@ continuam com dia 15, Leonardo e `start 2026-09`.
   aba Anexos com o mês no nome do arquivo.
 - Admin do quadro pode "Liberar" um mês (dispensa, `b929dcc`).
 
+## Complemento 26/10/2026 — Nilópolis, Campo Grande X e Y
+
+Cristiano revisou os quadros e mandou incluir **todos os postos, exceto Anchieta
+(que já tinha)** — cai a exclusão de X/Y e Nilópolis entra. Mesmo script e mesmo
+comando (`--boards 39,38,37`, dia 1, `start 2026-10`, destinatário e instruções
+da IA idênticos), cobrança enviada na hora aos gestores do Hesk:
+
+| Board | Posto           | Coluna | Card  | Regra | Gestor cobrado        |
+|------:|-----------------|-------:|------:|------:|-----------------------|
+| 39    | NILÓPOLIS       | 1285   | 22160 | 45    | Thais Lima            |
+| 38    | CAMPO GRANDE Y  | 1286   | 22161 | 46    | Mariana Mello         |
+| 37    | CAMPO GRANDE X  | 1287   | 22162 | 47    | Alessandra Lourenço   |
+
+Conferência dos 8 quadros (34–41) depois do rollout: 1 coluna "DIRETORIA
+CLÍNICA" roxa no fim de cada quadro, 1 regra ativa com parâmetros iguais aos da
+regra 40, 1 card na posição 0; Out/2026 pendente (prazo 01/10) nos novos,
+Anchieta com Nov pendente e Nova Iguaçu com Dez pendente (ele já anexou Out/Nov).
+
 ## Para incluir outro posto
 
 Criar a coluna "DIRETORIA CLÍNICA" com o card e rodar o mesmo comando com o id
