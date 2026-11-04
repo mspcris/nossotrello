@@ -1,5 +1,5 @@
-"""Ações rápidas por coluna (PT2-T4U-ALPP): configurar no menu da coluna e
-mover o card pelo botão na face do quadro, sem abri-lo."""
+"""Ações rápidas por coluna (PT2-T4U-ALPP): configurar no menu da coluna; o
+"Mover rápido" do card (menu ⋮) passa a mostrar as ações configuradas."""
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
@@ -53,20 +53,28 @@ class QuickActionsTests(TestCase):
         self.col.refresh_from_db()
         self.assertEqual(self.col.quick_actions[0]["label"], "DONE")
 
-    def test_botao_aparece_no_card_e_some_se_destino_apagado(self):
+    def test_mover_rapido_mostra_as_acoes_configuradas(self):
+        url = reverse("boards:card_move_suggestions", args=[self.card.id])
+        # Sem configuração: sugestões por frequência (vazias aqui) + atalho Gerenciar.
+        d = self.client.get(url).json()
+        self.assertFalse(d["configured"])
+        self.assertEqual(d["manage_url"], self.url)
+        # Configurada: o Mover rápido mostra a ação, com o texto escolhido.
         self.col.quick_actions = [{"to": self.done.id, "label": "Pronto"}]
         self.col.save(update_fields=["quick_actions"])
-        html = self.client.get(reverse("boards:board_detail", args=[self.board.id])).content.decode()
-        self.assertIn("card-qa-btn", html)
-        self.assertIn(f'data-qa-to="{self.done.id}"', html)
-        self.assertIn("⚡ Pronto", html)
-        # carregamento preguiçoso da coluna também traz o botão
-        more = self.client.get(reverse("boards:column_cards_more", args=[self.col.id]) + "?offset=0").content.decode()
-        self.assertIn("card-qa-btn", more)
-        # destino apagado: o botão some sozinho
+        d = self.client.get(url).json()
+        self.assertTrue(d["configured"])
+        self.assertEqual([(x["to_column_id"], x["to_column_name"]) for x in d["suggestions"]],
+                         [(self.done.id, "Pronto")])
+        # Destino apagado: some sozinho e volta ao modo frequência.
         self.done.is_deleted = True
         self.done.save(update_fields=["is_deleted"])
         self.assertEqual(self.col.quick_actions_vivas, [])
+        self.assertFalse(self.client.get(url).json()["configured"])
+
+    def test_face_do_card_nao_ganha_botao_extra(self):
+        self.col.quick_actions = [{"to": self.done.id, "label": "Pronto"}]
+        self.col.save(update_fields=["quick_actions"])
         html = self.client.get(reverse("boards:board_detail", args=[self.board.id])).content.decode()
         self.assertNotIn("card-qa-btn", html)
 

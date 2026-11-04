@@ -242,21 +242,6 @@
     <div class="tt-slot"></div>
   </div>
 
-  {# AÇÕES RÁPIDAS da coluna (PT2-T4U-ALPP): um toque move o card sem abri-lo. #}
-  {% if qa_col and not card.counter_mode %}
-    <div class="card-qa" aria-label="Ações rápidas">
-      {% for a in qa_col %}
-        <button type="button" class="card-qa-btn" data-qa-to="{{ a.to }}"
-                title="Mover para {{ a.label }}"
-                onpointerdown="event.stopPropagation();"
-                ontouchstart="event.stopPropagation();"
-                onclick="event.stopPropagation(); window.cardQuickMove && window.cardQuickMove({{ card.id }}, {{ a.to }}, this);">
-          ⚡ {{ a.label }}
-        </button>
-      {% endfor %}
-    </div>
-  {% endif %}
-
   <button type="button"
           class="card-like-btn"
           title="Curtir este card"

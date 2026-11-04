@@ -42,11 +42,11 @@ CURATED = {
     # --- 2026-11 ---
     "bc0c54d": (
         "⚡",
-        "Ações rápidas nos cards: mova sem abrir",
-        "No menu de cada lista (⋮ → ⚡ Ações rápidas) você escolhe para onde os cards "
-        "dela podem ir com um toque. Os botões aparecem em todos os cards da lista: "
-        "um clique move o card para a coluna escolhida, sem precisar abri-lo. "
-        "Até 6 ações por lista; o texto do botão é seu.",
+        "Mover rápido gerenciável por lista",
+        "No menu de cada lista (⋮ → ⚡ Ações rápidas) você define para onde os cards "
+        "dela podem ir com um toque. O Mover rápido do card (menu ⋮) passa a mostrar "
+        "essas ações, na ordem e com o texto que você escolher, com o atalho Gerenciar. "
+        "Sem configuração, continua sugerindo pelos seus movimentos mais frequentes.",
     ),
     "c85e0b2": (
         "🩺",

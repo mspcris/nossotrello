@@ -1304,6 +1304,26 @@ def card_move_suggestions(request, card_id):
     card = get_object_or_404(Card, id=card_id, is_deleted=False)
     current_column = card.column
 
+    # AÇÕES RÁPIDAS CONFIGURADAS na coluna (PT2-T4U-ALPP): quando a lista tem
+    # ações cadastradas (menu da coluna → ⚡ Ações rápidas), o "Mover rápido" do
+    # card mostra ELAS, na ordem e com o texto escolhidos — em vez das sugestões
+    # por frequência. Quem edita o quadro ganha o atalho "Gerenciar".
+    from django.urls import reverse as _reverse
+    manage_url = (_reverse("boards:column_quick_actions_config", args=[current_column.id])
+                  if _user_can_edit_board(request.user, current_column.board) else "")
+    configuradas = current_column.quick_actions_vivas
+    if configuradas:
+        return JsonResponse({
+            "configured": True,
+            "manage_url": manage_url,
+            "column_name": current_column.name,
+            "suggestions": [{
+                "to_column_id": a["to"], "to_column_name": a["label"],
+                "to_board_id": current_column.board_id, "to_board_name": "",
+                "count": 0, "is_global": False, "configured": True,
+            } for a in configuradas],
+        })
+
     top_moves = (
         CardMoveHistory.objects
         .filter(user=request.user, from_column=current_column)
@@ -1356,7 +1376,8 @@ def card_move_suggestions(request, card_id):
                 "is_global": True,
             })
 
-        return JsonResponse({"suggestions": suggestions})
+        return JsonResponse({"suggestions": suggestions, "manage_url": manage_url,
+                             "configured": False})
 
     # Buscar nomes das colunas/boards destino
     col_ids = {m["to_column_id"] for m in top_moves}
@@ -1386,7 +1407,8 @@ def card_move_suggestions(request, card_id):
             "is_global": False,
         })
 
-    return JsonResponse({"suggestions": suggestions})
+    return JsonResponse({"suggestions": suggestions, "manage_url": manage_url,
+                         "configured": False})
 
 
 

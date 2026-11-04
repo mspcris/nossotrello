@@ -1,4 +1,4 @@
-{% with qa_col=column.quick_actions_vivas %}{% for card in cards %}{% include "boards/partials/card_item.html" %}{% endfor %}{% endwith %}
+{% for card in cards %}{% include "boards/partials/card_item.html" %}{% endfor %}
 {% if has_more %}
   <li id="more-col-{{ column.id }}"
       class="cm-more-sentinel text-center text-xs text-white/50 py-2 select-none"

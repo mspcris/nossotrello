@@ -280,15 +280,25 @@
       });
       if (res.ok && currentCardId === cardId && !menu.hidden) {
         const data = await res.json();
-        injectSuggestions(sug, data.suggestions || []);
+        injectSuggestions(sug, data.suggestions || [], data);
         positionMenu(menu, anchorBtn); // altura mudou
       }
     } catch (_e) {}
   }
 
-  function injectSuggestions(container, suggestions) {
+  // Ações rápidas da coluna (PT2-T4U-ALPP): com ações CONFIGURADAS na lista, o
+  // "Mover rápido" mostra elas (ordem e texto do cadastro); sem configuração,
+  // as sugestões por frequência de sempre. Quem edita o quadro vê "Gerenciar".
+  function manageButton(meta) {
+    if (!meta || !meta.manage_url) return "";
+    return `<button type="button" class="bcm-action" data-bcm="qa-manage"
+              data-url="${escapeHtml(meta.manage_url)}" style="opacity:.85">
+              <span>⚙️</span><span style="font-weight:600;">Gerenciar ações rápidas desta lista</span>
+            </button>`;
+  }
+  function injectSuggestions(container, suggestions, meta) {
     if (!suggestions.length) {
-      container.innerHTML = `<div class="bcm-empty">Mova cards entre colunas para gerar atalhos aqui.</div>`;
+      container.innerHTML = `<div class="bcm-empty">Mova cards entre colunas para gerar atalhos aqui.</div>${manageButton(meta)}`;
       container.hidden = false;
       return;
     }
@@ -307,8 +317,26 @@
                 </span>${count}
               </button>`;
     }).join("");
-    container.innerHTML = `<div class="bcm-sug-title">Mover rápido</div>${items}`;
+    const titulo = (meta && meta.configured) ? "Mover rápido · ações da lista" : "Mover rápido";
+    container.innerHTML = `<div class="bcm-sug-title">${titulo}</div>${items}${manageButton(meta)}`;
     container.hidden = false;
+  }
+
+  // Abre o modal de Ações rápidas da coluna (o mesmo do menu da coluna) e deixa
+  // o htmx processar os formulários dele.
+  async function openQaManage(url) {
+    closeMenu();
+    if (!url) return;
+    busy(true, "Abrindo ações rápidas…");
+    try {
+      const res = await fetch(url, { credentials: "same-origin", headers: { "HX-Request": "true" } });
+      if (!res.ok) { window.ntJobToast?.("Não foi possível abrir as ações rápidas.", "error"); return; }
+      const html = await res.text();
+      document.body.insertAdjacentHTML("beforeend", html);
+      try { window.htmx && window.htmx.process(document.body.lastElementChild); } catch (_e) {}
+    } finally {
+      busy(false);
+    }
   }
 
   // ---------------------------------------------------------------- ações
@@ -333,15 +361,6 @@
       busy(false);
     }
   }
-
-  // Ações rápidas da coluna (PT2-T4U-ALPP): o botão no card usa o MESMO caminho
-  // do "Mover rápido" do menu — fila ordenada, DOM atualizado na hora.
-  window.cardQuickMove = function (cardId, toColId, btn) {
-    try { if (btn) btn.disabled = true; } catch (_e) {}
-    return doQuickMove(cardId, toColId, false).finally(function () {
-      try { if (btn) btn.disabled = false; } catch (_e) {}
-    });
-  };
 
   async function doDuplicate(cardId) {
     closeMenu();
@@ -577,6 +596,7 @@
 
       switch (kind) {
         case "quickmove": doQuickMove(cardId, action.getAttribute("data-to-col"), fromModal); break;
+        case "qa-manage": openQaManage(action.getAttribute("data-url")); break;
         case "duplicate": doDuplicate(cardId); break;
         case "copylink": doCopyLink(cardId); break;
         case "archive": doArchive(cardId, fromModal); break;

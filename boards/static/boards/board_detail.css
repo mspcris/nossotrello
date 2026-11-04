@@ -1884,16 +1884,3 @@ body.cards-dark #columns-wrapper .card-imp-name{ color: rgba(241,245,249,.92); }
    canto — esconde o kebab para não sobrepor o X/🗃️ */
 .card-item:has(.delete-card-btn:not(.hidden)) .card-kebab-btn,
 .card-item:has(.archive-card-btn:not(.hidden)) .card-kebab-btn{ display:none; }
-
-
-/* ---- Ações rápidas no card (PT2-T4U-ALPP) ---- */
-.card-item .card-qa{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; padding-right:64px; }
-.card-item .card-qa-btn{
-  font-size:11px; font-weight:700; line-height:1; padding:6px 9px; border-radius:999px;
-  border:1px solid rgba(15,23,42,.18); background:rgba(255,255,255,.85); color:#0f172a;
-  cursor:pointer; white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis;
-  transition:background .15s, transform .1s;
-}
-.card-item .card-qa-btn:hover{ background:#0052CC; color:#fff; border-color:#0052CC; }
-.card-item .card-qa-btn:active{ transform:scale(.97); }
-.card-item .card-qa-btn[disabled]{ opacity:.5; cursor:progress; }

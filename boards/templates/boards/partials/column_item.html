@@ -393,7 +393,7 @@
   <!-- ===================== LISTA DE CARDS (SCROLL AQUI) ===================== -->
   <ul id="cards-col-{{ column.id }}"
       class="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
-    {% with lazytotal=column.card_count|default:column.cards.count qa_col=column.quick_actions_vivas %}
+    {% with lazytotal=column.card_count|default:column.cards.count %}
       {% for card in column.cards.all|slice:":20" %}
         {% include "boards/partials/card_item.html" %}
       {% endfor %}
