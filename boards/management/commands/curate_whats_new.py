@@ -39,6 +39,15 @@ def _commit_datetime(commit_hash: str):
 # Textos pensados no USUÁRIO: o que ele ganha, não o que foi feito.
 # -------------------------------------------------------------
 CURATED = {
+    # --- 2026-11 ---
+    "bc0c54d": (
+        "⚡",
+        "Ações rápidas nos cards: mova sem abrir",
+        "No menu de cada lista (⋮ → ⚡ Ações rápidas) você escolhe para onde os cards "
+        "dela podem ir com um toque. Os botões aparecem em todos os cards da lista: "
+        "um clique move o card para a coluna escolhida, sem precisar abri-lo. "
+        "Até 6 ações por lista; o texto do botão é seu.",
+    ),
     "c85e0b2": (
         "🩺",
         "Escala dos médicos diretores clínicos com cobrança mensal",
