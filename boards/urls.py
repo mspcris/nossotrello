@@ -117,6 +117,7 @@ from .views.email_ingest import email_ingest_config, email_ingest_sync_now, emai
 from .views.column_automation import column_automation_modal, column_automation_delete
 from .views import monthly_report as monthly_views
 from .views.column_autosort import column_autosort_config, column_autosort_now
+from .views.column_quick_actions import column_quick_actions_config
 from .views.card_counter import card_counter_modal
 
 # Attachments / Quill (assumindo boards/views/attachments.py e boards/views/activity.py ou afins)
@@ -630,6 +631,7 @@ urlpatterns = [
     # Auto-ordenação agendada da coluna
     path("column/<int:column_id>/autosort/", column_autosort_config, name="column_autosort_config"),
     path("column/<int:column_id>/autosort/now/", column_autosort_now, name="column_autosort_now"),
+    path("column/<int:column_id>/quick-actions/", column_quick_actions_config, name="column_quick_actions_config"),
 
     # Card contador (número grande que se atualiza sozinho)
     path("column/<int:column_id>/counter/", card_counter_modal, name="card_counter_modal"),

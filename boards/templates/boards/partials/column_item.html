@@ -270,6 +270,18 @@
                            hover:bg-white/10 transition-colors rounded-lg"
                     onpointerdown="event.stopPropagation();"
                     ontouchstart="event.stopPropagation();"
+                    hx-get="{% url 'boards:column_quick_actions_config' column.id %}"
+                    hx-target="body"
+                    hx-swap="beforeend"
+                    onclick="event.stopPropagation(); window.__cmHideAllColMenus();">
+              <span>⚡</span><span>Ações rápidas</span>
+            </button>
+
+            <button type="button"
+                    class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left
+                           hover:bg-white/10 transition-colors rounded-lg"
+                    onpointerdown="event.stopPropagation();"
+                    ontouchstart="event.stopPropagation();"
                     hx-get="{% url 'boards:card_counter_modal' column.id %}"
                     hx-target="body"
                     hx-swap="beforeend"
@@ -381,7 +393,7 @@
   <!-- ===================== LISTA DE CARDS (SCROLL AQUI) ===================== -->
   <ul id="cards-col-{{ column.id }}"
       class="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
-    {% with lazytotal=column.card_count|default:column.cards.count %}
+    {% with lazytotal=column.card_count|default:column.cards.count qa_col=column.quick_actions_vivas %}
       {% for card in column.cards.all|slice:":20" %}
         {% include "boards/partials/card_item.html" %}
       {% endfor %}

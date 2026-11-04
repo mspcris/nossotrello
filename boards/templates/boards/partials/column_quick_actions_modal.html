@@ -1,0 +1,62 @@
+{# Ações rápidas da coluna (PT2-T4U-ALPP): botões no card que o movem sem abrir. #}
+<style>
+  #col-qa-modal select, #col-qa-modal option { background:#1a2035; color:#fff; }
+</style>
+<div id="col-qa-modal"
+     class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+     onclick="if(event.target===this)this.remove()">
+  <div class="bg-[#1a2035] text-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6 relative" onclick="event.stopPropagation()">
+
+    <button class="absolute top-4 right-4 text-white/50 hover:text-white text-xl leading-none"
+            onclick="document.getElementById('col-qa-modal').remove()">✕</button>
+
+    <div class="flex items-center gap-2 mb-1">
+      <span class="text-2xl">⚡</span>
+      <h2 class="text-lg font-bold">Ações rápidas — {{ column.name }}</h2>
+    </div>
+    <p class="text-sm text-white/60 mb-4">
+      Cada ação vira um botão em TODOS os cards desta lista: um toque move o card para a coluna
+      escolhida, sem precisar abri-lo. Até 6 por lista.
+    </p>
+
+    {% if msg %}<div class="ei-result ei-result--ok mb-3">{{ msg }}</div>{% endif %}
+
+    <div class="space-y-2 mb-4" id="col-qa-lista">
+      {% for a in acoes %}
+        <div class="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2 text-sm">
+          <span class="font-semibold">⚡ {{ a.label }}</span>
+          <span class="text-white/50">→ {% if a.viva %}{{ a.destino }}{% else %}<span class="text-amber-300">coluna apagada (não aparece no card)</span>{% endif %}</span>
+          <form hx-post="{% url 'boards:column_quick_actions_config' column.id %}"
+                hx-target="#col-qa-modal" hx-swap="outerHTML" class="ml-auto">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="remove"><input type="hidden" name="to" value="{{ a.to }}">
+            <button type="submit" class="text-white/50 hover:text-red-300" title="Remover">✕</button>
+          </form>
+        </div>
+      {% empty %}
+        <div class="text-sm text-white/40">Nenhuma ação rápida ainda.</div>
+      {% endfor %}
+    </div>
+
+    <form hx-post="{% url 'boards:column_quick_actions_config' column.id %}"
+          hx-target="#col-qa-modal" hx-swap="outerHTML" class="space-y-3">
+      {% csrf_token %}
+      <input type="hidden" name="acao" value="add">
+      <label class="block text-sm">Mover para
+        <select name="to" required class="mt-1 w-full bg-white/10 border border-white/20 rounded-lg px-2 py-2 text-sm">
+          <option value="">Escolha a coluna…</option>
+          {% for c in destinos %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+        </select>
+      </label>
+      <label class="block text-sm">Texto do botão <span class="text-white/40">(opcional — padrão: nome da coluna)</span>
+        <input type="text" name="label" maxlength="40" placeholder="Ex.: Testado ✅"
+               class="mt-1 w-full bg-white/10 border border-white/20 rounded-lg px-2 py-2 text-sm">
+      </label>
+      <div class="flex flex-wrap gap-2 pt-1">
+        <button type="submit" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-sm font-semibold">Adicionar</button>
+        <button type="button" class="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-sm ml-auto"
+                onclick="document.getElementById('col-qa-modal').remove(); window.location.reload();">Fechar</button>
+      </div>
+    </form>
+  </div>
+</div>

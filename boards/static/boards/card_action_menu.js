@@ -334,6 +334,15 @@
     }
   }
 
+  // Ações rápidas da coluna (PT2-T4U-ALPP): o botão no card usa o MESMO caminho
+  // do "Mover rápido" do menu — fila ordenada, DOM atualizado na hora.
+  window.cardQuickMove = function (cardId, toColId, btn) {
+    try { if (btn) btn.disabled = true; } catch (_e) {}
+    return doQuickMove(cardId, toColId, false).finally(function () {
+      try { if (btn) btn.disabled = false; } catch (_e) {}
+    });
+  };
+
   async function doDuplicate(cardId) {
     closeMenu();
     busy(true, "Duplicando o card…");

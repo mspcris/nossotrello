@@ -269,6 +269,12 @@ class Column(models.Model):
     autosort_minute = models.PositiveSmallIntegerField(default=0)
     autosort_last_run = models.DateField(null=True, blank=True)
 
+    # ---- Ações rápidas da coluna (PT2-T4U-ALPP) ----
+    # Botões que aparecem NO CARD, na face do quadro, para movê-lo a outra coluna
+    # sem abri-lo (como no Trello). Cada item: {"to": <column_id>, "label": "…"}.
+    # Configurado no menu da coluna (⚡ Ações rápidas). Vazio = nenhum botão.
+    quick_actions = models.JSONField(default=list, blank=True)
+
     class Meta:
         ordering = ["position"]
         indexes = [
@@ -278,6 +284,18 @@ class Column(models.Model):
 
     def __str__(self):
         return f"{self.board.name} - {self.name}"
+
+    @property
+    def quick_actions_vivas(self):
+        """Ações rápidas cujo destino ainda existe (coluna viva do mesmo quadro).
+        Destino apagado some do card sozinho; o cadastro mostra o aviso."""
+        acoes = [a for a in (self.quick_actions or []) if isinstance(a, dict) and a.get("to")]
+        if not acoes:
+            return []
+        vivas = {c.id: c.name for c in Column.objects.filter(
+            board_id=self.board_id, is_deleted=False, id__in=[int(a["to"]) for a in acoes])}
+        return [{"to": int(a["to"]), "label": (a.get("label") or vivas[int(a["to"])])[:40]}
+                for a in acoes if int(a["to"]) in vivas]
 
     @property
     def visible_cards_count(self):
