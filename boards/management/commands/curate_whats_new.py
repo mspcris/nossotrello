@@ -40,6 +40,14 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-11 ---
+    "5eff84b": (
+        "⏱️",
+        "Track-time Ao vivo com contagem regressiva",
+        "A tela Ao vivo agora mostra quantos segundos faltam para a próxima atualização: "
+        "conta de 300 até zero e se atualiza sozinha. Se o servidor estiver fora na hora, "
+        "ela avisa e tenta de novo em 30 segundos, sem perder a tela. O botão Atualizar "
+        "recomeça a contagem.",
+    ),
     "ca36e05": (
         "🔎",
         "Marcar com @ agora acha pelo nome",
