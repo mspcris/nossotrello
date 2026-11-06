@@ -40,6 +40,13 @@ def _commit_datetime(commit_hash: str):
 # -------------------------------------------------------------
 CURATED = {
     # --- 2026-11 ---
+    "ca36e05": (
+        "🔎",
+        "Marcar com @ agora acha pelo nome",
+        "Ao digitar @ no card aparecem as pessoas do quadro, e a busca vale pelo nome "
+        "e pelo @. Não precisa mais saber o @ de ninguém: @isab acha a Isabelle mesmo "
+        "que o @ dela seja outro. Acento e maiúscula não atrapalham.",
+    ),
     "bc0c54d": (
         "⚡",
         "Mover rápido gerenciável por lista",
