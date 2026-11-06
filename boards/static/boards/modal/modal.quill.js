@@ -467,7 +467,7 @@
 
   function makeMentionConfig(boardId) {
     return {
-      allowedChars: /^[A-Za-zÀ-ÖØ-öø-ÿ0-9_]+$/,
+      allowedChars: /^[A-Za-zÀ-ÖØ-öø-ÿ0-9_]*$/,
       mentionDenotationChars: ["@"],
       showDenotationChar: true,
 
