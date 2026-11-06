@@ -6,7 +6,7 @@
     <div class="ttv-bar-left">
       <span class="ttv-pulse" aria-hidden="true"></span>
       <span class="ttv-bar-title">Ao vivo</span>
-      <span class="ttv-bar-sub">atualiza sozinho a cada 2 min</span>
+      <span class="ttv-bar-sub" id="ttv-countdown-label">atualiza em <span class="ttv-count" id="ttv-countdown">300</span> s</span>
     </div>
 
     <div class="ttv-bar-right">
@@ -85,7 +85,9 @@
   }
   .ttv-bar-left { display: flex; align-items: baseline; gap: 10px; min-width: 0; flex-wrap: wrap; }
   .ttv-bar-title { font-size: 17px; font-weight: 700; letter-spacing: -.01em; }
-  .ttv-bar-sub { font-size: 12.5px; color: var(--ttv-ink-3); }
+  .ttv-bar-sub { font-size: 12.5px; color: var(--ttv-ink-3); font-variant-numeric: tabular-nums; }
+  /* largura fixa: o texto ao lado não anda quando o número perde um dígito */
+  .ttv-count { display: inline-block; min-width: 3ch; text-align: right; }
   .ttv-bar-right { display: flex; align-items: center; gap: 10px; }
   .ttv-bar-total {
     font-size: 12.5px; color: var(--ttv-ink-3);
@@ -685,6 +687,7 @@
       refreshBtn.disabled = false;
       refreshBtn.textContent = orig;
       refreshBtn.dataset.busy = "0";
+      restartCountdown(REFRESH_SECONDS);
     }
   });
 
@@ -703,15 +706,105 @@
     setFilter(uid, pick.dataset.userName || "");
   });
 
+  // ===== contagem regressiva =====
+  // Conta 300 s à vista e, no zero, atualiza a tela. Na página própria
+  // (/track-time/painel/) é um recarregar de verdade; dentro do modal de um
+  // quadro só os dados são rebuscados, para não derrubar o que está aberto.
+  const REFRESH_SECONDS = 300;
+  const RETRY_SECONDS = 30;
+  const FILTER_KEY = "ttvLiveFilter";
+  const countLabel = document.getElementById("ttv-countdown-label");
+  const pageMode = !!(tabRoot && tabRoot.closest('#cm-root[data-tt-page-mode="1"]'));
+  let deadline = 0;
+  let firing = false;
+
+  function showCount(n) {
+    const el = document.getElementById("ttv-countdown");
+    if (el) { const txt = String(n); if (el.textContent !== txt) el.textContent = txt; return; }
+    if (countLabel) countLabel.innerHTML = `atualiza em <span class="ttv-count" id="ttv-countdown">${n}</span> s`;
+  }
+
+  function restartCountdown(seconds) {
+    deadline = Date.now() + seconds * 1000;
+    showCount(seconds);
+  }
+
+  // Servidor fora do ar (publicação, rede): recarregar agora trocaria a tela
+  // por uma página de erro que não se atualiza mais. Só recarrega se responder.
+  async function serverIsUp() {
+    try {
+      const res = await fetch(URL_TOTALS, {
+        method: "GET", credentials: "same-origin", cache: "no-store",
+        headers: { "Accept": "application/json", "X-Requested-With": "XMLHttpRequest" },
+      });
+      return res.status < 500;
+    } catch (_) { return false; }
+  }
+
+  async function onZero() {
+    if (firing) return;
+    firing = true;
+    try {
+      if (!pageMode) {
+        if (countLabel) countLabel.textContent = "atualizando…";
+        await refresh();
+        restartCountdown(REFRESH_SECONDS);
+        return;
+      }
+      if (countLabel) countLabel.textContent = "atualizando…";
+      if (await serverIsUp()) {
+        try {
+          if (filterUserId !== null) {
+            sessionStorage.setItem(FILTER_KEY, JSON.stringify({ id: filterUserId, name: filterUserName }));
+          }
+        } catch (_) {}
+        window.location.reload();
+        return;                       // fica em "atualizando…" até a página trocar
+      }
+      if (countLabel) countLabel.textContent = `sem resposta do servidor — nova tentativa em ${RETRY_SECONDS} s`;
+      deadline = Date.now() + RETRY_SECONDS * 1000;
+    } finally {
+      firing = false;
+    }
+  }
+
+  function tickCountdown() {
+    if (firing) return;
+    const left = Math.ceil((deadline - Date.now()) / 1000);
+    if (left > 0) {
+      // na espera da nova tentativa o aviso fica; o número só volta no ciclo normal
+      if (left <= REFRESH_SECONDS && document.getElementById("ttv-countdown")) showCount(left);
+      return;
+    }
+    // aba escondida: espera você voltar e atualiza na hora (sem gastar servidor à toa)
+    if (document.hidden) { showCount(0); return; }
+    onZero();
+  }
+
+  function onVisible() { if (!document.hidden) { tickRunning(); tickCountdown(); } }
+
+  // filtro por pessoa atravessa o recarregar automático
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(FILTER_KEY) || "null");
+    sessionStorage.removeItem(FILTER_KEY);
+    if (saved && saved.id !== null && saved.id !== undefined) {
+      filterUserId = String(saved.id);
+      filterUserName = String(saved.name || "");
+    }
+  } catch (_) {}
+
   refresh();
-  const timerFetch = setInterval(() => { if (!document.hidden) refresh(); }, 120000);
+  restartCountdown(REFRESH_SECONDS);
+  const timerCount = setInterval(tickCountdown, 1000);
   const timerTick = setInterval(() => { if (!document.hidden) tickRunning(); }, 30000);
+  document.addEventListener("visibilitychange", onVisible);
 
   // evita timer zumbi quando a aba sai do DOM (htmx troca o conteúdo)
   const obs = new MutationObserver(() => {
     if (!document.getElementById("tracktime-live-tab")) {
-      clearInterval(timerFetch);
+      clearInterval(timerCount);
       clearInterval(timerTick);
+      document.removeEventListener("visibilitychange", onVisible);
       obs.disconnect();
     }
   });
